@@ -3,17 +3,22 @@
 
 ChainForge is a data flow programming environment for visualizing and developing "prompt chains" for LLMs. It integrates with Python code as its backend, such as LangChain, for calling LLMs and performing analysis on responses. 
 
-Our goal is to provide a basic architecture around prompt chaining that developers can build upon for their specific use cases. As such, we focus on extensibility and simplicity. 
+Our goal is to provide a basic visual programming architecture around prompt chaining that developers can build upon for their specific use cases. As such, we focus on extensibility and simplicity. 
 
-ChainForge is built on [ReactFlow](https://reactflow.dev).
+ChainForge is built on [ReactFlow](https://reactflow.dev) and is in active development.
 
 ### Developers
-- Ian Arawjo
-- Priyan Vaithilingam
+
+ChainForge is developed by research scientists at Harvard University in the [Harvard HCI](https://hci.seas.harvard.edu) group:
+- [Ian Arawjo](http://ianarawjo.com/index.html)
+- [Priyan Vaithilingam](https://priyan.info)
+- [Elena Glassman]()
+
+It came about by necessity in the course of developing another, higher-level interface for evaluating LLM outputs. We provide ongoing releases of this tool in the hopes that others find it useful for their projects, but we make no claims about its robustness or future maintenance.
 
 ### Inspiration and Links
 
-This project was inspired by own our use case, but also derives insights from two related (closed-source) research projects:
+This project was inspired by own our use case, but also derives insights from two related (closed-source) research projects, both led by [Sherry Wu](https://www.cs.cmu.edu/~sherryw/):
 - "PromptChainer: Chaining Large Language Model Prompts through Visual Programming" (Wu et al., CHI ’22 LBW) [Video](https://www.youtube.com/watch?v=p6MA8q19uo0)
 - "AI Chains: Transparent and Controllable Human-AI Interaction by Chaining Large Language Model Prompts" (Wu et al., CHI ’22)
 
