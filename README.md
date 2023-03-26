@@ -18,6 +18,10 @@ In ChainForge, we built ways to help you **visualize the difference between LLMs
 
 Beyond comparing between different models like Alpaca and ChatGPT, this feature is also useful to compare between versions of the same model (e.g., a base model and a fine-tuned one). Did your fine-tuning result in any 'breaking changes' elsewhere? ChainForge divergences can help you can detect where. 
 
+### Sharing prompt chains
+
+All ChainForge node graphs are importable/exportable as JSON specs. You can freely share prompt chains you develop (alongside any custom analysis code), whether to the public or within your organization. 
+
 ## Developers
 
 ChainForge is developed by research scientists at Harvard University in the [Harvard HCI](https://hci.seas.harvard.edu) group:
