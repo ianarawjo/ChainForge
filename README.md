@@ -11,7 +11,7 @@ ChainForge is built on [ReactFlow](https://reactflow.dev) and is in active devel
 
 ### Divergence detectors: Comparing between models
 
-In ChainForge, we built ways to help you **visualize the difference between LLMs for the same prompt.** In other words, you can compare responses for different models, using the same prompt chain. This helps developers to, for instance:
+In ChainForge, we built ways to help you **visualize the difference between LLMs for the same prompt.** In other words, you can compare responses across different models for the same prompt chain. This helps developers to, for instance:
 - understand what model might be best for their specific task (choose the right model)
 - guard against over-engineering a prompt chain for a single model (avoid over-engineering)
 - visualize the differences between models (compare model outputs)
