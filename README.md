@@ -1,5 +1,5 @@
 # ChainForge
-An open-source, extensible visual programming environment for developing prompt-analysis chains for LLMs.
+**An open-source, extensible visual programming environment for developing prompt-analysis chains for LLMs.**
 
 ChainForge is a data flow programming environment for visualizing and developing "prompt chains" for LLMs. It integrates with Python code as its backend, such as LangChain, for calling LLMs and performing analysis on responses. 
 
