@@ -23,3 +23,7 @@ This project was inspired by own our use case, but also derives insights from tw
 - "AI Chains: Transparent and Controllable Human-AI Interaction by Chaining Large Language Model Prompts" (Wu et al., CHI ’22)
 
 Unlike these projects, this project aspires to be open-source and remain in the public domain, as our ultimate goal is integration into other tools for the systematic evaluation and auditing of LLMs. We hope to help others who are developing prompt-analysis flows in LLMs, or otherwise auditing LLM outputs. 
+
+### License
+
+ChainForge is released under the MIT License.
