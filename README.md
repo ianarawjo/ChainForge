@@ -3,7 +3,7 @@
 
 ChainForge is a data flow programming environment for visualizing and developing "prompt chains" for LLMs. It integrates with Python code as its backend, such as LangChain, for calling LLMs and performing analysis on responses. 
 
-Our goal is to provide a basic visual programming architecture around prompt chaining that developers can build upon for their specific use cases. As such, we focus on extensibility and simplicity. 
+Our goal is to provide a basic, open-source visual programming architecture around prompt chaining that developers can build upon for their specific use cases. As such, we focus on extensibility and simplicity. 
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and is in active development.
 
