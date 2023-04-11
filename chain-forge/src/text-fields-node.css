@@ -1,0 +1,56 @@
+.text-fields-node {
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #000;
+    border-radius: 5px;
+  }
+  
+  .input-field {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+  }
+  
+  .input-field input {
+    margin-left: 5px;
+  }
+  
+  .node-header {
+    border-bottom: 1px;
+    border-top: 0px;
+    border-left: 0px;
+    border-right: 0px;
+    border-style: dashed;
+    margin-bottom: 12px;
+  }
+
+  .prompt-node {
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #999;
+    border-radius: 5px;
+  }
+  
+  .prompt-node textarea {
+    width: 100%;
+    resize: none;
+    box-sizing: border-box;
+  }
+
+  .evaluator-node {
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #999;
+    border-radius: 5px;
+  }
+
+  .code-style {
+    background-color: #ddd;
+    font-family: 'Courier New', Courier, monospace;
+  }
+
+  .code-mirror-field-header {
+    font-size: 10pt;
+    color: #333;
+    margin-bottom: 4px;
+  }
