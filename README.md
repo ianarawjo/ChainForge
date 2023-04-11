@@ -1,9 +1,7 @@
 # ⛓️🛠️ ChainForge
-**An open-source, extensible visual programming environment for developing prompt-analysis chains for LLMs.**
+**An open-source, extensible visual programming environment for forging prompt chains for LLMs.**
 
-ChainForge is a data flow programming environment for visualizing and developing "prompt chains" for LLMs. It integrates with Python code as its backend, such as LangChain, for calling LLMs and performing analysis on responses. 
-
-Our goal is to provide a basic, open-source visual programming architecture around prompt chaining that developers can build upon for their specific use cases. As such, we focus on extensibility and simplicity. 
+ChainForge is a data flow programming environment for testing and evaluating "prompt chains" for LLMs. Our goal is to provide a basic, open-source visual programming tool that developers can use to battle-test prompts against LLM responses.
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and is in active development.
 
@@ -17,7 +15,7 @@ A key goal of ChainForge is facilitating **comparison** and **evaluation** of pr
 - **Compare across chains**: If a system prompt, or a ‘shared prompt’, is used in Chains C1 C2 etc, how does changing it affect all chains?
 - **Compare across models**: Given a chain or chain assemblage (C chains, all used by your app/system), compare responses across models. This should measure both *intra-response perturbations* (fluctuations within each model) and *inter-response* perturbations. Can detect where models “diverge” in the large —i.e., produce radically different outputs at a point in a chain.
 
-Unlike other projects, ChainForge is meant to be general-purpose, and is not developed for a specific API or LLM back-end. 
+ChainForge is meant to be general-purpose, and is not developed for a specific API or LLM back-end. 
 
 ### Example: Divergence detectors
 
