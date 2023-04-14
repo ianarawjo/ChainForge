@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { Handle } from 'react-flow-renderer';
+// import { shallow } from 'zustand/shallow';
+import useStore from './store';
+import { render } from '@testing-library/react';
 
-const PromptNode = ({ data }) => {
+const PromptNode = ({ data, id }) => {
+
+  // Get state from the Zustand store:
+  const edges = useStore((state) => state.edges);
 
   const [hovered, setHovered] = useState(false);
   const [selected, setSelected] = useState(false);
@@ -49,6 +55,20 @@ const PromptNode = ({ data }) => {
         setTemplateHooks([]);
     }
   };
+
+  const handleRunClick = (event) => {
+    // Go through all template hooks (if any) and check they're connected:
+    const is_fully_connected = templateHooks.every(hook => {
+        // Check that some edge has, as its target, this node and its template hook:
+        return edges.some(e => (e.target == id && e.targetHandle == hook.key));
+    });
+
+    if (is_fully_connected) {
+        console.log('Connected!');
+    } else {
+        console.log('Not connected! :(');
+    }
+  };
   
   const borderStyle = selected
     ? '2px solid #222'
@@ -66,6 +86,7 @@ const PromptNode = ({ data }) => {
     >
       <div className="node-header">
         Prompt Node
+        <button className="AmitSahoo45-button-3" onClick={handleRunClick}><div className="play-button"></div></button>
       </div>
       <div className="input-field">
         <textarea

@@ -5,9 +5,6 @@ import React, { useState, useCallback } from 'react';
 import ReactFlow, {
   Controls,
   Background,
-  addEdge,
-  applyNodeChanges, 
-  applyEdgeChanges,
 } from 'react-flow-renderer';
 // import axios from 'axios';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
@@ -15,7 +12,19 @@ import PromptNode from './PromptNode';
 import EvaluatorNode from './EvaluatorNode';
 import './text-fields-node.css';
 
-import AnimatedConnectionLine from './AnimatedConnectionLine';
+// State management (from https://reactflow.dev/docs/guides/state-management/)
+import { shallow } from 'zustand/shallow';
+import useStore from './store';
+
+const selector = (state) => ({
+  nodes: state.nodes,
+  edges: state.edges,
+  onNodesChange: state.onNodesChange,
+  onEdgesChange: state.onEdgesChange,
+  onConnect: state.onConnect,
+});
+
+// import AnimatedConnectionLine from './AnimatedConnectionLine';
 
 const nodeTypes = {
   textfields: TextFieldsNode, // Register the custom node
@@ -23,33 +32,27 @@ const nodeTypes = {
   evaluator: EvaluatorNode,
 };
 
-const initialNodes = [
-  { id: 'promptNode', type: 'prompt', data: { prompt: 'Shorten the following paragraph {mod}:\n{paragraph}' }, position: { x: 250, y: 25 } },
-  { id: 'analysisNode', type: 'evaluator', data: { code: "return response.txt.length;" }, position: { x: 150, y: 100 } },
-  { id: 'textFieldsNode', type: 'textfields', data: { n: '10', paragraph: 'This is text' }, position: { x: 25, y: 25 } },
-];
-
-const initialEdges = [
-  { id: 'e1-2', source: 'promptNode', target: 'analysisNode', interactionWidth: 100},
-];
-
 const connectionLineStyle = { stroke: '#ddd' };
 const snapGrid = [16, 16];
 
 const App = () => {
-  const [nodes, setNodes] = useState(initialNodes);
-  const [edges, setEdges] = useState(initialEdges);
+
+  // Get nodes, edges, etc. state from the Zustand store:
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect } = useStore(selector, shallow);
+  // const [nodes, setNodes] = useState(initialNodes);
+  // const [edges, setEdges] = useState(initialEdges);
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const onNodesChange = useCallback(
-    (changes) => setNodes((ns) => applyNodeChanges(changes, ns)),
-    []
-  );
-  const onEdgesChange = useCallback(
-    (changes) => setEdges((es) => applyEdgeChanges(changes, es)),
-    []
-  );
-  const onConnect = useCallback((connection) => setEdges((eds) => addEdge(connection, eds)));
+  // const onNodesChange = useCallback(
+  //   (changes) => setNodes((ns) => applyNodeChanges(changes, ns)),
+  //   []
+  // );
+  // const onEdgesChange = useCallback(
+  //   (changes) => setEdges((es) => applyEdgeChanges(changes, es)),
+  //   []
+  // );
+  // const onConnect = useCallback((connection) => setEdges((eds) => addEdge(connection, eds)));
 
   const analyzeResponse = async () => {
     if (isAnalyzing) return;
