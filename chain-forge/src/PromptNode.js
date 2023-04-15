@@ -8,6 +8,7 @@ const PromptNode = ({ data, id }) => {
 
   // Get state from the Zustand store:
   const edges = useStore((state) => state.edges);
+  const output = useStore((state) => state.output);
 
   const [hovered, setHovered] = useState(false);
   const [selected, setSelected] = useState(false);
@@ -76,8 +77,35 @@ const PromptNode = ({ data, id }) => {
 
     if (is_fully_connected) {
         console.log('Connected!');
+
+        // Pull data from each source:
+        const pulled_data = {};
+        templateHooks.forEach(hook => {
+            // Find the relevant edge (breaking once we've found it):
+            for (let i = 0; i < edges.length; i++) {
+                const e = edges[i];
+                if (e.target == id && e.targetHandle == hook.key) {
+                    // Get the data output for that handle on the source node:
+                    pulled_data[hook.key] = output(e.source, e.sourceHandle);
+                    break;
+                }
+            }
+        });
+
+        // Fill the prompt template all permutations of the pulled data:
+        // ... 
+
+        // Run all permutations through the LLM to generate responses:
+        // ...
+
+        // Store all responses
+        // ...
+
+        console.log(pulled_data);
     } else {
         console.log('Not connected! :(');
+
+        // Blink the names of unconnected params:
         const names_to_blink = templateVars.filter(name => {
             return !edges.some(e => (e.target == id && e.targetHandle == name));
         });

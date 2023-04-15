@@ -36,6 +36,19 @@ const initialEdges = [
 const useStore = create((set, get) => ({
   nodes: initialNodes,
   edges: initialEdges,
+  output: (sourceNodeId, sourceHandleKey) => {
+    // Get the source node
+    const src_node = get().getNode(sourceNodeId);
+    if (src_node) {
+        // Get the data related to that handle:
+        // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:
+        return src_node.data[sourceHandleKey];
+    } else {
+        console.error("Could not find node with id", sourceNodeId);
+        return null;
+    }
+  },
+  getNode: (id) => get().nodes.find(n => n.id == id),
   onNodesChange: (changes) => {
     set({
       nodes: applyNodeChanges(changes, get().nodes),
