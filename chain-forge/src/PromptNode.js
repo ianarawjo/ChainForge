@@ -12,6 +12,7 @@ const PromptNode = ({ data, id }) => {
   const [hovered, setHovered] = useState(false);
   const [selected, setSelected] = useState(false);
   const [templateHooks, setTemplateHooks] = useState([]);
+  const [templateVars, setTemplateVars] = useState([]);
   
   const handleMouseEnter = () => {
     setHovered(true);
@@ -25,6 +26,27 @@ const PromptNode = ({ data, id }) => {
     setSelected(!selected);
   };
 
+  const genTemplateHooks = (temp_var_names, names_to_blink) => {
+    return temp_var_names.map(
+        (name, idx) => {
+            const className = (names_to_blink.includes(name)) ? 'text-blink' : '';
+            const pos = (idx * 35) + 140 + 'px';
+            const style = { top: pos,  background: '#555' };
+            return (
+                <div key={name} className={className} >
+                <p>{name}</p>
+                <Handle
+                    type="target"
+                    position="left"
+                    id={name}
+                    style={style}
+                />
+                </div>
+            )
+        }
+    );
+  };
+
   const handleInputChange = (event) => {
     const value = event.target.value;
     const braces_regex = /(?<!\\){(.*?)(?<!\\)}/g;  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
@@ -34,23 +56,10 @@ const PromptNode = ({ data, id }) => {
             name => name.substring(1, name.length-1)
         )
         console.log(temp_var_names);
-        setTemplateHooks(temp_var_names.map(
-            (name, idx) => {
-                const pos = (idx * 35) + 140 + 'px';
-                const style = { top: pos,  background: '#555' };
-                return (
-                    <div key={name}>
-                    <p>{name}</p>
-                    <Handle
-                        type="target"
-                        position="left"
-                        id={name}
-                        style={style}
-                    />
-                    </div>
-                )
-            }
-        ));
+        setTemplateVars(temp_var_names);
+        setTemplateHooks(
+            genTemplateHooks(temp_var_names, [])
+        );
     } else {
         setTemplateHooks([]);
     }
@@ -63,10 +72,25 @@ const PromptNode = ({ data, id }) => {
         return edges.some(e => (e.target == id && e.targetHandle == hook.key));
     });
 
+    console.log(templateHooks);
+
     if (is_fully_connected) {
         console.log('Connected!');
     } else {
         console.log('Not connected! :(');
+        const names_to_blink = templateVars.filter(name => {
+            return !edges.some(e => (e.target == id && e.targetHandle == name));
+        });
+        setTemplateHooks(
+            genTemplateHooks(templateVars, names_to_blink)
+        );
+
+        // Set timeout to turn off blinking:
+        setTimeout(() => {
+            setTemplateHooks(
+                genTemplateHooks(templateVars, [])
+            );
+        }, 750*2);
     }
   };
   
