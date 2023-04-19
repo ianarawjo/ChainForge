@@ -14,6 +14,7 @@ const PromptNode = ({ data, id }) => {
   const [selected, setSelected] = useState(false);
   const [templateHooks, setTemplateHooks] = useState([]);
   const [templateVars, setTemplateVars] = useState([]);
+  const [promptText, setPromptText] = useState(data.prompt);
   
   const handleMouseEnter = () => {
     setHovered(true);
@@ -50,13 +51,13 @@ const PromptNode = ({ data, id }) => {
 
   const handleInputChange = (event) => {
     const value = event.target.value;
+    setPromptText(value);
     const braces_regex = /(?<!\\){(.*?)(?<!\\)}/g;  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
     const found_template_vars = value.match(braces_regex);
     if (found_template_vars && found_template_vars.length > 0) {
         const temp_var_names = found_template_vars.map(
             name => name.substring(1, name.length-1)
         )
-        console.log(temp_var_names);
         setTemplateVars(temp_var_names);
         setTemplateHooks(
             genTemplateHooks(temp_var_names, [])
@@ -95,14 +96,28 @@ const PromptNode = ({ data, id }) => {
             }
         });
 
-        // Fill the prompt template all permutations of the pulled data:
-        // ... 
+        // Get Pythonic version of the prompt, by adding a $ before any template variables in braces:
+        const py_prompt_template = promptText.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
 
-        // Run all permutations through the LLM to generate responses:
-        // ...
-
-        // Store all responses
-        // ...
+        // Run all prompt permutations through the LLM to generate + cache responses:
+        const response = fetch('http://localhost:5000/queryllm', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            body: JSON.stringify({
+                id: id,
+                llm: 'gpt3.5',
+                prompt: py_prompt_template,
+                vars: pulled_data,
+                params: {
+                    temperature: 1.0,
+                    n: 1,
+                },
+            }),
+        }).then(function(response) {
+            return response.json();
+        }).then(function(json) {
+            console.log(json);
+        });
 
         // Change the 'run' button icon back to normal:
         // ... 
