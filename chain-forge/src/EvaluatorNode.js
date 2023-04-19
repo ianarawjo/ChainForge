@@ -62,12 +62,22 @@ const EvaluatorNode = ({ data }) => {
       </div>
       <hr/>
       <div>
-        <label for="avg">Average over: </label>
+        <div className="code-mirror-field-header">Method to reduce across <span className="code-style">responses</span>:</div>
+        <select name="method" id="method">
+            <option value="none">None</option>
+            <option value="avg">Average across</option>
+            <option value="sum">Sum over</option>
+            <option value="median">Median for</option>
+            <option value="custom">Custom reducer</option>
+        </select>
+        <span> </span>
+        <input type="text" id="method-val" name="method-val"  />
+        {/* <label for="avg">Average over: </label>
         <select name="avg" id="avg">
             <option value="mod">mod</option>
             <option value="paragraph">paragraph</option>
             <option value="_none">N/A</option>
-        </select>
+        </select> */}
       </div>
     </div>
   );

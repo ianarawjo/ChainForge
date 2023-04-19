@@ -17,6 +17,7 @@ const TextFieldsNode = ({ data }) => {
         TextFields Node
       </div>
       <div className="input-field">
+        {/* <label htmlFor="n">n:</label> */}
         <label htmlFor="n">n:</label>
         <input type="text" id="n" name="n" defaultValue={data.n} onChange={handleInputChange} />
         <Handle

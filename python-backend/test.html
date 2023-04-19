@@ -1,0 +1,51 @@
+<html>
+    <head>
+        <title>Test Flask backend</title>
+    </head>
+    <body>
+        <button onclick="test_query()">Test query LLM!</button>
+        <button onclick="test_exec()">Test evaluating responses!</button>
+    </body>
+    <script>
+
+        function test_exec() {
+            const response = fetch('http://localhost:5000/execute', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                body: JSON.stringify({
+                    id: 'eval',
+                    code: 'return len(response)',
+                    responses: 'test',
+                }),
+            }).then(function(response) {
+                return response.json();
+            }).then(function(json) {
+                console.log(json);
+            });
+        }
+
+        function test_query() {
+            const response = fetch('http://localhost:5000/queryllm', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                body: JSON.stringify({
+                    id: 'test',
+                    llm: 'gpt3.5',
+                    params: {
+                        temperature: 1.0,
+                        n: 1,
+                    },
+                    prompt: 'What is the capital of ${country}?',
+                    vars: {
+                        country: ['Sweden', 'Uganda', 'Japan']
+                    },
+                }),
+            }).then(function(response) {
+                return response.json();
+            }).then(function(json) {
+                console.log(json);
+            });
+        }
+
+    </script>
+</html>

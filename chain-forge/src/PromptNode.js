@@ -78,6 +78,9 @@ const PromptNode = ({ data, id }) => {
     if (is_fully_connected) {
         console.log('Connected!');
 
+        // Change the 'run' button icon to indicate that it's thinking:
+        // ...
+
         // Pull data from each source:
         const pulled_data = {};
         templateHooks.forEach(hook => {
@@ -100,6 +103,9 @@ const PromptNode = ({ data, id }) => {
 
         // Store all responses
         // ...
+
+        // Change the 'run' button icon back to normal:
+        // ... 
 
         console.log(pulled_data);
     } else {

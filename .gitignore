@@ -1,2 +1,4 @@
 *.DS_Store
 chain-forge/node_modules
+__pycache__
+python-backend/cache
