@@ -44,6 +44,13 @@
     border-radius: 5px;
   }
 
+  .vis-node {
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #999;
+    border-radius: 5px;
+  }
+
   .code-style {
     background-color: #ddd;
     font-family: 'Courier New', Courier, monospace;

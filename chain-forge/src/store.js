@@ -17,6 +17,7 @@ const initialNodes = [
   { id: 'promptNode', type: 'prompt', data: { prompt: 'Shorten the following paragraph {mod}:\n{paragraph}' }, position: { x: 250, y: 25 } },
   { id: 'analysisNode', type: 'evaluator', data: { code: "return response.txt.length;" }, position: { x: 150, y: 100 } },
   { id: 'textFieldsNode', type: 'textfields', data: { n: '10', paragraph: 'This is text' }, position: { x: 25, y: 25 } },
+  { id: 'visNode', type: 'vis', data: {}, position: { x: 250, y: 250 } },
 ];
 
 const initialEdges = [
@@ -36,6 +37,9 @@ const initialEdges = [
 const useStore = create((set, get) => ({
   nodes: initialNodes,
   edges: initialEdges,
+  inputEdgesForNode: (sourceNodeId) => {
+    return get().edges.filter(e => e.target == sourceNodeId);
+  },
   output: (sourceNodeId, sourceHandleKey) => {
     // Get the source node
     const src_node = get().getNode(sourceNodeId);
@@ -60,6 +64,25 @@ const useStore = create((set, get) => ({
     });
   },
   onConnect: (connection) => {
+    
+    if (connection.target === 'visNode') {
+      set({
+        nodes: (nds => 
+          nds.map(n => {
+            if (n.id === connection.target) {
+              n.data = { input: connection.source };
+            }
+            return n;
+          })
+        )(get().nodes)
+      });
+        // (node) => {
+        // if (node.id == connection.target) {
+        //   node.data['input'] = connection.source;
+        // }
+        // return node;
+    }
+
     set({
       edges: addEdge(connection, get().edges),
     });

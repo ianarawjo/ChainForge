@@ -186,5 +186,39 @@ def execute():
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
+@app.route('/grabResponses', methods=['POST'])
+def grabResponses():
+    """
+        Returns all responses with the specified id(s)
+
+        POST'd data should be in the form: 
+        {
+            'responses': <the ids to grab>
+        }
+    """
+    data = request.get_json()
+
+    # Check format of responses:
+    if not (isinstance(data['responses'], str) or isinstance(data['responses'], list)):
+        return jsonify({'error': 'POST data responses is improper format.'})
+    elif isinstance(data['responses'], str):
+        data['responses'] = [ data['responses'] ]
+
+    # Load all responses with the given ID:
+    all_cache_files = get_files_at_dir('cache/')
+    responses = []
+    for cache_id in data['responses']:
+        cache_files = get_filenames_with_id(all_cache_files, cache_id)
+        if len(cache_files) == 0:
+            return jsonify({'error': f'Did not find cache file for id {cache_id}'})
+
+        for filename in cache_files:
+            responses.extend(load_cache_json(os.path.join('cache', filename)))
+
+    print(responses)
+    ret = jsonify({'responses': responses})
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
+
 if __name__ == '__main__':
     app.run(host="localhost", port=5000, debug=True)

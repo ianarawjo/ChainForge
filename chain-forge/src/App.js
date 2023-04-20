@@ -10,6 +10,7 @@ import ReactFlow, {
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
 import EvaluatorNode from './EvaluatorNode';
+import VisNode from './VisNode';
 import './text-fields-node.css';
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
@@ -30,6 +31,7 @@ const nodeTypes = {
   textfields: TextFieldsNode, // Register the custom node
   prompt: PromptNode,
   evaluator: EvaluatorNode,
+  vis: VisNode,
 };
 
 const connectionLineStyle = { stroke: '#ddd' };
