@@ -5,7 +5,6 @@ import Plot from 'react-plotly.js';
 
 const VisNode = ({ data, id }) => {
 
-    const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
     const [hovered, setHovered] = useState(false);
     const [selected, setSelected] = useState(false);
     const [plotlyObj, setPlotlyObj] = useState([]);
@@ -26,7 +25,6 @@ const VisNode = ({ data, id }) => {
         const input_node_ids = [data.input];
 
         console.log(data.input, pastInputs);
-        
 
         const response = fetch('http://localhost:5000/grabResponses', {
             method: 'POST',
@@ -37,6 +35,7 @@ const VisNode = ({ data, id }) => {
         }).then(function(res) {
             return res.json();
         }).then(function(json) {
+            console.log(json);
             if (json.responses && json.responses.length > 0) {
 
                 // Create Plotly spec here
@@ -44,11 +43,14 @@ const VisNode = ({ data, id }) => {
                 let spec = {};
                 if (varnames.length === 1) {
                     // 1 var; numeric eval
-                    spec = {
-                        type: 'bar',
-                        x: json.responses.map(r => r.vars[varnames[0]]),
-                        y: json.responses.map(r => r.eval_res[0]),
-                    }
+                    // spec = {
+                    //     type: 'bar',
+                    //     x: json.responses.map(r => r.vars[varnames[0]]),
+                    //     y: json.responses.map(r => r.eval_res.mean),
+                    // }
+                    spec = json.responses.map(r => {
+                        return {type: 'box', y: r.eval_res.items, name: r.vars[varnames[0]].trim()};
+                    });
                 }
                 else if (varnames.length === 2) {
                     // 2 vars; numeric eval
@@ -56,10 +58,12 @@ const VisNode = ({ data, id }) => {
                         type: 'scatter3d',
                         x: json.responses.map(r => r.vars[varnames[0]]),
                         y: json.responses.map(r => r.vars[varnames[1]]),
-                        z: json.responses.map(r => r.eval_res[0]),
+                        z: json.responses.map(r => r.eval_res.mean),
                     }
                 }
-                spec = [spec];
+
+                if (!Array.isArray(spec))
+                    spec = [spec];
 
                 setPlotlyObj((
                     <Plot

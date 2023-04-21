@@ -15,7 +15,7 @@ import {
 
 const initialNodes = [
   { id: 'promptNode', type: 'prompt', data: { prompt: 'Shorten the following paragraph {mod}:\n{paragraph}' }, position: { x: 250, y: 25 } },
-  { id: 'analysisNode', type: 'evaluator', data: { code: "return response.txt.length;" }, position: { x: 150, y: 100 } },
+  { id: 'analysisNode', type: 'evaluator', data: { code: "return len(response)" }, position: { x: 150, y: 100 } },
   { id: 'textFieldsNode', type: 'textfields', data: { n: '10', paragraph: 'This is text' }, position: { x: 25, y: 25 } },
   { id: 'visNode', type: 'vis', data: {}, position: { x: 250, y: 250 } },
 ];

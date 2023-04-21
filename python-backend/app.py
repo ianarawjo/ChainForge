@@ -4,6 +4,7 @@ from promptengine.query import PromptLLM
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
 from promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir
 import json, os
+from statistics import mean, median, stdev
 
 app = Flask(__name__)
 CORS(app)
@@ -43,8 +44,60 @@ def load_cache_json(filepath: str) -> dict:
 def run_over_responses(eval_func, responses: dict) -> list:
     for prompt, resp_obj in responses.items():
         res = extract_responses(resp_obj, resp_obj['llm'])
-        resp_obj['eval_res'] = [eval_func(r) for r in res]  # run evaluator func over every individual response text
+        evals = [eval_func(r) for r in res]  # run evaluator func over every individual response text
+        resp_obj['eval_res'] = {  # NOTE: assumes this is numeric data
+            'mean': mean(evals),
+            'median': median(evals),
+            'stdev': stdev(evals) if len(evals) > 1 else 0,
+            'range': (min(evals), max(evals)),
+            'items': evals,
+        }
     return responses
+
+def reduce_responses(responses: list, vars: list) -> list:
+    if len(responses) == 0: return responses
+    
+    # Figure out what vars we still care about (the ones we aren't reducing over):
+    # NOTE: We are assuming all responses have the same 'vars' keys. 
+    all_vars = set(responses[0]['vars'])
+    
+    if not all_vars.issuperset(set(vars)):
+        # There's a var in vars which isn't part of the response.
+        raise Exception(f"Some vars in {set(vars)} are not in the responses.")
+    
+    # Get just the vars we want to keep around:
+    include_vars = list(set(responses[0]['vars']) - set(vars))
+
+    # Bucket responses by the remaining var values, where tuples of vars are keys to a dict: 
+    # E.g. {(var1_val, var2_val): [responses] }
+    bucketed_resp = {}
+    for r in responses:
+        tup_key = tuple([r['vars'][v] for v in include_vars])
+        if tup_key in bucketed_resp:
+            bucketed_resp[tup_key].append(r)
+        else:
+            bucketed_resp[tup_key] = [r]
+
+    # Perform reduce op across all bucketed responses, collecting them into a single 'meta'-response:
+    ret = []
+    for tup_key, resps in bucketed_resp.items():
+        flat_eval_res = [item for r in resps for item in r['eval_res']['items']]
+        ret.append({
+            'vars': {v: r['vars'][v] for r in resps for v in include_vars},
+            'llm': resps[0]['llm'],
+            'prompt': [r['prompt'] for r in resps],
+            'responses': [r['responses'] for r in resps],
+            'tokens': resps[0]['tokens'],
+            'eval_res': {
+                'mean': mean(flat_eval_res),
+                'median': median(flat_eval_res),
+                'stdev': stdev(flat_eval_res) if len(flat_eval_res) > 1 else 0,
+                'range': (min(flat_eval_res), max(flat_eval_res)),
+                'items': flat_eval_res
+            }
+        })
+    
+    return ret
 
 @app.route('/queryllm', methods=['POST'])
 def queryLLM():
@@ -123,7 +176,8 @@ def execute():
         {
             'id': # a unique ID to refer to this information. Used when cache'ing responses. 
             'code': str,  # the body of the lambda function to evaluate, in form: lambda responses: <body>
-            'responses': str | List[str]  # the responses to run on; a unique ID or list of unique IDs of cache'd data
+            'responses': str | List[str]  # the responses to run on; a unique ID or list of unique IDs of cache'd data,
+            'reduce_vars': unspecified | List[str]  # the 'vars' to average over (mean, median, stdev, range)
         }
 
         NOTE: This should only be run on your server on code you trust.
@@ -166,17 +220,27 @@ def execute():
         # To avoid loading all response files into memory at once, we'll run the evaluator on each file:
         for filename in cache_files:
 
-            # Load the responses from the cache
+            # Load the raw responses from the cache
             responses = load_cache_json(os.path.join('cache', filename))
             if len(responses) == 0: continue
 
             # Run the evaluator over them: 
             evald_responses = run_over_responses(evaluator, responses)
 
-            all_evald_responses.extend([
+            # Convert to standard format: 
+            std_evald_responses = [
                 to_standard_format({'prompt': prompt, **res_obj})
                 for prompt, res_obj in evald_responses.items()
-            ])
+            ]
+
+            # Perform any reduction operations:
+            if 'reduce_vars' in data and len(data['reduce_vars']) > 0:
+                std_evald_responses = reduce_responses(
+                    std_evald_responses,
+                    vars=data['reduce_vars']
+                )
+
+            all_evald_responses.extend(std_evald_responses)
 
     # Store the evaluated responses in a new cache json:
     with open(cache_filepath, "w") as f:

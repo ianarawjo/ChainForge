@@ -4,7 +4,7 @@ import useStore from './store';
 
 // CodeMirror text editor
 import CodeMirror from '@uiw/react-codemirror';
-import { javascript } from '@codemirror/lang-javascript';
+import { python } from '@codemirror/lang-python';
 // import { okaidia } from '@uiw/codemirror-theme-okaidia'; // dark theme
 import { noctisLilac } from '@uiw/codemirror-theme-noctis-lilac'; // light theme
 
@@ -14,6 +14,8 @@ const EvaluatorNode = ({ data, id }) => {
   const [hovered, setHovered] = useState(false);
   const [selected, setSelected] = useState(false);
   const [codeText, setCodeText] = useState(data.code);
+  const [reduceMethod, setReduceMethod] = useState('none');
+  const [reduceVars, setReduceVars] = useState([]);
   
   const handleMouseEnter = () => {
     setHovered(true);
@@ -45,6 +47,8 @@ const EvaluatorNode = ({ data, id }) => {
             id: id,
             code: codeText,
             responses: input_node_ids,
+            reduce_vars: reduceVars,
+            // write an extra part here that takes in reduce func
         }),
     }).then(function(response) {
         return response.json();
@@ -52,7 +56,17 @@ const EvaluatorNode = ({ data, id }) => {
         console.log(json);
     });
   };
+
+  const handleOnSelect = (event) => {
+    setReduceMethod(event.target.value);
+  };
   
+  const handleReduceVarsChange = (event) => {
+    // Split on commas, ignoring commas wrapped in double-quotes 
+    const regex_csv = /,(?!(?<=(?:^|,)\s*\x22(?:[^\x22]|\x22\x22|\\\x22)*,)(?:[^\x22]|\x22\x22|\\\x22)*\x22\s*(?:,|$))/g;
+    setReduceVars(event.target.value.split(regex_csv).map(s => s.trim()));
+  };
+
   const borderStyle = selected
     ? '2px solid #222'
     : hovered
@@ -91,21 +105,19 @@ const EvaluatorNode = ({ data, id }) => {
           width="400px"
           theme={noctisLilac}
           onChange={handleInputChange}
-          extensions={[javascript({ jsx: true })]}
+          extensions={[python()]}
         />
       </div>
       <hr/>
       <div>
         <div className="code-mirror-field-header">Method to reduce across <span className="code-style">responses</span>:</div>
-        <select name="method" id="method">
+        <select name="method" id="method" onChange={handleOnSelect}>
             <option value="none">None</option>
             <option value="avg">Average across</option>
-            <option value="sum">Sum over</option>
-            <option value="median">Median for</option>
             <option value="custom">Custom reducer</option>
         </select>
         <span> </span>
-        <input type="text" id="method-val" name="method-val"  />
+        <input type="text" id="method-vars" name="method-vars" onChange={handleReduceVarsChange}  />
         {/* <label for="avg">Average over: </label>
         <select name="avg" id="avg">
             <option value="mod">mod</option>
