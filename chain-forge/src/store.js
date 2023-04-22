@@ -14,10 +14,11 @@ import {
 } from 'react-flow-renderer';
 
 const initialNodes = [
-  { id: 'promptNode', type: 'prompt', data: { prompt: 'Shorten the following paragraph {mod}:\n{paragraph}' }, position: { x: 250, y: 25 } },
-  { id: 'analysisNode', type: 'evaluator', data: { code: "return len(response)" }, position: { x: 150, y: 100 } },
-  { id: 'textFieldsNode', type: 'textfields', data: { n: '10', paragraph: 'This is text' }, position: { x: 25, y: 25 } },
-  { id: 'visNode', type: 'vis', data: {}, position: { x: 250, y: 250 } },
+  { id: 'promptNode', type: 'prompt', data: { prompt: 'Shorten the following paragraph {mod}:\n{paragraph}' }, position: { x: 430, y: 250 } },
+  { id: 'analysisNode', type: 'evaluator', data: { code: "return len(response)" }, position: { x: 850, y: 150 } },
+  { id: 'textFieldsNode', type: 'textfields', data: {}, position: { x: 25, y: 150 } },
+  { id: 'textFieldsNode2', type: 'textfields', data: {}, position: { x: 25, y: 300 } },
+  { id: 'visNode', type: 'vis', data: {}, position: { x: 1350, y: 250 } },
 ];
 
 const initialEdges = [
@@ -46,6 +47,7 @@ const useStore = create((set, get) => ({
     if (src_node) {
         // Get the data related to that handle:
         // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:
+        console.log(src_node.data);
         return src_node.data[sourceHandleKey];
     } else {
         console.error("Could not find node with id", sourceNodeId);

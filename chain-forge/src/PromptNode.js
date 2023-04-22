@@ -90,8 +90,10 @@ const PromptNode = ({ data, id }) => {
                 const e = edges[i];
                 if (e.target == id && e.targetHandle == hook.key) {
                     // Get the data output for that handle on the source node:
-                    pulled_data[hook.key] = output(e.source, e.sourceHandle);
-                    break;
+                    if (hook.key in pulled_data)
+                        pulled_data[hook.key].push(output(e.source, e.sourceHandle));
+                    else
+                        pulled_data[hook.key] = [output(e.source, e.sourceHandle)];
                 }
             }
         });

@@ -69,7 +69,7 @@ const VisNode = ({ data, id }) => {
                     <Plot
                         data={spec}
                         layout={ {width: 320, height: 240, title: '', margin: {
-                            l: 20, r: 20, b: 20, t: 20, pad: 2
+                            l: 40, r: 20, b: 20, t: 20, pad: 2
                         }} }
                     />
                 ))

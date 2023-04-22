@@ -62,6 +62,15 @@
     margin-bottom: 4px;
   }
 
+  .text-field-fixed {
+    resize: vertical;
+  }
+
+  .add-text-field-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
   /** CSS Button style from https://css-buttons-hover.netlify.app/ */
   .AmitSahoo45-button-3 {
