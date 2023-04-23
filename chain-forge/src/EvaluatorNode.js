@@ -6,7 +6,9 @@ import useStore from './store';
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 // import { okaidia } from '@uiw/codemirror-theme-okaidia'; // dark theme
-import { noctisLilac } from '@uiw/codemirror-theme-noctis-lilac'; // light theme
+import { noctisLilac } from '@uiw/codemirror-theme-noctis-lilac'; // light theme NOTE: Unfortunately this does not show selected text, no idea why. 
+import { materialLight } from '@uiw/codemirror-theme-material'; // light theme, material
+import { xcodeLight } from '@uiw/codemirror-theme-xcode'; // light theme, xcode
 
 const EvaluatorNode = ({ data, id }) => {
 
@@ -15,8 +17,9 @@ const EvaluatorNode = ({ data, id }) => {
   const [selected, setSelected] = useState(false);
   const [codeText, setCodeText] = useState(data.code);
   const [reduceMethod, setReduceMethod] = useState('none');
+  const [mapScope, setMapScope] = useState('response');
   const [reduceVars, setReduceVars] = useState([]);
-  
+
   const handleMouseEnter = () => {
     setHovered(true);
   };
@@ -30,6 +33,11 @@ const EvaluatorNode = ({ data, id }) => {
   const handleInputChange = (code) => {
     setCodeText(code);
   };
+
+  const stopDragPropagation = (event) => {
+    // Stop this event from bubbling up to the node
+    event.stopPropagation();
+  }
 
   const handleRunClick = (event) => {
     // Get the ids from the connected input nodes:
@@ -46,6 +54,7 @@ const EvaluatorNode = ({ data, id }) => {
         body: JSON.stringify({
             id: id,
             code: codeText,
+            scope: mapScope,
             responses: input_node_ids,
             reduce_vars: reduceVars,
             // write an extra part here that takes in reduce func
@@ -57,8 +66,12 @@ const EvaluatorNode = ({ data, id }) => {
     });
   };
 
-  const handleOnSelect = (event) => {
+  const handleOnReduceMethodSelect = (event) => {
     setReduceMethod(event.target.value);
+  };
+
+  const handleOnMapScopeSelect = (event) => {
+    setMapScope(event.target.value);
   };
   
   const handleReduceVarsChange = (event) => {
@@ -98,20 +111,36 @@ const EvaluatorNode = ({ data, id }) => {
           style={{ top: '50%', background: '#555' }}
         />
       <div className="core-mirror-field">
-        <div className="code-mirror-field-header">Function to map over each <span className="code-style">response</span>:</div>
+        <div className="code-mirror-field-header">Function to map over each &nbsp;
+        <select name="mapscope" id="mapscope" onChange={handleOnMapScopeSelect}>
+            <option value="response">response</option>
+            <option value="batch">batch of responses</option>
+        </select>
+        :</div>
+        
+        {/* <span className="code-style">response</span>: */}
         <CodeMirror
           value={data.code}
           height="200px"
           width="400px"
-          theme={noctisLilac}
+          theme={materialLight}
+          style={{cursor: 'text'}}
+          onDrag={stopDragPropagation}
+          onPointerMove={stopDragPropagation}
+          onPointerDown={stopDragPropagation}
+          onPointerUp={stopDragPropagation}
           onChange={handleInputChange}
+          onMouseDownCapture={stopDragPropagation}
+          onClick={stopDragPropagation}
+          onMouseMoveCapture={stopDragPropagation}
+          onMouseUpCapture={stopDragPropagation}
           extensions={[python()]}
         />
       </div>
       <hr/>
       <div>
         <div className="code-mirror-field-header">Method to reduce across <span className="code-style">responses</span>:</div>
-        <select name="method" id="method" onChange={handleOnSelect}>
+        <select name="method" id="method" onChange={handleOnReduceMethodSelect}>
             <option value="none">None</option>
             <option value="avg">Average across</option>
             <option value="custom">Custom reducer</option>

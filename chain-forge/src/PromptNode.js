@@ -15,6 +15,7 @@ const PromptNode = ({ data, id }) => {
   const [templateHooks, setTemplateHooks] = useState([]);
   const [templateVars, setTemplateVars] = useState([]);
   const [promptText, setPromptText] = useState(data.prompt);
+  const [selectedLLMs, setSelectedLLMs] = useState(['gpt3.5']);
   
   const handleMouseEnter = () => {
     setHovered(true);
@@ -24,7 +25,7 @@ const PromptNode = ({ data, id }) => {
     setHovered(false);
   };
   
-  const handleClick = () => {
+  const handleClick = (event) => {
     setSelected(!selected);
   };
 
@@ -79,6 +80,12 @@ const PromptNode = ({ data, id }) => {
     if (is_fully_connected) {
         console.log('Connected!');
 
+        // Check that there is at least one LLM selected:
+        if (selectedLLMs.length === 0) {
+            alert('Please select at least one LLM to prompt.')
+            return;
+        }
+
         // Change the 'run' button icon to indicate that it's thinking:
         // ...
 
@@ -107,12 +114,12 @@ const PromptNode = ({ data, id }) => {
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({
                 id: id,
-                llm: 'gpt3.5',
+                llm: selectedLLMs,
                 prompt: py_prompt_template,
                 vars: pulled_data,
                 params: {
-                    temperature: 1.0,
-                    n: 1,
+                    temperature: 0.5,
+                    n: 3,
                 },
             }),
         }).then(function(response) {
@@ -143,7 +150,28 @@ const PromptNode = ({ data, id }) => {
             );
         }, 750*2);
     }
-  };
+  }
+
+  const stopDragPropagation = (event) => {
+    // Stop this event from bubbling up to the node
+    event.stopPropagation();
+  }
+
+  const handleLLMChecked = (event) => {
+    console.log(event.target.value, event.target.checked);
+    if (event.target.checked) {
+        if (!selectedLLMs.includes(event.target.value)) {
+            // Add the selected LLM to the list:
+            setSelectedLLMs(selectedLLMs.concat([event.target.value]))
+        }
+    } else {
+        if (selectedLLMs.includes(event.target.value)) {
+            // Remove the LLM from the selected list:
+            const removeByIndex = (array, index) => array.filter((_, i) => i !== index);
+            setSelectedLLMs(removeByIndex(selectedLLMs, selectedLLMs.indexOf(event.target.value)));
+        }
+    }
+  }
   
   const borderStyle = selected
     ? '2px solid #222'
@@ -159,7 +187,7 @@ const PromptNode = ({ data, id }) => {
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
     >
-      <div className="node-header">
+      <div className="node-header drag-handle">
         Prompt Node
         <button className="AmitSahoo45-button-3" onClick={handleRunClick}><div className="play-button"></div></button>
       </div>
@@ -169,6 +197,7 @@ const PromptNode = ({ data, id }) => {
           cols="40"
           defaultValue={data.prompt}
           onChange={handleInputChange}
+          onMouseDownCapture={stopDragPropagation}
         />
         <Handle
           type="source"
@@ -179,6 +208,16 @@ const PromptNode = ({ data, id }) => {
       </div>
       <div className="template-hooks"> 
         {templateHooks}
+      </div>
+      <div>
+        <hr />
+        <p style={{marginTop: 0}} >LLMs:</p>
+        <div onMouseDownCapture={stopDragPropagation}>
+            <input type="checkbox" id="gpt3.5" name="gpt3.5" value="gpt3.5" defaultChecked={true} onChange={handleLLMChecked} />
+            <label htmlFor="gpt3.5">GPT3.5  </label>
+            <input type="checkbox" id="alpaca.7B" name="alpaca.7B" value="alpaca.7B" onChange={handleLLMChecked} />
+            <label htmlFor="alpaca.7B">Alpaca 7B</label>
+        </div>
       </div>
     </div>
   );

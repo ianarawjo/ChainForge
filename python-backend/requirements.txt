@@ -1,0 +1,5 @@
+dalaipy==2.0.2
+flask
+flask_cors
+openai
+socketio

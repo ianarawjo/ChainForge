@@ -116,5 +116,9 @@ class PromptPermutationGenerator:
             return res
 
     def __call__(self, paramDict: Dict[str, Union[str, List[str]]]):
+        if len(paramDict) == 0:
+            yield self.template
+            return
+
         for p in self._gen_perm(self.template, list(paramDict.keys()), paramDict):
             yield p

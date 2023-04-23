@@ -90,12 +90,17 @@ const App = () => {
     setIsAnalyzing(false);
   };
 
+  const handleDrag = (event) => {
+    console.log(event);
+  };
+
   return (
-    <div style={{ height: '100vh', width: '100%' }}>
+    <div style={{ height: '100vh', width: '100%', backgroundColor: '#eee' }}>
       <ReactFlow
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onDrag={handleDrag}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
@@ -104,7 +109,7 @@ const App = () => {
         snapToGrid={true}
         snapGrid={snapGrid}
       >
-        <Background color="#aaa" gap={16} />
+        <Background color="#999" gap={16} />
         <Controls />
       </ReactFlow>
       <button onClick={analyzeResponse} disabled={isAnalyzing}>

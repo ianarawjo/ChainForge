@@ -11,6 +11,7 @@ CORS(app)
 
 LLM_NAME_MAP = {
     'gpt3.5': LLM.ChatGPT,
+    'alpaca.7B': LLM.Alpaca7B,
 }
 LLM_NAME_MAP_INVERSE = {val.name: key for key, val in LLM_NAME_MAP.items()}
 
@@ -41,17 +42,27 @@ def load_cache_json(filepath: str) -> dict:
         responses = json.load(f)
     return responses
 
-def run_over_responses(eval_func, responses: dict) -> list:
+def run_over_responses(eval_func, responses: dict, scope: str) -> list:
     for prompt, resp_obj in responses.items():
         res = extract_responses(resp_obj, resp_obj['llm'])
-        evals = [eval_func(r) for r in res]  # run evaluator func over every individual response text
-        resp_obj['eval_res'] = {  # NOTE: assumes this is numeric data
-            'mean': mean(evals),
-            'median': median(evals),
-            'stdev': stdev(evals) if len(evals) > 1 else 0,
-            'range': (min(evals), max(evals)),
-            'items': evals,
-        }
+        if scope == 'response':
+            evals = [eval_func(r) for r in res]  # run evaluator func over every individual response text
+            resp_obj['eval_res'] = {  # NOTE: assumes this is numeric data
+                'mean': mean(evals),
+                'median': median(evals),
+                'stdev': stdev(evals) if len(evals) > 1 else 0,
+                'range': (min(evals), max(evals)),
+                'items': evals,
+            }
+        else:  # operate over the entire response batch
+            ev = eval_func(res)
+            resp_obj['eval_res'] = {  # NOTE: assumes this is numeric data
+                'mean': ev,
+                'median': ev,
+                'stdev': 0,
+                'range': (ev, ev),
+                'items': [ev],
+            }
     return responses
 
 def reduce_responses(responses: list, vars: list) -> list:
@@ -144,6 +155,8 @@ def queryLLM():
 
         # Create an object to query the LLM, passing a file for cache'ing responses
         prompter = PromptLLM(data['prompt'], storageFile=cache_filepath)
+        
+        print(data)
 
         # Prompt the LLM with all permutations of the input prompt template:
         # NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
@@ -177,6 +190,8 @@ def execute():
             'id': # a unique ID to refer to this information. Used when cache'ing responses. 
             'code': str,  # the body of the lambda function to evaluate, in form: lambda responses: <body>
             'responses': str | List[str]  # the responses to run on; a unique ID or list of unique IDs of cache'd data,
+            'scope': 'response' | 'batch'  # the scope of responses to run on --a single response, or all across each batch. 
+                                           # If batch, evaluator has access to 'responses'. Only matters if n > 1 for each prompt.
             'reduce_vars': unspecified | List[str]  # the 'vars' to average over (mean, median, stdev, range)
         }
 
@@ -186,10 +201,12 @@ def execute():
     data = request.get_json()
 
     # Check that all required info is here:
-    if not set(data.keys()).issuperset({'id', 'code', 'responses'}):
+    if not set(data.keys()).issuperset({'id', 'code', 'responses', 'scope'}):
         return jsonify({'error': 'POST data is improper format.'})
     if not isinstance(data['id'], str) or len(data['id']) == 0:
         return jsonify({'error': 'POST data id is improper format (length 0 or not a string).'})
+    if data['scope'] not in ('response', 'batch'):
+        return jsonify({'error': "POST data scope is unknown. Must be either 'response' or 'batch'."})
     
     # Check that the filepath used to cache eval'd responses is valid:
     cache_filepath = os.path.join('cache', f"{data['id']}.json")
@@ -205,7 +222,11 @@ def execute():
     # Create the evaluator function
     # DANGER DANGER! 
     try:
-        exec('def evaluator(response):\n\t' + '\t\n'.join(data['code'].split('\n')), globals())
+        func_body = '\t\n'.join(data['code'].split('\n'))
+        if data['scope'] == 'response':
+            exec('def evaluator(response):\n\t' + func_body, globals())  # evaluate over individual 'response' 
+        else:
+            exec('def evaluator(responses):\n\t' + func_body, globals())  # evaluate over batches of n responses; get access to 'responses'
     except Exception as e:
         return jsonify({'error': f'Could not evaluate code. Error message:\n{str(e)}'})
 
@@ -225,7 +246,7 @@ def execute():
             if len(responses) == 0: continue
 
             # Run the evaluator over them: 
-            evald_responses = run_over_responses(evaluator, responses)
+            evald_responses = run_over_responses(evaluator, responses, scope=data['scope'])
 
             # Convert to standard format: 
             std_evald_responses = [

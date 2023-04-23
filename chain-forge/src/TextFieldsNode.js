@@ -10,6 +10,10 @@ const TextFieldsNode = ({ data }) => {
     // const regex_csv = /,(?!(?<=(?:^|,)\s*\x22(?:[^\x22]|\x22\x22|\\\x22)*,)(?:[^\x22]|\x22\x22|\\\x22)*\x22\s*(?:,|$))/g;
     data[event.target.id] = event.target.value; // event.target.value.split(regex_csv);
   }
+  const stopDragPropagation = (event) => {
+    // Stop this event from bubbling up to the node
+    event.stopPropagation();
+  }
 
   const createInitFields = () => {
     const f = [0];
@@ -17,7 +21,7 @@ const TextFieldsNode = ({ data }) => {
       const top = 70 + 57*idx + 'px';
       return (
         <div className="input-field" key={i}>
-          <textarea id={"f"+i} name={"f"+i} className="text-field-fixed" rows="3" cols="40" defaultValue={''} onChange={handleInputChange} />
+          <textarea id={"f"+i} name={"f"+i} className="text-field-fixed" rows="3" cols="40" defaultValue={''} onChange={handleInputChange} onMouseDownCapture={stopDragPropagation} />
           <Handle
             type="source"
             position="right"
@@ -35,7 +39,7 @@ const TextFieldsNode = ({ data }) => {
     const top = 70 + 57*i + 'px';
     const f = fields.concat((
       <div className="input-field" key={i}>
-          <textarea id={"f"+i} name={"f"+i} className="text-field-fixed" rows="3" cols="40" defaultValue={''} onChange={handleInputChange} />
+          <textarea id={"f"+i} name={"f"+i} className="text-field-fixed" rows="3" cols="40" defaultValue={''} onChange={handleInputChange} onMouseDownCapture={stopDragPropagation} />
           <Handle
             type="source"
             position="right"

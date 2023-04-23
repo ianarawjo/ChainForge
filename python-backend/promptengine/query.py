@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import List, Dict, Tuple, Iterator
 import json
 import os
-from promptengine.utils import LLM, call_chatgpt, is_valid_filepath, is_valid_json
+from promptengine.utils import LLM, call_chatgpt, call_dalai, is_valid_filepath, is_valid_json
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
 
 """
@@ -108,6 +108,8 @@ class PromptPipeline:
     def _prompt_llm(self, llm: LLM, prompt: str, n: int = 1, temperature: float = 1.0) -> Tuple[Dict, Dict]:
         if llm is LLM.ChatGPT:
             return call_chatgpt(prompt, n=n, temperature=temperature)
+        elif llm is LLM.Alpaca7B:
+            return call_dalai(llm_name='alpaca.7B', port=4000, prompt=prompt, n=n, temperature=temperature)
         else:
             raise Exception(f"Language model {llm} is not supported.")
 
