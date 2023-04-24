@@ -18,6 +18,7 @@ class Dalai:
         self.DONE = True
         self.RESULT = None
         self.ONFINISH = None
+        self.ISCONNECTED = False
         self.server = server
         self.setup(server)
     
@@ -25,13 +26,21 @@ class Dalai:
         # try to connect
         try:
             self.sio.connect(server)
+            self.ISCONNECTED = True
         except Exception as e:
             raise NoServerException("NoServerException: No server was found, please make sure you have initiated your Dalai server")
 
         self.call_backs()
     
+    def connect(self):
+        if not self.ISCONNECTED:
+            self.sio.connect(self.server)
+            self.ISCONNECTED = True
+
     def disconnect(self):
-        self.sio.disconnect()
+        if self.ISCONNECTED:
+            self.sio.disconnect()
+            self.ISCONNECTED = False
 
     def call_backs(self):
             @self.sio.on('result')

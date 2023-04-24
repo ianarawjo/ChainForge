@@ -38,9 +38,23 @@ const VisNode = ({ data, id }) => {
             console.log(json);
             if (json.responses && json.responses.length > 0) {
 
+                // Bucket responses by LLM:
+                let responses_by_llm = {};
+                json.responses.forEach(item => {
+                    if (item.llm in responses_by_llm)
+                        responses_by_llm[item.llm].push(item);
+                    else
+                        responses_by_llm[item.llm] = [item];
+                });
+
                 // Create Plotly spec here
                 const varnames = Object.keys(json.responses[0].vars);
                 let spec = {};
+                let layout = {
+                    width: 320, height: 280, title: '', margin: {
+                        l: 40, r: 20, b: 20, t: 20, pad: 2
+                    }
+                }
                 if (varnames.length === 1) {
                     // 1 var; numeric eval
                     // spec = {
@@ -48,9 +62,28 @@ const VisNode = ({ data, id }) => {
                     //     x: json.responses.map(r => r.vars[varnames[0]]),
                     //     y: json.responses.map(r => r.eval_res.mean),
                     // }
-                    spec = json.responses.map(r => {
-                        return {type: 'box', y: r.eval_res.items, name: r.vars[varnames[0]].trim()};
-                    });
+                    if (Object.keys(responses_by_llm).length === 1) {
+                        // Simple box plot, as there is only a single LLM in the response
+                        spec = json.responses.map(r => {
+                            return {type: 'box', y: r.eval_res.items, name: r.vars[varnames[0]].trim()};
+                        });
+                    } else {
+                        // There are multiple LLMs in the response; do a grouped box plot by LLM.
+                        // Note that 'name' is now the LLM, and 'x' stores the value of the var: 
+                        spec = [];
+                        const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
+                        Object.keys(responses_by_llm).forEach((llm, idx) => {
+                            const rs = responses_by_llm[llm];
+                            spec.push({
+                                type: 'box',
+                                name: llm,
+                                marker: {color: colors[idx % colors.length]},
+                                y: rs.map(r => r.eval_res.items).flat(),
+                                x: rs.map(r => Array(r.eval_res.items.length).fill(r.vars[varnames[0]].trim())).flat(),
+                            });
+                        });
+                        layout.boxmode = 'group';
+                    }
                 }
                 else if (varnames.length === 2) {
                     // 2 vars; numeric eval
@@ -68,9 +101,7 @@ const VisNode = ({ data, id }) => {
                 setPlotlyObj((
                     <Plot
                         data={spec}
-                        layout={ {width: 320, height: 240, title: '', margin: {
-                            l: 40, r: 20, b: 20, t: 20, pad: 2
-                        }} }
+                        layout={layout}
                     />
                 ))
 

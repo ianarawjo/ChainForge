@@ -52,6 +52,9 @@ def call_dalai(llm_name: str, port: int, prompt: str, n: int = 1, temperature: f
         DALAI_MODEL = Dalai(server)
     elif DALAI_MODEL.server != server:  # if the port has changed, we need to create a new model
         DALAI_MODEL = Dalai(server)
+    
+    # Make sure server is connected
+    DALAI_MODEL.connect()
 
     # Create settings dict to pass to Dalai as args
     def_params = {'n_predict':128, 'repeat_last_n':64, 'repeat_penalty':1.3, 'seed':-1, 'threads':4, 'top_k':40, 'top_p':0.9}

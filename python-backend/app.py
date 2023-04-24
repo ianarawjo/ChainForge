@@ -83,6 +83,7 @@ def reduce_responses(responses: list, vars: list) -> list:
     # E.g. {(var1_val, var2_val): [responses] }
     bucketed_resp = {}
     for r in responses:
+        print(r)
         tup_key = tuple([r['vars'][v] for v in include_vars])
         if tup_key in bucketed_resp:
             bucketed_resp[tup_key].append(r)
@@ -165,6 +166,7 @@ def queryLLM():
             for response in prompter.gen_responses(properties=data['vars'], llm=llm, **params):
                 responses[llm].append(response)
         except Exception as e:
+            raise e
             return jsonify({'error': str(e)})
 
     # Convert the responses into a more standardized format with less information
