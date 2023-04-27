@@ -5,10 +5,12 @@ import useStore from './store';
 // CodeMirror text editor
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
-// import { okaidia } from '@uiw/codemirror-theme-okaidia'; // dark theme
+import { okaidia } from '@uiw/codemirror-theme-okaidia'; // dark theme
+import { solarizedDark } from '@uiw/codemirror-theme-solarized'; // dark theme; warm
 import { noctisLilac } from '@uiw/codemirror-theme-noctis-lilac'; // light theme NOTE: Unfortunately this does not show selected text, no idea why. 
 import { materialLight } from '@uiw/codemirror-theme-material'; // light theme, material
-import { xcodeLight } from '@uiw/codemirror-theme-xcode'; // light theme, xcode
+import { xcodeDark, xcodeLight } from '@uiw/codemirror-theme-xcode'; // light theme, xcode
+import { sublime } from '@uiw/codemirror-theme-sublime';
 
 const EvaluatorNode = ({ data, id }) => {
 

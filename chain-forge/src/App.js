@@ -11,6 +11,7 @@ import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
 import EvaluatorNode from './EvaluatorNode';
 import VisNode from './VisNode';
+import InspectNode from './InspectorNode';
 import './text-fields-node.css';
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
@@ -32,6 +33,7 @@ const nodeTypes = {
   prompt: PromptNode,
   evaluator: EvaluatorNode,
   vis: VisNode,
+  inspect: InspectNode,
 };
 
 const connectionLineStyle = { stroke: '#ddd' };
@@ -104,6 +106,9 @@ const App = () => {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        zoomOnPinch={false}
+        zoomOnScroll={false}
+        panOnScroll={true}
         // connectionLineComponent={AnimatedConnectionLine}
         // connectionLineStyle={connectionLineStyle}
         snapToGrid={true}

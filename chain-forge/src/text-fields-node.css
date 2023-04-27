@@ -51,6 +51,44 @@
     border-radius: 5px;
   }
 
+  .inspector-node {
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #999;
+    border-radius: 5px;
+    overflow-y: auto;
+    max-height: 400px;
+  }
+
+  .small-response {
+    font-size: 8pt;
+    font-family: monospace;
+    border-style: dotted;
+    border-color: #aaa;
+    padding: 2px;
+    margin: 0px;
+    background-color: #fff;
+  }
+
+  .llm-response-container {
+    max-width: 450px;
+  }
+  .llm-response-container h1 {
+    font-size: 12pt;
+  }
+  .response-box {
+    background-color: #666;
+    padding: 2px;
+    margin-bottom: 10px;
+  }
+  .response-tag {
+    font-size: 9pt;
+    color: #fff;
+    font-style: italic;
+    font-weight: 700;
+    margin: 0px;
+  }
+
   .code-style {
     background-color: #ddd;
     font-family: 'Courier New', Courier, monospace;

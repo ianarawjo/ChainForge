@@ -19,6 +19,7 @@ const initialNodes = [
   { id: 'textFieldsNode', type: 'textfields', data: {}, position: { x: 25, y: 150 } },
   { id: 'textFieldsNode2', type: 'textfields', data: {}, position: { x: 25, y: 300 } },
   { id: 'visNode', type: 'vis', data: {}, position: { x: 1350, y: 250 } },
+  { id: 'inspectNode', type: 'inspect', data: {}, position: { x:0, y:0 } },
 ];
 
 const initialEdges = [
@@ -46,9 +47,11 @@ const useStore = create((set, get) => ({
     const src_node = get().getNode(sourceNodeId);
     if (src_node) {
         // Get the data related to that handle:
+        if ("fields" in src_node.data) {
+          return Object.values(src_node.data["fields"]);
+        }
         // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:
-        console.log(src_node.data);
-        return src_node.data[sourceHandleKey];
+        else return src_node.data[sourceHandleKey];
     } else {
         console.error("Could not find node with id", sourceNodeId);
         return null;
@@ -67,7 +70,7 @@ const useStore = create((set, get) => ({
   },
   onConnect: (connection) => {
     
-    if (connection.target === 'visNode') {
+    if (connection.target === 'visNode' || connection.target === 'inspectNode') {
       set({
         nodes: (nds => 
           nds.map(n => {

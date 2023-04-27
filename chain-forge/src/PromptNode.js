@@ -97,10 +97,12 @@ const PromptNode = ({ data, id }) => {
                 const e = edges[i];
                 if (e.target == id && e.targetHandle == hook.key) {
                     // Get the data output for that handle on the source node:
+                    let out = output(e.source, e.sourceHandle);
+                    if (!Array.isArray(out)) out = [out];
                     if (hook.key in pulled_data)
-                        pulled_data[hook.key].push(output(e.source, e.sourceHandle));
+                        pulled_data[hook.key] = pulled_data[hook.key].concat(out);
                     else
-                        pulled_data[hook.key] = [output(e.source, e.sourceHandle)];
+                        pulled_data[hook.key] = out;
                 }
             }
         });
@@ -121,6 +123,7 @@ const PromptNode = ({ data, id }) => {
                     temperature: 0.5,
                     n: 3,
                 },
+                no_cache: true,
             }),
         }).then(function(response) {
             return response.json();

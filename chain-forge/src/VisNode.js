@@ -65,7 +65,11 @@ const VisNode = ({ data, id }) => {
                     if (Object.keys(responses_by_llm).length === 1) {
                         // Simple box plot, as there is only a single LLM in the response
                         spec = json.responses.map(r => {
-                            return {type: 'box', y: r.eval_res.items, name: r.vars[varnames[0]].trim()};
+                            let s = r.vars[varnames[0]].trim();
+                            if (s.length > 12) {
+                                s = s.substring(0, 12) + '...'
+                            }
+                            return {type: 'box', y: r.eval_res.items, name: s};
                         });
                     } else {
                         // There are multiple LLMs in the response; do a grouped box plot by LLM.

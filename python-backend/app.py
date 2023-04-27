@@ -37,6 +37,12 @@ def get_filenames_with_id(filenames: list, id: str) -> list:
         if ('-' in c and c.split('-')[0] == id) or ('-' not in c and c.split('.')[0] == id)
     ]
 
+def remove_cached_responses(cache_id: str):
+    all_cache_files = get_files_at_dir('cache/')
+    cache_files = get_filenames_with_id(all_cache_files, cache_id)
+    for filename in cache_files:
+        os.remove(os.path.join('cache/', filename))
+
 def load_cache_json(filepath: str) -> dict:
     with open(filepath, encoding="utf-8") as f:
         responses = json.load(f)
@@ -123,6 +129,7 @@ def queryLLM():
             'params': dict  # an optional dict of any other params to set when querying the LLMs, like 'temperature', 'n' (num of responses per prompt), etc.
             'prompt': str  # the prompt template, with any {{}} vars
             'vars': dict  # a dict of the template variables to fill the prompt template with, by name. For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
+            'no_cache': bool (optional)  # delete any cache'd responses for 'id' (always call the LLM fresh)
         }
     """
     data = request.get_json()
@@ -143,6 +150,9 @@ def queryLLM():
         if llm_str not in LLM_NAME_MAP:
             return jsonify({'error': f"LLM named '{llm_str}' is not supported."})
         llms.append(LLM_NAME_MAP[llm_str])
+    
+    if 'no_cache' in data and data['no_cache'] is True:
+        remove_cached_responses(data['id'])
 
     # For each LLM, generate and cache responses:
     responses = {}
@@ -156,8 +166,6 @@ def queryLLM():
 
         # Create an object to query the LLM, passing a file for cache'ing responses
         prompter = PromptLLM(data['prompt'], storageFile=cache_filepath)
-        
-        print(data)
 
         # Prompt the LLM with all permutations of the input prompt template:
         # NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
@@ -300,7 +308,14 @@ def grabResponses():
             return jsonify({'error': f'Did not find cache file for id {cache_id}'})
 
         for filename in cache_files:
-            responses.extend(load_cache_json(os.path.join('cache', filename)))
+            res = load_cache_json(os.path.join('cache', filename))
+            if isinstance(res, dict):
+                # Convert to standard response format
+                res = [
+                    to_standard_format({'prompt': prompt, **res_obj})
+                    for prompt, res_obj in res.items()
+                ]
+            responses.extend(res)
 
     print(responses)
     ret = jsonify({'responses': responses})
