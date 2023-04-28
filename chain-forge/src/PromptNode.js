@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
 // import { shallow } from 'zustand/shallow';
 import useStore from './store';
@@ -10,12 +10,37 @@ const PromptNode = ({ data, id }) => {
   const edges = useStore((state) => state.edges);
   const output = useStore((state) => state.output);
 
+  const genStatusIcon = (status) => {
+    switch (status) {
+        case 'warning':  // Display mustard 'warning' icon
+            return (
+                <div className="status-icon warning-status">&#9888;<span className='status-tooltip'>Contents changed. Downstream results might be invalidated. Press Play to rerun.</span></div>
+            );
+        case 'ready':  // Display green checkmark 'ready' icon
+            return (
+                <div className="status-icon ready-status">&#10004;<span className='status-tooltip'>Responses collected and ready.</span></div>
+            );
+        case 'error':  // Display red 'error' icon
+            return ( 
+                <div className="status-icon error-status">&#10006;<span className='status-tooltip'>Error collecting responses. Check console for more info.</span></div>
+            );
+        case 'loading':  // Display animated 'loading' spinner icon 
+            return (
+                <div className="lds-ring"><div></div><div></div><div></div><div></div></div>
+            );
+        default:
+            return []
+    }
+  }
+
   const [hovered, setHovered] = useState(false);
-  const [selected, setSelected] = useState(false);
   const [templateHooks, setTemplateHooks] = useState([]);
   const [templateVars, setTemplateVars] = useState([]);
   const [promptText, setPromptText] = useState(data.prompt);
+  const [promptTextOnLastRun, setPromptTextOnLastRun] = useState([]);
   const [selectedLLMs, setSelectedLLMs] = useState(['gpt3.5']);
+  const [status, setStatus] = useState('none');
+  const [statusIcon, setStatusIcon] = useState(genStatusIcon(status));
   
   const handleMouseEnter = () => {
     setHovered(true);
@@ -23,10 +48,6 @@ const PromptNode = ({ data, id }) => {
   
   const handleMouseLeave = () => {
     setHovered(false);
-  };
-  
-  const handleClick = (event) => {
-    setSelected(!selected);
   };
 
   const genTemplateHooks = (temp_var_names, names_to_blink) => {
@@ -52,7 +73,19 @@ const PromptNode = ({ data, id }) => {
 
   const handleInputChange = (event) => {
     const value = event.target.value;
+
+    // Store prompt text
     setPromptText(value);
+
+    // Update status icon, if need be:
+    if (status !== 'warning' && value !== promptTextOnLastRun) {
+        setStatus('warning');
+        setStatusIcon(genStatusIcon('warning'));
+    } else if (status === 'warning' && value === promptTextOnLastRun) {
+        setStatus('ready');
+        setStatusIcon(genStatusIcon('ready'));
+    }
+
     const braces_regex = /(?<!\\){(.*?)(?<!\\)}/g;  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
     const found_template_vars = value.match(braces_regex);
     if (found_template_vars && found_template_vars.length > 0) {
@@ -75,7 +108,7 @@ const PromptNode = ({ data, id }) => {
         return edges.some(e => (e.target == id && e.targetHandle == hook.key));
     });
 
-    console.log(templateHooks);
+    // console.log(templateHooks);
 
     if (is_fully_connected) {
         console.log('Connected!');
@@ -86,8 +119,9 @@ const PromptNode = ({ data, id }) => {
             return;
         }
 
-        // Change the 'run' button icon to indicate that it's thinking:
-        // ...
+        // Set status indicator
+        setStatus('loading');
+        setStatusIcon(genStatusIcon('loading'));
 
         // Pull data from each source:
         const pulled_data = {};
@@ -128,7 +162,16 @@ const PromptNode = ({ data, id }) => {
         }).then(function(response) {
             return response.json();
         }).then(function(json) {
-            console.log(json);
+
+            if (json.responses) {
+                // Success! Change status to 'ready':
+                setStatusIcon(genStatusIcon('ready'));
+                setPromptTextOnLastRun(promptText);
+
+                console.log(json.responses);
+            } else if (json.error) {
+                console.error(json.error);
+            }
         });
 
         // Change the 'run' button icon back to normal:
@@ -176,9 +219,7 @@ const PromptNode = ({ data, id }) => {
     }
   }
   
-  const borderStyle = selected
-    ? '2px solid #222'
-    : hovered
+  const borderStyle = hovered
     ? '1px solid #222'
     : '1px solid #999';
 
@@ -188,10 +229,10 @@ const PromptNode = ({ data, id }) => {
       style={{ border: borderStyle }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
     >
       <div className="node-header drag-handle">
         Prompt Node
+        {statusIcon}
         <button className="AmitSahoo45-button-3" onClick={handleRunClick}><div className="play-button"></div></button>
       </div>
       <div className="input-field">

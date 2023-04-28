@@ -4,6 +4,86 @@
     border: 1px solid #000;
     border-radius: 5px;
   }
+
+  .status-icon {
+    display: inline-block;
+    font-size: 14pt;
+    margin: 0px 0px 0px 4px;
+    padding: 0px;
+  }
+  .status-icon .status-tooltip {
+    visibility: hidden;
+    font-size: 10pt;
+    font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    width: 150px;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 5px;
+
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 1;
+  }
+  .status-icon:hover .status-tooltip {
+    visibility: visible;
+  }
+  .warning-status {
+    color: #CC7722;
+  }
+  .warning-status .status-tooltip {
+    background-color: #CC7722;
+  }
+  .ready-status {
+    color: #4CBB17;
+  }
+  .ready-status .status-tooltip {
+    background-color: #4CBB17;
+  }
+  .error-status {
+    color: #E52A2A;
+  }
+  .error-status .status-tooltip {
+    background-color: #E52A2A;
+  }
+
+  /* Loading icon */ 
+  .lds-ring {
+    display: inline-block;
+    position: relative;
+    margin-left: 4px;
+    width: 18px;
+    height: 18px;
+  }
+  .lds-ring div {
+    box-sizing: border-box;
+    display: block;
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    margin: 2px;
+    border: 2px solid #0096FF;
+    border-radius: 50%;
+    animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    border-color: #0096FF transparent transparent transparent;
+  }
+  .lds-ring div:nth-child(1) {
+    animation-delay: -0.45s;
+  }
+  .lds-ring div:nth-child(2) {
+    animation-delay: -0.3s;
+  }
+  .lds-ring div:nth-child(3) {
+    animation-delay: -0.15s;
+  }
+  @keyframes lds-ring {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
   
   .input-field {
     display: flex;
@@ -68,6 +148,7 @@
     padding: 2px;
     margin: 0px;
     background-color: #fff;
+    white-space: pre-wrap;
   }
 
   .llm-response-container {

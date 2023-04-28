@@ -20,7 +20,6 @@ const EvaluatorNode = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
   const [hovered, setHovered] = useState(false);
-  const [selected, setSelected] = useState(false);
   const [codeText, setCodeText] = useState(data.code);
   const [reduceMethod, setReduceMethod] = useState('none');
   const [mapScope, setMapScope] = useState('response');
@@ -31,9 +30,6 @@ const EvaluatorNode = ({ data, id }) => {
   };
   const handleMouseLeave = () => {
     setHovered(false);
-  };
-  const handleClick = () => {
-    setSelected(!selected);
   };
 
   const handleInputChange = (code) => {
@@ -96,9 +92,7 @@ const EvaluatorNode = ({ data, id }) => {
     setReduceVars(event.target.value.split(regex_csv).map(s => s.trim()));
   };
 
-  const borderStyle = selected
-    ? '2px solid #222'
-    : hovered
+  const borderStyle = hovered
     ? '1px solid #222'
     : '1px solid #999';
 
@@ -108,7 +102,6 @@ const EvaluatorNode = ({ data, id }) => {
       style={{ border: borderStyle }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
     >
       <div className="node-header">
         Evaluator Node

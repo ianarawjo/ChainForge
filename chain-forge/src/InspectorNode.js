@@ -64,7 +64,7 @@ const InspectorNode = ({ data, id }) => {
             setResponses(Object.keys(responses_by_llm).map(llm => {
                 const res_divs = responses_by_llm[llm].map((res_obj, res_idx) => {
                     const ps = res_obj.responses.map((r, idx) => 
-                        (<p className="small-response" key={idx}>{r}</p>)
+                        (<pre className="small-response" key={idx}>{r}</pre>)
                     );
                     Object.keys(res_obj.vars).forEach(v => {tempvars[v].add(res_obj.vars[v])});
                     const vars = vars_to_str(res_obj.vars);
@@ -113,9 +113,9 @@ const InspectorNode = ({ data, id }) => {
       <div className="node-header">
         Inspect Node
       </div>
-      <div className="var-select-toolbar">
+      {/* <div className="var-select-toolbar">
         {varSelects}
-      </div>
+      </div> */}
       {responses}
       <Handle
         type="target"

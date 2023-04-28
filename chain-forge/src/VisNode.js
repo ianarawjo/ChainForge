@@ -8,7 +8,6 @@ const VisNode = ({ data, id }) => {
 
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const [hovered, setHovered] = useState(false);
-    const [selected, setSelected] = useState(false);
     const [plotlyObj, setPlotlyObj] = useState([]);
     const [pastInputs, setPastInputs] = useState([]);
     
@@ -17,9 +16,6 @@ const VisNode = ({ data, id }) => {
     };
     const handleMouseLeave = () => {
       setHovered(false);
-    };
-    const handleClick = () => {
-      setSelected(!selected);
     };
     const stopDragPropagation = (event) => {
       // Stop this event from bubbling up to the node
@@ -178,9 +174,7 @@ const VisNode = ({ data, id }) => {
         }
     }, [data, id, handleOnConnect, setDataPropsForNode]);
 
-    const borderStyle = selected
-      ? '2px solid #222'
-      : hovered
+    const borderStyle = hovered
       ? '1px solid #222'
       : '1px solid #999';
   
@@ -190,7 +184,6 @@ const VisNode = ({ data, id }) => {
         style={{ border: borderStyle }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
       >
         <div className="node-header">
           Vis Node
