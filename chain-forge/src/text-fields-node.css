@@ -89,6 +89,21 @@
     margin: 0px;
   }
 
+  .var-select-toolbar {
+    text-align: right;
+    margin: 0px;
+    padding: 0px;
+    position: relative;
+    margin-bottom: -30px;
+  }
+  .var-select-toolbar label {
+    font-size: 12px;
+  }
+  .var-select-toolbar select {
+    width:100px;
+    font-size: 12px;
+  }
+
   .code-style {
     background-color: #ddd;
     font-family: 'Courier New', Courier, monospace;

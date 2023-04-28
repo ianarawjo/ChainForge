@@ -1,10 +1,11 @@
+import json, os
+from dataclasses import dataclass
+from statistics import mean, median, stdev
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from promptengine.query import PromptLLM
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
 from promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir
-import json, os
-from statistics import mean, median, stdev
 
 app = Flask(__name__)
 CORS(app)
@@ -14,6 +15,17 @@ LLM_NAME_MAP = {
     'alpaca.7B': LLM.Alpaca7B,
 }
 LLM_NAME_MAP_INVERSE = {val.name: key for key, val in LLM_NAME_MAP.items()}
+
+@dataclass
+class ResponseInfo:
+    """Stores info about a single response. Passed to evaluator functions."""
+    text: str
+    prompt: str
+    var: str
+    llm: str
+
+    def __str__(self):
+        return self.text
 
 def to_standard_format(r: dict) -> list:
     llm = LLM_NAME_MAP_INVERSE[r['llm']]
@@ -52,7 +64,15 @@ def run_over_responses(eval_func, responses: dict, scope: str) -> list:
     for prompt, resp_obj in responses.items():
         res = extract_responses(resp_obj, resp_obj['llm'])
         if scope == 'response':
-            evals = [eval_func(r) for r in res]  # run evaluator func over every individual response text
+            evals = [  # Run evaluator func over every individual response text
+                eval_func(
+                    ResponseInfo(
+                        text=r, 
+                        prompt=prompt, 
+                        var=resp_obj['info'], 
+                        llm=LLM_NAME_MAP_INVERSE[resp_obj['llm']])
+                ) for r in res
+            ]  
             resp_obj['eval_res'] = {  # NOTE: assumes this is numeric data
                 'mean': mean(evals),
                 'median': median(evals),
@@ -280,6 +300,35 @@ def execute():
     ret = jsonify({'responses': all_evald_responses})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
+
+@app.route('/checkEvalFunc', methods=['POST'])
+def checkEvalFunc():
+    """
+        Tries to compile a Python lambda function sent from JavaScript.
+        Returns a dict with 'result':true if it compiles without raising an exception; 
+        'result':false (and an 'error' property with a message) if not.
+
+        POST'd data should be in form:
+        {
+            'code': str,  # the body of the lambda function to evaluate, in form: lambda responses: <body>
+        }
+
+        NOTE: This should only be run on your server on code you trust.
+              There is no sandboxing; no safety. We assume you are the creator of the code.
+    """
+    data = request.get_json()
+    if 'code' not in data:
+        return jsonify({'result': False, 'error': f'Could not evaluate code. Error message:\n{str(e)}'})
+
+    try:
+        func_body = '\t\n'.join(data['code'].split('\n'))
+        if data['scope'] == 'response':
+            exec('def evaluator(response):\n\t' + func_body, globals())  # evaluate over individual 'response' 
+        else:
+            exec('def evaluator(responses):\n\t' + func_body, globals())  # evaluate over batches of n responses; get access to 'responses'
+        return jsonify({'result': True})
+    except Exception as e:
+        return jsonify({'result': False, 'error': f'Could not evaluate code. Error message:\n{str(e)}'})
 
 @app.route('/grabResponses', methods=['POST'])
 def grabResponses():

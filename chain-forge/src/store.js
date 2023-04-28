@@ -15,7 +15,7 @@ import {
 
 const initialNodes = [
   { id: 'promptNode', type: 'prompt', data: { prompt: 'Shorten the following paragraph {mod}:\n{paragraph}' }, position: { x: 430, y: 250 } },
-  { id: 'analysisNode', type: 'evaluator', data: { code: "return len(response)" }, position: { x: 850, y: 150 } },
+  { id: 'analysisNode', type: 'evaluator', data: { code: "return len(response.text)" }, position: { x: 850, y: 150 } },
   { id: 'textFieldsNode', type: 'textfields', data: {}, position: { x: 25, y: 150 } },
   { id: 'textFieldsNode2', type: 'textfields', data: {}, position: { x: 25, y: 300 } },
   { id: 'visNode', type: 'vis', data: {}, position: { x: 1350, y: 250 } },
@@ -42,6 +42,9 @@ const useStore = create((set, get) => ({
   inputEdgesForNode: (sourceNodeId) => {
     return get().edges.filter(e => e.target == sourceNodeId);
   },
+  outputEdgesForNode: (sourceNodeId) => {
+    return get().edges.filter(e => e.source == sourceNodeId);
+  },
   output: (sourceNodeId, sourceHandleKey) => {
     // Get the source node
     const src_node = get().getNode(sourceNodeId);
@@ -57,6 +60,20 @@ const useStore = create((set, get) => ({
         return null;
     }
   },
+  setDataPropsForNode: (id, data_props) => {
+    set({
+      nodes: (nds => 
+        nds.map(n => {
+          if (n.id === id) {
+            for (const key of Object.keys(data_props))
+              n.data[key] = data_props[key];
+            n.data = {...n.data};
+          }
+          return n;
+        })
+      )(get().nodes)
+    });
+  },
   getNode: (id) => get().nodes.find(n => n.id == id),
   onNodesChange: (changes) => {
     set({
@@ -70,22 +87,11 @@ const useStore = create((set, get) => ({
   },
   onConnect: (connection) => {
     
-    if (connection.target === 'visNode' || connection.target === 'inspectNode') {
-      set({
-        nodes: (nds => 
-          nds.map(n => {
-            if (n.id === connection.target) {
-              n.data = { input: connection.source };
-            }
-            return n;
-          })
-        )(get().nodes)
-      });
-        // (node) => {
-        // if (node.id == connection.target) {
-        //   node.data['input'] = connection.source;
-        // }
-        // return node;
+    // Get the target node information
+    const target = get().getNode(connection.target);
+    
+    if (target.type === 'vis' || target.type === 'inspect') {
+      get().setDataPropsForNode(target.id, { input: connection.source });
     }
 
     set({

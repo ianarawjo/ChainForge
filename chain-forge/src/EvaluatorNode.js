@@ -15,6 +15,10 @@ import { sublime } from '@uiw/codemirror-theme-sublime';
 const EvaluatorNode = ({ data, id }) => {
 
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
+  const outputEdgesForNode = useStore((state) => state.outputEdgesForNode);
+  const getNode = useStore((state) => state.getNode);
+  const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+
   const [hovered, setHovered] = useState(false);
   const [selected, setSelected] = useState(false);
   const [codeText, setCodeText] = useState(data.code);
@@ -44,12 +48,12 @@ const EvaluatorNode = ({ data, id }) => {
   const handleRunClick = (event) => {
     // Get the ids from the connected input nodes:
     const input_node_ids = inputEdgesForNode(id).map(e => e.source);
-
     if (input_node_ids.length === 0) {
         console.warn("No inputs for evaluator node.");
         return;
     }
 
+    // Run evaluator in backend
     const response = fetch('http://localhost:5000/execute', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
@@ -65,6 +69,16 @@ const EvaluatorNode = ({ data, id }) => {
         return response.json();
     }).then(function(json) {
         console.log(json);
+
+        // Ping any vis nodes attached to this node to refresh their contents:
+        const output_nodes = outputEdgesForNode(id).map(e => e.target);
+        output_nodes.forEach(n => {
+            const node = getNode(n);
+            if (node.type === 'vis') {
+                setDataPropsForNode(node.id, { refresh: true });
+            }
+        });
+
     });
   };
 

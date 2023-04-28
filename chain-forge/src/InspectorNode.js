@@ -6,11 +6,16 @@ import useStore from './store';
 const InspectorNode = ({ data, id }) => {
 
   const [responses, setResponses] = useState([]);
+  const [varSelects, setVarSelects] = useState([]);
   const [pastInputs, setPastInputs] = useState([]);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
 
   const stopDragPropagation = (event) => {
     event.stopPropagation();
+  }
+
+  const handleVarValueSelect = () => {
+
   }
 
   const handleOnConnect = () => {
@@ -40,6 +45,12 @@ const InspectorNode = ({ data, id }) => {
                     responses_by_llm[item.llm] = [item];
             });
 
+            // Get the var names across responses 
+            // NOTE: This assumes only a single prompt node output as input 
+            //       (all response vars have the exact same keys).
+            let tempvars = {};
+            Object.keys(json.responses[0].vars).forEach(v => {tempvars[v] = new Set();});
+
             const vars_to_str = (vars) => {
                 const pairs = Object.keys(vars).map(varname => {
                     let s = vars[varname].trim();
@@ -52,11 +63,10 @@ const InspectorNode = ({ data, id }) => {
 
             setResponses(Object.keys(responses_by_llm).map(llm => {
                 const res_divs = responses_by_llm[llm].map((res_obj, res_idx) => {
-                    const ps = res_obj.responses.map((r, idx) => {
-                        return (
-                            <p className="small-response" key={idx}>{r}</p>
-                        );
-                    });
+                    const ps = res_obj.responses.map((r, idx) => 
+                        (<p className="small-response" key={idx}>{r}</p>)
+                    );
+                    Object.keys(res_obj.vars).forEach(v => {tempvars[v].add(res_obj.vars[v])});
                     const vars = vars_to_str(res_obj.vars);
                     return (
                         <div key={"r"+res_idx} className="response-box">
@@ -69,6 +79,20 @@ const InspectorNode = ({ data, id }) => {
                     <div key={llm} className="llm-response-container nowheel" onScrollCapture={stopDragPropagation}>
                         <h1>{llm}</h1>
                         {res_divs}
+                    </div>
+                );
+            }));
+
+            setVarSelects(Object.keys(tempvars).map(v => {
+                const options = Array.from(tempvars[v]).map((val, idx) => (
+                    <option value={val} key={idx}>{val}</option>
+                ));
+                return (
+                    <div key={v}>
+                        <label htmlFor={v}>{v}: </label>
+                        <select name={v} id={v} onChange={handleVarValueSelect}>
+                            {options}
+                        </select>
                     </div>
                 );
             }));
@@ -87,7 +111,10 @@ const InspectorNode = ({ data, id }) => {
   return (
     <div className="inspector-node">
       <div className="node-header">
-        Inspector Node
+        Inspect Node
+      </div>
+      <div className="var-select-toolbar">
+        {varSelects}
       </div>
       {responses}
       <Handle
