@@ -1,7 +1,9 @@
 # ⛓️🛠️ ChainForge
 **An open-source, extensible visual programming environment for evaluating prompts for LLMs.**
 
-ChainForge is a data flow programming environment for testing and evaluating prompts (and eventually, prompt chains) for LLMs. Our goal is to provide a basic, open-source visual programming tool that developers can use to battle-test prompts against LLM responses.
+ChainForge is a data flow programming environment for testing and evaluating prompts (and eventually, prompt chains) for LLMs. Our goal is to provide a basic, open-source visual programming tool that developers can use to battle-test prompts against LLM responses. 
+
+Think of ChainForge like an exploration tool where you can 'sketch' prompt ideas and test them quickly and effectively. Like Jupyter Notebooks were good for early-stage exploration, ChainForge is geared towards early-stage, quick-and-dirty exploration of prompts and response quality.
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and is in active development.
 
@@ -12,8 +14,8 @@ A key goal of ChainForge is facilitating **comparison** and **evaluation** of pr
 - **Evaluation nodes**: Probe points in a chain and test them for some desired behavior. Python script based.
 - **Compare across responses**: LLMs can generate N responses given temperature T, even if all prompts are fixed. Have metrics/vis tools to help user measure the ‘stability’ of responses given a prompt across N responses, for temperature T. (diffs?)
 - **Compare across prompts**: “Fix” a run of a chain, then edit an upstream prompt to visualize downstream changes (diffs?). Can compare between multiple (N) variations of prompts, and choose the best set of prompts that maximizes your eval target metrics (eg, lowest code error rate).
-- **Compare across chains**: If a system prompt, or a ‘shared prompt’, is used in Chains C1 C2 etc, how does changing it affect all chains?
 - **Compare across models**: Compare responses for every prompt across models. This should measure both *intra-response perturbations* (fluctuations within each model) and *inter-response* perturbations. Can detect where models “diverge” in the large —i.e., produce radically different outputs at a point in a chain.
+- (PLANNED IN FUTURE) **Compare across chains**: If a system prompt, or a ‘shared prompt’, is used in Chains C1 C2 etc, how does changing it affect all downstream events?
 
 ChainForge is meant to be general-purpose, and is not developed for a specific API or LLM back-end. 
 
