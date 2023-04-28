@@ -76,6 +76,7 @@ const PromptNode = ({ data, id }) => {
 
     // Store prompt text
     setPromptText(value);
+    data['prompt'] = value;
 
     // Update status icon, if need be:
     if (status !== 'warning' && value !== promptTextOnLastRun) {

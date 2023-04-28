@@ -5,6 +5,8 @@
   "dependencies": {
     "@codemirror/lang-javascript": "^6.1.5",
     "@codemirror/lang-python": "^6.1.2",
+    "@reactflow/background": "^11.2.0",
+    "@reactflow/controls": "^11.1.11",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",

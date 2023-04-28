@@ -75,6 +75,21 @@ const useStore = create((set, get) => ({
     });
   },
   getNode: (id) => get().nodes.find(n => n.id == id),
+  addNode: (newnode) => {
+    set({
+      nodes: get().nodes.concat(newnode)
+    });
+  },
+  setNodes: (newnodes) => {
+    set({
+      nodes: newnodes
+    });
+  },
+  setEdges: (newedges) => {
+    set({
+      edges: newedges
+    });
+  },
   onNodesChange: (changes) => {
     set({
       nodes: applyNodeChanges(changes, get().nodes),
