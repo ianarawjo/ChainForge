@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
+import StatusIndicator from './StatusIndicatorComponent'
 
 // Mantine modal
 import { useDisclosure } from '@mantine/hooks';
@@ -34,6 +35,7 @@ const EvaluatorNode = ({ data, id }) => {
   const outputEdgesForNode = useStore((state) => state.outputEdgesForNode);
   const getNode = useStore((state) => state.getNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const [status, setStatus] = useState('none');
 
   // Mantine modal popover for alerts
   const [opened, { open, close }] = useDisclosure(false);
@@ -80,13 +82,20 @@ const EvaluatorNode = ({ data, id }) => {
     const indiv_resps = mapScope === 'response';
     if (codeText.search(/def\s+evaluate\s*(.*):/) === -1) {
       const err_msg = `Could not find required function 'evaluate'. Make sure you have defined an 'evaluate' function.`;
-      // alert(err_msg);
+      setStatus('error');
       triggerErrorAlert(err_msg);
       return;
     }
 
+    setStatus('loading');
+
+    const rejected = (err_msg) => {
+      setStatus('error');
+      triggerErrorAlert(err_msg);
+    };
+
     // Run evaluator in backend
-    const response = fetch('http://localhost:5000/execute', {
+    fetch('http://localhost:5000/execute', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
         body: JSON.stringify({
@@ -97,13 +106,14 @@ const EvaluatorNode = ({ data, id }) => {
             reduce_vars: reduceMethod === 'avg' ? reduceVars : [],
             // write an extra part here that takes in reduce func
         }),
-    }).then(function(response) {
+    }, rejected).then(function(response) {
         return response.json();
-    }).then(function(json) {
+    }, rejected).then(function(json) {
         console.log(json);
 
         // Check if there's an error; if so, bubble it up to user and exit:
         if (json.error) {
+          setStatus('error');
           triggerErrorAlert(json.error);
           return;
         }
@@ -116,7 +126,9 @@ const EvaluatorNode = ({ data, id }) => {
                 setDataPropsForNode(node.id, { refresh: true });
             }
         });
-    });
+
+        setStatus('ready');
+    }, rejected);
   };
 
   const handleOnReduceMethodSelect = (event) => {
@@ -164,6 +176,7 @@ const EvaluatorNode = ({ data, id }) => {
     >
       <div className="node-header">
         Evaluator Node
+        <StatusIndicator status={status} />
         <button className="AmitSahoo45-button-3" onClick={handleRunClick}><div className="play-button"></div></button>
       </div>
       <Handle
