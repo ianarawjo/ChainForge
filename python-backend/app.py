@@ -252,13 +252,13 @@ def execute():
     # Create the evaluator function
     # DANGER DANGER! 
     try:
-        func_body = '\t\n'.join(data['code'].split('\n'))
-        if data['scope'] == 'response':
-            exec('def evaluator(response):\n\t' + func_body, globals())  # evaluate over individual 'response' 
-        else:
-            exec('def evaluator(responses):\n\t' + func_body, globals())  # evaluate over batches of n responses; get access to 'responses'
+        exec(data['code'], globals())
+
+        # Double-check that there is an 'evaluate' method in our namespace. 
+        # This will throw a NameError if not: 
+        evaluate
     except Exception as e:
-        return jsonify({'error': f'Could not evaluate code. Error message:\n{str(e)}'})
+        return jsonify({'error': f'Could not compile evaluator code. Error message:\n{str(e)}'})
 
     # Load all responses with the given ID:
     all_cache_files = get_files_at_dir('cache/')
@@ -276,7 +276,11 @@ def execute():
             if len(responses) == 0: continue
 
             # Run the evaluator over them: 
-            evald_responses = run_over_responses(evaluator, responses, scope=data['scope'])
+            # NOTE: 'evaluate' here was defined dynamically from 'exec' above. 
+            try:
+                evald_responses = run_over_responses(evaluate, responses, scope=data['scope'])
+            except Exception as e:
+                return jsonify({'error': f'Error encountered while trying to run "evaluate" method:\n{str(e)}'})
 
             # Convert to standard format: 
             std_evald_responses = [
@@ -320,15 +324,16 @@ def checkEvalFunc():
     if 'code' not in data:
         return jsonify({'result': False, 'error': f'Could not evaluate code. Error message:\n{str(e)}'})
 
+    # DANGER DANGER! Running exec on code passed through front-end. Make sure it's trusted!
     try:
-        func_body = '\t\n'.join(data['code'].split('\n'))
-        if data['scope'] == 'response':
-            exec('def evaluator(response):\n\t' + func_body, globals())  # evaluate over individual 'response' 
-        else:
-            exec('def evaluator(responses):\n\t' + func_body, globals())  # evaluate over batches of n responses; get access to 'responses'
+        exec(data['code'], globals())
+
+        # Double-check that there is an 'evaluate' method in our namespace. 
+        # This will throw a NameError if not: 
+        evaluate
         return jsonify({'result': True})
     except Exception as e:
-        return jsonify({'result': False, 'error': f'Could not evaluate code. Error message:\n{str(e)}'})
+        return jsonify({'result': False, 'error': f'Could not compile evaluator code. Error message:\n{str(e)}'})
 
 @app.route('/grabResponses', methods=['POST'])
 def grabResponses():

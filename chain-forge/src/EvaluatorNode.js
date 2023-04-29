@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
+
+// Mantine modal
+import { useDisclosure } from '@mantine/hooks';
+import { Modal } from '@mantine/core';
 
 // CodeMirror text editor
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
+// import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate} from '@codemirror/view';
+import { indentUnit } from '@codemirror/language';
 import { okaidia } from '@uiw/codemirror-theme-okaidia'; // dark theme
 import { solarizedDark } from '@uiw/codemirror-theme-solarized'; // dark theme; warm
 import { noctisLilac } from '@uiw/codemirror-theme-noctis-lilac'; // light theme NOTE: Unfortunately this does not show selected text, no idea why. 
@@ -12,12 +18,26 @@ import { materialLight } from '@uiw/codemirror-theme-material'; // light theme, 
 import { xcodeDark, xcodeLight } from '@uiw/codemirror-theme-xcode'; // light theme, xcode
 import { sublime } from '@uiw/codemirror-theme-sublime';
 
+// Experimenting with making the 'def evaluator' line read-only
+// import readOnlyRangesExtension from 'codemirror-readonly-ranges'
+// const getReadOnlyRanges = (editorState) => {
+//   return [{
+//     from: editorState.doc.line(2).from, //same as: editorState.doc.line(0).from or 0
+//     to: editorState.doc.line(2).to
+//   }]
+// }
+// // Add readOnlyRangesExtension(getReadOnlyRanges) to extensions prop of CodeMirror component
+
 const EvaluatorNode = ({ data, id }) => {
 
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
   const outputEdgesForNode = useStore((state) => state.outputEdgesForNode);
   const getNode = useStore((state) => state.getNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+
+  // Mantine modal popover for alerts
+  const [opened, { open, close }] = useDisclosure(false);
+  const [alertMsg, setAlertMsg] = useState('');
 
   const [hovered, setHovered] = useState(false);
   const [codeText, setCodeText] = useState(data.code);
@@ -31,15 +51,22 @@ const EvaluatorNode = ({ data, id }) => {
   const handleMouseLeave = () => {
     setHovered(false);
   };
-
-  const handleInputChange = (code) => {
-    setCodeText(code);
-  };
-
   const stopDragPropagation = (event) => {
     // Stop this event from bubbling up to the node
     event.stopPropagation();
   }
+
+  const handleCodeChange = (code) => {
+    setCodeText(code);
+    setDataPropsForNode(id, {code: code});
+  };
+
+  // Trigger an alert modal popover with Mantine:
+  const triggerErrorAlert = (msg) => {
+    console.error(msg);
+    setAlertMsg(msg);
+    open();
+  };
 
   const handleRunClick = (event) => {
     // Get the ids from the connected input nodes:
@@ -47,6 +74,15 @@ const EvaluatorNode = ({ data, id }) => {
     if (input_node_ids.length === 0) {
         console.warn("No inputs for evaluator node.");
         return;
+    }
+
+    // Double-check that the code includes an 'evaluate' function:
+    const indiv_resps = mapScope === 'response';
+    if (codeText.search(/def\s+evaluate\s*(.*):/) === -1) {
+      const err_msg = `Could not find required function 'evaluate'. Make sure you have defined an 'evaluate' function.`;
+      // alert(err_msg);
+      triggerErrorAlert(err_msg);
+      return;
     }
 
     // Run evaluator in backend
@@ -58,13 +94,19 @@ const EvaluatorNode = ({ data, id }) => {
             code: codeText,
             scope: mapScope,
             responses: input_node_ids,
-            reduce_vars: reduceVars,
+            reduce_vars: reduceMethod === 'avg' ? reduceVars : [],
             // write an extra part here that takes in reduce func
         }),
     }).then(function(response) {
         return response.json();
     }).then(function(json) {
         console.log(json);
+
+        // Check if there's an error; if so, bubble it up to user and exit:
+        if (json.error) {
+          triggerErrorAlert(json.error);
+          return;
+        }
 
         // Ping any vis nodes attached to this node to refresh their contents:
         const output_nodes = outputEdgesForNode(id).map(e => e.target);
@@ -74,12 +116,15 @@ const EvaluatorNode = ({ data, id }) => {
                 setDataPropsForNode(node.id, { refresh: true });
             }
         });
-
     });
   };
 
   const handleOnReduceMethodSelect = (event) => {
-    setReduceMethod(event.target.value);
+    const method = event.target.value;
+    if (method === 'none') {
+      setReduceVars([]);
+    }
+    setReduceMethod(method);
   };
 
   const handleOnMapScopeSelect = (event) => {
@@ -91,6 +136,20 @@ const EvaluatorNode = ({ data, id }) => {
     const regex_csv = /,(?!(?<=(?:^|,)\s*\x22(?:[^\x22]|\x22\x22|\\\x22)*,)(?:[^\x22]|\x22\x22|\\\x22)*\x22\s*(?:,|$))/g;
     setReduceVars(event.target.value.split(regex_csv).map(s => s.trim()));
   };
+
+  // To get CM editor state every render, use this and add ref={cmRef} to CodeMirror component
+  // const cmRef = React.useRef({});
+  // useEffect(() => {
+  //   if (cmRef.current?.view) console.log('EditorView:', cmRef.current?.view);
+  //   if (cmRef.current?.state) console.log('EditorState:', cmRef.current?.state);
+  //   if (cmRef.current?.editor) {
+  //     console.log('HTMLDivElement:', cmRef.current?.editor);
+  //   }
+  // }, [cmRef.current]);
+
+  // const initEditor = (view, state) => {
+  //   console.log(view, state);
+  // }
 
   const borderStyle = hovered
     ? '1px solid #222'
@@ -119,6 +178,9 @@ const EvaluatorNode = ({ data, id }) => {
           id="output"
           style={{ top: '50%', background: '#555' }}
         />
+      <Modal opened={opened} onClose={close} title="Error" styles={{header: {backgroundColor: '#E52A2A', color: 'white'}}}>
+        <p>{alertMsg}</p>
+      </Modal>
       <div className="core-mirror-field">
         <div className="code-mirror-field-header">Function to map over each &nbsp;
         <select name="mapscope" id="mapscope" onChange={handleOnMapScopeSelect}>
@@ -129,6 +191,7 @@ const EvaluatorNode = ({ data, id }) => {
         
         {/* <span className="code-style">response</span>: */}
         <CodeMirror
+          // onCreateEditor={initEditor}
           value={data.code}
           height="200px"
           width="400px"
@@ -138,12 +201,12 @@ const EvaluatorNode = ({ data, id }) => {
           onPointerMove={stopDragPropagation}
           onPointerDown={stopDragPropagation}
           onPointerUp={stopDragPropagation}
-          onChange={handleInputChange}
+          onChange={handleCodeChange}
           onMouseDownCapture={stopDragPropagation}
           onClick={stopDragPropagation}
           onMouseMoveCapture={stopDragPropagation}
           onMouseUpCapture={stopDragPropagation}
-          extensions={[python()]}
+          extensions={[python(), indentUnit.of("  ")]}
         />
       </div>
       <hr/>
@@ -152,10 +215,10 @@ const EvaluatorNode = ({ data, id }) => {
         <select name="method" id="method" onChange={handleOnReduceMethodSelect}>
             <option value="none">None</option>
             <option value="avg">Average across</option>
-            <option value="custom">Custom reducer</option>
+            {/* <option value="custom">Custom reducer</option> */}
         </select>
         <span> </span>
-        <input type="text" id="method-vars" name="method-vars" onChange={handleReduceVarsChange}  />
+        <input type="text" id="method-vars" name="method-vars" onChange={handleReduceVarsChange} disabled={reduceMethod === 'none'} />
         {/* <label for="avg">Average over: </label>
         <select name="avg" id="avg">
             <option value="mod">mod</option>

@@ -2,6 +2,16 @@ import React, { useState } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
 
+const bucketResponsesByLLM = (responses) => {
+    let responses_by_llm = {};
+    responses.forEach(item => {
+        if (item.llm in responses_by_llm)
+            responses_by_llm[item.llm].push(item);
+        else
+            responses_by_llm[item.llm] = [item];
+    });
+    return responses_by_llm;
+};
 
 const InspectorNode = ({ data, id }) => {
 
@@ -15,7 +25,6 @@ const InspectorNode = ({ data, id }) => {
   }
 
   const handleVarValueSelect = () => {
-
   }
 
   const handleOnConnect = () => {
@@ -37,14 +46,8 @@ const InspectorNode = ({ data, id }) => {
         if (json.responses && json.responses.length > 0) {
 
             // Bucket responses by LLM:
-            let responses_by_llm = {};
-            json.responses.forEach(item => {
-                if (item.llm in responses_by_llm)
-                    responses_by_llm[item.llm].push(item);
-                else
-                    responses_by_llm[item.llm] = [item];
-            });
-
+            const responses_by_llm = bucketResponsesByLLM(json.responses);
+            
             // Get the var names across responses 
             // NOTE: This assumes only a single prompt node output as input 
             //       (all response vars have the exact same keys).
@@ -61,7 +64,8 @@ const InspectorNode = ({ data, id }) => {
                 return pairs.join('; ');
             };
 
-            setResponses(Object.keys(responses_by_llm).map(llm => {
+            const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
+            setResponses(Object.keys(responses_by_llm).map((llm, llm_idx) => {
                 const res_divs = responses_by_llm[llm].map((res_obj, res_idx) => {
                     const ps = res_obj.responses.map((r, idx) => 
                         (<pre className="small-response" key={idx}>{r}</pre>)
@@ -69,7 +73,7 @@ const InspectorNode = ({ data, id }) => {
                     Object.keys(res_obj.vars).forEach(v => {tempvars[v].add(res_obj.vars[v])});
                     const vars = vars_to_str(res_obj.vars);
                     return (
-                        <div key={"r"+res_idx} className="response-box">
+                        <div key={"r"+res_idx} className="response-box" style={{ backgroundColor: colors[llm_idx % colors.length] }}>
                             <p className="response-tag">{vars}</p>
                             {ps}
                         </div>

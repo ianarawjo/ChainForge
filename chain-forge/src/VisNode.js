@@ -4,6 +4,24 @@ import useStore from './store';
 import Plot from 'react-plotly.js';
 import { hover } from '@testing-library/user-event/dist/hover';
 
+// Helper funcs
+const splitAndAddBreaks = (s, chunkSize) => {
+    // Split the input string into chunks of specified size
+    let chunks = [];
+    for (let i = 0; i < s.length; i += chunkSize) {
+        chunks.push(s.slice(i, i + chunkSize));
+    }
+  
+    // Join the chunks with a <br> tag
+    return chunks.join('<br>');
+}
+const truncStr = (s, maxLen) => {
+    if (s.length > maxLen) // Cut the name short if it's long
+        return s.substring(0, maxLen) + '...'
+    else
+        return s;
+}
+
 const VisNode = ({ data, id }) => {
 
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
@@ -21,16 +39,12 @@ const VisNode = ({ data, id }) => {
       // Stop this event from bubbling up to the node
       event.stopPropagation();
     }
-    const preventDefault = (event) => {
-      console.log(event);
-      event.preventDefault();
-    }
   
     const handleOnConnect = useCallback(() => {
         // Grab the input node ids
         const input_node_ids = [data.input];
 
-        const response = fetch('http://localhost:5000/grabResponses', {
+        fetch('http://localhost:5000/grabResponses', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({
@@ -60,31 +74,8 @@ const VisNode = ({ data, id }) => {
                     }
                 }
 
-                // Helper funcs
-                let splitAndAddBreaks = (s, chunkSize) => {
-                    // Split the input string into chunks of specified size
-                    let chunks = [];
-                    for (let i = 0; i < s.length; i += chunkSize) {
-                        chunks.push(s.slice(i, i + chunkSize));
-                    }
-                  
-                    // Join the chunks with a <br> tag
-                    return chunks.join('<br>');
-                }
-                let truncStr = (s, maxLen) => {
-                    if (s.length > maxLen) // Cut the name short if it's long
-                        return s.substring(0, maxLen) + '...'
-                    else
-                        return s;
-                }
-
                 if (varnames.length === 1) {
                     // 1 var; numeric eval
-                    // spec = {
-                    //     type: 'bar',
-                    //     x: json.responses.map(r => r.vars[varnames[0]]),
-                    //     y: json.responses.map(r => r.eval_res.mean),
-                    // }
                     if (Object.keys(responses_by_llm).length === 1) {
                         // Simple box plot, as there is only a single LLM in the response
                         spec = json.responses.map(r => {

@@ -14,8 +14,8 @@ import {
 } from 'react-flow-renderer';
 
 const initialNodes = [
-  { id: 'promptNode', type: 'prompt', data: { prompt: 'Shorten the following paragraph {mod}:\n{paragraph}' }, position: { x: 430, y: 250 } },
-  { id: 'analysisNode', type: 'evaluator', data: { code: "return len(response.text)" }, position: { x: 850, y: 150 } },
+  { id: 'promptNode', type: 'prompt', data: { prompt: 'Who invented the lightbulb?', n: 1 }, position: { x: 430, y: 250 } },
+  { id: 'analysisNode', type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 850, y: 150 } },
   { id: 'textFieldsNode', type: 'textfields', data: {}, position: { x: 25, y: 150 } },
   { id: 'textFieldsNode2', type: 'textfields', data: {}, position: { x: 25, y: 300 } },
   { id: 'visNode', type: 'vis', data: {}, position: { x: 1350, y: 250 } },

@@ -153,21 +153,29 @@
 
   .llm-response-container {
     max-width: 450px;
+    background-color: #fff;
   }
   .llm-response-container h1 {
-    font-size: 12pt;
+    font-size: 10pt;
+    font-weight: bold;
+    margin: 4px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    color: #222;
+  }
+  .response-preview-container {
+    max-height: 180px;
+    overflow-y: auto;
   }
   .response-box {
-    background-color: #666;
     padding: 2px;
-    margin-bottom: 10px;
+    margin: 0px 2px 4px 2px;
   }
   .response-tag {
     font-size: 9pt;
-    color: #fff;
-    font-style: italic;
+    color: #555;
     font-weight: 700;
-    margin: 0px;
+    margin: 0px 0px 0px 2px;
   }
 
   .var-select-toolbar {

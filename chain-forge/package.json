@@ -5,6 +5,7 @@
   "dependencies": {
     "@codemirror/lang-javascript": "^6.1.5",
     "@codemirror/lang-python": "^6.1.2",
+    "@mantine/core": "^6.0.9",
     "@reactflow/background": "^11.2.0",
     "@reactflow/controls": "^11.1.11",
     "@testing-library/jest-dom": "^5.16.5",
@@ -19,6 +20,7 @@
     "@uiw/codemirror-themes": "^4.19.16",
     "@uiw/react-codemirror": "^4.19.16",
     "codemirror": "^6.0.1",
+    "codemirror-readonly-ranges": "^0.1.0-alpha.1",
     "plotly.js": "^2.21.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

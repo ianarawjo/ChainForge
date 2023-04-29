@@ -1,37 +1,39 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
-// import { shallow } from 'zustand/shallow';
 import useStore from './store';
-import { render } from '@testing-library/react';
+import StatusIndicator from './StatusIndicatorComponent'
+
+// Helper funcs
+const truncStr = (s, maxLen) => {
+    if (s.length > maxLen) // Cut the name short if it's long
+        return s.substring(0, maxLen) + '...'
+    else
+        return s;
+}
+const vars_to_str = (vars) => {
+    const pairs = Object.keys(vars).map(varname => {
+        const s = truncStr(vars[varname].trim(), 12);
+        return `${varname} = '${s}'`;
+    });
+    return pairs.join('; ');
+};
+const bucketResponsesByLLM = (responses) => {
+    let responses_by_llm = {};
+    responses.forEach(item => {
+        if (item.llm in responses_by_llm)
+            responses_by_llm[item.llm].push(item);
+        else
+            responses_by_llm[item.llm] = [item];
+    });
+    return responses_by_llm;
+};
 
 const PromptNode = ({ data, id }) => {
 
   // Get state from the Zustand store:
   const edges = useStore((state) => state.edges);
   const output = useStore((state) => state.output);
-
-  const genStatusIcon = (status) => {
-    switch (status) {
-        case 'warning':  // Display mustard 'warning' icon
-            return (
-                <div className="status-icon warning-status">&#9888;<span className='status-tooltip'>Contents changed. Downstream results might be invalidated. Press Play to rerun.</span></div>
-            );
-        case 'ready':  // Display green checkmark 'ready' icon
-            return (
-                <div className="status-icon ready-status">&#10004;<span className='status-tooltip'>Responses collected and ready.</span></div>
-            );
-        case 'error':  // Display red 'error' icon
-            return ( 
-                <div className="status-icon error-status">&#10006;<span className='status-tooltip'>Error collecting responses. Check console for more info.</span></div>
-            );
-        case 'loading':  // Display animated 'loading' spinner icon 
-            return (
-                <div className="lds-ring"><div></div><div></div><div></div><div></div></div>
-            );
-        default:
-            return []
-    }
-  }
+  const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
   const [hovered, setHovered] = useState(false);
   const [templateHooks, setTemplateHooks] = useState([]);
@@ -40,12 +42,12 @@ const PromptNode = ({ data, id }) => {
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState([]);
   const [selectedLLMs, setSelectedLLMs] = useState(['gpt3.5']);
   const [status, setStatus] = useState('none');
-  const [statusIcon, setStatusIcon] = useState(genStatusIcon(status));
+  const [responsePreviews, setReponsePreviews] = useState([]);
+  const [numGenerations, setNumGenerations] = useState(data.n || 1);
   
   const handleMouseEnter = () => {
     setHovered(true);
   };
-  
   const handleMouseLeave = () => {
     setHovered(false);
   };
@@ -81,10 +83,8 @@ const PromptNode = ({ data, id }) => {
     // Update status icon, if need be:
     if (status !== 'warning' && value !== promptTextOnLastRun) {
         setStatus('warning');
-        setStatusIcon(genStatusIcon('warning'));
     } else if (status === 'warning' && value === promptTextOnLastRun) {
         setStatus('ready');
-        setStatusIcon(genStatusIcon('ready'));
     }
 
     const braces_regex = /(?<!\\){(.*?)(?<!\\)}/g;  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
@@ -122,7 +122,6 @@ const PromptNode = ({ data, id }) => {
 
         // Set status indicator
         setStatus('loading');
-        setStatusIcon(genStatusIcon('loading'));
 
         // Pull data from each source:
         const pulled_data = {};
@@ -146,7 +145,7 @@ const PromptNode = ({ data, id }) => {
         const py_prompt_template = promptText.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
 
         // Run all prompt permutations through the LLM to generate + cache responses:
-        const response = fetch('http://localhost:5000/queryllm', {
+        fetch('http://localhost:5000/queryllm', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({
@@ -156,27 +155,53 @@ const PromptNode = ({ data, id }) => {
                 vars: pulled_data,
                 params: {
                     temperature: 0.5,
-                    n: 3,
+                    n: numGenerations,
                 },
-                no_cache: true,
+                no_cache: false,
             }),
         }).then(function(response) {
             return response.json();
         }).then(function(json) {
-
             if (json.responses) {
+
                 // Success! Change status to 'ready':
-                setStatusIcon(genStatusIcon('ready'));
+                setStatus('ready');
+
+                // Save prompt text so we remember what prompt we have responses cache'd for:
                 setPromptTextOnLastRun(promptText);
 
+                // Save preview strings of responses, for quick glance
+                // Bucket responses by LLM:
+                const responses_by_llm = bucketResponsesByLLM(json.responses);
+                const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
+                setReponsePreviews(Object.keys(responses_by_llm).map((llm, llm_idx) => {
+                    const resp_boxes = responses_by_llm[llm].map((res_obj, idx) => {
+                        const num_resp = res_obj['responses'].length;
+                        const resp_prevs = res_obj['responses'].map((r, i) => 
+                            (<pre className="small-response" key={i}><i>{truncStr(r, 40)}</i><b>({i+1} of {num_resp})</b></pre>)
+                        );
+                        const vars = vars_to_str(res_obj.vars);
+                        return (
+                            <div key={idx} className="response-box" style={{ backgroundColor: colors[llm_idx % colors.length] }}>
+                                <p className="response-tag">{vars}</p>
+                                {resp_prevs}
+                            </div>
+                        );
+                    });
+                    return (
+                        <div key={llm} className="llm-response-container">
+                            <h1>Preview of responses for {llm}:</h1>
+                            {resp_boxes}
+                        </div>
+                    );
+                }));
+
+                // Log responses for debugging:
                 console.log(json.responses);
-            } else if (json.error) {
-                console.error(json.error);
+            } else {
+                console.error(json.error || 'Unknown error when querying LLM');
             }
         });
-
-        // Change the 'run' button icon back to normal:
-        // ... 
 
         console.log(pulled_data);
     } else {
@@ -219,6 +244,16 @@ const PromptNode = ({ data, id }) => {
         }
     }
   }
+
+  const handleNumGenChange = (event) => {
+    let n = event.target.value;
+    if (!isNaN(n) && n.length > 0 && /^\d+$/.test(n)) {
+        // n is an integer; save it
+        n = parseInt(n);
+        setNumGenerations(n);
+        setDataPropsForNode(id, {n: n});
+    }
+  };
   
   const borderStyle = hovered
     ? '1px solid #222'
@@ -233,7 +268,7 @@ const PromptNode = ({ data, id }) => {
     >
       <div className="node-header drag-handle">
         Prompt Node
-        {statusIcon}
+        <StatusIndicator status={status} />
         <button className="AmitSahoo45-button-3" onClick={handleRunClick}><div className="play-button"></div></button>
       </div>
       <div className="input-field">
@@ -256,12 +291,20 @@ const PromptNode = ({ data, id }) => {
       </div>
       <div>
         <hr />
+        <div>
+            <label htmlFor="num-generations">Num generations:&nbsp;</label>
+            <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} onMouseDownCapture={stopDragPropagation}></input>
+        </div>
         <p style={{marginTop: 0}} >LLMs:</p>
         <div onMouseDownCapture={stopDragPropagation}>
             <input type="checkbox" id="gpt3.5" name="gpt3.5" value="gpt3.5" defaultChecked={true} onChange={handleLLMChecked} />
             <label htmlFor="gpt3.5">GPT3.5  </label>
             <input type="checkbox" id="alpaca.7B" name="alpaca.7B" value="alpaca.7B" onChange={handleLLMChecked} />
             <label htmlFor="alpaca.7B">Alpaca 7B</label>
+        </div>
+        <hr />
+        <div className="response-preview-container nowheel" onScrollCapture={stopDragPropagation}>
+            {responsePreviews}
         </div>
       </div>
     </div>
