@@ -7,17 +7,23 @@ import StatusIndicator from './StatusIndicatorComponent'
 import { useDisclosure } from '@mantine/hooks';
 import { Modal } from '@mantine/core';
 
+// Ace code editor
+import AceEditor from "react-ace";
+import "ace-builds/src-noconflict/mode-python";
+import "ace-builds/src-noconflict/theme-xcode";
+import "ace-builds/src-noconflict/ext-language_tools";
+
 // CodeMirror text editor
-import CodeMirror from '@uiw/react-codemirror';
-import { python } from '@codemirror/lang-python';
-// import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate} from '@codemirror/view';
-import { indentUnit } from '@codemirror/language';
-import { okaidia } from '@uiw/codemirror-theme-okaidia'; // dark theme
-import { solarizedDark } from '@uiw/codemirror-theme-solarized'; // dark theme; warm
-import { noctisLilac } from '@uiw/codemirror-theme-noctis-lilac'; // light theme NOTE: Unfortunately this does not show selected text, no idea why. 
-import { materialLight } from '@uiw/codemirror-theme-material'; // light theme, material
-import { xcodeDark, xcodeLight } from '@uiw/codemirror-theme-xcode'; // light theme, xcode
-import { sublime } from '@uiw/codemirror-theme-sublime';
+// import CodeMirror from '@uiw/react-codemirror';
+// import { globalCompletion, python } from '@codemirror/lang-python';
+// // import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate} from '@codemirror/view';
+// import { indentUnit } from '@codemirror/language';
+// import { okaidia } from '@uiw/codemirror-theme-okaidia'; // dark theme
+// import { solarizedDark } from '@uiw/codemirror-theme-solarized'; // dark theme; warm
+// import { noctisLilac } from '@uiw/codemirror-theme-noctis-lilac'; // light theme NOTE: Unfortunately this does not show selected text, no idea why. 
+// import { materialLight } from '@uiw/codemirror-theme-material'; // light theme, material
+// import { xcodeDark, xcodeLight } from '@uiw/codemirror-theme-xcode'; // light theme, xcode
+// import { sublime } from '@uiw/codemirror-theme-sublime';
 
 // Experimenting with making the 'def evaluator' line read-only
 // import readOnlyRangesExtension from 'codemirror-readonly-ranges'
@@ -43,6 +49,7 @@ const EvaluatorNode = ({ data, id }) => {
 
   const [hovered, setHovered] = useState(false);
   const [codeText, setCodeText] = useState(data.code);
+  const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
   const [reduceMethod, setReduceMethod] = useState('none');
   const [mapScope, setMapScope] = useState('response');
   const [reduceVars, setReduceVars] = useState([]);
@@ -53,12 +60,15 @@ const EvaluatorNode = ({ data, id }) => {
   const handleMouseLeave = () => {
     setHovered(false);
   };
-  const stopDragPropagation = (event) => {
-    // Stop this event from bubbling up to the node
-    event.stopPropagation();
-  }
 
   const handleCodeChange = (code) => {
+    if (codeTextOnLastRun !== false) {
+      const code_changed = code !== codeTextOnLastRun;
+      if (code_changed && status !== 'warning')
+        setStatus('warning');
+      else if (!code_changed && status === 'warning')
+        setStatus('ready');
+    }
     setCodeText(code);
     setDataPropsForNode(id, {code: code});
   };
@@ -95,12 +105,13 @@ const EvaluatorNode = ({ data, id }) => {
     };
 
     // Run evaluator in backend
+    const codeTextOnRun = codeText + '';
     fetch('http://localhost:5000/execute', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
         body: JSON.stringify({
             id: id,
-            code: codeText,
+            code: codeTextOnRun,
             scope: mapScope,
             responses: input_node_ids,
             reduce_vars: reduceMethod === 'avg' ? reduceVars : [],
@@ -127,6 +138,7 @@ const EvaluatorNode = ({ data, id }) => {
             }
         });
 
+        setCodeTextOnLastRun(codeTextOnRun);
         setStatus('ready');
     }, rejected);
   };
@@ -203,24 +215,29 @@ const EvaluatorNode = ({ data, id }) => {
         :</div>
         
         {/* <span className="code-style">response</span>: */}
-        <CodeMirror
+        <div className="nodrag">
+          <AceEditor
+            mode="python"
+            theme="xcode"
+            onChange={handleCodeChange}
+            value={data.code}
+            name={"aceeditor_"+id}
+            editorProps={{ $blockScrolling: true }}
+            width='400px'
+            height='200px'
+            tabSize={2}
+          />
+        </div>
+        {/* <CodeMirror
           // onCreateEditor={initEditor}
           value={data.code}
           height="200px"
           width="400px"
           theme={materialLight}
           style={{cursor: 'text'}}
-          onDrag={stopDragPropagation}
-          onPointerMove={stopDragPropagation}
-          onPointerDown={stopDragPropagation}
-          onPointerUp={stopDragPropagation}
           onChange={handleCodeChange}
-          onMouseDownCapture={stopDragPropagation}
-          onClick={stopDragPropagation}
-          onMouseMoveCapture={stopDragPropagation}
-          onMouseUpCapture={stopDragPropagation}
           extensions={[python(), indentUnit.of("  ")]}
-        />
+        /> */}
       </div>
       <hr/>
       <div>

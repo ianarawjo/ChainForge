@@ -20,10 +20,6 @@ const InspectorNode = ({ data, id }) => {
   const [pastInputs, setPastInputs] = useState([]);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
 
-  const stopDragPropagation = (event) => {
-    event.stopPropagation();
-  }
-
   const handleVarValueSelect = () => {
   }
 
@@ -80,7 +76,7 @@ const InspectorNode = ({ data, id }) => {
                     );
                 });                
                 return (
-                    <div key={llm} className="llm-response-container nowheel" onScrollCapture={stopDragPropagation}>
+                    <div key={llm} className="llm-response-container nowheel">
                         <h1>{llm}</h1>
                         {res_divs}
                     </div>

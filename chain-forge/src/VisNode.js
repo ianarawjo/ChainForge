@@ -3,23 +3,36 @@ import { Handle } from 'react-flow-renderer';
 import useStore from './store';
 import Plot from 'react-plotly.js';
 import { hover } from '@testing-library/user-event/dist/hover';
+import { create } from 'zustand';
 
 // Helper funcs
+const truncStr = (s, maxLen) => {
+    if (s.length > maxLen) // Cut the name short if it's long
+        return s.substring(0, maxLen) + '...'
+    else
+        return s;
+}
 const splitAndAddBreaks = (s, chunkSize) => {
     // Split the input string into chunks of specified size
     let chunks = [];
     for (let i = 0; i < s.length; i += chunkSize) {
         chunks.push(s.slice(i, i + chunkSize));
     }
-  
+
     // Join the chunks with a <br> tag
     return chunks.join('<br>');
 }
-const truncStr = (s, maxLen) => {
-    if (s.length > maxLen) // Cut the name short if it's long
-        return s.substring(0, maxLen) + '...'
-    else
-        return s;
+// Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
+const createHoverTexts = (responses) => {
+    const max_len = 500;
+    return responses.map(s => {
+        // If responses were reduced across dimensions, this could include several. Pick the first and mark it as one of many:
+        if (Array.isArray(s)) {
+            const s_len = s.length;
+            return s.map((substr, idx) => splitAndAddBreaks(truncStr(substr, max_len), 60) + `<br><b>(${idx+1} of ${s_len})</b>`);
+        } else
+            return [splitAndAddBreaks(truncStr(s, max_len), 60)];
+    }).flat();
 }
 
 const VisNode = ({ data, id }) => {
@@ -35,10 +48,6 @@ const VisNode = ({ data, id }) => {
     const handleMouseLeave = () => {
       setHovered(false);
     };
-    const stopDragPropagation = (event) => {
-      // Stop this event from bubbling up to the node
-      event.stopPropagation();
-    }
   
     const handleOnConnect = useCallback(() => {
         // Grab the input node ids
@@ -69,7 +78,7 @@ const VisNode = ({ data, id }) => {
                 const varnames = Object.keys(json.responses[0].vars);
                 let spec = {};
                 let layout = {
-                    width: 420, height: 380, title: '', margin: {
+                    width: 420, height: 300, title: '', margin: {
                         l: 40, r: 20, b: 20, t: 20, pad: 2
                     }
                 }
@@ -79,20 +88,10 @@ const VisNode = ({ data, id }) => {
                     if (Object.keys(responses_by_llm).length === 1) {
                         // Simple box plot, as there is only a single LLM in the response
                         spec = json.responses.map(r => {
-                            // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
-                            const hover_texts = r.responses.map(s => {
-                                // If responses were reduced across dimensions, this could include several. Pick the first and mark it as one of many:
-                                if (Array.isArray(s)) {
-                                    const s_len = s.length;
-                                    return s.map((substr, idx) => splitAndAddBreaks(substr, 60) + `<br><b>(${idx+1} of ${s_len})</b>`);
-                                } else
-                                    return [splitAndAddBreaks(s, 60)];
-                            }).flat();
-
                             // Use the var value to 'name' this group of points:
                             const s = truncStr(r.vars[varnames[0]].trim(), 12);
 
-                            return {type: 'box', y: r.eval_res.items, name: s, boxpoints: 'all', text: hover_texts, hovertemplate: '%{text}'};
+                            return {type: 'box', y: r.eval_res.items, name: s, boxpoints: 'all', text: createHoverTexts(r.responses), hovertemplate: '%{text}'};
                         });
                         layout.hovermode = 'closest';
                     } else {
@@ -101,13 +100,18 @@ const VisNode = ({ data, id }) => {
                         spec = [];
                         const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
                         Object.keys(responses_by_llm).forEach((llm, idx) => {
+                            // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
                             const rs = responses_by_llm[llm];
+                            const hover_texts = rs.map(r => createHoverTexts(r.responses)).flat();
                             spec.push({
                                 type: 'box',
                                 name: llm,
                                 marker: {color: colors[idx % colors.length]},
                                 y: rs.map(r => r.eval_res.items).flat(),
                                 x: rs.map(r => Array(r.eval_res.items.length).fill(r.vars[varnames[0]].trim())).flat(),
+                                boxpoints: 'all',
+                                text: hover_texts,
+                                hovertemplate: '%{text}',
                             });
                         });
                         layout.boxmode = 'group';
@@ -179,7 +183,7 @@ const VisNode = ({ data, id }) => {
         <div className="node-header">
           Vis Node
         </div>
-        <div onMouseDownCapture={stopDragPropagation} onClick={stopDragPropagation}>{plotlyObj}</div>
+        <div className="nodrag">{plotlyObj}</div>
         <Handle
             type="target"
             position="left"

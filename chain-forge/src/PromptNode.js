@@ -224,11 +224,6 @@ const PromptNode = ({ data, id }) => {
     }
   }
 
-  const stopDragPropagation = (event) => {
-    // Stop this event from bubbling up to the node
-    event.stopPropagation();
-  }
-
   const handleLLMChecked = (event) => {
     console.log(event.target.value, event.target.checked);
     if (event.target.checked) {
@@ -277,7 +272,7 @@ const PromptNode = ({ data, id }) => {
           cols="40"
           defaultValue={data.prompt}
           onChange={handleInputChange}
-          onMouseDownCapture={stopDragPropagation}
+          className="nodrag"
         />
         <Handle
           type="source"
@@ -292,18 +287,18 @@ const PromptNode = ({ data, id }) => {
       <div>
         <hr />
         <div>
-            <label htmlFor="num-generations">Num generations:&nbsp;</label>
-            <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} onMouseDownCapture={stopDragPropagation}></input>
+            <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
+            <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
         <p style={{marginTop: 0}} >LLMs:</p>
-        <div onMouseDownCapture={stopDragPropagation}>
+        <div className="nodrag">
             <input type="checkbox" id="gpt3.5" name="gpt3.5" value="gpt3.5" defaultChecked={true} onChange={handleLLMChecked} />
             <label htmlFor="gpt3.5">GPT3.5  </label>
             <input type="checkbox" id="alpaca.7B" name="alpaca.7B" value="alpaca.7B" onChange={handleLLMChecked} />
             <label htmlFor="alpaca.7B">Alpaca 7B</label>
         </div>
         <hr />
-        <div className="response-preview-container nowheel" onScrollCapture={stopDragPropagation}>
+        <div className="response-preview-container nowheel">
             {responsePreviews}
         </div>
       </div>

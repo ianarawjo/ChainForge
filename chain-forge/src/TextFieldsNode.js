@@ -13,10 +13,6 @@ const TextFieldsNode = ({ data }) => {
     }
     data["fields"][event.target.id] = event.target.value;
   }
-  const stopDragPropagation = (event) => {
-    // Stop this event from bubbling up to the node
-    event.stopPropagation();
-  }
 
   const createInitFields = () => {
     const f = [0];
@@ -24,7 +20,7 @@ const TextFieldsNode = ({ data }) => {
       const top = 70 + 57*idx + 'px';
       return (
         <div className="input-field" key={i}>
-          <textarea id={"f"+i} name={"f"+i} className="text-field-fixed" rows="3" cols="40" defaultValue={''} onChange={handleInputChange} onMouseDownCapture={stopDragPropagation} />
+          <textarea id={"f"+i} name={"f"+i} className="text-field-fixed nodrag" rows="3" cols="40" defaultValue={''} onChange={handleInputChange} />
           {/* <Handle
             type="source"
             position="right"
@@ -42,7 +38,7 @@ const TextFieldsNode = ({ data }) => {
     const top = 70 + 57*i + 'px';
     const f = fields.concat((
       <div className="input-field" key={i}>
-          <textarea id={"f"+i} name={"f"+i} className="text-field-fixed" rows="3" cols="40" defaultValue={''} onChange={handleInputChange} onMouseDownCapture={stopDragPropagation} />
+          <textarea id={"f"+i} name={"f"+i} className="text-field-fixed nodrag" rows="3" cols="40" defaultValue={''} onChange={handleInputChange} />
           {/* <Handle
             type="source"
             position="right"

@@ -110,10 +110,10 @@ const App = () => {
     addNode({ id: 'promptNode-'+Date.now(), type: 'prompt', data: { prompt: '' }, position: { x: 25, y: 50 } });
   };
   const addEvalNode = (event) => {
-    addNode({ id: 'evalNode-'+Date.now(), type: 'evaluator', data: { code: "return len(response.text)" }, position: { x: 25, y: 50 } });
+    addNode({ id: 'evalNode-'+Date.now(), type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 25, y: 50 } });
   };
   const addVisNode = (event) => {
-    addNode({ id: 'visNode-'+Date.now(), type: 'vis', data: { code: "return len(response.text)" }, position: { x: 25, y: 50 } });
+    addNode({ id: 'visNode-'+Date.now(), type: 'vis', data: {}, position: { x: 25, y: 50 } });
   };
   const addInspectNode = (event) => {
     addNode({ id: 'inspectNode-'+Date.now(), type: 'inspect', data: {}, position: { x: 25, y: 50 } });
@@ -169,6 +169,7 @@ const App = () => {
         <button onClick={addTextFieldsNode}>Add text fields node</button>
         <button onClick={addPromptNode}>Add prompt node</button>
         <button onClick={addEvalNode}>Add evaluator node</button>
+        <button onClick={addVisNode}>Add vis node</button>
         <button onClick={addInspectNode}>Add inspect node</button>
         <button onClick={saveFlow} style={{marginLeft: '12px'}}>Save</button>
         <button onClick={loadFlow}>Load</button>
