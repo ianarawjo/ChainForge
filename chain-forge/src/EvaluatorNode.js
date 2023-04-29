@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
 import StatusIndicator from './StatusIndicatorComponent'
+import NodeLabel from './NodeLabelComponent'
 
 // Mantine modal
 import { useDisclosure } from '@mantine/hooks';
@@ -175,6 +176,10 @@ const EvaluatorNode = ({ data, id }) => {
   //   console.log(view, state);
   // }
 
+  const hideStatusIndicator = () => {
+    if (status !== 'none') { setStatus('none'); }
+  };
+
   const borderStyle = hovered
     ? '1px solid #222'
     : '1px solid #999';
@@ -187,7 +192,9 @@ const EvaluatorNode = ({ data, id }) => {
       onMouseLeave={handleMouseLeave}
     >
       <div className="node-header">
-        Evaluator Node
+        <NodeLabel title={data.title || 'Evaluator Node'} 
+                   nodeId={id} 
+                   onEdit={hideStatusIndicator} />
         <StatusIndicator status={status} />
         <button className="AmitSahoo45-button-3" onClick={handleRunClick}><div className="play-button"></div></button>
       </div>

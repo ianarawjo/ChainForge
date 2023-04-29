@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
+import NodeLabel from './NodeLabelComponent'
 
 const TextFieldsNode = ({ data, id }) => {
 
@@ -41,7 +42,7 @@ const TextFieldsNode = ({ data, id }) => {
   return (
     <div className="text-fields-node">
       <div className="node-header">
-        TextFields Node
+        <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} />
       </div>
       {fields}
       <Handle

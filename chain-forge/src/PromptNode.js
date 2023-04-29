@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
 import StatusIndicator from './StatusIndicatorComponent'
+import NodeLabel from './NodeLabelComponent'
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -60,7 +61,7 @@ const PromptNode = ({ data, id }) => {
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const [templateHooks, setTemplateHooks] = useState(genTemplateHooks(data.vars || [], []));
   const [promptText, setPromptText] = useState(data.prompt);
-  const [promptTextOnLastRun, setPromptTextOnLastRun] = useState([]);
+  const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
   const [selectedLLMs, setSelectedLLMs] = useState(['gpt3.5']);
   const [status, setStatus] = useState('none');
   const [responsePreviews, setReponsePreviews] = useState([]);
@@ -81,10 +82,12 @@ const PromptNode = ({ data, id }) => {
     data['prompt'] = value;
 
     // Update status icon, if need be:
-    if (status !== 'warning' && value !== promptTextOnLastRun) {
-        setStatus('warning');
-    } else if (status === 'warning' && value === promptTextOnLastRun) {
-        setStatus('ready');
+    if (promptTextOnLastRun !== null) {
+        if (status !== 'warning' && value !== promptTextOnLastRun) {
+            setStatus('warning');
+        } else if (status === 'warning' && value === promptTextOnLastRun) {
+            setStatus('ready');
+        }
     }
 
     const braces_regex = /(?<!\\){(.*?)(?<!\\)}/g;  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
@@ -251,6 +254,20 @@ const PromptNode = ({ data, id }) => {
         setDataPropsForNode(id, {n: n});
     }
   };
+
+//   const nodeLabelRef = React.useRef(null);
+//   const makeEditable = () => {
+//     if (nodeLabelRef.current) {
+//         for (const child of nodeLabelRef.current.children) {
+//             console.log(child.children);
+//             child.contentEditable = 'true';
+//         }
+//     }
+//   };
+
+  const hideStatusIndicator = () => {
+    if (status !== 'none') { setStatus('none'); }
+  };
   
   const borderStyle = hovered
     ? '1px solid #222'
@@ -264,9 +281,11 @@ const PromptNode = ({ data, id }) => {
       onMouseLeave={handleMouseLeave}
     >
       <div className="node-header drag-handle">
-        Prompt Node
+        <NodeLabel title={data.title || 'Prompt Node'} 
+                   nodeId={id} 
+                   onEdit={hideStatusIndicator} />
         <StatusIndicator status={status} />
-        <button className="AmitSahoo45-button-3" onClick={handleRunClick}><div className="play-button"></div></button>
+        <button className="AmitSahoo45-button-3 nodrag" onClick={handleRunClick}><div className="play-button"></div></button>
       </div>
       <div className="input-field">
         <textarea
@@ -292,6 +311,7 @@ const PromptNode = ({ data, id }) => {
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
             <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
+        <hr />
         <p style={{marginTop: 0}} >LLMs:</p>
         <div className="nodrag">
             <input type="checkbox" id="gpt3.5" name="gpt3.5" value="gpt3.5" defaultChecked={true} onChange={handleLLMChecked} />

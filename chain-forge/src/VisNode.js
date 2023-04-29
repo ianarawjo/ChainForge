@@ -4,6 +4,7 @@ import useStore from './store';
 import Plot from 'react-plotly.js';
 import { hover } from '@testing-library/user-event/dist/hover';
 import { create } from 'zustand';
+import NodeLabel from './NodeLabelComponent'
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -180,7 +181,8 @@ const VisNode = ({ data, id }) => {
         onMouseLeave={handleMouseLeave}
       >
         <div className="node-header">
-          Vis Node
+            <NodeLabel title={data.title || 'Vis Node'} 
+                       nodeId={id} />
         </div>
         <div className="nodrag">{plotlyObj}</div>
         <Handle
