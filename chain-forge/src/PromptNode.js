@@ -35,23 +35,6 @@ const PromptNode = ({ data, id }) => {
   const output = useStore((state) => state.output);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
-  const [hovered, setHovered] = useState(false);
-  const [templateHooks, setTemplateHooks] = useState([]);
-  const [templateVars, setTemplateVars] = useState([]);
-  const [promptText, setPromptText] = useState(data.prompt);
-  const [promptTextOnLastRun, setPromptTextOnLastRun] = useState([]);
-  const [selectedLLMs, setSelectedLLMs] = useState(['gpt3.5']);
-  const [status, setStatus] = useState('none');
-  const [responsePreviews, setReponsePreviews] = useState([]);
-  const [numGenerations, setNumGenerations] = useState(data.n || 1);
-  
-  const handleMouseEnter = () => {
-    setHovered(true);
-  };
-  const handleMouseLeave = () => {
-    setHovered(false);
-  };
-
   const genTemplateHooks = (temp_var_names, names_to_blink) => {
     return temp_var_names.map(
         (name, idx) => {
@@ -71,6 +54,23 @@ const PromptNode = ({ data, id }) => {
             )
         }
     );
+  };
+
+  const [hovered, setHovered] = useState(false);
+  const [templateVars, setTemplateVars] = useState(data.vars || []);
+  const [templateHooks, setTemplateHooks] = useState(genTemplateHooks(data.vars || [], []));
+  const [promptText, setPromptText] = useState(data.prompt);
+  const [promptTextOnLastRun, setPromptTextOnLastRun] = useState([]);
+  const [selectedLLMs, setSelectedLLMs] = useState(['gpt3.5']);
+  const [status, setStatus] = useState('none');
+  const [responsePreviews, setReponsePreviews] = useState([]);
+  const [numGenerations, setNumGenerations] = useState(data.n || 1);
+  
+  const handleMouseEnter = () => {
+    setHovered(true);
+  };
+  const handleMouseLeave = () => {
+    setHovered(false);
   };
 
   const handleInputChange = (event) => {
@@ -97,8 +97,10 @@ const PromptNode = ({ data, id }) => {
         setTemplateHooks(
             genTemplateHooks(temp_var_names, [])
         );
+        setDataPropsForNode(id, {vars: temp_var_names});
     } else {
         setTemplateHooks([]);
+        setDataPropsForNode(id, {vars: []});
     }
   };
 

@@ -62,7 +62,6 @@ const VisNode = ({ data, id }) => {
         }).then(function(res) {
             return res.json();
         }).then(function(json) {
-            console.log('got responses');
             if (json.responses && json.responses.length > 0) {
 
                 // Bucket responses by LLM:

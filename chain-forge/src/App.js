@@ -129,6 +129,7 @@ const App = () => {
   const loadFlow = () => {
     const restoreFlow = async () => {
       const flow = JSON.parse(localStorage.getItem('chainforge-flow'));
+      console.log(flow.nodes);
 
       if (flow) {
         const { x = 0, y = 0, zoom = 1 } = flow.viewport;

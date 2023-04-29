@@ -1,32 +1,27 @@
 import React, { useState } from 'react';
 import { Handle } from 'react-flow-renderer';
+import useStore from './store';
 
-const TextFieldsNode = ({ data }) => {
+const TextFieldsNode = ({ data, id }) => {
+
+  const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
   const handleInputChange = (event) => {
     // Update the data for this text fields' id. 
-    // :: This treats the fields as comma-separated values. It ignores commas inside quotes, e.g.:
-    // :: 1, 2, 3, "4, 5", 6  --> ["1", "2", "3", "4, 5", "6"]
-    // const regex_csv = /,(?!(?<=(?:^|,)\s*\x22(?:[^\x22]|\x22\x22|\\\x22)*,)(?:[^\x22]|\x22\x22|\\\x22)*\x22\s*(?:,|$))/g;
-    if (!("fields" in data)) {
-      data["fields"] = {};
-    }
-    data["fields"][event.target.id] = event.target.value;
+    if (!data.fields)
+      data.fields = {}
+    data['fields'][event.target.id] = event.target.value;
+    let new_data = { fields: {...data.fields} };
+    setDataPropsForNode(id, new_data);
   }
 
   const createInitFields = () => {
-    const f = [0];
+    const f = data.fields ? Object.keys(data.fields) : ['f0'];
     return f.map((i, idx) => {
-      const top = 70 + 57*idx + 'px';
+      const val = data.fields ? data.fields[i] : '';
       return (
         <div className="input-field" key={i}>
-          <textarea id={"f"+i} name={"f"+i} className="text-field-fixed nodrag" rows="3" cols="40" defaultValue={''} onChange={handleInputChange} />
-          {/* <Handle
-            type="source"
-            position="right"
-            id={"f"+i}
-            style={{ top: top, background: '#555' }}
-          /> */}
+          <textarea id={i} name={i} className="text-field-fixed nodrag" rows="3" cols="40" defaultValue={val} onChange={handleInputChange} />
         </div>
     )});
   };
@@ -35,17 +30,10 @@ const TextFieldsNode = ({ data }) => {
 
   const handleAddField = (event) => {
     const i = fields.length;
-    const top = 70 + 57*i + 'px';
     const f = fields.concat((
       <div className="input-field" key={i}>
           <textarea id={"f"+i} name={"f"+i} className="text-field-fixed nodrag" rows="3" cols="40" defaultValue={''} onChange={handleInputChange} />
-          {/* <Handle
-            type="source"
-            position="right"
-            id={"f"+i}
-            style={{ top: top, background: '#555' }}
-          /> */}
-        </div>
+      </div>
     ));
     setFields(f);
   }

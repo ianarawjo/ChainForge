@@ -13,17 +13,23 @@ import {
   applyEdgeChanges,
 } from 'react-flow-renderer';
 
+// We need to create a unique ID using the current date,
+// because of the way ReactFlow saves and restores states. 
+const uid = (id) => `${id}-${Date.now()}`;
+
+const initprompt = uid('prompt');
+const initeval = uid('eval');
 const initialNodes = [
-  { id: 'promptNode', type: 'prompt', data: { prompt: 'Who invented the lightbulb?', n: 1 }, position: { x: 430, y: 250 } },
-  { id: 'analysisNode', type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 850, y: 150 } },
-  { id: 'textFieldsNode', type: 'textfields', data: {}, position: { x: 25, y: 150 } },
-  { id: 'textFieldsNode2', type: 'textfields', data: {}, position: { x: 25, y: 300 } },
-  { id: 'visNode', type: 'vis', data: {}, position: { x: 1350, y: 250 } },
-  { id: 'inspectNode', type: 'inspect', data: {}, position: { x:0, y:0 } },
+  { id: initprompt, type: 'prompt', data: { prompt: 'Who invented the lightbulb?', n: 1 }, position: { x: 430, y: 250 } },
+  { id: initeval, type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 850, y: 150 } },
+  { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 25, y: 150 } },
+  { id: uid('textfields2'), type: 'textfields', data: {}, position: { x: 25, y: 300 } },
+  { id: uid('vis'), type: 'vis', data: {}, position: { x: 1350, y: 250 } },
+  { id: uid('inspect'), type: 'inspect', data: {}, position: { x:900, y:600 } },
 ];
 
 const initialEdges = [
-  { id: 'e1-2', source: 'promptNode', target: 'analysisNode', interactionWidth: 100},
+  { id: 'e1-2', source: initprompt, target: initeval, interactionWidth: 100},
 ];
 
 // TypeScript only

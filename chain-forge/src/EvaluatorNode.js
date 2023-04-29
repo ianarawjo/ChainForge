@@ -242,13 +242,13 @@ const EvaluatorNode = ({ data, id }) => {
       <hr/>
       <div>
         <div className="code-mirror-field-header">Method to reduce across <span className="code-style">responses</span>:</div>
-        <select name="method" id="method" onChange={handleOnReduceMethodSelect}>
+        <select name="method" id="method" onChange={handleOnReduceMethodSelect} className="nodrag">
             <option value="none">None</option>
             <option value="avg">Average across</option>
             {/* <option value="custom">Custom reducer</option> */}
         </select>
         <span> </span>
-        <input type="text" id="method-vars" name="method-vars" onChange={handleReduceVarsChange} disabled={reduceMethod === 'none'} />
+        <input type="text" id="method-vars" name="method-vars" onChange={handleReduceVarsChange} disabled={reduceMethod === 'none'} className="nodrag" />
         {/* <label for="avg">Average over: </label>
         <select name="avg" id="avg">
             <option value="mod">mod</option>

@@ -27,10 +27,10 @@ const InspectorNode = ({ data, id }) => {
     // Get the ids from the connected input nodes:
     const input_node_ids = inputEdgesForNode(id).map(e => e.source);
 
-    console.log("hello");
+    console.log(input_node_ids);
 
     // Grab responses associated with those ids:
-    const response = fetch('http://localhost:5000/grabResponses', {
+    fetch('http://localhost:5000/grabResponses', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
         body: JSON.stringify({
@@ -39,6 +39,7 @@ const InspectorNode = ({ data, id }) => {
     }).then(function(res) {
         return res.json();
     }).then(function(json) {
+        console.log(json);
         if (json.responses && json.responses.length > 0) {
 
             // Bucket responses by LLM:

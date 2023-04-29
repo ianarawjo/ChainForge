@@ -46,7 +46,7 @@ def get_llm_of_response(response: dict) -> LLM:
 def get_filenames_with_id(filenames: list, id: str) -> list:
     return [
         c for c in filenames
-        if ('-' in c and c.split('-')[0] == id) or ('-' not in c and c.split('.')[0] == id)
+        if c.split('.')[0] == id or ('-' in c and c[:c.rfind('-')] == id)
     ]
 
 def remove_cached_responses(cache_id: str):
@@ -355,6 +355,7 @@ def grabResponses():
 
     # Load all responses with the given ID:
     all_cache_files = get_files_at_dir('cache/')
+    print(all_cache_files)
     responses = []
     for cache_id in data['responses']:
         cache_files = get_filenames_with_id(all_cache_files, cache_id)
