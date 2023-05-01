@@ -1,5 +1,5 @@
 # ⛓️🛠️ ChainForge
-**An open-source, extensible visual programming environment for evaluating prompts for LLMs.**
+**An open-source visual programming environment for battle-testing prompts to LLMs.**
 
 ChainForge is a data flow programming environment for testing and evaluating prompts (and eventually, prompt chains) for LLMs. Our goal is to provide a basic, open-source visual programming tool that developers can use to battle-test prompts against LLM responses. 
 
