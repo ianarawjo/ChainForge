@@ -3,6 +3,7 @@ import { Handle } from 'react-flow-renderer';
 import useStore from './store';
 import StatusIndicator from './StatusIndicatorComponent'
 import NodeLabel from './NodeLabelComponent'
+import TemplateHooks from './TemplateHooksComponent'
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -36,30 +37,8 @@ const PromptNode = ({ data, id }) => {
   const output = useStore((state) => state.output);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
-  const genTemplateHooks = (temp_var_names, names_to_blink) => {
-    return temp_var_names.map(
-        (name, idx) => {
-            const className = (names_to_blink.includes(name)) ? 'text-blink' : '';
-            const pos = (idx * 35) + 140 + 'px';
-            const style = { top: pos,  background: '#555' };
-            return (
-                <div key={name} className={className} >
-                <p>{name}</p>
-                <Handle
-                    type="target"
-                    position="left"
-                    id={name}
-                    style={style}
-                />
-                </div>
-            )
-        }
-    );
-  };
-
   const [hovered, setHovered] = useState(false);
   const [templateVars, setTemplateVars] = useState(data.vars || []);
-  const [templateHooks, setTemplateHooks] = useState(genTemplateHooks(data.vars || [], []));
   const [promptText, setPromptText] = useState(data.prompt);
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
   const [selectedLLMs, setSelectedLLMs] = useState(['gpt3.5']);
@@ -90,28 +69,24 @@ const PromptNode = ({ data, id }) => {
         }
     }
 
+    // Update template var fields + handles
     const braces_regex = /(?<!\\){(.*?)(?<!\\)}/g;  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
     const found_template_vars = value.match(braces_regex);
     if (found_template_vars && found_template_vars.length > 0) {
         const temp_var_names = found_template_vars.map(
-            name => name.substring(1, name.length-1)
+            name => name.substring(1, name.length-1)  // remove brackets {}
         )
         setTemplateVars(temp_var_names);
-        setTemplateHooks(
-            genTemplateHooks(temp_var_names, [])
-        );
-        setDataPropsForNode(id, {vars: temp_var_names});
     } else {
-        setTemplateHooks([]);
-        setDataPropsForNode(id, {vars: []});
+        setTemplateVars([]);
     }
   };
 
   const handleRunClick = (event) => {
     // Go through all template hooks (if any) and check they're connected:
-    const is_fully_connected = templateHooks.every(hook => {
+    const is_fully_connected = templateVars.every(varname => {
         // Check that some edge has, as its target, this node and its template hook:
-        return edges.some(e => (e.target == id && e.targetHandle == hook.key));
+        return edges.some(e => (e.target == id && e.targetHandle == varname));
     });
 
     // console.log(templateHooks);
@@ -130,18 +105,18 @@ const PromptNode = ({ data, id }) => {
 
         // Pull data from each source:
         const pulled_data = {};
-        templateHooks.forEach(hook => {
+        templateVars.forEach(varname => {
             // Find the relevant edge (breaking once we've found it):
             for (let i = 0; i < edges.length; i++) {
                 const e = edges[i];
-                if (e.target == id && e.targetHandle == hook.key) {
+                if (e.target == id && e.targetHandle == varname) {
                     // Get the data output for that handle on the source node:
                     let out = output(e.source, e.sourceHandle);
                     if (!Array.isArray(out)) out = [out];
-                    if (hook.key in pulled_data)
-                        pulled_data[hook.key] = pulled_data[hook.key].concat(out);
+                    if (varname in pulled_data)
+                        pulled_data[varname] = pulled_data[varname].concat(out);
                     else
-                        pulled_data[hook.key] = out;
+                        pulled_data[varname] = out;
                 }
             }
         });
@@ -212,20 +187,7 @@ const PromptNode = ({ data, id }) => {
     } else {
         console.log('Not connected! :(');
 
-        // Blink the names of unconnected params:
-        const names_to_blink = templateVars.filter(name => {
-            return !edges.some(e => (e.target == id && e.targetHandle == name));
-        });
-        setTemplateHooks(
-            genTemplateHooks(templateVars, names_to_blink)
-        );
-
-        // Set timeout to turn off blinking:
-        setTimeout(() => {
-            setTemplateHooks(
-                genTemplateHooks(templateVars, [])
-            );
-        }, 750*2);
+        // TODO: Blink the names of unconnected params
     }
   }
 
@@ -302,9 +264,7 @@ const PromptNode = ({ data, id }) => {
           style={{ top: '50%', background: '#555' }}
         />
       </div>
-      <div className="template-hooks"> 
-        {templateHooks}
-      </div>
+      <TemplateHooks vars={templateVars} nodeId={id} startY={140} />
       <div>
         <hr />
         <div>
