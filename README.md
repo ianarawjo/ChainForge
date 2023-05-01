@@ -16,29 +16,38 @@ Taken together, these three features let you easily:
   - **Compare across prompts**: Choose the best set of prompts that maximizes your eval target metrics (eg, lowest code error rate).
   - **Compare across models**: Compare responses for every prompt across models. In the future, detect where models "diverge" --i.e., produce radically different outputs at a point in a chain.
   - **Compare across responses**: Run an evaluator over all N responses generated for each prompt, to measure factors like variability or parseability (e.g., how many code outputs pass a basic smell test?).
+  
+# Installation
 
-ChainForge is meant to be general-purpose, and is not developed for a specific API or LLM back-end. 
+To install, use `pip`. From the command line:
+
+```
+pip install chainforge
+```
+
+[TODO: Upload CF to PyPI]
+[TODO: Create a command-line alias (?) so you can run `chainforge serve <react_port?> <py_port?>` and spin up both React and the Python backend automatically.]
+
+To run simply, type:
+
+```
+chainforge serve
+```
+
+This spins up two local servers: a React server through npm, and a Python backend, powered by Flask. For more options, such as port numbers, type `chainforge --help`.
 
 ### Sharing prompt chains
 
 All ChainForge node graphs are importable/exportable as JSON specs. You can freely share prompt chains you develop (alongside any custom analysis code), whether to the public or within your organization. 
 
-## Developers
+# Development
 
 ChainForge is developed by research scientists at Harvard University in the [Harvard HCI](https://hci.seas.harvard.edu) group:
 - [Ian Arawjo](http://ianarawjo.com/index.html)
 - [Priyan Vaithilingam](https://priyan.info)
 - [Elena Glassman]()
 
-It came about by necessity in the course of developing another, higher-level interface for evaluating LLM outputs. We provide ongoing releases of this tool in the hopes that others find it useful for their projects, but we make no claims about its robustness or future maintenance.
-
-## Inspiration and Links
-
-This project was inspired by own our use case, but also derives insights from two related (closed-source) research projects, both led by [Sherry Wu](https://www.cs.cmu.edu/~sherryw/):
-- "PromptChainer: Chaining Large Language Model Prompts through Visual Programming" (Wu et al., CHI ’22 LBW) [Video](https://www.youtube.com/watch?v=p6MA8q19uo0)
-- "AI Chains: Transparent and Controllable Human-AI Interaction by Chaining Large Language Model Prompts" (Wu et al., CHI ’22)
-
-This project differs from the above in that it focuses on evaluation across responses, prompt variations, and models. Also unlike these projects, this project aspires to be open-source and remain in the public domain, as our ultimate goal is integration into other tools for the systematic evaluation and auditing of LLMs. We hope to help others who are developing prompt-analysis flows in LLMs, or otherwise auditing LLM outputs. 
+We provide ongoing releases of this tool in the hopes that others find it useful for their projects.
 
 ## Future Planned Features
 
@@ -47,10 +56,19 @@ This project differs from the above in that it focuses on evaluation across resp
 - **Export prompt chains to well-known APIs**: In the future, export a chain (in part) to a programming API like LangChain.
 - **Compare across chains**: If a system prompt, or another ‘shared prompt’, is used *across* chains C1 C2 etc, how does changing it affect all downstream events?
 
-## License
+## Inspiration and Links
 
-ChainForge is released under the MIT License.
+ChainForge is meant to be general-purpose, and is not developed for a specific API or LLM back-end. 
+This project was inspired by own our use case, but also derives insights from two related (closed-source) research projects, both led by [Sherry Wu](https://www.cs.cmu.edu/~sherryw/):
+- "PromptChainer: Chaining Large Language Model Prompts through Visual Programming" (Wu et al., CHI ’22 LBW) [Video](https://www.youtube.com/watch?v=p6MA8q19uo0)
+- "AI Chains: Transparent and Controllable Human-AI Interaction by Chaining Large Language Model Prompts" (Wu et al., CHI ’22)
+
+This project differs from the above in that it focuses on evaluation across responses, prompt variations, and models. Also unlike these projects, this project aspires to be open-source and remain in the public domain, as our ultimate goal is integration into other tools for the systematic evaluation and auditing of LLMs. We hope to help others who are developing prompt-analysis flows in LLMs, or otherwise auditing LLM outputs. 
 
 ## How to collaborate?
 
 We are looking for open-source collaborators. The best way to do this, at the moment, is simply to implement the requested feature / bug fix and submit a Pull Request. If you want to report a bug or request a feature, open an Issue. 
+
+# License
+
+ChainForge is released under the MIT License.
