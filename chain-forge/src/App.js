@@ -6,6 +6,7 @@ import ReactFlow, {
   Controls,
   Background,
   useReactFlow,
+  useViewport
 } from 'react-flow-renderer';
 // import axios from 'axios';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
@@ -47,6 +48,7 @@ const App = () => {
 
   // Get nodes, edges, etc. state from the Zustand store:
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, setNodes, setEdges } = useStore(selector, shallow);
+
   // const [nodes, setNodes] = useState(initialNodes);
   // const [edges, setEdges] = useState(initialEdges);
 
@@ -103,20 +105,36 @@ const App = () => {
     console.log(event);
   };
 
+  const getWindowSize = () => ({width: window.innerWidth, height: window.innerHeight});
+  const getWindowCenter = () => {
+    const { width, height } = getWindowSize();
+    return ({centerX: width/2.0, centerY: height/2.0});
+  }
+  const getViewportCenter = () => {
+    const { centerX, centerY } = getWindowCenter();
+    const { x, y, zoom } = rfInstance.getViewport();
+    return ({x: -x+centerX, y:-y+centerY});
+  }
+
   const addTextFieldsNode = (event) => {
-    addNode({ id: 'textFieldsNode-'+Date.now(), type: 'textfields', data: {}, position: { x: 25, y: 50 } });
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'textFieldsNode-'+Date.now(), type: 'textfields', data: {}, position: {x: x-200, y:y-100} });
   };
   const addPromptNode = (event) => {
-    addNode({ id: 'promptNode-'+Date.now(), type: 'prompt', data: { prompt: '' }, position: { x: 25, y: 50 } });
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'promptNode-'+Date.now(), type: 'prompt', data: { prompt: '' }, position: {x: x-200, y:y-100} });
   };
   const addEvalNode = (event) => {
-    addNode({ id: 'evalNode-'+Date.now(), type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 25, y: 50 } });
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'evalNode-'+Date.now(), type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: {x: x-200, y:y-100} });
   };
   const addVisNode = (event) => {
-    addNode({ id: 'visNode-'+Date.now(), type: 'vis', data: {}, position: { x: 25, y: 50 } });
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'visNode-'+Date.now(), type: 'vis', data: {}, position: {x: x-200, y:y-100} });
   };
   const addInspectNode = (event) => {
-    addNode({ id: 'inspectNode-'+Date.now(), type: 'inspect', data: {}, position: { x: 25, y: 50 } });
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'inspectNode-'+Date.now(), type: 'inspect', data: {}, position: {x: x-200, y:y-100} });
   };
 
   // Saving / loading
