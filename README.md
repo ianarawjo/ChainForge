@@ -7,11 +7,12 @@ ChainForge is built on [ReactFlow](https://reactflow.dev) and is in active devel
 
 # Features
 
-A key goal of ChainForge is facilitating **comparison** and **evaluation** of prompts and models, and (in the near future) prompt chains. These comparison features are:
-
+A key goal of ChainForge is facilitating **comparison** and **evaluation** of prompts and models, and (in the near future) prompt chains. Basic features are:
 - **Prompt permutations**: Setup a prompt template and feed it variations of input variables. ChainForge will prompt all selected LLMs with all possible permutations of the input prompt, so that you can get a better sense of prompt quality.
-- **Evaluation nodes**: Probe points in a response chain and test them for some desired behavior. Initially, Python script based. 
-- **Visualize the difference between prompts**: Visualize evaluation outputs, on plots like box-and-whisker and 3D scatterplots. Easily:
+- **Evaluation nodes**: Probe LLM responses in a chain and test them for some desired behavior. Initially, Python script based. 
+- **Visualization nodes**: Visualize evaluation results on plots like box-and-whisker and 3D scatterplots.
+
+Taken together, these three features let you easily:
   - **Compare across prompts**: Choose the best set of prompts that maximizes your eval target metrics (eg, lowest code error rate).
   - **Compare across models**: Compare responses for every prompt across models. In the future, detect where models "diverge" --i.e., produce radically different outputs at a point in a chain.
   - **Compare across responses**: Run an evaluator over all N responses generated for each prompt, to measure factors like variability or parseability (e.g., how many code outputs pass a basic smell test?).
