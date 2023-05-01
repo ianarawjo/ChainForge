@@ -1,58 +1,77 @@
 # ⛓️🛠️ ChainForge
-**An open-source, extensible visual programming environment for evaluating prompts for LLMs.**
+**An open-source visual programming environment for battle-testing prompts to LLMs.**
 
-ChainForge is a data flow programming environment for testing and evaluating prompts (and eventually, prompt chains) for LLMs. Our goal is to provide a basic, open-source visual programming tool that developers can use to battle-test prompts against LLM responses. 
-
-Think of ChainForge like an exploration tool where you can 'sketch' prompt ideas and test them quickly and effectively. Like Jupyter Notebooks were good for early-stage exploration, ChainForge is geared towards early-stage, quick-and-dirty exploration of prompts and response quality.
+ChainForge is a data flow prompt engineering tool for testing and evaluating prompts (and eventually, prompt chains) for LLMs. Like Jupyter Notebooks were good for early-stage exploration, ChainForge is geared towards early-stage, quick-and-dirty exploration of prompts and response quality that goes beyond ad-hoc chatting with individual LLMs. 'Sketch' prompt ideas and test variations quickly and effectively. Compare response quality across prompt variations and across models to choose the best prompt and model for your use case. 
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and is in active development.
 
 # Features
 
-A key goal of ChainForge is facilitating **comparison** and **evaluation** of prompts, and (in the near future) prompt chains. These comparison features are:
+A key goal of ChainForge is facilitating **comparison** and **evaluation** of prompts and models, and (in the near future) prompt chains. Basic features are:
+- **Prompt permutations**: Setup a prompt template and feed it variations of input variables. ChainForge will prompt all selected LLMs with all possible permutations of the input prompt, so that you can get a better sense of prompt quality.
+- **Evaluation nodes**: Probe LLM responses in a chain and test them for some desired behavior. Initially, Python script based. 
+- **Visualization nodes**: Visualize evaluation results on plots like box-and-whisker and 3D scatterplots.
 
-- **Evaluation nodes**: Probe points in a chain and test them for some desired behavior. Python script based.
-- **Compare across responses**: LLMs can generate N responses given temperature T, even if all prompts are fixed. Have metrics/vis tools to help user measure the ‘stability’ of responses given a prompt across N responses, for temperature T. (diffs?)
-- **Compare across prompts**: “Fix” a run of a chain, then edit an upstream prompt to visualize downstream changes (diffs?). Can compare between multiple (N) variations of prompts, and choose the best set of prompts that maximizes your eval target metrics (eg, lowest code error rate).
-- **Compare across models**: Compare responses for every prompt across models. This should measure both *intra-response perturbations* (fluctuations within each model) and *inter-response* perturbations. Can detect where models “diverge” in the large —i.e., produce radically different outputs at a point in a chain.
-- (PLANNED IN FUTURE) **Compare across chains**: If a system prompt, or a ‘shared prompt’, is used in Chains C1 C2 etc, how does changing it affect all downstream events?
+Taken together, these three features let you easily:
+  - **Compare across prompts**: Choose the best set of prompts that maximizes your eval target metrics (eg, lowest code error rate).
+  - **Compare across models**: Compare responses for every prompt across models. In the future, detect where models "diverge" --i.e., produce radically different outputs at a point in a chain.
+  - **Compare across responses**: Run an evaluator over all N responses generated for each prompt, to measure factors like variability or parseability (e.g., how many code outputs pass a basic smell test?).
+  
+# Installation
 
-ChainForge is meant to be general-purpose, and is not developed for a specific API or LLM back-end. 
+To install, use `pip`. From the command line:
 
-### Example: Divergence detectors
+```
+pip install chainforge
+```
 
-In ChainForge, we built ways to help you **visualize the difference between LLMs for the same prompt.** In other words, you can compare responses across different models for the same prompt chain. This helps developers to, for instance:
-- understand what model might be best for their specific task (choose the right model)
-- guard against over-engineering a prompt chain for a single model (avoid over-engineering)
-- visualize the differences between models (compare model outputs)
+[TODO: Upload CF to PyPI]
+[TODO: Create a command-line alias (?) so you can run `chainforge serve <react_port?> <py_port?>` and spin up both React and the Python backend automatically.]
 
-Beyond comparing between different models like Alpaca and ChatGPT, this feature is also useful to compare between versions of the same model (e.g., a base model and a fine-tuned one). Did your fine-tuning result in any 'breaking changes' elsewhere? ChainForge divergences can help you can detect where. 
+To run simply, type:
+
+```
+chainforge serve
+```
+
+This spins up two local servers: a React server through npm, and a Python backend, powered by Flask. For more options, such as port numbers, type `chainforge --help`.
 
 ### Sharing prompt chains
 
 All ChainForge node graphs are importable/exportable as JSON specs. You can freely share prompt chains you develop (alongside any custom analysis code), whether to the public or within your organization. 
 
-## Developers
+# Development
 
 ChainForge is developed by research scientists at Harvard University in the [Harvard HCI](https://hci.seas.harvard.edu) group:
 - [Ian Arawjo](http://ianarawjo.com/index.html)
 - [Priyan Vaithilingam](https://priyan.info)
 - [Elena Glassman]()
 
-It came about by necessity in the course of developing another, higher-level interface for evaluating LLM outputs. We provide ongoing releases of this tool in the hopes that others find it useful for their projects, but we make no claims about its robustness or future maintenance.
+We provide ongoing releases of this tool in the hopes that others find it useful for their projects.
+
+## Future Planned Features
+
+- **Dark mode**: A dark mode theme
+- **AI assistance for prompt engineering**: Spur creative ideas and quickly iterate on variations of prompts through interaction with GPT4.
+- **Compare fine-tuned to base models**: Beyond comparing between different models like Alpaca and ChatGPT, we want to support comparison between versions of the same model (e.g., a base model and a fine-tuned one). Did your fine-tuning result in any 'breaking changes' elsewhere? We are building infrastructure to help you detect where.  
+- **Export prompt chains to well-known APIs**: In the future, export a chain (in part) to a programming API like LangChain.
+- **Compare across chains**: If a system prompt, or another ‘shared prompt’, is used *across* chains C1 C2 etc, how does changing it affect all downstream events?
 
 ## Inspiration and Links
 
+ChainForge is meant to be general-purpose, and is not developed for a specific API or LLM back-end. 
 This project was inspired by own our use case, but also derives insights from two related (closed-source) research projects, both led by [Sherry Wu](https://www.cs.cmu.edu/~sherryw/):
 - "PromptChainer: Chaining Large Language Model Prompts through Visual Programming" (Wu et al., CHI ’22 LBW) [Video](https://www.youtube.com/watch?v=p6MA8q19uo0)
 - "AI Chains: Transparent and Controllable Human-AI Interaction by Chaining Large Language Model Prompts" (Wu et al., CHI ’22)
 
-This project differs from the above in that it focuses on evaluation across responses, prompt variations, and models. Also unlike these projects, this project aspires to be open-source and remain in the public domain, as our ultimate goal is integration into other tools for the systematic evaluation and auditing of LLMs. We hope to help others who are developing prompt-analysis flows in LLMs, or otherwise auditing LLM outputs. 
+Unlike these projects, we are focusing on supporting evaluation across responses, prompt variations, and models. 
 
-## License
-
-ChainForge is released under the MIT License.
+This project aspires to be open-source and remain in the public domain, as our ultimate goal is integration into other tools for the systematic evaluation and auditing of LLMs. We hope to help others who are developing prompt-analysis flows in LLMs, or otherwise auditing LLM outputs. 
 
 ## How to collaborate?
 
 We are looking for open-source collaborators. The best way to do this, at the moment, is simply to implement the requested feature / bug fix and submit a Pull Request. If you want to report a bug or request a feature, open an Issue. 
+
+# License
+
+ChainForge is released under the MIT License.
