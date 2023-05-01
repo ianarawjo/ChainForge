@@ -1,7 +1,7 @@
 # ⛓️🛠️ ChainForge
 **An open-source visual programming environment for battle-testing prompts to LLMs.**
 
-ChainForge is a data flow prompt engineering tool for testing and evaluating prompts (and eventually, prompt chains) for LLMs. Think of ChainForge like an exploration tool where you can 'sketch' prompt ideas and test them quickly and effectively. Like Jupyter Notebooks were good for early-stage exploration, ChainForge is geared towards early-stage, quick-and-dirty exploration of prompts and response quality that goes beyond ad-hoc chatting with individual LLMs. 
+ChainForge is a data flow prompt engineering tool for testing and evaluating prompts (and eventually, prompt chains) for LLMs. 'Sketch' prompt ideas and test variations quickly and effectively. Like Jupyter Notebooks were good for early-stage exploration, ChainForge is geared towards early-stage, quick-and-dirty exploration of prompts and response quality that goes beyond ad-hoc chatting with individual LLMs.
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and is in active development.
 
