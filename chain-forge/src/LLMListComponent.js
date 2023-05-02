@@ -3,15 +3,8 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import ListItem, { DragItem, ListItemClone } from "./ListItemComponent";
 import { StrictModeDroppable } from './StrictModeDroppable'
 
-const llmItems = [
-  { model: "🙂 GPT3.5", temp: 1.0 },
-  { model: "🥵 GPT4", temp: 1.0 },
-  { model: "🦙 Alpaca 7B", temp: 0.5 },
-  { model: "📚 Claude v1", temp: 0.5 }
-];
-
-export default function LLMList() {
-  const [items, setItems] = useState(llmItems);
+export default function LLMList({llms}) {
+  const [items, setItems] = useState(llms);
 
   const onDragEnd = (result) => {
     const { destination, source } = result;

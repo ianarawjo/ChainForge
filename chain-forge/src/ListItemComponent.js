@@ -44,7 +44,7 @@ const ListItem = ({ item, provided, snapshot }) => {
       {...provided.dragHandleProps}
     >
       <div>
-        <CardHeader>{item.model}</CardHeader>
+        <CardHeader>{item.emoji}&nbsp;{item.model}</CardHeader>
         <SettingsButton />
       </div>
       
@@ -61,7 +61,7 @@ export const ListItemClone = ({ item, provided, snapshot }) => {
       snapshot={snapshot}
     >
       <div>
-        <CardHeader>{item.model}</CardHeader>
+      <CardHeader>{item.emoji}&nbsp;{item.model}</CardHeader>
         <SettingsButton />
       </div>
     </DragItem>

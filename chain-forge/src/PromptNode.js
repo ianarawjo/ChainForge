@@ -1,10 +1,19 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
+import { Menu, Button, Text, useMantineTheme } from '@mantine/core';
 import useStore from './store';
 import StatusIndicator from './StatusIndicatorComponent'
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks from './TemplateHooksComponent'
 import LLMList from './LLMListComponent'
+
+// Available LLMs
+const llmItems = [
+    { model: "GPT3.5", emoji: "🙂", temp: 1.0 },
+    { model: "GPT4", emoji: "🥵", temp: 1.0 },
+    { model: "Alpaca 7B", emoji: "🦙", temp: 0.5 },
+    { model: "Claude v1", emoji: "📚", temp: 0.5 }
+];
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -32,6 +41,7 @@ const bucketResponsesByLLM = (responses) => {
 };
 
 const PromptNode = ({ data, id }) => {
+  const theme = useMantineTheme();
 
   // Get state from the Zustand store:
   const edges = useStore((state) => state.edges);
@@ -234,16 +244,6 @@ const PromptNode = ({ data, id }) => {
     }
   };
 
-//   const nodeLabelRef = React.useRef(null);
-//   const makeEditable = () => {
-//     if (nodeLabelRef.current) {
-//         for (const child of nodeLabelRef.current.children) {
-//             console.log(child.children);
-//             child.contentEditable = 'true';
-//         }
-//     }
-//   };
-
   const hideStatusIndicator = () => {
     if (status !== 'none') { setStatus('none'); }
   };
@@ -252,26 +252,9 @@ const PromptNode = ({ data, id }) => {
     ? '1px solid #222'
     : '1px solid #999';
 
-  const llm_list_data = [
-    {
-      "position": 6,
-      "mass": 12.011,
-      "symbol": "C",
-      "name": "Carbon"
-    },
-    {
-      "position": 7,
-      "mass": 14.007,
-      "symbol": "N",
-      "name": "Nitrogen"
-    },
-    {
-      "position": 39,
-      "mass": 88.906,
-      "symbol": "Y",
-      "name": "Yttrium"
-    }
-  ];
+  const selectedModel = (name) => {
+    console.log(name);
+  };
 
   return (
     <div 
@@ -312,12 +295,23 @@ const PromptNode = ({ data, id }) => {
             <div style={{marginTop: '6px', marginBottom: '6px', marginLeft: '6px', paddingBottom: '4px', textAlign: 'left', fontSize: '10pt', color: '#777'}}>
                 Models to query:
                 <div className="add-llm-model-btn nodrag">
-                    <button>Add +</button>
+                    <Menu transitionProps={{ transition: 'pop-top-left' }}
+                        position="bottom-start"
+                        width={220}
+                        withinPortal={true}
+                    >
+                        <Menu.Target>
+                            <button>Add +</button>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                            {llmItems.map(item => (<Menu.Item key={item.model} onClick={() => selectedModel(item.model)} icon={item.emoji}>{item.model}</Menu.Item>))}
+                        </Menu.Dropdown>
+                    </Menu>
                 </div>
             </div>
             
             <div className="nodrag">
-                <LLMList data={llm_list_data} />
+                <LLMList llms={llmItems} />
                 {/* <input type="checkbox" id="gpt3.5" name="gpt3.5" value="gpt3.5" defaultChecked={true} onChange={handleLLMChecked} />
                 <label htmlFor="gpt3.5">GPT3.5  </label>
                 <input type="checkbox" id="gpt4" name="gpt4" value="gpt4" defaultChecked={false} onChange={handleLLMChecked} />
