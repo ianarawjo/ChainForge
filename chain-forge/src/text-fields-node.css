@@ -5,6 +5,11 @@
     border-radius: 5px;
   }
 
+  .small-standard-font {
+    font-size: 10pt;
+    font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  }
+
   .status-icon {
     display: inline-block;
     font-size: 14pt;
@@ -212,6 +217,29 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .add-llm-model-btn {
+    display: flex;
+    align-items: right;
+    justify-content: right;
+    float: right;
+    height: 20px;
+  }
+  .add-llm-model-btn button {
+    border-style: solid;
+    border-color: #777;
+    border-width: 1pt;
+    border-radius: 3px;
+    color: #777;
+    margin-right: 2px;
+  }
+  .add-llm-model-btn:hover button {
+    background-color: white;
+  }
+  .add-llm-model-btn:active button {
+    background-color: black;
+    color: white;
   }
 
   /** CSS Button style from https://css-buttons-hover.netlify.app/ */

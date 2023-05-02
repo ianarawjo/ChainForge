@@ -4,6 +4,7 @@ import useStore from './store';
 import StatusIndicator from './StatusIndicatorComponent'
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks from './TemplateHooksComponent'
+import LLMList from './LLMListComponent'
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -251,6 +252,27 @@ const PromptNode = ({ data, id }) => {
     ? '1px solid #222'
     : '1px solid #999';
 
+  const llm_list_data = [
+    {
+      "position": 6,
+      "mass": 12.011,
+      "symbol": "C",
+      "name": "Carbon"
+    },
+    {
+      "position": 7,
+      "mass": 14.007,
+      "symbol": "N",
+      "name": "Nitrogen"
+    },
+    {
+      "position": 39,
+      "mass": 88.906,
+      "symbol": "Y",
+      "name": "Yttrium"
+    }
+  ];
+
   return (
     <div 
       className="prompt-node"
@@ -282,22 +304,28 @@ const PromptNode = ({ data, id }) => {
       </div>
       <TemplateHooks vars={templateVars} nodeId={id} startY={140} />
       <div>
-        <hr />
-        <div>
+        <div style={{marginBottom: '10px', padding: '4px'}}>
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
             <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
-        <hr />
-        <p style={{marginTop: 0}} >LLMs:</p>
-        <div className="nodrag">
-            <input type="checkbox" id="gpt3.5" name="gpt3.5" value="gpt3.5" defaultChecked={true} onChange={handleLLMChecked} />
-            <label htmlFor="gpt3.5">GPT3.5  </label>
-            <input type="checkbox" id="gpt4" name="gpt4" value="gpt4" defaultChecked={false} onChange={handleLLMChecked} />
-            <label htmlFor="gpt4">GPT4  </label>
-            <input type="checkbox" id="alpaca.7B" name="alpaca.7B" value="alpaca.7B" defaultChecked={false} onChange={handleLLMChecked} />
-            <label htmlFor="alpaca.7B">Alpaca 7B</label>
+        <div id="llms-list" style={{backgroundColor: '#eee', padding: '8px', boxShadow: 'inset 0 0 30px #fff'}}>
+            <div style={{marginTop: '6px', marginBottom: '6px', marginLeft: '6px', paddingBottom: '4px', textAlign: 'left', fontSize: '10pt', color: '#777'}}>
+                Models to query:
+                <div className="add-llm-model-btn nodrag">
+                    <button>Add +</button>
+                </div>
+            </div>
+            
+            <div className="nodrag">
+                <LLMList data={llm_list_data} />
+                {/* <input type="checkbox" id="gpt3.5" name="gpt3.5" value="gpt3.5" defaultChecked={true} onChange={handleLLMChecked} />
+                <label htmlFor="gpt3.5">GPT3.5  </label>
+                <input type="checkbox" id="gpt4" name="gpt4" value="gpt4" defaultChecked={false} onChange={handleLLMChecked} />
+                <label htmlFor="gpt4">GPT4  </label>
+                <input type="checkbox" id="alpaca.7B" name="alpaca.7B" value="alpaca.7B" defaultChecked={false} onChange={handleLLMChecked} />
+                <label htmlFor="alpaca.7B">Alpaca 7B</label> */}
+            </div>
         </div>
-        <hr />
         <div className="response-preview-container nowheel">
             {responsePreviews}
         </div>
