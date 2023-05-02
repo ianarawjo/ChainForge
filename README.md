@@ -51,11 +51,12 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 
 ## Future Planned Features
 
-- **Dark mode**: A dark mode theme
+- **Collapse nodes**: Nodes should be collapseable, to save screen space.
 - **LMQL node**: Support for prompt pipelines that involve LMQL code, esp. inspecting masked response variables. 
 - **AI assistance for prompt engineering**: Spur creative ideas and quickly iterate on variations of prompts through interaction with GPT4.
-- **Compare fine-tuned to base models**: Beyond comparing between different models like Alpaca and ChatGPT, we want to support comparison between versions of the same model (e.g., a base model and a fine-tuned one). Did your fine-tuning result in any 'breaking changes' elsewhere? We are building infrastructure to help you detect where.  
+- **Compare fine-tuned to base models**: Beyond comparing between different models like Alpaca and ChatGPT, support comparison between versions of the same model (e.g., a base model and a fine-tuned one). Helper users detect where fine-tuning resulted in any 'breaking changes' elsewhere. 
 - **Export prompt chains to well-known APIs**: In the future, export a chain (in part) to a programming API like LangChain.
+- **Dark mode**: A dark mode theme
 - **Compare across chains**: If a system prompt, or another ‘shared prompt’, is used *across* chains C1 C2 etc, how does changing it affect all downstream events?
 
 ## Inspiration and Links
