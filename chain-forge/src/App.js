@@ -49,62 +49,10 @@ const App = () => {
   // Get nodes, edges, etc. state from the Zustand store:
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, setNodes, setEdges } = useStore(selector, shallow);
 
-  // const [nodes, setNodes] = useState(initialNodes);
-  // const [edges, setEdges] = useState(initialEdges);
-
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
   // For saving / loading
   const [rfInstance, setRfInstance] = useState(null);
 
-  // const onNodesChange = useCallback(
-  //   (changes) => setNodes((ns) => applyNodeChanges(changes, ns)),
-  //   []
-  // );
-  // const onEdgesChange = useCallback(
-  //   (changes) => setEdges((es) => applyEdgeChanges(changes, es)),
-  //   []
-  // );
-  // const onConnect = useCallback((connection) => setEdges((eds) => addEdge(connection, eds)));
-
-  const analyzeResponse = async () => {
-    if (isAnalyzing) return;
-
-    setIsAnalyzing(true);
-
-    // Replace with the API endpoint for your LLM
-    const API_ENDPOINT = 'https://your-api-endpoint';
-
-    // Obtain the prompt from the promptNode
-    const promptNode = nodes.find((el) => el.id === 'promptNode');
-    const prompt = promptNode.data.label;
-
-    console.log("Here's where I would request responses from the LLM for prompt:", prompt)
-
-    // try {
-    //   const response = await axios.post(API_ENDPOINT, { prompt });
-    //   const analysisResult = response.data;
-
-    //   // Update the analysisNode with the result
-    //   const newElements = elements.map((el) => {
-    //     if (el.id === 'analysisNode') {
-    //       return { ...el, data: { ...el.data, label: analysisResult } };
-    //     }
-    //     return el;
-    //   });
-
-    //   setElements(newElements);
-    // } catch (error) {
-    //   console.error('Error analyzing response:', error);
-    // }
-
-    setIsAnalyzing(false);
-  };
-
-  const handleDrag = (event) => {
-    console.log(event);
-  };
-
+  // Helper 
   const getWindowSize = () => ({width: window.innerWidth, height: window.innerHeight});
   const getWindowCenter = () => {
     const { width, height } = getWindowSize();
@@ -112,7 +60,7 @@ const App = () => {
   }
   const getViewportCenter = () => {
     const { centerX, centerY } = getWindowCenter();
-    const { x, y, zoom } = rfInstance.getViewport();
+    const { x, y } = rfInstance.getViewport();
     return ({x: -x+centerX, y:-y+centerY});
   }
 
@@ -137,27 +85,84 @@ const App = () => {
     addNode({ id: 'inspectNode-'+Date.now(), type: 'inspect', data: {}, position: {x: x-200, y:y-100} });
   };
 
-  // Saving / loading
+  /** 
+   * SAVING / LOADING, IMPORT / EXPORT (from JSON)
+  */
+  const downloadJSON = (jsonData, filename) => {
+    // Convert JSON object to JSON string
+    const jsonString = JSON.stringify(jsonData, null, 2);
+  
+    // Create a Blob object from the JSON string
+    const blob = new Blob([jsonString], { type: "application/json" });
+  
+    // Create a temporary download link
+    const downloadLink = document.createElement("a");
+    downloadLink.href = URL.createObjectURL(blob);
+    downloadLink.download = filename;
+  
+    // Add the link to the DOM (it's not visible)
+    document.body.appendChild(downloadLink);
+  
+    // Trigger the download by programmatically clicking the temporary link
+    downloadLink.click();
+  
+    // Remove the temporary link from the DOM and revoke the URL
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(downloadLink.href);
+  };
+
   const saveFlow = useCallback(() => {
-    if (rfInstance) {
-      const flow = rfInstance.toObject();
-      localStorage.setItem('chainforge-flow', JSON.stringify(flow));
-    }
+    if (!rfInstance) return;
+    const flow = rfInstance.toObject();
+    localStorage.setItem('chainforge-flow', JSON.stringify(flow));
   }, [rfInstance]);
-  const loadFlow = () => {
-    const restoreFlow = async () => {
-      const flow = JSON.parse(localStorage.getItem('chainforge-flow'));
-      console.log(flow.nodes);
 
-      if (flow) {
-        const { x = 0, y = 0, zoom = 1 } = flow.viewport;
-        setNodes(flow.nodes || []);
-        setEdges(flow.edges || []);
-        // setViewport({ x, y, zoom });
-      }
-    };
+  const loadFlow = async (flow) => {
+    if (flow) {
+      const { x = 0, y = 0, zoom = 1 } = flow.viewport;
+      // setViewport({ x, y, zoom });
+      setNodes(flow.nodes || []);
+      setEdges(flow.edges || []); 
+    }
+  };
+  const loadFlowFromCache = async () => {
+    loadFlow(JSON.parse(localStorage.getItem('chainforge-flow')));
+  };
 
-    restoreFlow();
+  // Export / Import (from JSON)
+  const exportFlow = useCallback(() => {
+    if (!rfInstance) return;
+    const flow = rfInstance.toObject();
+    downloadJSON(flow, `flow-${Date.now()}.json`);
+  }, [rfInstance]);
+  const importFlow = async (event) => {
+
+    // Create an input element with type "file" and accept only JSON files
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+
+    // Handle file selection
+    input.addEventListener("change", function(event) {
+
+      const file = event.target.files[0];
+      const reader = new FileReader();
+
+      // Handle file load event
+      reader.addEventListener("load", function() {
+        try {
+          loadFlow(JSON.parse(reader.result));
+        } catch (error) {
+          console.error("Error parsing JSON file:", error);
+        }
+      });
+
+      // Read the selected file as text
+      reader.readAsText(file);
+    });
+
+    // Trigger the file selector
+    input.click();
   };
 
   return (
@@ -167,7 +172,6 @@ const App = () => {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onDrag={handleDrag}
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
@@ -191,7 +195,9 @@ const App = () => {
         <button onClick={addVisNode}>Add vis node</button>
         <button onClick={addInspectNode}>Add inspect node</button>
         <button onClick={saveFlow} style={{marginLeft: '12px'}}>Save</button>
-        <button onClick={loadFlow}>Load</button>
+        <button onClick={loadFlowFromCache}>Load</button>
+        <button onClick={exportFlow} style={{marginLeft: '12px'}}>Export</button>
+        <button onClick={importFlow}>Import</button>
       </div>
     </div>
   );
