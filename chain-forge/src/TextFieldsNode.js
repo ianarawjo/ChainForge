@@ -11,6 +11,17 @@ const union = (setA, setB) => {
   }
   return _union;
 }
+const setsAreEqual = (setA, setB) => {
+  if (setA.size !== setB.size) return false;
+  let equal = true;
+  for (const item of setA) {
+    if (!setB.has(item)) {
+      equal = false;
+      break;
+    }
+  }
+  return equal;
+}
 
 const TextFieldsNode = ({ data, id }) => {
 
@@ -22,7 +33,6 @@ const TextFieldsNode = ({ data, id }) => {
     // Update the data for this text fields' id.
     let new_data = { 'fields': {...data.fields} };
     new_data.fields[event.target.id] = event.target.value;
-    setDataPropsForNode(id, new_data);
 
     // TODO: Optimize this check.
     let all_found_vars = new Set();
@@ -37,9 +47,14 @@ const TextFieldsNode = ({ data, id }) => {
 
     // Update template var fields + handles, if there's a change in sets
     const past_vars = new Set(templateVars);
-    if (all_found_vars !== past_vars) {
-      setTemplateVars(Array.from(all_found_vars));
+    if (!setsAreEqual(all_found_vars, past_vars)) {
+      console.log('set vars');
+      const new_vars_arr = Array.from(all_found_vars);
+      new_data.vars = new_vars_arr;
+      setTemplateVars(new_vars_arr);
     }
+
+    setDataPropsForNode(id, new_data);
   }, [data, id, setDataPropsForNode, templateVars]);
 
   // Initialize fields (run once at init)

@@ -36,6 +36,7 @@ const PromptNode = ({ data, id }) => {
   const edges = useStore((state) => state.edges);
   const output = useStore((state) => state.output);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const getNode = useStore((state) => state.getNode);
 
   const [hovered, setHovered] = useState(false);
   const [templateVars, setTemplateVars] = useState(data.vars || []);
@@ -105,24 +106,39 @@ const PromptNode = ({ data, id }) => {
 
         // Pull data from each source:
         const pulled_data = {};
-        templateVars.forEach(varname => {
-            // Find the relevant edge (breaking once we've found it):
-            for (let i = 0; i < edges.length; i++) {
-                const e = edges[i];
-                if (e.target == id && e.targetHandle == varname) {
-                    // Get the data output for that handle on the source node:
-                    let out = output(e.source, e.sourceHandle);
-                    if (!Array.isArray(out)) out = [out];
-                    if (varname in pulled_data)
-                        pulled_data[varname] = pulled_data[varname].concat(out);
-                    else
-                        pulled_data[varname] = out;
-                }
-            }
-        });
+        const get_outputs = (varnames, nodeId) => {
+            console.log(varnames);
+            varnames.forEach(varname => {
+                // Find the relevant edge(s):
+                edges.forEach(e => {
+                    if (e.target == nodeId && e.targetHandle == varname) {
+                        // Get the immediate output:
+                        let out = output(e.source, e.sourceHandle);
+
+                        // Save the var data from the pulled output
+                        if (varname in pulled_data)
+                            pulled_data[varname] = pulled_data[varname].concat(out);
+                        else
+                            pulled_data[varname] = out;
+
+                        // Get any vars that the output depends on, and recursively collect those outputs as well:
+                        const n_vars = getNode(e.source).data.vars;
+                        if (n_vars && Array.isArray(n_vars) && n_vars.length > 0)
+                            get_outputs(n_vars, e.source);
+                    }
+                });
+            });
+        };
+        get_outputs(templateVars, id);
 
         // Get Pythonic version of the prompt, by adding a $ before any template variables in braces:
-        const py_prompt_template = promptText.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
+        const to_py_template_format = (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
+        const py_prompt_template = to_py_template_format(promptText);
+
+        // Do the same for the vars, since vars can themselves be prompt templates:
+        Object.keys(pulled_data).forEach(varname => {
+            pulled_data[varname] = pulled_data[varname].map(val => to_py_template_format(val));
+        });
 
         // Run all prompt permutations through the LLM to generate + cache responses:
         fetch('http://localhost:5000/queryllm', {

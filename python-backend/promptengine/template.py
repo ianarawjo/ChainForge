@@ -109,8 +109,7 @@ class PromptPermutationGenerator:
                 break
         
         if param is None:
-            print("Did not find any more params left to fill in current template. Returning empty list...")
-            return []
+            return [template]
 
         # Generate new prompts by filling in its value(s) into the PromptTemplate
         val = paramDict[param]
@@ -136,8 +135,8 @@ class PromptPermutationGenerator:
             return
 
         for p in self._gen_perm(self.template, list(paramDict.keys()), paramDict):
+            print(p)
             yield p
-
 
 # Test cases
 if __name__ == '__main__':
