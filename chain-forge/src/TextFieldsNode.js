@@ -71,7 +71,7 @@ const TextFieldsNode = ({ data, id }) => {
       const val = data.fields ? data.fields[i] : '';
       return (
         <div className="input-field" key={i}>
-          <textarea id={i} name={i} className="text-field-fixed nodrag" rows="3" cols="40" defaultValue={val} onChange={handleInputChange} />
+          <textarea id={i} name={i} className="text-field-fixed nodrag" rows="2" cols="40" defaultValue={val} onChange={handleInputChange} />
         </div>
     )}));
   }, [data.fields, handleInputChange]);

@@ -292,7 +292,9 @@ const PromptNode = ({ data, id }) => {
         <div className="nodrag">
             <input type="checkbox" id="gpt3.5" name="gpt3.5" value="gpt3.5" defaultChecked={true} onChange={handleLLMChecked} />
             <label htmlFor="gpt3.5">GPT3.5  </label>
-            <input type="checkbox" id="alpaca.7B" name="alpaca.7B" value="alpaca.7B" onChange={handleLLMChecked} />
+            <input type="checkbox" id="gpt4" name="gpt4" value="gpt4" defaultChecked={false} onChange={handleLLMChecked} />
+            <label htmlFor="gpt4">GPT4  </label>
+            <input type="checkbox" id="alpaca.7B" name="alpaca.7B" value="alpaca.7B" defaultChecked={false} onChange={handleLLMChecked} />
             <label htmlFor="alpaca.7B">Alpaca 7B</label>
         </div>
         <hr />
