@@ -11,3 +11,14 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.script-node {
+  background-color: #fff;
+  padding: 10px;
+  border: 1px solid #000;
+  border-radius: 5px;
+}
+
+.script-node-input {
+  min-width: 300px;
+}

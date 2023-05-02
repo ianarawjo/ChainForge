@@ -30,7 +30,7 @@ const InspectorNode = ({ data, id }) => {
     console.log(input_node_ids);
 
     // Grab responses associated with those ids:
-    fetch('http://localhost:5000/grabResponses', {
+    fetch('http://localhost:8000/grabResponses', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
         body: JSON.stringify({

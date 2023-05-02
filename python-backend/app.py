@@ -5,7 +5,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from promptengine.query import PromptLLM
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
-from promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir
+from promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
+import sys
 
 app = Flask(__name__)
 CORS(app)
@@ -137,6 +138,10 @@ def reduce_responses(responses: list, vars: list) -> list:
     
     return ret
 
+@app.route('/test', methods=['GET'])
+def test():
+    return "Hello, world!"
+
 @app.route('/queryllm', methods=['POST'])
 def queryLLM():
     """
@@ -153,6 +158,8 @@ def queryLLM():
         }
     """
     data = request.get_json()
+
+    print('got a request!', data)
 
     # Check that all required info is here:
     if not set(data.keys()).issuperset({'llm', 'prompt', 'vars', 'id'}):
@@ -174,9 +181,13 @@ def queryLLM():
     if 'no_cache' in data and data['no_cache'] is True:
         remove_cached_responses(data['id'])
 
+    # Create a cache dir if it doesn't exist:
+    create_dir_if_not_exists('cache')
+
     # For each LLM, generate and cache responses:
     responses = {}
     params = data['params'] if 'params' in data else {}
+
     for llm in llms:
 
         # Check that storage path is valid:
@@ -194,6 +205,7 @@ def queryLLM():
             for response in prompter.gen_responses(properties=data['vars'], llm=llm, **params):
                 responses[llm].append(response)
         except Exception as e:
+            print('error generating responses:', e)
             raise e
             return jsonify({'error': str(e)})
 
@@ -205,6 +217,7 @@ def queryLLM():
     ]
 
     # Return all responses for all LLMs
+    print('returning responses:', res)
     ret = jsonify({'responses': res})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
@@ -223,6 +236,7 @@ def execute():
             'scope': 'response' | 'batch'  # the scope of responses to run on --a single response, or all across each batch. 
                                            # If batch, evaluator has access to 'responses'. Only matters if n > 1 for each prompt.
             'reduce_vars': unspecified | List[str]  # the 'vars' to average over (mean, median, stdev, range)
+            'script_paths': unspecified | List[str]  # the paths to scripts to be added to the path before the lambda function is evaluated
         }
 
         NOTE: This should only be run on your server on code you trust.
@@ -249,6 +263,18 @@ def execute():
     elif isinstance(data['responses'], str):
         data['responses'] = [ data['responses'] ]
     
+    # add the path to any scripts to the path:
+    try:
+        if 'script_paths' in data:
+            for script_path in data['script_paths']:
+                # get the folder of the script_path:
+                script_folder = os.path.dirname(script_path)
+                # add it to the path:
+                sys.path.append(script_folder)
+                print(f'added {script_folder} to sys.path')
+    except Exception as e:
+        return jsonify({'error': f'Could not add script path to sys.path. Error message:\n{str(e)}'})
+
     # Create the evaluator function
     # DANGER DANGER! 
     try:
@@ -378,4 +404,4 @@ def grabResponses():
     return ret
 
 if __name__ == '__main__':
-    app.run(host="localhost", port=5000, debug=True)
+    app.run(host="localhost", port=8000, debug=True)

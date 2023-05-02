@@ -125,7 +125,7 @@ const PromptNode = ({ data, id }) => {
         const py_prompt_template = promptText.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
 
         // Run all prompt permutations through the LLM to generate + cache responses:
-        fetch('http://localhost:5000/queryllm', {
+        fetch('http://localhost:8000/queryllm', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({

@@ -6,6 +6,10 @@ import json, os, time
 DALAI_MODEL = None
 DALAI_RESPONSE = None
 
+openai.api_key = os.environ.get("OPENAI_API_KEY")
+
+
+
 """ Supported LLM coding assistants """
 class LLM(Enum):
     ChatGPT = 0
@@ -135,6 +139,10 @@ def extract_responses(response: Union[list, dict], llm: LLM) -> List[dict]:
         return response["response"]
     else:
         raise ValueError(f"LLM {llm} is unsupported.")
+
+def create_dir_if_not_exists(path: str) -> None:
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 def is_valid_filepath(filepath: str) -> bool:
     try:

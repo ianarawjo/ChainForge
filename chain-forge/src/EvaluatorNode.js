@@ -43,6 +43,7 @@ const EvaluatorNode = ({ data, id }) => {
   const getNode = useStore((state) => state.getNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const [status, setStatus] = useState('none');
+  const nodes = useStore((state) => state.nodes);
 
   // Mantine modal popover for alerts
   const [opened, { open, close }] = useDisclosure(false);
@@ -82,6 +83,7 @@ const EvaluatorNode = ({ data, id }) => {
   };
 
   const handleRunClick = (event) => {
+    
     // Get the ids from the connected input nodes:
     const input_node_ids = inputEdgesForNode(id).map(e => e.source);
     if (input_node_ids.length === 0) {
@@ -105,9 +107,13 @@ const EvaluatorNode = ({ data, id }) => {
       triggerErrorAlert(err_msg);
     };
 
+    // Get all the script nodes, and get all the folder paths
+    const script_nodes = nodes.filter(n => n.type === 'script');
+    const script_paths = script_nodes.map(n => Object.values(n.data.scriptFiles).filter(f => f !== '')).flat();
+    console.log(script_paths);
     // Run evaluator in backend
     const codeTextOnRun = codeText + '';
-    fetch('http://localhost:5000/execute', {
+    fetch('http://localhost:8000/execute', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
         body: JSON.stringify({
@@ -116,6 +122,7 @@ const EvaluatorNode = ({ data, id }) => {
             scope: mapScope,
             responses: input_node_ids,
             reduce_vars: reduceMethod === 'avg' ? reduceVars : [],
+            script_paths: script_paths,
             // write an extra part here that takes in reduce func
         }),
     }, rejected).then(function(response) {
