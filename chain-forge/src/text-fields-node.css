@@ -203,6 +203,11 @@
     font-family: 'Courier New', Courier, monospace;
   }
 
+  .hook-tag {
+    padding-top: 11px;;
+    padding-bottom: 3px;
+  }
+
   .code-mirror-field-header {
     font-size: 10pt;
     color: #333;

@@ -12,7 +12,8 @@ const llmItems = [
     { model: "GPT3.5", emoji: "🙂", temp: 1.0 },
     { model: "GPT4", emoji: "🥵", temp: 1.0 },
     { model: "Alpaca 7B", emoji: "🦙", temp: 0.5 },
-    { model: "Claude v1", emoji: "📚", temp: 0.5 }
+    { model: "Claude v1", emoji: "📚", temp: 0.5 },
+    { model: "Ian Chatbot", emoji: "💩", temp: 0.5 }
 ];
 
 // Helper funcs
@@ -286,12 +287,13 @@ const PromptNode = ({ data, id }) => {
         />
       </div>
       <TemplateHooks vars={templateVars} nodeId={id} startY={140} />
+      <hr />
       <div>
         <div style={{marginBottom: '10px', padding: '4px'}}>
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
             <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
-        <div id="llms-list" style={{backgroundColor: '#eee', padding: '8px', boxShadow: 'inset 0 0 30px #fff'}}>
+        <div id="llms-list" className="nowheel" style={{backgroundColor: '#eee', padding: '8px', boxShadow: 'inset 0 0 30px #fff', overflowY: 'auto', maxHeight: '220px'}}>
             <div style={{marginTop: '6px', marginBottom: '6px', marginLeft: '6px', paddingBottom: '4px', textAlign: 'left', fontSize: '10pt', color: '#777'}}>
                 Models to query:
                 <div className="add-llm-model-btn nodrag">
