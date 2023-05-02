@@ -74,7 +74,7 @@ const useStore = create((set, get) => ({
           if (n.id === id) {
             for (const key of Object.keys(data_props))
               n.data[key] = data_props[key];
-            n.data = {...n.data};
+            n.data = JSON.parse(JSON.stringify(n.data));  // deep copy json
           }
           return n;
         })

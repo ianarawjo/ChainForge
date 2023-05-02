@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store'
 
 export default function TemplateHooks({ vars, nodeId, startY }) {
 
-    const genTemplateHooks = (temp_var_names, names_to_blink) => {
+    const genTemplateHooks = useCallback((temp_var_names, names_to_blink) => {
         return temp_var_names.map((name, idx) => {
             const className = (names_to_blink.includes(name)) ? 'text-blink' : '';
             const pos = (idx * 35) + startY + 'px';
@@ -14,7 +14,7 @@ export default function TemplateHooks({ vars, nodeId, startY }) {
                 <Handle type="target" position="left" id={name} style={style} />
             </div>)
         });
-    };
+    }, [startY]);
 
     const [templateHooks, setTemplateHooks] = useState(genTemplateHooks(vars || [], []));
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
@@ -28,8 +28,8 @@ export default function TemplateHooks({ vars, nodeId, startY }) {
 
     useEffect(() => {
         setTemplateHooks(genTemplateHooks(vars, []));
-        setDataPropsForNode(nodeId, {vars: vars});
-    }, [vars]);
+        // setDataPropsForNode(nodeId, {vars: vars});
+    }, [vars, startY, genTemplateHooks, nodeId, setDataPropsForNode]);
 
     return (
         <div className="template-hooks">
