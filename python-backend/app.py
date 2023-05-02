@@ -14,6 +14,7 @@ CORS(app)
 LLM_NAME_MAP = {
     'gpt3.5': LLM.ChatGPT,
     'alpaca.7B': LLM.Alpaca7B,
+    'gpt4': LLM.GPT4,
 }
 LLM_NAME_MAP_INVERSE = {val.name: key for key, val in LLM_NAME_MAP.items()}
 

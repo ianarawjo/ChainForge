@@ -106,8 +106,8 @@ class PromptPipeline:
         self._cache_responses({})
 
     def _prompt_llm(self, llm: LLM, prompt: str, n: int = 1, temperature: float = 1.0) -> Tuple[Dict, Dict]:
-        if llm is LLM.ChatGPT:
-            return call_chatgpt(prompt, n=n, temperature=temperature)
+        if llm is LLM.ChatGPT or llm is LLM.GPT4:
+            return call_chatgpt(prompt, model=llm, n=n, temperature=temperature)
         elif llm is LLM.Alpaca7B:
             return call_dalai(llm_name='alpaca.7B', port=4000, prompt=prompt, n=n, temperature=temperature)
         else:

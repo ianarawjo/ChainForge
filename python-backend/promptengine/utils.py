@@ -14,15 +14,20 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 class LLM(Enum):
     ChatGPT = 0
     Alpaca7B = 1
+    GPT4 = 2
 
-def call_chatgpt(prompt: str, n: int = 1, temperature: float = 1.0, system_msg: Union[str, None]=None) -> Tuple[Dict, Dict]:
+def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float = 1.0, system_msg: Union[str, None]=None) -> Tuple[Dict, Dict]:
     """
         Calls GPT3.5 via OpenAI's API. 
         Returns raw query and response JSON dicts. 
     """
+    model_map = { LLM.ChatGPT: 'gpt-3.5-turbo', LLM.GPT4: 'gpt-4' }
+    if model not in model_map:
+        raise Exception(f"Could not find OpenAI chat model {model}")
+    model = model_map[model]
     system_msg = "You are a helpful assistant." if system_msg is None else system_msg
     query = {
-        "model": "gpt-3.5-turbo",
+        "model": model,
         "messages": [
             {"role": "system", "content": system_msg},
             {"role": "user", "content": prompt},
@@ -133,7 +138,7 @@ def extract_responses(response: Union[list, dict], llm: LLM) -> List[dict]:
         Given a LLM and a response object from its API, extract the
         text response(s) part of the response object.
     """
-    if llm is LLM.ChatGPT or llm == LLM.ChatGPT.name:
+    if llm is LLM.ChatGPT or llm == LLM.ChatGPT.name or llm is LLM.GPT4 or llm == LLM.GPT4.name:
         return _extract_chatgpt_responses(response)
     elif llm is LLM.Alpaca7B or llm == LLM.Alpaca7B.name:
         return response["response"]

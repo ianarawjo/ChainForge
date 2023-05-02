@@ -45,11 +45,15 @@ const InspectorNode = ({ data, id }) => {
             // Bucket responses by LLM:
             const responses_by_llm = bucketResponsesByLLM(json.responses);
             
-            // Get the var names across responses 
-            // NOTE: This assumes only a single prompt node output as input 
-            //       (all response vars have the exact same keys).
-            let tempvars = {};
-            Object.keys(json.responses[0].vars).forEach(v => {tempvars[v] = new Set();});
+            // // Get the var names across all responses, as a set
+            // let tempvarnames = new Set();
+            // json.responses.forEach(r => {
+            //     if (!r.vars) return;
+            //     Object.keys(r.vars).forEach(tempvarnames.add);
+            // });
+
+            // // Create a dict version
+            // let tempvars = {};
 
             const vars_to_str = (vars) => {
                 const pairs = Object.keys(vars).map(varname => {
@@ -67,7 +71,7 @@ const InspectorNode = ({ data, id }) => {
                     const ps = res_obj.responses.map((r, idx) => 
                         (<pre className="small-response" key={idx}>{r}</pre>)
                     );
-                    Object.keys(res_obj.vars).forEach(v => {tempvars[v].add(res_obj.vars[v])});
+                    // Object.keys(res_obj.vars).forEach(v => {tempvars[v].add(res_obj.vars[v])});
                     const vars = vars_to_str(res_obj.vars);
                     return (
                         <div key={"r"+res_idx} className="response-box" style={{ backgroundColor: colors[llm_idx % colors.length] }}>
@@ -84,19 +88,19 @@ const InspectorNode = ({ data, id }) => {
                 );
             }));
 
-            setVarSelects(Object.keys(tempvars).map(v => {
-                const options = Array.from(tempvars[v]).map((val, idx) => (
-                    <option value={val} key={idx}>{val}</option>
-                ));
-                return (
-                    <div key={v}>
-                        <label htmlFor={v}>{v}: </label>
-                        <select name={v} id={v} onChange={handleVarValueSelect}>
-                            {options}
-                        </select>
-                    </div>
-                );
-            }));
+            // setVarSelects(Object.keys(tempvars).map(v => {
+            //     const options = Array.from(tempvars[v]).map((val, idx) => (
+            //         <option value={val} key={idx}>{val}</option>
+            //     ));
+            //     return (
+            //         <div key={v}>
+            //             <label htmlFor={v}>{v}: </label>
+            //             <select name={v} id={v} onChange={handleVarValueSelect}>
+            //                 {options}
+            //             </select>
+            //         </div>
+            //     );
+            // }));
         }
     });
   }
