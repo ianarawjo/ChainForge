@@ -66,6 +66,7 @@ const ScriptNode = ({ data, id }) => {
             <div className="node-header">
                 <NodeLabel title={data.title || 'Script Node'} nodeId={id} />
             </div>
+            <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Enter folder paths for external modules you wish to import.</label> <br/><br/>
             <div ref={ref}>
                 {scriptFiles}
             </div>
