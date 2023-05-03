@@ -1,8 +1,9 @@
+import { edit } from 'ace-builds';
 import useStore from './store';
 import { EditText } from 'react-edit-text';
 import 'react-edit-text/dist/index.css';
 
-export default function NodeLabel({ title, nodeId, icon, onEdit, onSave }) {
+export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable }) {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
     const handleNodeLabelChange = (evt) => {
@@ -23,6 +24,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave }) {
                   onEditMode={handleEnterEditMode} 
                   onSave={handleNodeLabelChange}
                   inline={true} 
+                  readonly={editable !== undefined ? (!editable) : false}
         />
     </>);
 }
