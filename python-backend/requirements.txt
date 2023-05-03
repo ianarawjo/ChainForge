@@ -1,5 +1,5 @@
 dalaipy==2.0.2
-flask
+flask[async]
 flask_cors
 openai
 python-socketio

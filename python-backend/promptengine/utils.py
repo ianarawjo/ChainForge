@@ -14,7 +14,7 @@ class LLM(Enum):
     Alpaca7B = 1
     GPT4 = 2
 
-def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float = 1.0, system_msg: Union[str, None]=None) -> Tuple[Dict, Dict]:
+async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float = 1.0, system_msg: Union[str, None]=None) -> Tuple[Dict, Dict]:
     """
         Calls GPT3.5 via OpenAI's API. 
         Returns raw query and response JSON dicts. 
@@ -36,7 +36,7 @@ def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float = 1.0, 
     response = openai.ChatCompletion.create(**query)
     return query, response
 
-def call_dalai(llm_name: str, port: int, prompt: str, n: int = 1, temperature: float = 0.5, **params) -> Tuple[Dict, Dict]:
+async def call_dalai(llm_name: str, port: int, prompt: str, n: int = 1, temperature: float = 0.5, **params) -> Tuple[Dict, Dict]:
     """
         Calls a Dalai server running LLMs Alpaca, Llama, etc locally.
         Returns the raw query and response JSON dicts. 

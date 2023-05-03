@@ -144,7 +144,7 @@ def test():
     return "Hello, world!"
 
 @app.route('/queryllm', methods=['POST'])
-def queryLLM():
+async def queryLLM():
     """
         Queries LLM(s) given a JSON spec.
 
@@ -201,7 +201,7 @@ def queryLLM():
         # NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
         responses[llm] = []
         try:
-            for response in prompter.gen_responses(properties=data['vars'], llm=llm, **params):
+            async for response in prompter.gen_responses(properties=data['vars'], llm=llm, **params):
                 responses[llm].append(response)
         except Exception as e:
             print('error generating responses:', e)
