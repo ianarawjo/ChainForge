@@ -53,7 +53,6 @@ const PromptNode = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const getNode = useStore((state) => state.getNode);
 
-  const [hovered, setHovered] = useState(false);
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const [promptText, setPromptText] = useState(data.prompt);
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
@@ -87,13 +86,6 @@ const PromptNode = ({ data, id }) => {
   const onLLMListItemsChange = useCallback((new_items) => {
     setLLMItemsCurrState(new_items);
   }, [setLLMItemsCurrState]);
-  
-  const handleMouseEnter = () => {
-    setHovered(true);
-  };
-  const handleMouseLeave = () => {
-    setHovered(false);
-  };
 
   const handleInputChange = (event) => {
     const value = event.target.value;
@@ -277,18 +269,9 @@ const PromptNode = ({ data, id }) => {
   const hideStatusIndicator = () => {
     if (status !== 'none') { setStatus('none'); }
   };
-  
-  const borderStyle = hovered
-    ? '1px solid #222'
-    : '1px solid #999';
 
   return (
-    <div 
-      className="prompt-node"
-      style={{ border: borderStyle }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="prompt-node cfnode">
       <div className="node-header drag-handle">
         <NodeLabel title={data.title || 'Prompt Node'} 
                    nodeId={id} 

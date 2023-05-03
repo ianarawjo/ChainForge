@@ -116,7 +116,7 @@ const InspectorNode = ({ data, id }) => {
   }
 
   return (
-    <div className="inspector-node">
+    <div className="inspector-node cfnode">
       <div className="node-header">
             <NodeLabel title={data.title || 'Inspect Node'} 
                        nodeId={id}

@@ -183,6 +183,13 @@
     margin: 0px 0px 0px 2px;
   }
 
+  .cfnode {
+    border-color: #999;
+  }
+  .cfnode:hover {
+    border-color: #222;
+  }
+  
   .var-select-toolbar {
     text-align: right;
     margin: 0px;

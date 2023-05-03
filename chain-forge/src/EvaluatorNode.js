@@ -25,19 +25,11 @@ const EvaluatorNode = ({ data, id }) => {
   // For displaying error messages to user
   const alertModal = useRef(null);
 
-  const [hovered, setHovered] = useState(false);
   const [codeText, setCodeText] = useState(data.code);
   const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
   const [reduceMethod, setReduceMethod] = useState('none');
   const [mapScope, setMapScope] = useState('response');
   const [reduceVars, setReduceVars] = useState([]);
-
-  const handleMouseEnter = () => {
-    setHovered(true);
-  };
-  const handleMouseLeave = () => {
-    setHovered(false);
-  };
 
   const handleCodeChange = (code) => {
     if (codeTextOnLastRun !== false) {
@@ -156,17 +148,8 @@ const EvaluatorNode = ({ data, id }) => {
     if (status !== 'none') { setStatus('none'); }
   };
 
-  const borderStyle = hovered
-    ? '1px solid #222'
-    : '1px solid #999';
-
   return (
-    <div 
-      className="evaluator-node"
-      style={{ border: borderStyle }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="evaluator-node cfnode">
       <div className="node-header">
         <NodeLabel title={data.title || 'Python Evaluator Node'} 
                    nodeId={id} 
