@@ -1,17 +1,23 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import useStore from './store';
-import NodeLabel from './NodeLabelComponent'
+import NodeLabel from './NodeLabelComponent';
+import { IconSettingsAutomation } from '@tabler/icons-react';
 
 
 const ScriptNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const delButtonId = 'del-';
+    var [idCounter, setIDCounter] = useState(0);
+    const get_id = () => {
+        setIDCounter(idCounter + 1);
+        return 'f' + idCounter.toString();
+    }
+    
     // Handle a change in a scripts' input.
     const handleInputChange = useCallback((event) => {
         // Update the data for this script node's id.
         let new_data = { 'scriptFiles': { ...data.scriptFiles } };
         new_data.scriptFiles[event.target.id] = event.target.value;
-        console.log(new_data);
         setDataPropsForNode(id, new_data);
     }, [data, id, setDataPropsForNode]);
 
@@ -23,7 +29,7 @@ const ScriptNode = ({ data, id }) => {
         delete new_data.scriptFiles[item_id];
         // if the new_data is empty, initialize it with one empty field
         if (Object.keys(new_data.scriptFiles).length === 0) {
-            new_data.scriptFiles['f0'] = '';
+            new_data.scriptFiles[get_id()] = '';
         }
         console.log(new_data);
         setDataPropsForNode(id, new_data);
@@ -33,12 +39,12 @@ const ScriptNode = ({ data, id }) => {
     const [scriptFiles, setScriptFiles] = useState([]);
     useEffect(() => {
         if (!data.scriptFiles)
-            setDataPropsForNode(id, { scriptFiles: { f0: '' } });
-    }, [data.scriptFiles, id, setDataPropsForNode]);
+            setDataPropsForNode(id, { scriptFiles: { [get_id()]: '' } });
+    }, []);
 
     // Whenever 'data' changes, update the input fields to reflect the current state.
     useEffect(() => {
-        const f = data.scriptFiles ? Object.keys(data.scriptFiles) : ['f0'];
+        const f = data.scriptFiles ? Object.keys(data.scriptFiles) : [];
         setScriptFiles(f.map((i) => {
             const val = data.scriptFiles ? data.scriptFiles[i] : '';
             return (
@@ -52,16 +58,15 @@ const ScriptNode = ({ data, id }) => {
     // Add a field
     const handleAddField = useCallback(() => {
         // Update the data for this script node's id.
-        const num_files = data.scriptFiles ? Object.keys(data.scriptFiles).length : 0;
         let new_data = { 'scriptFiles': { ...data.scriptFiles } };
-        new_data.scriptFiles['f' + num_files.toString()] = "";
+        new_data.scriptFiles[get_id()] = "";
         setDataPropsForNode(id, new_data);
     }, [data, id, setDataPropsForNode]);
 
     return (
         <div className="script-node cfnode">
             <div className="node-header">
-                <NodeLabel title={data.title || 'Global Scripts'} nodeId={id} editable={false} />
+                <NodeLabel title={data.title || 'Global Scripts'} nodeId={id} editable={false} icon={<IconSettingsAutomation size="16px" />}/>
             </div>
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Enter folder paths for external modules you wish to import.</label> <br/><br/>
             <div>
