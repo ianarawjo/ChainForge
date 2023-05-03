@@ -8,6 +8,7 @@ import NodeLabel from './NodeLabelComponent'
 import TemplateHooks from './TemplateHooksComponent'
 import LLMList from './LLMListComponent'
 import AlertModal from './AlertModal'
+import {BASE_URL} from './store';
 
 // Available LLMs
 const allLLMs = [
@@ -186,7 +187,7 @@ const PromptNode = ({ data, id }) => {
         };
 
         // Run all prompt permutations through the LLM to generate + cache responses:
-        fetch('http://localhost:8000/queryllm', {
+        fetch(BASE_URL + 'queryllm', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({

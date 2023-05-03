@@ -4,7 +4,8 @@ import useStore from './store';
 import Plot from 'react-plotly.js';
 import { hover } from '@testing-library/user-event/dist/hover';
 import { create } from 'zustand';
-import NodeLabel from './NodeLabelComponent'
+import NodeLabel from './NodeLabelComponent';
+import {BASE_URL} from './store';
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -54,7 +55,7 @@ const VisNode = ({ data, id }) => {
         // Grab the input node ids
         const input_node_ids = [data.input];
 
-        fetch('http://localhost:8000/grabResponses', {
+        fetch(BASE_URL + 'grabResponses', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({

@@ -58,14 +58,6 @@ const ScriptNode = ({ data, id }) => {
         setDataPropsForNode(id, new_data);
     }, [data, id, setDataPropsForNode]);
 
-    // Dynamically update the y-position of the template hook <Handle>s
-    const ref = useRef(null);
-    const [hooksY, setHooksY] = useState(120);
-    useEffect(() => {
-        const node_height = ref.current.clientHeight;
-        setHooksY(node_height + 70);
-    }, [scriptFiles]);
-
     return (
         <div className="script-node">
             <div className="node-header">

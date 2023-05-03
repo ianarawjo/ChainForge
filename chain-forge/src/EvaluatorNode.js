@@ -4,6 +4,7 @@ import useStore from './store';
 import StatusIndicator from './StatusIndicatorComponent'
 import NodeLabel from './NodeLabelComponent'
 import AlertModal from './AlertModal'
+import {BASE_URL} from './store';
 
 // Ace code editor
 import AceEditor from "react-ace";
@@ -80,7 +81,7 @@ const EvaluatorNode = ({ data, id }) => {
     console.log(script_paths);
     // Run evaluator in backend
     const codeTextOnRun = codeText + '';
-    fetch('http://localhost:8000/execute', {
+    fetch(BASE_URL + 'execute', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
         body: JSON.stringify({

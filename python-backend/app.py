@@ -160,8 +160,6 @@ def queryLLM():
     """
     data = request.get_json()
 
-    print('got a request!', data)
-
     # Check that all required info is here:
     if not set(data.keys()).issuperset({'llm', 'prompt', 'vars', 'id'}):
         return jsonify({'error': 'POST data is improper format.'})
