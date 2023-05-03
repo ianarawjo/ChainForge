@@ -295,7 +295,7 @@ const PromptNode = ({ data, id }) => {
           style={{ top: '50%', background: '#555' }}
         />
       </div>
-      <TemplateHooks vars={templateVars} nodeId={id} startY={140} />
+      <TemplateHooks vars={templateVars} nodeId={id} startY={145} />
       <hr />
       <div>
         <div style={{marginBottom: '10px', padding: '4px'}}>
