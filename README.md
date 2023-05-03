@@ -8,8 +8,8 @@ ChainForge is built on [ReactFlow](https://reactflow.dev) and is in active devel
 # Features
 
 A key goal of ChainForge is facilitating **comparison** and **evaluation** of prompts and models, and (in the near future) prompt chains. Basic features are:
-- **Prompt permutations**: Setup a prompt template and feed it variations of input variables. ChainForge will prompt all selected LLMs with all possible permutations of the input prompt, so that you can get a better sense of prompt quality.
-- **Evaluation nodes**: Probe LLM responses in a chain and test them for some desired behavior. Initially, Python script based. 
+- **Prompt permutations**: Setup a prompt template and feed it variations of input variables. ChainForge will prompt all selected LLMs with all possible permutations of the input prompt, so that you can get a better sense of prompt quality. You can also chain prompt templates at arbitrary depth (e.g., to compare templates).
+- **Evaluation nodes**: Probe LLM responses in a chain and test them (classically) for some desired behavior. At a basic level, this is Python script based. We plan to add preset evaluator nodes for common use cases in the near future (e.g., name-entity recognition). Note that you can also chain LLM responses into prompt templates to help evaluate outputs cheaply before more extensive evaluation methods.
 - **Visualization nodes**: Visualize evaluation results on plots like box-and-whisker and 3D scatterplots.
 
 Taken together, these three features let you easily:
@@ -39,6 +39,10 @@ This spins up two local servers: a React server through npm, and a Python backen
 ### Sharing prompt chains
 
 All ChainForge node graphs are importable/exportable as JSON specs. You can freely share prompt chains you develop (alongside any custom analysis code), whether to the public or within your organization. 
+
+## Example: Test LLM robustness to prompt injection
+
+...
 
 # Development
 

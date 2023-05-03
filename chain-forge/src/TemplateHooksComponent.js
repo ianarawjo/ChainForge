@@ -1,16 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Handle } from 'react-flow-renderer';
+import { Badge } from '@mantine/core';
 import useStore from './store'
 
 export default function TemplateHooks({ vars, nodeId, startY }) {
 
     const genTemplateHooks = useCallback((temp_var_names, names_to_blink) => {
         return temp_var_names.map((name, idx) => {
-            const className = (names_to_blink.includes(name)) ? 'text-blink' : '';
+            const className = (names_to_blink.includes(name)) ? 'hook-tag text-blink' : 'hook-tag';
             const pos = (idx * 35) + startY + 'px';
             const style = { top: pos,  background: '#555' };
             return (<div key={name} className={className} >
-                <p>{name}</p>
+                <Badge color="indigo" size="md" radius="sm">{name}</Badge>
                 <Handle type="target" position="left" id={name} style={style} />
             </div>)
         });
