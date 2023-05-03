@@ -164,11 +164,9 @@ const VisNode = ({ data, id }) => {
   
     return (
       <div className="vis-node cfnode">
-        <div className="node-header">
-            <NodeLabel title={data.title || 'Vis Node'} 
-                       nodeId={id}
-                       icon={'📊'} />
-        </div>
+        <NodeLabel title={data.title || 'Vis Node'} 
+                    nodeId={id}
+                    icon={'📊'} />
         <div className="nodrag">{plotlyObj}</div>
         <Handle
             type="target"

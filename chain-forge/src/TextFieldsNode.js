@@ -115,9 +115,7 @@ const TextFieldsNode = ({ data, id }) => {
 
   return (
     <div className="text-fields-node cfnode">
-      <div className="node-header">
-        <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} />
-      </div>
+      <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} />
       <div ref={ref}>
         {fields}
       </div>

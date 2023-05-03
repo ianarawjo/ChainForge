@@ -65,9 +65,7 @@ const ScriptNode = ({ data, id }) => {
 
     return (
         <div className="script-node cfnode">
-            <div className="node-header">
-                <NodeLabel title={data.title || 'Global Scripts'} nodeId={id} editable={false} icon={<IconSettingsAutomation size="16px" />}/>
-            </div>
+            <NodeLabel title={data.title || 'Global Scripts'} nodeId={id} editable={false} icon={<IconSettingsAutomation size="16px" />}/>
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Enter folder paths for external modules you wish to import.</label> <br/><br/>
             <div>
                 {scriptFiles}

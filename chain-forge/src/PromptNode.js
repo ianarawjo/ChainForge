@@ -272,15 +272,14 @@ const PromptNode = ({ data, id }) => {
 
   return (
     <div className="prompt-node cfnode">
-      <div className="node-header drag-handle">
-        <NodeLabel title={data.title || 'Prompt Node'} 
-                   nodeId={id} 
-                   onEdit={hideStatusIndicator}
-                   icon={'💬'} />
-        <StatusIndicator status={status} />
-        <AlertModal ref={alertModal} />
-        <button className="AmitSahoo45-button-3 nodrag" onClick={handleRunClick}><div className="play-button"></div></button>
-      </div>
+    <NodeLabel title={data.title || 'Prompt Node'} 
+                nodeId={id} 
+                onEdit={hideStatusIndicator}
+                icon={'💬'} 
+                status={status}
+                alertModal={alertModal}
+                handleRunClick={handleRunClick}
+                />
       <div className="input-field">
         <textarea
           rows="4"
