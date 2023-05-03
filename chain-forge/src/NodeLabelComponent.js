@@ -49,7 +49,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             {icon ? (<>{icon}&nbsp;</>) : <></>}
             <EditText className="nodrag" name={nodeId ? nodeId + "-label" : "node-label"}
                 defaultValue={title || 'Node'}
-                style={{ width: '70%', margin: '0px', padding: '0px', minHeight: '18px' }}
+                style={{ width: '60%', margin: '0px', padding: '0px', minHeight: '18px' }}
                 onEditMode={handleEnterEditMode}
                 onSave={handleNodeLabelChange}
                 inline={true}
