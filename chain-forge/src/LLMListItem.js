@@ -1,7 +1,7 @@
 /** Thanks to Kabir Haruna: https://codesandbox.io/s/i0rxsj */
 import React from "react";
 import styled from "styled-components";
-import SettingsButton from "./SettingsButton"
+import LLMItemButtonGroup from "./LLMItemButtonGroup"
 
 const CardHeader = styled.div`
   font-weight: 500;
@@ -10,18 +10,6 @@ const CardHeader = styled.div`
   text-align: start;
   float: left;
   margin-top: 1px;
-`;
-
-const Author = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
-const CardFooter = styled.div`
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 `;
 
 export const DragItem = styled.div`
@@ -35,7 +23,7 @@ export const DragItem = styled.div`
   flex-direction: column;
 `;
 
-const ListItem = ({ item, provided, snapshot }) => {
+const LLMListItem = ({ item, provided, snapshot, removeCallback }) => {
   return (
     <DragItem
       ref={provided.innerRef}
@@ -44,15 +32,15 @@ const ListItem = ({ item, provided, snapshot }) => {
       {...provided.dragHandleProps}
     >
       <div>
-        <CardHeader>{item.emoji}&nbsp;{item.model}</CardHeader>
-        <SettingsButton />
+        <CardHeader>{item.emoji}&nbsp;{item.name}</CardHeader>
+        <LLMItemButtonGroup onClickTrash={() => removeCallback(item.key)} />
       </div>
       
     </DragItem>
   );
 };
 
-export const ListItemClone = ({ item, provided, snapshot }) => {
+export const LLMListItemClone = ({ item, provided, snapshot }) => {
   return (
     <DragItem
       ref={provided.innerRef}
@@ -61,11 +49,11 @@ export const ListItemClone = ({ item, provided, snapshot }) => {
       snapshot={snapshot}
     >
       <div>
-      <CardHeader>{item.emoji}&nbsp;{item.model}</CardHeader>
-        <SettingsButton />
+      <CardHeader>{item.emoji}&nbsp;{item.name}</CardHeader>
+        <LLMItemButtonGroup />
       </div>
     </DragItem>
   );
 };
 
-export default ListItem;
+export default LLMListItem;

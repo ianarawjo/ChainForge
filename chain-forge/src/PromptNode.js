@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Badge, useMantineTheme } from '@mantine/core';
+import { Menu, Badge } from '@mantine/core';
+import { v4 as uuid } from 'uuid';
 import useStore from './store';
 import StatusIndicator from './StatusIndicatorComponent'
 import NodeLabel from './NodeLabelComponent'
@@ -9,13 +10,14 @@ import LLMList from './LLMListComponent'
 import AlertModal from './AlertModal'
 
 // Available LLMs
-const llmItems = [
-    { model: "GPT3.5", emoji: "🙂", temp: 1.0 },
-    { model: "GPT4", emoji: "🥵", temp: 1.0 },
-    { model: "Alpaca 7B", emoji: "🦙", temp: 0.5 },
-    { model: "Claude v1", emoji: "📚", temp: 0.5 },
-    { model: "Ian Chatbot", emoji: "💩", temp: 0.5 }
+const allLLMs = [
+    { name: "GPT3.5", emoji: "🙂", model: "gpt3.5", temp: 1.0 },
+    { name: "GPT4", emoji: "🥵", model: "gpt4", temp: 1.0 },
+    { name: "Alpaca 7B", emoji: "🦙", model: "alpaca.7B", temp: 0.5 },
+    { name: "Claude v1", emoji: "📚", model: "claude.v1", temp: 0.5 },
+    { name: "Ian Chatbot", emoji: "💩", model: "test", temp: 0.5 }
 ];
+const initLLMs = [allLLMs[0]];
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -43,7 +45,6 @@ const bucketResponsesByLLM = (responses) => {
 };
 
 const PromptNode = ({ data, id }) => {
-  const theme = useMantineTheme();
 
   // Get state from the Zustand store:
   const edges = useStore((state) => state.edges);
@@ -55,13 +56,36 @@ const PromptNode = ({ data, id }) => {
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const [promptText, setPromptText] = useState(data.prompt);
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
-  const [selectedLLMs, setSelectedLLMs] = useState(['gpt3.5']);
   const [status, setStatus] = useState('none');
   const [responsePreviews, setReponsePreviews] = useState([]);
   const [numGenerations, setNumGenerations] = useState(data.n || 1);
 
   // For displaying error messages to user
   const alertModal = useRef(null);
+
+  // Selecting LLM models to prompt
+  const [llmItems, setLLMItems] = useState(initLLMs.map((i, idx) => ({key: uuid(), ...i})));
+  const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
+
+  const addModel = useCallback((model) => {
+    // Get the item for that model
+    let item = allLLMs.find(llm => llm.model === model);
+
+    if (!item) {  // This should never trigger, but in case it does:
+        alertModal.current.trigger(`Could not find model named '${model}' in list of available LLMs.`);
+        return;
+    }
+
+    // Give it a uid as a unique key (this is needed for the draggable list to support multiple same-model items; keys must be unique)
+    item = {key: uuid(), ...item};
+
+    // Add model to LLM list (regardless of it's present already or not). 
+    setLLMItems(llmItemsCurrState.concat([item]))
+  }, [llmItemsCurrState]);
+
+  const onLLMListItemsChange = useCallback((new_items) => {
+    setLLMItemsCurrState(new_items);
+  }, [setLLMItemsCurrState]);
   
   const handleMouseEnter = () => {
     setHovered(true);
@@ -112,7 +136,7 @@ const PromptNode = ({ data, id }) => {
         console.log('Connected!');
 
         // Check that there is at least one LLM selected:
-        if (selectedLLMs.length === 0) {
+        if (llmItems.length === 0) {
             alert('Please select at least one LLM to prompt.')
             return;
         }
@@ -167,7 +191,7 @@ const PromptNode = ({ data, id }) => {
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({
                 id: id,
-                llm: selectedLLMs,
+                llm: llmItems.map(item => item.model),
                 prompt: py_prompt_template,
                 vars: pulled_data,
                 params: {
@@ -239,22 +263,6 @@ const PromptNode = ({ data, id }) => {
     }
   }
 
-  const handleLLMChecked = (event) => {
-    console.log(event.target.value, event.target.checked);
-    if (event.target.checked) {
-        if (!selectedLLMs.includes(event.target.value)) {
-            // Add the selected LLM to the list:
-            setSelectedLLMs(selectedLLMs.concat([event.target.value]))
-        }
-    } else {
-        if (selectedLLMs.includes(event.target.value)) {
-            // Remove the LLM from the selected list:
-            const removeByIndex = (array, index) => array.filter((_, i) => i !== index);
-            setSelectedLLMs(removeByIndex(selectedLLMs, selectedLLMs.indexOf(event.target.value)));
-        }
-    }
-  }
-
   const handleNumGenChange = (event) => {
     let n = event.target.value;
     if (!isNaN(n) && n.length > 0 && /^\d+$/.test(n)) {
@@ -272,10 +280,6 @@ const PromptNode = ({ data, id }) => {
   const borderStyle = hovered
     ? '1px solid #222'
     : '1px solid #999';
-
-  const selectedModel = (name) => {
-    console.log(name);
-  };
 
   return (
     <div 
@@ -314,7 +318,7 @@ const PromptNode = ({ data, id }) => {
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
             <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
-        <div id="llms-list" className="nowheel" style={{backgroundColor: '#eee', padding: '8px', overflowY: 'auto', maxHeight: '175px'}}>
+        <div id="llms-list" className="nowheel" style={{backgroundColor: '#eee', borderRadius: '4px', padding: '8px', overflowY: 'auto', maxHeight: '175px'}}>
             <div style={{marginTop: '6px', marginBottom: '6px', marginLeft: '6px', paddingBottom: '4px', textAlign: 'left', fontSize: '10pt', color: '#777'}}>
                 Models to query:
                 <div className="add-llm-model-btn nodrag">
@@ -327,14 +331,14 @@ const PromptNode = ({ data, id }) => {
                             <button>Add +</button>
                         </Menu.Target>
                         <Menu.Dropdown>
-                            {llmItems.map(item => (<Menu.Item key={item.model} onClick={() => selectedModel(item.model)} icon={item.emoji}>{item.model}</Menu.Item>))}
+                            {allLLMs.map(item => (<Menu.Item key={item.model} onClick={() => addModel(item.model)} icon={item.emoji}>{item.name}</Menu.Item>))}
                         </Menu.Dropdown>
                     </Menu>
                 </div>
             </div>
             
             <div className="nodrag">
-                <LLMList llms={llmItems} />
+                <LLMList llms={llmItems} onItemsChange={onLLMListItemsChange} />
                 {/* <input type="checkbox" id="gpt3.5" name="gpt3.5" value="gpt3.5" defaultChecked={true} onChange={handleLLMChecked} />
                 <label htmlFor="gpt3.5">GPT3.5  </label>
                 <input type="checkbox" id="gpt4" name="gpt4" value="gpt4" defaultChecked={false} onChange={handleLLMChecked} />

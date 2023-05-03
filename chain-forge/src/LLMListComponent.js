@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import ListItem, { DragItem, ListItemClone } from "./ListItemComponent";
+import LLMListItem, { DragItem, LLMListItemClone } from "./LLMListItem";
 import { StrictModeDroppable } from './StrictModeDroppable'
 
-export default function LLMList({llms}) {
+export default function LLMList({llms, onItemsChange}) {
   const [items, setItems] = useState(llms);
+
+  const updateItems = useCallback((new_items) => {
+    setItems(new_items);
+    onItemsChange(new_items);
+  }, [onItemsChange]);
 
   const onDragEnd = (result) => {
     const { destination, source } = result;
@@ -21,35 +26,44 @@ export default function LLMList({llms}) {
     setItems(newItems);
   };
 
+  const removeItem = useCallback((item_key) => {
+    // Double-check that the item we want to remove is in the list of items...
+    if (!items.find(i => i.key === item_key)) {
+      console.error(`Could not remove model from LLM list: Could not find item with key ${item_key}.`);
+      return;
+    }
+    // Remove it
+    updateItems(items.filter(i => i.key !== item_key));
+  }, [items, updateItems]);
+
+  useEffect(() => {
+    // When LLMs list changes, we need to add new items 
+    // while preserving the current order of 'items'. 
+    // Check for new items and for each, add to end:
+    let new_items = Array.from(items);
+    llms.forEach(item => {
+      if (!items.find(i => i.key === item.key))
+        new_items.push(item);
+    });
+
+    updateItems(new_items);
+  }, [llms, updateItems]);
+
   return (
-    <div className="list  nowheel nodrag">
+    <div className="list nowheel nodrag">
       <DragDropContext onDragEnd={onDragEnd}>
         <StrictModeDroppable
-          droppableId="droppable"
+          droppableId="llm-list-droppable"
           renderClone={(provided, snapshot, rubric) => (
-            // <DragItem
-            //   {...provided.draggableProps}
-            //   {...provided.dragHandleProps}
-            //   ref={provided.innerRef}
-            // >
-            <ListItemClone
-              provided={provided}
-              snapshot={snapshot}
-              item={items[rubric.source.index]}
-            />
-            // </DragItem>
+            <LLMListItemClone provided={provided} snapshot={snapshot} item={items[rubric.source.index]} />
           )}
         >
           {(provided) => (
             <div {...provided.droppableProps} ref={provided.innerRef}>
               {items.map((item, index) => (
-                <Draggable key={item.model} draggableId={item.model} index={index}>
+                <Draggable key={item.key} draggableId={item.key} index={index}>
                   {(provided, snapshot) => (
-                    <ListItem
-                      provided={provided}
-                      snapshot={snapshot}
-                      item={item}
-                    />
+                    <LLMListItem provided={provided} snapshot={snapshot} item={item} removeCallback={removeItem} />
                   )}
                 </Draggable>
               ))}
