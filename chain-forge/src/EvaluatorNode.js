@@ -1,40 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
 import StatusIndicator from './StatusIndicatorComponent'
 import NodeLabel from './NodeLabelComponent'
-
-// Mantine modal
-import { useDisclosure } from '@mantine/hooks';
-import { Modal } from '@mantine/core';
+import AlertModal from './AlertModal'
 
 // Ace code editor
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
-
-// CodeMirror text editor
-// import CodeMirror from '@uiw/react-codemirror';
-// import { globalCompletion, python } from '@codemirror/lang-python';
-// // import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate} from '@codemirror/view';
-// import { indentUnit } from '@codemirror/language';
-// import { okaidia } from '@uiw/codemirror-theme-okaidia'; // dark theme
-// import { solarizedDark } from '@uiw/codemirror-theme-solarized'; // dark theme; warm
-// import { noctisLilac } from '@uiw/codemirror-theme-noctis-lilac'; // light theme NOTE: Unfortunately this does not show selected text, no idea why. 
-// import { materialLight } from '@uiw/codemirror-theme-material'; // light theme, material
-// import { xcodeDark, xcodeLight } from '@uiw/codemirror-theme-xcode'; // light theme, xcode
-// import { sublime } from '@uiw/codemirror-theme-sublime';
-
-// Experimenting with making the 'def evaluator' line read-only
-// import readOnlyRangesExtension from 'codemirror-readonly-ranges'
-// const getReadOnlyRanges = (editorState) => {
-//   return [{
-//     from: editorState.doc.line(2).from, //same as: editorState.doc.line(0).from or 0
-//     to: editorState.doc.line(2).to
-//   }]
-// }
-// // Add readOnlyRangesExtension(getReadOnlyRanges) to extensions prop of CodeMirror component
 
 const EvaluatorNode = ({ data, id }) => {
 
@@ -44,9 +19,8 @@ const EvaluatorNode = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const [status, setStatus] = useState('none');
 
-  // Mantine modal popover for alerts
-  const [opened, { open, close }] = useDisclosure(false);
-  const [alertMsg, setAlertMsg] = useState('');
+  // For displaying error messages to user
+  const alertModal = useRef(null);
 
   const [hovered, setHovered] = useState(false);
   const [codeText, setCodeText] = useState(data.code);
@@ -74,13 +48,6 @@ const EvaluatorNode = ({ data, id }) => {
     setDataPropsForNode(id, {code: code});
   };
 
-  // Trigger an alert modal popover with Mantine:
-  const triggerErrorAlert = (msg) => {
-    console.error(msg);
-    setAlertMsg(msg);
-    open();
-  };
-
   const handleRunClick = (event) => {
     // Get the ids from the connected input nodes:
     const input_node_ids = inputEdgesForNode(id).map(e => e.source);
@@ -94,7 +61,7 @@ const EvaluatorNode = ({ data, id }) => {
     if (codeText.search(/def\s+evaluate\s*(.*):/) === -1) {
       const err_msg = `Could not find required function 'evaluate'. Make sure you have defined an 'evaluate' function.`;
       setStatus('error');
-      triggerErrorAlert(err_msg);
+      alertModal.current.trigger(err_msg);
       return;
     }
 
@@ -102,7 +69,7 @@ const EvaluatorNode = ({ data, id }) => {
 
     const rejected = (err_msg) => {
       setStatus('error');
-      triggerErrorAlert(err_msg);
+      alertModal.current.trigger(err_msg);
     };
 
     // Run evaluator in backend
@@ -126,7 +93,7 @@ const EvaluatorNode = ({ data, id }) => {
         // Check if there's an error; if so, bubble it up to user and exit:
         if (json.error) {
           setStatus('error');
-          triggerErrorAlert(json.error);
+          alertModal.current.trigger(json.error);
           return;
         }
 
@@ -210,9 +177,7 @@ const EvaluatorNode = ({ data, id }) => {
           id="output"
           style={{ top: '50%', background: '#555' }}
         />
-      <Modal opened={opened} onClose={close} title="Error" styles={{header: {backgroundColor: '#E52A2A', color: 'white'}}}>
-        <p>{alertMsg}</p>
-      </Modal>
+      <AlertModal ref={alertModal} />
       <div className="core-mirror-field">
         <div className="code-mirror-field-header">Function to map over each &nbsp;
         <select name="mapscope" id="mapscope" onChange={handleOnMapScopeSelect}>

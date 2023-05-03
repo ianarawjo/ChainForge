@@ -293,7 +293,7 @@ const PromptNode = ({ data, id }) => {
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
             <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
-        <div id="llms-list" className="nowheel" style={{backgroundColor: '#eee', padding: '8px', boxShadow: 'inset 0 0 30px #fff', overflowY: 'auto', maxHeight: '220px'}}>
+        <div id="llms-list" className="nowheel" style={{backgroundColor: '#eee', padding: '8px', overflowY: 'auto', maxHeight: '220px'}}>
             <div style={{marginTop: '6px', marginBottom: '6px', marginLeft: '6px', paddingBottom: '4px', textAlign: 'left', fontSize: '10pt', color: '#777'}}>
                 Models to query:
                 <div className="add-llm-model-btn nodrag">
