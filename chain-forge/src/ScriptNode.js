@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import useStore from './store';
-import NodeLabel from './NodeLabelComponent'
+import NodeLabel from './NodeLabelComponent';
+import { IconSettingsAutomation } from '@tabler/icons-react';
 
 
 const ScriptNode = ({ data, id }) => {
@@ -65,7 +66,7 @@ const ScriptNode = ({ data, id }) => {
     return (
         <div className="script-node">
             <div className="node-header">
-                <NodeLabel title={data.title || 'Global Scripts'} nodeId={id} />
+                <NodeLabel title={data.title || 'Global Scripts'} nodeId={id} icon={<IconSettingsAutomation size="16px" />}/>
             </div>
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Enter folder paths for external modules you wish to import.</label> <br/><br/>
             <div>
