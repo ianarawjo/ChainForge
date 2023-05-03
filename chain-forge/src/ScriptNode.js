@@ -49,7 +49,9 @@ const ScriptNode = ({ data, id }) => {
             const val = data.scriptFiles ? data.scriptFiles[i] : '';
             return (
                 <div className="input-field" key={i}>
-                    <input className='script-node-input' type='text' id={i} onChange={handleInputChange} value={val}/><button id={delButtonId + i} onClick={handleDelete}>x</button><br/>
+                    <input className="script-node-input" type="text" id={i} onChange={handleInputChange} value={val}/>
+                    <button className="remove-text-field-btn nodrag" id={delButtonId + i} onClick={handleDelete}>X</button>
+                    <br/>
                 </div>
             )
         }));
@@ -65,7 +67,7 @@ const ScriptNode = ({ data, id }) => {
 
     return (
         <div className="script-node cfnode">
-            <NodeLabel title={data.title || 'Global Scripts'} nodeId={id} editable={false} icon={<IconSettingsAutomation size="16px" />}/>
+            <NodeLabel title={data.title || 'Global Python Scripts'} nodeId={id} editable={false} icon={<IconSettingsAutomation size="16px" />}/>
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Enter folder paths for external modules you wish to import.</label> <br/><br/>
             <div>
                 {scriptFiles}
