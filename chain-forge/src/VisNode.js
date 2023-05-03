@@ -40,16 +40,8 @@ const createHoverTexts = (responses) => {
 const VisNode = ({ data, id }) => {
 
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
-    const [hovered, setHovered] = useState(false);
     const [plotlyObj, setPlotlyObj] = useState([]);
     const [pastInputs, setPastInputs] = useState([]);
-    
-    const handleMouseEnter = () => {
-      setHovered(true);
-    };
-    const handleMouseLeave = () => {
-      setHovered(false);
-    };
   
     const handleOnConnect = useCallback(() => {
         // Grab the input node ids
@@ -169,18 +161,9 @@ const VisNode = ({ data, id }) => {
             handleOnConnect();
         }
     }, [data, id, handleOnConnect, setDataPropsForNode]);
-
-    const borderStyle = hovered
-      ? '1px solid #222'
-      : '1px solid #999';
   
     return (
-      <div 
-        className="vis-node"
-        style={{ border: borderStyle }}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
+      <div className="vis-node cfnode">
         <div className="node-header">
             <NodeLabel title={data.title || 'Vis Node'} 
                        nodeId={id}

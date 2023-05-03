@@ -59,7 +59,7 @@ const ScriptNode = ({ data, id }) => {
     }, [data, id, setDataPropsForNode]);
 
     return (
-        <div className="script-node">
+        <div className="script-node cfnode">
             <div className="node-header">
                 <NodeLabel title={data.title || 'Global Scripts'} nodeId={id} editable={false} />
             </div>
