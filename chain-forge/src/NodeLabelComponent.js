@@ -57,9 +57,9 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             />
             {statusIndicator}
             <AlertModal ref={alertModal} />
-            <div style={{float: 'right', marginRight: '5px', marginLeft: '10px'}}>
+            <div className="node-header-btns-container">
                 {runButton}
-                <button className="AmitSahoo45-button-4 nodrag" onClick={handleCloseButtonClick}>&#x2715;</button>
+                <button className="close-button nodrag" onClick={handleCloseButtonClick}>&#x2715;</button>
                 <br/>
             </div>
             {/* <button className="AmitSahoo45-button-3 nodrag" onClick={handleRunClick}><div className="play-button"></div></button> */}

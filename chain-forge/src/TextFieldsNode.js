@@ -88,11 +88,12 @@ const TextFieldsNode = ({ data, id }) => {
   // Whenever 'data' changes, update the input fields to reflect the current state.
   useEffect(() => {
     const f = data.fields ? Object.keys(data.fields) : [];
-    setFields(f.map((i) => {
+    setFields(f.map((i, idx) => {
       const val = data.fields ? data.fields[i] : '';
       return (
         <div className="input-field" key={i}>
-          <textarea id={i} name={i} className="text-field-fixed nodrag" rows="2" cols="40" value={val} onChange={handleInputChange} /><button id={delButtonId + i} onClick={handleDelete}>x</button>
+          <textarea id={i} name={i} className="text-field-fixed nodrag" rows="2" cols="40" value={val} onChange={handleInputChange} />
+          {idx > 0 ? (<button id={delButtonId + i} className="remove-text-field-btn" onClick={handleDelete}>X</button>) : <></>}
         </div>
     )}));
   }, [data.fields, handleInputChange, handleDelete]);
