@@ -152,25 +152,26 @@
     border-color: #aaa;
     padding: 2px;
     margin: 0px;
-    background-color: #fff;
+    background-color: rgba(255, 255, 255, 0.4);
     white-space: pre-wrap;
   }
 
   .llm-response-container {
     max-width: 450px;
-    background-color: #fff;
   }
   .llm-response-container h1 {
+    font-weight: 400;
     font-size: 10pt;
-    font-weight: bold;
-    margin: 4px;
+    margin: 6px 8px 0px 8px;
     padding-top: 2px;
-    padding-bottom: 2px;
+    padding-bottom: 0px;
     color: #222;
   }
   .response-preview-container {
-    max-height: 180px;
+    margin: 10px -9px -9px -9px;
+    max-height: 100px;
     overflow-y: auto;
+    background-color: #ace1aeb1; /* ACE1AF */
   }
   .response-box {
     padding: 2px;
@@ -179,7 +180,6 @@
   .response-tag {
     font-size: 9pt;
     color: #555;
-    font-weight: 700;
     margin: 0px 0px 0px 2px;
   }
 

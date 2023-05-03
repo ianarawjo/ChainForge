@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Button, Text, useMantineTheme } from '@mantine/core';
+import { Menu, Badge, useMantineTheme } from '@mantine/core';
 import useStore from './store';
 import StatusIndicator from './StatusIndicatorComponent'
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks from './TemplateHooksComponent'
 import LLMList from './LLMListComponent'
+import AlertModal from './AlertModal'
 
 // Available LLMs
 const llmItems = [
@@ -28,7 +29,7 @@ const vars_to_str = (vars) => {
         const s = truncStr(vars[varname].trim(), 12);
         return `${varname} = '${s}'`;
     });
-    return pairs.join('; ');
+    return pairs;
 };
 const bucketResponsesByLLM = (responses) => {
     let responses_by_llm = {};
@@ -58,6 +59,9 @@ const PromptNode = ({ data, id }) => {
   const [status, setStatus] = useState('none');
   const [responsePreviews, setReponsePreviews] = useState([]);
   const [numGenerations, setNumGenerations] = useState(data.n || 1);
+
+  // For displaying error messages to user
+  const alertModal = useRef(null);
   
   const handleMouseEnter = () => {
     setHovered(true);
@@ -116,7 +120,7 @@ const PromptNode = ({ data, id }) => {
         // Set status indicator
         setStatus('loading');
 
-        // Pull data from each source:
+        // Pull data from each source, recursively:
         const pulled_data = {};
         const get_outputs = (varnames, nodeId) => {
             console.log(varnames);
@@ -152,6 +156,11 @@ const PromptNode = ({ data, id }) => {
             pulled_data[varname] = pulled_data[varname].map(val => to_py_template_format(val));
         });
 
+        const rejected = (err) => {
+            setStatus('error');
+            alertModal.current.trigger(err.message);
+        };
+
         // Run all prompt permutations through the LLM to generate + cache responses:
         fetch('http://localhost:5000/queryllm', {
             method: 'POST',
@@ -167,10 +176,14 @@ const PromptNode = ({ data, id }) => {
                 },
                 no_cache: false,
             }),
-        }).then(function(response) {
+        }, rejected).then(function(response) {
             return response.json();
-        }).then(function(json) {
-            if (json.responses) {
+        }, rejected).then(function(json) {
+            if (!json) {
+                setStatus('error');
+                alertModal.current.trigger('Request was sent and received by backend server, but there was no response.');
+            }
+            else if (json.responses) {
 
                 // Success! Change status to 'ready':
                 setStatus('ready');
@@ -181,7 +194,8 @@ const PromptNode = ({ data, id }) => {
                 // Save preview strings of responses, for quick glance
                 // Bucket responses by LLM:
                 const responses_by_llm = bucketResponsesByLLM(json.responses);
-                const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
+                // const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
+                // const colors = ['green', 'yellow', 'orange', 'red', 'pink', 'grape', 'violet', 'indigo', 'blue', 'gray', 'cyan', 'lime'];
                 setReponsePreviews(Object.keys(responses_by_llm).map((llm, llm_idx) => {
                     const resp_boxes = responses_by_llm[llm].map((res_obj, idx) => {
                         const num_resp = res_obj['responses'].length;
@@ -189,9 +203,13 @@ const PromptNode = ({ data, id }) => {
                             (<pre className="small-response" key={i}><i>{truncStr(r, 40)}</i><b>({i+1} of {num_resp})</b></pre>)
                         );
                         const vars = vars_to_str(res_obj.vars);
+                        const var_tags = vars.map((v, i) => (
+                            <Badge key={v} color="green" size="xs">{v}</Badge>
+                        ));
                         return (
-                            <div key={idx} className="response-box" style={{ backgroundColor: colors[llm_idx % colors.length] }}>
-                                <p className="response-tag">{vars}</p>
+                            <div key={idx} className="response-box">
+                                {var_tags}
+                                {/* <p className="response-tag">{vars}</p> */}
                                 {resp_prevs}
                             </div>
                         );
@@ -207,13 +225,15 @@ const PromptNode = ({ data, id }) => {
                 // Log responses for debugging:
                 console.log(json.responses);
             } else {
-                console.error(json.error || 'Unknown error when querying LLM');
+                setStatus('error');
+                alertModal.current.trigger(json.error || 'Unknown error when querying LLM');
             }
-        });
+        }, rejected);
 
         console.log(pulled_data);
     } else {
         console.log('Not connected! :(');
+        alertModal.current.trigger('Missing inputs to one or more template variables.')
 
         // TODO: Blink the names of unconnected params
     }
@@ -269,6 +289,7 @@ const PromptNode = ({ data, id }) => {
                    nodeId={id} 
                    onEdit={hideStatusIndicator} />
         <StatusIndicator status={status} />
+        <AlertModal ref={alertModal} />
         <button className="AmitSahoo45-button-3 nodrag" onClick={handleRunClick}><div className="play-button"></div></button>
       </div>
       <div className="input-field">
@@ -293,7 +314,7 @@ const PromptNode = ({ data, id }) => {
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
             <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
-        <div id="llms-list" className="nowheel" style={{backgroundColor: '#eee', padding: '8px', overflowY: 'auto', maxHeight: '220px'}}>
+        <div id="llms-list" className="nowheel" style={{backgroundColor: '#eee', padding: '8px', overflowY: 'auto', maxHeight: '175px'}}>
             <div style={{marginTop: '6px', marginBottom: '6px', marginLeft: '6px', paddingBottom: '4px', textAlign: 'left', fontSize: '10pt', color: '#777'}}>
                 Models to query:
                 <div className="add-llm-model-btn nodrag">
