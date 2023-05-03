@@ -4,6 +4,7 @@ import useStore from './store';
 import StatusIndicator from './StatusIndicatorComponent'
 import NodeLabel from './NodeLabelComponent'
 import AlertModal from './AlertModal'
+import { IconTerminal } from '@tabler/icons-react'
 
 // Ace code editor
 import AceEditor from "react-ace";
@@ -159,9 +160,10 @@ const EvaluatorNode = ({ data, id }) => {
       onMouseLeave={handleMouseLeave}
     >
       <div className="node-header">
-        <NodeLabel title={data.title || 'Evaluator Node'} 
+        <NodeLabel title={data.title || 'Python Evaluator Node'} 
                    nodeId={id} 
-                   onEdit={hideStatusIndicator} />
+                   onEdit={hideStatusIndicator}
+                   icon={<IconTerminal size="16px" />} />
         <StatusIndicator status={status} />
         <button className="AmitSahoo45-button-3" onClick={handleRunClick}><div className="play-button"></div></button>
       </div>

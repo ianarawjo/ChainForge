@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
+import NodeLabel from './NodeLabelComponent'
 
 const bucketResponsesByLLM = (responses) => {
     let responses_by_llm = {};
@@ -116,8 +117,10 @@ const InspectorNode = ({ data, id }) => {
   return (
     <div className="inspector-node">
       <div className="node-header">
-        Inspect Node
-      </div>
+            <NodeLabel title={data.title || 'Inspect Node'} 
+                       nodeId={id}
+                       icon={'🔍'} />
+        </div>
       {/* <div className="var-select-toolbar">
         {varSelects}
       </div> */}

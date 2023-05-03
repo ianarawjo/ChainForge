@@ -2,7 +2,7 @@ import useStore from './store';
 import { EditText } from 'react-edit-text';
 import 'react-edit-text/dist/index.css';
 
-export default function NodeLabel({ title, nodeId, onEdit, onSave }) {
+export default function NodeLabel({ title, nodeId, icon, onEdit, onSave }) {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
     const handleNodeLabelChange = (evt) => {
@@ -15,13 +15,14 @@ export default function NodeLabel({ title, nodeId, onEdit, onSave }) {
         if (onEdit) onEdit();
     };
 
-    return (
+    return (<>
+        {icon ? (<>{icon}&nbsp;</>) : <></>}
         <EditText className="nodrag" name={nodeId ? nodeId+"-label" : "node-label"}
                   defaultValue={title || 'Node'} 
-                  style={{width: '80%', margin:'0px', padding:'0px', minHeight:'18px'}} 
+                  style={{width: '70%', margin:'0px', padding:'0px', minHeight:'18px'}} 
                   onEditMode={handleEnterEditMode} 
                   onSave={handleNodeLabelChange}
                   inline={true} 
         />
-    );
+    </>);
 }

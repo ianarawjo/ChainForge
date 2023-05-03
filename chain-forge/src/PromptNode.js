@@ -291,7 +291,8 @@ const PromptNode = ({ data, id }) => {
       <div className="node-header drag-handle">
         <NodeLabel title={data.title || 'Prompt Node'} 
                    nodeId={id} 
-                   onEdit={hideStatusIndicator} />
+                   onEdit={hideStatusIndicator}
+                   icon={'💬'} />
         <StatusIndicator status={status} />
         <AlertModal ref={alertModal} />
         <button className="AmitSahoo45-button-3 nodrag" onClick={handleRunClick}><div className="play-button"></div></button>

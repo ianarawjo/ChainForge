@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
+import { IconTextPlus } from '@tabler/icons-react'
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks from './TemplateHooksComponent';
@@ -96,7 +97,7 @@ const TextFieldsNode = ({ data, id }) => {
   return (
     <div className="text-fields-node">
       <div className="node-header">
-        <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} />
+        <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} />
       </div>
       <div ref={ref}>
         {fields}

@@ -182,7 +182,8 @@ const VisNode = ({ data, id }) => {
       >
         <div className="node-header">
             <NodeLabel title={data.title || 'Vis Node'} 
-                       nodeId={id} />
+                       nodeId={id}
+                       icon={'📊'} />
         </div>
         <div className="nodrag">{plotlyObj}</div>
         <Handle
