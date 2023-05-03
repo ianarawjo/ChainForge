@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
+import {BASE_URL} from './store';
 
 const bucketResponsesByLLM = (responses) => {
     let responses_by_llm = {};
@@ -31,7 +32,7 @@ const InspectorNode = ({ data, id }) => {
     console.log(input_node_ids);
 
     // Grab responses associated with those ids:
-    fetch('http://localhost:5000/grabResponses', {
+    fetch(BASE_URL + 'grabResponses', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
         body: JSON.stringify({

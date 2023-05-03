@@ -33,6 +33,8 @@ const initialEdges = [
   { id: 'e1-2', source: initprompt, target: initeval, interactionWidth: 100},
 ];
 
+export const BASE_URL = 'http://localhost:8000/';
+
 // TypeScript only
 // type RFState = {
 //   nodes: Node[];
@@ -81,7 +83,7 @@ const useStore = create((set, get) => ({
       )(get().nodes)
     });
   },
-  getNode: (id) => get().nodes.find(n => n.id == id),
+  getNode: (id) => get().nodes.find(n => n.id === id),
   addNode: (newnode) => {
     set({
       nodes: get().nodes.concat(newnode)
