@@ -8,8 +8,6 @@ DALAI_RESPONSE = None
 
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-
-
 """ Supported LLM coding assistants """
 class LLM(Enum):
     ChatGPT = 0

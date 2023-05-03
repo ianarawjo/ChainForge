@@ -270,6 +270,12 @@ def execute():
             for script_path in data['script_paths']:
                 # get the folder of the script_path:
                 script_folder = os.path.dirname(script_path)
+                # check that the script_folder is valid, and it contains __init__.py
+                if not os.path.exists(script_folder):
+                    print(script_folder, 'is not a valid script path.')
+                    print(os.path.exists(script_folder))
+                    continue
+
                 # add it to the path:
                 sys.path.append(script_folder)
                 print(f'added {script_folder} to sys.path')

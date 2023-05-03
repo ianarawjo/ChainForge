@@ -29,7 +29,7 @@ const ScriptNode = ({ data, id }) => {
     useEffect(() => {
         if (!data.scriptFiles)
             setDataPropsForNode(id, { scriptFiles: { f0: '' } });
-    }, []);
+    }, [data.scriptFiles, id, setDataPropsForNode]);
 
     // Whenever 'data' changes, update the input fields to reflect the current state.
     useEffect(() => {
@@ -42,7 +42,7 @@ const ScriptNode = ({ data, id }) => {
                 </div>
             )
         }));
-    }, [data.scriptFiles]);
+    }, [data.scriptFiles, handleInputChange]);
 
     // Add a field
     const handleAddField = useCallback(() => {
