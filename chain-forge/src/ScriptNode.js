@@ -1,25 +1,30 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Handle } from 'react-flow-renderer';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
-import TemplateHooks from './TemplateHooksComponent';
 
-const union = (setA, setB) => {
-    const _union = new Set(setA);
-    for (const elem of setB) {
-        _union.add(elem);
-    }
-    return _union;
-}
 
 const ScriptNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
-
-    // Handle a change in a text fields' input.
+    const delButtonId = 'del-';
+    // Handle a change in a scripts' input.
     const handleInputChange = useCallback((event) => {
         // Update the data for this script node's id.
         let new_data = { 'scriptFiles': { ...data.scriptFiles } };
         new_data.scriptFiles[event.target.id] = event.target.value;
+        console.log(new_data);
+        setDataPropsForNode(id, new_data);
+    }, [data, id, setDataPropsForNode]);
+
+    // Handle delete script file.
+    const handleDelete = useCallback((event) => {
+        // Update the data for this script node's id.
+        let new_data = { 'scriptFiles': { ...data.scriptFiles } };
+        var item_id = event.target.id.substring(delButtonId.length);
+        delete new_data.scriptFiles[item_id];
+        // if the new_data is empty, initialize it with one empty field
+        if (Object.keys(new_data.scriptFiles).length === 0) {
+            new_data.scriptFiles['f0'] = '';
+        }
         console.log(new_data);
         setDataPropsForNode(id, new_data);
     }, [data, id, setDataPropsForNode]);
@@ -38,11 +43,11 @@ const ScriptNode = ({ data, id }) => {
             const val = data.scriptFiles ? data.scriptFiles[i] : '';
             return (
                 <div className="input-field" key={i}>
-                    <input className='script-node-input' type='text' id={i} onChange={handleInputChange} defaultValue={val}/><br/>
+                    <input className='script-node-input' type='text' id={i} onChange={handleInputChange} value={val}/><button id={delButtonId + i} onClick={handleDelete}>x</button><br/>
                 </div>
             )
         }));
-    }, [data.scriptFiles, handleInputChange]);
+    }, [data.scriptFiles, handleInputChange, handleDelete]);
 
     // Add a field
     const handleAddField = useCallback(() => {
@@ -64,7 +69,7 @@ const ScriptNode = ({ data, id }) => {
     return (
         <div className="script-node">
             <div className="node-header">
-                <NodeLabel title={data.title || 'Script Node'} nodeId={id} />
+                <NodeLabel title={data.title || 'Global Scripts'} nodeId={id} />
             </div>
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Enter folder paths for external modules you wish to import.</label> <br/><br/>
             <div ref={ref}>
