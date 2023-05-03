@@ -28,6 +28,13 @@ const TextFieldsNode = ({ data, id }) => {
 
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const delButtonId = 'del-';
+  var [idCounter, setIDCounter] = useState(0);
+
+  const get_id = () => {
+    setIDCounter(idCounter + 1);
+    return 'f' + idCounter.toString();
+  }
 
   // Handle a change in a text fields' input.
   const handleInputChange = useCallback((event) => {
@@ -58,31 +65,43 @@ const TextFieldsNode = ({ data, id }) => {
     setDataPropsForNode(id, new_data);
   }, [data, id, setDataPropsForNode, templateVars]);
 
+  // Handle delete script file.
+  const handleDelete = useCallback((event) => {
+    // Update the data for this script node's id.
+    let new_data = { 'fields': { ...data.fields } };
+    var item_id = event.target.id.substring(delButtonId.length);
+    delete new_data.fields[item_id];
+    // if the new_data is empty, initialize it with one empty field
+    if (Object.keys(new_data.fields).length === 0) {
+      new_data.fields[get_id()] = '';
+    }
+    setDataPropsForNode(id, new_data);
+  }, [data, id, setDataPropsForNode]);
+
   // Initialize fields (run once at init)
   const [fields, setFields] = useState([]);
   useEffect(() => {
     if (!data.fields)
-      setDataPropsForNode(id, { fields: {f0: ''}} );
+      setDataPropsForNode(id, { fields: {[get_id()]: ''}} );
   }, []);
 
   // Whenever 'data' changes, update the input fields to reflect the current state.
   useEffect(() => {
-    const f = data.fields ? Object.keys(data.fields) : ['f0'];
+    const f = data.fields ? Object.keys(data.fields) : [];
     setFields(f.map((i) => {
       const val = data.fields ? data.fields[i] : '';
       return (
         <div className="input-field" key={i}>
-          <textarea id={i} name={i} className="text-field-fixed nodrag" rows="2" cols="40" defaultValue={val} onChange={handleInputChange} />
+          <textarea id={i} name={i} className="text-field-fixed nodrag" rows="2" cols="40" value={val} onChange={handleInputChange} /><button id={delButtonId + i} onClick={handleDelete}>x</button>
         </div>
     )}));
-  }, [data.fields, handleInputChange]);
+  }, [data.fields, handleInputChange, handleDelete]);
 
   // Add a field
   const handleAddField = useCallback(() => {
     // Update the data for this text fields' id.
-    const num_fields = data.fields ? Object.keys(data.fields).length : 0;
     let new_data = { 'fields': {...data.fields} };
-    new_data.fields['f'+num_fields.toString()] = "";
+    new_data.fields[get_id()] = "";
     setDataPropsForNode(id, new_data);
   }, [data, id, setDataPropsForNode]);
 
