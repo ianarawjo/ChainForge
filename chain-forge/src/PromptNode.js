@@ -136,7 +136,7 @@ const PromptNode = ({ data, id }) => {
         console.log('Connected!');
 
         // Check that there is at least one LLM selected:
-        if (llmItems.length === 0) {
+        if (llmItemsCurrState.length === 0) {
             alert('Please select at least one LLM to prompt.')
             return;
         }
@@ -191,7 +191,7 @@ const PromptNode = ({ data, id }) => {
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({
                 id: id,
-                llm: llmItems.map(item => item.model),
+                llm: llmItemsCurrState.map(item => item.model),
                 prompt: py_prompt_template,
                 vars: pulled_data,
                 params: {
