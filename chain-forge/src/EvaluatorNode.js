@@ -150,14 +150,14 @@ const EvaluatorNode = ({ data, id }) => {
 
   return (
     <div className="evaluator-node cfnode">
-      <div className="node-header">
-        <NodeLabel title={data.title || 'Python Evaluator Node'} 
-                   nodeId={id} 
-                   onEdit={hideStatusIndicator}
-                   icon={<IconTerminal size="16px" />} />
-        <StatusIndicator status={status} />
-        <button className="AmitSahoo45-button-3" onClick={handleRunClick}><div className="play-button"></div></button>
-      </div>
+      <NodeLabel title={data.title || 'Python Evaluator Node'} 
+                  nodeId={id} 
+                  onEdit={hideStatusIndicator}
+                  icon={<IconTerminal size="16px" />} 
+                  status={status}
+                  alertModal={alertModal}
+                  handleRunClick={handleRunClick}
+                  />
       <Handle
           type="target"
           position="left"
@@ -170,7 +170,6 @@ const EvaluatorNode = ({ data, id }) => {
           id="output"
           style={{ top: '50%', background: '#555' }}
         />
-      <AlertModal ref={alertModal} />
       <div className="core-mirror-field">
         <div className="code-mirror-field-header">Function to map over each &nbsp;
         <select name="mapscope" id="mapscope" onChange={handleOnMapScopeSelect}>

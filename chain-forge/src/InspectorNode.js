@@ -117,11 +117,9 @@ const InspectorNode = ({ data, id }) => {
 
   return (
     <div className="inspector-node cfnode">
-      <div className="node-header">
-            <NodeLabel title={data.title || 'Inspect Node'} 
-                       nodeId={id}
-                       icon={'🔍'} />
-        </div>
+    <NodeLabel title={data.title || 'Inspect Node'} 
+                nodeId={id}
+                icon={'🔍'} />
       {/* <div className="var-select-toolbar">
         {varSelects}
       </div> */}

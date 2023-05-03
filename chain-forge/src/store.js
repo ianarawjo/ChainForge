@@ -89,6 +89,11 @@ const useStore = create((set, get) => ({
       nodes: get().nodes.concat(newnode)
     });
   },
+  removeNode: (id) => {
+    set({
+      nodes: get().nodes.filter(n => n.id !== id)
+    });
+  },
   setNodes: (newnodes) => {
     set({
       nodes: newnodes

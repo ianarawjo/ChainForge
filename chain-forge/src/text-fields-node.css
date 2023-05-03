@@ -272,7 +272,7 @@
     -webkit-transition: all 0.2s ease-in;
     -moz-transition: all 0.2s ease-in;
     transition: all 0.2s ease-in;
-    float:right;
+    /* float:right; */
     cursor: pointer;
 }
 
@@ -305,6 +305,59 @@
     -ms-transform: skewX(-20deg);
     -o-transform: skewX(-20deg);
     transform: skewX(-20deg);
+}
+
+/** CSS Button style from https://css-buttons-hover.netlify.app/ */
+.AmitSahoo45-button-4 {
+  position: relative;
+  padding: 2px 10px;
+  margin-top: -5px;
+  border-radius: 7px;
+  border: 1px solid #999;
+  font-size: 14px;
+  /* text-transform: uppercase; */
+  /* font-weight: 600; */
+  /* letter-spacing: 2px; */
+  background: transparent;
+  color: #333;
+  overflow: hidden;
+  box-shadow: 0 0 0 0 transparent;
+  -webkit-transition: all 0.2s ease-in;
+  -moz-transition: all 0.2s ease-in;
+  transition: all 0.2s ease-in;
+  /* float:right; */
+  cursor: pointer;
+}
+
+.AmitSahoo45-button-4:hover {
+  background: rgb(200 , 26, 69);
+  box-shadow: 0 0 30px 5px rgb(234, 63, 106, 0.815);
+  -webkit-transition: all 0.2s ease-out;
+  -moz-transition: all 0.2s ease-out;
+  transition: all 0.2s ease-out;
+}
+
+.AmitSahoo45-button-4:hover::before {
+  -moz-animation: sh02 0.5s 0s linear;
+  animation: sh02 0.5s 0s linear;
+}
+
+.AmitSahoo45-button-4::before {
+  content: '';
+  display: block;
+  width: 0px;
+  height: 86%;
+  position: absolute;
+  top: 7%;
+  left: 0%;
+  opacity: 0;
+  background: #fff;
+  box-shadow: 0 0 50px 30px #fff;
+  -webkit-transform: skewX(-20deg);
+  -moz-transform: skewX(-20deg);
+  -ms-transform: skewX(-20deg);
+  -o-transform: skewX(-20deg);
+  transform: skewX(-20deg);
 }
 
 /* Play button triangle |> */
