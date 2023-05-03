@@ -29,7 +29,8 @@ const TextFieldsNode = ({ data, id }) => {
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const delButtonId = 'del-';
-  var [idCounter, setIDCounter] = useState(0);
+  const [idCounter, setIDCounter] = useState(0);
+  // const [resizeObserver, setResizeObserver] = useState(null);
 
   const get_id = () => {
     setIDCounter(idCounter + 1);
@@ -65,9 +66,9 @@ const TextFieldsNode = ({ data, id }) => {
     setDataPropsForNode(id, new_data);
   }, [data, id, setDataPropsForNode, templateVars]);
 
-  // Handle delete script file.
+  // Handle delete text field.
   const handleDelete = useCallback((event) => {
-    // Update the data for this script node's id.
+    // Update the data for this text field's id.
     let new_data = { 'fields': { ...data.fields } };
     var item_id = event.target.id.substring(delButtonId.length);
     delete new_data.fields[item_id];
@@ -93,7 +94,7 @@ const TextFieldsNode = ({ data, id }) => {
       return (
         <div className="input-field" key={i}>
           <textarea id={i} name={i} className="text-field-fixed nodrag" rows="2" cols="40" value={val} onChange={handleInputChange} />
-          {idx > 0 ? (<button id={delButtonId + i} className="remove-text-field-btn" onClick={handleDelete}>X</button>) : <></>}
+          {idx > 0 ? (<button id={delButtonId + i} className="remove-text-field-btn nodrag" onClick={handleDelete}>X</button>) : <></>}
         </div>
     )}));
   }, [data.fields, handleInputChange, handleDelete]);
@@ -111,13 +112,31 @@ const TextFieldsNode = ({ data, id }) => {
   const [hooksY, setHooksY] = useState(120);
   useEffect(() => {
     const node_height = ref.current.clientHeight;
-    setHooksY(node_height + 70);
+    setHooksY(node_height + 75);
   }, [fields]);
+
+  const setRef = useCallback((elem) => {
+    // To listen for resize events of the textarea, we need to use a ResizeObserver.
+    // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div wrapping textfields.
+    // NOTE: This won't work on older browsers, but there's no alternative solution.
+    if (!ref.current && window.ResizeObserver) {
+      const observer = new ResizeObserver(() => {
+        if (!ref || !ref.current) return;
+        const new_hooks_y = ref.current.clientHeight + 75;
+        if (hooksY !== new_hooks_y)
+          setHooksY(new_hooks_y);
+      });
+
+      observer.observe(elem);
+      // setResizeObserver(observer);
+    }
+    ref.current = elem;
+  }, [ref, hooksY]);
 
   return (
     <div className="text-fields-node cfnode">
       <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} />
-      <div ref={ref}>
+      <div ref={setRef}>
         {fields}
       </div>
       <Handle
