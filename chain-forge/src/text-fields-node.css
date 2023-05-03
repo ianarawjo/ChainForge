@@ -98,11 +98,16 @@
 
   .remove-text-field-btn {
     margin-left: 3px;
+    padding: 2px 4px;
     border-style: none;
     background-color: inherit;
     color: #bbb;
     font-weight: bold;
     cursor: pointer;
+  }
+  .remove-text-field-btn:hover {
+    color: #666;
+    background-color: #eee;
   }
   
   .input-field input {
@@ -289,6 +294,7 @@
 
 .AmitSahoo45-button-3:hover {
     background: rgb(26, 200, 69);
+    color: white;
     box-shadow: 0 0 30px 5px rgb(63, 234, 106, 0.815);
     -webkit-transition: all 0.2s ease-out;
     -moz-transition: all 0.2s ease-out;
