@@ -9,7 +9,7 @@
     <script>
 
         function test_exec() {
-            const response = fetch('http://localhost:5000/execute', {
+            const response = fetch(BASE_URL + 'execute', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
                 body: JSON.stringify({
@@ -25,7 +25,7 @@
         }
 
         function test_query() {
-            const response = fetch('http://localhost:5000/queryllm', {
+            const response = fetch(BASE_URL + 'queryllm', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
                 body: JSON.stringify({

@@ -14,6 +14,7 @@ import PromptNode from './PromptNode';
 import EvaluatorNode from './EvaluatorNode';
 import VisNode from './VisNode';
 import InspectNode from './InspectorNode';
+import ScriptNode from './ScriptNode';
 import './text-fields-node.css';
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
@@ -39,6 +40,7 @@ const nodeTypes = {
   evaluator: EvaluatorNode,
   vis: VisNode,
   inspect: InspectNode,
+  script: ScriptNode
 };
 
 const connectionLineStyle = { stroke: '#ddd' };
@@ -83,6 +85,10 @@ const App = () => {
   const addInspectNode = (event) => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'inspectNode-'+Date.now(), type: 'inspect', data: {}, position: {x: x-200, y:y-100} });
+  };
+  const addScriptNode = (event) => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'scriptNode-'+Date.now(), type: 'script', data: {}, position: {x: x-200, y:y-100} });
   };
 
   /** 
@@ -194,6 +200,7 @@ const App = () => {
         <button onClick={addEvalNode}>Add evaluator node</button>
         <button onClick={addVisNode}>Add vis node</button>
         <button onClick={addInspectNode}>Add inspect node</button>
+        <button onClick={addScriptNode}>Add script node</button>
         <button onClick={saveFlow} style={{marginLeft: '12px'}}>Save</button>
         <button onClick={loadFlowFromCache}>Load</button>
         <button onClick={exportFlow} style={{marginLeft: '12px'}}>Export</button>

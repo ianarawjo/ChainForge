@@ -4,6 +4,7 @@ import useStore from './store';
 import StatusIndicator from './StatusIndicatorComponent'
 import NodeLabel from './NodeLabelComponent'
 import AlertModal from './AlertModal'
+import {BASE_URL} from './store';
 
 // Ace code editor
 import AceEditor from "react-ace";
@@ -18,6 +19,7 @@ const EvaluatorNode = ({ data, id }) => {
   const getNode = useStore((state) => state.getNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const [status, setStatus] = useState('none');
+  const nodes = useStore((state) => state.nodes);
 
   // For displaying error messages to user
   const alertModal = useRef(null);
@@ -49,6 +51,7 @@ const EvaluatorNode = ({ data, id }) => {
   };
 
   const handleRunClick = (event) => {
+    
     // Get the ids from the connected input nodes:
     const input_node_ids = inputEdgesForNode(id).map(e => e.source);
     if (input_node_ids.length === 0) {
@@ -72,9 +75,13 @@ const EvaluatorNode = ({ data, id }) => {
       alertModal.current.trigger(err_msg);
     };
 
+    // Get all the script nodes, and get all the folder paths
+    const script_nodes = nodes.filter(n => n.type === 'script');
+    const script_paths = script_nodes.map(n => Object.values(n.data.scriptFiles).filter(f => f !== '')).flat();
+    console.log(script_paths);
     // Run evaluator in backend
     const codeTextOnRun = codeText + '';
-    fetch('http://localhost:5000/execute', {
+    fetch(BASE_URL + 'execute', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
         body: JSON.stringify({
@@ -83,6 +90,7 @@ const EvaluatorNode = ({ data, id }) => {
             scope: mapScope,
             responses: input_node_ids,
             reduce_vars: reduceMethod === 'avg' ? reduceVars : [],
+            script_paths: script_paths,
             // write an extra part here that takes in reduce func
         }),
     }, rejected).then(function(response) {
