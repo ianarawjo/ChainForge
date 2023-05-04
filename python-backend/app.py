@@ -3,12 +3,23 @@ from dataclasses import dataclass
 from statistics import mean, median, stdev
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO
 from promptengine.query import PromptLLM, PromptLLMDummy
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
 from promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
 
 app = Flask(__name__)
-CORS(app)
+
+# Set up CORS for specific routes
+cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Initialize Socket.IO
+# socketio = SocketIO(app, cors_allowed_origins="*", async_mode="gevent")
+
+# import threading
+# thread = None
+# thread_lock = threading.Lock()
+
 
 LLM_NAME_MAP = {
     'gpt3.5': LLM.ChatGPT,
@@ -138,11 +149,119 @@ def reduce_responses(responses: list, vars: list) -> list:
     
     return ret
 
-@app.route('/test', methods=['GET'])
+@app.route('/api/test', methods=['GET'])
 def test():
     return "Hello, world!"
 
-@app.route('/queryllm', methods=['POST'])
+# @socketio.on('queryllm', namespace='/queryllm')
+# def handleQueryAsync(data):
+#     print("reached handleQueryAsync")
+#     socketio.start_background_task(queryLLM, emitLLMResponse)
+
+# def emitLLMResponse(result):
+#     socketio.emit('response', result)
+
+"""
+    Testing sockets. The following function can 
+    communicate to React via with the JS code:
+
+    const socket = io(BASE_URL + 'queryllm', {
+        transports: ["websocket"],
+        cors: {
+            origin: "http://localhost:3000/",
+        },
+    });
+
+    socket.on("connect", (data) => {
+        socket.emit("queryllm", "hello");
+    });
+    socket.on("disconnect", (data) => {
+        console.log("disconnected");
+    });
+    socket.on("response", (data) => {
+        console.log(data);
+    });
+"""
+# def background_thread():
+#     n = 10
+#     while n > 0:
+#         socketio.sleep(0.5)
+#         socketio.emit('response', n, namespace='/queryllm')
+#         n -= 1
+
+# @socketio.on('queryllm', namespace='/queryllm')
+# def testSocket(data):
+#     print(data)
+#     global thread
+#     with thread_lock:
+#         if thread is None:
+#             thread = socketio.start_background_task(target=background_thread)
+
+# @socketio.on('queryllm', namespace='/queryllm')
+# def handleQuery(data):
+#     print(data)
+
+# def handleConnect():
+#     print('here')
+#     socketio.emit('response', 'goodbye', namespace='/')
+
+@app.route('/api/countQueriesRequired', methods=['POST'])
+def countQueries():
+    """
+        Returns how many queries we need to make, given the passed prompt and vars.
+
+        POST'd data should be in the form: 
+        {
+            'prompt': str  # the prompt template, with any {{}} vars
+            'vars': dict  # a dict of the template variables to fill the prompt template with, by name. For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
+            'llms': list  # the list of LLMs you will query
+        }
+    """
+    data = request.get_json()
+    if not set(data.keys()).issuperset({'prompt', 'vars', 'llms'}):
+        return jsonify({'error': 'POST data is improper format.'})
+    
+    try:
+        gen_prompts = PromptPermutationGenerator(PromptTemplate(data['prompt']))
+        all_prompt_permutations = list(gen_prompts(data['vars']))
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+    # TODO: Send more informative data back including how many queries per LLM based on cache'd data
+    num_queries = len(all_prompt_permutations) * len(data['llms'])
+
+    ret = jsonify({'count': num_queries})
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
+
+@app.route('/api/createProgressFile', methods=['POST'])
+def createProgressFile():
+    """
+        Creates a temp txt file for storing progress of async LLM queries.
+
+        POST'd data should be in the form: 
+        {
+            'id': str  # a unique ID that will be used when calling 'queryllm'
+        }
+    """
+    data = request.get_json()
+
+    if 'id' not in data or not isinstance(data['id'], str) or len(data['id']) == 0:
+        return jsonify({'error': 'POST data id is improper format (length 0 or not a string).'})
+
+    # Create a scratch file for keeping track of how many responses loaded
+    try:
+        with open(f"cache/_temp_{data['id']}.txt", 'w') as f:
+            json.dump({}, f)
+        ret = jsonify({'success': True})
+    except Exception as e:
+        ret = jsonify({'success': False, 'error': str(e)})
+    
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
+
+# @socketio.on('connect', namespace='/queryllm')
+@app.route('/api/queryllm', methods=['POST'])
 async def queryLLM():
     """
         Queries LLM(s) given a JSON spec.
@@ -170,11 +289,10 @@ async def queryLLM():
         return jsonify({'error': 'POST data llm is improper format (not string or list, or of length 0).'})
     if isinstance(data['llm'], str):
         data['llm'] = [ data['llm'] ]
-    llms = []
+
     for llm_str in data['llm']:
         if llm_str not in LLM_NAME_MAP:
             return jsonify({'error': f"LLM named '{llm_str}' is not supported."})
-        llms.append(LLM_NAME_MAP[llm_str])
     
     if 'no_cache' in data and data['no_cache'] is True:
         remove_cached_responses(data['id'])
@@ -184,9 +302,13 @@ async def queryLLM():
 
     # For each LLM, generate and cache responses:
     responses = {}
+    llms = data['llm']
     params = data['params'] if 'params' in data else {}
+    tempfilepath = f"cache/_temp_{data['id']}.txt"
 
-    async def query(llm: str) -> list:
+    async def query(llm_str: str) -> list:
+        llm = LLM_NAME_MAP[llm_str]
+
         # Check that storage path is valid:
         cache_filepath = os.path.join('cache', f"{data['id']}-{str(llm.name)}.json")
         if not is_valid_filepath(cache_filepath):
@@ -202,6 +324,17 @@ async def queryLLM():
             print(f'Querying {llm}...')
             async for response in prompter.gen_responses(properties=data['vars'], llm=llm, **params):
                 resps.append(response)
+                print(f"collected response from {llm.name}:", str(response))
+
+                # Save the number of responses collected to a temp file on disk
+                with open(tempfilepath, 'r') as f:
+                    txt = f.read().strip()
+                
+                cur_data = json.loads(txt) if len(txt) > 0 else {}
+                cur_data[llm_str] = len(resps)
+                
+                with open(tempfilepath, 'w') as f:
+                    json.dump(cur_data, f)
         except Exception as e:
             print('error generating responses:', e)
             raise e
@@ -233,7 +366,7 @@ async def queryLLM():
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
-@app.route('/execute', methods=['POST'])
+@app.route('/api/execute', methods=['POST'])
 def execute():
     """
         Executes a Python lambda function sent from JavaScript,
@@ -348,7 +481,7 @@ def execute():
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
-@app.route('/checkEvalFunc', methods=['POST'])
+@app.route('/api/checkEvalFunc', methods=['POST'])
 def checkEvalFunc():
     """
         Tries to compile a Python lambda function sent from JavaScript.
@@ -378,7 +511,7 @@ def checkEvalFunc():
     except Exception as e:
         return jsonify({'result': False, 'error': f'Could not compile evaluator code. Error message:\n{str(e)}'})
 
-@app.route('/grabResponses', methods=['POST'])
+@app.route('/api/grabResponses', methods=['POST'])
 def grabResponses():
     """
         Returns all responses with the specified id(s)
@@ -430,10 +563,14 @@ if __name__ == '__main__':
                 Produces each dummy response at random intervals between 0.1 and 3 seconds.""", 
         dest='dummy_responses', 
         action='store_true')
+    parser.add_argument('--port', help='The port to run the server on. Defaults to 8000.', type=int, default=8000, nargs='?')
     args = parser.parse_args()
 
     if args.dummy_responses:
         PromptLLM = PromptLLMDummy
         extract_responses = lambda r, llm: r['response']
 
+    port = args.port if args.port else 8000
+    print(f"Serving Flask server on port {port}...")
+    # socketio.run(app, host="localhost", port=port)
     app.run(host="localhost", port=8000, debug=True)

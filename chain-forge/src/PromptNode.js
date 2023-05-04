@@ -1,14 +1,13 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Badge } from '@mantine/core';
+import { Menu, Badge, Progress } from '@mantine/core';
 import { v4 as uuid } from 'uuid';
 import useStore from './store';
-import StatusIndicator from './StatusIndicatorComponent'
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks from './TemplateHooksComponent'
 import LLMList from './LLMListComponent'
-import AlertModal from './AlertModal'
 import {BASE_URL} from './store';
+import io from 'socket.io-client';
 
 // Available LLMs
 const allLLMs = [
@@ -66,13 +65,28 @@ const PromptNode = ({ data, id }) => {
   // Selecting LLM models to prompt
   const [llmItems, setLLMItems] = useState(initLLMs.map((i, idx) => ({key: uuid(), ...i})));
   const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
+  const resetLLMItemsProgress = useCallback(() => {
+    setLLMItems(llmItemsCurrState.map(item => {
+        item.progress = undefined;
+        return item;
+    }));
+  }, [llmItemsCurrState]);
+
+  // Progress when querying responses
+  const [progress, setProgress] = useState(100);
+
+  const triggerAlert = (msg) => {
+    setProgress(100);
+    resetLLMItemsProgress();
+    alertModal.current.trigger(msg);
+  };
 
   const addModel = useCallback((model) => {
     // Get the item for that model
     let item = allLLMs.find(llm => llm.model === model);
 
     if (!item) {  // This should never trigger, but in case it does:
-        alertModal.current.trigger(`Could not find model named '${model}' in list of available LLMs.`);
+        triggerAlert(`Could not find model named '${model}' in list of available LLMs.`);
         return;
     }
 
@@ -123,63 +137,144 @@ const PromptNode = ({ data, id }) => {
         return edges.some(e => (e.target == id && e.targetHandle == varname));
     });
 
-    // console.log(templateHooks);
+    if (!is_fully_connected) {
+        console.log('Not connected! :(');
+        triggerAlert('Missing inputs to one or more template variables.');
+        return;
+    }
 
-    if (is_fully_connected) {
-        console.log('Connected!');
+    console.log('Connected!');
 
-        // Check that there is at least one LLM selected:
-        if (llmItemsCurrState.length === 0) {
-            alert('Please select at least one LLM to prompt.')
-            return;
-        }
+    // Check that there is at least one LLM selected:
+    if (llmItemsCurrState.length === 0) {
+        alert('Please select at least one LLM to prompt.')
+        return;
+    }
 
-        // Set status indicator
-        setStatus('loading');
+    // Set status indicator
+    setStatus('loading');
+    setReponsePreviews([]);
 
-        // Pull data from each source, recursively:
-        const pulled_data = {};
-        const get_outputs = (varnames, nodeId) => {
-            console.log(varnames);
-            varnames.forEach(varname => {
-                // Find the relevant edge(s):
-                edges.forEach(e => {
-                    if (e.target == nodeId && e.targetHandle == varname) {
-                        // Get the immediate output:
-                        let out = output(e.source, e.sourceHandle);
+    // Pull data from each source, recursively:
+    const pulled_data = {};
+    const get_outputs = (varnames, nodeId) => {
+        varnames.forEach(varname => {
+            // Find the relevant edge(s):
+            edges.forEach(e => {
+                if (e.target == nodeId && e.targetHandle == varname) {
+                    // Get the immediate output:
+                    let out = output(e.source, e.sourceHandle);
 
-                        // Save the var data from the pulled output
-                        if (varname in pulled_data)
-                            pulled_data[varname] = pulled_data[varname].concat(out);
-                        else
-                            pulled_data[varname] = out;
+                    // Save the var data from the pulled output
+                    if (varname in pulled_data)
+                        pulled_data[varname] = pulled_data[varname].concat(out);
+                    else
+                        pulled_data[varname] = out;
 
-                        // Get any vars that the output depends on, and recursively collect those outputs as well:
-                        const n_vars = getNode(e.source).data.vars;
-                        if (n_vars && Array.isArray(n_vars) && n_vars.length > 0)
-                            get_outputs(n_vars, e.source);
-                    }
-                });
+                    // Get any vars that the output depends on, and recursively collect those outputs as well:
+                    const n_vars = getNode(e.source).data.vars;
+                    if (n_vars && Array.isArray(n_vars) && n_vars.length > 0)
+                        get_outputs(n_vars, e.source);
+                }
             });
-        };
-        get_outputs(templateVars, id);
+        });
+    };
+    get_outputs(templateVars, id);
 
-        // Get Pythonic version of the prompt, by adding a $ before any template variables in braces:
-        const to_py_template_format = (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
-        const py_prompt_template = to_py_template_format(promptText);
+    // Get Pythonic version of the prompt, by adding a $ before any template variables in braces:
+    const to_py_template_format = (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
+    const py_prompt_template = to_py_template_format(promptText);
 
-        // Do the same for the vars, since vars can themselves be prompt templates:
-        Object.keys(pulled_data).forEach(varname => {
-            pulled_data[varname] = pulled_data[varname].map(val => to_py_template_format(val));
+    // Do the same for the vars, since vars can themselves be prompt templates:
+    Object.keys(pulled_data).forEach(varname => {
+        pulled_data[varname] = pulled_data[varname].map(val => to_py_template_format(val));
+    });
+    console.log(pulled_data);
+
+    let FINISHED_QUERY = false;
+    const rejected = (err) => {
+        setStatus('error');
+        triggerAlert(err.message);
+        FINISHED_QUERY = true;
+    };
+
+    // Ask the backend to reset the scratchpad for counting queries:
+    const create_progress_scratchpad = () => {
+        return fetch(BASE_URL + 'api/createProgressFile', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            body: JSON.stringify({
+                id: id,
+        })}, rejected);
+    };
+
+    // Query the backend to ask how many responses it needs to collect, given the input data:
+    const fetch_resp_count = () => {
+        return fetch(BASE_URL + 'api/countQueriesRequired', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            body: JSON.stringify({
+                prompt: py_prompt_template,
+                vars: pulled_data,
+                llms: llmItemsCurrState.map(item => item.model),
+        })}, rejected).then(function(response) {
+            return response.json();
+        }, rejected).then(function(json) {
+            if (!json || !json.count) {
+                throw new Error('Request was sent and received by backend server, but there was no response.');
+            }
+            return json.count;
+        }, rejected);
+    };
+
+    // Open a socket to listen for progress
+    const open_progress_listener_socket = (max_responses) => {
+        // With the counts information we can create progress bars. Now we load a socket connection to 
+        // the socketio server that will stream to us the current progress:
+        const socket = io('http://localhost:8001/' + 'queryllm', {
+            transports: ["websocket"],
+            cors: {origin: "http://localhost:3000/"},
         });
 
-        const rejected = (err) => {
-            setStatus('error');
-            alertModal.current.trigger(err.message);
-        };
+        // On connect to the server, ask it to give us the current progress 
+        // for task 'queryllm' with id 'id', and stop when it reads progress >= 'max'. 
+        socket.on("connect", (msg) => {
+            socket.emit("queryllm", {'id': id, 'max': max_responses});
+        });
+        socket.on("disconnect", (msg) => {
+            console.log(msg);
+        });
 
-        // Run all prompt permutations through the LLM to generate + cache responses:
-        fetch(BASE_URL + 'queryllm', {
+        // The current progress, a number specifying how many responses collected so far:
+        socket.on("response", (counts) => {
+            console.log(counts);
+            if (!counts || FINISHED_QUERY) return;
+
+            // Update individual progress bars
+            const num_llms = llmItemsCurrState.length;
+            setLLMItems(llmItemsCurrState.map(item => {
+                if (item.model in counts)
+                    item.progress = counts[item.model] / (max_responses / num_llms) * 100;
+                return item;
+            }));
+            
+            // Update total progress bar
+            const total_num_resps = Object.keys(counts).reduce((acc, llm_name) => {
+                return acc + counts[llm_name];
+            }, 0);
+            setProgress(total_num_resps / max_responses * 100);
+        });
+
+        // The process has finished; close the connection:
+        socket.on("finish", (msg) => {
+            console.log("finished:", msg);
+            socket.disconnect();
+        });
+    };
+
+    // Run all prompt permutations through the LLM to generate + cache responses:
+    const query_llms = () => {
+        return fetch(BASE_URL + 'api/queryllm', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({
@@ -191,7 +286,7 @@ const PromptNode = ({ data, id }) => {
                     temperature: 0.5,
                     n: numGenerations,
                 },
-                no_cache: false,
+                no_cache: true,
             }),
         }, rejected).then(function(response) {
             return response.json();
@@ -204,6 +299,11 @@ const PromptNode = ({ data, id }) => {
 
                 // Success! Change status to 'ready':
                 setStatus('ready');
+
+                // Remove progress bars
+                setProgress(100);
+                resetLLMItemsProgress();
+                FINISHED_QUERY = true;
 
                 // Save prompt text so we remember what prompt we have responses cache'd for:
                 setPromptTextOnLastRun(promptText);
@@ -246,14 +346,15 @@ const PromptNode = ({ data, id }) => {
                 alertModal.current.trigger(json.error || 'Unknown error when querying LLM');
             }
         }, rejected);
+    };
 
-        console.log(pulled_data);
-    } else {
-        console.log('Not connected! :(');
-        alertModal.current.trigger('Missing inputs to one or more template variables.')
-
-        // TODO: Blink the names of unconnected params
-    }
+    // Now put it all together!
+    create_progress_scratchpad()
+        .then(fetch_resp_count)
+        .then(open_progress_listener_socket)
+        .then(query_llms)
+        .catch(rejected);
+    
   }
 
   const handleNumGenChange = (event) => {
@@ -331,6 +432,7 @@ const PromptNode = ({ data, id }) => {
                 <label htmlFor="alpaca.7B">Alpaca 7B</label> */}
             </div>
         </div>
+        {progress < 100 ? (<Progress value={progress} animate />) : <></>}
         <div className="response-preview-container nowheel">
             {responsePreviews}
         </div>

@@ -79,8 +79,10 @@ class PromptPipeline:
                 tasks.append(self._prompt_llm(llm, prompt, n, temperature))
             else:
                 # Blocking. Await + yield a single LLM call.
+                print('reached')
                 _, query, response = await self._prompt_llm(llm, prompt, n, temperature)
                 info = prompt.fill_history
+                print('back')
 
                 # Save the response to a JSON file
                 responses[str(prompt)] = {
@@ -103,7 +105,10 @@ class PromptPipeline:
         # Yield responses as they come in
         for task in asyncio.as_completed(tasks):
             # Collect the response from the earliest completed task
+            print(f'awaiting a response from {llm.name}...')
             prompt, query, response = await task
+
+            print('Completed!')
 
             # Each prompt has a history of what was filled in from its base template.
             # This data --like, "class", "language", "library" etc --can be useful when parsing responses.
@@ -149,8 +154,10 @@ class PromptPipeline:
 
     async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0) -> Tuple[str, Dict, Dict]:
         if llm is LLM.ChatGPT or llm is LLM.GPT4:
+            print('calling chatgpt and awaiting')
             query, response = await call_chatgpt(str(prompt), model=llm, n=n, temperature=temperature)
         elif llm is LLM.Alpaca7B:
+            print('calling dalai alpaca.7b and awaiting')
             query, response = await call_dalai(llm_name='alpaca.7B', port=4000, prompt=str(prompt), n=n, temperature=temperature)
         else:
             raise Exception(f"Language model {llm} is not supported.")
