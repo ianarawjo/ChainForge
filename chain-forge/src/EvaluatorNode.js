@@ -89,12 +89,10 @@ const EvaluatorNode = ({ data, id }) => {
     }, rejected).then(function(response) {
         return response.json();
     }, rejected).then(function(json) {
-        console.log(json);
-
         // Check if there's an error; if so, bubble it up to user and exit:
-        if (json.error) {
+        if (!json || json.error) {
           setStatus('error');
-          alertModal.current.trigger(json.error);
+          alertModal.current.trigger(json ? json.error : 'Unknown error encountered when requesting evaluations: empty response returned.');
           return;
         }
 
