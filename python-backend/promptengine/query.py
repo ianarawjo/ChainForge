@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from typing import List, Dict, Tuple, Iterator
-import json, os, asyncio
+import json, os, asyncio, random, string
 from promptengine.utils import LLM, call_chatgpt, call_dalai, is_valid_filepath, is_valid_json
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
 
@@ -55,10 +55,7 @@ class PromptPipeline:
         for num_queries, prompt in enumerate(self.gen_prompts(properties)):
             if isinstance(prompt, PromptTemplate) and not prompt.is_concrete():
                 raise Exception(f"Cannot send a prompt '{prompt}' to LLM: Prompt is a template.")
-            
-            # Each prompt has a history of what was filled in from its base template.
-            # This data --like, "class", "language", "library" etc --can be useful when parsing responses.
-            info = prompt.fill_history
+
             prompt_str = str(prompt)
             
             # First check if there is already a response for this item. If so, we can save an LLM call:
@@ -79,19 +76,42 @@ class PromptPipeline:
                     await asyncio.sleep(wait_secs)
                 
                 # Call the LLM asynchronously to generate a response
-                tasks.append(self._prompt_llm(llm, prompt_str, n, temperature))
+                tasks.append(self._prompt_llm(llm, prompt, n, temperature))
             else:
                 # Blocking. Await + yield a single LLM call.
-                yield await self._prompt_llm(llm, prompt_str, n, temperature)
+                _, query, response = await self._prompt_llm(llm, prompt, n, temperature)
+                info = prompt.fill_history
+
+                # Save the response to a JSON file
+                responses[str(prompt)] = {
+                    "query": query, 
+                    "response": response,
+                    "llm": llm.name,
+                    "info": info,
+                }
+                self._cache_responses(responses)
+
+                # Yield the response
+                yield {
+                    "prompt":str(prompt), 
+                    "query":query, 
+                    "response":response,
+                    "llm": llm.name,
+                    "info": info,
+                }
         
         # Yield responses as they come in
         for task in asyncio.as_completed(tasks):
             # Collect the response from the earliest completed task
-            query, response = await task
+            prompt, query, response = await task
+
+            # Each prompt has a history of what was filled in from its base template.
+            # This data --like, "class", "language", "library" etc --can be useful when parsing responses.
+            info = prompt.fill_history
             
             # Save the response to a JSON file
             # NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
-            responses[prompt_str] = {
+            responses[str(prompt)] = {
                 "query": query, 
                 "response": response,
                 "llm": llm.name,
@@ -101,7 +121,7 @@ class PromptPipeline:
 
             # Yield the response
             yield {
-                "prompt":prompt_str, 
+                "prompt":str(prompt), 
                 "query":query, 
                 "response":response,
                 "llm": llm.name,
@@ -127,13 +147,14 @@ class PromptPipeline:
     def clear_cached_responses(self) -> None:
         self._cache_responses({})
 
-    async def _prompt_llm(self, llm: LLM, prompt: str, n: int = 1, temperature: float = 1.0) -> Tuple[Dict, Dict]:
+    async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0) -> Tuple[str, Dict, Dict]:
         if llm is LLM.ChatGPT or llm is LLM.GPT4:
-            return await call_chatgpt(prompt, model=llm, n=n, temperature=temperature)
+            query, response = await call_chatgpt(str(prompt), model=llm, n=n, temperature=temperature)
         elif llm is LLM.Alpaca7B:
-            return await call_dalai(llm_name='alpaca.7B', port=4000, prompt=prompt, n=n, temperature=temperature)
+            query, response = await call_dalai(llm_name='alpaca.7B', port=4000, prompt=str(prompt), n=n, temperature=temperature)
         else:
             raise Exception(f"Language model {llm} is not supported.")
+        return prompt, query, response
 
 
 """
@@ -147,3 +168,12 @@ class PromptLLM(PromptPipeline):
     def gen_prompts(self, properties: dict) -> Iterator[PromptTemplate]:
         gen_prompts = PromptPermutationGenerator(self._template)
         return gen_prompts(properties)
+
+
+"""
+    A dummy class that spoofs LLM responses. Used for testing.
+"""
+class PromptLLMDummy(PromptLLM):
+    async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0) -> Tuple[Dict, Dict]:
+        await asyncio.sleep(random.uniform(0.1, 3))
+        return prompt, *({'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(40)) for _ in range(n)])

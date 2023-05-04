@@ -1,12 +1,11 @@
-import json, os, asyncio
+import json, os, asyncio, sys, argparse
 from dataclasses import dataclass
 from statistics import mean, median, stdev
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from promptengine.query import PromptLLM
+from promptengine.query import PromptLLM, PromptLLMDummy
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
 from promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
-import sys
 
 app = Flask(__name__)
 CORS(app)
@@ -422,4 +421,19 @@ def grabResponses():
     return ret
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='This script spins up a Flask server that serves as the backend for ChainForge')
+
+    # Turn on to disable all outbound LLM API calls and replace them with dummy calls
+    # that return random strings of ASCII characters. Useful for testing interface without wasting $$.
+    parser.add_argument('--dummy-responses', 
+        help="""Disables queries to LLMs, replacing them with spoofed responses composed of random ASCII characters. 
+                Produces each dummy response at random intervals between 0.1 and 3 seconds.""", 
+        dest='dummy_responses', 
+        action='store_true')
+    args = parser.parse_args()
+
+    if args.dummy_responses:
+        PromptLLM = PromptLLMDummy
+        extract_responses = lambda r, llm: r['response']
+
     app.run(host="localhost", port=8000, debug=True)
