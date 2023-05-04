@@ -1,4 +1,4 @@
-import json, os
+import json, os, asyncio
 from dataclasses import dataclass
 from statistics import mean, median, stdev
 from flask import Flask, request, jsonify
@@ -187,8 +187,7 @@ async def queryLLM():
     responses = {}
     params = data['params'] if 'params' in data else {}
 
-    for llm in llms:
-
+    async def query(llm: str) -> list:
         # Check that storage path is valid:
         cache_filepath = os.path.join('cache', f"{data['id']}-{str(llm.name)}.json")
         if not is_valid_filepath(cache_filepath):
@@ -199,14 +198,28 @@ async def queryLLM():
 
         # Prompt the LLM with all permutations of the input prompt template:
         # NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
-        responses[llm] = []
+        resps = []
         try:
+            print(f'Querying {llm}...')
             async for response in prompter.gen_responses(properties=data['vars'], llm=llm, **params):
-                responses[llm].append(response)
+                resps.append(response)
         except Exception as e:
             print('error generating responses:', e)
             raise e
-            return jsonify({'error': str(e)})
+        
+        return {'llm': llm, 'responses': resps}
+            
+    try:
+        # Request responses simultaneously across LLMs
+        tasks = [query(llm) for llm in llms]
+
+        # Await the responses from all queried LLMs
+        llm_results = await asyncio.gather(*tasks)
+        for item in llm_results:
+            responses[item['llm']] = item['responses']
+
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
     # Convert the responses into a more standardized format with less information
     res = [
