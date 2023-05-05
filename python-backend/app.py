@@ -228,9 +228,11 @@ def countQueries():
         return jsonify({'error': str(e)})
 
     # TODO: Send more informative data back including how many queries per LLM based on cache'd data
-    num_queries = len(all_prompt_permutations) * len(data['llms'])
+    num_queries = {} # len(all_prompt_permutations) * len(data['llms'])
+    for llm in data['llms']:
+        num_queries[llm] = len(all_prompt_permutations)
 
-    ret = jsonify({'count': num_queries})
+    ret = jsonify({'counts': num_queries})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 

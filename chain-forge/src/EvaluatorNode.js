@@ -155,6 +155,7 @@ const EvaluatorNode = ({ data, id }) => {
                   status={status}
                   alertModal={alertModal}
                   handleRunClick={handleRunClick}
+                  runButtonTooltip="Run evaluator over inputs"
                   />
       <Handle
           type="target"

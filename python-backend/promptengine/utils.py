@@ -1,7 +1,7 @@
 from typing import Dict, Tuple, List, Union
 from enum import Enum
 import openai
-import json, os, time
+import json, os, time, asyncio
 
 DALAI_MODEL = None
 DALAI_RESPONSE = None
@@ -102,7 +102,7 @@ async def call_dalai(llm_name: str, port: int, prompt: str, n: int = 1, temperat
 
         # Blocking --wait for request to complete: 
         while DALAI_RESPONSE is None:
-            time.sleep(0.01)
+            await asyncio.sleep(0.01)
 
         response = DALAI_RESPONSE['response']
         if response[-5:] == '<end>':  # strip ending <end> tag, if present

@@ -105,7 +105,7 @@ class PromptPipeline:
         # Yield responses as they come in
         for task in asyncio.as_completed(tasks):
             # Collect the response from the earliest completed task
-            print(f'awaiting a response from {llm.name}...')
+            print(f'awaiting a task to call {llm.name}...')
             prompt, query, response = await task
 
             print('Completed!')
