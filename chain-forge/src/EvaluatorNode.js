@@ -74,7 +74,7 @@ const EvaluatorNode = ({ data, id }) => {
     console.log(script_paths);
     // Run evaluator in backend
     const codeTextOnRun = codeText + '';
-    fetch(BASE_URL + 'api/execute', {
+    fetch(BASE_URL + 'app/execute', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
         body: JSON.stringify({

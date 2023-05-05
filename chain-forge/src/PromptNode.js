@@ -174,7 +174,7 @@ const PromptNode = ({ data, id }) => {
 
   // Ask the backend how many responses it needs to collect, given the input data:
   const fetchResponseCounts = (prompt, vars, llms, rejected) => {
-    return fetch(BASE_URL + 'api/countQueriesRequired', {
+    return fetch(BASE_URL + 'app/countQueriesRequired', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
         body: JSON.stringify({
@@ -250,7 +250,7 @@ const PromptNode = ({ data, id }) => {
 
     // Ask the backend to reset the scratchpad for counting queries:
     const create_progress_scratchpad = () => {
-        return fetch(BASE_URL + 'api/createProgressFile', {
+        return fetch(BASE_URL + 'app/createProgressFile', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({
@@ -268,7 +268,7 @@ const PromptNode = ({ data, id }) => {
         // the socketio server that will stream to us the current progress:
         const socket = io('http://localhost:8001/' + 'queryllm', {
             transports: ["websocket"],
-            cors: {origin: "http://localhost:3000/"},
+            cors: {origin: "http://localhost:8000/"},
         });
 
         const max_responses = Object.keys(response_counts).reduce((acc, llm) => acc + response_counts[llm], 0);
@@ -319,7 +319,7 @@ const PromptNode = ({ data, id }) => {
 
     // Run all prompt permutations through the LLM to generate + cache responses:
     const query_llms = () => {
-        return fetch(BASE_URL + 'api/queryllm', {
+        return fetch(BASE_URL + 'app/queryllm', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({
