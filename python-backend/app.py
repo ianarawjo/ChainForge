@@ -4,32 +4,24 @@ from statistics import mean, median, stdev
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO
-# from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from flask_app import run_server
 from promptengine.query import PromptLLM, PromptLLMDummy
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
 from promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
 
-# Setup the main app
+# Setup the socketio app
 # BUILD_DIR = "../chain-forge/build"
 # STATIC_DIR = BUILD_DIR + '/static'
 app = Flask(__name__) #, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
 
-# Set up CORS for specific routes
-# cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
-
 # Initialize Socket.IO
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="gevent")
 
-# Create a dispatcher connecting apps.
-# app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/app": flask_server})
+# Set up CORS for specific routes
+# cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Wait a max of a full minute (60 seconds) for the response count to update, before exiting.
-MAX_WAIT_TIME = 60
-
-# import threading
-# thread = None
-# thread_lock = threading.Lock()
+# Wait a max of a full 3 minutes (180 seconds) for the response count to update, before exiting.
+MAX_WAIT_TIME = 180
 
 def countdown():
     n = 10
@@ -38,21 +30,49 @@ def countdown():
         socketio.emit('response', n, namespace='/queryllm')
         n -= 1
 
-def readCounts(id, max_count):
+@socketio.on('queryllm', namespace='/queryllm')
+def readCounts(data):
+    id = data['id']
+    max_count = data['max']
+    tempfilepath = f'cache/_temp_{id}.txt'
+
+    # Check that temp file exists. If it doesn't, something went wrong with setup on Flask's end:
+    if not os.path.exists(tempfilepath):
+        print(f"Error: Temp file not found at path {tempfilepath}. Cannot stream querying progress.")
+        socketio.emit('finish', 'temp file not found', namespace='/queryllm')
+
     i = 0
-    n = 0
     last_n = 0
-    while i < MAX_WAIT_TIME and n < max_count:
-        with open(f'cache/_temp_{id}.txt', 'r') as f:
-            queries = json.load(f)
+    init_run = True
+    while i < MAX_WAIT_TIME and last_n < max_count:
+
+        # Open the temp file to read the progress so far:
+        try: 
+            with open(tempfilepath, 'r') as f:
+                queries = json.load(f)
+        except FileNotFoundError as e:
+             # If the temp file was deleted during executing, the Flask 'queryllm' func must've terminated successfully:
+             socketio.emit('finish', 'success', namespace='/queryllm')
+             return
+        
+        # Calculate the total sum of responses
+        # TODO: This is a naive approach; we need to make this more complex and factor in cache'ing in future
         n = sum([int(n) for llm, n in queries.items()])
-        socketio.emit('response', queries, namespace='/queryllm')
-        socketio.sleep(0.1)
-        if last_n != n:
+        
+        # If something's changed...
+        if init_run or last_n != n:
             i = 0
             last_n = n
+            init_run = False
+
+            # Update the React front-end with the current progress
+            socketio.emit('response', queries, namespace='/queryllm')
+            
         else:
             i += 0.1
+        
+        # Wait a bit before reading the file again
+        socketio.sleep(0.1)
 
     if i >= MAX_WAIT_TIME:
         print(f"Error: Waited maximum {MAX_WAIT_TIME} seconds for response count to update. Exited prematurely.")
@@ -61,18 +81,8 @@ def readCounts(id, max_count):
         print("All responses loaded!")
         socketio.emit('finish', 'success', namespace='/queryllm')
 
-@socketio.on('queryllm', namespace='/queryllm')
-def testSocket(data):
-    readCounts(data['id'], data['max'])
-    # countdown()
-    # global thread
-    # with thread_lock:
-    #     if thread is None:
-    #         thread = socketio.start_background_task(target=countdown)
-
 def run_socketio_server(socketio, port):
     socketio.run(app, host="localhost", port=8001)
-    # flask_server.run(host="localhost", port=8000, debug=True)
 
 if __name__ == "__main__":
     

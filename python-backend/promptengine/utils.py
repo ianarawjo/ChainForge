@@ -23,6 +23,7 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float =
     if model not in model_map:
         raise Exception(f"Could not find OpenAI chat model {model}")
     model = model_map[model]
+    print(f"Querying OpenAI model '{model}' with prompt '{prompt}'...")
     system_msg = "You are a helpful assistant." if system_msg is None else system_msg
     query = {
         "model": model,

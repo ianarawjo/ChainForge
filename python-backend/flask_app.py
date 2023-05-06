@@ -8,6 +8,7 @@ from promptengine.query import PromptLLM, PromptLLMDummy
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
 from promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
 
+# Setup Flask app to serve static version of React front-end
 BUILD_DIR = "../chain-forge/build"
 STATIC_DIR = BUILD_DIR + '/static'
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
@@ -15,18 +16,10 @@ app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
 # Set up CORS for specific routes
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Serve React app
+# Serve React app (static; no hot reloading)
 @app.route("/")
 def index():
     return render_template("index.html")
-
-# @app.route('/', defaults={'path': ''})
-# @app.route('/<path:path>')
-# def serve(path):
-#     if path != "" and os.path.exists(BUILD_DIR + '/' + path):
-#         return send_from_directory(BUILD_DIR, path)
-#     else:
-#         return send_from_directory(BUILD_DIR, 'index.html')
 
 LLM_NAME_MAP = {
     'gpt3.5': LLM.ChatGPT,
@@ -128,7 +121,6 @@ def reduce_responses(responses: list, vars: list) -> list:
     # E.g. {(var1_val, var2_val): [responses] }
     bucketed_resp = {}
     for r in responses:
-        print(r)
         tup_key = tuple([r['vars'][v] for v in include_vars])
         if tup_key in bucketed_resp:
             bucketed_resp[tup_key].append(r)
@@ -155,62 +147,6 @@ def reduce_responses(responses: list, vars: list) -> list:
         })
     
     return ret
-
-@app.route('/app/test', methods=['GET'])
-def test():
-    return "Hello, world!"
-
-# @socketio.on('queryllm', namespace='/queryllm')
-# def handleQueryAsync(data):
-#     print("reached handleQueryAsync")
-#     socketio.start_background_task(queryLLM, emitLLMResponse)
-
-# def emitLLMResponse(result):
-#     socketio.emit('response', result)
-
-"""
-    Testing sockets. The following function can 
-    communicate to React via with the JS code:
-
-    const socket = io(BASE_URL + 'queryllm', {
-        transports: ["websocket"],
-        cors: {
-            origin: "http://localhost:3000/",
-        },
-    });
-
-    socket.on("connect", (data) => {
-        socket.emit("queryllm", "hello");
-    });
-    socket.on("disconnect", (data) => {
-        console.log("disconnected");
-    });
-    socket.on("response", (data) => {
-        console.log(data);
-    });
-"""
-# def background_thread():
-#     n = 10
-#     while n > 0:
-#         socketio.sleep(0.5)
-#         socketio.emit('response', n, namespace='/queryllm')
-#         n -= 1
-
-# @socketio.on('queryllm', namespace='/queryllm')
-# def testSocket(data):
-#     print(data)
-#     global thread
-#     with thread_lock:
-#         if thread is None:
-#             thread = socketio.start_background_task(target=background_thread)
-
-# @socketio.on('queryllm', namespace='/queryllm')
-# def handleQuery(data):
-#     print(data)
-
-# def handleConnect():
-#     print('here')
-#     socketio.emit('response', 'goodbye', namespace='/')
 
 @app.route('/app/countQueriesRequired', methods=['POST'])
 def countQueries():
@@ -369,6 +305,10 @@ async def queryLLM():
         for r in rs
     ]
 
+    # Remove the temp file used to stream progress updates:
+    if os.path.exists(tempfilepath):
+        os.remove(tempfilepath)
+
     # Return all responses for all LLMs
     print('returning responses:', res)
     ret = jsonify({'responses': res})
@@ -425,7 +365,6 @@ def execute():
                 # check that the script_folder is valid, and it contains __init__.py
                 if not os.path.exists(script_folder):
                     print(script_folder, 'is not a valid script path.')
-                    print(os.path.exists(script_folder))
                     continue
 
                 # add it to the path:
@@ -540,7 +479,6 @@ def grabResponses():
 
     # Load all responses with the given ID:
     all_cache_files = get_files_at_dir('cache/')
-    print(all_cache_files)
     responses = []
     for cache_id in data['responses']:
         cache_files = get_filenames_with_id(all_cache_files, cache_id)
@@ -557,7 +495,6 @@ def grabResponses():
                 ]
             responses.extend(res)
 
-    print(responses)
     ret = jsonify({'responses': responses})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret

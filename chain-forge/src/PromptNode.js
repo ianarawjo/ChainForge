@@ -286,10 +286,18 @@ const PromptNode = ({ data, id }) => {
             // Request progress bar updates
             socket.emit("queryllm", {'id': id, 'max': max_responses});
         });
+
+        // Socket connection could not be established
+        socket.on("connect_error", (error) => {
+            console.log("Socket connection failed:", error.message);
+            socket.disconnect();
+        });
+
+        // Socket disconnected
         socket.on("disconnect", (msg) => {
             console.log(msg);
         });
-
+        
         // The current progress, a number specifying how many responses collected so far:
         socket.on("response", (counts) => {
             console.log(counts);
