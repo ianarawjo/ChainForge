@@ -33,6 +33,7 @@
     "react-flow-renderer": "^10.3.17",
     "react-plotly.js": "^2.6.0",
     "react-scripts": "5.0.1",
+    "socket.io-client": "^4.6.1",
     "styled-components": "^5.3.10",
     "uuidv4": "^6.2.13",
     "web-vitals": "^2.1.4",

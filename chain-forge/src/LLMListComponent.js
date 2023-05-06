@@ -63,7 +63,7 @@ export default function LLMList({llms, onItemsChange}) {
               {items.map((item, index) => (
                 <Draggable key={item.key} draggableId={item.key} index={index}>
                   {(provided, snapshot) => (
-                    <LLMListItem provided={provided} snapshot={snapshot} item={item} removeCallback={removeItem} />
+                    <LLMListItem provided={provided} snapshot={snapshot} item={item} removeCallback={removeItem} progress={item.progress} />
                   )}
                 </Draggable>
               ))}

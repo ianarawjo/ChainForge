@@ -47,7 +47,7 @@ const VisNode = ({ data, id }) => {
         // Grab the input node ids
         const input_node_ids = [data.input];
 
-        fetch(BASE_URL + 'grabResponses', {
+        fetch(BASE_URL + 'app/grabResponses', {
             method: 'POST',
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({

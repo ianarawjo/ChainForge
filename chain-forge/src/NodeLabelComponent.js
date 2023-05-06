@@ -4,9 +4,9 @@ import 'react-edit-text/dist/index.css';
 import StatusIndicator from './StatusIndicatorComponent';
 import AlertModal from './AlertModal';
 import { useState, useEffect} from 'react';
-import { CloseButton } from '@mantine/core';
+import { Tooltip } from '@mantine/core';
 
-export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, handleRunClick }) {
+export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, handleRunClick, handleRunHover, runButtonTooltip }) {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const [statusIndicator, setStatusIndicator] = useState('none');
     const [runButton, setRunButton] = useState('none');
@@ -33,12 +33,20 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
 
     useEffect(() => {
         if(handleRunClick !== undefined) {
-            setRunButton(<button className="AmitSahoo45-button-3 nodrag" onClick={handleRunClick}>&#9654;</button>);
+            const run_btn = (<button className="AmitSahoo45-button-3 nodrag" onClick={handleRunClick} onPointerEnter={handleRunHover}>&#9654;</button>);
+            if (runButtonTooltip)
+                setRunButton(
+                    <Tooltip label={runButtonTooltip} withArrow arrowSize={6} arrowRadius={2}>
+                    {run_btn}
+                    </Tooltip>
+                );
+            else
+                setRunButton(run_btn);
         }
         else {
             setRunButton(<></>);
         }
-    }, [handleRunClick]);
+    }, [handleRunClick, runButtonTooltip]);
 
     const handleCloseButtonClick = () => {
         removeNode(nodeId);

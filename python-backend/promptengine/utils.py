@@ -1,7 +1,7 @@
 from typing import Dict, Tuple, List, Union
 from enum import Enum
 import openai
-import json, os, time
+import json, os, time, asyncio
 
 DALAI_MODEL = None
 DALAI_RESPONSE = None
@@ -23,6 +23,7 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float =
     if model not in model_map:
         raise Exception(f"Could not find OpenAI chat model {model}")
     model = model_map[model]
+    print(f"Querying OpenAI model '{model}' with prompt '{prompt}'...")
     system_msg = "You are a helpful assistant." if system_msg is None else system_msg
     query = {
         "model": model,
@@ -102,7 +103,7 @@ async def call_dalai(llm_name: str, port: int, prompt: str, n: int = 1, temperat
 
         # Blocking --wait for request to complete: 
         while DALAI_RESPONSE is None:
-            time.sleep(0.01)
+            await asyncio.sleep(0.01)
 
         response = DALAI_RESPONSE['response']
         if response[-5:] == '<end>':  # strip ending <end> tag, if present

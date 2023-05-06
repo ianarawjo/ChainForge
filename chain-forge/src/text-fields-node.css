@@ -300,6 +300,10 @@
     -moz-transition: all 0.2s ease-out;
     transition: all 0.2s ease-out;
 }
+.AmitSahoo45-button-3:active {
+  background: #40a829;
+  color: yellow;
+}
 
 .AmitSahoo45-button-3:hover::before {
     -moz-animation: sh02 0.5s 0s linear;
@@ -363,6 +367,10 @@
   -webkit-transition: all 0.2s ease-out;
   -moz-transition: all 0.2s ease-out;
   transition: all 0.2s ease-out;
+}
+.close-button:active {
+  background: #660000;
+  color: yellow;
 }
 
 .close-button:hover::before {
