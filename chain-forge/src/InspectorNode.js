@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
@@ -21,6 +21,7 @@ const InspectorNode = ({ data, id }) => {
   const [varSelects, setVarSelects] = useState([]);
   const [pastInputs, setPastInputs] = useState([]);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
+  const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
   const handleVarValueSelect = () => {
   }
@@ -114,6 +115,14 @@ const InspectorNode = ({ data, id }) => {
         handleOnConnect();
     }
   }
+
+  useEffect(() => {
+    if (data.refresh && data.refresh === true) {
+        // Recreate the visualization:
+        setDataPropsForNode(id, { refresh: false });
+        handleOnConnect();
+    }
+}, [data, id, handleOnConnect, setDataPropsForNode]);
 
   return (
     <div className="inspector-node cfnode">

@@ -11,10 +11,10 @@ import io from 'socket.io-client';
 
 // Available LLMs
 const allLLMs = [
-    { name: "GPT3.5", emoji: "🙂", model: "gpt3.5", temp: 1.0 },
-    { name: "GPT4", emoji: "🥵", model: "gpt4", temp: 1.0 },
+    { name: "GPT3.5", emoji: "🙂", model: "gpt-3.5-turbo", temp: 1.0 },
+    { name: "GPT4", emoji: "🥵", model: "gpt-4", temp: 1.0 },
     { name: "Alpaca 7B", emoji: "🦙", model: "alpaca.7B", temp: 0.5 },
-    { name: "Claude v1", emoji: "📚", model: "claude.v1", temp: 0.5 },
+    { name: "Claude v1", emoji: "📚", model: "claude-v1", temp: 0.5 },
     { name: "Ian Chatbot", emoji: "💩", model: "test", temp: 0.5 }
 ];
 const initLLMs = [allLLMs[0]];
@@ -50,6 +50,7 @@ const PromptNode = ({ data, id }) => {
   const edges = useStore((state) => state.edges);
   const output = useStore((state) => state.output);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const outputEdgesForNode = useStore((state) => state.outputEdgesForNode);
   const getNode = useStore((state) => state.getNode);
 
   const [templateVars, setTemplateVars] = useState(data.vars || []);
@@ -391,6 +392,15 @@ const PromptNode = ({ data, id }) => {
                         </div>
                     );
                 }));
+
+                // Ping any inspect nodes attached to this node to refresh their contents:
+                const output_nodes = outputEdgesForNode(id).map(e => e.target);
+                output_nodes.forEach(n => {
+                    const node = getNode(n);
+                    if (node && node.type === 'inspect') {
+                        setDataPropsForNode(node.id, { refresh: true });
+                    }
+                });
 
                 // Log responses for debugging:
                 console.log(json.responses);

@@ -1,4 +1,4 @@
-import json, os, asyncio, sys, argparse, threading
+import json, os, asyncio, sys, argparse, threading, traceback
 from dataclasses import dataclass
 from statistics import mean, median, stdev
 from flask import Flask, request, jsonify, render_template, send_from_directory
@@ -21,12 +21,9 @@ cors = CORS(app, resources={r"/*": {"origins": "*"}})
 def index():
     return render_template("index.html")
 
-LLM_NAME_MAP = {
-    'gpt3.5': LLM.ChatGPT,
-    'alpaca.7B': LLM.Alpaca7B,
-    'gpt4': LLM.GPT4,
-}
-LLM_NAME_MAP_INVERSE = {val.name: key for key, val in LLM_NAME_MAP.items()}
+LLM_NAME_MAP = {} 
+for model in LLM:
+    LLM_NAME_MAP[model.value] = model
 
 @dataclass
 class ResponseInfo:
@@ -40,7 +37,7 @@ class ResponseInfo:
         return self.text
 
 def to_standard_format(r: dict) -> list:
-    llm = LLM_NAME_MAP_INVERSE[r['llm']]
+    llm = r['llm']
     resp_obj = {
         'vars': r['info'],
         'llm': llm,
@@ -51,9 +48,6 @@ def to_standard_format(r: dict) -> list:
     if 'eval_res' in r:
         resp_obj['eval_res'] = r['eval_res']
     return resp_obj
-
-def get_llm_of_response(response: dict) -> LLM:
-    return LLM_NAME_MAP[response['llm']]
 
 def get_filenames_with_id(filenames: list, id: str) -> list:
     return [
@@ -82,7 +76,7 @@ def run_over_responses(eval_func, responses: dict, scope: str) -> list:
                         text=r, 
                         prompt=prompt, 
                         var=resp_obj['info'], 
-                        llm=LLM_NAME_MAP_INVERSE[resp_obj['llm']])
+                        llm=resp_obj['llm'])
                 ) for r in res
             ]  
             resp_obj['eval_res'] = {  # NOTE: assumes this is numeric data
@@ -281,7 +275,8 @@ async def queryLLM():
                 with open(tempfilepath, 'w') as f:
                     json.dump(cur_data, f)
         except Exception as e:
-            print('error generating responses:', e)
+            print(f'error generating responses for {llm}:', e)
+            print(traceback.format_exc())
             raise e
         
         return {'llm': llm, 'responses': resps}
