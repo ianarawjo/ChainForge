@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Text } from '@mantine/core';
+import { Badge, Text } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import { IconCsv } from '@tabler/icons-react';
@@ -55,7 +55,8 @@ const CsvNode = ({ data, id }) => {
         // generate a HTML code that highlights the elements
         const html = [];
         elements.forEach((e, idx) => {
-            html.push(<span key={idx} className="csv-element">{e}</span>);
+            html.push(<Badge color="orange" size="lg" radius="sm">{e}</Badge>)
+            // html.push(<span key={idx} className="csv-element">{e}</span>);
             if (idx < elements.length - 1) {
                 html.push(<span key={idx + 'comma'} className="csv-comma">,</span>);
             }
