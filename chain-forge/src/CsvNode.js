@@ -50,7 +50,7 @@ const CsvNode = ({ data, id }) => {
     // render csv div
     const renderCsvDiv = useCallback(() => {
         // Take the data.text as csv (only 1 row), and get individual elements
-        const elements = processCsv(data.text);
+        const elements = data.fields;
 
         // generate a HTML code that highlights the elements
         const html = [];
