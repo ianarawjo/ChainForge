@@ -8,10 +8,12 @@ import { edit } from 'ace-builds';
 const CsvNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const [contentDiv, setContentDiv] = useState(null);
-    const [fields, setFields] = useState([]);
-    const [isEditing, setIsEditing] = useState(false);
+    const [isEditing, setIsEditing] = useState(true);
+    const [csvInput, setCsvInput] = useState(null);
+    const [countText, setCountText] = useState(null);
 
     const processCsv = (csv) => {
+        if(!csv) return [];
         // Split the input string by rows, and merge
         var res = csv.split('\n').join(',');
 
@@ -21,40 +23,25 @@ const CsvNode = ({ data, id }) => {
 
     // Handle a change in a text fields' input.
     const handleInputChange = useCallback((event) => {
-        // Update the data for this text fields' id.
-        let new_data = {'text': event.target.value};
-        setDataPropsForNode(id, new_data);
+            // Update the data for this text fields' id.
+            let new_data = { 'text': event.target.value };
+            setDataPropsForNode(id, new_data);
     }, [id, setDataPropsForNode]);
 
     const handKeyDown = useCallback((event) => {
         if (event.key === 'Enter') {
             setIsEditing(false);
+            setCsvInput(null);
         }
     }, []);
 
+    // handling Div Click
     const handleDivOnClick = useCallback((event) => {
         setIsEditing(true);
     }, []);
 
-    // Initialize fields (run once at init)
-    useEffect(() => {
-        if (!data.text) {
-            setIsEditing(true);
-        }
-    }, []);
-
-    // when data.text changes, update the content div
-    useEffect(() => {
-        if(isEditing) {
-            var text_val = data.text || '';
-            setContentDiv(
-                <div className="input-field" key={id}>
-                    <textarea id={id} name={id} className="text-field-fixed nodrag" rows="2" cols="40" onChange={handleInputChange} placeholder='Paste your CSV text here' onKeyDown={handKeyDown} value={text_val} />
-                </div>
-            );
-            return
-        }
-        if (!data.text) return;
+    // render csv div
+    const renderCsvDiv = useCallback(() => {
         // Take the data.text as csv (only 1 row), and get individual elements
         const elements = processCsv(data.text);
 
@@ -70,12 +57,43 @@ const CsvNode = ({ data, id }) => {
         setContentDiv(<div className='csv-div' onClick={handleDivOnClick}>
             {html}
         </div>);
-    }, [id, data.text, isEditing, handleDivOnClick, handleInputChange, handKeyDown]);
+        setCountText(<Text size="xs" style={{marginTop: '5px'}} color='blue' align='right'>{elements.length} elements</Text>);
+    }, [data.text, handleDivOnClick]);
+
+    // When isEditing changes, add input
+    useEffect(() => {
+        if (!isEditing) {
+            setCsvInput(null);
+            renderCsvDiv();
+            return;
+        }
+        if (!csvInput) {
+            var text_val = data.text || '';
+            setCsvInput(
+                <div className="input-field" key={id}>
+                    <textarea id={id} name={id} className="text-field-fixed nodrag" rows="2" cols="40" defaultValue={text_val} onChange={handleInputChange} placeholder='Paste your CSV text here' onKeyDown={handKeyDown} />
+                </div>
+            );
+            setContentDiv(null);
+            setCountText(null);
+        }
+    }, [isEditing]);
+
+    // when data.text changes, update the content div
+    useEffect(() => {
+        // When in editing mode, don't update the content div
+        if (isEditing) return;
+        if (!data.text) return;
+        renderCsvDiv();
+
+    }, [id, data.text]);
 
     return (
         <div className="text-fields-node cfnode">
             <NodeLabel title={data.title || 'CSV Node'} nodeId={id} icon={<IconCsv size="16px" />} />
+            {csvInput}
             {contentDiv}
+            {countText? countText : <></>}
         </div>
     );
 };

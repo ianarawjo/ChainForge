@@ -29,8 +29,13 @@ code {
   background-color: #2cba6c;
   font-size: inherit;
   padding: .2em .4em;
-  border-radius: 6px;
-  margin: 0 6px;
+  border: none;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  margin: 4px 2px;
+  cursor: pointer;
+  border-radius: 10px;
 }
 
 /* set a muted text */
@@ -38,6 +43,9 @@ code {
   color: #FFC107;
 }
 
-.csv-div  {
+.csv-div {
   width: 350px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
