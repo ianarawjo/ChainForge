@@ -190,7 +190,7 @@ const PromptNode = ({ data, id }) => {
         if (!json || !json.counts) {
             throw new Error('Request was sent and received by backend server, but there was no response.');
         }
-        return json.counts;
+        return [json.counts, json.total_num_responses];
     }, rejected);
   };
 
@@ -210,7 +210,7 @@ const PromptNode = ({ data, id }) => {
     // Fetch response counts from backend
     fetchResponseCounts(py_prompt, pulled_vars, llms, (err) => {
         console.warn(err.message);  // soft fail
-    }).then((counts) => {
+    }).then(([counts, total_num_responses]) => {
         // Check for empty counts (means no requests will be sent!)
         const num_llms_missing = Object.keys(counts).length;
         if (num_llms_missing === 0) {
@@ -304,7 +304,7 @@ const PromptNode = ({ data, id }) => {
         py_prompt_template, pulled_data, llmItemsCurrState.map(item => item.model), rejected);
 
     // Open a socket to listen for progress
-    const open_progress_listener_socket = (response_counts) => {
+    const open_progress_listener_socket = ([response_counts, total_num_responses]) => {
         // With the counts information we can create progress bars. Now we load a socket connection to 
         // the socketio server that will stream to us the current progress:
         const socket = io('http://localhost:8001/' + 'queryllm', {
@@ -312,7 +312,7 @@ const PromptNode = ({ data, id }) => {
             cors: {origin: "http://localhost:8000/"},
         });
 
-        const max_responses = Object.keys(response_counts).reduce((acc, llm) => acc + response_counts[llm], 0);
+        const max_responses = Object.keys(total_num_responses).reduce((acc, llm) => acc + total_num_responses[llm], 0);
 
         // On connect to the server, ask it to give us the current progress 
         // for task 'queryllm' with id 'id', and stop when it reads progress >= 'max'. 

@@ -199,16 +199,22 @@ def countQueries():
         cached_resps = []
     
     missing_queries = {}
+    num_responses_req = {}
     def add_to_missing_queries(llm, prompt, num):
         if llm not in missing_queries:
             missing_queries[llm] = {}
         missing_queries[llm][prompt] = num
+    def add_to_num_responses_req(llm, num):
+        if llm not in num_responses_req:
+            num_responses_req[llm] = 0
+        num_responses_req[llm] += num
     
     # Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
     for prompt in all_prompt_permutations:
         prompt = str(prompt)
         matching_resps = [r for r in cached_resps if r['prompt'] == prompt]
         for llm in data['llms']:
+            add_to_num_responses_req(llm, n)
             match_per_llm = [r for r in matching_resps if r['llm'] == llm]
             if len(match_per_llm) == 0:
                 add_to_missing_queries(llm, prompt, n)
@@ -220,7 +226,7 @@ def countQueries():
             else:
                 raise Exception(f"More than one response found for the same prompt ({prompt}) and LLM ({llm})")
 
-    ret = jsonify({'counts': missing_queries})
+    ret = jsonify({'counts': missing_queries, 'total_num_responses': num_responses_req})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
