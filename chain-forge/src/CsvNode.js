@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Card, Text } from '@mantine/core';
+import { Text } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
-import { IconCsv, IconFileText } from '@tabler/icons-react';
-import { edit } from 'ace-builds';
+import { IconCsv } from '@tabler/icons-react';
+import { Handle } from 'react-flow-renderer';
 
 const CsvNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
@@ -12,8 +12,15 @@ const CsvNode = ({ data, id }) => {
     const [csvInput, setCsvInput] = useState(null);
     const [countText, setCountText] = useState(null);
 
+    // initializing
+    useEffect(() => {
+        if (!data.fields) {
+            setDataPropsForNode(id, { text: '', fields: [] });
+        }
+    }, []);
+
     const processCsv = (csv) => {
-        if(!csv) return [];
+        if (!csv) return [];
         // Split the input string by rows, and merge
         var res = csv.split('\n').join(',');
 
@@ -23,9 +30,9 @@ const CsvNode = ({ data, id }) => {
 
     // Handle a change in a text fields' input.
     const handleInputChange = useCallback((event) => {
-            // Update the data for this text fields' id.
-            let new_data = { 'text': event.target.value };
-            setDataPropsForNode(id, new_data);
+        // Update the data for this text fields' id.
+        let new_data = { 'text': event.target.value, 'fields': processCsv(event.target.value) };
+        setDataPropsForNode(id, new_data);
     }, [id, setDataPropsForNode]);
 
     const handKeyDown = useCallback((event) => {
@@ -57,7 +64,7 @@ const CsvNode = ({ data, id }) => {
         setContentDiv(<div className='csv-div' onClick={handleDivOnClick}>
             {html}
         </div>);
-        setCountText(<Text size="xs" style={{marginTop: '5px'}} color='blue' align='right'>{elements.length} elements</Text>);
+        setCountText(<Text size="xs" style={{ marginTop: '5px' }} color='blue' align='right'>{elements.length} elements</Text>);
     }, [data.text, handleDivOnClick]);
 
     // When isEditing changes, add input
@@ -93,7 +100,13 @@ const CsvNode = ({ data, id }) => {
             <NodeLabel title={data.title || 'CSV Node'} nodeId={id} icon={<IconCsv size="16px" />} />
             {csvInput}
             {contentDiv}
-            {countText? countText : <></>}
+            {countText ? countText : <></>}
+            <Handle
+                type="source"
+                position="right"
+                id="output"
+                style={{ top: "50%", background: '#555' }}
+            />
         </div>
     );
 };
