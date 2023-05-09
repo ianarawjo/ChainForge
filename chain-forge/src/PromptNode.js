@@ -247,7 +247,7 @@ const PromptNode = ({ data, id }) => {
             const llm_count = queries_per_llm[llm_name];
             const req = llm_count > 1 ? 'queries' : 'query';
             if (num_llms > num_llms_missing)
-                setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name} and load other responses from cache`);
+                setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name} and load others`);
             else
                 setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name}`)
         }
