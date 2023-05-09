@@ -1,5 +1,6 @@
 *.DS_Store
 chain-forge/node_modules
+chain-forge/build
 __pycache__
 python-backend/cache
 

@@ -10,6 +10,7 @@ const AlertModal = forwardRef((props, ref) => {
 
   // This gives the parent access to triggering the modal alert
   const trigger = (msg) => {
+    if (!msg) msg = "Unknown error.";
     console.error(msg);
     setAlertMsg(msg);
     open();
