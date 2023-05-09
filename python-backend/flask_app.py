@@ -321,18 +321,21 @@ async def queryLLM():
         # Prompt the LLM with all permutations of the input prompt template:
         # NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
         resps = []
+        num_resps = 0
         try:
             print(f'Querying {llm}...')
             async for response in prompter.gen_responses(properties=data['vars'], llm=llm, **params):
                 resps.append(response)
                 print(f"collected response from {llm.name}:", str(response))
 
+                num_resps += len(extract_responses(response, llm))
+
                 # Save the number of responses collected to a temp file on disk
                 with open(tempfilepath, 'r') as f:
                     txt = f.read().strip()
                 
                 cur_data = json.loads(txt) if len(txt) > 0 else {}
-                cur_data[llm_str] = len(resps)
+                cur_data[llm_str] = num_resps
                 
                 with open(tempfilepath, 'w') as f:
                     json.dump(cur_data, f)

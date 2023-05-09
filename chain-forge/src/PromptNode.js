@@ -232,11 +232,11 @@ const PromptNode = ({ data, id }) => {
             const all_same_num_queries = Object.keys(queries_per_llm).reduce((acc, llm) => acc && queries_per_llm[llm] === some_llm_num, true)
             if (num_llms_missing === num_llms && all_same_num_queries) { // Counts are the same
                 const req = some_llm_num > 1 ? 'requests' : 'request';
-                setRunTooltip(`Will send ${some_llm_num} ${req}` + (num_llms > 1 ? ' per LLM' : ''));
+                setRunTooltip(`Will send ${some_llm_num} new ${req}` + (num_llms > 1 ? ' per LLM' : ''));
             }
             else if (all_same_num_queries) {
                 const req = some_llm_num > 1 ? 'requests' : 'request';
-                setRunTooltip(`Will send ${some_llm_num} ${req}` + (num_llms > 1 ? ` to ${num_llms_missing} LLMs` : ''));
+                setRunTooltip(`Will send ${some_llm_num} new ${req}` + (num_llms > 1 ? ` to ${num_llms_missing} LLMs` : ''));
             }
             else { // Counts are different 
                 const sum_queries = Object.keys(queries_per_llm).reduce((acc, llm) => acc + queries_per_llm[llm], 0);
