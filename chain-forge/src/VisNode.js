@@ -74,7 +74,7 @@ const VisNode = ({ data, id }) => {
                 let spec = [];
                 let layout = {
                     width: 420, height: 300, title: '', margin: {
-                        l: 65, r: 20, b: 20, t: 20, pad: 0
+                        l: 100, r: 20, b: 20, t: 20, pad: 0
                     }
                 }
 

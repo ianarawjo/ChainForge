@@ -66,16 +66,16 @@ def load_cache_json(filepath: str) -> dict:
         responses = json.load(f)
     return responses
 
-def run_over_responses(eval_func, responses: dict, scope: str) -> list:
-    for prompt, resp_obj in responses.items():
-        res = extract_responses(resp_obj, resp_obj['llm'])
+def run_over_responses(eval_func, responses: list, scope: str) -> list:
+    for resp_obj in responses:
+        res = resp_obj['responses']
         if scope == 'response':
             evals = [  # Run evaluator func over every individual response text
                 eval_func(
                     ResponseInfo(
                         text=r, 
-                        prompt=prompt, 
-                        var=resp_obj['info'], 
+                        prompt=resp_obj['prompt'], 
+                        var=resp_obj['vars'], 
                         llm=resp_obj['llm'])
                 ) for r in res
             ]  
@@ -452,38 +452,29 @@ def execute():
     all_cache_files = get_files_at_dir('cache/')
     all_evald_responses = []
     for cache_id in data['responses']:
-        cache_files = get_filenames_with_id(all_cache_files, cache_id)
-        if len(cache_files) == 0:
+        fname = f"{cache_id}.json"
+        if fname not in all_cache_files:
             return jsonify({'error': f'Did not find cache file for id {cache_id}'})
 
-        # To avoid loading all response files into memory at once, we'll run the evaluator on each file:
-        for filename in cache_files:
+        # Load the raw responses from the cache
+        responses = load_cache_json(os.path.join('cache', fname))
+        if len(responses) == 0: continue
 
-            # Load the raw responses from the cache
-            responses = load_cache_json(os.path.join('cache', filename))
-            if len(responses) == 0: continue
+        # Run the evaluator over them: 
+        # NOTE: 'evaluate' here was defined dynamically from 'exec' above. 
+        try:
+            evald_responses = run_over_responses(evaluate, responses, scope=data['scope'])
+        except Exception as e:
+            return jsonify({'error': f'Error encountered while trying to run "evaluate" method:\n{str(e)}'})
 
-            # Run the evaluator over them: 
-            # NOTE: 'evaluate' here was defined dynamically from 'exec' above. 
-            try:
-                evald_responses = run_over_responses(evaluate, responses, scope=data['scope'])
-            except Exception as e:
-                return jsonify({'error': f'Error encountered while trying to run "evaluate" method:\n{str(e)}'})
+        # Perform any reduction operations:
+        if 'reduce_vars' in data and len(data['reduce_vars']) > 0:
+            evald_responses = reduce_responses(
+                evald_responses,
+                vars=data['reduce_vars']
+            )
 
-            # Convert to standard format: 
-            std_evald_responses = [
-                to_standard_format({'prompt': prompt, **res_obj})
-                for prompt, res_obj in evald_responses.items()
-            ]
-
-            # Perform any reduction operations:
-            if 'reduce_vars' in data and len(data['reduce_vars']) > 0:
-                std_evald_responses = reduce_responses(
-                    std_evald_responses,
-                    vars=data['reduce_vars']
-                )
-
-            all_evald_responses.extend(std_evald_responses)
+        all_evald_responses.extend(evald_responses)
 
     # Store the evaluated responses in a new cache json:
     with open(cache_filepath, "w") as f:
