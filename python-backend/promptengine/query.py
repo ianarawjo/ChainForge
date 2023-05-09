@@ -177,5 +177,7 @@ class PromptLLM(PromptPipeline):
 """
 class PromptLLMDummy(PromptLLM):
     async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0) -> Tuple[Dict, Dict]:
+        # Wait a random amount of time, to simulate wait times from real queries
         await asyncio.sleep(random.uniform(0.1, 3))
-        return prompt, *({'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(40)) for _ in range(n)])
+        # Return a random string of characters of random length (within a predefined range)
+        return prompt, *({'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(random.randint(25, 80))) for _ in range(n)])

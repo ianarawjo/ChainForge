@@ -71,7 +71,7 @@ const EvaluatorNode = ({ data, id }) => {
     // Get all the script nodes, and get all the folder paths
     const script_nodes = nodes.filter(n => n.type === 'script');
     const script_paths = script_nodes.map(n => Object.values(n.data.scriptFiles).filter(f => f !== '')).flat();
-    console.log(script_paths);
+
     // Run evaluator in backend
     const codeTextOnRun = codeText + '';
     fetch(BASE_URL + 'app/execute', {
@@ -95,6 +95,8 @@ const EvaluatorNode = ({ data, id }) => {
           alertModal.current.trigger(json ? json.error : 'Unknown error encountered when requesting evaluations: empty response returned.');
           return;
         }
+        
+        console.log(json.responses);
 
         // Ping any vis nodes attached to this node to refresh their contents:
         const output_nodes = outputEdgesForNode(id).map(e => e.target);

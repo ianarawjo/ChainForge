@@ -142,6 +142,30 @@ def reduce_responses(responses: list, vars: list) -> list:
     
     return ret
 
+def load_all_cached_responses(cache_ids):
+    if not isinstance(cache_ids, list):
+        cache_ids = [cache_ids]
+    
+    # Load all responses with the given ID:
+    all_cache_files = get_files_at_dir('cache/')
+    responses = []
+    for cache_id in cache_ids:
+        cache_files = [fname for fname in get_filenames_with_id(all_cache_files, cache_id) if fname != f"{cache_id}.json"]
+        if len(cache_files) == 0:
+            continue
+
+        for filename in cache_files:
+            res = load_cache_json(os.path.join('cache', filename))
+            if isinstance(res, dict):
+                # Convert to standard response format
+                res = [
+                    to_standard_format({'prompt': prompt, **res_obj})
+                    for prompt, res_obj in res.items()
+                ]
+            responses.extend(res)
+    
+    return responses
+
 @app.route('/app/countQueriesRequired', methods=['POST'])
 def countQueries():
     """
@@ -152,24 +176,51 @@ def countQueries():
             'prompt': str  # the prompt template, with any {{}} vars
             'vars': dict  # a dict of the template variables to fill the prompt template with, by name. For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
             'llms': list  # the list of LLMs you will query
+            'n': int  # how many responses expected per prompt
+            'id': str (optional)  # a unique ID of the node with cache'd responses. If missing, assumes no cache will be used.
         }
     """
     data = request.get_json()
-    if not set(data.keys()).issuperset({'prompt', 'vars', 'llms'}):
+    if not set(data.keys()).issuperset({'prompt', 'vars', 'llms', 'n'}):
         return jsonify({'error': 'POST data is improper format.'})
     
+    n = int(data['n'])
+
     try:
         gen_prompts = PromptPermutationGenerator(PromptTemplate(data['prompt']))
         all_prompt_permutations = list(gen_prompts(data['vars']))
     except Exception as e:
         return jsonify({'error': str(e)})
+    
+    if 'id' in data:
+        # Load all cache'd responses with the given id:
+        cached_resps = load_all_cached_responses(data['id'])
+    else:
+        cached_resps = []
+    
+    missing_queries = {}
+    def add_to_missing_queries(llm, prompt, num):
+        if llm not in missing_queries:
+            missing_queries[llm] = {}
+        missing_queries[llm][prompt] = num
+    
+    # Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
+    for prompt in all_prompt_permutations:
+        prompt = str(prompt)
+        matching_resps = [r for r in cached_resps if r['prompt'] == prompt]
+        for llm in data['llms']:
+            match_per_llm = [r for r in matching_resps if r['llm'] == llm]
+            if len(match_per_llm) == 0:
+                add_to_missing_queries(llm, prompt, n)
+            elif len(match_per_llm) == 1:
+                # Check how many were stored; if not enough, add how many missing queries:
+                num_resps = len(match_per_llm[0]['responses'])
+                if n > len(match_per_llm[0]['responses']):
+                    add_to_missing_queries(llm, prompt, n - num_resps)
+            else:
+                raise Exception(f"More than one response found for the same prompt ({prompt}) and LLM ({llm})")
 
-    # TODO: Send more informative data back including how many queries per LLM based on cache'd data
-    num_queries = {} # len(all_prompt_permutations) * len(data['llms'])
-    for llm in data['llms']:
-        num_queries[llm] = len(all_prompt_permutations)
-
-    ret = jsonify({'counts': num_queries})
+    ret = jsonify({'counts': missing_queries})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
@@ -239,6 +290,11 @@ async def queryLLM():
     # Create a cache dir if it doesn't exist:
     create_dir_if_not_exists('cache')
 
+    # Check that the filepath used to cache eval'd responses is valid:
+    cache_filepath_last_run = os.path.join('cache', f"{data['id']}.json")
+    if not is_valid_filepath(cache_filepath_last_run):
+        return jsonify({'error': f'Invalid filepath: {cache_filepath_last_run}'})
+
     # For each LLM, generate and cache responses:
     responses = {}
     llms = data['llm']
@@ -303,6 +359,10 @@ async def queryLLM():
     # Remove the temp file used to stream progress updates:
     if os.path.exists(tempfilepath):
         os.remove(tempfilepath)
+    
+    # Save the responses *of this run* to the disk, for further recall:
+    with open(cache_filepath_last_run, "w") as f:
+        json.dump(res, f)
 
     # Return all responses for all LLMs
     print('returning responses:', res)
@@ -476,19 +536,18 @@ def grabResponses():
     all_cache_files = get_files_at_dir('cache/')
     responses = []
     for cache_id in data['responses']:
-        cache_files = get_filenames_with_id(all_cache_files, cache_id)
-        if len(cache_files) == 0:
+        fname = f"{cache_id}.json"
+        if fname not in all_cache_files:
             return jsonify({'error': f'Did not find cache file for id {cache_id}'})
-
-        for filename in cache_files:
-            res = load_cache_json(os.path.join('cache', filename))
-            if isinstance(res, dict):
-                # Convert to standard response format
-                res = [
-                    to_standard_format({'prompt': prompt, **res_obj})
-                    for prompt, res_obj in res.items()
-                ]
-            responses.extend(res)
+        
+        res = load_cache_json(os.path.join('cache', fname))
+        if isinstance(res, dict):
+            # Convert to standard response format
+            res = [
+                to_standard_format({'prompt': prompt, **res_obj})
+                for prompt, res_obj in res.items()
+            ]
+        responses.extend(res)
 
     ret = jsonify({'responses': responses})
     ret.headers.add('Access-Control-Allow-Origin', '*')
