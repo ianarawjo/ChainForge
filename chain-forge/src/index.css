@@ -22,3 +22,22 @@ code {
 .script-node-input {
   min-width: 300px;
 }
+
+.csv-element {
+  position: relative;
+  color: #ffffff;
+  background-color: #2cba6c;
+  font-size: inherit;
+  padding: .2em .4em;
+  border-radius: 6px;
+  margin: 0 6px;
+}
+
+/* set a muted text */
+.csv-comma {
+  color: #FFC107;
+}
+
+.csv-div  {
+  width: 350px;
+}
