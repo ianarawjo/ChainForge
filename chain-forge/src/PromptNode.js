@@ -362,7 +362,7 @@ const PromptNode = ({ data, id }) => {
             const total_num_resps = Object.keys(counts).reduce((acc, llm_name) => {
                 return acc + counts[llm_name];
             }, 0);
-            setProgress(total_num_resps / max_responses * 100);
+            setProgress(Math.max(5, total_num_resps / max_responses * 100));
         });
 
         // The process has finished; close the connection:
@@ -386,7 +386,7 @@ const PromptNode = ({ data, id }) => {
                     temperature: 0.5,
                     n: numGenerations,
                 },
-                no_cache: true,
+                no_cache: false,
             }),
         }, rejected).then(function(response) {
             return response.json();

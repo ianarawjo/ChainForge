@@ -191,6 +191,29 @@ def extract_responses(response: Union[list, dict], llm: Union[LLM, str]) -> List
     else:
         raise ValueError(f"LLM {llm} is unsupported.")
 
+def merge_response_objs(resp_obj_A: Union[dict, None], resp_obj_B: Union[dict, None]) -> dict:
+    if resp_obj_B is None: 
+        return resp_obj_A
+    elif resp_obj_A is None:
+        return resp_obj_B
+    raw_resp_A = resp_obj_A["raw_response"]
+    raw_resp_B = resp_obj_B["raw_response"]
+    if not isinstance(raw_resp_A, list):
+        raw_resp_A = [ raw_resp_A ]
+    if not isinstance(raw_resp_B, list):
+        raw_resp_B = [ raw_resp_B ]
+    C = {
+        "responses": resp_obj_A["responses"] + resp_obj_B["responses"],
+        "raw_response": raw_resp_A + raw_resp_B,
+    }
+    return {
+        **C,
+        "prompt": resp_obj_B['prompt'],
+        "query": resp_obj_B['query'],
+        "llm": resp_obj_B['llm'],
+        "info": resp_obj_B['info'],
+    }
+
 def create_dir_if_not_exists(path: str) -> None:
     if not os.path.exists(path):
         os.makedirs(path)
