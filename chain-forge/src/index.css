@@ -25,9 +25,10 @@ code {
 
 .csv-element {
   position: relative;
-  color: #ffffff;
-  background-color: #2cba6c;
+  color: #8a3e07;
+  background-color: #FFE8CC;
   font-size: inherit;
+  font-family: monospace;
   padding: .2em .4em;
   border: none;
   text-align: center;
@@ -45,7 +46,11 @@ code {
 
 .csv-div {
   width: 350px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.csv-input {
+  width: 350px;
+  height: 150px;
 }

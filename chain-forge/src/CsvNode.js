@@ -47,6 +47,11 @@ const CsvNode = ({ data, id }) => {
         setIsEditing(true);
     }, []);
 
+    const handleOnBlur = useCallback((event) => {
+        setIsEditing(false);
+        setCsvInput(null);
+    }, []);
+
     // render csv div
     const renderCsvDiv = useCallback(() => {
         // Take the data.text as csv (only 1 row), and get individual elements
@@ -55,14 +60,14 @@ const CsvNode = ({ data, id }) => {
         // generate a HTML code that highlights the elements
         const html = [];
         elements.forEach((e, idx) => {
-            html.push(<Badge color="orange" size="lg" radius="sm">{e}</Badge>)
-            // html.push(<span key={idx} className="csv-element">{e}</span>);
+            // html.push(<Badge color="orange" size="lg" radius="sm">{e}</Badge>)
+            html.push(<span key={idx} className="csv-element">{e}</span>);
             if (idx < elements.length - 1) {
                 html.push(<span key={idx + 'comma'} className="csv-comma">,</span>);
             }
         });
 
-        setContentDiv(<div className='csv-div' onClick={handleDivOnClick}>
+        setContentDiv(<div className='csv-div nowheel' onClick={handleDivOnClick}>
             {html}
         </div>);
         setCountText(<Text size="xs" style={{ marginTop: '5px' }} color='blue' align='right'>{elements.length} elements</Text>);
@@ -79,7 +84,7 @@ const CsvNode = ({ data, id }) => {
             var text_val = data.text || '';
             setCsvInput(
                 <div className="input-field" key={id}>
-                    <textarea id={id} name={id} className="text-field-fixed nodrag" rows="2" cols="40" defaultValue={text_val} onChange={handleInputChange} placeholder='Paste your CSV text here' onKeyDown={handKeyDown} />
+                    <textarea id={id} name={id} className="text-field-fixed nodrag csv-input" rows="2" cols="40" defaultValue={text_val} onChange={handleInputChange} placeholder='Paste your CSV text here' onKeyDown={handKeyDown} onBlur={handleOnBlur} autoFocus={true}/>
                 </div>
             );
             setContentDiv(null);
