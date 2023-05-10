@@ -19,30 +19,23 @@ Taken together, these three features let you easily:
   
 # Installation
 
-To install, use `pip`. From the command line:
+To get started, currently see the `CONTRIBUTOR_GUIDE.md`. Below are the planned installation steps (which are not yet active): 
 
-```
-pip install chainforge
-```
-
-[TODO: Upload CF to PyPI]
-[TODO: Create a command-line alias (?) so you can run `chainforge serve <react_port?> <py_port?>` and spin up both React and the Python backend automatically.]
-
-To run simply, type:
-
-```
-chainforge serve
-```
-
-This spins up two local servers: a React server through npm, and a Python backend, powered by Flask. For more options, such as port numbers, type `chainforge --help`.
-
-### Sharing prompt chains
-
-All ChainForge node graphs are importable/exportable as JSON specs. You can freely share prompt chains you develop (alongside any custom analysis code), whether to the public or within your organization. 
+>
+> To install, use `pip`. From the command line:
+> 
+> ```
+> pip install chainforge
+> ```
+> To run, type:
+> ```
+> chainforge serve
+> ```
+> This spins up two local servers: a React server through npm, and a Python backend, powered by Flask. For more options, such as port numbers, type `chainforge --help`.
 
 ## Example: Test LLM robustness to prompt injection
 
-...
+> ...
 
 # Development
 

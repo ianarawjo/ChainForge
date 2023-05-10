@@ -60,3 +60,8 @@ This script spins up two servers, the main one on port 8000 and a SocketIO serve
 
 If you built the React app statically, go to `localhost:8000` in a web browser to view the app. 
 If you served the React app with hot reloading with `npm run start`, go to the server address you ran it on (usually `localhost:3000`). 
+
+
+## Contributing to ChainForge
+
+If you have access to the main repository, we request that you add a branch `dev/<your_first_name>` and develop changes from there. When you are ready to push changes, say to addres an open Issue, make a Pull Request on the `main` repository and assign the main developer (Ian Arawjo) to it.
