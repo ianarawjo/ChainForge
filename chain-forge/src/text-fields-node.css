@@ -144,6 +144,10 @@
     border-radius: 5px;
   }
 
+  .ace-editor-container {
+    resize:vertical;
+  }
+
   .vis-node {
     background-color: #fff;
     padding: 10px;
@@ -156,8 +160,12 @@
     padding: 10px;
     border: 1px solid #999;
     border-radius: 5px;
+  }
+  .inspect-response-container {
     overflow-y: auto;
-    max-height: 400px;
+    width: 450px;
+    max-height: 350px;
+    resize: both;
   }
 
   .small-response {
@@ -172,7 +180,7 @@
   }
 
   .llm-response-container {
-    max-width: 450px;
+    max-width: 100%;
   }
   .llm-response-container h1 {
     font-weight: 400;

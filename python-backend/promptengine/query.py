@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import List, Dict, Tuple, Iterator, Union
 import json, os, asyncio, random, string
-from promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, is_valid_filepath, is_valid_json
+from promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, is_valid_filepath, is_valid_json, cull_responses, extract_responses
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
 
 # LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
@@ -59,8 +59,9 @@ class PromptPipeline:
             prompt_str = str(prompt)
             
             # First check if there is already a response for this item. If so, we can save an LLM call:
-            if prompt_str in responses:
+            if prompt_str in responses and len(extract_responses(responses[prompt_str], llm)) >= n:
                 print(f"   - Found cache'd response for prompt {prompt_str}. Using...")
+                responses[prompt_str] = cull_responses(responses[prompt_str], llm, n)
                 yield {
                     "prompt": prompt_str,
                     "query": responses[prompt_str]["query"],
@@ -177,5 +178,7 @@ class PromptLLM(PromptPipeline):
 """
 class PromptLLMDummy(PromptLLM):
     async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0) -> Tuple[Dict, Dict]:
+        # Wait a random amount of time, to simulate wait times from real queries
         await asyncio.sleep(random.uniform(0.1, 3))
-        return prompt, *({'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(40)) for _ in range(n)])
+        # Return a random string of characters of random length (within a predefined range)
+        return prompt, *({'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(random.randint(25, 80))) for _ in range(n)])

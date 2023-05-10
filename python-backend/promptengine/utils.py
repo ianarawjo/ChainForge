@@ -174,7 +174,7 @@ def _extract_chatgpt_responses(response: dict) -> List[dict]:
     choices = response["response"]["choices"]
     return [
         c["message"]["content"]
-        for i, c in enumerate(choices)
+        for c in choices
     ]
 
 def extract_responses(response: Union[list, dict], llm: Union[LLM, str]) -> List[dict]:
@@ -188,6 +188,22 @@ def extract_responses(response: Union[list, dict], llm: Union[LLM, str]) -> List
         return response["response"]
     elif (isinstance(llm, LLM) and llm.value[:6] == 'claude') or (isinstance(llm, str) and llm[:6] == 'claude'):
         return [r["completion"] for r in response["response"]]
+    else:
+        raise ValueError(f"LLM {llm} is unsupported.")
+
+def cull_responses(response: Union[list, dict], llm: Union[LLM, str], n: int) -> Union[list, dict]:
+    """
+        Returns the same 'response' but with only 'n' responses.
+    """
+    if llm is LLM.ChatGPT or llm == LLM.ChatGPT.value or llm is LLM.GPT4 or llm == LLM.GPT4.value:
+        response["response"]["choices"] = response["response"]["choices"][:n]
+        return response
+    elif llm is LLM.Alpaca7B or llm == LLM.Alpaca7B.value:
+        response["response"] = response["response"][:n]
+        return response
+    elif (isinstance(llm, LLM) and llm.value[:6] == 'claude') or (isinstance(llm, str) and llm[:6] == 'claude'):
+        response["response"] = response["response"][:n]
+        return response
     else:
         raise ValueError(f"LLM {llm} is unsupported.")
 

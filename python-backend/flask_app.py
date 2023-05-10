@@ -66,16 +66,16 @@ def load_cache_json(filepath: str) -> dict:
         responses = json.load(f)
     return responses
 
-def run_over_responses(eval_func, responses: dict, scope: str) -> list:
-    for prompt, resp_obj in responses.items():
-        res = extract_responses(resp_obj, resp_obj['llm'])
+def run_over_responses(eval_func, responses: list, scope: str) -> list:
+    for resp_obj in responses:
+        res = resp_obj['responses']
         if scope == 'response':
             evals = [  # Run evaluator func over every individual response text
                 eval_func(
                     ResponseInfo(
                         text=r, 
-                        prompt=prompt, 
-                        var=resp_obj['info'], 
+                        prompt=resp_obj['prompt'], 
+                        var=resp_obj['vars'], 
                         llm=resp_obj['llm'])
                 ) for r in res
             ]  
@@ -142,6 +142,30 @@ def reduce_responses(responses: list, vars: list) -> list:
     
     return ret
 
+def load_all_cached_responses(cache_ids):
+    if not isinstance(cache_ids, list):
+        cache_ids = [cache_ids]
+    
+    # Load all responses with the given ID:
+    all_cache_files = get_files_at_dir('cache/')
+    responses = []
+    for cache_id in cache_ids:
+        cache_files = [fname for fname in get_filenames_with_id(all_cache_files, cache_id) if fname != f"{cache_id}.json"]
+        if len(cache_files) == 0:
+            continue
+
+        for filename in cache_files:
+            res = load_cache_json(os.path.join('cache', filename))
+            if isinstance(res, dict):
+                # Convert to standard response format
+                res = [
+                    to_standard_format({'prompt': prompt, **res_obj})
+                    for prompt, res_obj in res.items()
+                ]
+            responses.extend(res)
+    
+    return responses
+
 @app.route('/app/countQueriesRequired', methods=['POST'])
 def countQueries():
     """
@@ -152,24 +176,57 @@ def countQueries():
             'prompt': str  # the prompt template, with any {{}} vars
             'vars': dict  # a dict of the template variables to fill the prompt template with, by name. For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
             'llms': list  # the list of LLMs you will query
+            'n': int  # how many responses expected per prompt
+            'id': str (optional)  # a unique ID of the node with cache'd responses. If missing, assumes no cache will be used.
         }
     """
     data = request.get_json()
-    if not set(data.keys()).issuperset({'prompt', 'vars', 'llms'}):
+    if not set(data.keys()).issuperset({'prompt', 'vars', 'llms', 'n'}):
         return jsonify({'error': 'POST data is improper format.'})
     
+    n = int(data['n'])
+
     try:
         gen_prompts = PromptPermutationGenerator(PromptTemplate(data['prompt']))
         all_prompt_permutations = list(gen_prompts(data['vars']))
     except Exception as e:
         return jsonify({'error': str(e)})
+    
+    if 'id' in data:
+        # Load all cache'd responses with the given id:
+        cached_resps = load_all_cached_responses(data['id'])
+    else:
+        cached_resps = []
+    
+    missing_queries = {}
+    num_responses_req = {}
+    def add_to_missing_queries(llm, prompt, num):
+        if llm not in missing_queries:
+            missing_queries[llm] = {}
+        missing_queries[llm][prompt] = num
+    def add_to_num_responses_req(llm, num):
+        if llm not in num_responses_req:
+            num_responses_req[llm] = 0
+        num_responses_req[llm] += num
+    
+    # Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
+    for prompt in all_prompt_permutations:
+        prompt = str(prompt)
+        matching_resps = [r for r in cached_resps if r['prompt'] == prompt]
+        for llm in data['llms']:
+            add_to_num_responses_req(llm, n)
+            match_per_llm = [r for r in matching_resps if r['llm'] == llm]
+            if len(match_per_llm) == 0:
+                add_to_missing_queries(llm, prompt, n)
+            elif len(match_per_llm) == 1:
+                # Check how many were stored; if not enough, add how many missing queries:
+                num_resps = len(match_per_llm[0]['responses'])
+                if n > len(match_per_llm[0]['responses']):
+                    add_to_missing_queries(llm, prompt, n - num_resps)
+            else:
+                raise Exception(f"More than one response found for the same prompt ({prompt}) and LLM ({llm})")
 
-    # TODO: Send more informative data back including how many queries per LLM based on cache'd data
-    num_queries = {} # len(all_prompt_permutations) * len(data['llms'])
-    for llm in data['llms']:
-        num_queries[llm] = len(all_prompt_permutations)
-
-    ret = jsonify({'counts': num_queries})
+    ret = jsonify({'counts': missing_queries, 'total_num_responses': num_responses_req})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
@@ -239,6 +296,11 @@ async def queryLLM():
     # Create a cache dir if it doesn't exist:
     create_dir_if_not_exists('cache')
 
+    # Check that the filepath used to cache eval'd responses is valid:
+    cache_filepath_last_run = os.path.join('cache', f"{data['id']}.json")
+    if not is_valid_filepath(cache_filepath_last_run):
+        return jsonify({'error': f'Invalid filepath: {cache_filepath_last_run}'})
+
     # For each LLM, generate and cache responses:
     responses = {}
     llms = data['llm']
@@ -259,18 +321,21 @@ async def queryLLM():
         # Prompt the LLM with all permutations of the input prompt template:
         # NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
         resps = []
+        num_resps = 0
         try:
             print(f'Querying {llm}...')
             async for response in prompter.gen_responses(properties=data['vars'], llm=llm, **params):
                 resps.append(response)
                 print(f"collected response from {llm.name}:", str(response))
 
+                num_resps += len(extract_responses(response, llm))
+
                 # Save the number of responses collected to a temp file on disk
                 with open(tempfilepath, 'r') as f:
                     txt = f.read().strip()
                 
                 cur_data = json.loads(txt) if len(txt) > 0 else {}
-                cur_data[llm_str] = len(resps)
+                cur_data[llm_str] = num_resps
                 
                 with open(tempfilepath, 'w') as f:
                     json.dump(cur_data, f)
@@ -303,6 +368,10 @@ async def queryLLM():
     # Remove the temp file used to stream progress updates:
     if os.path.exists(tempfilepath):
         os.remove(tempfilepath)
+    
+    # Save the responses *of this run* to the disk, for further recall:
+    with open(cache_filepath_last_run, "w") as f:
+        json.dump(res, f)
 
     # Return all responses for all LLMs
     print('returning responses:', res)
@@ -383,38 +452,29 @@ def execute():
     all_cache_files = get_files_at_dir('cache/')
     all_evald_responses = []
     for cache_id in data['responses']:
-        cache_files = get_filenames_with_id(all_cache_files, cache_id)
-        if len(cache_files) == 0:
+        fname = f"{cache_id}.json"
+        if fname not in all_cache_files:
             return jsonify({'error': f'Did not find cache file for id {cache_id}'})
 
-        # To avoid loading all response files into memory at once, we'll run the evaluator on each file:
-        for filename in cache_files:
+        # Load the raw responses from the cache
+        responses = load_cache_json(os.path.join('cache', fname))
+        if len(responses) == 0: continue
 
-            # Load the raw responses from the cache
-            responses = load_cache_json(os.path.join('cache', filename))
-            if len(responses) == 0: continue
+        # Run the evaluator over them: 
+        # NOTE: 'evaluate' here was defined dynamically from 'exec' above. 
+        try:
+            evald_responses = run_over_responses(evaluate, responses, scope=data['scope'])
+        except Exception as e:
+            return jsonify({'error': f'Error encountered while trying to run "evaluate" method:\n{str(e)}'})
 
-            # Run the evaluator over them: 
-            # NOTE: 'evaluate' here was defined dynamically from 'exec' above. 
-            try:
-                evald_responses = run_over_responses(evaluate, responses, scope=data['scope'])
-            except Exception as e:
-                return jsonify({'error': f'Error encountered while trying to run "evaluate" method:\n{str(e)}'})
+        # Perform any reduction operations:
+        if 'reduce_vars' in data and len(data['reduce_vars']) > 0:
+            evald_responses = reduce_responses(
+                evald_responses,
+                vars=data['reduce_vars']
+            )
 
-            # Convert to standard format: 
-            std_evald_responses = [
-                to_standard_format({'prompt': prompt, **res_obj})
-                for prompt, res_obj in evald_responses.items()
-            ]
-
-            # Perform any reduction operations:
-            if 'reduce_vars' in data and len(data['reduce_vars']) > 0:
-                std_evald_responses = reduce_responses(
-                    std_evald_responses,
-                    vars=data['reduce_vars']
-                )
-
-            all_evald_responses.extend(std_evald_responses)
+        all_evald_responses.extend(evald_responses)
 
     # Store the evaluated responses in a new cache json:
     with open(cache_filepath, "w") as f:
@@ -476,19 +536,18 @@ def grabResponses():
     all_cache_files = get_files_at_dir('cache/')
     responses = []
     for cache_id in data['responses']:
-        cache_files = get_filenames_with_id(all_cache_files, cache_id)
-        if len(cache_files) == 0:
+        fname = f"{cache_id}.json"
+        if fname not in all_cache_files:
             return jsonify({'error': f'Did not find cache file for id {cache_id}'})
-
-        for filename in cache_files:
-            res = load_cache_json(os.path.join('cache', filename))
-            if isinstance(res, dict):
-                # Convert to standard response format
-                res = [
-                    to_standard_format({'prompt': prompt, **res_obj})
-                    for prompt, res_obj in res.items()
-                ]
-            responses.extend(res)
+        
+        res = load_cache_json(os.path.join('cache', fname))
+        if isinstance(res, dict):
+            # Convert to standard response format
+            res = [
+                to_standard_format({'prompt': prompt, **res_obj})
+                for prompt, res_obj in res.items()
+            ]
+        responses.extend(res)
 
     ret = jsonify({'responses': responses})
     ret.headers.add('Access-Control-Allow-Origin', '*')
