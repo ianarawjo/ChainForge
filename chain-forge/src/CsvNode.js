@@ -20,13 +20,22 @@ const CsvNode = ({ data, id }) => {
     }, []);
 
     const processCsv = (csv) => {
-        if (!csv) return [];
-        // Split the input string by rows, and merge
-        var res = csv.split('\n').join(',');
-
-        // remove all the empty or whitespace-only elements
-        return res.split(',').map(e => e.trim()).filter(e => e.length > 0);
+        var matches = csv.match(/(\s*"[^"]+"\s*|\s*[^,]+|,)(?=,|$)/g);
+        for (var n = 0; n < matches.length; ++n) {
+            matches[n] = matches[n].trim();
+            if (matches[n] == ',') matches[n] = '';
+        }
+        return matches.map(e => e.trim()).filter(e => e.length > 0);
     }
+
+    // const processCsv = (csv) => {
+    //     if (!csv) return [];
+    //     // Split the input string by rows, and merge
+    //     var res = csv.split('\n').join(',');
+
+    //     // remove all the empty or whitespace-only elements
+    //     return res.split(',').map(e => e.trim()).filter(e => e.length > 0);
+    // }
 
     // Handle a change in a text fields' input.
     const handleInputChange = useCallback((event) => {
