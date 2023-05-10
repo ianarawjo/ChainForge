@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import List, Dict, Tuple, Iterator, Union
 import json, os, asyncio, random, string
-from promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, is_valid_filepath, is_valid_json, cull_responses, extract_responses
+from promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, is_valid_filepath, is_valid_json, extract_responses
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
 
 # LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
@@ -57,15 +57,18 @@ class PromptPipeline:
                 raise Exception(f"Cannot send a prompt '{prompt}' to LLM: Prompt is a template.")
 
             prompt_str = str(prompt)
+
+            cached_resp = responses[prompt_str] if prompt_str in responses else None
+            extracted_resps = extract_responses(cached_resp, llm) if cached_resp is not None else []
             
             # First check if there is already a response for this item. If so, we can save an LLM call:
-            if prompt_str in responses and len(extract_responses(responses[prompt_str], llm)) >= n:
+            if cached_resp and len(extract_responses) >= n:
                 print(f"   - Found cache'd response for prompt {prompt_str}. Using...")
-                responses[prompt_str] = cull_responses(responses[prompt_str], llm, n)
                 yield {
                     "prompt": prompt_str,
                     "query": responses[prompt_str]["query"],
-                    "response": responses[prompt_str]["response"],
+                    "responses": extracted_resps[:n],
+                    "raw_response": cached_resp["raw_response"],
                     "llm": responses[prompt_str]["llm"] if "llm" in responses[prompt_str] else LLM.ChatGPT.value,
                     "info": responses[prompt_str]["info"],
                 }
@@ -85,8 +88,9 @@ class PromptPipeline:
 
                 # Save the response to a JSON file
                 responses[str(prompt)] = {
-                    "query": query, 
-                    "response": response,
+                    "query": query,
+                    "responses": extract_responses(response, llm),
+                    "raw_response": response,
                     "llm": llm.value,
                     "info": info,
                 }
@@ -94,9 +98,10 @@ class PromptPipeline:
 
                 # Yield the response
                 yield {
-                    "prompt":str(prompt), 
-                    "query":query, 
-                    "response":response,
+                    "prompt": str(prompt), 
+                    "query": query, 
+                    "responses": extract_responses(response, llm),
+                    "raw_response": response,
                     "llm": llm.value,
                     "info": info,
                 }
@@ -114,7 +119,8 @@ class PromptPipeline:
             # NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
             responses[str(prompt)] = {
                 "query": query, 
-                "response": response,
+                "responses": extract_responses(response, llm),
+                "raw_response": response,
                 "llm": llm.value,
                 "info": info,
             }
@@ -122,9 +128,10 @@ class PromptPipeline:
 
             # Yield the response
             yield {
-                "prompt":str(prompt), 
-                "query":query, 
-                "response":response,
+                "prompt": str(prompt), 
+                "query": query, 
+                "responses": extract_responses(response, llm),
+                "raw_response": response,
                 "llm": llm.value,
                 "info": info,
             }

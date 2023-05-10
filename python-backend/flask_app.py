@@ -42,8 +42,8 @@ def to_standard_format(r: dict) -> list:
         'vars': r['info'],
         'llm': llm,
         'prompt': r['prompt'],
-        'responses': extract_responses(r, r['llm']),
-        'tokens': r['response']['usage'] if 'usage' in r['response'] else {},
+        'responses': r['responses'],
+        'tokens': r['raw_response']['usage'] if 'usage' in r['raw_response'] else {},
     }
     if 'eval_res' in r:
         resp_obj['eval_res'] = r['eval_res']
@@ -328,7 +328,7 @@ async def queryLLM():
                 resps.append(response)
                 print(f"collected response from {llm.name}:", str(response))
 
-                num_resps += len(extract_responses(response, llm))
+                num_resps += len(response['responses'])
 
                 # Save the number of responses collected to a temp file on disk
                 with open(tempfilepath, 'r') as f:
@@ -556,9 +556,7 @@ def grabResponses():
 def run_server(host="", port=8000, cmd_args=None):
     if cmd_args is not None and cmd_args.dummy_responses:
         global PromptLLM
-        global extract_responses
         PromptLLM = PromptLLMDummy
-        extract_responses = lambda r, llm: r['response']
     
     app.run(host=host, port=port)
 
