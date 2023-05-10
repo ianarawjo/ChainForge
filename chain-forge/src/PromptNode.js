@@ -202,6 +202,12 @@ const PromptNode = ({ data, id }) => {
         return;
     }
 
+    // Check if the PromptNode is not already waiting for a response...
+    if (status === 'loading') {
+        setRunTooltip('Fetching responses...');
+        return;
+    }
+
     // Get input data and prompt
     const [py_prompt, pulled_vars] = pullInputData();
     const llms = llmItemsCurrState.map(item => item.model);

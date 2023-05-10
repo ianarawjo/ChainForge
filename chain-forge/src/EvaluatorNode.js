@@ -180,7 +180,7 @@ const EvaluatorNode = ({ data, id }) => {
         :</div>
         
         {/* <span className="code-style">response</span>: */}
-        <div className="nodrag">
+        <div className="ace-editor-container nodrag">
           <AceEditor
             mode="python"
             theme="xcode"
@@ -189,8 +189,14 @@ const EvaluatorNode = ({ data, id }) => {
             name={"aceeditor_"+id}
             editorProps={{ $blockScrolling: true }}
             width='400px'
-            height='200px'
+            height='100px'
             tabSize={2}
+            onLoad={editorInstance => {  // Make Ace Editor div resizeable. 
+              editorInstance.container.style.resize = "both";
+              document.addEventListener("mouseup", e => (
+                editorInstance.resize()
+              ));
+            }}
           />
         </div>
         {/* <CodeMirror

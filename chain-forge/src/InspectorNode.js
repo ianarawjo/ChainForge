@@ -84,7 +84,7 @@ const InspectorNode = ({ data, id }) => {
                     );
                 });                
                 return (
-                    <div key={llm} className="llm-response-container nowheel">
+                    <div key={llm} className="llm-response-container">
                         <h1>{llm}</h1>
                         {res_divs}
                     </div>
@@ -132,7 +132,9 @@ const InspectorNode = ({ data, id }) => {
       {/* <div className="var-select-toolbar">
         {varSelects}
       </div> */}
+      <div className="inspect-response-container nowheel nodrag">
       {responses}
+      </div>
       <Handle
         type="target"
         position="left"
