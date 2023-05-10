@@ -1,7 +1,7 @@
 from abc import abstractmethod
-from typing import List, Dict, Tuple, Iterator
+from typing import List, Dict, Tuple, Iterator, Union
 import json, os, asyncio, random, string
-from promptengine.utils import LLM, call_chatgpt, call_dalai, is_valid_filepath, is_valid_json
+from promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, is_valid_filepath, is_valid_json, cull_responses, extract_responses
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
 
 # LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
@@ -59,13 +59,14 @@ class PromptPipeline:
             prompt_str = str(prompt)
             
             # First check if there is already a response for this item. If so, we can save an LLM call:
-            if prompt_str in responses:
+            if prompt_str in responses and len(extract_responses(responses[prompt_str], llm)) >= n:
                 print(f"   - Found cache'd response for prompt {prompt_str}. Using...")
+                responses[prompt_str] = cull_responses(responses[prompt_str], llm, n)
                 yield {
                     "prompt": prompt_str,
                     "query": responses[prompt_str]["query"],
                     "response": responses[prompt_str]["response"],
-                    "llm": responses[prompt_str]["llm"] if "llm" in responses[prompt_str] else LLM.ChatGPT.name,
+                    "llm": responses[prompt_str]["llm"] if "llm" in responses[prompt_str] else LLM.ChatGPT.value,
                     "info": responses[prompt_str]["info"],
                 }
                 continue
@@ -86,7 +87,7 @@ class PromptPipeline:
                 responses[str(prompt)] = {
                     "query": query, 
                     "response": response,
-                    "llm": llm.name,
+                    "llm": llm.value,
                     "info": info,
                 }
                 self._cache_responses(responses)
@@ -96,7 +97,7 @@ class PromptPipeline:
                     "prompt":str(prompt), 
                     "query":query, 
                     "response":response,
-                    "llm": llm.name,
+                    "llm": llm.value,
                     "info": info,
                 }
         
@@ -114,7 +115,7 @@ class PromptPipeline:
             responses[str(prompt)] = {
                 "query": query, 
                 "response": response,
-                "llm": llm.name,
+                "llm": llm.value,
                 "info": info,
             }
             self._cache_responses(responses)
@@ -124,7 +125,7 @@ class PromptPipeline:
                 "prompt":str(prompt), 
                 "query":query, 
                 "response":response,
-                "llm": llm.name,
+                "llm": llm.value,
                 "info": info,
             }
     
@@ -147,11 +148,13 @@ class PromptPipeline:
     def clear_cached_responses(self) -> None:
         self._cache_responses({})
 
-    async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0) -> Tuple[str, Dict, Dict]:
+    async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0) -> Tuple[str, Dict, Union[List, Dict]]:
         if llm is LLM.ChatGPT or llm is LLM.GPT4:
             query, response = await call_chatgpt(str(prompt), model=llm, n=n, temperature=temperature)
         elif llm is LLM.Alpaca7B:
-            query, response = await call_dalai(llm_name='alpaca.7B', port=4000, prompt=str(prompt), n=n, temperature=temperature)
+            query, response = await call_dalai(model=llm, port=4000, prompt=str(prompt), n=n, temperature=temperature)
+        elif llm.value[:6] == 'claude':
+            query, response = await call_anthropic(prompt=str(prompt), model=llm, n=n, temperature=temperature)
         else:
             raise Exception(f"Language model {llm} is not supported.")
         return prompt, query, response
@@ -175,5 +178,7 @@ class PromptLLM(PromptPipeline):
 """
 class PromptLLMDummy(PromptLLM):
     async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0) -> Tuple[Dict, Dict]:
+        # Wait a random amount of time, to simulate wait times from real queries
         await asyncio.sleep(random.uniform(0.1, 3))
-        return prompt, *({'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(40)) for _ in range(n)])
+        # Return a random string of characters of random length (within a predefined range)
+        return prompt, *({'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(random.randint(25, 80))) for _ in range(n)])

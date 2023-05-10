@@ -45,3 +45,8 @@ path.react-flow__edge-path:hover {
     transform: rotate(360deg);
   }
 }
+
+.rich-editor {
+  min-width: 500px;
+  min-height: 500px;
+}

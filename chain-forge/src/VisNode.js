@@ -66,48 +66,75 @@ const VisNode = ({ data, id }) => {
                     else
                         responses_by_llm[item.llm] = [item];
                 });
+                const llm_names = Object.keys(responses_by_llm);
 
                 // Create Plotly spec here
                 const varnames = Object.keys(json.responses[0].vars);
-                let spec = {};
+                const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
+                let spec = [];
                 let layout = {
                     width: 420, height: 300, title: '', margin: {
-                        l: 40, r: 20, b: 20, t: 20, pad: 2
+                        l: 100, r: 20, b: 20, t: 20, pad: 0
                     }
                 }
 
-                if (varnames.length === 1) {
+                const plot_grouped_boxplot = (resp_to_x) => {
+                    llm_names.forEach((llm, idx) => {
+                        // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
+                        const rs = responses_by_llm[llm];
+                        const hover_texts = rs.map(r => createHoverTexts(r.responses)).flat();
+                        spec.push({
+                            type: 'box',
+                            name: llm,
+                            marker: {color: colors[idx % colors.length]},
+                            x: rs.map(r => r.eval_res.items).flat(),
+                            y: rs.map(r => Array(r.eval_res.items.length).fill(resp_to_x(r))).flat(),
+                            boxpoints: 'all',
+                            text: hover_texts,
+                            hovertemplate: '%{text} <b><i>(%{x})</i></b>',
+                            orientation: 'h',
+                        });
+                    });
+                    layout.boxmode = 'group';
+                };
+
+                if (varnames.length === 0) {
+                    // No variables means they used a single prompt (no template) to generate responses
+                    // (Users are likely evaluating differences in responses between LLMs)
+                    plot_grouped_boxplot((r) => truncStr(r.prompt.trim(), 12));
+                    // llm_names.forEach((llm, idx) => {
+                    //     // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
+                    //     const rs = responses_by_llm[llm];
+                    //     const hover_texts = rs.map(r => createHoverTexts(r.responses)).flat();
+                    //     spec.push({
+                    //         type: 'scatter',
+                    //         name: llm,
+                    //         marker: {color: colors[idx % colors.length]},
+                    //         y: rs.map(r => r.eval_res.items).flat(),
+                    //         x: rs.map(r => Array(r.eval_res.items.length).fill(truncStr(r.prompt.trim(), 12))).flat(),  // use the prompt str as var name
+                    //         // boxpoints: 'all',
+                    //         mode: 'markers',
+                    //         text: hover_texts,
+                    //         hovertemplate: '%{text} <b><i>(%{y})</i></b>',
+                    //     });
+                    // });
+                    // layout.scattermode = 'group';
+                }
+                else if (varnames.length === 1) {
                     // 1 var; numeric eval
-                    if (Object.keys(responses_by_llm).length === 1) {
+                    if (llm_names.length === 1) {
                         // Simple box plot, as there is only a single LLM in the response
                         spec = json.responses.map(r => {
                             // Use the var value to 'name' this group of points:
                             const s = truncStr(r.vars[varnames[0]].trim(), 12);
 
-                            return {type: 'box', y: r.eval_res.items, name: s, boxpoints: 'all', text: createHoverTexts(r.responses), hovertemplate: '%{text}'};
+                            return {type: 'box', x: r.eval_res.items, name: s, boxpoints: 'all', text: createHoverTexts(r.responses), hovertemplate: '%{text}', orientation: 'h'};
                         });
                         layout.hovermode = 'closest';
                     } else {
                         // There are multiple LLMs in the response; do a grouped box plot by LLM.
                         // Note that 'name' is now the LLM, and 'x' stores the value of the var: 
-                        spec = [];
-                        const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
-                        Object.keys(responses_by_llm).forEach((llm, idx) => {
-                            // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
-                            const rs = responses_by_llm[llm];
-                            const hover_texts = rs.map(r => createHoverTexts(r.responses)).flat();
-                            spec.push({
-                                type: 'box',
-                                name: llm,
-                                marker: {color: colors[idx % colors.length]},
-                                y: rs.map(r => r.eval_res.items).flat(),
-                                x: rs.map(r => Array(r.eval_res.items.length).fill(r.vars[varnames[0]].trim())).flat(),
-                                boxpoints: 'all',
-                                text: hover_texts,
-                                hovertemplate: '%{text}',
-                            });
-                        });
-                        layout.boxmode = 'group';
+                        plot_grouped_boxplot((r) => r.vars[varnames[0]].trim());
                     }
                 }
                 else if (varnames.length === 2) {

@@ -11,10 +11,10 @@ import io from 'socket.io-client';
 
 // Available LLMs
 const allLLMs = [
-    { name: "GPT3.5", emoji: "🙂", model: "gpt3.5", temp: 1.0 },
-    { name: "GPT4", emoji: "🥵", model: "gpt4", temp: 1.0 },
+    { name: "GPT3.5", emoji: "🙂", model: "gpt-3.5-turbo", temp: 1.0 },
+    { name: "GPT4", emoji: "🥵", model: "gpt-4", temp: 1.0 },
     { name: "Alpaca 7B", emoji: "🦙", model: "alpaca.7B", temp: 0.5 },
-    { name: "Claude v1", emoji: "📚", model: "claude.v1", temp: 0.5 },
+    { name: "Claude v1", emoji: "📚", model: "claude-v1", temp: 0.5 },
     { name: "Ian Chatbot", emoji: "💩", model: "test", temp: 0.5 }
 ];
 const initLLMs = [allLLMs[0]];
@@ -50,6 +50,7 @@ const PromptNode = ({ data, id }) => {
   const edges = useStore((state) => state.edges);
   const output = useStore((state) => state.output);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const outputEdgesForNode = useStore((state) => state.outputEdgesForNode);
   const getNode = useStore((state) => state.getNode);
 
   const [templateVars, setTemplateVars] = useState(data.vars || []);
@@ -181,13 +182,15 @@ const PromptNode = ({ data, id }) => {
             prompt: prompt,
             vars: vars,
             llms: llms,
+            id: id, 
+            n: numGenerations,
     })}, rejected).then(function(response) {
         return response.json();
     }, rejected).then(function(json) {
         if (!json || !json.counts) {
             throw new Error('Request was sent and received by backend server, but there was no response.');
         }
-        return json.counts;
+        return [json.counts, json.total_num_responses];
     }, rejected);
   };
 
@@ -199,6 +202,12 @@ const PromptNode = ({ data, id }) => {
         return;
     }
 
+    // Check if the PromptNode is not already waiting for a response...
+    if (status === 'loading') {
+        setRunTooltip('Fetching responses...');
+        return;
+    }
+
     // Get input data and prompt
     const [py_prompt, pulled_vars] = pullInputData();
     const llms = llmItemsCurrState.map(item => item.model);
@@ -207,10 +216,48 @@ const PromptNode = ({ data, id }) => {
     // Fetch response counts from backend
     fetchResponseCounts(py_prompt, pulled_vars, llms, (err) => {
         console.warn(err.message);  // soft fail
-    }).then((counts) => {
-        const n = counts[Object.keys(counts)[0]];
-        const req = n > 1 ? 'requests' : 'request';
-        setRunTooltip(`Will send ${n} ${req}` + (num_llms > 1 ? ' per LLM' : ''));
+    }).then(([counts, total_num_responses]) => {
+        // Check for empty counts (means no requests will be sent!)
+        const num_llms_missing = Object.keys(counts).length;
+        if (num_llms_missing === 0) {
+            setRunTooltip('Will load responses from cache');
+            return;
+        }
+
+        // Tally how many queries per LLM:
+        let queries_per_llm = {};
+        Object.keys(counts).forEach(llm => {
+            queries_per_llm[llm] = Object.keys(counts[llm]).reduce(
+                (acc, prompt) => acc + counts[llm][prompt]
+            , 0);
+        });
+
+        // Check if all counts are the same:
+        if (num_llms_missing > 1) {
+            const some_llm_num = queries_per_llm[Object.keys(queries_per_llm)[0]];
+            const all_same_num_queries = Object.keys(queries_per_llm).reduce((acc, llm) => acc && queries_per_llm[llm] === some_llm_num, true)
+            if (num_llms_missing === num_llms && all_same_num_queries) { // Counts are the same
+                const req = some_llm_num > 1 ? 'requests' : 'request';
+                setRunTooltip(`Will send ${some_llm_num} new ${req}` + (num_llms > 1 ? ' per LLM' : ''));
+            }
+            else if (all_same_num_queries) {
+                const req = some_llm_num > 1 ? 'requests' : 'request';
+                setRunTooltip(`Will send ${some_llm_num} new ${req}` + (num_llms > 1 ? ` to ${num_llms_missing} LLMs` : ''));
+            }
+            else { // Counts are different 
+                const sum_queries = Object.keys(queries_per_llm).reduce((acc, llm) => acc + queries_per_llm[llm], 0);
+                setRunTooltip(`Will send a variable # of queries to LLM(s) (total=${sum_queries})`);
+            }
+        } else {
+            const llm_name = Object.keys(queries_per_llm)[0];
+            const llm_count = queries_per_llm[llm_name];
+            const req = llm_count > 1 ? 'queries' : 'query';
+            if (num_llms > num_llms_missing)
+                setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name} and load others`);
+            else
+                setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name}`)
+        }
+        
     });
   };
 
@@ -263,7 +310,7 @@ const PromptNode = ({ data, id }) => {
         py_prompt_template, pulled_data, llmItemsCurrState.map(item => item.model), rejected);
 
     // Open a socket to listen for progress
-    const open_progress_listener_socket = (response_counts) => {
+    const open_progress_listener_socket = ([response_counts, total_num_responses]) => {
         // With the counts information we can create progress bars. Now we load a socket connection to 
         // the socketio server that will stream to us the current progress:
         const socket = io('http://localhost:8001/' + 'queryllm', {
@@ -271,7 +318,7 @@ const PromptNode = ({ data, id }) => {
             cors: {origin: "http://localhost:8000/"},
         });
 
-        const max_responses = Object.keys(response_counts).reduce((acc, llm) => acc + response_counts[llm], 0);
+        const max_responses = Object.keys(total_num_responses).reduce((acc, llm) => acc + total_num_responses[llm], 0);
 
         // On connect to the server, ask it to give us the current progress 
         // for task 'queryllm' with id 'id', and stop when it reads progress >= 'max'. 
@@ -391,6 +438,15 @@ const PromptNode = ({ data, id }) => {
                         </div>
                     );
                 }));
+
+                // Ping any inspect nodes attached to this node to refresh their contents:
+                const output_nodes = outputEdgesForNode(id).map(e => e.target);
+                output_nodes.forEach(n => {
+                    const node = getNode(n);
+                    if (node && node.type === 'inspect') {
+                        setDataPropsForNode(node.id, { refresh: true });
+                    }
+                });
 
                 // Log responses for debugging:
                 console.log(json.responses);
