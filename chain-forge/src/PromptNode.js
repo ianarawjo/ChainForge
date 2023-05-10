@@ -386,7 +386,7 @@ const PromptNode = ({ data, id }) => {
                     temperature: 0.5,
                     n: numGenerations,
                 },
-                no_cache: false,
+                no_cache: true,
             }),
         }, rejected).then(function(response) {
             return response.json();

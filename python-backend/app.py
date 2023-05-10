@@ -7,7 +7,7 @@ from flask_socketio import SocketIO
 from flask_app import run_server
 from promptengine.query import PromptLLM, PromptLLMDummy
 from promptengine.template import PromptTemplate, PromptPermutationGenerator
-from promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
+from promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
 
 # Setup the socketio app
 # BUILD_DIR = "../chain-forge/build"
