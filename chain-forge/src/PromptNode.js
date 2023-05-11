@@ -54,17 +54,17 @@ const PromptNode = ({ data, id }) => {
   const getNode = useStore((state) => state.getNode);
 
   const [templateVars, setTemplateVars] = useState(data.vars || []);
-  const [promptText, setPromptText] = useState(data.prompt);
+  const [promptText, setPromptText] = useState(data.prompt || "");
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
   const [status, setStatus] = useState('none');
-  const [responsePreviews, setReponsePreviews] = useState([]);
+  const [responsePreviews, setResponsePreviews] = useState([]);
   const [numGenerations, setNumGenerations] = useState(data.n || 1);
 
   // For displaying error messages to user
   const alertModal = useRef(null);
 
   // Selecting LLM models to prompt
-  const [llmItems, setLLMItems] = useState(initLLMs.map((i, idx) => ({key: uuid(), ...i})));
+  const [llmItems, setLLMItems] = useState(data.llms || initLLMs.map((i) => ({key: uuid(), ...i})));
   const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
   const resetLLMItemsProgress = useCallback(() => {
     setLLMItems(llmItemsCurrState.map(item => {
@@ -101,7 +101,22 @@ const PromptNode = ({ data, id }) => {
 
   const onLLMListItemsChange = useCallback((new_items) => {
     setLLMItemsCurrState(new_items);
+    setDataPropsForNode(id, { llms: new_items });
   }, [setLLMItemsCurrState]);
+
+  const refreshTemplateHooks = (text) => {
+    // Update template var fields + handles
+    const braces_regex = /(?<!\\){(.*?)(?<!\\)}/g;  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
+    const found_template_vars = text.match(braces_regex);
+    if (found_template_vars && found_template_vars.length > 0) {
+        const temp_var_names = found_template_vars.map(
+            name => name.substring(1, name.length-1)  // remove brackets {}
+        )
+        setTemplateVars(temp_var_names);
+    } else {
+        setTemplateVars([]);
+    }
+  };
 
   const handleInputChange = (event) => {
     const value = event.target.value;
@@ -119,18 +134,13 @@ const PromptNode = ({ data, id }) => {
         }
     }
 
-    // Update template var fields + handles
-    const braces_regex = /(?<!\\){(.*?)(?<!\\)}/g;  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
-    const found_template_vars = value.match(braces_regex);
-    if (found_template_vars && found_template_vars.length > 0) {
-        const temp_var_names = found_template_vars.map(
-            name => name.substring(1, name.length-1)  // remove brackets {}
-        )
-        setTemplateVars(temp_var_names);
-    } else {
-        setTemplateVars([]);
-    }
+    refreshTemplateHooks(value);
   };
+
+  // On initialization
+  useEffect(() => {
+    refreshTemplateHooks(promptText);
+  }, []);
 
   // Pull all inputs needed to request responses.
   // Returns [prompt, vars dict]
@@ -144,6 +154,7 @@ const PromptNode = ({ data, id }) => {
                 if (e.target == nodeId && e.targetHandle == varname) {
                     // Get the immediate output:
                     let out = output(e.source, e.sourceHandle);
+                    if (!out) return;
 
                     // Save the var data from the pulled output
                     if (varname in pulled_data)
@@ -284,7 +295,7 @@ const PromptNode = ({ data, id }) => {
 
     // Set status indicator
     setStatus('loading');
-    setReponsePreviews([]);
+    setResponsePreviews([]);
 
     const [py_prompt_template, pulled_data] = pullInputData();
 
@@ -408,12 +419,15 @@ const PromptNode = ({ data, id }) => {
                 // Save prompt text so we remember what prompt we have responses cache'd for:
                 setPromptTextOnLastRun(promptText);
 
+                // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
+                setDataPropsForNode(id, {fields: json.responses.map(r => r['responses']).flat()});
+
                 // Save preview strings of responses, for quick glance
                 // Bucket responses by LLM:
                 const responses_by_llm = bucketResponsesByLLM(json.responses);
                 // const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
                 // const colors = ['green', 'yellow', 'orange', 'red', 'pink', 'grape', 'violet', 'indigo', 'blue', 'gray', 'cyan', 'lime'];
-                setReponsePreviews(Object.keys(responses_by_llm).map((llm, llm_idx) => {
+                setResponsePreviews(Object.keys(responses_by_llm).map((llm, llm_idx) => {
                     const resp_boxes = responses_by_llm[llm].map((res_obj, idx) => {
                         const num_resp = res_obj['responses'].length;
                         const resp_prevs = res_obj['responses'].map((r, i) => 
@@ -421,7 +435,7 @@ const PromptNode = ({ data, id }) => {
                         );
                         const vars = vars_to_str(res_obj.vars);
                         const var_tags = vars.map((v, i) => (
-                            <Badge key={v} color="green" size="xs">{v}</Badge>
+                            <Badge key={v} color="blue" size="xs">{v}</Badge>
                         ));
                         return (
                             <div key={idx} className="response-box">

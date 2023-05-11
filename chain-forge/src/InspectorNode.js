@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
+import { Badge } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import {BASE_URL} from './store';
 
+// Helper funcs
+const truncStr = (s, maxLen) => {
+    if (s.length > maxLen) // Cut the name short if it's long
+        return s.substring(0, maxLen) + '...'
+    else
+        return s;
+}
+const vars_to_str = (vars) => {
+    const pairs = Object.keys(vars).map(varname => {
+        const s = truncStr(vars[varname].trim(), 12);
+        return `${varname} = '${s}'`;
+    });
+    return pairs;
+};
 const bucketResponsesByLLM = (responses) => {
     let responses_by_llm = {};
     responses.forEach(item => {
@@ -58,27 +73,19 @@ const InspectorNode = ({ data, id }) => {
             // // Create a dict version
             // let tempvars = {};
 
-            const vars_to_str = (vars) => {
-                const pairs = Object.keys(vars).map(varname => {
-                    let s = vars[varname].trim();
-                    if (s.length > 12)
-                        s = s.substring(0, 12) + '...'
-                    return `${varname} = '${s}'`;
-                });
-                return pairs.join('; ');
-            };
-
-            const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
+            const colors = ['#ace1aeb1', '#f1b963b1', '#e46161b1', '#f8f398b1', '#defcf9b1', '#cadefcb1', '#c3bef0b1', '#cca8e9b1'];
             setResponses(Object.keys(responses_by_llm).map((llm, llm_idx) => {
                 const res_divs = responses_by_llm[llm].map((res_obj, res_idx) => {
                     const ps = res_obj.responses.map((r, idx) => 
                         (<pre className="small-response" key={idx}>{r}</pre>)
                     );
-                    // Object.keys(res_obj.vars).forEach(v => {tempvars[v].add(res_obj.vars[v])});
                     const vars = vars_to_str(res_obj.vars);
+                    const var_tags = vars.map((v) => (
+                        <Badge key={v} color="blue" size="xs">{v}</Badge>
+                    ));
                     return (
                         <div key={"r"+res_idx} className="response-box" style={{ backgroundColor: colors[llm_idx % colors.length] }}>
-                            <p className="response-tag">{vars}</p>
+                            {var_tags}
                             {ps}
                         </div>
                     );

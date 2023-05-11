@@ -60,7 +60,10 @@ const useStore = create((set, get) => ({
     if (src_node) {
         // Get the data related to that handle:
         if ("fields" in src_node.data) {
-          return Object.values(src_node.data["fields"]);
+          if (Array.isArray(src_node.data["fields"]))
+            return src_node.data["fields"];
+          else
+            return Object.values(src_node.data["fields"]);
         }
         // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:
         else return src_node.data[sourceHandleKey];

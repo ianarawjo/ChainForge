@@ -70,7 +70,9 @@ class PromptPipeline:
                     "responses": extracted_resps[:n],
                     "raw_response": cached_resp["raw_response"],
                     "llm": cached_resp["llm"] if "llm" in cached_resp else LLM.ChatGPT.value,
-                    "info": cached_resp["info"],
+                    # We want to use the new info, since 'vars' could have changed even though 
+                    # the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
+                    "info": prompt.fill_history,  
                 }
                 continue
 

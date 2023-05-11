@@ -36,7 +36,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             const run_btn = (<button className="AmitSahoo45-button-3 nodrag" onClick={handleRunClick} onPointerEnter={handleRunHover}>&#9654;</button>);
             if (runButtonTooltip)
                 setRunButton(
-                    <Tooltip label={runButtonTooltip} withArrow arrowSize={6} arrowRadius={2}>
+                    <Tooltip label={runButtonTooltip} withArrow arrowSize={6} arrowRadius={2} zIndex={1001}>
                     {run_btn}
                     </Tooltip>
                 );

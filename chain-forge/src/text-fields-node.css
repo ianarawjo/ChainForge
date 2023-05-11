@@ -163,7 +163,8 @@
   }
   .inspect-response-container {
     overflow-y: auto;
-    width: 450px;
+    min-width: 150px;
+    max-width: 450px;
     max-height: 350px;
     resize: both;
   }
@@ -172,9 +173,9 @@
     font-size: 8pt;
     font-family: monospace;
     border-style: dotted;
-    border-color: #aaa;
+    border-color: #fff;
     padding: 2px;
-    margin: 0px;
+    margin: 2px 1px;
     background-color: rgba(255, 255, 255, 0.4);
     white-space: pre-wrap;
   }
@@ -199,6 +200,7 @@
   .response-box {
     padding: 2px;
     margin: 0px 2px 4px 2px;
+    border-radius: 5px;
   }
   .response-tag {
     font-size: 9pt;
