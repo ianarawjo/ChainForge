@@ -52,10 +52,13 @@ class PromptTemplate:
         except KeyError as e:
             return False
         
-    def fill(self, paramDict: Dict[str, str]) -> 'PromptTemplate':
+    def fill(self, paramDict: Dict[str, Union[str, Dict[str, str]]]) -> 'PromptTemplate':
         """
             Formats the template string with the given parameters, returning a new PromptTemplate.
             Can return a partial completion. 
+
+            NOTE: paramDict values can be in a special form: {text: <str>, fill_history: {varname: <str>}}
+                  in order to bundle in any past fill history that is lost in the current text.
 
             Example usage:
                 prompt = prompt_template.fill({
@@ -64,12 +67,25 @@ class PromptTemplate:
                     "PL": "Python"
                 });
         """
+        # Check for special 'past fill history' format:
+        past_fill_history = {}
+        if len(paramDict) > 0 and isinstance(next(iter(paramDict.values())), dict):
+            for obj in paramDict.values():
+                past_fill_history = {**obj['fill_history'], **past_fill_history}
+            paramDict = {param: obj['text'] for param, obj in paramDict.items()}
+
         filled_pt = PromptTemplate(
             Template(self.template).safe_substitute(paramDict)
         )
 
-        # Deep copy prior fill history from this version over to new one
+        # Deep copy prior fill history of this PromptTemplate from this version over to new one
         filled_pt.fill_history = { key: val for (key, val) in self.fill_history.items() }
+
+        # Append any past history passed as vars:
+        for key, val in past_fill_history.items():
+            if key in filled_pt.fill_history:
+                print(f"Warning: PromptTemplate already has fill history for key {key}.")
+            filled_pt.fill_history[key] = val
 
         # Add the new fill history using the passed parameters that we just filled in
         for key, val in paramDict.items():
@@ -84,6 +100,9 @@ class PromptPermutationGenerator:
     """
     Given a PromptTemplate and a parameter dict that includes arrays of items, 
     generate all the permutations of the prompt for all permutations of the items.
+
+    NOTE: Items can be in a special form: {text: <str>, fill_history: {varname: <str>}}
+          in order to bundle in any past fill history that is lost in the current text.
 
     Example usage:
         prompt_gen = PromptPermutationGenerator('Can you list all the cities in the country ${country} by the cheapest ${domain} prices?')
@@ -129,7 +148,7 @@ class PromptPermutationGenerator:
                 res.extend(self._gen_perm(p, params_left, paramDict))
             return res
 
-    def __call__(self, paramDict: Dict[str, Union[str, List[str]]]):
+    def __call__(self, paramDict: Dict[str, Union[str, List[str], Dict[str, str]]]):
         if len(paramDict) == 0:
             yield self.template
             return

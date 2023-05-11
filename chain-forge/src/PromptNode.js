@@ -147,6 +147,12 @@ const PromptNode = ({ data, id }) => {
   const pullInputData = () => {
     // Pull data from each source recursively:
     const pulled_data = {};
+    const store_data = (_texts, _varname, _data) => {
+        if (_varname in _data)
+            _data[_varname] = _data[_varname].concat(_texts);
+        else
+            _data[_varname] = _texts;
+    };
     const get_outputs = (varnames, nodeId) => {
         varnames.forEach(varname => {
             // Find the relevant edge(s):
@@ -154,14 +160,24 @@ const PromptNode = ({ data, id }) => {
                 if (e.target == nodeId && e.targetHandle == varname) {
                     // Get the immediate output:
                     let out = output(e.source, e.sourceHandle);
-                    if (!out) return;
+                    if (!out || !Array.isArray(out) || out.length === 0) return;
 
-                    // Save the var data from the pulled output
-                    if (varname in pulled_data)
-                        pulled_data[varname] = pulled_data[varname].concat(out);
-                    else
-                        pulled_data[varname] = out;
-
+                    // Check the format of the output. Can be str or dict with 'text' and 'vars' attrs:
+                    if (typeof out[0] === 'object') {
+                        out.forEach(obj => store_data([obj], varname, pulled_data));
+                        // out.forEach((obj) => {
+                        //     store_data([obj.text], varname, pulled_data);
+                        //     // We need to carry through each individual var as well:
+                        //     Object.keys(obj.vars).forEach(_v => 
+                        //         store_data([obj.vars[_v]], _v, pulled_data)
+                        //     );
+                        // });
+                    }
+                    else {
+                        // Save the list of strings from the pulled output under the var 'varname'
+                        store_data(out, varname, pulled_data);
+                    }
+                    
                     // Get any vars that the output depends on, and recursively collect those outputs as well:
                     const n_vars = getNode(e.source).data.vars;
                     if (n_vars && Array.isArray(n_vars) && n_vars.length > 0)
@@ -172,8 +188,20 @@ const PromptNode = ({ data, id }) => {
     };
     get_outputs(templateVars, id);
 
+    console.log(pulled_data);
+
     // Get Pythonic version of the prompt, by adding a $ before any template variables in braces:
-    const to_py_template_format = (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
+    const str_to_py_template_format = (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
+    const to_py_template_format = (str_or_obj) => {
+        if (typeof str_or_obj === 'object') {
+            let new_vars = {};
+            Object.keys(str_or_obj.fill_history).forEach(v => {
+                new_vars[v] = str_to_py_template_format(str_or_obj.fill_history[v]);
+            });
+            return {text: str_to_py_template_format(str_or_obj.text), fill_history: new_vars};
+        } else
+            return str_to_py_template_format(str_or_obj);
+    };
     const py_prompt_template = to_py_template_format(promptText);
 
     // Do the same for the vars, since vars can themselves be prompt templates:
@@ -420,7 +448,10 @@ const PromptNode = ({ data, id }) => {
                 setPromptTextOnLastRun(promptText);
 
                 // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
-                setDataPropsForNode(id, {fields: json.responses.map(r => r['responses']).flat()});
+                setDataPropsForNode(id, {fields: json.responses.map(
+                    resp_obj => resp_obj['responses'].map(
+                        r => ({text: r, fill_history: resp_obj['vars']}))).flat()
+                });
 
                 // Save preview strings of responses, for quick glance
                 // Bucket responses by LLM:

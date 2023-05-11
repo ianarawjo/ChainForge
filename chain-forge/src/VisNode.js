@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
+import { MultiSelect } from '@mantine/core';
 import useStore from './store';
 import Plot from 'react-plotly.js';
-import { hover } from '@testing-library/user-event/dist/hover';
-import { create } from 'zustand';
 import NodeLabel from './NodeLabelComponent';
 import {BASE_URL} from './store';
 
@@ -42,6 +41,9 @@ const VisNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const [plotlyObj, setPlotlyObj] = useState([]);
     const [pastInputs, setPastInputs] = useState([]);
+
+    // The MultiSelect so people can dynamically set what vars they care about
+    const [multiSelectVars, setMultiSelectVars] = useState(data.vars || []);
   
     const handleOnConnect = useCallback(() => {
         // Grab the input node ids
@@ -77,6 +79,10 @@ const VisNode = ({ data, id }) => {
                         l: 100, r: 20, b: 20, t: 20, pad: 0
                     }
                 }
+
+                setMultiSelectVars(
+                    varnames.map(name => ({value: name, label: name}))
+                );
 
                 const plot_grouped_boxplot = (resp_to_x) => {
                     llm_names.forEach((llm, idx) => {
@@ -192,8 +198,13 @@ const VisNode = ({ data, id }) => {
     return (
       <div className="vis-node cfnode">
         <NodeLabel title={data.title || 'Vis Node'} 
-                    nodeId={id}
-                    icon={'📊'} />
+                   nodeId={id}
+                   icon={'📊'} />
+        <MultiSelect className='nodrag nowheel'
+                     data={multiSelectVars}
+                     placeholder="Pick all vars you wish to plot"
+                     size="sm"
+                     defaultValue={multiSelectVars} />
         <div className="nodrag">{plotlyObj}</div>
         <Handle
             type="target"

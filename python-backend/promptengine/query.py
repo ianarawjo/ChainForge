@@ -57,6 +57,7 @@ class PromptPipeline:
                 raise Exception(f"Cannot send a prompt '{prompt}' to LLM: Prompt is a template.")
 
             prompt_str = str(prompt)
+            info = prompt.fill_history
 
             cached_resp = responses[prompt_str] if prompt_str in responses else None
             extracted_resps = cached_resp["responses"] if cached_resp is not None else []
@@ -72,7 +73,7 @@ class PromptPipeline:
                     "llm": cached_resp["llm"] if "llm" in cached_resp else LLM.ChatGPT.value,
                     # We want to use the new info, since 'vars' could have changed even though 
                     # the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
-                    "info": prompt.fill_history,  
+                    "info": info,
                 }
                 continue
 
@@ -86,7 +87,6 @@ class PromptPipeline:
             else:
                 # Blocking. Await + yield a single LLM call.
                 _, query, response, past_resp_obj = await self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp)
-                info = prompt.fill_history
 
                 # Create a response obj to represent the response
                 resp_obj = {
