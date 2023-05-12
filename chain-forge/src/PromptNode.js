@@ -15,7 +15,6 @@ const allLLMs = [
     { name: "GPT4", emoji: "🥵", model: "gpt-4", temp: 1.0 },
     { name: "Alpaca 7B", emoji: "🦙", model: "alpaca.7B", temp: 0.5 },
     { name: "Claude v1", emoji: "📚", model: "claude-v1", temp: 0.5 },
-    { name: "Ian Chatbot", emoji: "💩", model: "test", temp: 0.5 }
 ];
 const initLLMs = [allLLMs[0]];
 
@@ -462,7 +461,7 @@ const PromptNode = ({ data, id }) => {
                     const resp_boxes = responses_by_llm[llm].map((res_obj, idx) => {
                         const num_resp = res_obj['responses'].length;
                         const resp_prevs = res_obj['responses'].map((r, i) => 
-                            (<pre className="small-response" key={i}><i>{truncStr(r, 40)}</i><b>({i+1} of {num_resp})</b></pre>)
+                            (<pre className="small-response" key={i}><i>{truncStr(r, 33)}</i><b>({i+1} of {num_resp})</b></pre>)
                         );
                         const vars = vars_to_str(res_obj.vars);
                         const var_tags = vars.map((v, i) => (

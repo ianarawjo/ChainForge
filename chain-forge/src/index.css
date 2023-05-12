@@ -45,12 +45,12 @@ code {
 }
 
 .csv-div {
-  width: 350px;
+  width: 290px;
   max-height: 250px;
   overflow-y: auto;
 }
 
 .csv-input {
-  width: 350px;
+  width: 290px;
   height: 150px;
 }

@@ -21,6 +21,7 @@ const CsvNode = ({ data, id }) => {
 
     const processCsv = (csv) => {
         var matches = csv.match(/(\s*"[^"]+"\s*|\s*[^,]+|,)(?=,|$)/g);
+        if (!matches) return;
         for (var n = 0; n < matches.length; ++n) {
             matches[n] = matches[n].trim();
             if (matches[n] == ',') matches[n] = '';
@@ -45,7 +46,7 @@ const CsvNode = ({ data, id }) => {
     }, [id, setDataPropsForNode]);
 
     const handKeyDown = useCallback((event) => {
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' && data.text && data.text.trim().length > 0) {
             setIsEditing(false);
             setCsvInput(null);
         }
@@ -57,14 +58,14 @@ const CsvNode = ({ data, id }) => {
     }, []);
 
     const handleOnBlur = useCallback((event) => {
-        setIsEditing(false);
-        setCsvInput(null);
-    }, []);
+        if (data.text && data.text.trim().length > 0)
+            setIsEditing(false);
+    }, [data.text]);
 
     // render csv div
     const renderCsvDiv = useCallback(() => {
         // Take the data.text as csv (only 1 row), and get individual elements
-        const elements = data.fields;
+        const elements = data.fields || [];
 
         // generate a HTML code that highlights the elements
         const html = [];
@@ -76,36 +77,39 @@ const CsvNode = ({ data, id }) => {
             }
         });
 
-        setContentDiv(<div className='csv-div nowheel' onClick={handleDivOnClick}>
-            {html}
-        </div>);
-        setCountText(<Text size="xs" style={{ marginTop: '5px' }} color='blue' align='right'>{elements.length} elements</Text>);
+        setContentDiv(
+            <div className='csv-div nowheel' onClick={handleDivOnClick}>
+                {html}
+            </div>
+        );
+        setCountText(
+            <Text size="xs" style={{ marginTop: '5px' }} color='blue' align='right'>{elements.length} elements</Text>
+        );
     }, [data.text, handleDivOnClick]);
 
     // When isEditing changes, add input
     useEffect(() => {
-        if (!isEditing) {
+        if (!isEditing && data.text && data.text.trim().length > 0) {
             setCsvInput(null);
             renderCsvDiv();
             return;
         }
-        if (!csvInput) {
-            var text_val = data.text || '';
-            setCsvInput(
-                <div className="input-field" key={id}>
-                    <textarea id={id} name={id} className="text-field-fixed nodrag csv-input" rows="2" cols="40" defaultValue={text_val} onChange={handleInputChange} placeholder='Paste your CSV text here' onKeyDown={handKeyDown} onBlur={handleOnBlur} autoFocus={true}/>
-                </div>
-            );
-            setContentDiv(null);
-            setCountText(null);
-        }
+
+        var text_val = data.text || '';
+        setCsvInput(
+            <div className="input-field" key={id}>
+                <textarea id={id} name={id} className="text-field-fixed nodrag csv-input" rows="2" cols="40" defaultValue={text_val} onChange={handleInputChange} placeholder='Paste your CSV text here' onKeyDown={handKeyDown} onBlur={handleOnBlur} autoFocus={true}/>
+            </div>
+        );
+        setContentDiv(null);
+        setCountText(null);
     }, [isEditing]);
 
     // when data.text changes, update the content div
     useEffect(() => {
         // When in editing mode, don't update the content div
-        if (isEditing) return;
-        if (!data.text) return;
+        if (isEditing || !data.text) return;
+
         renderCsvDiv();
 
     }, [id, data.text]);
