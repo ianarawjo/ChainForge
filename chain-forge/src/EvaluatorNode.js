@@ -188,8 +188,9 @@ const EvaluatorNode = ({ data, id }) => {
             value={data.code}
             name={"aceeditor_"+id}
             editorProps={{ $blockScrolling: true }}
-            width='400px'
+            width='100%'
             height='100px'
+            style={{minWidth:'310px'}}
             tabSize={2}
             onLoad={editorInstance => {  // Make Ace Editor div resizeable. 
               editorInstance.container.style.resize = "both";

@@ -30,7 +30,7 @@ const initialNodes = [
 ];
 
 const initialEdges = [
-  { id: 'e1-2', source: initprompt, target: initeval, interactionWidth: 100},
+  { id: 'e1-2', source: initprompt, target: initeval, interactionWidth: 100, style: {strokeWidth: '1px'}, markerEnd: {type: 'arrow', strokeWidth: '1px', width: '22px', height: '22px', orient: 'auto'}},
 ];
 
 export const BASE_URL = 'http://localhost:8000/';
@@ -125,6 +125,9 @@ const useStore = create((set, get) => ({
     if (target.type === 'vis' || target.type === 'inspect') {
       get().setDataPropsForNode(target.id, { input: connection.source });
     }
+
+    connection.interactionWidth = 100;
+    connection.markerEnd = {type: 'arrow', width: '22px', height: '22px'};
 
     set({
       edges: addEdge(connection, get().edges),

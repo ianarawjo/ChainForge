@@ -146,7 +146,7 @@ const InspectorNode = ({ data, id }) => {
         type="target"
         position="left"
         id="input"
-        style={{ top: "50%", background: '#555' }}
+        style={{ top: "30%", background: '#555' }}
         onConnect={handleOnConnect}
       />
     </div>
