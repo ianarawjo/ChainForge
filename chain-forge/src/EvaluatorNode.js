@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
-import StatusIndicator from './StatusIndicatorComponent'
 import NodeLabel from './NodeLabelComponent'
-import AlertModal from './AlertModal'
 import { IconTerminal } from '@tabler/icons-react'
 import {BASE_URL} from './store';
 
@@ -27,9 +25,7 @@ const EvaluatorNode = ({ data, id }) => {
 
   const [codeText, setCodeText] = useState(data.code);
   const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
-  const [reduceMethod, setReduceMethod] = useState('none');
   const [mapScope, setMapScope] = useState('response');
-  const [reduceVars, setReduceVars] = useState([]);
 
   const handleCodeChange = (code) => {
     if (codeTextOnLastRun !== false) {
@@ -82,7 +78,7 @@ const EvaluatorNode = ({ data, id }) => {
             code: codeTextOnRun,
             scope: mapScope,
             responses: input_node_ids,
-            reduce_vars: reduceMethod === 'avg' ? reduceVars : [],
+            reduce_vars: [], // reduceMethod === 'avg' ? reduceVars : [],
             script_paths: script_paths,
             // write an extra part here that takes in reduce func
         }),
@@ -112,37 +108,9 @@ const EvaluatorNode = ({ data, id }) => {
     }, rejected);
   };
 
-  const handleOnReduceMethodSelect = (event) => {
-    const method = event.target.value;
-    if (method === 'none') {
-      setReduceVars([]);
-    }
-    setReduceMethod(method);
-  };
-
   const handleOnMapScopeSelect = (event) => {
     setMapScope(event.target.value);
   };
-  
-  const handleReduceVarsChange = (event) => {
-    // Split on commas, ignoring commas wrapped in double-quotes 
-    const regex_csv = /,(?!(?<=(?:^|,)\s*\x22(?:[^\x22]|\x22\x22|\\\x22)*,)(?:[^\x22]|\x22\x22|\\\x22)*\x22\s*(?:,|$))/g;
-    setReduceVars(event.target.value.split(regex_csv).map(s => s.trim()));
-  };
-
-  // To get CM editor state every render, use this and add ref={cmRef} to CodeMirror component
-  // const cmRef = React.useRef({});
-  // useEffect(() => {
-  //   if (cmRef.current?.view) console.log('EditorView:', cmRef.current?.view);
-  //   if (cmRef.current?.state) console.log('EditorState:', cmRef.current?.state);
-  //   if (cmRef.current?.editor) {
-  //     console.log('HTMLDivElement:', cmRef.current?.editor);
-  //   }
-  // }, [cmRef.current]);
-
-  // const initEditor = (view, state) => {
-  //   console.log(view, state);
-  // }
 
   const hideStatusIndicator = () => {
     if (status !== 'none') { setStatus('none'); }
@@ -200,34 +168,17 @@ const EvaluatorNode = ({ data, id }) => {
             }}
           />
         </div>
-        {/* <CodeMirror
-          // onCreateEditor={initEditor}
-          value={data.code}
-          height="200px"
-          width="400px"
-          theme={materialLight}
-          style={{cursor: 'text'}}
-          onChange={handleCodeChange}
-          extensions={[python(), indentUnit.of("  ")]}
-        /> */}
       </div>
-      <hr/>
+      {/* <hr/>
       <div>
         <div className="code-mirror-field-header">Method to reduce across <span className="code-style">responses</span>:</div>
         <select name="method" id="method" onChange={handleOnReduceMethodSelect} className="nodrag">
             <option value="none">None</option>
             <option value="avg">Average across</option>
-            {/* <option value="custom">Custom reducer</option> */}
         </select>
         <span> </span>
         <input type="text" id="method-vars" name="method-vars" onChange={handleReduceVarsChange} disabled={reduceMethod === 'none'} className="nodrag" />
-        {/* <label for="avg">Average over: </label>
-        <select name="avg" id="avg">
-            <option value="mod">mod</option>
-            <option value="paragraph">paragraph</option>
-            <option value="_none">N/A</option>
-        </select> */}
-      </div>
+      </div> */}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Badge } from '@mantine/core';
+import { Badge, MultiSelect } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import {BASE_URL} from './store';
@@ -33,13 +33,13 @@ const bucketResponsesByLLM = (responses) => {
 const InspectorNode = ({ data, id }) => {
 
   const [responses, setResponses] = useState([]);
-  const [varSelects, setVarSelects] = useState([]);
   const [pastInputs, setPastInputs] = useState([]);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
-  const handleVarValueSelect = () => {
-  }
+  // The MultiSelect so people can dynamically set what vars they care about
+  const [multiSelectVars, setMultiSelectVars] = useState(data.vars || []);
+  const [multiSelectValue, setMultiSelectValue] = useState(data.selected_vars || []);
 
   const handleOnConnect = () => {
     // Get the ids from the connected input nodes:
@@ -59,19 +59,61 @@ const InspectorNode = ({ data, id }) => {
     }).then(function(json) {
         console.log(json);
         if (json.responses && json.responses.length > 0) {
+            const responses = json.responses;
 
+            // Find all vars in response
+            let found_vars = new Set();
+            responses.forEach(res_obj => {
+                Object.keys(res_obj.vars).forEach(v => {
+                    found_vars.add(v);
+                });
+            });
+
+            // Set the variables accessible in the MultiSelect for 'group by'
+            setMultiSelectVars(Array.from(found_vars).map(name => (
+                // We add a $ prefix to mark this as a prompt parameter, and so 
+                // in the future we can add special types of variables without name collisions
+                {value: `${name}`, label: name} 
+            )).concat({value: 'LLM', label: 'LLM'}));
+
+            // If this is an initial run or the multi select value is empty, set to group by 'LLM' by default:
+            let selected_vars = multiSelectValue;
+            if (multiSelectValue.length === 0) {
+                setMultiSelectValue(['LLM']);
+                selected_vars = ['LLM'];
+            }
+
+            // Now we need to perform groupings by each var in the selected vars list,
+            // nesting the groupings (preferrably with custom divs) and sorting within 
+            // each group by value of that group's var (so all same values are clumped together).
+            /** 
+            const groupBy = (resps, varnames) => {
+                if (varnames.length === 0) return [];
+
+                const groupName = varnames[0];
+                const groupedResponses = groupResponsesByVar(resps, groupName);
+                const groupedResponseDivs = groupedResponses.map(g => groupBy(g, varnames.slice(1)));
+
+                return (
+                    <div key={groupName} className="response-group">
+                        <span>{groupName}</span>
+                        {groupedResponseDivs}
+                    </div>
+                );
+            };
+
+            // Group by LLM
+            if (selected_vars.includes('LLM')) {
+                // ... 
+
+            // Group without LLM
+            } else {
+                // .. 
+            }
+            */
+            
             // Bucket responses by LLM:
             const responses_by_llm = bucketResponsesByLLM(json.responses);
-            
-            // // Get the var names across all responses, as a set
-            // let tempvarnames = new Set();
-            // json.responses.forEach(r => {
-            //     if (!r.vars) return;
-            //     Object.keys(r.vars).forEach(tempvarnames.add);
-            // });
-
-            // // Create a dict version
-            // let tempvars = {};
 
             const colors = ['#ace1aeb1', '#f1b963b1', '#e46161b1', '#f8f398b1', '#defcf9b1', '#cadefcb1', '#c3bef0b1', '#cca8e9b1'];
             setResponses(Object.keys(responses_by_llm).map((llm, llm_idx) => {
@@ -136,11 +178,15 @@ const InspectorNode = ({ data, id }) => {
     <NodeLabel title={data.title || 'Inspect Node'} 
                 nodeId={id}
                 icon={'🔍'} />
-      {/* <div className="var-select-toolbar">
-        {varSelects}
-      </div> */}
+      <MultiSelect onChange={setMultiSelectValue}
+                     className='nodrag nowheel'
+                     data={multiSelectVars}
+                     placeholder="Pick vars to group responses, in order of importance"
+                     size="xs"
+                     value={multiSelectValue}
+                     searchable />
       <div className="inspect-response-container nowheel nodrag">
-      {responses}
+        {responses}
       </div>
       <Handle
         type="target"

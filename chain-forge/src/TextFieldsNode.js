@@ -29,13 +29,16 @@ const TextFieldsNode = ({ data, id }) => {
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const delButtonId = 'del-';
-  const [idCounter, setIDCounter] = useState(0);
-  // const [resizeObserver, setResizeObserver] = useState(null);
 
-  const get_id = () => {
-    setIDCounter(idCounter + 1);
-    return 'f' + idCounter.toString();
-  }
+  const getUID = useCallback(() => {
+    if (data.fields) {
+      return 'f' + (1 + Object.keys(data.fields).reduce((acc, key) => (
+        Math.max(acc, parseInt(key.slice(1)))
+      ), 0).toString());
+    } else {
+      return 'f0';
+    }
+  }, [data.fields]);
 
   // Handle a change in a text fields' input.
   const handleInputChange = useCallback((event) => {
@@ -74,7 +77,7 @@ const TextFieldsNode = ({ data, id }) => {
     delete new_data.fields[item_id];
     // if the new_data is empty, initialize it with one empty field
     if (Object.keys(new_data.fields).length === 0) {
-      new_data.fields[get_id()] = '';
+      new_data.fields[getUID()] = '';
     }
     setDataPropsForNode(id, new_data);
   }, [data, id, setDataPropsForNode]);
@@ -83,14 +86,14 @@ const TextFieldsNode = ({ data, id }) => {
   const [fields, setFields] = useState([]);
   useEffect(() => {
     if (!data.fields)
-      setDataPropsForNode(id, { fields: {[get_id()]: ''}} );
+      setDataPropsForNode(id, { fields: {[getUID()]: ''}} );
   }, []);
 
   // Whenever 'data' changes, update the input fields to reflect the current state.
   useEffect(() => {
     const f = data.fields ? Object.keys(data.fields) : [];
     const num_fields = f.length;
-    setFields(f.map((i, idx) => {
+    setFields(f.map((i) => {
       const val = data.fields ? data.fields[i] : '';
       return (
         <div className="input-field" key={i}>
@@ -104,7 +107,7 @@ const TextFieldsNode = ({ data, id }) => {
   const handleAddField = useCallback(() => {
     // Update the data for this text fields' id.
     let new_data = { 'fields': {...data.fields} };
-    new_data.fields[get_id()] = "";
+    new_data.fields[getUID()] = "";
     setDataPropsForNode(id, new_data);
   }, [data, id, setDataPropsForNode]);
 
@@ -129,7 +132,6 @@ const TextFieldsNode = ({ data, id }) => {
       });
 
       observer.observe(elem);
-      // setResizeObserver(observer);
     }
     ref.current = elem;
   }, [ref, hooksY]);

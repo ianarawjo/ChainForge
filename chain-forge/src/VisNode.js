@@ -49,7 +49,7 @@ const VisNode = ({ data, id }) => {
 
     // Re-plot responses when anything changes
     useEffect(() => {
-        if (!responses || responses.length === 0 || !multiSelectValue || multiSelectValue.length === 0) return;
+        if (!responses || responses.length === 0 || !multiSelectValue) return;
 
         // Bucket responses by LLM:
         let responses_by_llm = {};
@@ -69,7 +69,7 @@ const VisNode = ({ data, id }) => {
             width: 420, height: 300, title: '', margin: {
                 l: 105, r: 0, b: 20, t: 20, pad: 0
             }
-        }
+        };
 
         const plot_grouped_boxplot = (resp_to_x) => {
             llm_names.forEach((llm, idx) => {
@@ -83,7 +83,7 @@ const VisNode = ({ data, id }) => {
                 let text_items = [];
                 for (const name of names) {
                     rs.forEach(r => {
-                        if (r.vars[varnames[0]].trim() !== name) return;
+                        if (resp_to_x(r) !== name) return;
                         x_items = x_items.concat(r.eval_res.items).flat();
                         text_items = text_items.concat(createHoverTexts(r.responses)).flat();
                         y_items = y_items.concat(Array(r.eval_res.items.length).fill(truncStr(name, 12))).flat();
