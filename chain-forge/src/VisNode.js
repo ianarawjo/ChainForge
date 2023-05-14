@@ -61,32 +61,57 @@ const VisNode = ({ data, id }) => {
         });
         const llm_names = Object.keys(responses_by_llm);
 
+        // Get the type of evaluation results, if present
+        // (This is assumed to be consistent across response batches)
+        const typeof_eval_res = 'dtype' in responses[0].eval_res ? responses[0].eval_res['dtype'] : 'Numeric';
+
+        let metric_ax_label = null;
+        if (typeof_eval_res.includes('KeyValue')) {
+            // Check if it's a single-item dict; in which case we can extract the key to name the axis:
+            const keys = Object.keys(responses[0].eval_res.items[0]);
+            if (keys.length === 1)
+                metric_ax_label = keys[0];
+            else
+                throw Error('Dict metrics with more than one key are currently unsupported.')
+            // TODO: When multiple metrics are present, and 1 var is selected (can be multiple LLMs as well), 
+            // default to Parallel Coordinates plot, with the 1 var values on the y-axis as colored groups, and metrics on x-axis.
+            // For multiple LLMs, add a control drop-down selector to switch the LLM visualized in the plot.
+        }
+
+
+        const get_items = (eval_res_obj) => {
+            if (typeof_eval_res.includes('KeyValue'))
+                return eval_res_obj.items.map(item => item[metric_ax_label]);
+            return eval_res_obj.items;
+        };
+
         // Create Plotly spec here
         const varnames = multiSelectValue;
         const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
         let spec = [];
         let layout = {
             width: 420, height: 300, title: '', margin: {
-                l: 105, r: 0, b: 20, t: 20, pad: 0
+                l: 105, r: 0, b: 36, t: 20, pad: 0
             }
         };
 
         const plot_grouped_boxplot = (resp_to_x) => {
+            // Get all possible values of the single variable response ('name' vals)
+            const names = new Set(responses.map(resp_to_x));
+
             llm_names.forEach((llm, idx) => {
                 // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
                 const rs = responses_by_llm[llm];
 
-                // Get all possible values of the single variable response ('name' vals)
-                const names = new Set(responses.map(resp_to_x));
                 let x_items = [];
                 let y_items = [];
                 let text_items = [];
                 for (const name of names) {
                     rs.forEach(r => {
                         if (resp_to_x(r) !== name) return;
-                        x_items = x_items.concat(r.eval_res.items).flat();
+                        x_items = x_items.concat(get_items(r.eval_res)).flat();
                         text_items = text_items.concat(createHoverTexts(r.responses)).flat();
-                        y_items = y_items.concat(Array(r.eval_res.items.length).fill(truncStr(name, 12))).flat();
+                        y_items = y_items.concat(Array(get_items(r.eval_res).length).fill(truncStr(name, 12))).flat();
                     });
                 }
 
@@ -101,21 +126,13 @@ const VisNode = ({ data, id }) => {
                     hovertemplate: '%{text} <b><i>(%{x})</i></b>',
                     orientation: 'h',
                 });
-
-                // const hover_texts = rs.map(r => createHoverTexts(r.responses)).flat();
-                // spec.push({
-                //     type: 'box',
-                //     name: llm,
-                //     marker: {color: colors[idx % colors.length]},
-                //     x: rs.map(r => r.eval_res.items).flat(),
-                //     y: rs.map(r => Array(r.eval_res.items.length).fill(resp_to_x(r))).flat(),
-                //     boxpoints: 'all',
-                //     text: hover_texts,
-                //     hovertemplate: '%{text} <b><i>(%{x})</i></b>',
-                //     orientation: 'h',
-                // });
             });
             layout.boxmode = 'group';
+
+            if (metric_ax_label)
+                layout.xaxis = { 
+                    title: { font: {size: 12}, text: metric_ax_label },
+                };
         };
 
         if (varnames.length === 0) {
@@ -134,7 +151,7 @@ const VisNode = ({ data, id }) => {
                     let text_items = [];
                     responses.forEach(r => {
                         if (r.vars[varnames[0]].trim() !== name) return;
-                        x_items = x_items.concat(r.eval_res.items);
+                        x_items = x_items.concat(get_items(r.eval_res));
                         text_items = text_items.concat(createHoverTexts(r.responses));
                     });
                     spec.push(
@@ -142,6 +159,11 @@ const VisNode = ({ data, id }) => {
                     );
                 }
                 layout.hovermode = 'closest';
+
+                if (metric_ax_label)
+                    layout.xaxis = { 
+                        title: { font: {size: 12}, text: metric_ax_label },
+                    };
             } else {
                 // There are multiple LLMs in the response; do a grouped box plot by LLM.
                 // Note that 'name' is now the LLM, and 'x' stores the value of the var: 
@@ -155,7 +177,7 @@ const VisNode = ({ data, id }) => {
                 type: 'scatter3d',
                 x: responses.map(r => r.vars[varnames[0]]).map(s => truncStr(s, 12)),
                 y: responses.map(r => r.vars[varnames[1]]).map(s => truncStr(s, 12)),
-                z: responses.map(r => r.eval_res.mean),
+                z: responses.map(r => get_items(r.eval_res).reduce((acc, val) => (acc + val), 0) / r.eval_res.items.length), // calculates mean
                 mode: 'markers',
             }
         }

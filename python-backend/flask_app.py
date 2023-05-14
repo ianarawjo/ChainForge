@@ -1,5 +1,6 @@
 import json, os, asyncio, sys, argparse, threading, traceback
 from dataclasses import dataclass
+from enum import Enum
 from statistics import mean, median, stdev
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
@@ -66,35 +67,119 @@ def load_cache_json(filepath: str) -> dict:
         responses = json.load(f)
     return responses
 
+class MetricType(Enum):
+    KeyValue = 0
+    KeyValue_Numeric = 1
+    KeyValue_Categorical = 2
+    KeyValue_Mixed = 3
+    Numeric = 4
+    Categorical = 5
+    Mixed = 6
+    Unknown = 7
+    Empty = 8
+
+def check_typeof_vals(arr: list) -> MetricType:
+    if len(arr) == 0: return MetricType.Empty
+
+    def typeof_set(types: set) -> MetricType:
+        if len(types) == 0: return MetricType.Empty
+        if len(types) == 1 and next(iter(types)) == dict:
+            return MetricType.KeyValue
+        elif all((t in (int, float) for t in types)):
+            # Numeric metrics only
+            return MetricType.Numeric
+        elif all((t in (str, bool) for t in types)):
+            # Categorical metrics only ('bool' is True/False, counts as categorical)
+            return MetricType.Categorical
+        elif all((t in (int, float, bool, str) for t in types)):
+            # Mix of numeric and categorical types
+            return MetricType.Mixed
+        else:
+            # Mix of types beyond basic ones
+            return MetricType.Unknown
+    
+    def typeof_dict_vals(d):
+        dict_val_type = typeof_set(set((type(v) for v in d.values())))
+        if dict_val_type == MetricType.Numeric: 
+            return MetricType.KeyValue_Numeric
+        elif dict_val_type == MetricType.Categorical: 
+            return MetricType.KeyValue_Categorical
+        else: 
+            return MetricType.KeyValue_Mixed
+
+    # Checks type of all values in 'arr' and returns the type
+    val_type = typeof_set(set((type(v) for v in arr)))
+    if val_type == MetricType.KeyValue:
+        # This is a 'KeyValue' pair type. We need to find the more specific type of the values in the dict.
+        # First, we check that all dicts have the exact same keys
+        for i in range(len(arr)-1):
+            d, e = arr[i], arr[i+1]
+            if set(d.keys()) != set(e.keys()):
+                raise Exception('The keys and size of dicts for evaluation results must be consistent across evaluations.')
+        
+        # Then, we check the consistency of the type of dict values:
+        first_dict_val_type = typeof_dict_vals(arr[0])
+        for d in arr[1:]:
+            if first_dict_val_type != typeof_dict_vals(d):
+                raise Exception('Types of values in dicts for evaluation results must be consistent across responses.')
+        # If we're here, all checks passed, and we return the more specific KeyValue type:
+        return first_dict_val_type
+    else:
+        return val_type
+
 def run_over_responses(eval_func, responses: list, scope: str) -> list:
     for resp_obj in responses:
         res = resp_obj['responses']
         if scope == 'response':
-            evals = [  # Run evaluator func over every individual response text
-                eval_func(
-                    ResponseInfo(
-                        text=r, 
-                        prompt=resp_obj['prompt'], 
-                        var=resp_obj['vars'], 
-                        llm=resp_obj['llm'])
-                ) for r in res
-            ]  
-            resp_obj['eval_res'] = {  # NOTE: assumes this is numeric data
-                'mean': mean(evals),
-                'median': median(evals),
-                'stdev': stdev(evals) if len(evals) > 1 else 0,
-                'range': (min(evals), max(evals)),
-                'items': evals,
-            }
-        else:  # operate over the entire response batch
+            # Run evaluator func over every individual response text
+            evals = [eval_func(
+                        ResponseInfo(
+                            text=r,
+                            prompt=resp_obj['prompt'],
+                            var=resp_obj['vars'],
+                            llm=resp_obj['llm'])
+                    ) for r in res]
+
+            # Check the type of evaluation results
+            # NOTE: We assume this is consistent across all evaluations, but it may not be.
+            eval_res_type = check_typeof_vals(evals)
+
+            if eval_res_type == MetricType.Numeric:
+                # Store items with summary of mean, median, etc
+                resp_obj['eval_res'] = {
+                    'mean': mean(evals),
+                    'median': median(evals),
+                    'stdev': stdev(evals) if len(evals) > 1 else 0,
+                    'range': (min(evals), max(evals)),
+                    'items': evals,
+                    'dtype': eval_res_type.name,
+                }
+            elif eval_res_type in (MetricType.Unknown, MetricType.Empty):
+                raise Exception('Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.')
+            else:
+                # Categorical, KeyValue, etc, we just store the items:
+                resp_obj['eval_res'] = { 
+                    'items': evals,
+                    'dtype': eval_res_type.name,
+                }
+        else:  
+            # Run evaluator func over the entire response batch
             ev = eval_func(res)
-            resp_obj['eval_res'] = {  # NOTE: assumes this is numeric data
-                'mean': ev,
-                'median': ev,
-                'stdev': 0,
-                'range': (ev, ev),
-                'items': [ev],
-            }
+            ev_type = typeof_set(set((type(ev),)))
+            if ev_type == MetricType.Numeric:
+                resp_obj['eval_res'] = {
+                    'mean': ev,
+                    'median': ev,
+                    'stdev': 0,
+                    'range': (ev, ev),
+                    'items': [ev],
+                    'type': ev_type.name,
+                }
+            else:
+                resp_obj['eval_res'] = { 
+                    'items': [ev],
+                    'type': ev_type.name,
+                }
     return responses
 
 def reduce_responses(responses: list, vars: list) -> list:

@@ -19,15 +19,18 @@ const vars_to_str = (vars) => {
     });
     return pairs;
 };
-const bucketResponsesByLLM = (responses) => {
-    let responses_by_llm = {};
+const groupResponsesBy = (responses, keyFunc) => {
+    let responses_by_key = {};
+    let unspecified_group = [];
     responses.forEach(item => {
-        if (item.llm in responses_by_llm)
-            responses_by_llm[item.llm].push(item);
+        const key = keyFunc(item);
+        const d = key !== null ? responses_by_key : unspecified_group;
+        if (key in d)
+            d[key].push(item);
         else
-            responses_by_llm[item.llm] = [item];
+            d[key] = [item];
     });
-    return responses_by_llm;
+    return [responses_by_key, unspecified_group];
 };
 
 const InspectorNode = ({ data, id }) => {
@@ -86,34 +89,66 @@ const InspectorNode = ({ data, id }) => {
             // Now we need to perform groupings by each var in the selected vars list,
             // nesting the groupings (preferrably with custom divs) and sorting within 
             // each group by value of that group's var (so all same values are clumped together).
+            // :: For instance, for varnames = ['LLM', '$var1', '$var2'] we should get back 
+            // :: nested divs first grouped by LLM (first level), then by var1, then var2 (deepest level).
             /** 
-            const groupBy = (resps, varnames) => {
-                if (varnames.length === 0) return [];
+            const groupByVars = (resps, varnames, eatenvars) => {
+                if (resps.length === 0) return [];
+                if (varnames.length === 0) {
+                    // Base case. Display n response(s) to each single prompt, back-to-back:
+                    return resps.map((res_obj, res_idx) => {
+                        // Spans for actual individual response texts
+                        const ps = res_obj.responses.map((r, idx) => 
+                            (<pre className="small-response" key={idx}>{r}</pre>)
+                        );
 
-                const groupName = varnames[0];
-                const groupedResponses = groupResponsesByVar(resps, groupName);
-                const groupedResponseDivs = groupedResponses.map(g => groupBy(g, varnames.slice(1)));
+                        // At the deepest level, there may still be some vars left over. We want to display these
+                        // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
+                        // (e.g., the vars that weren't part of the initial 'varnames' list that form the groupings)
+                        const vars = vars_to_str(res_obj.vars.filter(v => !eatenvars.includes(v)));
+                        const var_tags = vars.map((v) => 
+                            (<Badge key={v} color="blue" size="xs">{v}</Badge>)
+                        );
+                        return (
+                            <div key={"r"+res_idx} className="response-box" style={{ backgroundColor: colorForLLM(res_obj.llm) }}>
+                                {var_tags}
+                                {ps}
+                            </div>
+                        );
+                    });
+                }
 
-                return (
-                    <div key={groupName} className="response-group">
-                        <span>{groupName}</span>
-                        {groupedResponseDivs}
+                // Bucket responses by the first var in the list, where
+                // we also bucket any 'leftover' responses that didn't have the requested variable (a kind of 'soft fail')
+                const group_name = varnames[0];
+                const [grouped_resps, leftover_resps] = (group_name === 'LLM') 
+                                                        ? groupResponsesBy(resps, (r => r.llm)) 
+                                                        : groupResponsesBy(resps, (r => ((group_name in r.vars) ? r.vars[group_name] : null)));
+                // Now produce nested divs corresponding to the groups
+                const remaining_vars = varnames.slice(1);
+                const updated_eatenvars = eatenvars.concat([group_name]);
+                const grouped_resps_divs = grouped_resps.map(g => groupByVars(g, remaining_vars, updated_eatenvars));
+                const leftover_resps_divs = leftover_resps.length > 0 ? groupByVars(leftover_resps, remaining_vars, updated_eatenvars) : [];
+
+                return (<>
+                    <div key={group_name} className="response-group">
+                        <h1>{group_name}</h1>
+                        {grouped_resps_divs}
                     </div>
-                );
+                    {leftover_resps_divs.length === 0 ? (<></>) : (
+                        <div key={'__unspecified_group'} className="response-group">
+                            {leftover_resps_divs}
+                        </div>
+                    )}
+                </>);
             };
 
-            // Group by LLM
-            if (selected_vars.includes('LLM')) {
-                // ... 
-
-            // Group without LLM
-            } else {
-                // .. 
-            }
-            */
+            // Produce DIV elements grouped by selected vars
+            groupByVars(responses, selected_vars, []);
+            **/
             
             // Bucket responses by LLM:
-            const responses_by_llm = bucketResponsesByLLM(json.responses);
+            const responses_by_llm = groupResponsesBy(responses, (r => r.llm));
 
             const colors = ['#ace1aeb1', '#f1b963b1', '#e46161b1', '#f8f398b1', '#defcf9b1', '#cadefcb1', '#c3bef0b1', '#cca8e9b1'];
             setResponses(Object.keys(responses_by_llm).map((llm, llm_idx) => {
