@@ -68,7 +68,9 @@ const InspectorNode = ({ data, id }) => {
 
     // Assign a color to each LLM in responses
     const llm_colors = ['#ace1aeb1', '#f1b963b1', '#e46161b1', '#f8f398b1', '#defcf9b1', '#cadefcb1', '#c3bef0b1', '#cca8e9b1'];
+    const llm_badge_colors = ['green', 'orange', 'red', 'yellow', 'cyan', 'indigo', 'grape'];
     const color_for_llm = (llm) => llm_colors[found_llms.indexOf(llm) % llm_colors.length];
+    const badge_color_for_llm = (llm) => llm_badge_colors[found_llms.indexOf(llm) % llm_badge_colors.length];
     const response_box_colors = ['#ddd', '#eee', '#ddd', '#eee'];
     const rgroup_color = (depth) => response_box_colors[depth % response_box_colors.length];
 
@@ -137,7 +139,7 @@ const InspectorNode = ({ data, id }) => {
                                                 ? groupResponsesBy(resps, (r => r.llm)) 
                                                 : groupResponsesBy(resps, (r => ((group_name in r.vars) ? r.vars[group_name] : null)));
         const get_header = (group_name === 'LLM') 
-                            ? ((key, val) => (<Badge key={val} color="violet" size="sm">{val}</Badge>))
+                            ? ((key, val) => (<Badge key={val} color={badge_color_for_llm(val)} size="sm">{val}</Badge>))
                             : ((key, val) => getHeaderBadge(key, val));
         
         // Now produce nested divs corresponding to the groups
