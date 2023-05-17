@@ -391,6 +391,8 @@ async def queryLLM():
     llms = data['llm']
     params = data['params'] if 'params' in data else {}
     tempfilepath = f"cache/_temp_{data['id']}.txt"
+    if not is_valid_filepath(tempfilepath):
+        return jsonify({'error': f'Invalid filepath: {tempfilepath}'})
 
     async def query(llm_str: str) -> list:
         llm = LLM_NAME_MAP[llm_str]
