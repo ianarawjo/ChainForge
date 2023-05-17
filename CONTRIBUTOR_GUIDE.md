@@ -59,8 +59,25 @@ python app.py
 This script spins up two servers, the main one on port 8000 and a SocketIO server on port 8001 (used for streaming progress updates).
 
 If you built the React app statically, go to `localhost:8000` in a web browser to view the app. 
-If you served the React app with hot reloading with `npm run start`, go to the server address you ran it on (usually `localhost:3000`). 
+If you served the React app with hot reloading with `npm run start`, go to the server address you ran it on (usually `localhost:3000`).
 
+## Activate OpenAI / Anthropic keys or install Dalai
+
+Though you can run Chainforge, you can't do anything with it without an LLM.
+Currently we support OpenAI models GPT3.5 and GPT4, Anthropic model Claudev1, and (locally run) Dalai-served Alpaca.7b.
+
+To use OpenAI models, you need to set an environment variable with your OpenAI key:
+https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety
+
+For Mac, for instance, follow:
+
+```bash
+echo "export OPENAI_API_KEY='yourkey'" >> ~/.zshrc
+source ~/.zshrc
+echo $OPENAI_API_KEY
+```
+
+For Anthropic's API key on Mac, do the same as above but with `ANTHROPIC_API_KEY` replaced for `OpenAI_API_KEY`. 
 
 ## Contributing to ChainForge
 
