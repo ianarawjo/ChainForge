@@ -9,6 +9,7 @@
     "@reactflow/background": "^11.2.0",
     "@reactflow/controls": "^11.1.11",
     "@reactflow/core": "^11.7.0",
+    "@reactflow/node-resizer": "^2.1.0",
     "@tabler/icons-react": "^2.17.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",

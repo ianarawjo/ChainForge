@@ -10,8 +10,8 @@ from promptengine.template import PromptTemplate, PromptPermutationGenerator
 # A 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
 # The following is only a guideline, and a bit on the conservative side. 
 MAX_SIMULTANEOUS_REQUESTS = { 
-    LLM.ChatGPT: (50, 10),  # max 50 requests a batch; wait 10 seconds between
-    LLM.GPT4: (20, 10),  # max 10 requests a batch; wait 10 seconds between
+    LLM.ChatGPT: (30, 10),  # max 30 requests a batch; wait 10 seconds between
+    LLM.GPT4: (5, 10),  # max 5 requests a batch; wait 10 seconds between
     LLM.Alpaca7B: (1, 0),  # 1 indicates synchronous
 }
 

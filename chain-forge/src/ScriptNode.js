@@ -48,8 +48,8 @@ const ScriptNode = ({ data, id }) => {
         setScriptFiles(f.map((i) => {
             const val = data.scriptFiles ? data.scriptFiles[i] : '';
             return (
-                <div className="input-field" key={i}>
-                    <input className="script-node-input" type="text" id={i} onChange={handleInputChange} value={val}/>
+                <div className="input-field nodrag" key={i}>
+                    <input className="script-node-input" type="text" id={i} onChange={handleInputChange} value={val}></input>
                     <button className="remove-text-field-btn nodrag" id={delButtonId + i} onClick={handleDelete}>X</button>
                     <br/>
                 </div>

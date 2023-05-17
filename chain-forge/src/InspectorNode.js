@@ -39,6 +39,13 @@ const groupResponsesBy = (responses, keyFunc) => {
     });
     return [responses_by_key, unspecified_group];
 };
+const getUniqueKeysInResponses = (responses, keyFunc) => {
+    let ukeys = new Set();
+    responses.forEach(res_obj => 
+        ukeys.add(keyFunc(res_obj)));
+    return Array.from(ukeys);
+};
+const getLLMsInResponses = (responses) => getUniqueKeysInResponses(responses, (resp_obj) => resp_obj.llm);
 
 const InspectorNode = ({ data, id }) => {
 
@@ -61,17 +68,14 @@ const InspectorNode = ({ data, id }) => {
     const selected_vars = multiSelectValue;
 
     // Find all LLMs in responses and store as array
-    let found_llms = new Set();
-    responses.forEach(res_obj => 
-        found_llms.add(res_obj.llm));
-    found_llms = Array.from(found_llms);
+    let found_llms = getLLMsInResponses(responses);
 
     // Assign a color to each LLM in responses
     const llm_colors = ['#ace1aeb1', '#f1b963b1', '#e46161b1', '#f8f398b1', '#defcf9b1', '#cadefcb1', '#c3bef0b1', '#cca8e9b1'];
     const llm_badge_colors = ['green', 'orange', 'red', 'yellow', 'cyan', 'indigo', 'grape'];
     const color_for_llm = (llm) => llm_colors[found_llms.indexOf(llm) % llm_colors.length];
     const badge_color_for_llm = (llm) => llm_badge_colors[found_llms.indexOf(llm) % llm_badge_colors.length];
-    const response_box_colors = ['#ddd', '#eee', '#ddd', '#eee'];
+    const response_box_colors = ['#eee', '#fff', '#eee', '#ddd', '#eee', '#ddd', '#eee'];
     const rgroup_color = (depth) => response_box_colors[depth % response_box_colors.length];
 
     const getHeaderBadge = (key, val) => {

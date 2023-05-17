@@ -157,6 +157,10 @@
     border: 1px solid #999;
     border-radius: 5px;
   }
+  .plot-legend {
+    font-size: 11px;
+    font-family: monospace;
+  }
 
   .inspector-node {
     background-color: #fff;
