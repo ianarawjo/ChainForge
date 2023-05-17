@@ -187,8 +187,6 @@ const PromptNode = ({ data, id }) => {
     };
     get_outputs(templateVars, id);
 
-    console.log(pulled_data);
-
     // Get Pythonic version of the prompt, by adding a $ before any template variables in braces:
     const str_to_py_template_format = (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
     const to_py_template_format = (str_or_obj) => {
@@ -385,7 +383,7 @@ const PromptNode = ({ data, id }) => {
         
         // The current progress, a number specifying how many responses collected so far:
         socket.on("response", (counts) => {
-            console.log(counts);
+            // console.log(counts);
             if (!counts || FINISHED_QUERY) return;
 
             // Update individual progress bars

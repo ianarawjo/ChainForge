@@ -93,6 +93,7 @@ const InspectorNode = ({ data, id }) => {
     // each group by value of that group's var (so all same values are clumped together).
     // :: For instance, for varnames = ['LLM', '$var1', '$var2'] we should get back 
     // :: nested divs first grouped by LLM (first level), then by var1, then var2 (deepest level).
+    let leaf_id = 0;
     const groupByVars = (resps, varnames, eatenvars, header) => {
         if (resps.length === 0) return [];
         if (varnames.length === 0) {
@@ -126,8 +127,9 @@ const InspectorNode = ({ data, id }) => {
             });
             const className = eatenvars.length > 0 ? "response-group" : "";
             const boxesClassName = eatenvars.length > 0 ? "response-boxes-wrapper" : "";
+            leaf_id += 1;
             return (
-                <div className={className} style={{ backgroundColor: rgroup_color(eatenvars.length) }}>
+                <div key={'l'+leaf_id} className={className} style={{ backgroundColor: rgroup_color(eatenvars.length) }}>
                     {header}
                     <div className={boxesClassName}>
                         {resp_boxes}
@@ -160,7 +162,7 @@ const InspectorNode = ({ data, id }) => {
                         {grouped_resps_divs}
                     </div>
                 </div>)
-                : <div>{grouped_resps_divs}</div>}
+                : <div key={group_name}>{grouped_resps_divs}</div>}
             {leftover_resps_divs.length === 0 ? (<></>) : (
                 <div key={'__unspecified_group'} className="response-group">
                     {leftover_resps_divs}
@@ -179,8 +181,6 @@ const InspectorNode = ({ data, id }) => {
     // Get the ids from the connected input nodes:
     const input_node_ids = inputEdgesForNode(id).map(e => e.source);
 
-    console.log(input_node_ids);
-
     // Grab responses associated with those ids:
     fetch(BASE_URL + 'app/grabResponses', {
         method: 'POST',
@@ -191,7 +191,6 @@ const InspectorNode = ({ data, id }) => {
     }).then(function(res) {
         return res.json();
     }).then(function(json) {
-        console.log(json);
         if (json.responses && json.responses.length > 0) {
 
             // Find all vars in responses

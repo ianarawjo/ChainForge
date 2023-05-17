@@ -45,6 +45,9 @@ const getUniqueKeysInResponses = (responses, keyFunc) => {
 const extractEvalResultsForMetric = (metric, responses) => {
     return responses.map(resp_obj => resp_obj.eval_res.items.map(item => item[metric])).flat();
 };
+const areSetsEqual = (xs, ys) =>
+    xs.size === ys.size &&
+    [...xs].every((x) => ys.has(x));
 
 const VisNode = ({ data, id }) => {
 
@@ -72,6 +75,7 @@ const VisNode = ({ data, id }) => {
         }
         setStatus('loading');
         setMultiSelectValue(new_val);
+        setDataPropsForNode(id, { selected_vars: new_val });
     };
 
     // Re-plot responses when anything changes
@@ -183,7 +187,6 @@ const VisNode = ({ data, id }) => {
             // For 2 or more metrics, display a parallel coordinates plot.
             // :: For instance, if evaluator produces { height: 32, weight: 120 } plot responses with 2 metrics, 'height' and 'weight'
             if (varnames.length === 1) {
-                console.log("Plotting parallel coordinates...");
                 let unique_vals = getUniqueKeysInResponses(responses, (resp_obj) => resp_obj.vars[varnames[0]]);
                 // const response_txts = responses.map(res_obj => res_obj.responses).flat();
 
@@ -338,12 +341,15 @@ const VisNode = ({ data, id }) => {
                 // Store responses and extract + store vars
                 setResponses(json.responses);
 
-                const varnames = Object.keys(json.responses[0].vars)
-                setMultiSelectVars(
-                    varnames.map(name => ({value: name, label: name}))
-                );
-                setMultiSelectValue(varnames);
+                const varnames = Object.keys(json.responses[0].vars);
+                const msvars = varnames.map(name => ({value: name, label: name}));
 
+                // Check for a change in available parameters
+                if (!multiSelectVars || !multiSelectValue || !areSetsEqual(new Set(varnames), new Set(multiSelectVars.map(o => o.value)))) {
+                    setMultiSelectValue(varnames);
+                    setMultiSelectVars(msvars);
+                    setDataPropsForNode(id, { vars: msvars, selected_vars: varnames });
+                }
                 // From here a React effect will detect the changes to these values and display a new plot
             }
         });
@@ -356,7 +362,6 @@ const VisNode = ({ data, id }) => {
         // :: For all else, don't plot anything (at the moment)
     }, [data]);
     
-    // console.log('from visnode', data);
     if (data.input) {
         // If there's a change in inputs...
         if (data.input != pastInputs) {

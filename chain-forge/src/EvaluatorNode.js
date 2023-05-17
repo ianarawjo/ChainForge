@@ -92,8 +92,6 @@ const EvaluatorNode = ({ data, id }) => {
           return;
         }
         
-        console.log(json.responses);
-
         // Ping any vis nodes attached to this node to refresh their contents:
         const output_nodes = outputEdgesForNode(id).map(e => e.target);
         output_nodes.forEach(n => {
