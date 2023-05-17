@@ -161,6 +161,15 @@
     font-size: 11px;
     font-family: monospace;
   }
+  .plot-legend-item {
+    cursor: pointer;
+  }
+  .plot-legend-item:hover {
+    opacity: 0.6;
+  }
+  .plot-legend-item:active {
+    opacity: 0.8;
+  }
 
   .inspector-node {
     background-color: #fff;
@@ -171,6 +180,8 @@
   .inspect-response-container {
     overflow-y: scroll;
     min-width: 150px;
+    width: 350px;
+    height: 300px;
     max-width: 650px;
     max-height: 650px;
     resize: both;
