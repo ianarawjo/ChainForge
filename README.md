@@ -1,9 +1,13 @@
 # ⛓️🛠️ ChainForge
 **An open-source visual programming environment for battle-testing prompts to LLMs.**
 
-ChainForge is a data flow prompt engineering tool for testing and evaluating prompts (and eventually, prompt chains) for LLMs. 'Sketch' prompt ideas and test variations quickly and effectively. Compare response quality across prompt variations and across models to choose the best prompt and model for your use case. Like Jupyter Notebooks are good for early-stage exploration, ChainForge is geared towards early-stage, quick-and-dirty exploration of prompts and response quality that goes beyond ad-hoc chatting with individual LLMs.
+<img width="1615" alt="Screen Shot 2023-05-17 at 2 45 17 PM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/96aecea7-cf05-4064-8f83-20a524449af7">
 
-ChainForge is built on [ReactFlow](https://reactflow.dev) and is in active development.
+ChainForge is a data flow prompt engineering tool for testing and evaluating prompts (and eventually, prompt chains) for LLMs. Like Jupyter Notebooks are good for early-stage exploration, ChainForge is geared towards early-stage, quick-and-dirty exploration of prompts and response quality that goes beyond ad-hoc chatting with individual LLMs. 'Sketch' prompt ideas and test variations quickly and effectively. Compare response quality across prompt variations and across models to choose the best prompt and model for your use case. 
+
+**This is an open alpha of Chainforge.** We currently support models GPT3.5, GPT4, Claude, and Alpaca 7B (through [Dalai](https://github.com/cocktailpeanut/dalai)) at default settings. Try it and let us know what you think! :) 
+
+ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://flask.palletsprojects.com/en/2.3.x/).
 
 # Features
 
