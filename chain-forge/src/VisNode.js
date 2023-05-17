@@ -54,6 +54,7 @@ const VisNode = ({ data, id }) => {
     const [pastInputs, setPastInputs] = useState([]);
     const [responses, setResponses] = useState([]);
     const [status, setStatus] = useState('none');
+    const [placeholderText, setPlaceholderText] = useState(<></>);
 
     const [plotLegend, setPlotLegend] = useState(null);
     const [selectedLegendItems, setSelectedLegendItems] = useState(null);
@@ -86,6 +87,11 @@ const VisNode = ({ data, id }) => {
             setPlotLegend(null);
             setPlotlySpec([]);
             setPlotlyLayout({});
+            setPlaceholderText(
+                <p style={{maxWidth: '220px', backgroundColor: '#f0f0aa', padding: '10px', fontSize: '10pt'}}>{
+                    "Please select at least one parameter to plot."
+                }</p>
+            )
             return;
         }
 
@@ -249,7 +255,11 @@ const VisNode = ({ data, id }) => {
 
             } else {
                 setSelectedLegendItems(null);
-                console.error("Plotting evaluations with more than one metric and more than one prompt parameter is currently unsupported.");
+                const error_text = "Plotting evaluations with more than one metric and more than one prompt parameter is currently unsupported.";
+                setPlaceholderText(
+                    <p style={{maxWidth: '220px', backgroundColor: '#f0aaaa', padding: '10px', fontSize: '10pt'}}>{error_text}</p>
+                )
+                console.error(error_text);
             }
         }
         else { // A single metric --use plots like grouped box-and-whiskers, 3d scatterplot
@@ -373,7 +383,7 @@ const VisNode = ({ data, id }) => {
                      onChange={handleMultiSelectValueChange}
                      className='nodrag nowheel'
                      data={multiSelectVars}
-                     placeholder="Pick all vars you wish to plot"
+                     placeholder="Pick params you wish to plot"
                      size="sm"
                      value={multiSelectValue}
                      searchable />
@@ -382,7 +392,7 @@ const VisNode = ({ data, id }) => {
                 <Plot
                     data={plotlySpec}
                     layout={plotlyLayout}
-                />) : <></>}
+                />) : placeholderText}
             {plotLegend ? plotLegend : <></>}
         </div>
         <Handle
