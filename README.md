@@ -12,6 +12,19 @@ ChainForge is a data flow prompt engineering environment for analyzing and evalu
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://flask.palletsprojects.com/en/2.3.x/).
 
+# Installation
+
+To get started with Chainforge alpha, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md). In the near future, we will upload to PyPI as an official package.
+
+## Example evaluation flows
+
+We've prepared a couple Example flows to give you a sense of what's possible with Chainforge. 
+Import them, then:
+ - Run any Prompt node(s) to query the LLM(s),
+ - Run any Evaluator nodes to score responses.
+
+Note that right now, **exporting a CF flow does not save cache'd responses.**
+
 # Features
 
 A key goal of ChainForge is facilitating **comparison** and **evaluation** of prompts and models, and (in the near future) prompt chains. Basic features are:
@@ -22,10 +35,6 @@ A key goal of ChainForge is facilitating **comparison** and **evaluation** of pr
 Taken together, these three features let you easily:
   - **Compare across prompts and prompt parameters**: Choose the best set of prompts that maximizes your eval target metrics (e.g., lowest code error rate). Or, see how changing parameters in a prompt template affects the quality of responses.
   - **Compare across models**: Compare responses for every prompt across models. 
-  
-# Installation
-
-To get started with Chainforge alpha, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
 # Development
 
@@ -52,17 +61,15 @@ See a feature you'd like that isn't here? Open an [Issue](https://github.com/ian
 
 ## Inspiration and Links
 
-ChainForge is meant to be general-purpose, and is not developed for a specific API or LLM back-end. Our ultimate goal is integration into other tools for the systematic evaluation and auditing of LLMs. We hope to help others who are developing prompt-analysis flows in LLMs, or otherwise auditing LLM outputs. 
-
-This project was inspired by own our use case, but also shares some comraderie with two related (closed-source) research projects, both led by [Sherry Wu](https://www.cs.cmu.edu/~sherryw/):
+ChainForge is meant to be general-purpose, and is not developed for a specific API or LLM back-end. Our ultimate goal is integration into other tools for the systematic evaluation and auditing of LLMs. We hope to help others who are developing prompt-analysis flows in LLMs, or otherwise auditing LLM outputs. This project was inspired by own our use case, but also shares some comraderie with two related (closed-source) research projects, both led by [Sherry Wu](https://www.cs.cmu.edu/~sherryw/):
 - "PromptChainer: Chaining Large Language Model Prompts through Visual Programming" (Wu et al., CHI ’22 LBW) [Video](https://www.youtube.com/watch?v=p6MA8q19uo0)
 - "AI Chains: Transparent and Controllable Human-AI Interaction by Chaining Large Language Model Prompts" (Wu et al., CHI ’22)
 
-Unlike these projects, we are focusing on supporting evaluation across responses, prompt variations, and models.
+Unlike these projects, we are focusing on supporting evaluation across prompts, prompt parameters, and models.
 
 ## How to collaborate?
 
-We are looking for open-source collaborators. The best way to do this, at the moment, is simply to implement the requested feature / bug fix and submit a Pull Request. If you want to report a bug or request a feature, open an Issue. 
+We are looking for open-source collaborators. The best way to do this, at the moment, is simply to implement the requested feature / bug fix and submit a Pull Request. If you want to report a bug or request a feature, open an [Issue](https://github.com/ianarawjo/ChainForge/issues). 
 
 # License
 
