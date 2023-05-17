@@ -25,30 +25,14 @@ Taken together, these three features let you easily:
   
 # Installation
 
-To get started, currently see the `CONTRIBUTOR_GUIDE.md`. Below are the planned installation steps (which are not yet active): 
-
->
-> To install, use `pip`. From the command line:
-> 
-> ```
-> pip install chainforge
-> ```
-> To run, type:
-> ```
-> chainforge serve
-> ```
-> This spins up two local servers: a React server through npm, and a Python backend, powered by Flask. For more options, such as port numbers, type `chainforge --help`.
-
-## Example: Test LLM robustness to prompt injection
-
-> ...
+To get started with Chainforge alpha, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
 # Development
 
-ChainForge is developed by research scientists at Harvard University in the [Harvard HCI](https://hci.seas.harvard.edu) group:
+ChainForge is being developed by research scientists at Harvard University in the [Harvard HCI](https://hci.seas.harvard.edu) group:
 - [Ian Arawjo](http://ianarawjo.com/index.html)
 - [Priyan Vaithilingam](https://priyan.info)
-- [Elena Glassman]()
+- [Elena Glassman](https://glassmanlab.seas.harvard.edu/glassman.html)
 
 We provide ongoing releases of this tool in the hopes that others find it useful for their projects.
 
@@ -57,12 +41,14 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 - **Model settings**: Change settings for individual models, so one can test across the same model with different settings
 - **Compare across response batches**: Run an evaluator over all N responses generated for each prompt, to measure factors like variability or parseability (e.g., how many code outputs pass a basic smell test?)
 - **Collapse nodes**: Nodes should be collapseable, to save screen space.
-- **LMQL node**: Support for prompt pipelines that involve LMQL code, esp. inspecting masked response variables. 
+- **LMQL and Microsoft guidance nodes**: Support for prompt pipelines that involve LMQL and {{guidance}} code, esp. inspecting masked response variables. 
 - **AI assistance for prompt engineering**: Spur creative ideas and quickly iterate on variations of prompts through interaction with GPT4.
 - **Compare fine-tuned to base models**: Beyond comparing between different models like Alpaca and ChatGPT, support comparison between versions of the same model (e.g., a base model and a fine-tuned one). Helper users detect where fine-tuning resulted in any 'breaking changes' elsewhere. 
 - **Export prompt chains to well-known APIs**: In the future, export a chain (in part) to a programming API like LangChain.
 - **Dark mode**: A dark mode theme
 - **Compare across chains**: If a system prompt, or another ‘shared prompt’, is used *across* chains C1 C2 etc, how does changing it affect all downstream events?
+
+See a feature you'd like that isn't here? Open an [Issue](https://github.com/ianarawjo/ChainForge/issues).
 
 ## Inspiration and Links
 
