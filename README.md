@@ -49,6 +49,7 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 
 - **Model settings**: Change settings for individual models, so one can test across the same model with different settings
 - **Compare across response batches**: Run an evaluator over all N responses generated for each prompt, to measure factors like variability or parseability (e.g., how many code outputs pass a basic smell test?)
+- **System prompts**: Ability to change the system prompt for models that support it (e.g., ChatGPT). Try out different system prompts and compare response quality.
 - **Collapse nodes**: Nodes should be collapseable, to save screen space.
 - **LMQL and Microsoft guidance nodes**: Support for prompt pipelines that involve LMQL and {{guidance}} code, esp. inspecting masked response variables. 
 - **AI assistance for prompt engineering**: Spur creative ideas and quickly iterate on variations of prompts through interaction with GPT4.
