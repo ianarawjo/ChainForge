@@ -224,7 +224,7 @@ const VisNode = ({ data, id }) => {
                 let legend_labels = {}; 
                 unique_vals.forEach((v, idx) => {
                     if (!selectedLegendItems || selectedLegendItems.indexOf(v) > -1)
-                        legend_labels[v] = group_colors[idx];
+                        legend_labels[v] = group_colors[idx % group_colors.length];
                     else
                         legend_labels[v] = unselected_line_color;
                 });
