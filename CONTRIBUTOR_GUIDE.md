@@ -1,7 +1,7 @@
-# Contributor Guide
+# Installation Guide
 
-This is a guide to running the current version of ChainForge, for people who want to develop or extend it. 
-Note that this document will change in the future.
+This is a guide to running the alpha version of ChainForge, for people who want to run, develop or extend it. 
+Note that steps will change in the future.
 
 ## Getting Started
 ### Install requirements
@@ -79,6 +79,12 @@ echo $OPENAI_API_KEY
 
 For Anthropic's API key on Mac, do the same as above but with `ANTHROPIC_API_KEY` replaced for `OpenAI_API_KEY`. 
 
-## Contributing to ChainForge
+## Problems?
+
+Open an [Issue](https://github.com/ianarawjo/ChainForge/issues).
+
+# Contributing to ChainForge
+
+If you are an outsider who wants to contribute, welcome! Please [fork this repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork) and submit a [Pull Request](https://github.com/ianarawjo/ChainForge/pulls) with your changes.
 
 If you have access to the main repository, we request that you add a branch `dev/<your_first_name>` and develop changes from there. When you are ready to push changes, say to addres an open Issue, make a Pull Request on the `main` repository and assign the main developer (Ian Arawjo) to it.
