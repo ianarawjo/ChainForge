@@ -54,9 +54,9 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 - **LMQL and Microsoft guidance nodes**: Support for prompt pipelines that involve LMQL and {{guidance}} code, esp. inspecting masked response variables. 
 - **AI assistance for prompt engineering**: Spur creative ideas and quickly iterate on variations of prompts through interaction with GPT4.
 - **Compare fine-tuned to base models**: Beyond comparing between different models like Alpaca and ChatGPT, support comparison between versions of the same model (e.g., a base model and a fine-tuned one). Helper users detect where fine-tuning resulted in any 'breaking changes' elsewhere. 
-- **Export prompt chains to well-known APIs**: In the future, export a chain (in part) to a programming API like LangChain.
+- **Export to code**: In the future, export prompt and (potentially) chains using a programming API like LangChain.
 - **Dark mode**: A dark mode theme
-- **Compare across chains**: If a system prompt, or another ‘shared prompt’, is used *across* chains C1 C2 etc, how does changing it affect all downstream events?
+- **Compare across chains**: If a prompt P is used *across* chains C1 C2 etc, how does changing it affect all downstream events?
 
 See a feature you'd like that isn't here? Open an [Issue](https://github.com/ianarawjo/ChainForge/issues).
 
