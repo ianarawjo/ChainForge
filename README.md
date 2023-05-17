@@ -1,5 +1,5 @@
 # ⛓️🛠️ ChainForge
-**An open-source visual programming environment for battle-testing prompts to large language models (LLMs).**
+**An open-source visual programming environment for battle-testing prompts to LLMs.**
 
 <img width="1615" alt="Screen Shot 2023-05-17 at 2 45 17 PM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/96aecea7-cf05-4064-8f83-20a524449af7">
 
