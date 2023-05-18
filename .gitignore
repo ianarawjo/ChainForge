@@ -1,8 +1,8 @@
 *.DS_Store
-chain-forge/node_modules
-chain-forge/build
+react-server/node_modules
+react-server/build
 __pycache__
-python-backend/cache
+chainforge/cache
 
 # venv
 venv
