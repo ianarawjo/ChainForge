@@ -28,7 +28,8 @@ chainforge serve
 
 Open [localhost:8000](http://localhost:8000/) in a Google Chrome browser (other browsers are currently unsupported).
 
-For additional details and options, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
+Note that you will likely need to save your OpenAI or Anthropic API keys to your local environment.
+For more details, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
 ## Example evaluation flows
 
