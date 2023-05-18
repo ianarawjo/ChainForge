@@ -29,17 +29,17 @@ We recommend the former option for end-users, and the latter for developers.
 
 ### Option 1: Build React app as static files (end-users)
 
-`cd` into `chain-forge` directory and run:
+`cd` into `react-serve` directory and run:
 
 ```
 npm run build
 ```
 
-Wait a moment while it builds the React app to static files. 
+Wait a moment while it builds the React app to static files.
 
 ### Option 2: Serve React front-end with hot reloading (developers)
 
-`cd` into `chain-forge` directory and run the following to serve the React front-end:
+`cd` into `react-server` directory and run the following to serve the React front-end:
 
 ```
 npm run start
@@ -47,10 +47,10 @@ npm run start
 
 ### Serving the backend
 
-Regardless of which option you chose, `cd` into `python-backend` and run:
+Regardless of which option you chose, `cd` into the root ChainForge directory and run:
 
 ```bash
-python app.py 
+python -m chainforge.app serve
 ```
 
 > **Note**
@@ -90,4 +90,4 @@ Open an [Issue](https://github.com/ianarawjo/ChainForge/issues).
 
 If you are an outsider who wants to contribute, welcome! Please [fork this repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork) and submit a [Pull Request](https://github.com/ianarawjo/ChainForge/pulls) with your changes.
 
-If you have access to the main repository, we request that you add a branch `dev/<your_first_name>` and develop changes from there. When you are ready to push changes, say to addres an open Issue, make a Pull Request on the `main` repository and assign the main developer (Ian Arawjo) to it.
+If you have access to the main repository, we request that you add a branch `dev/<your_first_name>` and develop changes from there. When you are ready to push changes, say to address an open Issue, make a Pull Request on the `experimental` repository and assign the main developer (Ian Arawjo) to it.

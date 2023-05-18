@@ -1,7 +1,7 @@
 from typing import Dict, Tuple, List, Union, Callable
 import json, os, time, asyncio
 
-from promptengine.models import LLM
+from chainforge.promptengine.models import LLM
 
 DALAI_MODEL = None
 DALAI_RESPONSE = None
@@ -101,7 +101,7 @@ async def call_dalai(model: LLM, port: int, prompt: str, n: int = 1, temperature
     global DALAI_MODEL, DALAI_RESPONSE
     server = 'http://localhost:'+str(port)
     if DALAI_MODEL is None:
-        from promptengine.dalaipy import Dalai
+        from chainforge.promptengine.dalaipy import Dalai
         DALAI_MODEL = Dalai(server)
     elif DALAI_MODEL.server != server:  # if the port has changed, we need to create a new model
         DALAI_MODEL = Dalai(server)

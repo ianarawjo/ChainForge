@@ -5,9 +5,9 @@ from statistics import mean, median, stdev
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO
-from promptengine.query import PromptLLM, PromptLLMDummy
-from promptengine.template import PromptTemplate, PromptPermutationGenerator
-from promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
+from chainforge.promptengine.query import PromptLLM, PromptLLMDummy
+from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
+from chainforge.promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
 
 # Setup Flask app to serve static version of React front-end
 BUILD_DIR = "../react-server/build"
@@ -16,6 +16,9 @@ app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
 
 # Set up CORS for specific routes
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
+
+# The cache base directory
+CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 
 # Serve React app (static; no hot reloading)
 @app.route("/")
@@ -57,10 +60,10 @@ def get_filenames_with_id(filenames: list, id: str) -> list:
     ]
 
 def remove_cached_responses(cache_id: str):
-    all_cache_files = get_files_at_dir('cache/')
+    all_cache_files = get_files_at_dir(CACHE_DIR)
     cache_files = get_filenames_with_id(all_cache_files, cache_id)
     for filename in cache_files:
-        os.remove(os.path.join('cache/', filename))
+        os.remove(os.path.join(CACHE_DIR, filename))
 
 def load_cache_json(filepath: str) -> dict:
     with open(filepath, encoding="utf-8") as f:
@@ -232,7 +235,7 @@ def load_all_cached_responses(cache_ids):
         cache_ids = [cache_ids]
     
     # Load all responses with the given ID:
-    all_cache_files = get_files_at_dir('cache/')
+    all_cache_files = get_files_at_dir(CACHE_DIR)
     responses = []
     for cache_id in cache_ids:
         cache_files = [fname for fname in get_filenames_with_id(all_cache_files, cache_id) if fname != f"{cache_id}.json"]
@@ -240,7 +243,7 @@ def load_all_cached_responses(cache_ids):
             continue
 
         for filename in cache_files:
-            res = load_cache_json(os.path.join('cache', filename))
+            res = load_cache_json(os.path.join(CACHE_DIR, filename))
             if isinstance(res, dict):
                 # Convert to standard response format
                 res = [
@@ -332,7 +335,7 @@ def createProgressFile():
 
     # Create a scratch file for keeping track of how many responses loaded
     try:
-        with open(f"cache/_temp_{data['id']}.txt", 'w') as f:
+        with open(os.path.join(CACHE_DIR, f"_temp_{data['id']}.txt"), 'w') as f:
             json.dump({}, f)
         ret = jsonify({'success': True})
     except Exception as e:
@@ -379,10 +382,10 @@ async def queryLLM():
         remove_cached_responses(data['id'])
 
     # Create a cache dir if it doesn't exist:
-    create_dir_if_not_exists('cache')
+    create_dir_if_not_exists(CACHE_DIR)
 
     # Check that the filepath used to cache eval'd responses is valid:
-    cache_filepath_last_run = os.path.join('cache', f"{data['id']}.json")
+    cache_filepath_last_run = os.path.join(CACHE_DIR, f"{data['id']}.json")
     if not is_valid_filepath(cache_filepath_last_run):
         return jsonify({'error': f'Invalid filepath: {cache_filepath_last_run}'})
 
@@ -390,7 +393,7 @@ async def queryLLM():
     responses = {}
     llms = data['llm']
     params = data['params'] if 'params' in data else {}
-    tempfilepath = f"cache/_temp_{data['id']}.txt"
+    tempfilepath = os.path.join(CACHE_DIR, f"_temp_{data['id']}.txt")
     if not is_valid_filepath(tempfilepath):
         return jsonify({'error': f'Invalid filepath: {tempfilepath}'})
 
@@ -398,7 +401,7 @@ async def queryLLM():
         llm = LLM_NAME_MAP[llm_str]
 
         # Check that storage path is valid:
-        cache_filepath = os.path.join('cache', f"{data['id']}-{str(llm.name)}.json")
+        cache_filepath = os.path.join(CACHE_DIR, f"{data['id']}-{str(llm.name)}.json")
         if not is_valid_filepath(cache_filepath):
             return jsonify({'error': f'Invalid filepath: {cache_filepath}'})
 
@@ -497,7 +500,7 @@ def execute():
         return jsonify({'error': "POST data scope is unknown. Must be either 'response' or 'batch'."})
     
     # Check that the filepath used to cache eval'd responses is valid:
-    cache_filepath = os.path.join('cache', f"{data['id']}.json")
+    cache_filepath = os.path.join(CACHE_DIR, f"{data['id']}.json")
     if not is_valid_filepath(cache_filepath):
         return jsonify({'error': f'Invalid filepath: {cache_filepath}'})
     
@@ -536,7 +539,7 @@ def execute():
         return jsonify({'error': f'Could not compile evaluator code. Error message:\n{str(e)}'})
 
     # Load all responses with the given ID:
-    all_cache_files = get_files_at_dir('cache/')
+    all_cache_files = get_files_at_dir(CACHE_DIR)
     all_evald_responses = []
     for cache_id in data['responses']:
         fname = f"{cache_id}.json"
@@ -544,7 +547,7 @@ def execute():
             return jsonify({'error': f'Did not find cache file for id {cache_id}'})
 
         # Load the raw responses from the cache
-        responses = load_cache_json(os.path.join('cache', fname))
+        responses = load_cache_json(os.path.join(CACHE_DIR, fname))
         if len(responses) == 0: continue
 
         # Run the evaluator over them: 
@@ -620,14 +623,14 @@ def grabResponses():
         data['responses'] = [ data['responses'] ]
 
     # Load all responses with the given ID:
-    all_cache_files = get_files_at_dir('cache/')
+    all_cache_files = get_files_at_dir(CACHE_DIR)
     responses = []
     for cache_id in data['responses']:
         fname = f"{cache_id}.json"
         if fname not in all_cache_files:
             return jsonify({'error': f'Did not find cache file for id {cache_id}'})
         
-        res = load_cache_json(os.path.join('cache', fname))
+        res = load_cache_json(os.path.join(CACHE_DIR, fname))
         if isinstance(res, dict):
             # Convert to standard response format
             res = [

@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     author="Ian Arawjo",
     description="A Visual Programming Environment for Prompt Engineering",
-    url="https://github.com/ianarawjo/ChainForge/"
+    url="https://github.com/ianarawjo/ChainForge/",
     install_requires=[
         # Package dependencies
         "flask[async]",

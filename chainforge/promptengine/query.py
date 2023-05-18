@@ -1,8 +1,8 @@
 from abc import abstractmethod
 from typing import List, Dict, Tuple, Iterator, Union
 import json, os, asyncio, random, string
-from promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
-from promptengine.template import PromptTemplate, PromptPermutationGenerator
+from chainforge.promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
+from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
 
 # LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
 #   For a basic organization in OpenAI, GPT3.5 is currently 3500 and GPT4 is 200 RPM (requests per minute).

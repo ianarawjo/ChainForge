@@ -4,16 +4,19 @@ from statistics import mean, median, stdev
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO
-from flask_app import run_server
-from promptengine.query import PromptLLM, PromptLLMDummy
-from promptengine.template import PromptTemplate, PromptPermutationGenerator
-from promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
+from chainforge.flask_app import run_server
+from chainforge.promptengine.query import PromptLLM, PromptLLMDummy
+from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
+from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
 
 # Setup the socketio app
 app = Flask(__name__)
 
 # Initialize Socket.IO with CORS enabled
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="gevent")
+
+# The cache base directory
+CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 
 # Wait a max of a full 3 minutes (180 seconds) for the response count to update, before exiting.
 MAX_WAIT_TIME = 180
@@ -29,7 +32,7 @@ def countdown():
 def readCounts(data):
     id = data['id']
     max_count = data['max']
-    tempfilepath = f'cache/_temp_{id}.txt'
+    tempfilepath = os.path.join(CACHE_DIR, f'_temp_{id}.txt')
 
     # Check that temp file exists. If it doesn't, something went wrong with setup on Flask's end:
     if not os.path.exists(tempfilepath):
