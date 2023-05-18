@@ -1,14 +1,6 @@
 import { create } from 'zustand';
 import {
-  // Connection,
-  // Edge,
-  // EdgeChange,
-  // Node,
-  // NodeChange,
   addEdge,
-  // OnNodesChange,
-  // OnEdgesChange,
-  // OnConnect,
   applyNodeChanges,
   applyEdgeChanges,
   useViewport,
@@ -18,31 +10,19 @@ import {
 // because of the way ReactFlow saves and restores states. 
 const uid = (id) => `${id}-${Date.now()}`;
 
+// Initial project settings
 const initprompt = uid('prompt');
 const initeval = uid('eval');
 const initialNodes = [
   { id: initprompt, type: 'prompt', data: { prompt: 'Who invented the lightbulb?', n: 1 }, position: { x: 430, y: 250 } },
   { id: initeval, type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 850, y: 150 } },
   { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 25, y: 150 } },
-  { id: uid('textfields2'), type: 'textfields', data: {}, position: { x: 25, y: 300 } },
   { id: uid('vis'), type: 'vis', data: {}, position: { x: 1350, y: 250 } },
   { id: uid('inspect'), type: 'inspect', data: {}, position: { x:900, y:600 } },
 ];
-
-const initialEdges = [
-  { id: 'e1-2', source: initprompt, target: initeval, interactionWidth: 100, style: {strokeWidth: '1px'}, markerEnd: {type: 'arrow', strokeWidth: '1px', width: '22px', height: '22px', orient: 'auto'}},
-];
+const initialEdges = [];
 
 export const BASE_URL = 'http://localhost:8000/';
-
-// TypeScript only
-// type RFState = {
-//   nodes: Node[];
-//   edges: Edge[];
-//   onNodesChange: OnNodesChange;
-//   onEdgesChange: OnEdgesChange;
-//   onConnect: OnConnect;
-// };
 
 // this is our useStore hook that we can use in our components to get parts of the store and call actions
 const useStore = create((set, get) => ({
