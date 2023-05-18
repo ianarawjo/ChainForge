@@ -1,6 +1,5 @@
 *.DS_Store
 react-server/node_modules
-react-server/build
 __pycache__
 chainforge/cache
 

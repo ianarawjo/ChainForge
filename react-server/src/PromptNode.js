@@ -164,13 +164,6 @@ const PromptNode = ({ data, id }) => {
                     // Check the format of the output. Can be str or dict with 'text' and 'vars' attrs:
                     if (typeof out[0] === 'object') {
                         out.forEach(obj => store_data([obj], varname, pulled_data));
-                        // out.forEach((obj) => {
-                        //     store_data([obj.text], varname, pulled_data);
-                        //     // We need to carry through each individual var as well:
-                        //     Object.keys(obj.vars).forEach(_v => 
-                        //         store_data([obj.vars[_v]], _v, pulled_data)
-                        //     );
-                        // });
                     }
                     else {
                         // Save the list of strings from the pulled output under the var 'varname'

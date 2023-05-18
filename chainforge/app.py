@@ -10,15 +10,10 @@ from promptengine.template import PromptTemplate, PromptPermutationGenerator
 from promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
 
 # Setup the socketio app
-# BUILD_DIR = "../react-server/build"
-# STATIC_DIR = BUILD_DIR + '/static'
-app = Flask(__name__) #, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
+app = Flask(__name__)
 
-# Initialize Socket.IO
+# Initialize Socket.IO with CORS enabled
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="gevent")
-
-# Set up CORS for specific routes
-# cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Wait a max of a full 3 minutes (180 seconds) for the response count to update, before exiting.
 MAX_WAIT_TIME = 180
@@ -81,24 +76,37 @@ def readCounts(data):
         print("All responses loaded!")
         socketio.emit('finish', 'success', namespace='/queryllm')
 
+# Start socketio server
 def run_socketio_server(socketio, port):
     socketio.run(app, host="localhost", port=8001)
 
-if __name__ == "__main__":
-    
-    parser = argparse.ArgumentParser(description='This script spins up a Flask server that serves as the backend for ChainForge')
+# Main Chainforge start
+def main():
+    parser = argparse.ArgumentParser(description='Chainforge command line tool')
+
+    # Serve command
+    subparsers = parser.add_subparsers(dest='serve')
+    serve_parser = subparsers.add_parser('serve', help='Start Chainforge server')
 
     # Turn on to disable all outbound LLM API calls and replace them with dummy calls
     # that return random strings of ASCII characters. Useful for testing interface without wasting $$.
-    parser.add_argument('--dummy-responses', 
+    serve_parser.add_argument('--dummy-responses', 
         help="""Disables queries to LLMs, replacing them with spoofed responses composed of random ASCII characters. 
                 Produces each dummy response at random intervals between 0.1 and 3 seconds.""", 
         dest='dummy_responses', 
         action='store_true')
-    parser.add_argument('--port', help='The port to run the server on. Defaults to 8000.', type=int, default=8000, nargs='?')
+    
+    # TODO: Reimplement this where the React server is given the backend's port before loading.
+    # serve_parser.add_argument('--port', help='The port to run the server on. Defaults to 8000.', type=int, default=8000, nargs='?')
+    
     args = parser.parse_args()
 
-    port = args.port if args.port else 8000
+    # Currently only support the 'serve' command...
+    if not args.serve:
+        parser.print_help()
+        exit(0)
+    
+    port = 8000 # args.port if args.port else 8000
 
     # Spin up separate thread for socketio app, on port+1 (8001 default)
     print(f"Serving SocketIO server on port {port+1}...")
@@ -107,3 +115,6 @@ if __name__ == "__main__":
 
     print(f"Serving Flask server on port {port}...")
     run_server(host="localhost", port=port, cmd_args=args)
+
+if __name__ == "__main__":
+    main()

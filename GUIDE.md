@@ -58,8 +58,11 @@ python app.py
 
 This script spins up two servers, the main one on port 8000 and a SocketIO server on port 8001 (used for streaming progress updates).
 
-If you built the React app statically, go to `localhost:8000` in a web browser to view the app. 
+If you built the React app statically, go to `localhost:8000` in a web browser to view the app (ideally in Google Chrome). 
 If you served the React app with hot reloading with `npm run start`, go to the server address you ran it on (usually `localhost:3000`).
+
+> **Note**
+> ChainForge is tested on Google Chrome. It currently does not work in earlier versions of Safari. We recommend you open it in Chrome.
 
 ## Activate OpenAI / Anthropic keys or install Dalai
 
