@@ -34,7 +34,5 @@ setup(
         'Programming Language :: Python :: 3.9',
     ],
     python_requires=">=3.7",
-    package_data={
-        '': ['react-server/build']
-    },
+    include_package_data=True,
 )
