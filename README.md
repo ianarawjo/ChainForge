@@ -14,7 +14,21 @@ ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://fl
 
 # Installation
 
-To get started with Chainforge alpha, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md). In the near future, we will upload to PyPI as an official package.
+To install Chainforge alpha, run
+
+```bash
+pip install chainforge
+```
+
+then do
+
+```bash
+chainforge serve
+```
+
+Open [localhost:8000](http://localhost:8000/) in a Google Chrome browser (other browsers are currently unsupported).
+
+For additional details and options, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
 ## Example evaluation flows
 
