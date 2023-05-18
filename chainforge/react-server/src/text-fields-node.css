@@ -1,0 +1,492 @@
+.text-fields-node {
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #000;
+    border-radius: 5px;
+    min-width: 200px;
+  }
+
+  .small-standard-font {
+    font-size: 10pt;
+    font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  }
+
+  .status-icon {
+    display: inline-block;
+    font-size: 14pt;
+    margin: 0px 0px 0px 4px;
+    padding: 0px;
+  }
+  .status-icon .status-tooltip {
+    visibility: hidden;
+    font-size: 10pt;
+    font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    width: 150px;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 5px;
+
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 1;
+  }
+  .status-icon:hover .status-tooltip {
+    visibility: visible;
+  }
+  .warning-status {
+    color: #CC7722;
+  }
+  .warning-status .status-tooltip {
+    background-color: #CC7722;
+  }
+  .ready-status {
+    color: #4CBB17;
+  }
+  .ready-status .status-tooltip {
+    background-color: #4CBB17;
+  }
+  .error-status {
+    color: #E52A2A;
+  }
+  .error-status .status-tooltip {
+    background-color: #E52A2A;
+  }
+
+  /* Loading icon */ 
+  .lds-ring {
+    display: inline-block;
+    position: relative;
+    margin-left: 4px;
+    width: 18px;
+    height: 18px;
+  }
+  .lds-ring div {
+    box-sizing: border-box;
+    display: block;
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    margin: 2px;
+    border: 2px solid #0096FF;
+    border-radius: 50%;
+    animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    border-color: #0096FF transparent transparent transparent;
+  }
+  .lds-ring div:nth-child(1) {
+    animation-delay: -0.45s;
+  }
+  .lds-ring div:nth-child(2) {
+    animation-delay: -0.3s;
+  }
+  .lds-ring div:nth-child(3) {
+    animation-delay: -0.15s;
+  }
+  @keyframes lds-ring {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .input-field {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+  }
+
+  .remove-text-field-btn {
+    margin-left: 3px;
+    padding: 2px 4px;
+    border-style: none;
+    background-color: inherit;
+    color: #bbb;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .remove-text-field-btn:hover {
+    color: #666;
+    background-color: #eee;
+  }
+  
+  .input-field input {
+    margin-left: 5px;
+  }
+  
+  .node-header {
+    border-bottom: 1px;
+    border-top: 0px;
+    border-left: 0px;
+    border-right: 0px;
+    border-style: dashed;
+    margin-bottom: 12px;
+    padding-bottom: 4px;
+  }
+
+  .prompt-node {
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #999;
+    border-radius: 5px;
+    width: 290px;
+  }
+  
+  .prompt-node textarea {
+    width: 100%;
+    resize: none;
+    box-sizing: border-box;
+  }
+
+  .evaluator-node {
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #999;
+    border-radius: 5px;
+    min-width: 280px;
+  }
+
+  .ace-editor-container {
+    resize:vertical;
+  }
+
+  .vis-node {
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #999;
+    border-radius: 5px;
+  }
+  .plot-legend {
+    font-size: 11px;
+    font-family: monospace;
+  }
+  .plot-legend-item {
+    cursor: pointer;
+  }
+  .plot-legend-item:hover {
+    opacity: 0.6;
+  }
+  .plot-legend-item:active {
+    opacity: 0.8;
+  }
+
+  .inspector-node {
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #999;
+    border-radius: 5px;
+  }
+  .inspect-response-container {
+    overflow-y: scroll;
+    min-width: 150px;
+    width: 280px;
+    height: 100px;
+    max-width: 650px;
+    max-height: 650px;
+    resize: both;
+  }
+
+  .small-response {
+    font-size: 8pt;
+    font-family: monospace;
+    border-style: dotted;
+    border-color: #fff;
+    padding: 2px;
+    margin: 2px 1px;
+    background-color: rgba(255, 255, 255, 0.4);
+    white-space: pre-wrap;
+  }
+
+  .llm-response-container {
+    max-width: 100%;
+  }
+  .llm-response-container h1 {
+    font-weight: 400;
+    font-size: 10pt;
+    margin: 6px 8px 0px 8px;
+    padding-top: 2px;
+    padding-bottom: 0px;
+    color: #222;
+  }
+
+  .llm-group-header {
+    font-weight: 400;
+    font-size: 10pt;
+    margin: 6px 8px 4px 8px;
+    padding-top: 2px;
+    padding-bottom: 0px;
+    color: #222;
+  }
+
+  .response-group {
+    margin: 2px 0px 8px 0px;
+    padding: 2px 2px 2px 2px;
+    /* border-radius: 7px; */
+  }
+  .response-boxes-wrapper {
+    margin-top: 4px;
+    padding-left: 10px;
+    border-left-width: 2px;
+    border-left-style: solid;
+    border-left-color: #bbb;
+  }
+  .response-item-llm-name-wrapper {
+    padding-bottom: 0px;
+  }
+  .response-item-llm-name-wrapper h1 {
+    font-size: 8pt;
+    font-weight: bold;
+    font-style: italic;
+    color: #000;
+    opacity: 0.7;
+    text-align: right;
+    padding-right: 4px;
+    margin: 0px;
+  }
+
+  .response-preview-container {
+    margin: 10px -9px -9px -9px;
+    max-height: 100px;
+    overflow-y: auto;
+    background-color: #ace1aeb1; /* ACE1AF */
+  }
+  .response-box {
+    padding: 2px;
+    margin: 0px 2px 4px 2px;
+    border-radius: 5px;
+  }
+  .response-tag {
+    font-size: 9pt;
+    color: #555;
+    margin: 0px 0px 0px 2px;
+  }
+
+  .cfnode {
+    border-color: #999;
+  }
+  .cfnode:hover {
+    border-color: #222;
+  }
+  
+  .var-select-toolbar {
+    text-align: right;
+    margin: 0px;
+    padding: 0px;
+    position: relative;
+    margin-bottom: -30px;
+  }
+  .var-select-toolbar label {
+    font-size: 12px;
+  }
+  .var-select-toolbar select {
+    width:100px;
+    font-size: 12px;
+  }
+
+  .code-style {
+    background-color: #ddd;
+    font-family: 'Courier New', Courier, monospace;
+  }
+
+  .hook-tag {
+    padding-top: 11px;;
+    padding-bottom: 3px;
+  }
+
+  .code-mirror-field-header {
+    font-size: 10pt;
+    color: #333;
+    margin-bottom: 4px;
+  }
+
+  .text-field-fixed {
+    resize: vertical;
+    width: 280px;
+  }
+
+  .add-text-field-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .add-llm-model-btn {
+    display: flex;
+    align-items: right;
+    justify-content: right;
+    float: right;
+    height: 20px;
+  }
+  .add-llm-model-btn button {
+    border-style: solid;
+    border-color: #777;
+    border-width: 1pt;
+    border-radius: 3px;
+    color: #777;
+    margin-right: 2px;
+  }
+  .add-llm-model-btn:hover button {
+    background-color: white;
+  }
+  .add-llm-model-btn:active button {
+    background-color: black;
+    color: white;
+  }
+
+  /** CSS Button style from https://css-buttons-hover.netlify.app/ */
+  .AmitSahoo45-button-3 {
+    position: relative;
+    padding: 2px 10px;
+    margin-top: -5px;
+    margin-right: 3px;
+    border-radius: 5px;
+    border: 1px solid #999;
+    font-size: 12px;
+    /* text-transform: uppercase; */
+    /* font-weight: 600; */
+    /* letter-spacing: 2px; */
+    background: transparent;
+    color: #333;
+    overflow: hidden;
+    box-shadow: 0 0 0 0 transparent;
+    -webkit-transition: all 0.2s ease-in;
+    -moz-transition: all 0.2s ease-in;
+    transition: all 0.2s ease-in;
+    /* float:right; */
+    cursor: pointer;
+}
+
+.AmitSahoo45-button-3:hover {
+    background: rgb(26, 200, 69);
+    color: white;
+    box-shadow: 0 0 30px 5px rgb(63, 234, 106, 0.815);
+    -webkit-transition: all 0.2s ease-out;
+    -moz-transition: all 0.2s ease-out;
+    transition: all 0.2s ease-out;
+}
+.AmitSahoo45-button-3:active {
+  background: #40a829;
+  color: yellow;
+}
+
+.AmitSahoo45-button-3:hover::before {
+    -moz-animation: sh02 0.5s 0s linear;
+    animation: sh02 0.5s 0s linear;
+}
+
+.AmitSahoo45-button-3::before {
+    content: '';
+    display: block;
+    width: 0px;
+    height: 86%;
+    position: absolute;
+    top: 7%;
+    left: 0%;
+    opacity: 0;
+    background: #fff;
+    box-shadow: 0 0 50px 30px #fff;
+    -webkit-transform: skewX(-20deg);
+    -moz-transform: skewX(-20deg);
+    -ms-transform: skewX(-20deg);
+    -o-transform: skewX(-20deg);
+    transform: skewX(-20deg);
+}
+
+.script-node-input {
+  width: 100%;
+}
+
+.node-header-btns-container {
+  float: right;
+  margin-right: 0px;
+  margin-left: 10px;
+  margin-top: -3px;
+}
+
+.close-button {
+  position: relative;
+  padding: 2px 6px;
+  margin-top: -7px;
+  border-radius: 5px;
+  border: 1px solid #999;
+  font-size: 12px;
+  /* text-transform: uppercase; */
+  /* font-weight: 600; */
+  /* letter-spacing: 2px; */
+  background: transparent;
+  color: #333;
+  overflow: hidden;
+  box-shadow: 0 0 0 0 transparent;
+  -webkit-transition: all 0.2s ease-in;
+  -moz-transition: all 0.2s ease-in;
+  transition: all 0.2s ease-in;
+  /* float:right; */
+  cursor: pointer;
+}
+
+.close-button:hover {
+  background: rgb(200 , 26, 69);
+  color: white;
+  box-shadow: 0 0 30px 5px rgb(234, 63, 106, 0.815);
+  -webkit-transition: all 0.2s ease-out;
+  -moz-transition: all 0.2s ease-out;
+  transition: all 0.2s ease-out;
+}
+.close-button:active {
+  background: #660000;
+  color: yellow;
+}
+
+.close-button:hover::before {
+  -moz-animation: sh02 0.5s 0s linear;
+  animation: sh02 0.5s 0s linear;
+}
+
+.close-button::before {
+  content: '';
+  display: block;
+  width: 0px;
+  height: 86%;
+  position: absolute;
+  top: 7%;
+  left: 0%;
+  opacity: 0;
+  color: black;
+  background: #fff;
+  box-shadow: 0 0 50px 30px #fff;
+  -webkit-transform: skewX(-20deg);
+  -moz-transform: skewX(-20deg);
+  -ms-transform: skewX(-20deg);
+  -o-transform: skewX(-20deg);
+  transform: skewX(-20deg);
+}
+
+/* Play button triangle |> */
+.play-button {
+    border: 0;
+    background: transparent;
+    box-sizing: border-box;
+    width: 0;
+    height: 10px;
+    margin: 2px;
+    pointer-events: none;
+  
+    border-color: transparent transparent transparent #202020;
+    /* transition: 100ms all ease; */
+    /* cursor: pointer; */
+  
+    border-style: solid;
+    border-width: 5px 0 5px 10px;
+}
+
+/* Make text blink */
+.text-blink {
+    animation: blinker .75s linear infinite;
+    font-family: sans-serif;
+}
+@keyframes blinker {
+    50% {
+        opacity: 0;
+    }
+}
