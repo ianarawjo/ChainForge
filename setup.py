@@ -20,7 +20,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'chainforge = chainforge.main:main',
+            'chainforge = chainforge.app:main',
         ],
     },
     classifiers=[
@@ -34,4 +34,7 @@ setup(
         'Programming Language :: Python :: 3.9',
     ],
     python_requires=">=3.7",
+    package_data={
+        '': ['react-server/build']
+    },
 )
