@@ -197,6 +197,18 @@
     background-color: rgba(255, 255, 255, 0.4);
     white-space: pre-wrap;
   }
+  .small-response-metrics {
+    font-size: 8pt;
+    font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    font-style: italic;
+    text-align: center;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    padding: 0px 2px 1px 0px;
+    margin: 0px 20px 8px 20px;
+    background-color: rgba(255, 255, 255, 0.6);
+    color: #333;
+  }
 
   .llm-response-container {
     max-width: 100%;
@@ -334,36 +346,46 @@
     color: white;
   }
 
-  /** CSS Button style from https://css-buttons-hover.netlify.app/ */
-  .AmitSahoo45-button-3 {
-    position: relative;
-    padding: 2px 10px;
-    margin-top: -5px;
-    margin-right: 3px;
-    border-radius: 5px;
-    border: 1px solid #999;
-    font-size: 12px;
-    /* text-transform: uppercase; */
-    /* font-weight: 600; */
-    /* letter-spacing: 2px; */
-    background: transparent;
-    color: #333;
-    overflow: hidden;
-    box-shadow: 0 0 0 0 transparent;
-    -webkit-transition: all 0.2s ease-in;
-    -moz-transition: all 0.2s ease-in;
-    transition: all 0.2s ease-in;
-    /* float:right; */
-    cursor: pointer;
+/* Play button triangle |> */
+.play-button {
+  border: 0;
+  background: transparent;
+  box-sizing: border-box;
+  width: 0;
+  height: 10px;
+  margin: 2px;
+  pointer-events: none;
+  border-color: transparent transparent transparent #202020;
+  border-style: solid;
+  border-width: 5px 0 5px 10px;
+}
+
+/** CSS Button style from https://css-buttons-hover.netlify.app/ */
+.AmitSahoo45-button-3 {
+  position: relative;
+  padding: 2px 10px;
+  margin-top: -5px;
+  margin-right: 3px;
+  border-radius: 5px;
+  border: 1px solid #999;
+  font-size: 12px;
+  background: transparent;
+  color: #333;
+  overflow: hidden;
+  box-shadow: 0 0 0 0 transparent;
+  -webkit-transition: all 0.2s ease-in;
+  -moz-transition: all 0.2s ease-in;
+  transition: all 0.2s ease-in;
+  cursor: pointer;
 }
 
 .AmitSahoo45-button-3:hover {
-    background: rgb(26, 200, 69);
-    color: white;
-    box-shadow: 0 0 30px 5px rgb(63, 234, 106, 0.815);
-    -webkit-transition: all 0.2s ease-out;
-    -moz-transition: all 0.2s ease-out;
-    transition: all 0.2s ease-out;
+  background: rgb(26, 200, 69);
+  color: white;
+  box-shadow: 0 0 30px 5px rgb(63, 234, 106, 0.815);
+  -webkit-transition: all 0.2s ease-out;
+  -moz-transition: all 0.2s ease-out;
+  transition: all 0.2s ease-out;
 }
 .AmitSahoo45-button-3:active {
   background: #40a829;
@@ -371,26 +393,26 @@
 }
 
 .AmitSahoo45-button-3:hover::before {
-    -moz-animation: sh02 0.5s 0s linear;
-    animation: sh02 0.5s 0s linear;
+  -moz-animation: sh02 0.5s 0s linear;
+  animation: sh02 0.5s 0s linear;
 }
 
 .AmitSahoo45-button-3::before {
-    content: '';
-    display: block;
-    width: 0px;
-    height: 86%;
-    position: absolute;
-    top: 7%;
-    left: 0%;
-    opacity: 0;
-    background: #fff;
-    box-shadow: 0 0 50px 30px #fff;
-    -webkit-transform: skewX(-20deg);
-    -moz-transform: skewX(-20deg);
-    -ms-transform: skewX(-20deg);
-    -o-transform: skewX(-20deg);
-    transform: skewX(-20deg);
+  content: '';
+  display: block;
+  width: 0px;
+  height: 86%;
+  position: absolute;
+  top: 7%;
+  left: 0%;
+  opacity: 0;
+  background: #fff;
+  box-shadow: 0 0 50px 30px #fff;
+  -webkit-transform: skewX(-20deg);
+  -moz-transform: skewX(-20deg);
+  -ms-transform: skewX(-20deg);
+  -o-transform: skewX(-20deg);
+  transform: skewX(-20deg);
 }
 
 .script-node-input {
@@ -404,6 +426,7 @@
   margin-top: -3px;
 }
 
+/* Close button */
 .close-button {
   position: relative;
   padding: 2px 6px;
@@ -411,9 +434,6 @@
   border-radius: 5px;
   border: 1px solid #999;
   font-size: 12px;
-  /* text-transform: uppercase; */
-  /* font-weight: 600; */
-  /* letter-spacing: 2px; */
   background: transparent;
   color: #333;
   overflow: hidden;
@@ -421,10 +441,8 @@
   -webkit-transition: all 0.2s ease-in;
   -moz-transition: all 0.2s ease-in;
   transition: all 0.2s ease-in;
-  /* float:right; */
   cursor: pointer;
 }
-
 .close-button:hover {
   background: rgb(200 , 26, 69);
   color: white;
@@ -437,12 +455,10 @@
   background: #660000;
   color: yellow;
 }
-
 .close-button:hover::before {
   -moz-animation: sh02 0.5s 0s linear;
   animation: sh02 0.5s 0s linear;
 }
-
 .close-button::before {
   content: '';
   display: block;
@@ -462,22 +478,58 @@
   transform: skewX(-20deg);
 }
 
-/* Play button triangle |> */
-.play-button {
-    border: 0;
-    background: transparent;
-    box-sizing: border-box;
-    width: 0;
-    height: 10px;
-    margin: 2px;
-    pointer-events: none;
-  
-    border-color: transparent transparent transparent #202020;
-    /* transition: 100ms all ease; */
-    /* cursor: pointer; */
-  
-    border-style: solid;
-    border-width: 5px 0 5px 10px;
+/* Custom button styling */
+.custom-button {
+  position: relative;
+  text-decoration: none;
+  padding: 2px 6px;
+  margin-top: -7px;
+  margin-right: 3px;
+  border-radius: 5px;
+  border: 1px solid #999;
+  font-size: 12px;
+  background: transparent;
+  color: #333;
+  overflow: hidden;
+  box-shadow: 0 0 0 0 transparent;
+  -webkit-transition: all 0.2s ease-in;
+  -moz-transition: all 0.2s ease-in;
+  transition: all 0.2s ease-in;
+  cursor: pointer;
+}
+.custom-button:hover {
+  background: rgb(241, 208, 44);
+  color: white;
+  box-shadow: 0 0 30px 5px rgba(255, 222, 35, 0.815);
+  -webkit-transition: all 0.2s ease-out;
+  -moz-transition: all 0.2s ease-out;
+  transition: all 0.2s ease-out;
+}
+.custom-button:active {
+  background: #a36a07;
+  color: rgb(51, 10, 6);
+}
+.custom-button:hover::before {
+  -moz-animation: sh02 0.5s 0s linear;
+  animation: sh02 0.5s 0s linear;
+}
+.custom-button::before {
+  content: '';
+  display: block;
+  width: 0px;
+  height: 86%;
+  position: absolute;
+  top: 7%;
+  left: 0%;
+  opacity: 0;
+  color: black;
+  background: #fff;
+  box-shadow: 0 0 50px 30px #fff;
+  -webkit-transform: skewX(-20deg);
+  -moz-transform: skewX(-20deg);
+  -ms-transform: skewX(-20deg);
+  -o-transform: skewX(-20deg);
+  transform: skewX(-20deg);
 }
 
 /* Make text blink */

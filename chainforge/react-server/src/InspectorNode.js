@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
 import { Badge, MultiSelect } from '@mantine/core';
+import * as XLSX from 'xlsx';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import {BASE_URL} from './store';
@@ -41,16 +42,41 @@ const groupResponsesBy = (responses, keyFunc) => {
 };
 const getUniqueKeysInResponses = (responses, keyFunc) => {
     let ukeys = new Set();
-    responses.forEach(res_obj => 
-        ukeys.add(keyFunc(res_obj)));
+    responses.forEach(res_obj => {
+        const keys = keyFunc(res_obj);
+        if (Array.isArray(keys))
+            keys.forEach(k => ukeys.add(k));
+        else 
+            ukeys.add(keyFunc(res_obj));
+    });
     return Array.from(ukeys);
 };
 const getLLMsInResponses = (responses) => getUniqueKeysInResponses(responses, (resp_obj) => resp_obj.llm);
+const getEvalResultStr = (eval_item) => {
+    if (Array.isArray(eval_item)) {
+        return 'scores: ' + eval_item.join(', ');
+    }
+    else if (typeof eval_item === 'object') {
+        const strs = Object.keys(eval_item).map(key => {
+            let val = eval_item[key];
+            if (typeof val === 'number' && val.toString().indexOf('.') > -1)
+                val = val.toFixed(4);  // truncate floats to 4 decimal places
+            return `${key}: ${val}`;
+        });
+        return strs.join(', ');
+    }
+    else 
+        return `score: ${eval_item}`;
+};
+
 
 const InspectorNode = ({ data, id }) => {
 
+  let is_fetching = false;
+
   const [responses, setResponses] = useState([]);
   const [jsonResponses, setJSONResponses] = useState(null);
+
   const [pastInputs, setPastInputs] = useState([]);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
@@ -99,10 +125,20 @@ const InspectorNode = ({ data, id }) => {
         if (varnames.length === 0) {
             // Base case. Display n response(s) to each single prompt, back-to-back:
             const resp_boxes = resps.map((res_obj, res_idx) => {
+
+                const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
+
                 // Spans for actual individual response texts
-                const ps = res_obj.responses.map((r, idx) => 
-                    (<pre className="small-response" key={idx}>{r}</pre>)
-                );
+                const ps = eval_res_items ? (
+                    res_obj.responses.map((r, idx) => (
+                        <div key={idx}>
+                            <pre className="small-response">{r}</pre>
+                            <p className="small-response-metrics">{getEvalResultStr(eval_res_items[idx])}</p>
+                        </div>
+                    ))) : (
+                    res_obj.responses.map((r, idx) => (
+                        <pre key={idx} className="small-response">{r}</pre>
+                    )));
 
                 // At the deepest level, there may still be some vars left over. We want to display these
                 // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
@@ -178,8 +214,14 @@ const InspectorNode = ({ data, id }) => {
   }, [multiSelectValue, multiSelectVars]);
 
   const handleOnConnect = () => {
+    // For some reason, 'on connect' is called twice upon connection.
+    // We detect when an inspector node is already fetching, and disable the second call:
+    if (is_fetching) return; 
+
     // Get the ids from the connected input nodes:
     const input_node_ids = inputEdgesForNode(id).map(e => e.source);
+
+    is_fetching = true;
 
     // Grab responses associated with those ids:
     fetch(BASE_URL + 'app/grabResponses', {
@@ -209,14 +251,15 @@ const InspectorNode = ({ data, id }) => {
             )).concat({value: 'LLM', label: 'LLM'}));
 
             // If this is an initial run or the multi select value is empty, set to group by 'LLM' by default:
-            let selected_vars = multiSelectValue;
             if (multiSelectValue.length === 0) {
                 setMultiSelectValue(['LLM']);
-                selected_vars = ['LLM'];
             }
 
             setJSONResponses(json.responses);
         }
+        is_fetching = false;
+    }).catch(() => {
+        is_fetching = false; 
     });
   }
 
@@ -246,11 +289,54 @@ const InspectorNode = ({ data, id }) => {
     setMultiSelectValue(new_val);
   };
 
+  // Export the JSON responses to an excel file:
+  const exportToExcel = useCallback(() => {
+
+    // We can construct the data as an array of JSON dicts, with keys as header names:
+    // NOTE: We need to 'unwind' responses in each batch, since each res_obj can have N>1 responses.
+    //       We will store every response text on a single row, but keep track of batches by creating a batch ID number.
+    const data = jsonResponses.map((res_obj, res_obj_idx) => {
+        const llm = res_obj.llm;
+        const prompt = res_obj.prompt;
+        const vars = res_obj.vars;
+        const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
+        return res_obj.responses.map((r, r_idx) => {
+            let row = { 'LLM': llm, 'Prompt': prompt, 'Response': r, 'Response Batch Id': res_obj_idx };
+            Object.keys(vars).forEach(varname => {
+                row[`Param: ${varname}`] = vars[varname];
+            });
+            if (eval_res_items && eval_res_items.length > r_idx) {
+                const item = eval_res_items[r_idx];
+                if (Array.isArray(item)) {
+                    row['Eval result'] = item.join(', ');
+                }
+                else if (typeof item === 'object') {
+                    Object.keys(item).forEach(key => {
+                        row[`Eval result: ${key}`] = item[key];
+                    });
+                }
+                else 
+                    row['Eval result'] = item;
+            }
+            return row;
+        });
+    }).flat();
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    XLSX.writeFile(wb, "responses.xlsx");
+
+  }, [jsonResponses]);
+
   return (
     <div className="inspector-node cfnode">
     <NodeLabel title={data.title || 'Inspect Node'} 
                 nodeId={id}
-                icon={'🔍'} />
+                icon={'🔍'}
+                customButtons={[
+                    <button className="custom-button" onClick={exportToExcel}>Export data</button>
+                ]} />
       <MultiSelect   ref={multiSelectRef}
                      onChange={handleMultiSelectValueChange}
                      className='nodrag nowheel'
@@ -276,3 +362,67 @@ const InspectorNode = ({ data, id }) => {
 };
 
 export default InspectorNode;
+
+
+/** Export responses to CSV format (deprecated --better to use xlsx for newlines)
+import { CSVLink } from "react-csv";
+import Papa from 'papaparse';
+const responsesToCSV = (responses) => {
+    // Create headers of CSV
+    let headers = [
+        { label: "LLM", key: "llm" },
+        { label: "Prompt", key: "prompt" },
+        { label: "Response", key: "response" },
+        { label: "Response Batch #", key: "batch_id" },
+    ];
+
+    // For each var in the responses, we need to add a column (header):
+    const all_vars = getUniqueKeysInResponses(responses, (res_obj) => Object.keys(res_obj.vars));
+    all_vars.forEach((v, v_idx) => 
+        headers.push({ label:`Param: ${v}`, key: `param_${v_idx}` })
+    );
+
+    // Now we can construct the data as an array of JSON dicts, with keys as header keys:
+    // NOTE: We need to 'unwind' responses in each batch, since each res_obj can have N>1 responses.
+    //       We will store every response text on a single row, but keep track of batches by creating a batch ID number.
+    const data = Papa.unparse(responses.map((res_obj, res_obj_idx) => {
+        const llm = res_obj.llm;
+        const prompt = res_obj.prompt;
+        const vars = res_obj.vars;
+        return res_obj.responses.map(r => {
+            let row = { llm: llm, prompt: prompt, response: r, batch_id: res_obj_idx };
+            Object.keys(vars).forEach(varname => {
+                const v_idx = all_vars.indexOf(varname);
+                row[`param_${v_idx}`] = vars[varname];
+            });
+            return row;
+        });
+    }).flat());
+
+    return [data, headers];
+};
+    
+    Then add the state:
+    
+    const [csvData, setCSVData] = useState([]);
+    const [csvHeaders, setCSVHeaders] = useState([]);
+
+    Then add to the return Promise of the fetch:
+    const [csv_data, csv_headers] = responsesToCSV(json.responses);
+    setCSVData(csv_data);
+    setCSVHeaders(csv_headers);
+
+    Then replace the custom button with:
+
+    <CSVLink
+        data={csvData}
+        headers={csvHeaders}
+        filename={"responses.csv"}
+        className="custom-button"
+        target="_blank"
+    >
+        Export CSV
+    </CSVLink>
+
+    Note that this still has a bug w/ regards to the header names.
+*/

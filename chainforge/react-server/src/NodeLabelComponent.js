@@ -6,7 +6,7 @@ import AlertModal from './AlertModal';
 import { useState, useEffect} from 'react';
 import { Tooltip } from '@mantine/core';
 
-export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, handleRunClick, handleRunHover, runButtonTooltip }) {
+export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, customButtons, handleRunClick, handleRunHover, runButtonTooltip }) {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const [statusIndicator, setStatusIndicator] = useState('none');
     const [runButton, setRunButton] = useState('none');
@@ -66,6 +66,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             {statusIndicator}
             <AlertModal ref={alertModal} />
             <div className="node-header-btns-container">
+                {customButtons ? customButtons : <></>}
                 {runButton}
                 <button className="close-button nodrag" onClick={handleCloseButtonClick}>&#x2715;</button>
                 <br/>
