@@ -43,7 +43,7 @@ const CsvNode = ({ data, id }) => {
         // Update the data for this text fields' id.
         let new_data = { 'text': event.target.value, 'fields': processCsv(event.target.value) };
         setDataPropsForNode(id, new_data);
-    }, [id, setDataPropsForNode]);
+    }, [id]);
 
     const handKeyDown = useCallback((event) => {
         if (event.key === 'Enter' && data.text && data.text.trim().length > 0) {
@@ -83,7 +83,7 @@ const CsvNode = ({ data, id }) => {
             </div>
         );
         setCountText(
-            <Text size="xs" style={{ marginTop: '5px' }} color='blue' align='right'>{elements.length} elements</Text>
+            <Text size="xs" style={{ marginTop: '5px' }} color='gray' align='right'>{elements.length} elements</Text>
         );
     }, [data.text, handleDivOnClick]);
 
@@ -103,7 +103,7 @@ const CsvNode = ({ data, id }) => {
         );
         setContentDiv(null);
         setCountText(null);
-    }, [isEditing]);
+    }, [isEditing, handleInputChange, handleOnBlur, handKeyDown]);
 
     // when data.text changes, update the content div
     useEffect(() => {
