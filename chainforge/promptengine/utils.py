@@ -28,7 +28,7 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float =
         "n": n,
         "temperature": temperature,
     }
-    response = openai.ChatCompletion.create(**query)
+    response = await openai.ChatCompletion.acreate(**query)
     return query, response
 
 async def call_anthropic(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0,

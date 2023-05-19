@@ -52,6 +52,7 @@ class PromptPipeline:
         # Query LLM with each prompt, yield + cache the responses
         tasks = []
         max_req, wait_secs = MAX_SIMULTANEOUS_REQUESTS[llm] if llm in MAX_SIMULTANEOUS_REQUESTS else (1, 0)
+        
         for num_queries, prompt in enumerate(self.gen_prompts(properties)):
             if isinstance(prompt, PromptTemplate) and not prompt.is_concrete():
                 raise Exception(f"Cannot send a prompt '{prompt}' to LLM: Prompt is a template.")
@@ -174,8 +175,8 @@ class PromptPipeline:
             query, response = await call_anthropic(prompt=str(prompt), model=llm, n=n, temperature=temperature)
         else:
             raise Exception(f"Language model {llm} is not supported.")
+        
         return prompt, query, response, past_resp_obj
-
 
 """
     Most basic prompt pipeline: given a prompt (and any variables, if it's a template), 
