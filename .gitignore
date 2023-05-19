@@ -3,6 +3,10 @@ chainforge/react-server/node_modules
 __pycache__
 chainforge/cache
 
+# package build folders (sdist)
+chainforge.egg-info/
+dist/
+
 # venv
 venv
 node_modules
