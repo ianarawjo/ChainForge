@@ -154,7 +154,6 @@ class PromptPermutationGenerator:
             return
 
         for p in self._gen_perm(self.template, list(paramDict.keys()), paramDict):
-            print(p)
             yield p
 
 # Test cases

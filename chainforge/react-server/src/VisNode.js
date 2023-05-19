@@ -42,12 +42,29 @@ const getUniqueKeysInResponses = (responses, keyFunc) => {
         ukeys.add(keyFunc(res_obj)));
     return Array.from(ukeys);
 };
+const getLLMsInResponses = (responses) => getUniqueKeysInResponses(responses, (resp_obj) => resp_obj.llm);
 const extractEvalResultsForMetric = (metric, responses) => {
     return responses.map(resp_obj => resp_obj.eval_res.items.map(item => item[metric])).flat();
 };
 const areSetsEqual = (xs, ys) =>
     xs.size === ys.size &&
     [...xs].every((x) => ys.has(x));
+const genUniqueShortnames = (names) => {
+    // Generate unique 'shortnames' to refer to each name:
+    let past_shortnames_counts = {};
+    let shortnames = {};
+    for (const name of names) {
+        const sn = truncStr(name, 12);
+        if (sn in past_shortnames_counts) {
+            past_shortnames_counts[sn] += 1;
+            shortnames[name] = sn + `(${past_shortnames_counts[sn]})`;
+        } else {
+            shortnames[name] = sn;
+            past_shortnames_counts[sn] = 1;
+        }
+    }
+    return shortnames;
+}
 
 const VisNode = ({ data, id }) => {
 
@@ -84,8 +101,10 @@ const VisNode = ({ data, id }) => {
 
         setStatus('none');
 
-        // If there are variables but no variables are selected...
-        if (multiSelectVars && multiSelectVars.length > 0 && multiSelectValue.length === 0) {
+        const llm_names = getLLMsInResponses(responses);
+
+        // If there are variables but no variables are selected and only 1 LLM is present...
+        if (llm_names.length <= 1 && multiSelectVars && multiSelectVars.length > 0 && multiSelectValue.length === 0) {
             console.warn('No variables selected to plot.');
             setSelectedLegendItems(null);
             setPlotLegend(null);
@@ -117,7 +136,6 @@ const VisNode = ({ data, id }) => {
             else
                 responses_by_llm[item.llm] = [item];
         });
-        const llm_names = Object.keys(responses_by_llm);
 
         // Get the type of evaluation results, if present
         // (This is assumed to be consistent across response batches)
@@ -143,9 +161,45 @@ const VisNode = ({ data, id }) => {
             return eval_res_obj.items;
         };
 
+        const plot_simple_boxplot = (resp_to_x) => {
+            // Get all possible values of the single variable response ('name' vals)
+            const names = new Set(responses.map(resp_to_x));
+            const shortnames = genUniqueShortnames(names);
+
+            let color_idx = 0;
+            for (const name of names) {
+                let x_items = [];
+                let text_items = [];
+                responses.forEach(r => {
+                    if (resp_to_x(r) !== name) return;
+                    x_items = x_items.concat(get_items(r.eval_res));
+                    text_items = text_items.concat(createHoverTexts(r.responses));
+                });
+                spec.push({
+                    type: 'box', 
+                    name: shortnames[name], 
+                    boxpoints: 'all', 
+                    x: x_items, 
+                    text: text_items, 
+                    hovertemplate: '%{text}', 
+                    orientation: 'h',
+                    marker: { color: colors[color_idx % colors.length] }
+                });
+
+                color_idx += 1;
+            }
+            layout.hovermode = 'closest';
+
+            if (metric_axes_labels.length > 0)
+                layout.xaxis = { 
+                    title: { font: {size: 12}, text: metric_axes_labels[0] },
+                };
+        };
+
         const plot_grouped_boxplot = (resp_to_x) => {
             // Get all possible values of the single variable response ('name' vals)
             const names = new Set(responses.map(resp_to_x));
+            const shortnames = genUniqueShortnames(names);
 
             llm_names.forEach((llm, idx) => {
                 // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
@@ -159,7 +213,7 @@ const VisNode = ({ data, id }) => {
                         if (resp_to_x(r) !== name) return;
                         x_items = x_items.concat(get_items(r.eval_res)).flat();
                         text_items = text_items.concat(createHoverTexts(r.responses)).flat();
-                        y_items = y_items.concat(Array(get_items(r.eval_res).length).fill(truncStr(name, 12))).flat();
+                        y_items = y_items.concat(Array(get_items(r.eval_res).length).fill(shortnames[name])).flat();
                     });
                 }
 
@@ -269,32 +323,13 @@ const VisNode = ({ data, id }) => {
             if (varnames.length === 0) {
                 // No variables means they used a single prompt (no template) to generate responses
                 // (Users are likely evaluating differences in responses between LLMs)
-                plot_grouped_boxplot((r) => truncStr(r.prompt.trim(), 12));
+                plot_simple_boxplot((r) => r.llm);
             }
             else if (varnames.length === 1) {
                 // 1 var; numeric eval
                 if (llm_names.length === 1) {
                     // Simple box plot, as there is only a single LLM in the response
-                    // Get all possible values of the single variable response ('name' vals)
-                    const names = new Set(responses.map(r => r.vars[varnames[0]].trim()));
-                    for (const name of names) {
-                        let x_items = [];
-                        let text_items = [];
-                        responses.forEach(r => {
-                            if (r.vars[varnames[0]].trim() !== name) return;
-                            x_items = x_items.concat(get_items(r.eval_res));
-                            text_items = text_items.concat(createHoverTexts(r.responses));
-                        });
-                        spec.push(
-                            {type: 'box', x: x_items, name: truncStr(name, 12), boxpoints: 'all', text: text_items, hovertemplate: '%{text}', orientation: 'h'}
-                        );
-                    }
-                    layout.hovermode = 'closest';
-
-                    if (metric_axes_labels.length > 0)
-                        layout.xaxis = { 
-                            title: { font: {size: 12}, text: metric_axes_labels[0] },
-                        };
+                    plot_simple_boxplot((r) => r.vars[varnames[0]].trim());
                 } else {
                     // There are multiple LLMs in the response; do a grouped box plot by LLM.
                     // Note that 'name' is now the LLM, and 'x' stores the value of the var: 
@@ -304,10 +339,16 @@ const VisNode = ({ data, id }) => {
             else if (varnames.length === 2) {
                 // Input is 2 vars; numeric eval
                 // Display a 3D scatterplot with 2 dimensions:
+
+                const names_0 = new Set(responses.map(r => r.vars[varnames[0]].trim()));
+                const shortnames_0 = genUniqueShortnames(names_0);
+                const names_1 = new Set(responses.map(r => r.vars[varnames[1]].trim()));
+                const shortnames_1 = genUniqueShortnames(names_1);
+
                 spec = {
                     type: 'scatter3d',
-                    x: responses.map(r => r.vars[varnames[0]]).map(s => truncStr(s, 12)),
-                    y: responses.map(r => r.vars[varnames[1]]).map(s => truncStr(s, 12)),
+                    x: responses.map(r => r.vars[varnames[0]]).map(s => shortnames_0[s]),
+                    y: responses.map(r => r.vars[varnames[1]]).map(s => shortnames_1[s]),
                     z: responses.map(r => get_items(r.eval_res).reduce((acc, val) => (acc + val), 0) / r.eval_res.items.length), // calculates mean
                     mode: 'markers',
                 }
