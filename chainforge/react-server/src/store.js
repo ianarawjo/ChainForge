@@ -21,6 +21,7 @@ const initialNodes = [
   { id: uid('inspect'), type: 'inspect', data: {}, position: { x:900, y:600 } },
 ];
 const initialEdges = [];
+const initialAPIKeys = {};
 
 export const BASE_URL = 'http://localhost:8000/';
 
@@ -28,6 +29,10 @@ export const BASE_URL = 'http://localhost:8000/';
 const useStore = create((set, get) => ({
   nodes: initialNodes,
   edges: initialEdges,
+  apiKeys: initialAPIKeys,
+  setAPIKeys: (apiKeys) => {
+    set({apiKeys: apiKeys});
+  },
   inputEdgesForNode: (sourceNodeId) => {
     return get().edges.filter(e => e.target == sourceNodeId);
   },

@@ -7,7 +7,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO
 from chainforge.promptengine.query import PromptLLM, PromptLLMDummy
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
-from chainforge.promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
+from chainforge.promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
 
 # Setup Flask app to serve static version of React front-end
 BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
@@ -357,6 +357,7 @@ async def queryLLM():
             'params': dict  # an optional dict of any other params to set when querying the LLMs, like 'temperature', 'n' (num of responses per prompt), etc.
             'prompt': str  # the prompt template, with any {{}} vars
             'vars': dict  # a dict of the template variables to fill the prompt template with, by name. For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
+            'api_keys': dict  # (optional) a dict of {api_name: api_key} pairs. Supported keys: OpenAI, Anthropic.
             'no_cache': bool (optional)  # delete any cache'd responses for 'id' (always call the LLM fresh)
         }
     """
@@ -378,6 +379,9 @@ async def queryLLM():
         if llm_str not in LLM_NAME_MAP:
             return jsonify({'error': f"LLM named '{llm_str}' is not supported."})
     
+    if 'api_keys' in data:
+        set_api_keys(data['api_keys'])
+
     if 'no_cache' in data and data['no_cache'] is True:
         remove_cached_responses(data['id'])
 

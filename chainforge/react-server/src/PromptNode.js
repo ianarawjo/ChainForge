@@ -52,6 +52,9 @@ const PromptNode = ({ data, id }) => {
   const outputEdgesForNode = useStore((state) => state.outputEdgesForNode);
   const getNode = useStore((state) => state.getNode);
 
+  // API Keys (set by user in popup GlobalSettingsModal)
+  const apiKeys = useStore((state) => state.apiKeys);
+
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const [promptText, setPromptText] = useState(data.prompt || "");
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
@@ -76,11 +79,11 @@ const PromptNode = ({ data, id }) => {
   const [progress, setProgress] = useState(100);
   const [runTooltip, setRunTooltip] = useState(null);
 
-  const triggerAlert = (msg) => {
+  const triggerAlert = useCallback((msg) => {
     setProgress(100);
     resetLLMItemsProgress();
     alertModal.current.trigger(msg);
-  };
+  }, [resetLLMItemsProgress, alertModal]);
 
   const addModel = useCallback((model) => {
     // Get the item for that model
@@ -415,6 +418,7 @@ const PromptNode = ({ data, id }) => {
                     temperature: 0.5,
                     n: numGenerations,
                 },
+                api_keys: (apiKeys ? apiKeys : {}),
                 no_cache: false,
             }),
         }, rejected).then(function(response) {
@@ -422,7 +426,7 @@ const PromptNode = ({ data, id }) => {
         }, rejected).then(function(json) {
             if (!json) {
                 setStatus('error');
-                alertModal.current.trigger('Request was sent and received by backend server, but there was no response.');
+                triggerAlert('Request was sent and received by backend server, but there was no response.');
             }
             else if (json.responses) {
 
@@ -487,7 +491,7 @@ const PromptNode = ({ data, id }) => {
                 console.log(json.responses);
             } else {
                 setStatus('error');
-                alertModal.current.trigger(json.error || 'Unknown error when querying LLM');
+                triggerAlert(json.error || 'Unknown error when querying LLM');
             }
         }, rejected);
     };

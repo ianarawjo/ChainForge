@@ -1,14 +1,15 @@
 // import logo from './logo.svg';
 // import './App.css';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import ReactFlow, {
   Controls,
   Background,
   useReactFlow,
   useViewport
 } from 'react-flow-renderer';
-// import axios from 'axios';
+import { Button } from '@mantine/core';
+import { IconSettings } from '@tabler/icons-react';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
 import EvaluatorNode from './EvaluatorNode';
@@ -16,6 +17,7 @@ import VisNode from './VisNode';
 import InspectNode from './InspectorNode';
 import ScriptNode from './ScriptNode';
 import CsvNode from './CsvNode';
+import GlobalSettingsModal from './GlobalSettingsModal';
 import './text-fields-node.css';
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
@@ -56,6 +58,9 @@ const App = () => {
   // For saving / loading
   const [rfInstance, setRfInstance] = useState(null);
 
+  // For modal popup to set global settings like API keys
+  const settingsModal = useRef(null);
+
   // Helper 
   const getWindowSize = () => ({width: window.innerWidth, height: window.innerHeight});
   const getWindowCenter = () => {
@@ -92,10 +97,14 @@ const App = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'scriptNode-'+Date.now(), type: 'script', data: {}, position: {x: x-200, y:y-100} });
   };
-
   const addCsvNode = (event) => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'csvNode-'+Date.now(), type: 'csv', data: {}, position: {x: x-200, y:y-100} });
+  };
+
+  const onClickSettings = () => {
+    if (settingsModal && settingsModal.current) 
+      settingsModal.current.trigger();
   };
 
   /** 
@@ -180,6 +189,7 @@ const App = () => {
 
   return (
     <div>
+      <GlobalSettingsModal ref={settingsModal} />
       <div style={{ height: '100vh', width: '100%', backgroundColor: '#eee' }}>
         <ReactFlow
           onNodesChange={onNodesChange}
@@ -213,6 +223,9 @@ const App = () => {
         <button onClick={loadFlowFromCache}>Load</button>
         <button onClick={exportFlow} style={{marginLeft: '12px'}}>Export</button>
         <button onClick={importFlow}>Import</button>
+      </div>
+      <div style={{position: 'fixed', right: '10px', top: '10px', zIndex: 8}}>
+        <Button onClick={onClickSettings} size="sm" variant="gray" compact><IconSettings size={"100%"} /></Button>
       </div>
     </div>
   );

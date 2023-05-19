@@ -6,6 +6,22 @@ from chainforge.promptengine.models import LLM
 DALAI_MODEL = None
 DALAI_RESPONSE = None
 
+ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"] if "ANTHROPIC_API_KEY" in os.environ else None
+
+def set_api_keys(api_keys):
+    """
+        Sets the local API keys for the revelant LLM API(s).
+        Currently only supports 'OpenAI', 'Anthropic'. 
+    """
+    def key_is_present(name):
+        return name in api_keys and len(api_keys[name].strip()) > 0
+    if key_is_present('OpenAI'):
+        import openai
+        openai.api_key = api_keys['OpenAI']
+    if key_is_present('Anthropic'):
+        ANTHROPIC_API_KEY = api_keys['Anthropic']
+    # Soft fail for non-present keys
+
 async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float = 1.0, system_msg: Union[str, None]=None) -> Tuple[Dict, Dict]:
     """
         Calls GPT3.5 via OpenAI's API. 
@@ -28,7 +44,12 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float =
         "n": n,
         "temperature": temperature,
     }
-    response = await openai.ChatCompletion.acreate(**query)
+    try:
+        response = await openai.ChatCompletion.acreate(**query)
+    except Exception as e:
+        if (isinstance(e, openai.error.AuthenticationError)):
+            raise Exception("Could not authenticate to OpenAI. Double-check your API key.")
+        raise e
     return query, response
 
 async def call_anthropic(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0,
@@ -52,8 +73,11 @@ async def call_anthropic(prompt: str, model: LLM, n: int = 1, temperature: float
 
         NOTE: It is recommended to set an environment variable ANTHROPIC_API_KEY with your Anthropic API key
     """
+    if ANTHROPIC_API_KEY is None:
+        raise Exception("Could not find an API key for Anthropic models.")
+
     import anthropic
-    client = anthropic.Client(os.environ["ANTHROPIC_API_KEY"])
+    client = anthropic.Client(ANTHROPIC_API_KEY)
 
     # Format query
     query = {

@@ -6,6 +6,7 @@
     "@codemirror/lang-javascript": "^6.1.5",
     "@codemirror/lang-python": "^6.1.2",
     "@mantine/core": "^6.0.9",
+    "@mantine/form": "^6.0.11",
     "@reactflow/background": "^11.2.0",
     "@reactflow/controls": "^11.1.11",
     "@reactflow/core": "^11.7.0",
