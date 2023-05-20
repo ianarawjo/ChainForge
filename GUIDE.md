@@ -1,7 +1,5 @@
 # Installation Guide
 
-## For casual users 
-
 The simplest and safest way to install the latest public build of ChainForge is to:
  1. Create a new directory and `cd` into it
  2. (Optional, but recommended!) Create a virtual environment. On Mac, you can do 
