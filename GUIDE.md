@@ -23,12 +23,12 @@ The simplest and safest way to install the latest public build of ChainForge is 
 > **Note**
 > ChainForge alpha is tested on Google Chrome. It currently does not work in earlier versions of Safari. We recommend you open it in Chrome.
 
-## Activate OpenAI / Anthropic keys or install Dalai
+## Activate OpenAI / Anthropic / Google PaLM API keys or install Dalai
 
 Though you can run Chainforge, you can't do anything with it without an API key to call an LLM. 
 If you're just messing around, we recommend you input the API keys manually via the Settings button in the top-right corner. 
 
-Currently we support OpenAI models GPT3.5 and GPT4, Anthropic model Claudev1, and (locally run) [Dalai](https://github.com/cocktailpeanut/dalai)-served Alpaca.7b at port 4000.
+Currently we support OpenAI models GPT3.5 and GPT4, Anthropic model Claudev1, Google PaLM model `text-bison-001`, and (locally run) [Dalai](https://github.com/cocktailpeanut/dalai)-served Alpaca.7b at port 4000.
 
 ### OpenAI
 To use OpenAI models, you need to set an environment variable with your OpenAI key:
