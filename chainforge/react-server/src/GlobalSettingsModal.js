@@ -12,6 +12,7 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
     initialValues: {
       OpenAI: '',
       Anthropic: '',
+      Google: '',
     },
 
     validate: {
@@ -50,6 +51,13 @@ return (
                   label="Anthropic API Key"
                   placeholder="Paste your Anthropic API key here"
                   {...form.getInputProps('Anthropic')}
+                />
+
+                <br />
+                <TextInput
+                  label="Google PaLM API Key"
+                  placeholder="Paste your Google PaLM API key here"
+                  {...form.getInputProps('Google')}
                 />
 
                 <Group position="right" mt="md">

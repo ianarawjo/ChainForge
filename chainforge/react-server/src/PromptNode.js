@@ -15,6 +15,7 @@ const allLLMs = [
     { name: "GPT4", emoji: "🥵", model: "gpt-4", temp: 1.0 },
     { name: "Alpaca 7B", emoji: "🦙", model: "alpaca.7B", temp: 0.5 },
     { name: "Claude v1", emoji: "📚", model: "claude-v1", temp: 0.5 },
+    { name: "PaLM2", emoji: "🦬", model: "text-bison-001", temp: 0.7 },
 ];
 const initLLMs = [allLLMs[0]];
 

@@ -37,3 +37,6 @@ class LLM(str, Enum):
     # as well as search result summarization. Using this model name will automatically switch you to newer 
     # versions of claude-instant-v1 as they are released.
     Claude_v1_instant = "claude-instant-v1"
+
+    """ Google models """
+    PaLM2 = "text-bison-001"  # it's really models/text-bison-001, but that's confusing

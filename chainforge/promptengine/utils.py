@@ -7,12 +7,14 @@ DALAI_MODEL = None
 DALAI_RESPONSE = None
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"] if "ANTHROPIC_API_KEY" in os.environ else None
+GOOGLE_PALM_API_KEY = os.environ["PALM_API_KEY"] if "PALM_API_KEY" in os.environ else None
 
 def set_api_keys(api_keys):
     """
         Sets the local API keys for the revelant LLM API(s).
         Currently only supports 'OpenAI', 'Anthropic'. 
     """
+    global ANTHROPIC_API_KEY, GOOGLE_PALM_API_KEY
     def key_is_present(name):
         return name in api_keys and len(api_keys[name].strip()) > 0
     if key_is_present('OpenAI'):
@@ -20,6 +22,8 @@ def set_api_keys(api_keys):
         openai.api_key = api_keys['OpenAI']
     if key_is_present('Anthropic'):
         ANTHROPIC_API_KEY = api_keys['Anthropic']
+    if key_is_present('Google'):
+        GOOGLE_PALM_API_KEY = api_keys['Google']
     # Soft fail for non-present keys
 
 async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float = 1.0, system_msg: Union[str, None]=None) -> Tuple[Dict, Dict]:
@@ -106,6 +110,33 @@ async def call_anthropic(prompt: str, model: LLM, n: int = 1, temperature: float
 
     return query, responses
 
+async def call_google_palm(prompt: str, model: LLM, n: int = 1, temperature: float= 0.7,
+                           max_output_tokens=800,
+                           async_mode=False,
+                           **params) -> Tuple[Dict, Dict]:
+    """
+        Calls a Google PaLM model. 
+        Returns raw query and response JSON dicts.
+    """
+    if GOOGLE_PALM_API_KEY is None:
+        raise Exception("Could not find an API key for Google PaLM models.")
+
+    import google.generativeai as palm
+    palm.configure(api_key=GOOGLE_PALM_API_KEY)
+
+    query = {
+        'model': f"models/{model.value}",
+        'prompt': prompt,
+        'candidate_count': n,
+        'temperature': temperature,
+        'max_output_tokens': max_output_tokens,
+        **params,
+    }
+
+    completion = palm.generate_text(**query)
+
+    return query, completion.to_dict()
+
 async def call_dalai(model: LLM, port: int, prompt: str, n: int = 1, temperature: float = 0.5, **params) -> Tuple[Dict, Dict]:
     """
         Calls a Dalai server running LLMs Alpaca, Llama, etc locally.
@@ -189,7 +220,7 @@ async def call_dalai(model: LLM, port: int, prompt: str, n: int = 1, temperature
 
     return query, responses
 
-def _extract_chatgpt_responses(response: dict) -> List[dict]:
+def _extract_chatgpt_responses(response: dict) -> List[str]:
     """
         Extracts the text part of a response JSON from ChatGPT. If there are more
         than 1 response (e.g., asking the LLM to generate multiple responses), 
@@ -201,13 +232,21 @@ def _extract_chatgpt_responses(response: dict) -> List[dict]:
         for c in choices
     ]
 
-def extract_responses(response: Union[list, dict], llm: Union[LLM, str]) -> List[dict]:
+def _extract_palm_responses(completion) -> List[str]:
+    """
+        Extracts the text part of a 'Completion' object from Google PaLM2 `generate_text`
+    """
+    return [c['output'] for c in completion['candidates']]
+
+def extract_responses(response: Union[list, dict], llm: Union[LLM, str]) -> List[str]:
     """
         Given a LLM and a response object from its API, extract the
         text response(s) part of the response object.
     """
     if llm is LLM.ChatGPT or llm == LLM.ChatGPT.value or llm is LLM.GPT4 or llm == LLM.GPT4.value:
         return _extract_chatgpt_responses(response)
+    elif llm is LLM.PaLM2 or llm == LLM.PaLM2.value:
+        return _extract_palm_responses(response)
     elif llm is LLM.Alpaca7B or llm == LLM.Alpaca7B.value:
         return response
     elif (isinstance(llm, LLM) and llm.value[:6] == 'claude') or (isinstance(llm, str) and llm[:6] == 'claude'):

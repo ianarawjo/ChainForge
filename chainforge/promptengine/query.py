@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import List, Dict, Tuple, Iterator, Union
 import json, os, asyncio, random, string
-from chainforge.promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
+from chainforge.promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, call_google_palm, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
 
 # LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
@@ -12,6 +12,7 @@ from chainforge.promptengine.template import PromptTemplate, PromptPermutationGe
 MAX_SIMULTANEOUS_REQUESTS = { 
     LLM.ChatGPT: (30, 10),  # max 30 requests a batch; wait 10 seconds between
     LLM.GPT4: (5, 10),  # max 5 requests a batch; wait 10 seconds between
+    LLM.PaLM2: (4, 10),  # max 30 requests per minute; so do 4 per batch, 10 seconds between
     LLM.Alpaca7B: (1, 0),  # 1 indicates synchronous
 }
 
@@ -169,6 +170,8 @@ class PromptPipeline:
 
         if llm is LLM.ChatGPT or llm is LLM.GPT4:
             query, response = await call_chatgpt(str(prompt), model=llm, n=n, temperature=temperature)
+        elif llm is LLM.PaLM2:
+            query, response = await call_google_palm(prompt=str(prompt), model=llm, n=n, temperature=temperature)
         elif llm is LLM.Alpaca7B:
             query, response = await call_dalai(model=llm, port=4000, prompt=str(prompt), n=n, temperature=temperature)
         elif llm.value[:6] == 'claude':
