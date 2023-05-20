@@ -8,7 +8,7 @@ ChainForge is a data flow prompt engineering environment for analyzing and evalu
  - Compare response quality across prompt variations and across models to choose the best prompt and model for your use case. 
  - Setup an evaluation metric (scoring function) and immediately visualize results across prompts, prompt parameters, and models. 
 
-**This is an open alpha of Chainforge.** We currently support models GPT3.5, GPT4, Claude, and Alpaca 7B (through [Dalai](https://github.com/cocktailpeanut/dalai)) at default settings. Try it and let us know what you think! :) 
+**This is an open alpha of Chainforge.** We currently support OpenAI models GPT3.5 and GPT4, Anthropic's Claude, Google PaLM2 (bison), and Alpaca 7B (through [Dalai](https://github.com/cocktailpeanut/dalai)) at default settings. Try it and let us know what you think! :) 
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://flask.palletsprojects.com/en/2.3.x/).
 
