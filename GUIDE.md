@@ -26,7 +26,7 @@ The simplest and safest way to install the latest public build of ChainForge is 
 Though you can run Chainforge, you can't do anything with it without the ability to call an LLM. 
 Currently we support OpenAI models GPT3.5 and GPT4, Anthropic model Claudev1, Google PaLM model `text-bison-001`, and (locally run) [Dalai](https://github.com/cocktailpeanut/dalai)-served Alpaca.7b at port 4000.
 
-To use a specific model, you need to do two things:_
+To use a specific model, you need to do two things:
  1. Install the relevant package to your Python environment _(for all non-OpenAI models)_
  2. Set the relevant API key _(for all non-Dalai models)_
 
@@ -55,7 +55,7 @@ If you're just messing around, we recommend you input the API keys manually via 
  - To set Google PaLM's API key on Mac, do the same as above but with `PALM_API_KEY` replaced for `PALM_API_KEY`.
 
 ---------------------------------
-## For developers
+# For developers
 
 Below is a guide to running the alpha version of ChainForge directly, for people who want to modify, develop or extend it. 
 Note that these steps may change in the future.
