@@ -13,8 +13,8 @@ The simplest and safest way to install the latest public build of ChainForge is 
     ```bash
     pip install chainforge
     ```
- 4. Make sure you have OpenAI or Anthropic API keys set as environment variables. For more info, see below.
- 4. Run
+ 4. (If you wish to use non-OpenAI models): Make sure you have installed the relevant packages. For more info, see below. You can also come back to do this later.
+ 4. Run:
     ```bash
     chainforge serve
     ```
@@ -23,36 +23,38 @@ The simplest and safest way to install the latest public build of ChainForge is 
 > **Note**
 > ChainForge alpha is tested on Google Chrome. It currently does not work in earlier versions of Safari. We recommend you open it in Chrome.
 
-## Activate OpenAI / Anthropic / Google PaLM API keys or install Dalai
+## Install model APIs
 
-Though you can run Chainforge, you can't do anything with it without an API key to call an LLM. 
-If you're just messing around, we recommend you input the API keys manually via the Settings button in the top-right corner. 
-
+Though you can run Chainforge, you can't do anything with it without the ability to call an LLM. 
 Currently we support OpenAI models GPT3.5 and GPT4, Anthropic model Claudev1, Google PaLM model `text-bison-001`, and (locally run) [Dalai](https://github.com/cocktailpeanut/dalai)-served Alpaca.7b at port 4000.
 
-### OpenAI
-To use OpenAI models, you need to set an environment variable with your OpenAI key:
-https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety
+To use a specific model, you need to do two things:_
+ 1. Install the relevant package to your Python environment _(for all non-OpenAI models)_
+ 2. Set the relevant API key _(for all non-Dalai models)_
 
-For Mac, for instance, follow:
+### 1. Install packages (Anthropic, Google PaLM, and Dalai-hosted models)
 
-```bash
-echo "export OPENAI_API_KEY='yourkey'" >> ~/.zshrc
-source ~/.zshrc
-echo $OPENAI_API_KEY
-```
+To use Anthropic and Google PaLM models, you need to install the relevant Python package in your Python environment before you can run those models:
+ - For [Anthropic](https://github.com/anthropics/anthropic-sdk-python), do `pip install anthropic`.
+ - For [Google PaLM](https://github.com/google/generative-ai-python), do `pip install google-generativeai`. (Note that PaLM officially supports Python 3.9+, but there's a minor type error that's easily fixed to make it work in Python 3.8.8.)
+ - For Dalai, [install `dalai`](https://github.com/cocktailpeanut/dalai) and follow the instructions to download `alpaca.7b`. When everything is setup, run:
+   ```bash
+   npx dalai serve 4000
+   ```
 
-Then, **reopen your terminal**.
+### 2. Set API keys (OpenAI, Anthropic, Google PaLM)
 
-### Anthropic
-For Anthropic's API key on Mac, do the same as above but with `ANTHROPIC_API_KEY` replaced for `OpenAI_API_KEY`.
-
-### Alpaca 7B with Dalai
-For Dalai, [install `dalai`](https://github.com/cocktailpeanut/dalai) and follow the instructions to download `alpaca.7b`. When everything is setup, run:
-
-```bash
-npx dalai serve 4000
-```
+If you're just messing around, we recommend you input the API keys manually via the Settings button in the top-right corner. If you'd prefer to not be bothered every time you load ChainForge, you can set them as environment keys: 
+ - For OpenAI models, you can set an environment variable with your OpenAI key:
+   https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety . For Mac, for instance, follow:
+   ```bash
+   echo "export OPENAI_API_KEY='yourkey'" >> ~/.zshrc
+   source ~/.zshrc
+   echo $OPENAI_API_KEY
+   ```
+   Then, **reopen your terminal**.
+ - To set Anthropic's API key on Mac, do the same as above but with `ANTHROPIC_API_KEY` replaced for `OpenAI_API_KEY`.
+ - To set Google PaLM's API key on Mac, do the same as above but with `PALM_API_KEY` replaced for `PALM_API_KEY`.
 
 ---------------------------------
 ## For developers
