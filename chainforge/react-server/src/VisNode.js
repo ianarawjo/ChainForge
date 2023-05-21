@@ -432,7 +432,7 @@ const VisNode = ({ data, id }) => {
         // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div wrapping the Plotly vis.
         if (!plotDivRef.current && window.ResizeObserver) {
           const observer = new ResizeObserver(() => {
-            if (!plotlyRef || !plotlyRef.current || !plotlyRef.current.resizeHandler) return;
+            if (!plotlyRef || !plotlyRef.current || !plotlyRef.current.resizeHandler || !plotlySpec || plotlySpec.length === 0) return;
             // The below calls Plotly.Plots.resize() on the specific element
             plotlyRef.current.resizeHandler();
           });
@@ -441,7 +441,7 @@ const VisNode = ({ data, id }) => {
         }
         plotDivRef.current = elem;
         console.log(plotDivRef);
-      }, [plotDivRef]);
+      }, [plotDivRef, plotlySpec]);
 
     return (
       <div className="vis-node cfnode">

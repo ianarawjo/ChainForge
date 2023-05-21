@@ -302,7 +302,7 @@ const PromptNode = ({ data, id }) => {
     });
 
     if (!is_fully_connected) {
-        console.log('Not connected! :(');
+        console.log('Not connected! :(', templateVars, edges);
         triggerAlert('Missing inputs to one or more template variables.');
         return;
     }

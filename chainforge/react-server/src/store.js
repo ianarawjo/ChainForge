@@ -103,6 +103,7 @@ const useStore = create((set, get) => ({
     });
   },
   onConnect: (connection) => {
+    console.log(connection, get().edges);
     
     // Get the target node information
     const target = get().getNode(connection.target);
@@ -115,7 +116,7 @@ const useStore = create((set, get) => ({
     connection.markerEnd = {type: 'arrow', width: '22px', height: '22px'};
 
     set({
-      edges: addEdge(connection, get().edges),
+      edges: addEdge(connection, get().edges) // get().edges.concat(connection)
     });
   },
 }));

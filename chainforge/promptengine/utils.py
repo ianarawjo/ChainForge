@@ -1,5 +1,6 @@
 from typing import Dict, Tuple, List, Union, Callable
 import json, os, time, asyncio
+import concurrent.futures
 
 from chainforge.promptengine.models import LLM
 
@@ -25,6 +26,19 @@ def set_api_keys(api_keys):
     if key_is_present('Google'):
         GOOGLE_PALM_API_KEY = api_keys['Google']
     # Soft fail for non-present keys
+
+async def make_sync_call_async(sync_method, *args, **params):
+    """
+        Makes a blocking synchronous call asynchronous, so that it can be awaited.
+        NOTE: This is necessary for LLM APIs that do not yet support async (e.g. Google PaLM).
+    """
+    loop = asyncio.get_running_loop()
+    method = sync_method
+    if len(params) > 0:
+        def partial_sync_meth(*a):
+            return sync_method(*a, **params)
+        method = partial_sync_meth
+    return await loop.run_in_executor(None, method, *args)
 
 async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float = 1.0, system_msg: Union[str, None]=None) -> Tuple[Dict, Dict]:
     """
@@ -133,7 +147,9 @@ async def call_google_palm(prompt: str, model: LLM, n: int = 1, temperature: flo
         **params,
     }
 
-    completion = palm.generate_text(**query)
+    # Google PaLM's python api does not currently support async calls.
+    # To make one, we need to wrap it in an asynchronous executor:
+    completion = await make_sync_call_async(palm.generate_text, **query)
 
     return query, completion.to_dict()
 
