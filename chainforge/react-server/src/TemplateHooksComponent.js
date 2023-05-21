@@ -20,7 +20,6 @@ export default function TemplateHooks({ vars, nodeId, startY }) {
     const genTemplateHooks = useCallback((temp_var_names, names_to_blink) => {
         // Generate handles 
         return temp_var_names.map((name, idx) => {
-            console.log("Generating handle with id", name);
             const className = (names_to_blink.includes(name)) ? 'hook-tag text-blink' : 'hook-tag';
             const pos = (idx * 35) + startY + 'px';
             const style = { top: pos,  background: '#555' };
@@ -52,7 +51,6 @@ export default function TemplateHooks({ vars, nodeId, startY }) {
             }
         });
 
-        console.log('deleted edges:', deleted_edges);
         if (deleted_edges.length > 0)
             setEdgesToRemove(deleted_edges);
 

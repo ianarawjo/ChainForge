@@ -103,7 +103,6 @@ const useStore = create((set, get) => ({
     });
   },
   onConnect: (connection) => {
-    console.log(connection, get().edges);
     
     // Get the target node information
     const target = get().getNode(connection.target);
