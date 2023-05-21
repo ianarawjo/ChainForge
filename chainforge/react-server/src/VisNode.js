@@ -79,6 +79,9 @@ const VisNode = ({ data, id }) => {
     const [plotLegend, setPlotLegend] = useState(null);
     const [selectedLegendItems, setSelectedLegendItems] = useState(null);
 
+    const plotDivRef = useRef(null);
+    const plotlyRef = useRef(null);
+
     // The MultiSelect so people can dynamically set what vars they care about
     const [multiSelectVars, setMultiSelectVars] = useState(data.vars || []);
     const [multiSelectValue, setMultiSelectValue] = useState(data.selected_vars || []);
@@ -123,7 +126,7 @@ const VisNode = ({ data, id }) => {
         const colors = ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#cadefc', '#f8f398'];
         let spec = [];
         let layout = {
-            width: 420, height: 300, title: '', margin: {
+            autosize: true, title: '', margin: {
                 l: 105, r: 0, b: 36, t: 20, pad: 0
             }
         };
@@ -361,8 +364,12 @@ const VisNode = ({ data, id }) => {
         setPlotLegend(plot_legend);
         setPlotlySpec(spec);
         setPlotlyLayout(layout);
+
+        // if (plotDivRef && plotDivRef.current) {
+        //     plotDivRef.current.style.width = '300px';
+        // }
         
-    }, [multiSelectVars, multiSelectValue, responses, selectedLegendItems]);
+    }, [multiSelectVars, multiSelectValue, responses, selectedLegendItems, plotDivRef]);
   
     const handleOnConnect = useCallback(() => {
         // Grab the input node ids
@@ -419,6 +426,23 @@ const VisNode = ({ data, id }) => {
         }
     }, [data, id, handleOnConnect, setDataPropsForNode]);
   
+    // Resizing the plot when div is resized:
+    const setPlotDivRef = useCallback((elem) => {
+        // To listen for resize events of the textarea, we need to use a ResizeObserver.
+        // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div wrapping the Plotly vis.
+        if (!plotDivRef.current && window.ResizeObserver) {
+          const observer = new ResizeObserver(() => {
+            if (!plotlyRef || !plotlyRef.current || !plotlyRef.current.resizeHandler) return;
+            // The below calls Plotly.Plots.resize() on the specific element
+            plotlyRef.current.resizeHandler();
+          });
+    
+          observer.observe(elem);
+        }
+        plotDivRef.current = elem;
+        console.log(plotDivRef);
+      }, [plotDivRef]);
+
     return (
       <div className="vis-node cfnode">
         <NodeLabel title={data.title || 'Vis Node'} 
@@ -433,12 +457,16 @@ const VisNode = ({ data, id }) => {
                      size="sm"
                      value={multiSelectValue}
                      searchable />
-        <div className="nodrag">
-            {plotlySpec && plotlySpec.length > 0 ? (
+        <div className="nodrag" ref={setPlotDivRef} style={{minWidth: '150px', minHeight: '100px'}}>
+            {plotlySpec && plotlySpec.length > 0 ? <></> : placeholderText}
                 <Plot
+                    ref={plotlyRef}
                     data={plotlySpec}
                     layout={plotlyLayout}
-                />) : placeholderText}
+                    useResizeHandler={true}
+                    className="plotly-vis"
+                    style={{display: (plotlySpec && plotlySpec.length > 0 ? 'block' : 'none')}}
+                />
             {plotLegend ? plotLegend : <></>}
         </div>
         <Handle
