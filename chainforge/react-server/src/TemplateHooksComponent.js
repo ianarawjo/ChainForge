@@ -42,18 +42,20 @@ export default function TemplateHooks({ vars, nodeId, startY }) {
     useEffect(() => {
         // Determine if there's any handles that were deleted in temp_var_names, 
         // and manually remove them as edges:
-        let deleted_edges = [];
-        edges.forEach(e => {
-            if (e.target !== nodeId || vars.includes(e.targetHandle))
-                return;
-            else {
-                deleted_edges.push(e);
-            }
-        });
+        if (templateHooks.length > 0) {
+            let deleted_edges = [];
+            edges.forEach(e => {
+                if (e.target !== nodeId || vars.includes(e.targetHandle))
+                    return;
+                else {
+                    deleted_edges.push(e);
+                }
+            });
 
-        if (deleted_edges.length > 0)
-            setEdgesToRemove(deleted_edges);
-
+            if (deleted_edges.length > 0)
+                setEdgesToRemove(deleted_edges);
+        }
+        
         setTemplateHooks(genTemplateHooks(vars, []));
 
         // setDataPropsForNode(nodeId, {vars: vars});

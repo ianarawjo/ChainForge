@@ -440,7 +440,6 @@ const VisNode = ({ data, id }) => {
           observer.observe(elem);
         }
         plotDivRef.current = elem;
-        console.log(plotDivRef);
       }, [plotDivRef, plotlySpec]);
 
     return (

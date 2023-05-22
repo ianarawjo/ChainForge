@@ -647,6 +647,82 @@ def grabResponses():
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
+@app.route('/app/exportCache', methods=['POST'])
+def exportCache():
+    """
+        Exports the cache'd data relevant to the given node id(s).
+        Returns a JSON dict in format { filename: <dict|list> }
+
+        POST'd data should be in the form: 
+        {
+            'ids': <the ids of the nodes to export data for>
+        }
+    """
+    # Verify post'd data
+    data = request.get_json()
+    if 'ids' not in data:
+        return jsonify({'error': 'Missing ids parameter to exportData.'})
+    elif not isinstance(data['ids'], list):
+        return jsonify({'error': 'Ids parameter to exportData must be a list.'})
+
+    # For each id, extract relevant cache file data
+    all_cache_files = get_files_at_dir(CACHE_DIR)
+    export_data = {}
+    for cache_id in data['ids']:
+        cache_files = get_filenames_with_id(all_cache_files, cache_id)
+        if len(cache_files) == 0:
+            print(f"Warning: Could not find data for id '{cache_id}'. Skipping...")
+            continue
+
+        for filename in cache_files:
+            export_data[filename] = load_cache_json(os.path.join(CACHE_DIR, filename))
+
+    # Return cache'd file data
+    ret = jsonify({'files': export_data})
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
+
+@app.route('/app/importCache', methods=['POST'])
+def importCache():
+    """
+        Imports the passed data relevant to specific node id(s), and saves on the backend cache.
+        Used for importing data from an exported flow, so that the flow is self-contained.
+
+        POST'd data should be in form:
+        { 
+            files: {
+                filename: <dict|list>  (the name and contents of the cache file)
+            }
+        }
+    """
+    # Verify post'd data
+    data = request.get_json()
+    if 'files' not in data:
+        return jsonify({'result': False, 'error': 'Missing files parameter to importData.'})
+    elif not isinstance(data['files'], dict):
+        typeof_files = data['files']
+        return jsonify({'result': False, 'error': f'Files parameter in importData should be a dict, but is of type {typeof_files}.'})
+
+    # Verify filenames, data, and access permissions to write to cache
+    for filename in data['files']:
+        # Verify filepath
+        cache_filepath = os.path.join(CACHE_DIR, filename)
+        if not is_valid_filepath(cache_filepath):
+            return jsonify({'result': False, 'error': f'Invalid filepath: {cache_filepath}'})
+        
+        # Write data to cache file
+        # NOTE: This will overwrite any existing cache files with the same filename (id).
+        with open(cache_filepath, "w") as f:
+            json.dump(data['files'][filename], f)
+    
+    print("Imported cache data and store to cache.")
+
+    # Report success
+    ret = jsonify({'result': True})
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
+
+
 def run_server(host="", port=8000, cmd_args=None):
     if cmd_args is not None and cmd_args.dummy_responses:
         global PromptLLM
