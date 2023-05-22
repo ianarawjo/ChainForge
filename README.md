@@ -3,12 +3,12 @@
 
 <img width="1599" alt="prompt-injection-test" src="https://github.com/ianarawjo/ChainForge/assets/5251713/f6366269-39e9-472d-afc3-5e09c513ccfa">
 
-ChainForge is a data flow prompt engineering environment for analyzing and evaluating LLM responses. Like Jupyter Notebooks are geared towards early-stage exploration, ChainForge is geared towards early-stage, quick-and-dirty exploration of prompts and response quality that goes beyond ad-hoc chatting with individual LLMs. With CF, you can: 
- - Query multiple LLMs at once to sketch prompt ideas and test variations quickly and effectively. 
- - Compare response quality across prompt variations and across models to choose the best prompt and model for your use case. 
+ChainForge is a data flow prompt engineering environment for analyzing and evaluating LLM responses. It is geared towards early-stage, quick-and-dirty exploration of prompts and response quality that goes beyond ad-hoc chatting with individual LLMs. With ChainForge, you can: 
+ - Query multiple LLMs at once to test prompt ideas and variations quickly and effectively. 
+ - Compare response quality across prompt permutations and across models to choose the best prompt and model for your use case. 
  - Setup an evaluation metric (scoring function) and immediately visualize results across prompts, prompt parameters, and models. 
 
-**This is an open alpha of Chainforge.** We currently support OpenAI models GPT3.5 and GPT4, Anthropic's Claude, Google PaLM2 (bison), and Alpaca 7B (through [Dalai](https://github.com/cocktailpeanut/dalai)) at default settings. Try it and let us know what you think! :) 
+**This is an open alpha of Chainforge.** Functionality is powerful but limited. We currently support OpenAI models GPT3.5 and GPT4, Anthropic's Claude, Google PaLM2 (text-bison), and Alpaca 7B (through [Dalai](https://github.com/cocktailpeanut/dalai)) at default settings. Visualization nodes support numeric and boolean evaluation metrics. Try it and let us know what you'd like to see in the future! :)
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://flask.palletsprojects.com/en/2.3.x/).
 
@@ -28,15 +28,12 @@ chainforge serve
 
 Open [localhost:8000](http://localhost:8000/) in a Google Chrome browser (other browsers are currently unsupported).
 
-Note that you will likely need to save your OpenAI or Anthropic API keys to your local environment.
-For more details, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
+You can set your API keys by clicking the Settings icon in the top-right corner. If you prefer to not worry about this everytime you open ChainForge, we recommend that save your OpenAI, Anthropic, and/or Google PaLM API keys to your local environment. For more details, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
 ## Example evaluation flows
 
-We've prepared a couple Example flows to give you a sense of what's possible with Chainforge. 
-Import them, then:
- - Run any Prompt node(s) to query the LLM(s),
- - Run any Evaluator nodes to score responses.
+In the `examples/` folder, we've prepared a couple example flows to give you a sense of what's possible with Chainforge.
+Click the Import button in the top of the screen and select one. 
 
 # Features
 
@@ -60,7 +57,7 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 
 ## Future Planned Features
 
-- **Model settings**: Change settings for individual models, so one can test across the same model with different settings
+- **Model settings**: (High-priority) Change settings for individual models, so one can test across the same model with different settings.
 - **Compare across response batches**: Run an evaluator over all N responses generated for each prompt, to measure factors like variability or parseability (e.g., how many code outputs pass a basic smell test?)
 - **System prompts**: Ability to change the system prompt for models that support it (e.g., ChatGPT). Try out different system prompts and compare response quality.
 - **Collapse nodes**: Nodes should be collapseable, to save screen space.
