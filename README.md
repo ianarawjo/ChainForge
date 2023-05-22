@@ -1,7 +1,7 @@
 # ⛓️🛠️ ChainForge
 **An open-source visual programming environment for battle-testing prompts to LLMs.**
 
-<img width="1615" alt="Screen Shot 2023-05-17 at 2 45 17 PM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/96aecea7-cf05-4064-8f83-20a524449af7">
+<img width="1599" alt="prompt-injection-test" src="https://github.com/ianarawjo/ChainForge/assets/5251713/f6366269-39e9-472d-afc3-5e09c513ccfa">
 
 ChainForge is a data flow prompt engineering environment for analyzing and evaluating LLM responses. Like Jupyter Notebooks are geared towards early-stage exploration, ChainForge is geared towards early-stage, quick-and-dirty exploration of prompts and response quality that goes beyond ad-hoc chatting with individual LLMs. With CF, you can: 
  - Query multiple LLMs at once to sketch prompt ideas and test variations quickly and effectively. 
