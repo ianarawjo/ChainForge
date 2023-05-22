@@ -28,7 +28,7 @@ chainforge serve
 
 Open [localhost:8000](http://localhost:8000/) in a Google Chrome browser (other browsers are currently unsupported).
 
-You can set your API keys by clicking the Settings icon in the top-right corner. If you prefer to not worry about this everytime you open ChainForge, we recommend that save your OpenAI, Anthropic, and/or Google PaLM API keys to your local environment. For more details, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
+You can set your API keys by clicking the Settings icon in the top-right corner. If you prefer to not worry about this everytime you open ChainForge, we recommend that save your OpenAI, Anthropic, and/or Google PaLM API keys to your local environment. For more details, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/INSTALL_GUIDE.md).
 
 ## Example evaluation flows
 
@@ -36,6 +36,8 @@ In the `examples/` folder, we've prepared a couple example flows to give you a s
 Click the Import button in the top of the screen and select one. Here is `basic_comparison.cforge`, plotting the length of responses across different models and arguments for the prompt parameter `{game}`:
 
 <img width="1593" alt="basic-compare" src="https://github.com/ianarawjo/ChainForge/assets/5251713/e15bd13c-ea6b-4934-be7f-b8081339c8d5">
+
+For more details about features and available nodes, check out the [User Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
 # Features
 
@@ -48,6 +50,10 @@ Taken together, these three features let you easily:
   - **Compare across prompts and prompt parameters**: Choose the best set of prompts that maximizes your eval target metrics (e.g., lowest code error rate). Or, see how changing parameters in a prompt template affects the quality of responses.
   - **Compare across models**: Compare responses for every prompt across models. 
 
+We've also found that some users simply want to use ChainForge to make tons of parametrized queries to LLMs (e.g., chaining prompt templates into prompt templates), possibly score them, and then output the results to a spreadsheet (Excel `xlsx`). To do this, attach an Inspect node to the output of a Prompt node and click `Export Data`.
+
+For more specific details, see the [User Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
+
 # Development
 
 ChainForge is being developed by research scientists at Harvard University in the [Harvard HCI](https://hci.seas.harvard.edu) group:
@@ -59,7 +65,11 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 
 ## Future Planned Features
 
-- **Model settings**: (High-priority) Change settings for individual models, so one can test across the same model with different settings.
+Highest priority:
+- **Model settings**: Change settings for individual models, so one can test across the same model with different settings.
+- **LLM annotator nodes**: Select an LLM to evaluate and "tag" responses (for instance, named-entity recognition). Currently, one can chain prompt nodes into prompt nodes, but the final output loses information on which LLM generated the input response.
+
+Medium-to-low priority:
 - **Compare across response batches**: Run an evaluator over all N responses generated for each prompt, to measure factors like variability or parseability (e.g., how many code outputs pass a basic smell test?)
 - **System prompts**: Ability to change the system prompt for models that support it (e.g., ChatGPT). Try out different system prompts and compare response quality.
 - **Collapse nodes**: Nodes should be collapseable, to save screen space.
