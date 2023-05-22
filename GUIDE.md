@@ -170,4 +170,15 @@ We can plot this by simply removing the parameter:
  - _Dictionary (key-metric), multiple LLMs: Currently unsupported. 
    To complare across LLMs with multiple metrics, currently just remove all but one LLM from the upstream prompt node to select what LLM you wish to display._
 
+------------------
+## Exporting / Importing flows
+
+Share your evaluation flows with others.
+You can export your flow as a `cforge` file (JSON) by clicking the `Export` button at the top of the screen.
+Import flows via the `Import` button. 
+
+> **Note**
+> The exported file contains the entire cache of LLM responses, available in the `cache/` directory where the `chainforge` package is installed. 
+> When you import a flow, these cache files are re-saved to the importing user's local `cache/` directory. This saves money and time:
+> LLMs don't need to be re-queried by the user importing your flow. If for some reason you wish to delete cache'd responses, remove the `cache` folder in the package directory.
 
