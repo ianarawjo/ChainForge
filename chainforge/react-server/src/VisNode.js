@@ -142,7 +142,13 @@ const VisNode = ({ data, id }) => {
 
         // Get the type of evaluation results, if present
         // (This is assumed to be consistent across response batches)
-        const typeof_eval_res = 'dtype' in responses[0].eval_res ? responses[0].eval_res['dtype'] : 'Numeric';
+        let typeof_eval_res = 'dtype' in responses[0].eval_res ? responses[0].eval_res['dtype'] : 'Numeric';
+
+        // If categorical type, check if all binary:
+        if (typeof_eval_res === 'Categorical') {
+            const is_all_bools = responses.reduce((acc0, res_obj) => acc0 && res_obj.eval_res.items.reduce((acc, cur) => acc && typeof cur === 'boolean', true), true);
+            if (is_all_bools) typeof_eval_res = 'Boolean';
+        }
 
         let plot_legend = null;
         let metric_axes_labels = [];
@@ -178,16 +184,31 @@ const VisNode = ({ data, id }) => {
                     x_items = x_items.concat(get_items(r.eval_res));
                     text_items = text_items.concat(createHoverTexts(r.responses));
                 });
-                spec.push({
-                    type: 'box', 
-                    name: shortnames[name], 
-                    boxpoints: 'all', 
-                    x: x_items, 
-                    text: text_items, 
-                    hovertemplate: '%{text}', 
-                    orientation: 'h',
-                    marker: { color: colors[color_idx % colors.length] }
-                });
+
+                if (typeof_eval_res === 'Boolean') {
+                    // Unique case: Plot a histogram for boolean (true/false) categorical data.
+                    spec.push({
+                        type: 'histogram',
+                        histfunc: "sum",
+                        name: name,
+                        marker: {color: colors[color_idx % colors.length]},
+                        y: x_items,
+                        orientation: 'h',
+                    });
+                    layout.barmode = "stack";
+                } else {
+                    // Plot a boxplot for all other cases.
+                    spec.push({
+                        type: 'box', 
+                        name: shortnames[name], 
+                        boxpoints: 'all', 
+                        x: x_items, 
+                        text: text_items, 
+                        hovertemplate: '%{text}', 
+                        orientation: 'h',
+                        marker: { color: colors[color_idx % colors.length] }
+                    });
+                }
 
                 color_idx += 1;
             }
@@ -220,17 +241,32 @@ const VisNode = ({ data, id }) => {
                     });
                 }
 
-                spec.push({
-                    type: 'box',
-                    name: llm,
-                    marker: {color: colors[idx % colors.length]},
-                    x: x_items,
-                    y: y_items,
-                    boxpoints: 'all',
-                    text: text_items,
-                    hovertemplate: '%{text} <b><i>(%{x})</i></b>',
-                    orientation: 'h',
-                });
+                if (typeof_eval_res === 'Boolean') {
+                    // Unique case: Plot a histogram for boolean (true/false) categorical data.
+                    spec.push({
+                        type: 'histogram',
+                        histfunc: "sum",
+                        name: llm,
+                        marker: {color: colors[idx % colors.length]},
+                        x: x_items.map(i => i === true ? "1" : "0"),
+                        y: y_items,
+                        orientation: 'h',
+                    });
+                    layout.barmode = "stack";
+                } else {
+                    // Plot a boxplot for all other cases.
+                    spec.push({
+                        type: 'box',
+                        name: llm,
+                        marker: {color: colors[idx % colors.length]},
+                        x: x_items,
+                        y: y_items,
+                        boxpoints: 'all',
+                        text: text_items,
+                        hovertemplate: '%{text} <b><i>(%{x})</i></b>',
+                        orientation: 'h',
+                    });
+                }
             });
             layout.boxmode = 'group';
 

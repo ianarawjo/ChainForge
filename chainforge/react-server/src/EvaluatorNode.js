@@ -96,7 +96,7 @@ const EvaluatorNode = ({ data, id }) => {
         const output_nodes = outputEdgesForNode(id).map(e => e.target);
         output_nodes.forEach(n => {
             const node = getNode(n);
-            if (node.type === 'vis') {
+            if (node && node.type === 'vis') {
                 setDataPropsForNode(node.id, { refresh: true });
             }
         });
