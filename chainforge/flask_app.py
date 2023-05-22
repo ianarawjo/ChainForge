@@ -34,7 +34,7 @@ class ResponseInfo:
     """Stores info about a single response. Passed to evaluator functions."""
     text: str
     prompt: str
-    var: list
+    var: dict
     llm: str
 
     def __str__(self):

@@ -54,7 +54,7 @@ const genUniqueShortnames = (names) => {
     let past_shortnames_counts = {};
     let shortnames = {};
     for (const name of names) {
-        const sn = truncStr(name, 12);
+        const sn = truncStr(name, 16);
         if (sn in past_shortnames_counts) {
             past_shortnames_counts[sn] += 1;
             shortnames[name] = sn + `(${past_shortnames_counts[sn]})`;
@@ -127,7 +127,7 @@ const VisNode = ({ data, id }) => {
         let spec = [];
         let layout = {
             autosize: true, title: '', margin: {
-                l: 105, r: 0, b: 36, t: 20, pad: 0
+                l: 125, r: 0, b: 36, t: 20, pad: 0
             }
         };
 
@@ -190,7 +190,7 @@ const VisNode = ({ data, id }) => {
                     spec.push({
                         type: 'histogram',
                         histfunc: "sum",
-                        name: name,
+                        name: shortnames[name],
                         marker: {color: colors[color_idx % colors.length]},
                         y: x_items,
                         orientation: 'h',
