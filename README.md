@@ -61,7 +61,11 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 
 ## Future Planned Features
 
-- **Model settings**: (High-priority) Change settings for individual models, so one can test across the same model with different settings.
+Highest priority:
+- **Model settings**: Change settings for individual models, so one can test across the same model with different settings.
+- **LLM annotator nodes**: Select an LLM to evaluate and "tag" responses (for instance, named-entity recognition). Currently, one can chain prompt nodes into prompt nodes, but the final output loses information on which LLM generated the input response.
+
+Medium-to-low priority:
 - **Compare across response batches**: Run an evaluator over all N responses generated for each prompt, to measure factors like variability or parseability (e.g., how many code outputs pass a basic smell test?)
 - **System prompts**: Ability to change the system prompt for models that support it (e.g., ChatGPT). Try out different system prompts and compare response quality.
 - **Collapse nodes**: Nodes should be collapseable, to save screen space.
