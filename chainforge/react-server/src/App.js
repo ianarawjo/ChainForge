@@ -297,8 +297,8 @@ const App = () => {
         <button onClick={addInspectNode}>Add inspect node</button>
         <button onClick={addScriptNode}>Add script node</button>
         <button onClick={addCsvNode}>Add csv node</button>
-        <button onClick={saveFlow} style={{marginLeft: '12px'}}>Save</button>
-        <button onClick={loadFlowFromCache}>Load</button>
+        {/* <button onClick={saveFlow} style={{marginLeft: '12px'}}>Save</button>
+        <button onClick={loadFlowFromCache}>Load</button> */}
         <button onClick={exportFlow} style={{marginLeft: '12px'}}>Export</button>
         <button onClick={importFlow}>Import</button>
       </div>
