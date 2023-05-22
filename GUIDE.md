@@ -21,7 +21,7 @@ The simplest and safest way to install the latest public build of ChainForge is 
 > **Note**
 > ChainForge alpha is tested on Google Chrome. It currently does not work in earlier versions of Safari. We recommend you open it in Chrome.
 
-## Install model APIs
+## Set API keys / install model APIs
 
 Though you can run Chainforge, you can't do anything with it without the ability to call an LLM. 
 Currently we support OpenAI models GPT3.5 and GPT4, Anthropic model Claudev1, Google PaLM model `text-bison-001`, and (locally run) [Dalai](https://github.com/cocktailpeanut/dalai)-served Alpaca.7b at port 4000.
@@ -32,13 +32,16 @@ To use a specific model, you need to do two things:
 
 ### 1. Install packages (Anthropic, Google PaLM, and Dalai-hosted models)
 
-To use Anthropic and Google PaLM models, you need to install the relevant Python package in your Python environment before you can run those models:
+For OpenAI models, move to Step 2. To use Anthropic and Google PaLM models, you need to install the relevant Python package in your Python environment before you can run those models:
  - For [Anthropic](https://github.com/anthropics/anthropic-sdk-python), do `pip install anthropic`.
  - For [Google PaLM](https://github.com/google/generative-ai-python), do `pip install google-generativeai`. (Note that PaLM officially supports Python 3.9+, but there's a minor type error that's easily fixed to make it work in Python 3.8.8.)
  - For Dalai, [install `dalai`](https://github.com/cocktailpeanut/dalai) and follow the instructions to download `alpaca.7b`. When everything is setup, run:
    ```bash
    npx dalai serve 4000
    ```
+
+> **Note**
+> We put these installs separate from package dependencies as some packages may not work or install on Python 3.8.
 
 ### 2. Set API keys (OpenAI, Anthropic, Google PaLM)
 
