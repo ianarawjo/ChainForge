@@ -48,6 +48,8 @@ Taken together, these three features let you easily:
   - **Compare across prompts and prompt parameters**: Choose the best set of prompts that maximizes your eval target metrics (e.g., lowest code error rate). Or, see how changing parameters in a prompt template affects the quality of responses.
   - **Compare across models**: Compare responses for every prompt across models. 
 
+We've also found that some users simply want to use ChainForge to make tons of parametrized queries to LLMs (e.g., chaining prompt templates into prompt templates), possibly score them, and then output the results to a spreadsheet (Excel `xlsx`). To do this, attach an Inspect node to the output of a Prompt node and click `Export Data`.
+
 # Development
 
 ChainForge is being developed by research scientists at Harvard University in the [Harvard HCI](https://hci.seas.harvard.edu) group:
