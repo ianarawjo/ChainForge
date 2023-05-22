@@ -38,8 +38,6 @@ Import them, then:
  - Run any Prompt node(s) to query the LLM(s),
  - Run any Evaluator nodes to score responses.
 
-Note that right now, **exporting a CF flow does not save cache'd responses.**
-
 # Features
 
 A key goal of ChainForge is facilitating **comparison** and **evaluation** of prompts and models, and (in the near future) prompt chains. Basic features are:
