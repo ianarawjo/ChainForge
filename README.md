@@ -33,14 +33,16 @@ You can set your API keys by clicking the Settings icon in the top-right corner.
 ## Example evaluation flows
 
 In the `examples/` folder, we've prepared a couple example flows to give you a sense of what's possible with Chainforge.
-Click the Import button in the top of the screen and select one. 
+Click the Import button in the top of the screen and select one. Here is `basic_comparison.cforge`, plotting the length of responses across different models and arguments for the prompt parameter `{game}`:
+
+<img width="1593" alt="basic-compare" src="https://github.com/ianarawjo/ChainForge/assets/5251713/e15bd13c-ea6b-4934-be7f-b8081339c8d5">
 
 # Features
 
 A key goal of ChainForge is facilitating **comparison** and **evaluation** of prompts and models, and (in the near future) prompt chains. Basic features are:
 - **Prompt permutations**: Setup a prompt template and feed it variations of input variables. ChainForge will prompt all selected LLMs with all possible permutations of the input prompt, so that you can get a better sense of prompt quality. You can also chain prompt templates at arbitrary depth (e.g., to compare templates).
 - **Evaluation nodes**: Probe LLM responses in a chain and test them (classically) for some desired behavior. At a basic level, this is Python script based. We plan to add preset evaluator nodes for common use cases in the near future (e.g., name-entity recognition). Note that you can also chain LLM responses into prompt templates to help evaluate outputs cheaply before more extensive evaluation methods.
-- **Visualization nodes**: Visualize evaluation results on plots like box-and-whisker and 3D scatterplots.
+- **Visualization nodes**: Visualize evaluation results on plots like grouped box-and-whisker (for numeric metrics) and histograms (for boolean metrics). Currently we only support numeric and boolean metrics. We aim to provide users more control and options for plotting in the future.
 
 Taken together, these three features let you easily:
   - **Compare across prompts and prompt parameters**: Choose the best set of prompts that maximizes your eval target metrics (e.g., lowest code error rate). Or, see how changing parameters in a prompt template affects the quality of responses.
