@@ -37,6 +37,8 @@ Click the Import button in the top of the screen and select one. Here is `basic_
 
 <img width="1593" alt="basic-compare" src="https://github.com/ianarawjo/ChainForge/assets/5251713/e15bd13c-ea6b-4934-be7f-b8081339c8d5">
 
+For more details about features and available nodes, check out the [User Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
+
 # Features
 
 A key goal of ChainForge is facilitating **comparison** and **evaluation** of prompts and models, and (in the near future) prompt chains. Basic features are:
@@ -49,6 +51,8 @@ Taken together, these three features let you easily:
   - **Compare across models**: Compare responses for every prompt across models. 
 
 We've also found that some users simply want to use ChainForge to make tons of parametrized queries to LLMs (e.g., chaining prompt templates into prompt templates), possibly score them, and then output the results to a spreadsheet (Excel `xlsx`). To do this, attach an Inspect node to the output of a Prompt node and click `Export Data`.
+
+For more specific details, see the [User Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
 # Development
 
