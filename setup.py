@@ -1,11 +1,19 @@
 from setuptools import setup, find_packages
 
+def readme():
+    with open('README.md') as f:
+        return f.read()
+
 setup(
     name='chainforge',
-    version='0.1.1',
+    version='0.1.2',
     packages=find_packages(),
     author="Ian Arawjo",
     description="A Visual Programming Environment for Prompt Engineering",
+    long_description=readme(),
+    long_description_content_type='text/markdown',
+    keywords='prompt engineering LLM response evaluation',
+    license="MIT",
     url="https://github.com/ianarawjo/ChainForge/",
     install_requires=[
         # Package dependencies

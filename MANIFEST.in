@@ -1,1 +1,2 @@
 graft chainforge/react-server/build
+include README.md
