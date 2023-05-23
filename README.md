@@ -14,13 +14,13 @@ ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://fl
 
 # Installation
 
-To install Chainforge alpha, run
+To install Chainforge alpha, make sure you have Python 3.8 or higher, then run
 
 ```bash
 pip install chainforge
 ```
 
-then do
+Once installed, do
 
 ```bash
 chainforge serve
