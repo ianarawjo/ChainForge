@@ -13,11 +13,13 @@ setup(
         "flask[async]",
         "flask_cors",
         "flask_socketio",
-        "openai",
         "python-socketio",
-        "dalaipy>=2.0.2",
         "gevent-websocket",
         "urllib3==1.26.6",
+        "openai",
+        "anthropic",
+        "google-generativeai",
+        "dalaipy>=2.0.2",
     ],
     entry_points={
         'console_scripts': [
