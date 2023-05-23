@@ -1,3 +1,4 @@
+flask>=2.2.3
 flask[async]
 flask_cors
 flask_socketio

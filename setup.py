@@ -9,6 +9,7 @@ setup(
     url="https://github.com/ianarawjo/ChainForge/",
     install_requires=[
         # Package dependencies
+        "flask>=2.2.3",
         "flask[async]",
         "flask_cors",
         "flask_socketio",

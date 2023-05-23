@@ -357,7 +357,7 @@ async def queryLLM():
             'params': dict  # an optional dict of any other params to set when querying the LLMs, like 'temperature', 'n' (num of responses per prompt), etc.
             'prompt': str  # the prompt template, with any {{}} vars
             'vars': dict  # a dict of the template variables to fill the prompt template with, by name. For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
-            'api_keys': dict  # (optional) a dict of {api_name: api_key} pairs. Supported keys: OpenAI, Anthropic.
+            'api_keys': dict  # (optional) a dict of {api_name: api_key} pairs. Supported key names: OpenAI, Anthropic, Google
             'no_cache': bool (optional)  # delete any cache'd responses for 'id' (always call the LLM fresh)
         }
     """

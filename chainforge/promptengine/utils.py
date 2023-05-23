@@ -66,7 +66,7 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float =
         response = await openai.ChatCompletion.acreate(**query)
     except Exception as e:
         if (isinstance(e, openai.error.AuthenticationError)):
-            raise Exception("Could not authenticate to OpenAI. Double-check your API key.")
+            raise Exception("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local Python environment.")
         raise e
     return query, response
 
@@ -92,7 +92,7 @@ async def call_anthropic(prompt: str, model: LLM, n: int = 1, temperature: float
         NOTE: It is recommended to set an environment variable ANTHROPIC_API_KEY with your Anthropic API key
     """
     if ANTHROPIC_API_KEY is None:
-        raise Exception("Could not find an API key for Anthropic models.")
+        raise Exception("Could not find an API key for Anthropic models. Double-check that your API key is set in Settings or in your local Python environment.")
 
     import anthropic
     client = anthropic.Client(ANTHROPIC_API_KEY)
@@ -133,7 +133,7 @@ async def call_google_palm(prompt: str, model: LLM, n: int = 1, temperature: flo
         Returns raw query and response JSON dicts.
     """
     if GOOGLE_PALM_API_KEY is None:
-        raise Exception("Could not find an API key for Google PaLM models.")
+        raise Exception("Could not find an API key for Google PaLM models. Double-check that your API key is set in Settings or in your local Python environment.")
 
     import google.generativeai as palm
     palm.configure(api_key=GOOGLE_PALM_API_KEY)
