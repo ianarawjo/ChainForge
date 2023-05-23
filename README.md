@@ -1,7 +1,7 @@
 # ⛓️🛠️ ChainForge
 **An open-source visual programming environment for battle-testing prompts to LLMs.**
 
-<img width="1599" alt="prompt-injection-test" src="https://github.com/ianarawjo/ChainForge/assets/5251713/f6366269-39e9-472d-afc3-5e09c513ccfa">
+<img width="1599" alt="prompt-injection-test" src="https://github.com/ianarawjo/ChainForge/assets/5251713/83757804-4288-4fc2-b28d-fd0826bae6a1">
 
 ChainForge is a data flow prompt engineering environment for analyzing and evaluating LLM responses. It is geared towards early-stage, quick-and-dirty exploration of prompts and response quality that goes beyond ad-hoc chatting with individual LLMs. With ChainForge, you can: 
  - Query multiple LLMs at once to test prompt ideas and variations quickly and effectively. 
@@ -35,7 +35,7 @@ You can set your API keys by clicking the Settings icon in the top-right corner.
 In the `examples/` folder, we've prepared a couple example flows to give you a sense of what's possible with Chainforge.
 Click the Import button in the top of the screen and select one. Here is `basic_comparison.cforge`, plotting the length of responses across different models and arguments for the prompt parameter `{game}`:
 
-<img width="1593" alt="basic-compare" src="https://github.com/ianarawjo/ChainForge/assets/5251713/e15bd13c-ea6b-4934-be7f-b8081339c8d5">
+<img width="1593" alt="basic-compare" src="https://github.com/ianarawjo/ChainForge/assets/5251713/43c87ab7-aabd-41ba-8d9b-e7e9ebe25c75">
 
 For more details about features and available nodes, check out the [User Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
