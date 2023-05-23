@@ -231,6 +231,9 @@ def reduce_responses(responses: list, vars: list) -> list:
     return ret
 
 def load_all_cached_responses(cache_ids):
+    # Create a cache dir if it doesn't exist:
+    create_dir_if_not_exists(CACHE_DIR)
+
     if not isinstance(cache_ids, list):
         cache_ids = [cache_ids]
     
@@ -702,6 +705,9 @@ def importCache():
     elif not isinstance(data['files'], dict):
         typeof_files = data['files']
         return jsonify({'result': False, 'error': f'Files parameter in importData should be a dict, but is of type {typeof_files}.'})
+
+    # Create a cache dir if it doesn't exist:
+    create_dir_if_not_exists(CACHE_DIR)
 
     # Verify filenames, data, and access permissions to write to cache
     for filename in data['files']:
