@@ -291,6 +291,11 @@ const InspectorNode = ({ data, id }) => {
 
   // Export the JSON responses to an excel file:
   const exportToExcel = useCallback(() => {
+    // Check that there are responses to export:
+    if (!jsonResponses || (Array.isArray(jsonResponses) && jsonResponses.length === 0)) {
+        console.warn('No responses to export. Try connecting the inspector node to a prompt node or evaluator node.');
+        return;
+    }
 
     // We can construct the data as an array of JSON dicts, with keys as header names:
     // NOTE: We need to 'unwind' responses in each batch, since each res_obj can have N>1 responses.
