@@ -56,10 +56,7 @@ For more specific details, see the [User Guide](https://github.com/ianarawjo/Cha
 
 # Development
 
-ChainForge is being developed by research scientists at Harvard University in the [Harvard HCI](https://hci.seas.harvard.edu) group:
-- [Ian Arawjo](http://ianarawjo.com/index.html)
-- [Priyan Vaithilingam](https://priyan.info)
-- [Elena Glassman](https://glassmanlab.seas.harvard.edu/glassman.html)
+ChainForge was created by [Ian Arawjo](http://ianarawjo.com/index.html), a postdoctoral scholar in Harvard HCI's [Glassman Lab](http://glassmanlab.seas.harvard.edu/) with support from the whole Harvard HCI community, especially PhD student [Priyan Vaithilingam](https://priyan.info).
 
 This work was partially funded by the NSF grant IIS-2107391. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.
 
