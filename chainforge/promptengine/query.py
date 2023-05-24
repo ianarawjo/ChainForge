@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Dict, Tuple, Iterator, Union
+from typing import List, Dict, Tuple, Iterator, Union, Optional
 import json, os, asyncio, random, string
 from chainforge.promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, call_google_palm, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
@@ -11,7 +11,7 @@ from chainforge.promptengine.template import PromptTemplate, PromptPermutationGe
 # The following is only a guideline, and a bit on the conservative side. 
 MAX_SIMULTANEOUS_REQUESTS = { 
     LLM.ChatGPT: (30, 10),  # max 30 requests a batch; wait 10 seconds between
-    LLM.GPT4: (5, 10),  # max 5 requests a batch; wait 10 seconds between
+    LLM.GPT4: (4, 15),  # max 4 requests a batch; wait 15 seconds between
     LLM.PaLM2: (4, 10),  # max 30 requests per minute; so do 4 per batch, 10 seconds between
     LLM.Alpaca7B: (1, 0),  # 1 indicates synchronous
 }
@@ -79,15 +79,12 @@ class PromptPipeline:
                 }
                 continue
 
-            if max_req > 1:
-                if (num_queries+1) % max_req == 0:
-                    print(f"Batch rate limit of {max_req} reached. Waiting {wait_secs} seconds until sending further requests...")
-                    await asyncio.sleep(wait_secs)
-                
-                # Call the LLM asynchronously to generate a response
-                tasks.append(self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp))
+            if max_req > 1:                
+                # Call the LLM asynchronously to generate a response, sending off
+                # requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
+                tasks.append(self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp, query_number=num_queries, rate_limit_batch_size=max_req, rate_limit_wait_secs=wait_secs))
             else:
-                # Blocking. Await + yield a single LLM call.
+                # Block. Await + yield a single LLM call.
                 _, query, response, past_resp_obj = await self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp)
 
                 # Create a response obj to represent the response
@@ -161,12 +158,29 @@ class PromptPipeline:
     def clear_cached_responses(self) -> None:
         self._cache_responses({})
 
-    async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0, past_resp_obj: Union[Dict, None] = None) -> Tuple[str, Dict, Union[List, Dict], Union[Dict, None]]:
+    async def _prompt_llm(self, 
+                          llm: LLM, 
+                          prompt: PromptTemplate, n: int = 1, 
+                          temperature: float = 1.0, 
+                          past_resp_obj: Optional[Dict] = None,
+                          query_number: Optional[int] = None,
+                          rate_limit_batch_size: Optional[int] = None,
+                          rate_limit_wait_secs: Optional[float] = None) -> Tuple[str, Dict, Union[List, Dict], Union[Dict, None]]:
         # Detect how many responses we have already (from cache obj past_resp_obj)
         if past_resp_obj is not None:
             # How many *new* queries we need to send: 
             # NOTE: The check n > len(past_resp_obj["responses"]) should occur prior to calling this function. 
             n = n - len(past_resp_obj["responses"])
+        
+        # Block asynchronously when we exceed rate limits
+        if query_number is not None and rate_limit_batch_size is not None and rate_limit_wait_secs is not None and rate_limit_batch_size >= 1 and rate_limit_wait_secs > 0:
+            batch_num = int(query_number / rate_limit_batch_size)
+            if batch_num > 0:
+                # We've exceeded the estimated batch rate limit and need to wait the appropriate seconds before sending off new API calls:
+                wait_secs = rate_limit_wait_secs * batch_num
+                if query_number % rate_limit_batch_size == 0:  # Print when we start blocking, for each batch
+                    print(f"Batch rate limit of {rate_limit_batch_size} reached for LLM {llm}. Waiting {wait_secs} seconds until sending request batch #{batch_num}...")
+                await asyncio.sleep(wait_secs)
 
         if llm is LLM.ChatGPT or llm is LLM.GPT4:
             query, response = await call_chatgpt(str(prompt), model=llm, n=n, temperature=temperature)
@@ -198,8 +212,14 @@ class PromptLLM(PromptPipeline):
     A dummy class that spoofs LLM responses. Used for testing.
 """
 class PromptLLMDummy(PromptLLM):
-    async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0) -> Tuple[Dict, Dict]:
+    def __init__(self, template: str, storageFile: str):
+        # Hijack the 'extract_responses' method so that for whichever 'llm' parameter,
+        # it will just return the response verbatim (since dummy responses will always be strings)
+        global extract_responses
+        extract_responses = lambda response, llm: response
+        super().__init__(template, storageFile)
+    async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0, past_resp_obj: Optional[Dict] = None, **params) -> Tuple[Dict, Dict]:
         # Wait a random amount of time, to simulate wait times from real queries
         await asyncio.sleep(random.uniform(0.1, 3))
         # Return a random string of characters of random length (within a predefined range)
-        return prompt, *({'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(random.randint(25, 80))) for _ in range(n)])
+        return prompt, {'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(random.randint(25, 80))) for _ in range(n)], past_resp_obj
