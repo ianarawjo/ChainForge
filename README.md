@@ -61,6 +61,8 @@ ChainForge is being developed by research scientists at Harvard University in th
 - [Priyan Vaithilingam](https://priyan.info)
 - [Elena Glassman](https://glassmanlab.seas.harvard.edu/glassman.html)
 
+This work was partially funded by the NSF grant IIS-2107391. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.
+
 We provide ongoing releases of this tool in the hopes that others find it useful for their projects.
 
 ## Future Planned Features
