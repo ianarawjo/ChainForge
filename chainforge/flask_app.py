@@ -338,7 +338,7 @@ def createProgressFile():
 
     # Create a scratch file for keeping track of how many responses loaded
     try:
-        with open(os.path.join(CACHE_DIR, f"_temp_{data['id']}.txt"), 'w') as f:
+        with open(os.path.join(CACHE_DIR, f"_temp_{data['id']}.txt"), 'w', encoding='utf-8') as f:
             json.dump({}, f)
         ret = jsonify({'success': True})
     except Exception as e:
@@ -428,13 +428,13 @@ async def queryLLM():
                 num_resps += len(response['responses'])
 
                 # Save the number of responses collected to a temp file on disk
-                with open(tempfilepath, 'r') as f:
+                with open(tempfilepath, 'r', encoding='utf-8') as f:
                     txt = f.read().strip()
                 
                 cur_data = json.loads(txt) if len(txt) > 0 else {}
                 cur_data[llm_str] = num_resps
                 
-                with open(tempfilepath, 'w') as f:
+                with open(tempfilepath, 'w', encoding='utf-8') as f:
                     json.dump(cur_data, f)
         except Exception as e:
             print(f'error generating responses for {llm}:', e)
@@ -467,7 +467,7 @@ async def queryLLM():
         os.remove(tempfilepath)
     
     # Save the responses *of this run* to the disk, for further recall:
-    with open(cache_filepath_last_run, "w") as f:
+    with open(cache_filepath_last_run, "w", encoding='utf-8') as f:
         json.dump(res, f)
 
     # Return all responses for all LLMs
@@ -574,7 +574,7 @@ def execute():
         all_evald_responses.extend(evald_responses)
 
     # Store the evaluated responses in a new cache json:
-    with open(cache_filepath, "w") as f:
+    with open(cache_filepath, "w", encoding='utf-8') as f:
         json.dump(all_evald_responses, f)
 
     ret = jsonify({'responses': all_evald_responses})
@@ -718,7 +718,7 @@ def importCache():
         
         # Write data to cache file
         # NOTE: This will overwrite any existing cache files with the same filename (id).
-        with open(cache_filepath, "w") as f:
+        with open(cache_filepath, "w", encoding='utf-8') as f:
             json.dump(data['files'][filename], f)
     
     print("Imported cache data and store to cache.")

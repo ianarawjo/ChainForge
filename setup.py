@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
 
 def readme():
-    with open('README.md') as f:
+    with open('README.md', encoding='utf-8') as f:
         return f.read()
 
 setup(
     name='chainforge',
-    version='0.1.2',
+    version='0.1.2.1',
     packages=find_packages(),
     author="Ian Arawjo",
     description="A Visual Programming Environment for Prompt Engineering",

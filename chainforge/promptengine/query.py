@@ -155,7 +155,7 @@ class PromptPipeline:
             return {}
     
     def _cache_responses(self, responses) -> None:
-        with open(self._filepath, "w") as f:
+        with open(self._filepath, "w", encoding='utf-8') as f:
             json.dump(responses, f)
     
     def clear_cached_responses(self) -> None:
