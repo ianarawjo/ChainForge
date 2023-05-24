@@ -46,7 +46,7 @@ def readCounts(data):
 
         # Open the temp file to read the progress so far:
         try: 
-            with open(tempfilepath, 'r') as f:
+            with open(tempfilepath, 'r', encoding='utf-8') as f:
                 queries = json.load(f)
         except FileNotFoundError as e:
              # If the temp file was deleted during executing, the Flask 'queryllm' func must've terminated successfully:

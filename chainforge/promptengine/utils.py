@@ -299,12 +299,12 @@ def create_dir_if_not_exists(path: str) -> None:
 
 def is_valid_filepath(filepath: str) -> bool:
     try:
-        with open(filepath, 'r'):
+        with open(filepath, 'r', encoding='utf-8'):
             pass
     except IOError:
         try:
             # Create the file if it doesn't exist, and write an empty json string to it
-            with open(filepath, 'w+') as f:
+            with open(filepath, 'w+', encoding='utf-8') as f:
                 f.write("{}")
                 pass
         except IOError:
