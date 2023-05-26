@@ -562,3 +562,55 @@
         opacity: 0;
     }
 }
+
+/* Model settings form styling */
+.rjsf fieldset {
+  border-style: none;
+  margin-top: 20px;
+  margin-left: 30px;
+  margin-right: 30px;
+}
+.rjsf fieldset .field-array {
+  margin: 0;
+  padding: 0;
+}
+.rjsf label.control-label {
+  font-weight: bold;
+  font-size: 11pt;
+}
+.rjsf .field-array legend {
+  font-weight: bold;
+  font-size: 11pt;
+}
+
+
+.rjsf input {
+  width: 100%;
+}
+
+.rjsf textarea {
+  width: 100%;
+}
+
+.rjsf .field-description {
+  color: #444;
+  margin-top: 8px;
+}
+
+.rjsf fieldset .form-group {
+  margin-bottom: 30px;
+  padding-top: 6px;
+  font-size: 9pt;
+  border-top-style: solid;
+  border-top-color: #ddd;
+}
+
+.rjsf button.btn {
+  float: right;
+  margin-right: 30px;
+}
+
+.rjsf .help-block {
+  color: #999;
+  margin: 0;
+}

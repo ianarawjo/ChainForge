@@ -23,7 +23,7 @@ export const DragItem = styled.div`
   flex-direction: column;
 `;
 
-const LLMListItem = ({ item, provided, snapshot, removeCallback, progress }) => {
+const LLMListItem = ({ item, provided, snapshot, removeCallback, onClickSettings, progress }) => {
   return (
     <DragItem
       ref={provided.innerRef}
@@ -33,7 +33,7 @@ const LLMListItem = ({ item, provided, snapshot, removeCallback, progress }) => 
     >
       <div>
         <CardHeader>{item.emoji}&nbsp;{item.name}</CardHeader>
-        <LLMItemButtonGroup onClickTrash={() => removeCallback(item.key)} ringProgress={progress} />
+        <LLMItemButtonGroup onClickTrash={() => removeCallback(item.key)} ringProgress={progress} onClickSettings={onClickSettings} />
       </div>
       
     </DragItem>

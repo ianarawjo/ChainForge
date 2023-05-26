@@ -1,10 +1,17 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import LLMListItem, { DragItem, LLMListItemClone } from "./LLMListItem";
 import { StrictModeDroppable } from './StrictModeDroppable'
+import ModelSettingsModal from "./ModelSettingsModal"
 
 export default function LLMList({llms, onItemsChange}) {
   const [items, setItems] = useState(llms);
+  const settingsModal = useRef(null);
+
+  const onClickSettings = useCallback((item) => {
+    if (settingsModal && settingsModal.current)
+      settingsModal.current.trigger();
+  }, [settingsModal]);
 
   const updateItems = useCallback((new_items) => {
     setItems(new_items);
@@ -51,6 +58,7 @@ export default function LLMList({llms, onItemsChange}) {
 
   return (
     <div className="list nowheel nodrag">
+      <ModelSettingsModal ref={settingsModal} />
       <DragDropContext onDragEnd={onDragEnd}>
         <StrictModeDroppable
           droppableId="llm-list-droppable"
@@ -63,7 +71,7 @@ export default function LLMList({llms, onItemsChange}) {
               {items.map((item, index) => (
                 <Draggable key={item.key} draggableId={item.key} index={index}>
                   {(provided, snapshot) => (
-                    <LLMListItem provided={provided} snapshot={snapshot} item={item} removeCallback={removeItem} progress={item.progress} />
+                    <LLMListItem provided={provided} snapshot={snapshot} item={item} removeCallback={removeItem} progress={item.progress} onClickSettings={() => onClickSettings(item)} />
                   )}
                 </Draggable>
               ))}
