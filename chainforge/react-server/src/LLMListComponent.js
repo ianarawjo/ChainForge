@@ -7,10 +7,13 @@ import ModelSettingsModal from "./ModelSettingsModal"
 export default function LLMList({llms, onItemsChange}) {
   const [items, setItems] = useState(llms);
   const settingsModal = useRef(null);
+  const [selectedModel, setSelectedModel] = useState(undefined);
 
   const onClickSettings = useCallback((item) => {
-    if (settingsModal && settingsModal.current)
+    if (settingsModal && settingsModal.current) {
+      setSelectedModel(item.model);
       settingsModal.current.trigger();
+    }
   }, [settingsModal]);
 
   const updateItems = useCallback((new_items) => {
@@ -58,7 +61,7 @@ export default function LLMList({llms, onItemsChange}) {
 
   return (
     <div className="list nowheel nodrag">
-      <ModelSettingsModal ref={settingsModal} />
+      <ModelSettingsModal ref={settingsModal} model={selectedModel} />
       <DragDropContext onDragEnd={onDragEnd}>
         <StrictModeDroppable
           droppableId="llm-list-droppable"

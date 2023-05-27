@@ -586,10 +586,12 @@
 
 .rjsf input {
   width: 100%;
+  resize: none;
 }
 
 .rjsf textarea {
   width: 100%;
+  resize: vertical;
 }
 
 .rjsf .field-description {
@@ -608,6 +610,14 @@
 .rjsf button.btn {
   float: right;
   margin-right: 30px;
+}
+.rjsf button.btn-add {
+  width: 20px;
+  height: 20px;
+  background: #40a829;
+}
+.rjsf button.btn-danger {
+  background: #660000;
 }
 
 .rjsf .help-block {

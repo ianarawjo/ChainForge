@@ -1,6 +1,7 @@
 import { useDisclosure } from '@mantine/hooks';
 import { Modal, Button, Group, RingProgress } from '@mantine/core';
 import { IconSettings, IconTrash } from '@tabler/icons-react';
+import TemperatureSliderComponent from './TemperatureSliderComponent'
 
 export default function LLMItemButtonGroup( {onClickTrash, onClickSettings, ringProgress} ) {
     const [opened, { open, close }] = useDisclosure(false);

@@ -9,7 +9,7 @@
  * Descriptions of OpenAI model parameters copied from OpenAI's official chat completions documentation: https://platform.openai.com/docs/models/model-endpoint-compatibility
  */
 
-export const ChatGPTSettings = {
+const ChatGPTSettings = {
     schema: {
         "type": "object",
         "required": [
@@ -41,16 +41,10 @@ export const ChatGPTSettings = {
                 "multipleOf": 0.005
             },
             "stop": {
-                "type": "array",
+                "type": "string",
                 "title": "stop sequences",
-                "description": "Up to 4 sequences where the API will stop generating further tokens.",
-                "items": {
-                "type": "string"
-                },
-                "additionalItems": {
-                "type": "string"
-                },
-                "maxItems": 4
+                "description": "Up to 4 sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes \"\" and use commas to separate them.",
+                "default": ""
             },
             "max_tokens": {
                 "type": "integer",
@@ -112,9 +106,7 @@ export const ChatGPTSettings = {
           "ui:widget": "range"
         },
         "stop": {
-          "items": {
-            "ui:widget": "textarea"
-          },
+          "ui:widget": "textarea",
           "ui:help": "Defaults to empty."
         },
         "max_tokens": {
@@ -126,3 +118,7 @@ export const ChatGPTSettings = {
         }
       }
   }
+
+export const ModelSettings = {
+    'gpt-3.5-turbo': ChatGPTSettings
+}
