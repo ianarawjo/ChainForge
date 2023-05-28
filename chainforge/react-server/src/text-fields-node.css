@@ -192,6 +192,20 @@
     max-height: 650px;
     resize: both;
   }
+  .response-var-header {
+    background-color: #e0f4fa;
+    border-radius: 1px;
+    padding: 2px 8px 4px 8px;
+    line-height: 9pt;
+  }
+  .response-var-name {
+    font-size: 9pt;
+    font-weight: bold;
+  }
+  .response-var-value {
+    font-family: monospace;
+    font-size: 9pt;
+  }
 
   .small-response {
     font-size: 8pt;

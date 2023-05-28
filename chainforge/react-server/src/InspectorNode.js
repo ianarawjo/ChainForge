@@ -106,11 +106,12 @@ const InspectorNode = ({ data, id }) => {
 
     const getHeaderBadge = (key, val) => {
         if (val) {
-            const s = truncStr(val.trim(), 12);
-            const txt = `${key} = '${s}'`;
-            return (<Badge key={val} color="blue" size="xs">{txt}</Badge>);
+            const s = truncStr(val.trim(), 144);
+            return (<div className="response-var-header">
+                <span className="response-var-name">{key}&nbsp;=&nbsp;</span><span className="response-var-value">"{s}"</span>
+            </div>);
         } else {
-            return (<Badge key={'unspecified'} color="blue" size="xs">{`(unspecified ${key})`}</Badge>);
+            return (<div className="response-var-header">{`unspecified ${key}`}</div>);
         }
     };
 
