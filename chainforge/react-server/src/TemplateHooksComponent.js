@@ -24,7 +24,7 @@ export default function TemplateHooks({ vars, nodeId, startY }) {
             const pos = (idx * 35) + startY + 'px';
             const style = { top: pos,  background: '#555' };
             return (<div key={name} className={className} >
-                <Badge color="indigo" size="md" radius="sm">{name}</Badge>
+                <Badge color="indigo" size="md" radius="sm" style={{textTransform: 'none'}}>{name}</Badge>
                 <Handle type="target" position="left" id={name} key={name} style={style} />
             </div>);
         });
