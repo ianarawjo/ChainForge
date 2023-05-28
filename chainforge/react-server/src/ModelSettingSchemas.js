@@ -10,6 +10,7 @@
  */
 
 const ChatGPTSettings = {
+    fullName: "GPT3.5 (ChatGPT)",
     schema: {
         "type": "object",
         "required": [
@@ -21,6 +22,19 @@ const ChatGPTSettings = {
                 "title": "Nickname",
                 "description": "Unique identifier to appear in ChainForge plots and exported data. Keep it short.",
                 "default": "gpt-3.5-turbo"
+            },
+            "model": {
+                "type": "string",
+                "title": "Model Version",
+                "description": "Select a version of GPT3.5 to query. For more details on the differences, see the OpenAI API documentation. (Note that all ChainForge OpenAI calls use the Chat Completions API; we intend to support just Completions in the future.)",
+                "enum": ["gpt-3.5-turbo", "gpt-3.5-turbo-0301", "text-davinci-003", "text-davinci-002", "code-davinci-002"],
+                "default": "gpt-3.5-turbo"
+            },
+            "system_msg": {
+                "type": "string",
+                "title": "System Message",
+                "description": "Many conversations begin with a system message to gently instruct the assistant. By default, ChainForge includes the suggested 'You are a helpful assistant.'",
+                "default": "You are a helpful assistant."
             },
             "temperature": {
                 "type": "number",
@@ -89,12 +103,19 @@ const ChatGPTSettings = {
         "shortname": {
           "ui:autofocus": true
         },
+        "model": {
+          "ui:help": "gpt-3.5-turbo",
+        },
+        "system_msg": {
+          "ui:widget": "textarea",
+          "ui:help": "For more details, see the OpenAI documentation: https://platform.openai.com/docs/guides/chat/instructing-chat-models"
+        },
         "temperature": {
-          "ui:help": "Defaults to 1.0.",
+          "ui:help": "Defaults to 1.0. Leave at default if you prefer to set top_p.",
           "ui:widget": "range"
         },
         "top_p": {
-          "ui:help": "Defaults to 1.0.",
+          "ui:help": "Defaults to 1.0. Leave at default if you prefer to set temperature.",
           "ui:widget": "range"
         },
         "presence_penalty": {
@@ -116,9 +137,118 @@ const ChatGPTSettings = {
           "ui:widget": "textarea",
           "ui:help": "Defaults to none."
         }
-      }
-  }
+    }
+};
+
+const ClaudeSettings = {
+    fullName: "Claude (Anthropic)",
+    schema: {
+        "type": "object",
+        "required": [
+            "shortname"
+        ],
+        "properties": {
+            "shortname": {
+                "type": "string",
+                "title": "Nickname",
+                "description": "Unique identifier to appear in ChainForge plots and exported data. Keep it short.",
+                "default": "claude-v1"
+            },
+            "model": {
+                "type": "string",
+                "title": "Model Version",
+                "description": "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
+                "enum": ["claude-v1", "claude-v1-100k", "claude-instant-v1", "claude-instant-v1-100k", "claude-v1.3", 
+                         "claude-v1.3-100k", "claude-v1.2", "claude-v1.0", "claude-instant-v1.1", "claude-instant-v1.1-100k", "claude-instant-v1.0"],
+                "default": "claude-v1"
+            },
+            "temperature": {
+                "type": "number",
+                "title": "temperature",
+                "description": "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
+                "default": 1,
+                "minimum": 0,
+                "maximum": 1,
+                "multipleOf": 0.01
+            },
+            "max_tokens_to_sample": {
+                "type": "integer",
+                "title": "max_tokens_to_sample",
+                "description": "A maximum number of tokens to generate before stopping. Lower this if you want shorter responses. By default, ChainForge uses the value 1024, although the Anthropic API does not specify a default value.",
+                "default": 1024,
+                "minimum": 1
+            },
+            "custom_prompt_wrapper": {
+                "type": "string",
+                "title": "Prompt Wrapper (ChainForge)",
+                "description": "Anthropic models expect prompts in the form \"\\n\\nHuman: {prompt}\\n\\nAssistant:\". ChainForge wraps all prompts in this template by default. If you wish to \
+                explore custom prompt wrappers that deviate, write a template here with a single variable, {prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)",
+                "default": ""
+            },
+            "stop_sequences": {
+                "type": "string",
+                "title": "stop_sequences",
+                "description": "Anthropic models stop on \"\\n\\nHuman:\", and may include additional built-in stop sequences in the future. By providing the stop_sequences parameter, you may include additional strings that will cause the model to stop generating.\nEnclose stop sequences in double-quotes \"\" and use commas to separate them.",
+                "default": ""
+            },
+            "top_k": {
+                "type": "integer",
+                "title": "top_k",
+                "description": "Only sample from the top K options for each subsequent token. Used to remove \"long tail\" low probability responses. Defaults to -1, which disables it.",
+                "minimum": -1,
+                "default": -1
+            },
+            "top_p": {
+                "type": "number",
+                "title": "top_p",
+                "description": "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
+                "default": -1,
+                "minimum": -1,
+                "maximum": 1,
+                "multipleOf": 0.001,
+            },
+        }
+    },
+    uiSchema: {
+        'ui:submitButtonOptions': {
+            props: {
+              disabled: false,
+              className: 'mantine-UnstyledButton-root mantine-Button-root',
+            },
+            norender: false,
+            submitText: 'Submit',
+        },
+        "shortname": {
+          "ui:autofocus": true
+        },
+        "model": {
+            "ui:help": "Defaults to claude-v1."
+        },
+        "temperature": {
+          "ui:help": "Defaults to 1.0.",
+          "ui:widget": "range"
+        },
+        "max_tokens_to_sample": {
+            "ui:help": "Defaults to 1024."
+        },
+        "top_k": {
+            "ui:help": "Defaults to -1 (none)."
+        },
+        "top_p": {
+          "ui:help": "Defaults to -1 (none)."
+        },
+        "stop_sequences": {
+          "ui:widget": "textarea",
+          "ui:help": "Defaults to no additional stop sequences (empty)."
+        },
+        "custom_prompt_wrapper": {
+          "ui:widget": "textarea",
+          "ui:help": "Defaults to Anthropic's internal wrapper \"\\n\\nHuman: {prompt}\\n\\nAssistant\"."
+        }
+    }
+}
 
 export const ModelSettings = {
-    'gpt-3.5-turbo': ChatGPTSettings
+    'gpt-3.5-turbo': ChatGPTSettings,
+    'claude-v1': ClaudeSettings,
 }
