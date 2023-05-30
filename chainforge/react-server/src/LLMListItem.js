@@ -2,6 +2,7 @@
 import React from "react";
 import styled from "styled-components";
 import LLMItemButtonGroup from "./LLMItemButtonGroup"
+import { IconTemperature } from '@tabler/icons-react';
 
 const CardHeader = styled.div`
   font-weight: 500;
@@ -10,6 +11,11 @@ const CardHeader = styled.div`
   text-align: start;
   float: left;
   margin-top: 1px;
+`;
+const TemperatureStatus = styled.span`
+  font-style: italic;
+  font-weight: normal;
+  color: #fc800d;
 `;
 
 export const DragItem = styled.div`
@@ -32,7 +38,11 @@ const LLMListItem = ({ item, provided, snapshot, removeCallback, onClickSettings
       {...provided.dragHandleProps}
     >
       <div>
-        <CardHeader>{item.emoji}&nbsp;{item.name}</CardHeader>
+        <CardHeader>{item.emoji}&nbsp;{item.name}{
+            item.settings?.temperature ?
+              (<TemperatureStatus>&nbsp;<IconTemperature size={14} stroke={2} style={{position: 'relative', top: '2px', marginRight: '-3px'}} />={item.settings?.temperature ? item.settings.temperature : ""}</TemperatureStatus>)
+              : (<></>)}
+        </CardHeader>
         <LLMItemButtonGroup onClickTrash={() => removeCallback(item.key)} ringProgress={progress} onClickSettings={onClickSettings} />
       </div>
       
@@ -49,7 +59,11 @@ export const LLMListItemClone = ({ item, provided, snapshot }) => {
       snapshot={snapshot}
     >
       <div>
-      <CardHeader>{item.emoji}&nbsp;{item.name}</CardHeader>
+      <CardHeader>{item.emoji}&nbsp;{item.name}{
+            item.settings?.temperature ?
+              (<TemperatureStatus>&nbsp;<IconTemperature size={14} stroke={2} style={{position: 'relative', top: '2px', marginRight: '-3px'}} />={item.settings?.temperature ? item.settings.temperature : ""}</TemperatureStatus>)
+              : (<></>)}
+      </CardHeader>
         <LLMItemButtonGroup />
       </div>
     </DragItem>
