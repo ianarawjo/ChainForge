@@ -1,5 +1,6 @@
-from typing import Dict, Tuple, List, Union, Callable
+from typing import Dict, Tuple, List, Union, Optional, Callable
 import json, os, time, asyncio
+from string import Template
 import concurrent.futures
 
 from chainforge.promptengine.models import LLM
@@ -40,7 +41,22 @@ async def make_sync_call_async(sync_method, *args, **params):
         method = partial_sync_meth
     return await loop.run_in_executor(None, method, *args)
 
-async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float = 1.0, system_msg: Union[str, None]=None) -> Tuple[Dict, Dict]:
+def matching_settings(cached_resp: dict, llm_name: str, **params):
+    """
+        Given a cache'd response object, and an LLM name and set of parameters (settings to use), 
+        determines whether the response query used the same parameters.
+    """
+    print('matching_settings', cached_resp, llm_name, params)
+    if cached_resp['llm'] != llm_name:
+        print('names dont match')
+        return False
+    for param, val in params.items():
+        if param in cached_resp['query'] and cached_resp['query'][param] != val:
+            print(f'query param {param} doesnt match')
+            return False
+    return True
+
+async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0, system_msg: Optional[str]=None, **params) -> Tuple[Dict, Dict]:
     """
         Calls GPT3.5 via OpenAI's API. 
         Returns raw query and response JSON dicts. 
@@ -54,6 +70,7 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float =
     model = model.value
     print(f"Querying OpenAI model '{model}' with prompt '{prompt}'...")
     system_msg = "You are a helpful assistant." if system_msg is None else system_msg
+    
     query = {
         "model": model,
         "messages": [
@@ -62,7 +79,9 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float =
         ],
         "n": n,
         "temperature": temperature,
+        **params,  # 'the rest' of the settings, passed from a front-end app
     }
+
     try:
         response = await openai.ChatCompletion.acreate(**query)
     except Exception as e:
@@ -72,10 +91,10 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float =
     return query, response
 
 async def call_anthropic(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0,
-                        custom_prompt_wrapper: Union[Callable[[str], str], None]=None,
                         max_tokens_to_sample=1024,
-                        stop_sequences: Union[List[str], str]=["\n\nHuman:"],
                         async_mode=False,
+                        custom_prompt_wrapper: Optional[str]=None,
+                        stop_sequences: Optional[List[str]]=["\n\nHuman:"],
                         **params) -> Tuple[Dict, Dict]:
     """
         Calls Anthropic API with the given model, passing in params.
@@ -83,7 +102,7 @@ async def call_anthropic(prompt: str, model: LLM, n: int = 1, temperature: float
 
         Unique parameters:
             - custom_prompt_wrapper: Anthropic models expect prompts in form "\n\nHuman: ${prompt}\n\nAssistant". If you wish to 
-                                     explore custom prompt wrappers that deviate, write a function that maps from 'prompt' to custom wrapper.
+                                     explore custom prompt wrappers that deviate, write a python Template that maps from 'prompt' to custom wrapper.
                                      If set to None, defaults to Anthropic's suggested prompt wrapper.
             - max_tokens_to_sample: A maximum number of tokens to generate before stopping.
             - stop_sequences: A list of strings upon which to stop generating. Defaults to ["\n\nHuman:"], the cue for the next turn in the dialog agent.
@@ -98,10 +117,16 @@ async def call_anthropic(prompt: str, model: LLM, n: int = 1, temperature: float
     import anthropic
     client = anthropic.Client(ANTHROPIC_API_KEY)
 
+    # Wrap the prompt in the provided template, or use the default Anthropic one
+    if custom_prompt_wrapper is None or '${prompt}' not in custom_prompt_wrapper:
+        custom_prompt_wrapper = anthropic.HUMAN_PROMPT + " ${prompt}" + anthropic.AI_PROMPT
+    prompt_wrapper_template = Template(custom_prompt_wrapper)
+    wrapped_prompt = prompt_wrapper_template.substitute(prompt=prompt)
+
     # Format query
     query = {
         'model': model.value,
-        'prompt': f"{anthropic.HUMAN_PROMPT} {prompt}{anthropic.AI_PROMPT}" if not custom_prompt_wrapper else custom_prompt_wrapper(prompt),
+        'prompt': wrapped_prompt,
         'max_tokens_to_sample': max_tokens_to_sample,
         'stop_sequences': stop_sequences,
         'temperature': temperature,

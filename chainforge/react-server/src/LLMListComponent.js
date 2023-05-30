@@ -21,7 +21,7 @@ export default function LLMList({llms, onItemsChange}) {
     }
   }, [settingsModal]);
 
-  const onSettingsSubmit = useCallback((item_key, formData) => {
+  const onSettingsSubmit = useCallback((item_key, formData, settingsData) => {
     // First check for the item with key and get it:
     let llm = items.find(i => i.key === item_key);
     if (!llm) {
@@ -35,7 +35,10 @@ export default function LLMList({llms, onItemsChange}) {
         if (item.key === item_key) {
           // Create a new item with the same settings
           let updated_item = {...item};
-          updated_item.settings = {...formData};
+          if ('model' in formData) // Update the name of the specific model to call
+            updated_item.model = formData['model'];
+          updated_item.formData = {...formData};
+          updated_item.settings = {...settingsData};
           return updated_item;
         }
         else return item;

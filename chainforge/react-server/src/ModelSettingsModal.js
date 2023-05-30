@@ -32,8 +32,8 @@ const ModelSettingsModal = forwardRef((props, ref) => {
         setSchema(schema);
         setUISchema(ModelSettings[props.model.base_model].uiSchema);
         setModelName(ModelSettings[props.model.base_model].fullName);
-        if (props.model.settings) {
-            setFormData(props.model.settings);
+        if (props.model.formData) {
+            setFormData(props.model.formData);
         } else {
             // Create settings from schema 
             let default_settings = {};
@@ -45,13 +45,37 @@ const ModelSettingsModal = forwardRef((props, ref) => {
     }
   }, [props.model]);
 
+  // Postprocess the form data into the format expected by the backend (kwargs passed to Python API calls)
+  const postprocess = useCallback((fdata) => {
+    // Strip all 'model' and 'shortname' props in the submitted form, as these are passed elsewhere or unecessary for the backend
+    const skip_keys = {'model': true, 'shortname': true};
+
+    let new_data = {};
+    let postprocessors = {};
+    if (props.model?.base_model && props.model.base_model in ModelSettings && ModelSettings[props.model.base_model].postprocessors)
+        postprocessors = ModelSettings[props.model.base_model].postprocessors;
+
+    Object.keys(fdata).forEach(key => {
+        if (key in skip_keys) return;
+        if (key in postprocessors)
+            new_data[key] = postprocessors[key](fdata[key]);
+        else
+            new_data[key] = fdata[key];
+    });
+    
+    return new_data;
+  }, [props.model]);
+
   const onSubmit = useCallback((submitInfo) => {
     console.log("Submitted data:", submitInfo.formData);
     setFormData(submitInfo.formData);
     close();
+
     if (onSettingsSubmit)
-        onSettingsSubmit(selectedModelKey, submitInfo.formData);
+        onSettingsSubmit(selectedModelKey, submitInfo.formData, postprocess(submitInfo.formData));
+
   }, [close, setFormData, onSettingsSubmit, selectedModelKey]);
+
   const onClickSubmit = useCallback(() => {
     if (form && form.current)
         form.current.submit();

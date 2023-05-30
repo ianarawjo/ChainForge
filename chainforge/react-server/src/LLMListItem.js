@@ -39,7 +39,7 @@ const LLMListItem = ({ item, provided, snapshot, removeCallback, onClickSettings
     >
       <div>
         <CardHeader>{item.emoji}&nbsp;{item.name}{
-            item.settings?.temperature ?
+            item.settings?.temperature !== undefined ?
               (<TemperatureStatus>&nbsp;<IconTemperature size={14} stroke={2} style={{position: 'relative', top: '2px', marginRight: '-3px'}} />={item.settings?.temperature ? item.settings.temperature : ""}</TemperatureStatus>)
               : (<></>)}
         </CardHeader>
@@ -60,7 +60,7 @@ export const LLMListItemClone = ({ item, provided, snapshot }) => {
     >
       <div>
       <CardHeader>{item.emoji}&nbsp;{item.name}{
-            item.settings?.temperature ?
+            item.settings?.temperature !== undefined ?
               (<TemperatureStatus>&nbsp;<IconTemperature size={14} stroke={2} style={{position: 'relative', top: '2px', marginRight: '-3px'}} />={item.settings?.temperature ? item.settings.temperature : ""}</TemperatureStatus>)
               : (<></>)}
       </CardHeader>

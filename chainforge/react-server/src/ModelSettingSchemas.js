@@ -181,15 +181,15 @@ const ClaudeSettings = {
             "custom_prompt_wrapper": {
                 "type": "string",
                 "title": "Prompt Wrapper (ChainForge)",
-                "description": "Anthropic models expect prompts in the form \"\\n\\nHuman: {prompt}\\n\\nAssistant:\". ChainForge wraps all prompts in this template by default. If you wish to \
-                explore custom prompt wrappers that deviate, write a template here with a single variable, {prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)",
+                "description": "Anthropic models expect prompts in the form \"\\n\\nHuman: ${prompt}\\n\\nAssistant:\". ChainForge wraps all prompts in this template by default. If you wish to \
+                explore custom prompt wrappers that deviate, write a Python template here with a single variable, ${prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)",
                 "default": ""
             },
             "stop_sequences": {
                 "type": "string",
                 "title": "stop_sequences",
-                "description": "Anthropic models stop on \"\\n\\nHuman:\", and may include additional built-in stop sequences in the future. By providing the stop_sequences parameter, you may include additional strings that will cause the model to stop generating.\nEnclose stop sequences in double-quotes \"\" and use commas to separate them.",
-                "default": ""
+                "description": "Anthropic models stop on \"\\n\\nHuman:\", and may include additional built-in stop sequences in the future. By providing the stop_sequences parameter, you may include additional strings that will cause the model to stop generating.\nEnclose stop sequences in double-quotes \"\" and use whitespace to separate them.",
+                "default": "\"\n\nHuman:\""
             },
             "top_k": {
                 "type": "integer",
@@ -245,6 +245,12 @@ const ClaudeSettings = {
           "ui:widget": "textarea",
           "ui:help": "Defaults to Anthropic's internal wrapper \"\\n\\nHuman: {prompt}\\n\\nAssistant\"."
         }
+    },
+    postprocessors: {
+      'stop_sequences': (str) => {
+        if (str.trim().length === 0) return ["\n\nHuman:"];
+        return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
+      }
     }
 }
 

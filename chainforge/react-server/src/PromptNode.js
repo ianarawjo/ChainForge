@@ -247,7 +247,7 @@ const PromptNode = ({ data, id }) => {
     const num_llms = llms.length;
 
     // Fetch response counts from backend
-    fetchResponseCounts(py_prompt, pulled_vars, llms, (err) => {
+    fetchResponseCounts(py_prompt, pulled_vars, llmItemsCurrState, (err) => {
         console.warn(err.message);  // soft fail
     }).then(([counts, total_num_responses]) => {
         // Check for empty counts (means no requests will be sent!)
@@ -340,7 +340,7 @@ const PromptNode = ({ data, id }) => {
 
     // Fetch info about the number of queries we'll need to make 
     const fetch_resp_count = () => fetchResponseCounts(
-        py_prompt_template, pulled_data, llmItemsCurrState.map(item => item.model), rejected);
+        py_prompt_template, pulled_data, llmItemsCurrState, rejected);
 
     // Open a socket to listen for progress
     const open_progress_listener_socket = ([response_counts, total_num_responses]) => {
@@ -412,13 +412,10 @@ const PromptNode = ({ data, id }) => {
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({
                 id: id,
-                llm: llmItemsCurrState.map(item => item.model),
+                llm: llmItemsCurrState,
                 prompt: py_prompt_template,
                 vars: pulled_data,
-                params: {
-                    temperature: 0.5,
-                    n: numGenerations,
-                },
+                n: numGenerations,
                 api_keys: (apiKeys ? apiKeys : {}),
                 no_cache: false,
             }),

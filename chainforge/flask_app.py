@@ -1,13 +1,14 @@
 import json, os, asyncio, sys, argparse, threading, traceback
 from dataclasses import dataclass
 from enum import Enum
+from typing import Union
 from statistics import mean, median, stdev
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from chainforge.promptengine.query import PromptLLM, PromptLLMDummy
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
-from chainforge.promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
+from chainforge.promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys, matching_settings
 
 # Setup Flask app to serve static version of React front-end
 BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
@@ -69,6 +70,18 @@ def load_cache_json(filepath: str) -> dict:
     with open(filepath, encoding="utf-8") as f:
         responses = json.load(f)
     return responses
+
+def extract_llm_name(llm_spec):
+    if isinstance(llm_spec, dict): 
+        return llm_spec['model']
+    else:
+        return llm_spec
+
+def extract_llm_params(llm_spec):
+    if isinstance(llm_spec, dict) and 'settings' in llm_spec:
+        return llm_spec['settings']
+    else:
+        return {}
 
 class MetricType(Enum):
     KeyValue = 0
@@ -249,10 +262,13 @@ def load_all_cached_responses(cache_ids):
             res = load_cache_json(os.path.join(CACHE_DIR, filename))
             if isinstance(res, dict):
                 # Convert to standard response format
-                res = [
-                    to_standard_format({'prompt': prompt, **res_obj})
-                    for prompt, res_obj in res.items()
-                ]
+                new_res = []
+                for prompt, res_obj in res.items():
+                    if isinstance(res_obj, list):
+                        new_res.extend([to_standard_format({'prompt': prompt, **r}) for r in res_obj])
+                    else:
+                        new_res.append(to_standard_format({'prompt': prompt, **res_obj}))
+                res = new_res
             responses.extend(res)
     
     return responses
@@ -305,17 +321,20 @@ def countQueries():
         prompt = str(prompt)
         matching_resps = [r for r in cached_resps if r['prompt'] == prompt]
         for llm in data['llms']:
-            add_to_num_responses_req(llm, n)
-            match_per_llm = [r for r in matching_resps if r['llm'] == llm]
+            llm_name = extract_llm_name(llm)
+            llm_params = extract_llm_params(llm)
+            add_to_num_responses_req(llm_name, n)
+            match_per_llm = [r for r in matching_resps if matching_settings(r, llm_name=llm_name, **llm_params)]
             if len(match_per_llm) == 0:
-                add_to_missing_queries(llm, prompt, n)
+                add_to_missing_queries(llm_name, prompt, n)
             elif len(match_per_llm) == 1:
                 # Check how many were stored; if not enough, add how many missing queries:
                 num_resps = len(match_per_llm[0]['responses'])
                 if n > len(match_per_llm[0]['responses']):
-                    add_to_missing_queries(llm, prompt, n - num_resps)
+                    add_to_missing_queries(llm_name, prompt, n - num_resps)
             else:
-                raise Exception(f"More than one response found for the same prompt ({prompt}) and LLM ({llm})")
+                print('match_per_llm', match_per_llm)
+                raise Exception(f"More than one response object found for the same prompt ({prompt}) and LLM ({llm_name}) with the same settings")
 
     ret = jsonify({'counts': missing_queries, 'total_num_responses': num_responses_req})
     ret.headers.add('Access-Control-Allow-Origin', '*')
@@ -356,8 +375,8 @@ async def queryLLM():
         POST'd data should be in the form: 
         {
             'id': str  # a unique ID to refer to this information. Used when cache'ing responses. 
-            'llm': str | list  # a string or list of strings specifying the LLM(s) to query
-            'params': dict  # an optional dict of any other params to set when querying the LLMs, like 'temperature', 'n' (num of responses per prompt), etc.
+            'llm': str | list[str] | list[dict]  # a string, list of strings, or list of LLM spec dicts specifying the LLM(s) to query.
+            'n': int  # the amount of generations for each prompt. All LLMs will be queried the same number of times 'n' per each prompt.
             'prompt': str  # the prompt template, with any {{}} vars
             'vars': dict  # a dict of the template variables to fill the prompt template with, by name. For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
             'api_keys': dict  # (optional) a dict of {api_name: api_key} pairs. Supported key names: OpenAI, Anthropic, Google
@@ -378,9 +397,9 @@ async def queryLLM():
     if isinstance(data['llm'], str):
         data['llm'] = [ data['llm'] ]
 
-    for llm_str in data['llm']:
-        if llm_str not in LLM_NAME_MAP:
-            return jsonify({'error': f"LLM named '{llm_str}' is not supported."})
+    for llm_spec in data['llm']:
+        if extract_llm_name(llm_spec) not in LLM_NAME_MAP:
+            return jsonify({'error': f"LLM named '{extract_llm_name(llm_spec)}' is not supported."})
     
     if 'api_keys' in data:
         set_api_keys(data['api_keys'])
@@ -399,12 +418,17 @@ async def queryLLM():
     # For each LLM, generate and cache responses:
     responses = {}
     llms = data['llm']
-    params = data['params'] if 'params' in data else {}
+    num_generations = data['n'] if 'n' in data else 1
     tempfilepath = os.path.join(CACHE_DIR, f"_temp_{data['id']}.txt")
     if not is_valid_filepath(tempfilepath):
         return jsonify({'error': f'Invalid filepath: {tempfilepath}'})
 
-    async def query(llm_str: str) -> list:
+    async def query(llm_spec: Union[str, dict]) -> list:
+        # Get LLM model name and any params
+        llm_str = extract_llm_name(llm_spec)
+        llm_params = extract_llm_params(llm_spec)
+
+        # Get the appropriate LLM enum value associated with the model name
         llm = LLM_NAME_MAP[llm_str]
 
         # Check that storage path is valid:
@@ -421,7 +445,7 @@ async def queryLLM():
         num_resps = 0
         try:
             print(f'Querying {llm}...')
-            async for response in prompter.gen_responses(properties=data['vars'], llm=llm, **params):
+            async for response in prompter.gen_responses(properties=data['vars'], llm=llm, n=num_generations, **llm_params):
                 resps.append(response)
                 print(f"collected response from {llm.name}:", str(response))
 
