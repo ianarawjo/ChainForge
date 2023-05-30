@@ -7,8 +7,8 @@ from chainforge.promptengine.models import LLM
 DALAI_MODEL = None
 DALAI_RESPONSE = None
 
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"] if "ANTHROPIC_API_KEY" in os.environ else None
-GOOGLE_PALM_API_KEY = os.environ["PALM_API_KEY"] if "PALM_API_KEY" in os.environ else None
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+GOOGLE_PALM_API_KEY = os.environ.get("PALM_API_KEY")
 
 def set_api_keys(api_keys):
     """
@@ -50,6 +50,7 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float =
     import openai
     if not openai.api_key:
         openai.api_key = os.environ.get("OPENAI_API_KEY")
+
     model = model.value
     print(f"Querying OpenAI model '{model}' with prompt '{prompt}'...")
     system_msg = "You are a helpful assistant." if system_msg is None else system_msg
