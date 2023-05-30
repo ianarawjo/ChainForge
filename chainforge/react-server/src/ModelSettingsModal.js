@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, useCallback, forwardRef, useImperativeHandle, useEffect } from 'react';
 import { TextInput, Checkbox, Button, Group, Box, Modal } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 
@@ -12,34 +12,62 @@ import useStore from './store';
 const ModelSettingsModal = forwardRef((props, ref) => {
   const [opened, { open, close }] = useDisclosure(false);
   const form = useRef(null);
+  const [formData, setFormData] = useState(undefined);
+  const onSettingsSubmit = props.onSettingsSubmit;
+  const selectedModelKey = props.model ? props.model.key : null;
 
-  const schema = props.model && props.model in ModelSettings ? ModelSettings[props.model].schema : {'type': 'object', 'description': `Did not find settings schema for model ${props.model}.`};
-  const uiSchema = props.model && props.model in ModelSettings ? ModelSettings[props.model].uiSchema : {};
-  const modelName = props.model && props.model in ModelSettings ? ModelSettings[props.model].fullName : "(unknown)";
+  const [schema, setSchema] = useState({'type': 'object', 'description': 'No model info object was passed to settings modal.'});
+  const [uiSchema, setUISchema] = useState({});
+  const [modelName, setModelName] = useState("(unknown)");
 
-  const onSubmit = (formData) => {
-    //
-    // Save stuff here...
-    //
-    console.log(formData);
+  useEffect(() => {
+    if (props.model && props.model.base_model) {
+        if (!(props.model.base_model in ModelSettings)) {
+            setSchema({'type': 'object', 'description': `Did not find settings schema for base model ${props.model.base_model}.`});
+            setUISchema({});
+            setModelName(props.model.base_model);
+            return;
+        }
+        const schema = ModelSettings[props.model.base_model].schema;
+        setSchema(schema);
+        setUISchema(ModelSettings[props.model.base_model].uiSchema);
+        setModelName(ModelSettings[props.model.base_model].fullName);
+        if (props.model.settings) {
+            setFormData(props.model.settings);
+        } else {
+            // Create settings from schema 
+            let default_settings = {};
+            Object.keys(schema.properties).forEach(key => {
+                default_settings[key] = 'default' in schema.properties[key] ? schema.properties[key]['default'] : undefined;
+            });
+            setFormData(default_settings);
+        }
+    }
+  }, [props.model]);
+
+  const onSubmit = useCallback((submitInfo) => {
+    console.log("Submitted data:", submitInfo.formData);
+    setFormData(submitInfo.formData);
     close();
-  };
+    if (onSettingsSubmit)
+        onSettingsSubmit(selectedModelKey, submitInfo.formData);
+  }, [close, setFormData, onSettingsSubmit, selectedModelKey]);
   const onClickSubmit = useCallback(() => {
     if (form && form.current)
         form.current.submit();
   }, [form]);
 
   // This gives the parent access to triggering the modal
-  const trigger = () => {
+  const trigger = useCallback(() => {
     open();
-  };
+  }, [schema, uiSchema, modelName]);
   useImperativeHandle(ref, () => ({
     trigger,
   }));
 
 return (
     <Modal size='lg' opened={opened} onClose={close} title={`Model Settings: ${modelName}`} closeOnClickOutside={false} style={{position: 'relative', 'left': '-100px'}}>
-            <Form ref={form} schema={schema} uiSchema={uiSchema} validator={validator} onSubmit={onSubmit} style={{width: '100%'}}>
+            <Form ref={form} schema={schema} uiSchema={uiSchema} formData={formData} validator={validator} onSubmit={onSubmit} style={{width: '100%'}}>
                 <Button title='Submit' onClick={onClickSubmit} style={{float: 'right', marginRight: '30px'}}>Submit</Button>
                 <div style={{height: '50px'}}></div>
             </Form>

@@ -588,7 +588,9 @@
   width: 100%;
   resize: none;
 }
-
+.rjsf select {
+  width: 100%;
+}
 .rjsf textarea {
   width: 100%;
   resize: vertical;

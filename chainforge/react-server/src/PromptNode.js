@@ -11,11 +11,11 @@ import io from 'socket.io-client';
 
 // Available LLMs
 const allLLMs = [
-    { name: "GPT3.5", emoji: "🙂", model: "gpt-3.5-turbo", temp: 1.0 },
-    { name: "GPT4", emoji: "🥵", model: "gpt-4", temp: 1.0 },
-    { name: "Alpaca 7B", emoji: "🦙", model: "alpaca.7B", temp: 0.5 },
-    { name: "Claude v1", emoji: "📚", model: "claude-v1", temp: 0.5 },
-    { name: "PaLM2", emoji: "🦬", model: "text-bison-001", temp: 0.7 },
+    { name: "GPT3.5", emoji: "🙂", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
+    { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
+    { name: "Alpaca 7B", emoji: "🦙", model: "alpaca.7B", base_model: "alpaca", temp: 0.5 },
+    { name: "Claude v1", emoji: "📚", model: "claude-v1", base_model: "claude-v1", temp: 0.5 },
+    { name: "PaLM2", emoji: "🦬", model: "text-bison-001", base_model: "text-bison", temp: 0.7 },
 ];
 const initLLMs = [allLLMs[0]];
 

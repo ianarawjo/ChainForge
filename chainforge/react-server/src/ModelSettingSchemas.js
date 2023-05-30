@@ -104,7 +104,7 @@ const ChatGPTSettings = {
           "ui:autofocus": true
         },
         "model": {
-          "ui:help": "gpt-3.5-turbo",
+          "ui:help": "Defaults to gpt-3.5-turbo.",
         },
         "system_msg": {
           "ui:widget": "textarea",

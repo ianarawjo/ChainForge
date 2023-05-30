@@ -9,17 +9,42 @@ export default function LLMList({llms, onItemsChange}) {
   const settingsModal = useRef(null);
   const [selectedModel, setSelectedModel] = useState(undefined);
 
-  const onClickSettings = useCallback((item) => {
-    if (settingsModal && settingsModal.current) {
-      setSelectedModel(item.model);
-      settingsModal.current.trigger();
-    }
-  }, [settingsModal]);
-
   const updateItems = useCallback((new_items) => {
     setItems(new_items);
     onItemsChange(new_items);
   }, [onItemsChange]);
+
+  const onClickSettings = useCallback((item) => {
+    if (settingsModal && settingsModal.current) {
+      setSelectedModel(item);
+      settingsModal.current.trigger();
+    }
+  }, [settingsModal]);
+
+  const onSettingsSubmit = useCallback((item_key, formData) => {
+    // First check for the item with key and get it:
+    let llm = items.find(i => i.key === item_key);
+    if (!llm) {
+      console.error(`Could not update model settings: Could not find item with key ${item_key}.`);
+      return;
+    }
+
+    // Change the settings for the LLM item to the value of 'formData': 
+    updateItems(
+      items.map(item => {
+        if (item.key === item_key) {
+          // Create a new item with the same settings
+          let updated_item = {...item};
+          updated_item.settings = {...formData};
+          return updated_item;
+        }
+        else return item;
+      }
+    ));
+
+    // Replace the item in the list and re-save: 
+
+  }, [items, updateItems]);
 
   const onDragEnd = (result) => {
     const { destination, source } = result;
@@ -61,7 +86,7 @@ export default function LLMList({llms, onItemsChange}) {
 
   return (
     <div className="list nowheel nodrag">
-      <ModelSettingsModal ref={settingsModal} model={selectedModel} />
+      <ModelSettingsModal ref={settingsModal} model={selectedModel} onSettingsSubmit={onSettingsSubmit} />
       <DragDropContext onDragEnd={onDragEnd}>
         <StrictModeDroppable
           droppableId="llm-list-droppable"
