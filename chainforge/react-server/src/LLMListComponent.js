@@ -21,22 +21,26 @@ export default function LLMList({llms, onItemsChange}) {
     }
   }, [settingsModal]);
 
-  const onSettingsSubmit = useCallback((item_key, formData, settingsData) => {
+  const onSettingsSubmit = useCallback((savedItem, formData, settingsData) => {
     // First check for the item with key and get it:
-    let llm = items.find(i => i.key === item_key);
+    let llm = items.find(i => i.key === savedItem.key);
     if (!llm) {
-      console.error(`Could not update model settings: Could not find item with key ${item_key}.`);
+      console.error(`Could not update model settings: Could not find item with key ${savedItem.key}.`);
       return;
     }
 
     // Change the settings for the LLM item to the value of 'formData': 
     updateItems(
       items.map(item => {
-        if (item.key === item_key) {
+        if (item.key === savedItem.key) {
           // Create a new item with the same settings
           let updated_item = {...item};
           if ('model' in formData) // Update the name of the specific model to call
             updated_item.model = formData['model'];
+          if ('shortname' in formData)
+            updated_item.name = formData['shortname'];
+          if (savedItem.emoji)
+            updated_item.emoji = savedItem.emoji;
           updated_item.formData = {...formData};
           updated_item.settings = {...settingsData};
           return updated_item;

@@ -5,8 +5,16 @@ from enum import Enum
 
 class LLM(str, Enum):
     """ OpenAI Chat """
-    ChatGPT = "gpt-3.5-turbo"
-    GPT4 = "gpt-4"
+    OpenAI_ChatGPT = "gpt-3.5-turbo"
+    OpenAI_ChatGPT_0301 = "gpt-3.5-turbo-0301"
+    OpenAI_GPT4 = "gpt-4"
+    OpenAI_GPT4_0314 = "gpt-4-0314"
+    OpenAI_GPT4_32k = "gpt-4-32k"
+    OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314"
+
+    """ OpenAI Completions"""
+    OpenAI_Davinci003 = "text-davinci-003"
+    OpenAI_Davinci002 = "text-davinci-002"
 
     """ Dalai-served models """
     Alpaca7B = "alpaca.7B"

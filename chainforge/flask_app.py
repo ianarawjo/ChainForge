@@ -42,10 +42,9 @@ class ResponseInfo:
         return self.text
 
 def to_standard_format(r: dict) -> list:
-    llm = r['llm']
     resp_obj = {
         'vars': r['info'],
-        'llm': llm,
+        'llm': r['llm'],
         'prompt': r['prompt'],
         'responses': r['responses'],
         'tokens': r['raw_response']['usage'] if 'usage' in r['raw_response'] else {},
@@ -54,7 +53,7 @@ def to_standard_format(r: dict) -> list:
         resp_obj['eval_res'] = r['eval_res']
     return resp_obj
 
-def get_filenames_for_id(id: str, include_basefile=True) -> List[str]:
+def get_filenames_for_id(cache_id: str, include_basefile=True) -> List[str]:
     # Load the base cache file
     base_file = f"{cache_id}.json"
     data = load_cache_json(base_file)
@@ -97,6 +96,12 @@ def gen_unique_cache_filename(cache_id, prev_filenames: List[str]) -> str:
         idx = max(int(f.split('.')[-2].split('_')[-1])+1, idx)
     return f"{cache_id}_{idx}.json"
 
+def extract_llm_nickname(llm_spec):
+    if isinstance(llm_spec, dict) and 'name' in llm_spec: 
+        return llm_spec['name']
+    else:
+        return llm_spec
+
 def extract_llm_name(llm_spec):
     if isinstance(llm_spec, dict): 
         return llm_spec['model']
@@ -125,7 +130,6 @@ def matching_settings(cache_llm_spec: dict, llm_spec: dict):
     if isinstance(llm_spec, dict) and isinstance(cache_llm_spec, dict):
         llm_params = extract_llm_params(llm_spec)
         cache_llm_params = extract_llm_params(cache_llm_spec)
-        print('params', llm_params, cache_llm_params)
         for param, val in llm_params.items():
             if param in cache_llm_params and cache_llm_params[param] != val:
                 return False
@@ -339,8 +343,6 @@ def countQueries():
         llm_params = extract_llm_params(llm_spec)
         llm_key = extract_llm_key(llm_spec)
 
-        add_to_num_responses_req(llm_key, n)
-
         # Find the response cache file for the specific LLM, if any
         found_cache = False
         for cache_filename, cache_llm_spec in cache_file_lookup.items():
@@ -349,9 +351,13 @@ def countQueries():
 
                 # Load the cache file
                 cache_llm_responses = load_cache_json(cache_filename)
+
                 # Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
                 for prompt in all_prompt_permutations:
+
                     prompt = str(prompt)
+                    add_to_num_responses_req(llm_key, n)
+
                     if prompt in cache_llm_responses:
                         # Check how many were stored; if not enough, add how many missing queries:
                         num_resps = len(cache_llm_responses[prompt]['responses'])
@@ -461,13 +467,21 @@ async def queryLLM():
             if not found_cache:
                 new_filename = gen_unique_cache_filename(data['id'], past_cachefiles)
                 llm_to_cache_filename[extract_llm_key(llm_spec)] = new_filename
+                cache['cache_files'][new_filename] = llm_spec
                 past_cachefiles.append(new_filename)
     else:
+        cache = { 'cache_files': {}, 'responses_last_run': [] }
         prev_filenames = []
         for llm_spec in llms:
             fname = gen_unique_cache_filename(data['id'], prev_filenames)
             llm_to_cache_filename[extract_llm_key(llm_spec)] = fname
+            cache['cache_files'][fname] = llm_spec
             prev_filenames.append(fname)
+
+    # Store the overall cache file for this id,
+    # so we can remember where the individual cache files are stored:
+    with open(cache_filepath_last_run, "w", encoding='utf-8') as f:
+        json.dump(cache, f)
 
     # For each LLM, generate and cache responses:
     responses = {}
@@ -479,6 +493,7 @@ async def queryLLM():
     async def query(llm_spec: Union[str, dict]) -> list:
         # Get LLM model name and any params
         llm_str = extract_llm_name(llm_spec)
+        llm_nickname = extract_llm_nickname(llm_spec)
         llm_params = extract_llm_params(llm_spec)
         llm_key = extract_llm_key(llm_spec)
 
@@ -500,6 +515,10 @@ async def queryLLM():
         try:
             print(f'Querying {llm}...')
             async for response in prompter.gen_responses(properties=data['vars'], llm=llm, n=num_generations, **llm_params):
+                # The response name will be the name of the LLM. However,
+                # for the front-end it is more informative to store the user-provided nickname. 
+                response['llm'] = llm_nickname
+
                 resps.append(response)
                 print(f"collected response from {llm.name}:", str(response))
 

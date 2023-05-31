@@ -10,8 +10,8 @@ from chainforge.promptengine.template import PromptTemplate, PromptPermutationGe
 # A 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
 # The following is only a guideline, and a bit on the conservative side. 
 MAX_SIMULTANEOUS_REQUESTS = { 
-    LLM.ChatGPT: (30, 10),  # max 30 requests a batch; wait 10 seconds between
-    LLM.GPT4: (4, 15),  # max 4 requests a batch; wait 15 seconds between
+    LLM.OpenAI_ChatGPT: (30, 10),  # max 30 requests a batch; wait 10 seconds between
+    LLM.OpenAI_GPT4: (4, 15),  # max 4 requests a batch; wait 15 seconds between
     LLM.PaLM2: (4, 10),  # max 30 requests per minute; so do 4 per batch, 10 seconds between
     LLM.Alpaca7B: (1, 0),  # 1 indicates synchronous
 }
@@ -72,7 +72,7 @@ class PromptPipeline:
                     "query": cached_resp["query"],
                     "responses": extracted_resps[:n],
                     "raw_response": cached_resp["raw_response"],
-                    "llm": cached_resp["llm"] if "llm" in cached_resp else LLM.ChatGPT.value,
+                    "llm": cached_resp["llm"] if "llm" in cached_resp else LLM.OpenAI_ChatGPT.value,
                     # We want to use the new info, since 'vars' could have changed even though 
                     # the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
                     "info": info,
@@ -183,7 +183,7 @@ class PromptPipeline:
                     print(f"Batch rate limit of {rate_limit_batch_size} reached for LLM {llm}. Waiting {wait_secs} seconds until sending request batch #{batch_num}...")
                 await asyncio.sleep(wait_secs)
 
-        if llm is LLM.ChatGPT or llm is LLM.GPT4:
+        if llm.name[:6] == 'OpenAI':
             query, response = await call_chatgpt(str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
         elif llm is LLM.PaLM2:
             query, response = await call_google_palm(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)

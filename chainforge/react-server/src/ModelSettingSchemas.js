@@ -21,7 +21,7 @@ const ChatGPTSettings = {
                 "type": "string",
                 "title": "Nickname",
                 "description": "Unique identifier to appear in ChainForge plots and exported data. Keep it short.",
-                "default": "gpt-3.5-turbo"
+                "default": "GPT3.5"
             },
             "model": {
                 "type": "string",
@@ -152,7 +152,7 @@ const ClaudeSettings = {
                 "type": "string",
                 "title": "Nickname",
                 "description": "Unique identifier to appear in ChainForge plots and exported data. Keep it short.",
-                "default": "claude-v1"
+                "default": "Claude"
             },
             "model": {
                 "type": "string",
@@ -255,9 +255,19 @@ const ClaudeSettings = {
 }
 
 export const ModelSettings = {
-    'gpt-3.5-turbo': ChatGPTSettings,
-    'claude-v1': ClaudeSettings,
+  'gpt-3.5-turbo': ChatGPTSettings,
+  'claude-v1': ClaudeSettings,
 }
+
+export const getTemperatureSpecForModel = (modelName) => {
+  if (modelName in ModelSettings) {
+    const temperature_property = ModelSettings[modelName].schema?.properties?.temperature;
+    if (temperature_property) {
+      return {minimum: temperature_property.minimum, maximum: temperature_property.maximum, default: temperature_property.default};
+    }
+  }
+  return null;
+};
 
 export const postProcessFormData = (settingsSpec, formData) => {
   // Strip all 'model' and 'shortname' props in the submitted form, as these are passed elsewhere or unecessary for the backend

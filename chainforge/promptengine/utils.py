@@ -58,17 +58,23 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 
     
     query = {
         "model": model,
-        "messages": [
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": prompt},
-        ],
         "n": n,
         "temperature": temperature,
         **params,  # 'the rest' of the settings, passed from a front-end app
     }
 
+    if 'davinci' in model:
+        openai_call = openai.Completion.acreate
+        query['prompt'] = prompt
+    else:
+        openai_call = openai.ChatCompletion.acreate
+        query['messages'] = [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": prompt},
+        ]
+        
     try:
-        response = await openai.ChatCompletion.acreate(**query)
+        response = await openai_call(**query)
     except Exception as e:
         if (isinstance(e, openai.error.AuthenticationError)):
             raise Exception("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local Python environment.")
@@ -259,6 +265,18 @@ def _extract_chatgpt_responses(response: dict) -> List[str]:
         for c in choices
     ]
 
+def _extract_openai_completion_responses(response: dict) -> List[str]:
+    """
+        Extracts the text part of a response JSON from OpenAI completions models like Davinci. If there are more
+        than 1 response (e.g., asking the LLM to generate multiple responses), 
+        this produces a list of all returned responses.
+    """
+    choices = response["choices"]
+    return [
+        c["text"].strip()
+        for c in choices
+    ]
+
 def _extract_palm_responses(completion) -> List[str]:
     """
         Extracts the text part of a 'Completion' object from Google PaLM2 `generate_text`
@@ -270,8 +288,11 @@ def extract_responses(response: Union[list, dict], llm: Union[LLM, str]) -> List
         Given a LLM and a response object from its API, extract the
         text response(s) part of the response object.
     """
-    if llm is LLM.ChatGPT or llm == LLM.ChatGPT.value or llm is LLM.GPT4 or llm == LLM.GPT4.value:
-        return _extract_chatgpt_responses(response)
+    if (isinstance(llm, LLM) and llm.name[:6] == 'OpenAI') or (isinstance(llm, str) and llm[:6] == 'OpenAI'):
+        if 'davinci' in str(llm).lower():
+            return _extract_openai_completion_responses(response)
+        else:
+            return _extract_chatgpt_responses(response)
     elif llm is LLM.PaLM2 or llm == LLM.PaLM2.value:
         return _extract_palm_responses(response)
     elif llm is LLM.Alpaca7B or llm == LLM.Alpaca7B.value:
