@@ -258,3 +258,39 @@ export const ModelSettings = {
     'gpt-3.5-turbo': ChatGPTSettings,
     'claude-v1': ClaudeSettings,
 }
+
+export const postProcessFormData = (settingsSpec, formData) => {
+  // Strip all 'model' and 'shortname' props in the submitted form, as these are passed elsewhere or unecessary for the backend
+  const skip_keys = {'model': true, 'shortname': true};
+
+  let new_data = {};
+  let postprocessors = settingsSpec.postprocessors ? settingsSpec.postprocessors : {};
+
+  Object.keys(formData).forEach(key => {
+    if (key in skip_keys) return;
+    if (key in postprocessors)
+      new_data[key] = postprocessors[key](formData[key]);
+    else
+      new_data[key] = formData[key];
+  });
+    
+  return new_data;
+};
+
+export const getDefaultModelFormData = (settingsSpec) => {
+  let default_formdata = {};
+  const schema = settingsSpec.schema;
+  Object.keys(schema.properties).forEach(key => {
+    default_formdata[key] = 'default' in schema.properties[key] ? schema.properties[key]['default'] : undefined;
+  });
+  return default_formdata;
+};
+
+export const getDefaultModelSettings = (modelName) => {
+  if (!(modelName in ModelSettings)) {
+    console.warn(`Model ${modelName} not found in list of available model settings.`);
+    return {};
+  }
+  const settingsSpec = ModelSettings[modelName];
+  return postProcessFormData(settingsSpec, getDefaultModelFormData(settingsSpec));
+};

@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import List, Dict, Tuple, Iterator, Union, Optional
 import json, os, asyncio, random, string
-from chainforge.promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, call_google_palm, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs, matching_settings
+from chainforge.promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, call_google_palm, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
 
 # LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
@@ -61,22 +61,7 @@ class PromptPipeline:
             prompt_str = str(prompt)
             info = prompt.fill_history
 
-            # The cache is indexed by prompt. Each item could be a single response object, 
-            # or a list of them in the case of different model settings. 
-            settings_matched_cached_resp = False
-            cached_resps = responses[prompt_str] if prompt_str in responses else None
-            cached_resp = None
-            cached_resp_idx = -1
-            if isinstance(cached_resps, list):
-                # Find which response object matches the passed settings, if any:
-                for idx, c in enumerate(cached_resps):
-                    if matching_settings(c, llm_name=llm.value, temperature=temperature, **llm_params):
-                        cached_resp = c
-                        cached_resp_idx = idx
-                        break
-            elif cached_resps is not None and matching_settings(cached_resps, llm_name=llm.value, temperature=temperature, **llm_params):
-                cached_resp = cached_resps
-
+            cached_resp = responses[prompt_str] if prompt_str in responses else None
             extracted_resps = cached_resp["responses"] if cached_resp is not None else []
             
             # First check if there is already a response for this item under these settings. If so, we can save an LLM call:
@@ -116,20 +101,8 @@ class PromptPipeline:
                 if past_resp_obj is not None:
                     resp_obj = merge_response_objs(resp_obj, past_resp_obj)
 
-                    # Override the previously cache'd response
-                    if cached_resp_idx > -1:
-                        responses[resp_obj["prompt"]][cached_resp_idx] = resp_obj
-                    else:
-                        responses[resp_obj["prompt"]] = resp_obj
-                else:
-                    # Add a new response to the responses cache:
-                    if resp_obj["prompt"] in responses:
-                        prev_resps = responses[resp_obj["prompt"]]
-                        responses[resp_obj["prompt"]] = (prev_resps + [resp_obj]) if isinstance(prev_resps, list) else ([prev_resps, resp_obj])
-                    else:
-                        responses[resp_obj["prompt"]] = resp_obj
-
                 # Save the current state of cache'd responses to a JSON file
+                responses[resp_obj["prompt"]] = resp_obj
                 self._cache_responses(responses)
 
                 # Yield the response
@@ -158,21 +131,9 @@ class PromptPipeline:
             if past_resp_obj is not None:
                 resp_obj = merge_response_objs(resp_obj, past_resp_obj)
 
-                # Override the previously cache'd response
-                if cached_resp_idx > -1:
-                    responses[resp_obj["prompt"]][cached_resp_idx] = resp_obj
-                else:
-                    responses[resp_obj["prompt"]] = resp_obj
-            else:
-                # Add a new response to the responses cache:
-                if resp_obj["prompt"] in responses:
-                    prev_resps = responses[resp_obj["prompt"]]
-                    responses[resp_obj["prompt"]] = (prev_resps + [resp_obj]) if isinstance(prev_resps, list) else ([prev_resps, resp_obj])
-                else:
-                    responses[resp_obj["prompt"]] = resp_obj
-
             # Save the current state of cache'd responses to a JSON file
             # NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
+            responses[resp_obj["prompt"]] = resp_obj
             self._cache_responses(responses)
 
             # Yield the response

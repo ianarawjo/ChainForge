@@ -6,7 +6,7 @@ import { useDisclosure } from '@mantine/hooks';
 import validator from '@rjsf/validator-ajv8';
 import Form from '@rjsf/core';
 
-import { ModelSettings } from './ModelSettingSchemas'
+import { ModelSettings, getDefaultModelFormData, postProcessFormData } from './ModelSettingSchemas'
 import useStore from './store';
 
 const ModelSettingsModal = forwardRef((props, ref) => {
@@ -28,10 +28,11 @@ const ModelSettingsModal = forwardRef((props, ref) => {
             setModelName(props.model.base_model);
             return;
         }
-        const schema = ModelSettings[props.model.base_model].schema;
+        const settingsSpec = ModelSettings[props.model.base_model];
+        const schema = settingsSpec.schema;
         setSchema(schema);
-        setUISchema(ModelSettings[props.model.base_model].uiSchema);
-        setModelName(ModelSettings[props.model.base_model].fullName);
+        setUISchema(settingsSpec.uiSchema);
+        setModelName(settingsSpec.fullName);
         if (props.model.formData) {
             setFormData(props.model.formData);
         } else {
@@ -40,30 +41,14 @@ const ModelSettingsModal = forwardRef((props, ref) => {
             Object.keys(schema.properties).forEach(key => {
                 default_settings[key] = 'default' in schema.properties[key] ? schema.properties[key]['default'] : undefined;
             });
-            setFormData(default_settings);
+            setFormData(getDefaultModelFormData(settingsSpec));
         }
     }
   }, [props.model]);
 
   // Postprocess the form data into the format expected by the backend (kwargs passed to Python API calls)
   const postprocess = useCallback((fdata) => {
-    // Strip all 'model' and 'shortname' props in the submitted form, as these are passed elsewhere or unecessary for the backend
-    const skip_keys = {'model': true, 'shortname': true};
-
-    let new_data = {};
-    let postprocessors = {};
-    if (props.model?.base_model && props.model.base_model in ModelSettings && ModelSettings[props.model.base_model].postprocessors)
-        postprocessors = ModelSettings[props.model.base_model].postprocessors;
-
-    Object.keys(fdata).forEach(key => {
-        if (key in skip_keys) return;
-        if (key in postprocessors)
-            new_data[key] = postprocessors[key](fdata[key]);
-        else
-            new_data[key] = fdata[key];
-    });
-    
-    return new_data;
+    return postProcessFormData(ModelSettings[props.model.base_model], fdata);
   }, [props.model]);
 
   const onSubmit = useCallback((submitInfo) => {

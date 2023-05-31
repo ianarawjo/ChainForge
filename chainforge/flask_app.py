@@ -1,14 +1,14 @@
 import json, os, asyncio, sys, argparse, threading, traceback
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union
+from typing import Union, List
 from statistics import mean, median, stdev
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from chainforge.promptengine.query import PromptLLM, PromptLLMDummy
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
-from chainforge.promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys, matching_settings
+from chainforge.promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
 
 # Setup Flask app to serve static version of React front-end
 BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
@@ -54,26 +54,58 @@ def to_standard_format(r: dict) -> list:
         resp_obj['eval_res'] = r['eval_res']
     return resp_obj
 
-def get_filenames_with_id(filenames: list, id: str) -> list:
-    return [
-        c for c in filenames
-        if c.split('.')[0] == id or ('-' in c and c[:c.rfind('-')] == id)
-    ]
+def get_filenames_for_id(id: str, include_basefile=True) -> List[str]:
+    # Load the base cache file
+    base_file = f"{cache_id}.json"
+    data = load_cache_json(base_file)
+    if isinstance(data, dict) and 'cache_files' in data:
+        return list(data['cache_files'].keys()) + ([base_file] if include_basefile else [])
+    else:
+        return [base_file]
 
 def remove_cached_responses(cache_id: str):
     all_cache_files = get_files_at_dir(CACHE_DIR)
-    cache_files = get_filenames_with_id(all_cache_files, cache_id)
+    cache_files = get_filenames_for_id(cache_id)
     for filename in cache_files:
         os.remove(os.path.join(CACHE_DIR, filename))
 
-def load_cache_json(filepath: str) -> dict:
-    with open(filepath, encoding="utf-8") as f:
-        responses = json.load(f)
-    return responses
+def load_cache_json(filename: str) -> dict:
+    """
+        Loads the cache JSON file at filepath. 
+        'Soft fails' if the file does not exist (returns empty object).
+    """
+    filepath = os.path.join(CACHE_DIR, filename)
+    if os.path.exists(filepath):
+        with open(filepath, encoding="utf-8") as f:
+            data = json.load(f)
+    else:
+        data = {}
+    return data
+
+def load_cache_responses(filename: str) -> List[dict]:
+    data = load_cache_json(filename)
+    if isinstance(data, dict) and 'responses_last_run' in data:
+        return data['responses_last_run']
+    elif isinstance(data, list):
+        return data
+    else:
+        raise Exception(f"Could not find cache file for id {cache_id}")
+
+def gen_unique_cache_filename(cache_id, prev_filenames: List[str]) -> str:
+    idx = 0
+    for f in prev_filenames:
+        idx = max(int(f.split('.')[-2].split('_')[-1])+1, idx)
+    return f"{cache_id}_{idx}.json"
 
 def extract_llm_name(llm_spec):
     if isinstance(llm_spec, dict): 
         return llm_spec['model']
+    else:
+        return llm_spec
+
+def extract_llm_key(llm_spec):
+    if isinstance(llm_spec, dict) and 'key' in llm_spec:
+        return llm_spec['key']
     else:
         return llm_spec
 
@@ -82,6 +114,22 @@ def extract_llm_params(llm_spec):
         return llm_spec['settings']
     else:
         return {}
+
+def matching_settings(cache_llm_spec: dict, llm_spec: dict):
+    """
+        Given a cache'd response object, and an LLM name and set of parameters (settings to use), 
+        determines whether the response query used the same parameters.
+    """
+    if extract_llm_name(cache_llm_spec) != extract_llm_name(llm_spec):
+        return False
+    if isinstance(llm_spec, dict) and isinstance(cache_llm_spec, dict):
+        llm_params = extract_llm_params(llm_spec)
+        cache_llm_params = extract_llm_params(cache_llm_spec)
+        print('params', llm_params, cache_llm_params)
+        for param, val in llm_params.items():
+            if param in cache_llm_params and cache_llm_params[param] != val:
+                return False
+    return True
 
 class MetricType(Enum):
     KeyValue = 0
@@ -243,36 +291,6 @@ def reduce_responses(responses: list, vars: list) -> list:
     
     return ret
 
-def load_all_cached_responses(cache_ids):
-    # Create a cache dir if it doesn't exist:
-    create_dir_if_not_exists(CACHE_DIR)
-
-    if not isinstance(cache_ids, list):
-        cache_ids = [cache_ids]
-    
-    # Load all responses with the given ID:
-    all_cache_files = get_files_at_dir(CACHE_DIR)
-    responses = []
-    for cache_id in cache_ids:
-        cache_files = [fname for fname in get_filenames_with_id(all_cache_files, cache_id) if fname != f"{cache_id}.json"]
-        if len(cache_files) == 0:
-            continue
-
-        for filename in cache_files:
-            res = load_cache_json(os.path.join(CACHE_DIR, filename))
-            if isinstance(res, dict):
-                # Convert to standard response format
-                new_res = []
-                for prompt, res_obj in res.items():
-                    if isinstance(res_obj, list):
-                        new_res.extend([to_standard_format({'prompt': prompt, **r}) for r in res_obj])
-                    else:
-                        new_res.append(to_standard_format({'prompt': prompt, **res_obj}))
-                res = new_res
-            responses.extend(res)
-    
-    return responses
-
 @app.route('/app/countQueriesRequired', methods=['POST'])
 def countQueries():
     """
@@ -300,41 +318,53 @@ def countQueries():
         return jsonify({'error': str(e)})
     
     if 'id' in data:
-        # Load all cache'd responses with the given id:
-        cached_resps = load_all_cached_responses(data['id'])
+        cache_data = load_cache_json(f"{data['id']}.json")
+        cache_file_lookup = cache_data['cache_files'] if 'cache_files' in cache_data else {}
     else:
-        cached_resps = []
+        cache_file_lookup = {}
     
     missing_queries = {}
     num_responses_req = {}
-    def add_to_missing_queries(llm, prompt, num):
-        if llm not in missing_queries:
-            missing_queries[llm] = {}
-        missing_queries[llm][prompt] = num
-    def add_to_num_responses_req(llm, num):
-        if llm not in num_responses_req:
-            num_responses_req[llm] = 0
-        num_responses_req[llm] += num
+    def add_to_missing_queries(llm_key, prompt, num):
+        if llm_key not in missing_queries:
+            missing_queries[llm_key] = {}
+        missing_queries[llm_key][prompt] = num
+    def add_to_num_responses_req(llm_key, num):
+        if llm_key not in num_responses_req:
+            num_responses_req[llm_key] = 0
+        num_responses_req[llm_key] += num
     
-    # Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
-    for prompt in all_prompt_permutations:
-        prompt = str(prompt)
-        matching_resps = [r for r in cached_resps if r['prompt'] == prompt]
-        for llm in data['llms']:
-            llm_name = extract_llm_name(llm)
-            llm_params = extract_llm_params(llm)
-            add_to_num_responses_req(llm_name, n)
-            match_per_llm = [r for r in matching_resps if matching_settings(r, llm_name=llm_name, **llm_params)]
-            if len(match_per_llm) == 0:
-                add_to_missing_queries(llm_name, prompt, n)
-            elif len(match_per_llm) == 1:
-                # Check how many were stored; if not enough, add how many missing queries:
-                num_resps = len(match_per_llm[0]['responses'])
-                if n > len(match_per_llm[0]['responses']):
-                    add_to_missing_queries(llm_name, prompt, n - num_resps)
-            else:
-                print('match_per_llm', match_per_llm)
-                raise Exception(f"More than one response object found for the same prompt ({prompt}) and LLM ({llm_name}) with the same settings")
+    for llm_spec in data['llms']:
+        llm_name = extract_llm_name(llm_spec)
+        llm_params = extract_llm_params(llm_spec)
+        llm_key = extract_llm_key(llm_spec)
+
+        add_to_num_responses_req(llm_key, n)
+
+        # Find the response cache file for the specific LLM, if any
+        found_cache = False
+        for cache_filename, cache_llm_spec in cache_file_lookup.items():
+            if matching_settings(cache_llm_spec, llm_spec):
+                found_cache = True
+
+                # Load the cache file
+                cache_llm_responses = load_cache_json(cache_filename)
+                # Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
+                for prompt in all_prompt_permutations:
+                    prompt = str(prompt)
+                    if prompt in cache_llm_responses:
+                        # Check how many were stored; if not enough, add how many missing queries:
+                        num_resps = len(cache_llm_responses[prompt]['responses'])
+                        if n > num_resps:
+                            add_to_missing_queries(llm_key, prompt, n - num_resps)
+                    else:
+                        add_to_missing_queries(llm_key, prompt, n)
+                
+                break
+        
+        if not found_cache:
+            for prompt in all_prompt_permutations:
+                add_to_missing_queries(llm_key, str(prompt), n)
 
     ret = jsonify({'counts': missing_queries, 'total_num_responses': num_responses_req})
     ret.headers.add('Access-Control-Allow-Origin', '*')
@@ -410,14 +440,37 @@ async def queryLLM():
     # Create a cache dir if it doesn't exist:
     create_dir_if_not_exists(CACHE_DIR)
 
-    # Check that the filepath used to cache eval'd responses is valid:
+    # Check that the filepath used to cache responses is valid:
     cache_filepath_last_run = os.path.join(CACHE_DIR, f"{data['id']}.json")
     if not is_valid_filepath(cache_filepath_last_run):
         return jsonify({'error': f'Invalid filepath: {cache_filepath_last_run}'})
+    
+    # Get the filenames of any cache files for specific models + settings
+    llms = data['llm']
+    cache = load_cache_json(cache_filepath_last_run)
+    llm_to_cache_filename = {}
+    if isinstance(cache, dict) and 'cache_files' in cache:
+        past_cachefiles = list(cache['cache_files'].keys())
+        for llm_spec in llms:
+            found_cache = False
+            for filename, cache_llm_spec in cache['cache_files'].items():
+                if matching_settings(cache_llm_spec, llm_spec):
+                    llm_to_cache_filename[extract_llm_key(llm_spec)] = filename
+                    found_cache = True
+                    break
+            if not found_cache:
+                new_filename = gen_unique_cache_filename(data['id'], past_cachefiles)
+                llm_to_cache_filename[extract_llm_key(llm_spec)] = new_filename
+                past_cachefiles.append(new_filename)
+    else:
+        prev_filenames = []
+        for llm_spec in llms:
+            fname = gen_unique_cache_filename(data['id'], prev_filenames)
+            llm_to_cache_filename[extract_llm_key(llm_spec)] = fname
+            prev_filenames.append(fname)
 
     # For each LLM, generate and cache responses:
     responses = {}
-    llms = data['llm']
     num_generations = data['n'] if 'n' in data else 1
     tempfilepath = os.path.join(CACHE_DIR, f"_temp_{data['id']}.txt")
     if not is_valid_filepath(tempfilepath):
@@ -427,12 +480,13 @@ async def queryLLM():
         # Get LLM model name and any params
         llm_str = extract_llm_name(llm_spec)
         llm_params = extract_llm_params(llm_spec)
+        llm_key = extract_llm_key(llm_spec)
 
         # Get the appropriate LLM enum value associated with the model name
         llm = LLM_NAME_MAP[llm_str]
 
         # Check that storage path is valid:
-        cache_filepath = os.path.join(CACHE_DIR, f"{data['id']}-{str(llm.name)}.json")
+        cache_filepath = os.path.join(CACHE_DIR, llm_to_cache_filename[llm_key])
         if not is_valid_filepath(cache_filepath):
             return jsonify({'error': f'Invalid filepath: {cache_filepath}'})
 
@@ -456,7 +510,7 @@ async def queryLLM():
                     txt = f.read().strip()
                 
                 cur_data = json.loads(txt) if len(txt) > 0 else {}
-                cur_data[llm_str] = num_resps
+                cur_data[llm_key] = num_resps
                 
                 with open(tempfilepath, 'w', encoding='utf-8') as f:
                     json.dump(cur_data, f)
@@ -465,18 +519,20 @@ async def queryLLM():
             print(traceback.format_exc())
             raise e
         
-        return {'llm': llm, 'responses': resps}
+        return {'llm_key': llm_key, 'responses': resps}
             
     try:
         # Request responses simultaneously across LLMs
-        tasks = [query(llm) for llm in llms]
+        tasks = [query(llm_spec) for llm_spec in llms]
 
         # Await the responses from all queried LLMs
         llm_results = await asyncio.gather(*tasks)
         for item in llm_results:
-            responses[item['llm']] = item['responses']
+            responses[item['llm_key']] = item['responses']
 
     except Exception as e:
+        print(f'error requesting responses:', e)
+        print(traceback.format_exc())
         return jsonify({'error': str(e)})
 
     # Convert the responses into a more standardized format with less information
@@ -491,8 +547,17 @@ async def queryLLM():
         os.remove(tempfilepath)
     
     # Save the responses *of this run* to the disk, for further recall:
+    cache_filenames = {}
+    for llm_spec in llms:
+        filename = llm_to_cache_filename[extract_llm_key(llm_spec)]
+        cache_filenames[filename] = llm_spec
+
+    cache_data = {
+        "cache_files": cache_filenames,
+        "responses_last_run": res,
+    }
     with open(cache_filepath_last_run, "w", encoding='utf-8') as f:
-        json.dump(res, f)
+        json.dump(cache_data, f)
 
     # Return all responses for all LLMs
     print('returning responses:', res)
@@ -578,7 +643,7 @@ def execute():
             return jsonify({'error': f'Did not find cache file for id {cache_id}'})
 
         # Load the raw responses from the cache
-        responses = load_cache_json(os.path.join(CACHE_DIR, fname))
+        responses = load_cache_responses(fname)
         if len(responses) == 0: continue
 
         # Run the evaluator over them: 
@@ -661,7 +726,7 @@ def grabResponses():
         if fname not in all_cache_files:
             return jsonify({'error': f'Did not find cache file for id {cache_id}'})
         
-        res = load_cache_json(os.path.join(CACHE_DIR, fname))
+        res = load_cache_responses(fname)
         if isinstance(res, dict):
             # Convert to standard response format
             res = [
@@ -693,16 +758,15 @@ def exportCache():
         return jsonify({'error': 'Ids parameter to exportData must be a list.'})
 
     # For each id, extract relevant cache file data
-    all_cache_files = get_files_at_dir(CACHE_DIR)
     export_data = {}
     for cache_id in data['ids']:
-        cache_files = get_filenames_with_id(all_cache_files, cache_id)
+        cache_files = get_filenames_for_id(cache_id)
         if len(cache_files) == 0:
             print(f"Warning: Could not find data for id '{cache_id}'. Skipping...")
             continue
 
         for filename in cache_files:
-            export_data[filename] = load_cache_json(os.path.join(CACHE_DIR, filename))
+            export_data[filename] = load_cache_json(filename)
 
     # Return cache'd file data
     ret = jsonify({'files': export_data})

@@ -41,21 +41,6 @@ async def make_sync_call_async(sync_method, *args, **params):
         method = partial_sync_meth
     return await loop.run_in_executor(None, method, *args)
 
-def matching_settings(cached_resp: dict, llm_name: str, **params):
-    """
-        Given a cache'd response object, and an LLM name and set of parameters (settings to use), 
-        determines whether the response query used the same parameters.
-    """
-    print('matching_settings', cached_resp, llm_name, params)
-    if cached_resp['llm'] != llm_name:
-        print('names dont match')
-        return False
-    for param, val in params.items():
-        if param in cached_resp['query'] and cached_resp['query'][param] != val:
-            print(f'query param {param} doesnt match')
-            return False
-    return True
-
 async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0, system_msg: Optional[str]=None, **params) -> Tuple[Dict, Dict]:
     """
         Calls GPT3.5 via OpenAI's API. 
