@@ -44,6 +44,25 @@ const bucketResponsesByLLM = (responses) => {
     });
     return responses_by_llm;
 };
+// Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
+const ensureUniqueName = (_name, _prev_names) => {
+    // Strip whitespace around names
+    const prev_names = _prev_names.map(n => n.trim());
+    const name = _name.trim();
+  
+    // Check if name is unique
+    if (!prev_names.includes(name))
+      return name;
+    
+    // Name isn't unique; find a unique one:
+    let i = 2;
+    let new_name = `${name} (${i})`;
+    while (prev_names.includes(new_name)) {
+      i += 1;
+      new_name = `${name} (${i})`;
+    }
+    return new_name;
+};
 
 const PromptNode = ({ data, id }) => {
 
@@ -105,6 +124,11 @@ const PromptNode = ({ data, id }) => {
 
     // Generate the default settings for this model
     item.settings = getDefaultModelSettings(model);
+
+    // Repair names to ensure they are unique
+    const unique_name = ensureUniqueName(item.name, llmItemsCurrState.map(i => i.name));
+    item.name = unique_name;
+    item.formData = { 'shortname': unique_name };
 
     // Add model to LLM list (regardless of it's present already or not). 
     setLLMItems(llmItemsCurrState.concat([item]))

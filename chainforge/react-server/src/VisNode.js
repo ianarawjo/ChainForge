@@ -64,7 +64,7 @@ const genUniqueShortnames = (names) => {
         }
     }
     return shortnames;
-}
+};
 
 const VisNode = ({ data, id }) => {
 

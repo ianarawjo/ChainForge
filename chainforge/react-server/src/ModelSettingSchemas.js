@@ -10,7 +10,7 @@
  */
 
 const ChatGPTSettings = {
-    fullName: "GPT3.5 (ChatGPT)",
+    fullName: "GPT-3.5 (ChatGPT)",
     schema: {
         "type": "object",
         "required": [
@@ -140,6 +140,33 @@ const ChatGPTSettings = {
     }
 };
 
+const GPT4Settings = {
+    fullName: "GPT-4",
+    schema: {
+      "type": "object",
+        "required": [
+            "shortname"
+        ],
+        "properties": {
+            ...ChatGPTSettings.schema.properties,
+            "shortname": {
+              "type": "string",
+              "title": "Nickname",
+              "description": "Unique identifier to appear in ChainForge plots and exported data. Keep it short.",
+              "default": "GPT-4"
+            },
+            "model": {
+              "type": "string",
+              "title": "Model Version",
+              "description": "Select a version of GPT-4 to query. For more details on the differences, see the OpenAI API documentation. (Note that all ChainForge OpenAI calls use the Chat Completions API; we intend to support just Completions in the future.)",
+              "enum": ["gpt-4", "gpt-4-0314", "gpt-4-32k", "gpt-4-32k-0314"],
+              "default": "gpt-4"
+            },
+        }
+    },
+    uiSchema: ChatGPTSettings.uiSchema
+};
+
 const ClaudeSettings = {
     fullName: "Claude (Anthropic)",
     schema: {
@@ -256,6 +283,7 @@ const ClaudeSettings = {
 
 export const ModelSettings = {
   'gpt-3.5-turbo': ChatGPTSettings,
+  'gpt-4': GPT4Settings,
   'claude-v1': ClaudeSettings,
 }
 

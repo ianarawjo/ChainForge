@@ -4,6 +4,26 @@ import LLMListItem, { DragItem, LLMListItemClone } from "./LLMListItem";
 import { StrictModeDroppable } from './StrictModeDroppable'
 import ModelSettingsModal from "./ModelSettingsModal"
 
+// Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
+const ensureUniqueName = (_name, _prev_names) => {
+  // Strip whitespace around names
+  const prev_names = _prev_names.map(n => n.trim());
+  const name = _name.trim();
+
+  // Check if name is unique
+  if (!prev_names.includes(name))
+    return name;
+  
+  // Name isn't unique; find a unique one:
+  let i = 2;
+  let new_name = `${name} (${i})`;
+  while (prev_names.includes(new_name)) {
+    i += 1;
+    new_name = `${name} (${i})`;
+  }
+  return new_name;
+};
+
 export default function LLMList({llms, onItemsChange}) {
   const [items, setItems] = useState(llms);
   const settingsModal = useRef(null);
@@ -29,20 +49,30 @@ export default function LLMList({llms, onItemsChange}) {
       return;
     }
 
+    const prev_names = items.filter(item => item.key !== savedItem.key).map(item => item.name);
+
     // Change the settings for the LLM item to the value of 'formData': 
     updateItems(
       items.map(item => {
         if (item.key === savedItem.key) {
           // Create a new item with the same settings
           let updated_item = {...item};
-          if ('model' in formData) // Update the name of the specific model to call
-            updated_item.model = formData['model'];
-          if ('shortname' in formData)
-            updated_item.name = formData['shortname'];
-          if (savedItem.emoji)
-            updated_item.emoji = savedItem.emoji;
           updated_item.formData = {...formData};
           updated_item.settings = {...settingsData};
+
+          if ('model' in formData) // Update the name of the specific model to call
+            updated_item.model = formData['model'];
+          if ('shortname' in formData) {
+            // Change the name, amending any name that isn't unique to ensure it is unique:
+            const unique_name = ensureUniqueName(formData['shortname'], prev_names);
+            updated_item.name = unique_name;
+            if (updated_item.formData?.shortname)
+              updated_item.formData.shortname = unique_name;
+          }
+
+          if (savedItem.emoji)
+            updated_item.emoji = savedItem.emoji;
+          
           return updated_item;
         }
         else return item;
