@@ -253,7 +253,7 @@ const PromptNode = ({ data, id }) => {
         return response.json();
     }, rejected).then(function(json) {
         if (!json || !json.counts) {
-            throw new Error('Request was sent and received by backend server, but there was no response.');
+            throw new Error('There was no response from the server.');
         }
         return [json.counts, json.total_num_responses];
     }, rejected);
@@ -323,7 +323,8 @@ const PromptNode = ({ data, id }) => {
             else
                 setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name}`);
         }
-        
+    }).catch(() => {
+        setRunTooltip('Could not reach backend server.');
     });
   };
 
