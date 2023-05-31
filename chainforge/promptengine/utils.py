@@ -3,7 +3,7 @@ import json, os, time, asyncio
 from string import Template
 import concurrent.futures
 
-from chainforge.promptengine.models import LLM
+from chainforge.promptengine.models import LLM, RATE_LIMITS
 
 DALAI_MODEL = None
 DALAI_RESPONSE = None
@@ -53,6 +53,9 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 
         openai.api_key = os.environ.get("OPENAI_API_KEY")
 
     model = model.value
+    if 'stop' in params and not isinstance(params['stop'], list) or len(params['stop']) == 0:
+        del params['stop']
+
     print(f"Querying OpenAI model '{model}' with prompt '{prompt}'...")
     system_msg = "You are a helpful assistant." if system_msg is None else system_msg
     
@@ -72,13 +75,24 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 
             {"role": "system", "content": system_msg},
             {"role": "user", "content": prompt},
         ]
-        
-    try:
-        response = await openai_call(**query)
-    except Exception as e:
-        if (isinstance(e, openai.error.AuthenticationError)):
-            raise Exception("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local Python environment.")
-        raise e
+    
+    attempts = 0
+    max_attempts = 2
+    while attempts < max_attempts:
+        try:
+            response = await openai_call(**query)
+        except openai.error.RateLimitError as e:
+            attempts += 1  # try up to two times when encountering rate limit errors
+            print(f" > Encountered rate limit error when querying OpenAI model {model}. Retrying (attempt #{attempts+1})...")
+            await asyncio.sleep(5)  # wait a few seconds before re-calling OpenAI
+        except Exception as e:
+            if (isinstance(e, openai.error.AuthenticationError)):
+                raise Exception("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local Python environment.")
+            raise e
+    
+    if attempts >= 2:
+        raise Exception(f"Encountered rate limit errors when calling OpenAI for model {model}.")
+
     return query, response
 
 async def call_anthropic(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0,
@@ -155,6 +169,8 @@ async def call_google_palm(prompt: str, model: LLM, n: int = 1, temperature: flo
     import google.generativeai as palm
     palm.configure(api_key=GOOGLE_PALM_API_KEY)
 
+    is_chat_model = 'chat' in model.value
+
     query = {
         'model': f"models/{model.value}",
         'prompt': prompt,
@@ -164,11 +180,42 @@ async def call_google_palm(prompt: str, model: LLM, n: int = 1, temperature: flo
         **params,
     }
 
-    # Google PaLM's python api does not currently support async calls.
-    # To make one, we need to wrap it in an asynchronous executor:
-    completion = await make_sync_call_async(palm.generate_text, **query)
+    # Remove erroneous parameters for text and chat models
+    if 'top_k' in query and query['top_k'] <= 0:
+        del query['top_k']
+    if 'top_p' in query and query['top_p'] <= 0:
+        del query['top_p']
+    if is_chat_model and 'max_output_tokens' in query:
+        del query['max_output_tokens']
+    if is_chat_model and 'stop_sequences' in query:
+        del query['stop_sequences']
+    
+    # Get the correct model's completions call
+    palm_call = palm.chat if is_chat_model else palm.generate_text
 
-    return query, completion.to_dict()
+    # Google PaLM's python API does not currently support async calls.
+    # To make one, we need to wrap it in an asynchronous executor:
+    completion = await make_sync_call_async(palm_call, **query)
+    completion_dict = completion.to_dict()
+
+    # Google PaLM, unlike other chat models, will output empty
+    # responses for any response it deems unsafe (blocks). Although the text completions
+    # API has a (relatively undocumented) 'safety_settings' parameter,
+    # the current chat completions API provides users no control over the blocking.
+    # We need to detect this and fill the response with the safety reasoning:
+    if len(completion.filters) > 0:
+        # Request was blocked. Output why in the response text, 
+        # repairing the candidate dict to mock up 'n' responses
+        block_error_msg = f'[[BLOCKED_REQUEST]] Request was blocked because it triggered safety filters: {str(completion.filters)}'
+        completion_dict['candidates'] = [{'author': 1, 'content':block_error_msg}] * n
+
+    # Weirdly, google ignores candidate_count if temperature is 0. 
+    # We have to check for this and manually append the n-1 responses:
+    if n > 1 and temperature == 0 and len(completion_dict['candidates']) == 1:
+        copied_candidates = [completion_dict['candidates'][0]] * n
+        completion_dict['candidates'] = copied_candidates
+
+    return query, completion_dict
 
 async def call_dalai(model: LLM, port: int, prompt: str, n: int = 1, temperature: float = 0.5, **params) -> Tuple[Dict, Dict]:
     """
@@ -279,28 +326,35 @@ def _extract_openai_completion_responses(response: dict) -> List[str]:
 
 def _extract_palm_responses(completion) -> List[str]:
     """
-        Extracts the text part of a 'Completion' object from Google PaLM2 `generate_text`
+        Extracts the text part of a 'Completion' object from Google PaLM2 `generate_text` or `chat`
+
+        NOTE: The candidate object for `generate_text` has a key 'output' which contains the response,
+        while the `chat` API uses a key 'content'. This checks for either.
     """
-    return [c['output'] for c in completion['candidates']]
+    return [
+        c['output'] if 'output' in c else c['content']
+        for c in completion['candidates']
+    ]
 
 def extract_responses(response: Union[list, dict], llm: Union[LLM, str]) -> List[str]:
     """
         Given a LLM and a response object from its API, extract the
         text response(s) part of the response object.
     """
-    if (isinstance(llm, LLM) and llm.name[:6] == 'OpenAI') or (isinstance(llm, str) and llm[:6] == 'OpenAI'):
-        if 'davinci' in str(llm).lower():
+    llm_str = llm.name if isinstance(llm, LLM) else llm
+    if llm_str[:6] == 'OpenAI':
+        if 'davinci' in llm_str.lower():
             return _extract_openai_completion_responses(response)
         else:
             return _extract_chatgpt_responses(response)
-    elif llm is LLM.PaLM2 or llm == LLM.PaLM2.value:
+    elif llm_str[:5] == 'PaLM2':
         return _extract_palm_responses(response)
-    elif llm is LLM.Alpaca7B or llm == LLM.Alpaca7B.value:
+    elif llm is LLM.Alpaca7B or llm_str == LLM.Alpaca7B.value:
         return response
-    elif (isinstance(llm, LLM) and llm.value[:6] == 'claude') or (isinstance(llm, str) and llm[:6] == 'claude'):
+    elif llm_str[:6] == 'Claude':
         return [r["completion"] for r in response]
     else:
-        raise ValueError(f"LLM {llm} is unsupported.")
+        raise ValueError(f"LLM {llm_str} is unsupported.")
 
 def merge_response_objs(resp_obj_A: Union[dict, None], resp_obj_B: Union[dict, None]) -> dict:
     if resp_obj_B is None: 
