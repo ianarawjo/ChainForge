@@ -76,23 +76,13 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 
             {"role": "user", "content": prompt},
         ]
     
-    attempts = 0
-    max_attempts = 2
-    while attempts < max_attempts:
-        try:
-            response = await openai_call(**query)
-        except openai.error.RateLimitError as e:
-            attempts += 1  # try up to two times when encountering rate limit errors
-            print(f" > Encountered rate limit error when querying OpenAI model {model}. Retrying (attempt #{attempts+1})...")
-            await asyncio.sleep(5)  # wait a few seconds before re-calling OpenAI
-        except Exception as e:
-            if (isinstance(e, openai.error.AuthenticationError)):
-                raise Exception("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local Python environment.")
-            raise e
+    try:
+        response = await openai_call(**query)
+    except Exception as e:
+        if (isinstance(e, openai.error.AuthenticationError)):
+            raise Exception("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local Python environment.")
+        raise e
     
-    if attempts >= 2:
-        raise Exception(f"Encountered rate limit errors when calling OpenAI for model {model}.")
-
     return query, response
 
 async def call_anthropic(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0,

@@ -341,7 +341,7 @@ const PaLM2Settings = {
               "type": "integer",
               "title": "max_output_tokens (ignored for chat models)",
               "description": "Maximum number of tokens to include in each response of a text-bison model. Must be greater than zero. If unset, will default to 512. Ignored for chat models.",
-              "default": 256,
+              "default": 512,
               "minimum": 1
           },
           "stop_sequences": {
