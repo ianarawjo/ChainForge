@@ -10,7 +10,6 @@ import validator from '@rjsf/validator-ajv8';
 import Form from '@rjsf/core';
 
 import { ModelSettings, getDefaultModelFormData, postProcessFormData } from './ModelSettingSchemas'
-import useStore from './store';
 
 const ModelSettingsModal = forwardRef((props, ref) => {
   const [opened, { open, close }] = useDisclosure(false);

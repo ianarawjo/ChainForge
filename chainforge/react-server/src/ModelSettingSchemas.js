@@ -20,7 +20,7 @@ const ChatGPTSettings = {
             "shortname": {
                 "type": "string",
                 "title": "Nickname",
-                "description": "Unique identifier to appear in ChainForge plots and exported data. Keep it short.",
+                "description": "Unique identifier to appear in ChainForge. Keep it short.",
                 "default": "GPT3.5"
             },
             "model": {
@@ -57,7 +57,7 @@ const ChatGPTSettings = {
             "stop": {
                 "type": "string",
                 "title": "stop sequences",
-                "description": "Up to 4 sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes \"\" and use commas to separate them.",
+                "description": "Up to 4 sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes \"\" and use whitespace to separate them.",
                 "default": ""
             },
             "max_tokens": {
@@ -137,6 +137,13 @@ const ChatGPTSettings = {
           "ui:widget": "textarea",
           "ui:help": "Defaults to none."
         }
+    },
+
+    postprocessors: {
+      'stop': (str) => {
+        if (str.trim().length === 0) return [];
+        return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
+      }
     }
 };
 
@@ -152,7 +159,7 @@ const GPT4Settings = {
             "shortname": {
               "type": "string",
               "title": "Nickname",
-              "description": "Unique identifier to appear in ChainForge plots and exported data. Keep it short.",
+              "description": "Unique identifier to appear in ChainForge. Keep it short.",
               "default": "GPT-4"
             },
             "model": {
@@ -164,7 +171,8 @@ const GPT4Settings = {
             },
         }
     },
-    uiSchema: ChatGPTSettings.uiSchema
+    uiSchema: ChatGPTSettings.uiSchema,
+    postprocessors: ChatGPTSettings.postprocessors,
 };
 
 const ClaudeSettings = {
@@ -178,7 +186,7 @@ const ClaudeSettings = {
             "shortname": {
                 "type": "string",
                 "title": "Nickname",
-                "description": "Unique identifier to appear in ChainForge plots and exported data. Keep it short.",
+                "description": "Unique identifier to appear in ChainForge. Keep it short.",
                 "default": "Claude"
             },
             "model": {
@@ -236,6 +244,7 @@ const ClaudeSettings = {
             },
         }
     },
+
     uiSchema: {
         'ui:submitButtonOptions': {
             props: {
@@ -266,13 +275,14 @@ const ClaudeSettings = {
         },
         "stop_sequences": {
           "ui:widget": "textarea",
-          "ui:help": "Defaults to no additional stop sequences (empty)."
+          "ui:help": "Defaults to one stop sequence, \"\\n\\nHuman: \""
         },
         "custom_prompt_wrapper": {
           "ui:widget": "textarea",
           "ui:help": "Defaults to Anthropic's internal wrapper \"\\n\\nHuman: {prompt}\\n\\nAssistant\"."
         }
     },
+
     postprocessors: {
       'stop_sequences': (str) => {
         if (str.trim().length === 0) return ["\n\nHuman:"];
@@ -281,10 +291,115 @@ const ClaudeSettings = {
     }
 }
 
+const PaLM2Settings = {
+  fullName: "PaLM (Google)",
+  schema: {
+      "type": "object",
+      "required": [
+          "shortname"
+      ],
+      "properties": {
+          "shortname": {
+              "type": "string",
+              "title": "Nickname",
+              "description": "Unique identifier to appear in ChainForge. Keep it short.",
+              "default": "chat-bison"
+          },
+          "model": {
+              "type": "string",
+              "title": "Model",
+              "description": "Select a PaLM model to query. For more details on the differences, see the Google PaLM API documentation.",
+              "enum": ["text-bison-001", "chat-bison-001"],
+              "default": "chat-bison-001"
+          },
+          "temperature": {
+              "type": "number",
+              "title": "temperature",
+              "description": "Controls the randomness of the output. Must be positive. Typical values are in the range: [0.0, 1.0]. Higher values produce a more random and varied response. A temperature of zero will be deterministic. (ChainForge only allows a max 1.0 temperature for PaLM).",
+              "default": 0.5,
+              "minimum": 0,
+              "maximum": 1,
+              "multipleOf": 0.01
+          },
+          "top_k": {
+            "type": "integer",
+            "title": "top_k",
+            "description": "Sets the maximum number of tokens to sample from on each step. (The PaLM API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
+            "minimum": -1,
+            "default": -1
+          },
+          "top_p": {
+              "type": "number",
+              "title": "top_p",
+              "description": "Sets the maximum cumulative probability of tokens to sample from. (The PaLM API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
+              "default": -1,
+              "minimum": -1,
+              "maximum": 1,
+              "multipleOf": 0.001,
+          },
+          "max_output_tokens": {
+              "type": "integer",
+              "title": "max_output_tokens (ignored for chat models)",
+              "description": "Maximum number of tokens to include in each response of a text-bison model. Must be greater than zero. If unset, will default to 512. Ignored for chat models.",
+              "default": 256,
+              "minimum": 1
+          },
+          "stop_sequences": {
+              "type": "string",
+              "title": "stop_sequences (ignored for chat models)",
+              "description": "A set of up to 5 character sequences that will stop output generation. If specified, the API will stop at the first appearance of a stop sequence. The stop sequence will not be included as part of the response.\nEnclose stop sequences in double-quotes \"\" and use whitespace to separate them. Ignored for chat models.",
+              "default": ""
+          },
+      }
+  },
+
+  uiSchema: {
+      'ui:submitButtonOptions': {
+          props: {
+            disabled: false,
+            className: 'mantine-UnstyledButton-root mantine-Button-root',
+          },
+          norender: false,
+          submitText: 'Submit',
+      },
+      "shortname": {
+        "ui:autofocus": true
+      },
+      "model": {
+          "ui:help": "Defaults to chat-bison."
+      },
+      "temperature": {
+        "ui:help": "Defaults to 0.5.",
+        "ui:widget": "range"
+      },
+      "max_output_tokens": {
+          "ui:help": "Defaults to 512. Only relevant to text completions models (text-bison)."
+      },
+      "top_k": {
+          "ui:help": "Defaults to -1 (none)."
+      },
+      "top_p": {
+        "ui:help": "Defaults to -1 (none)."
+      },
+      "stop_sequences": {
+        "ui:widget": "textarea",
+        "ui:help": "Defaults to no additional stop sequences (empty). Ignored for chat models."
+      },
+  },
+
+  postprocessors: {
+    'stop_sequences': (str) => {
+      if (str.trim().length === 0) return [];
+      return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    }
+  }
+}
+
 export const ModelSettings = {
   'gpt-3.5-turbo': ChatGPTSettings,
   'gpt-4': GPT4Settings,
   'claude-v1': ClaudeSettings,
+  'palm2-bison': PaLM2Settings,
 }
 
 export const getTemperatureSpecForModel = (modelName) => {

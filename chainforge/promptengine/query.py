@@ -1,20 +1,8 @@
 from abc import abstractmethod
 from typing import List, Dict, Tuple, Iterator, Union, Optional
 import json, os, asyncio, random, string
-from chainforge.promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, call_google_palm, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
+from chainforge.promptengine.utils import LLM, RATE_LIMITS, call_chatgpt, call_dalai, call_anthropic, call_google_palm, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
-
-# LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
-#   For a basic organization in OpenAI, GPT3.5 is currently 3500 and GPT4 is 200 RPM (requests per minute).
-#   For Anthropic evaluaton preview of Claude, can only send 1 request at a time (synchronously).
-# A 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
-# The following is only a guideline, and a bit on the conservative side. 
-MAX_SIMULTANEOUS_REQUESTS = { 
-    LLM.OpenAI_ChatGPT: (30, 10),  # max 30 requests a batch; wait 10 seconds between
-    LLM.OpenAI_GPT4: (4, 15),  # max 4 requests a batch; wait 15 seconds between
-    LLM.PaLM2: (4, 10),  # max 30 requests per minute; so do 4 per batch, 10 seconds between
-    LLM.Alpaca7B: (1, 0),  # 1 indicates synchronous
-}
 
 """
     Abstract class that captures a generic querying interface to prompt LLMs
@@ -52,7 +40,7 @@ class PromptPipeline:
 
         # Query LLM with each prompt, yield + cache the responses
         tasks = []
-        max_req, wait_secs = MAX_SIMULTANEOUS_REQUESTS[llm] if llm in MAX_SIMULTANEOUS_REQUESTS else (1, 0)
+        max_req, wait_secs = RATE_LIMITS[llm] if llm in RATE_LIMITS else (1, 0)
         
         for num_queries, prompt in enumerate(self.gen_prompts(properties)):
             if isinstance(prompt, PromptTemplate) and not prompt.is_concrete():
@@ -185,7 +173,7 @@ class PromptPipeline:
 
         if llm.name[:6] == 'OpenAI':
             query, response = await call_chatgpt(str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
-        elif llm is LLM.PaLM2:
+        elif llm.name[:5] == 'PaLM2':
             query, response = await call_google_palm(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
         elif llm is LLM.Alpaca7B:
             query, response = await call_dalai(model=llm, port=4000, prompt=str(prompt), n=n, temperature=temperature, **llm_params)

@@ -47,4 +47,24 @@ class LLM(str, Enum):
     Claude_v1_instant = "claude-instant-v1"
 
     """ Google models """
-    PaLM2 = "text-bison-001"  # it's really models/text-bison-001, but that's confusing
+    PaLM2_Text_Bison = "text-bison-001"  # it's really models/text-bison-001, but that's confusing
+    PaLM2_Chat_Bison = "chat-bison-001"
+
+
+# LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
+#   For a basic organization in OpenAI, GPT3.5 is currently 3500 and GPT4 is 200 RPM (requests per minute).
+#   For Anthropic evaluaton preview of Claude, can only send 1 request at a time (synchronously).
+# This 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
+# If a model is missing from below, it means we must send and receive only 1 request at a time.
+# The following is only a guideline, and a bit on the conservative side. 
+RATE_LIMITS = { 
+    LLM.OpenAI_ChatGPT: (30, 10),  # max 30 requests a batch; wait 10 seconds between
+    LLM.OpenAI_ChatGPT_0301: (30, 10),
+    LLM.OpenAI_GPT4: (4, 15),  # max 4 requests a batch; wait 15 seconds between
+    LLM.OpenAI_GPT4_0314: (4, 15), 
+    LLM.OpenAI_GPT4_32k: (4, 15), 
+    LLM.OpenAI_GPT4_32k_0314: (4, 15),
+    LLM.PaLM2_Text_Bison: (4, 10),  # max 30 requests per minute; so do 4 per batch, 10 seconds between (conservative)
+    LLM.PaLM2_Chat_Bison: (4, 10),
+    LLM.Alpaca7B: (1, 0),  # 1 indicates synchronous
+}
