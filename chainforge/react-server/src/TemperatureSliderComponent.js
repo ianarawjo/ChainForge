@@ -12,7 +12,6 @@ export default function TemperatureSlider({style}) {
         label={null}
         defaultValue={40}
         styles={styles}
-        onPointerDown={e => {e.preventDefault();}}
       />
 
       {/* <RangeSlider

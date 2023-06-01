@@ -8,16 +8,11 @@ import TemplateHooks from './TemplateHooksComponent'
 import LLMList from './LLMListComponent'
 import {BASE_URL} from './store';
 import io from 'socket.io-client';
+import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas'
 
-// Available LLMs
-const allLLMs = [
-    { name: "GPT3.5", emoji: "🙂", model: "gpt-3.5-turbo", temp: 1.0 },
-    { name: "GPT4", emoji: "🥵", model: "gpt-4", temp: 1.0 },
-    { name: "Alpaca 7B", emoji: "🦙", model: "alpaca.7B", temp: 0.5 },
-    { name: "Claude v1", emoji: "📚", model: "claude-v1", temp: 0.5 },
-    { name: "PaLM2", emoji: "🦬", model: "text-bison-001", temp: 0.7 },
-];
-const initLLMs = [allLLMs[0]];
+// The LLM(s) to include by default on a PromptNode whenever one is created.
+// Defaults to ChatGPT (GPT3.5).
+const initLLMs = [AvailableLLMs[0]];
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -43,6 +38,25 @@ const bucketResponsesByLLM = (responses) => {
     });
     return responses_by_llm;
 };
+// Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
+const ensureUniqueName = (_name, _prev_names) => {
+    // Strip whitespace around names
+    const prev_names = _prev_names.map(n => n.trim());
+    const name = _name.trim();
+  
+    // Check if name is unique
+    if (!prev_names.includes(name))
+      return name;
+    
+    // Name isn't unique; find a unique one:
+    let i = 2;
+    let new_name = `${name} (${i})`;
+    while (prev_names.includes(new_name)) {
+      i += 1;
+      new_name = `${name} (${i})`;
+    }
+    return new_name;
+};
 
 const PromptNode = ({ data, id }) => {
 
@@ -67,13 +81,17 @@ const PromptNode = ({ data, id }) => {
   const alertModal = useRef(null);
 
   // Selecting LLM models to prompt
-  const [llmItems, setLLMItems] = useState(data.llms || initLLMs.map((i) => ({key: uuid(), ...i})));
+  const [llmItems, setLLMItems] = useState(data.llms || initLLMs.map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i})));
   const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
   const resetLLMItemsProgress = useCallback(() => {
     setLLMItems(llmItemsCurrState.map(item => {
         item.progress = undefined;
         return item;
     }));
+  }, [llmItemsCurrState]);
+  
+  const getLLMListItemForKey = useCallback((key) => {
+    return llmItemsCurrState.find((item) => item.key === key);
   }, [llmItemsCurrState]);
 
   // Progress when querying responses
@@ -88,7 +106,7 @@ const PromptNode = ({ data, id }) => {
 
   const addModel = useCallback((model) => {
     // Get the item for that model
-    let item = allLLMs.find(llm => llm.model === model);
+    let item = AvailableLLMs.find(llm => llm.base_model === model);
 
     if (!item) {  // This should never trigger, but in case it does:
         triggerAlert(`Could not find model named '${model}' in list of available LLMs.`);
@@ -97,6 +115,14 @@ const PromptNode = ({ data, id }) => {
 
     // Give it a uid as a unique key (this is needed for the draggable list to support multiple same-model items; keys must be unique)
     item = {key: uuid(), ...item};
+
+    // Generate the default settings for this model
+    item.settings = getDefaultModelSettings(model);
+
+    // Repair names to ensure they are unique
+    const unique_name = ensureUniqueName(item.name, llmItemsCurrState.map(i => i.name));
+    item.name = unique_name;
+    item.formData = { 'shortname': unique_name };
 
     // Add model to LLM list (regardless of it's present already or not). 
     setLLMItems(llmItemsCurrState.concat([item]))
@@ -221,7 +247,7 @@ const PromptNode = ({ data, id }) => {
         return response.json();
     }, rejected).then(function(json) {
         if (!json || !json.counts) {
-            throw new Error('Request was sent and received by backend server, but there was no response.');
+            throw new Error('There was no response from the server.');
         }
         return [json.counts, json.total_num_responses];
     }, rejected);
@@ -247,7 +273,7 @@ const PromptNode = ({ data, id }) => {
     const num_llms = llms.length;
 
     // Fetch response counts from backend
-    fetchResponseCounts(py_prompt, pulled_vars, llms, (err) => {
+    fetchResponseCounts(py_prompt, pulled_vars, llmItemsCurrState, (err) => {
         console.warn(err.message);  // soft fail
     }).then(([counts, total_num_responses]) => {
         // Check for empty counts (means no requests will be sent!)
@@ -259,16 +285,16 @@ const PromptNode = ({ data, id }) => {
 
         // Tally how many queries per LLM:
         let queries_per_llm = {};
-        Object.keys(counts).forEach(llm => {
-            queries_per_llm[llm] = Object.keys(counts[llm]).reduce(
-                (acc, prompt) => acc + counts[llm][prompt]
+        Object.keys(counts).forEach(llm_key => {
+            queries_per_llm[llm_key] = Object.keys(counts[llm_key]).reduce(
+                (acc, prompt) => acc + counts[llm_key][prompt]
             , 0);
         });
 
         // Check if all counts are the same:
         if (num_llms_missing > 1) {
             const some_llm_num = queries_per_llm[Object.keys(queries_per_llm)[0]];
-            const all_same_num_queries = Object.keys(queries_per_llm).reduce((acc, llm) => acc && queries_per_llm[llm] === some_llm_num, true)
+            const all_same_num_queries = Object.keys(queries_per_llm).reduce((acc, llm_key) => acc && queries_per_llm[llm_key] === some_llm_num, true)
             if (num_llms_missing === num_llms && all_same_num_queries) { // Counts are the same
                 const req = some_llm_num > 1 ? 'requests' : 'request';
                 setRunTooltip(`Will send ${some_llm_num} new ${req}` + (num_llms > 1 ? ' per LLM' : ''));
@@ -278,19 +304,21 @@ const PromptNode = ({ data, id }) => {
                 setRunTooltip(`Will send ${some_llm_num} new ${req}` + (num_llms > 1 ? ` to ${num_llms_missing} LLMs` : ''));
             }
             else { // Counts are different 
-                const sum_queries = Object.keys(queries_per_llm).reduce((acc, llm) => acc + queries_per_llm[llm], 0);
+                const sum_queries = Object.keys(queries_per_llm).reduce((acc, llm_key) => acc + queries_per_llm[llm_key], 0);
                 setRunTooltip(`Will send a variable # of queries to LLM(s) (total=${sum_queries})`);
             }
         } else {
-            const llm_name = Object.keys(queries_per_llm)[0];
-            const llm_count = queries_per_llm[llm_name];
+            const llm_key = Object.keys(queries_per_llm)[0];
+            const llm_name = getLLMListItemForKey(llm_key)?.name;
+            const llm_count = queries_per_llm[llm_key];
             const req = llm_count > 1 ? 'queries' : 'query';
             if (num_llms > num_llms_missing)
                 setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name} and load others`);
             else
-                setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name}`)
+                setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name}`);
         }
-        
+    }).catch(() => {
+        setRunTooltip('Could not reach backend server.');
     });
   };
 
@@ -340,7 +368,7 @@ const PromptNode = ({ data, id }) => {
 
     // Fetch info about the number of queries we'll need to make 
     const fetch_resp_count = () => fetchResponseCounts(
-        py_prompt_template, pulled_data, llmItemsCurrState.map(item => item.model), rejected);
+        py_prompt_template, pulled_data, llmItemsCurrState, rejected);
 
     // Open a socket to listen for progress
     const open_progress_listener_socket = ([response_counts, total_num_responses]) => {
@@ -350,7 +378,7 @@ const PromptNode = ({ data, id }) => {
             transports: ["websocket"],
             cors: {origin: "http://localhost:8000/"},
         });
-
+        
         const max_responses = Object.keys(total_num_responses).reduce((acc, llm) => acc + total_num_responses[llm], 0);
 
         // On connect to the server, ask it to give us the current progress 
@@ -380,20 +408,19 @@ const PromptNode = ({ data, id }) => {
         
         // The current progress, a number specifying how many responses collected so far:
         socket.on("response", (counts) => {
-            // console.log(counts);
             if (!counts || FINISHED_QUERY) return;
 
             // Update individual progress bars
             const num_llms = llmItemsCurrState.length;
             setLLMItems(llmItemsCurrState.map(item => {
-                if (item.model in counts)
-                    item.progress = counts[item.model] / (max_responses / num_llms) * 100;
+                if (item.key in counts)
+                    item.progress = counts[item.key] / (max_responses / num_llms) * 100;
                 return item;
             }));
             
             // Update total progress bar
-            const total_num_resps = Object.keys(counts).reduce((acc, llm_name) => {
-                return acc + counts[llm_name];
+            const total_num_resps = Object.keys(counts).reduce((acc, llm_key) => {
+                return acc + counts[llm_key];
             }, 0);
             setProgress(Math.max(5, total_num_resps / max_responses * 100));
         });
@@ -412,13 +439,10 @@ const PromptNode = ({ data, id }) => {
             headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
             body: JSON.stringify({
                 id: id,
-                llm: llmItemsCurrState.map(item => item.model),
+                llm: llmItemsCurrState,
                 prompt: py_prompt_template,
                 vars: pulled_data,
-                params: {
-                    temperature: 0.5,
-                    n: numGenerations,
-                },
+                n: numGenerations,
                 api_keys: (apiKeys ? apiKeys : {}),
                 no_cache: false,
             }),
@@ -567,7 +591,7 @@ const PromptNode = ({ data, id }) => {
                             <button>Add +</button>
                         </Menu.Target>
                         <Menu.Dropdown>
-                            {allLLMs.map(item => (<Menu.Item key={item.model} onClick={() => addModel(item.model)} icon={item.emoji}>{item.name}</Menu.Item>))}
+                            {AvailableLLMs.map(item => (<Menu.Item key={item.model} onClick={() => addModel(item.base_model)} icon={item.emoji}>{item.name}</Menu.Item>))}
                         </Menu.Dropdown>
                     </Menu>
                 </div>

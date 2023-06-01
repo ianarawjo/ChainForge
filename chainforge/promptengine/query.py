@@ -1,20 +1,8 @@
 from abc import abstractmethod
 from typing import List, Dict, Tuple, Iterator, Union, Optional
 import json, os, asyncio, random, string
-from chainforge.promptengine.utils import LLM, call_chatgpt, call_dalai, call_anthropic, call_google_palm, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
+from chainforge.promptengine.utils import LLM, RATE_LIMITS, call_chatgpt, call_dalai, call_anthropic, call_google_palm, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
-
-# LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
-#   For a basic organization in OpenAI, GPT3.5 is currently 3500 and GPT4 is 200 RPM (requests per minute).
-#   For Anthropic evaluaton preview of Claude, can only send 1 request at a time (synchronously).
-# A 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
-# The following is only a guideline, and a bit on the conservative side. 
-MAX_SIMULTANEOUS_REQUESTS = { 
-    LLM.ChatGPT: (30, 10),  # max 30 requests a batch; wait 10 seconds between
-    LLM.GPT4: (4, 15),  # max 4 requests a batch; wait 15 seconds between
-    LLM.PaLM2: (4, 10),  # max 30 requests per minute; so do 4 per batch, 10 seconds between
-    LLM.Alpaca7B: (1, 0),  # 1 indicates synchronous
-}
 
 """
     Abstract class that captures a generic querying interface to prompt LLMs
@@ -30,7 +18,7 @@ class PromptPipeline:
     def gen_prompts(self, properties) -> Iterator[PromptTemplate]:
         raise NotImplementedError("Please Implement the gen_prompts method")
     
-    async def gen_responses(self, properties, llm: LLM, n: int = 1, temperature: float = 1.0) -> Iterator[Dict]:
+    async def gen_responses(self, properties, llm: LLM, n: int = 1, temperature: float = 1.0, **llm_params) -> Iterator[Dict]:
         """
             Calls LLM 'llm' with all prompts, and yields responses as dicts in format {prompt, query, response, llm, info}.
 
@@ -52,7 +40,7 @@ class PromptPipeline:
 
         # Query LLM with each prompt, yield + cache the responses
         tasks = []
-        max_req, wait_secs = MAX_SIMULTANEOUS_REQUESTS[llm] if llm in MAX_SIMULTANEOUS_REQUESTS else (1, 0)
+        max_req, wait_secs = RATE_LIMITS[llm] if llm in RATE_LIMITS else (1, 0)
         
         for num_queries, prompt in enumerate(self.gen_prompts(properties)):
             if isinstance(prompt, PromptTemplate) and not prompt.is_concrete():
@@ -64,7 +52,7 @@ class PromptPipeline:
             cached_resp = responses[prompt_str] if prompt_str in responses else None
             extracted_resps = cached_resp["responses"] if cached_resp is not None else []
             
-            # First check if there is already a response for this item. If so, we can save an LLM call:
+            # First check if there is already a response for this item under these settings. If so, we can save an LLM call:
             if cached_resp and len(extracted_resps) >= n:
                 print(f"   - Found cache'd response for prompt {prompt_str}. Using...")
                 yield {
@@ -72,7 +60,7 @@ class PromptPipeline:
                     "query": cached_resp["query"],
                     "responses": extracted_resps[:n],
                     "raw_response": cached_resp["raw_response"],
-                    "llm": cached_resp["llm"] if "llm" in cached_resp else LLM.ChatGPT.value,
+                    "llm": cached_resp["llm"] if "llm" in cached_resp else LLM.OpenAI_ChatGPT.value,
                     # We want to use the new info, since 'vars' could have changed even though 
                     # the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
                     "info": info,
@@ -82,10 +70,10 @@ class PromptPipeline:
             if max_req > 1:                
                 # Call the LLM asynchronously to generate a response, sending off
                 # requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
-                tasks.append(self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp, query_number=num_queries, rate_limit_batch_size=max_req, rate_limit_wait_secs=wait_secs))
+                tasks.append(self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp, query_number=num_queries, rate_limit_batch_size=max_req, rate_limit_wait_secs=wait_secs, **llm_params))
             else:
                 # Block. Await + yield a single LLM call.
-                _, query, response, past_resp_obj = await self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp)
+                _, query, response, past_resp_obj = await self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp, **llm_params)
 
                 # Create a response obj to represent the response
                 resp_obj = {
@@ -101,8 +89,8 @@ class PromptPipeline:
                 if past_resp_obj is not None:
                     resp_obj = merge_response_objs(resp_obj, past_resp_obj)
 
-                # Save the response to a JSON file
-                responses[resp_obj["prompt"]] = {key: val for key, val in resp_obj.items()}
+                # Save the current state of cache'd responses to a JSON file
+                responses[resp_obj["prompt"]] = resp_obj
                 self._cache_responses(responses)
 
                 # Yield the response
@@ -130,10 +118,10 @@ class PromptPipeline:
             # Merge the response obj with the past one, if necessary
             if past_resp_obj is not None:
                 resp_obj = merge_response_objs(resp_obj, past_resp_obj)
-            
-            # Save the response to a JSON file
+
+            # Save the current state of cache'd responses to a JSON file
             # NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
-            responses[resp_obj["prompt"]] = {key: val for key, val in resp_obj.items()}
+            responses[resp_obj["prompt"]] = resp_obj
             self._cache_responses(responses)
 
             # Yield the response
@@ -165,7 +153,8 @@ class PromptPipeline:
                           past_resp_obj: Optional[Dict] = None,
                           query_number: Optional[int] = None,
                           rate_limit_batch_size: Optional[int] = None,
-                          rate_limit_wait_secs: Optional[float] = None) -> Tuple[str, Dict, Union[List, Dict], Union[Dict, None]]:
+                          rate_limit_wait_secs: Optional[float] = None,
+                          **llm_params) -> Tuple[str, Dict, Union[List, Dict], Union[Dict, None]]:
         # Detect how many responses we have already (from cache obj past_resp_obj)
         if past_resp_obj is not None:
             # How many *new* queries we need to send: 
@@ -182,14 +171,14 @@ class PromptPipeline:
                     print(f"Batch rate limit of {rate_limit_batch_size} reached for LLM {llm}. Waiting {wait_secs} seconds until sending request batch #{batch_num}...")
                 await asyncio.sleep(wait_secs)
 
-        if llm is LLM.ChatGPT or llm is LLM.GPT4:
-            query, response = await call_chatgpt(str(prompt), model=llm, n=n, temperature=temperature)
-        elif llm is LLM.PaLM2:
-            query, response = await call_google_palm(prompt=str(prompt), model=llm, n=n, temperature=temperature)
-        elif llm is LLM.Alpaca7B:
-            query, response = await call_dalai(model=llm, port=4000, prompt=str(prompt), n=n, temperature=temperature)
+        if llm.name[:6] == 'OpenAI':
+            query, response = await call_chatgpt(str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
+        elif llm.name[:5] == 'PaLM2':
+            query, response = await call_google_palm(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
+        elif llm.name[:5] == 'Dalai':
+            query, response = await call_dalai(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
         elif llm.value[:6] == 'claude':
-            query, response = await call_anthropic(prompt=str(prompt), model=llm, n=n, temperature=temperature)
+            query, response = await call_anthropic(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
         else:
             raise Exception(f"Language model {llm} is not supported.")
         

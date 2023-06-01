@@ -1,15 +1,87 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import LLMListItem, { DragItem, LLMListItemClone } from "./LLMListItem";
 import { StrictModeDroppable } from './StrictModeDroppable'
+import ModelSettingsModal from "./ModelSettingsModal"
+
+// Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
+const ensureUniqueName = (_name, _prev_names) => {
+  // Strip whitespace around names
+  const prev_names = _prev_names.map(n => n.trim());
+  const name = _name.trim();
+
+  // Check if name is unique
+  if (!prev_names.includes(name))
+    return name;
+  
+  // Name isn't unique; find a unique one:
+  let i = 2;
+  let new_name = `${name} (${i})`;
+  while (prev_names.includes(new_name)) {
+    i += 1;
+    new_name = `${name} (${i})`;
+  }
+  return new_name;
+};
 
 export default function LLMList({llms, onItemsChange}) {
   const [items, setItems] = useState(llms);
+  const settingsModal = useRef(null);
+  const [selectedModel, setSelectedModel] = useState(undefined);
 
   const updateItems = useCallback((new_items) => {
     setItems(new_items);
     onItemsChange(new_items);
   }, [onItemsChange]);
+
+  const onClickSettings = useCallback((item) => {
+    if (settingsModal && settingsModal.current) {
+      setSelectedModel(item);
+      settingsModal.current.trigger();
+    }
+  }, [settingsModal]);
+
+  const onSettingsSubmit = useCallback((savedItem, formData, settingsData) => {
+    // First check for the item with key and get it:
+    let llm = items.find(i => i.key === savedItem.key);
+    if (!llm) {
+      console.error(`Could not update model settings: Could not find item with key ${savedItem.key}.`);
+      return;
+    }
+
+    const prev_names = items.filter(item => item.key !== savedItem.key).map(item => item.name);
+
+    // Change the settings for the LLM item to the value of 'formData': 
+    updateItems(
+      items.map(item => {
+        if (item.key === savedItem.key) {
+          // Create a new item with the same settings
+          let updated_item = {...item};
+          updated_item.formData = {...formData};
+          updated_item.settings = {...settingsData};
+
+          if ('model' in formData) // Update the name of the specific model to call
+            updated_item.model = formData['model'];
+          if ('shortname' in formData) {
+            // Change the name, amending any name that isn't unique to ensure it is unique:
+            const unique_name = ensureUniqueName(formData['shortname'], prev_names);
+            updated_item.name = unique_name;
+            if (updated_item.formData?.shortname)
+              updated_item.formData.shortname = unique_name;
+          }
+
+          if (savedItem.emoji)
+            updated_item.emoji = savedItem.emoji;
+          
+          return updated_item;
+        }
+        else return item;
+      }
+    ));
+
+    // Replace the item in the list and re-save: 
+
+  }, [items, updateItems]);
 
   const onDragEnd = (result) => {
     const { destination, source } = result;
@@ -51,6 +123,7 @@ export default function LLMList({llms, onItemsChange}) {
 
   return (
     <div className="list nowheel nodrag">
+      <ModelSettingsModal ref={settingsModal} model={selectedModel} onSettingsSubmit={onSettingsSubmit} />
       <DragDropContext onDragEnd={onDragEnd}>
         <StrictModeDroppable
           droppableId="llm-list-droppable"
@@ -63,7 +136,7 @@ export default function LLMList({llms, onItemsChange}) {
               {items.map((item, index) => (
                 <Draggable key={item.key} draggableId={item.key} index={index}>
                   {(provided, snapshot) => (
-                    <LLMListItem provided={provided} snapshot={snapshot} item={item} removeCallback={removeItem} progress={item.progress} />
+                    <LLMListItem provided={provided} snapshot={snapshot} item={item} removeCallback={removeItem} progress={item.progress} onClickSettings={() => onClickSettings(item)} />
                   )}
                 </Draggable>
               ))}
