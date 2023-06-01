@@ -11,6 +11,8 @@ import { getTemperatureSpecForModel } from "./ModelSettingSchemas";
 // Source: https://gist.github.com/mlocati/7210513
 const perc2color = (perc) => {
 	let r = 0; let g = 0; let b = 0;
+  if (perc <= 0.0001)
+    return '#00ffff';
 	if(perc < 50) {
 		b = 255;
     g = Math.round(510/2.0 - 5.10 * perc);
@@ -22,7 +24,7 @@ const perc2color = (perc) => {
 	}
 	var h = r * 0x10000 + g * 0x100 + b * 0x1;
 	return '#' + ('000000' + h.toString(16)).slice(-6);
-}
+};
 
 const percTemperature = (llm_item) => {
   // Get the temp for this llm item
@@ -68,8 +70,10 @@ export const DragItem = styled.div`
 const LLMListItem = ({ item, provided, snapshot, removeCallback, onClickSettings, progress }) => {
   // Set color by temperature only on item change (not every render)
   const [tempColor, setTempColor] = useState(perc2color(50));
+  const temperature = item.settings?.temperature;
+
   useEffect(() => {
-    if (item.settings?.temperature !== undefined)
+    if (temperature !== undefined)
       setTempColor(perc2color(percTemperature(item)));
   }, [item]);
 
@@ -82,8 +86,8 @@ const LLMListItem = ({ item, provided, snapshot, removeCallback, onClickSettings
     >
       <div>
         <CardHeader>{item.emoji}&nbsp;{item.name}{
-            item.settings?.temperature !== undefined ?
-              (<TemperatureStatus style={{color: tempColor}}>&nbsp;<IconTemperature size={14} stroke={2} style={{position: 'relative', top: '2px', marginRight: '-3px'}} />:{item.settings?.temperature ? item.settings.temperature : ""}</TemperatureStatus>)
+            temperature !== undefined ?
+              (<TemperatureStatus style={{color: tempColor}}>&nbsp;<IconTemperature size={14} stroke={2} style={{position: 'relative', top: '2px', marginRight: '-3px'}} />:{temperature !== undefined ? temperature : ""}</TemperatureStatus>)
               : (<></>)}
         </CardHeader>
         <LLMItemButtonGroup onClickTrash={() => removeCallback(item.key)} ringProgress={progress} onClickSettings={onClickSettings} />
@@ -96,8 +100,10 @@ const LLMListItem = ({ item, provided, snapshot, removeCallback, onClickSettings
 export const LLMListItemClone = ({ item, provided, snapshot }) => {
   // Set color by temperature only on item change (not every render)
   const [tempColor, setTempColor] = useState(perc2color(50));
+  const temperature = item.settings?.temperature;
+
   useEffect(() => {
-    if (item.settings?.temperature !== undefined)
+    if (temperature !== undefined)
       setTempColor(perc2color(percTemperature(item)));
   }, [item]);
 
@@ -110,8 +116,8 @@ export const LLMListItemClone = ({ item, provided, snapshot }) => {
     >
       <div>
       <CardHeader>{item.emoji}&nbsp;{item.name}{
-            item.settings?.temperature !== undefined ?
-              (<TemperatureStatus style={{color: tempColor}}>&nbsp;<IconTemperature size={14} stroke={2} style={{position: 'relative', top: '2px', marginRight: '-3px'}} />:{item.settings?.temperature ? item.settings.temperature : ""}</TemperatureStatus>)
+            temperature !== undefined ?
+              (<TemperatureStatus style={{color: tempColor}}>&nbsp;<IconTemperature size={14} stroke={2} style={{position: 'relative', top: '2px', marginRight: '-3px'}} />:{temperature !== undefined ? temperature : ""}</TemperatureStatus>)
               : (<></>)}
       </CardHeader>
         <LLMItemButtonGroup />

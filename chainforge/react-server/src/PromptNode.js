@@ -8,17 +8,11 @@ import TemplateHooks from './TemplateHooksComponent'
 import LLMList from './LLMListComponent'
 import {BASE_URL} from './store';
 import io from 'socket.io-client';
-import { getDefaultModelSettings } from './ModelSettingSchemas'
+import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas'
 
-// Available LLMs
-const allLLMs = [
-    { name: "GPT3.5", emoji: "🙂", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
-    { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
-    { name: "Alpaca 7B", emoji: "🦙", model: "alpaca.7B", base_model: "alpaca", temp: 0.5 },
-    { name: "Claude", emoji: "📚", model: "claude-v1", base_model: "claude-v1", temp: 0.5 },
-    { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
-];
-const initLLMs = [allLLMs[0]];
+// The LLM(s) to include by default on a PromptNode whenever one is created.
+// Defaults to ChatGPT (GPT3.5).
+const initLLMs = [AvailableLLMs[0]];
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -112,7 +106,7 @@ const PromptNode = ({ data, id }) => {
 
   const addModel = useCallback((model) => {
     // Get the item for that model
-    let item = allLLMs.find(llm => llm.base_model === model);
+    let item = AvailableLLMs.find(llm => llm.base_model === model);
 
     if (!item) {  // This should never trigger, but in case it does:
         triggerAlert(`Could not find model named '${model}' in list of available LLMs.`);
@@ -384,7 +378,7 @@ const PromptNode = ({ data, id }) => {
             transports: ["websocket"],
             cors: {origin: "http://localhost:8000/"},
         });
-
+        
         const max_responses = Object.keys(total_num_responses).reduce((acc, llm) => acc + total_num_responses[llm], 0);
 
         // On connect to the server, ask it to give us the current progress 
@@ -597,7 +591,7 @@ const PromptNode = ({ data, id }) => {
                             <button>Add +</button>
                         </Menu.Target>
                         <Menu.Dropdown>
-                            {allLLMs.map(item => (<Menu.Item key={item.model} onClick={() => addModel(item.base_model)} icon={item.emoji}>{item.name}</Menu.Item>))}
+                            {AvailableLLMs.map(item => (<Menu.Item key={item.model} onClick={() => addModel(item.base_model)} icon={item.emoji}>{item.name}</Menu.Item>))}
                         </Menu.Dropdown>
                     </Menu>
                 </div>

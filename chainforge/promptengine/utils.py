@@ -207,24 +207,25 @@ async def call_google_palm(prompt: str, model: LLM, n: int = 1, temperature: flo
 
     return query, completion_dict
 
-async def call_dalai(model: LLM, port: int, prompt: str, n: int = 1, temperature: float = 0.5, **params) -> Tuple[Dict, Dict]:
+async def call_dalai(prompt: str, model: LLM, server: str="http://localhost:4000", n: int = 1, temperature: float = 0.5,  **params) -> Tuple[Dict, Dict]:
     """
         Calls a Dalai server running LLMs Alpaca, Llama, etc locally.
         Returns the raw query and response JSON dicts. 
 
         Parameters:
             - model: The LLM model, whose value is the name known byt Dalai; e.g. 'alpaca.7b'
-            - port: The port of the local server where Dalai is running. Usually 3000.
+            - port: The port of the local server where Dalai is running. By default 4000.
             - prompt: The prompt to pass to the LLM.
             - n: How many times to query. If n > 1, this will continue to query the LLM 'n' times and collect all responses.
             - temperature: The temperature to query at
-            - params: Any other Dalai-specific params to pass. For more info, see https://cocktailpeanut.github.io/dalai/#/?id=syntax-1 
+            - params: Any other Dalai-specific params to pass. For more info, see below or https://cocktailpeanut.github.io/dalai/#/?id=syntax-1 
 
         TODO: Currently, this uses a modified dalaipy library for simplicity; however, in the future we might remove this dependency. 
     """
     # Import and load upon first run
     global DALAI_MODEL, DALAI_RESPONSE
-    server = 'http://localhost:'+str(port)
+    if not server or len(server.strip()) == 0:  # In case user passed a blank server name, revert to default on port 4000
+        server = "http://localhost:4000"
     if DALAI_MODEL is None:
         from chainforge.promptengine.dalaipy import Dalai
         DALAI_MODEL = Dalai(server)
@@ -339,7 +340,7 @@ def extract_responses(response: Union[list, dict], llm: Union[LLM, str]) -> List
             return _extract_chatgpt_responses(response)
     elif llm_str[:5] == 'PaLM2':
         return _extract_palm_responses(response)
-    elif llm is LLM.Alpaca7B or llm_str == LLM.Alpaca7B.value:
+    elif llm_str[:5] == 'Dalai':
         return response
     elif llm_str[:6] == 'Claude':
         return [r["completion"] for r in response]

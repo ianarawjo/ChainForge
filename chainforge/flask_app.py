@@ -370,6 +370,7 @@ def countQueries():
         
         if not found_cache:
             for prompt in all_prompt_permutations:
+                add_to_num_responses_req(llm_key, n)
                 add_to_missing_queries(llm_key, str(prompt), n)
 
     ret = jsonify({'counts': missing_queries, 'total_num_responses': num_responses_req})

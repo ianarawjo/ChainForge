@@ -175,8 +175,8 @@ class PromptPipeline:
             query, response = await call_chatgpt(str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
         elif llm.name[:5] == 'PaLM2':
             query, response = await call_google_palm(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
-        elif llm is LLM.Alpaca7B:
-            query, response = await call_dalai(model=llm, port=4000, prompt=str(prompt), n=n, temperature=temperature, **llm_params)
+        elif llm.name[:5] == 'Dalai':
+            query, response = await call_dalai(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
         elif llm.value[:6] == 'claude':
             query, response = await call_anthropic(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
         else:
