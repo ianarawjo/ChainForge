@@ -8,8 +8,8 @@ import ReactFlow, {
   useReactFlow,
   useViewport
 } from 'react-flow-renderer';
-import { Button } from '@mantine/core';
-import { IconSettings } from '@tabler/icons-react';
+import { Button, Menu } from '@mantine/core';
+import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation } from '@tabler/icons-react';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
 import EvaluatorNode from './EvaluatorNode';
@@ -19,6 +19,7 @@ import ScriptNode from './ScriptNode';
 import AlertModal from './AlertModal';
 import CsvNode from './CsvNode';
 import GlobalSettingsModal from './GlobalSettingsModal';
+import ExampleFlowsModal from './ExampleFlowsModal';
 import './text-fields-node.css';
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
@@ -61,6 +62,9 @@ const App = () => {
 
   // For modal popup to set global settings like API keys
   const settingsModal = useRef(null);
+
+  // For modal popup of example flows
+  const examplesModal = useRef(null);
 
   // For displaying error messages to user
   const alertModal = useRef(null);
@@ -106,9 +110,19 @@ const App = () => {
     addNode({ id: 'csvNode-'+Date.now(), type: 'csv', data: {}, position: {x: x-200, y:y-100} });
   };
 
+  const onClickExamples = () => {
+    if (examplesModal && examplesModal.current)
+      examplesModal.current.trigger();
+  };
   const onClickSettings = () => {
     if (settingsModal && settingsModal.current) 
       settingsModal.current.trigger();
+  };
+
+  const handleError = (err) => {
+    if (alertModal.current)
+      alertModal.current.trigger(err.message);
+    console.error(err.message);
   };
 
   /** 
@@ -186,32 +200,54 @@ const App = () => {
         downloadJSON(flow_and_cache, `flow-${Date.now()}.cforge`);
     });
   }, [rfInstance, nodes]);
-  const importFlow = async (event) => {
 
-    // Create helper function for saving imported cache'd data to backend
-    const rejected = (err) => {
-      if (alertModal.current)
-        alertModal.current.trigger(err.message);
-      console.error(err.message);
-    };
-    const importCache = (cache_data) => {
-      return fetch(BASE_URL + 'app/importCache', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-          body: JSON.stringify({
-              'files': cache_data,
-          }),
-      }, rejected).then(function(res) {
-          return res.json();
-      }, rejected).then(function(json) {
-          if (!json || json.result === undefined)
-            throw new Error('Request to import cache data was sent and received by backend server, but there was no response.');
-          else if (json.error || json.result === false)
-            throw new Error('Error importing cache data:' + json.error);
-          // Done! 
-      }, rejected).catch(rejected);
-    };
+  // Import data to the cache stored on the local filesystem (in backend)
+  const importCache = (cache_data) => {
     
+
+    return fetch(BASE_URL + 'app/importCache', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+        body: JSON.stringify({
+            'files': cache_data,
+        }),
+    }, handleError).then(function(res) {
+        return res.json();
+    }, handleError).then(function(json) {
+        if (!json || json.result === undefined)
+          throw new Error('Request to import cache data was sent and received by backend server, but there was no response.');
+        else if (json.error || json.result === false)
+          throw new Error('Error importing cache data:' + json.error);
+        // Done! 
+    }, handleError).catch(handleError);
+  };
+
+  const importFlowFromJSON = (flowJSON) => {
+    // Detect if there's no cache data
+    if (!flowJSON.cache) {
+      // Support for loading old flows w/o cache data:
+      loadFlow(flowJSON);
+      return;
+    }
+
+    // Then we need to extract the JSON of the flow vs the cache data
+    const flow = flowJSON.flow;
+    const cache = flowJSON.cache;
+
+    // We need to send the cache data to the backend first,
+    // before we can load the flow itself...
+    importCache(cache).then(() => {
+      // We load the ReactFlow instance last
+      loadFlow(flow);
+    }).catch(err => {
+      // On an error, still try to load the flow itself:
+      handleError("Error encountered when importing cache data:" + err.message + "\n\nTrying to load flow regardless...");
+      loadFlow(flow);
+    });
+  };
+
+  // Import a ChainForge flow from a file
+  const importFlowFromFile = async () => {
     // Create an input element with type "file" and accept only JSON files
     const input = document.createElement("input");
     input.type = "file";
@@ -229,30 +265,11 @@ const App = () => {
           // We try to parse the JSON response
           const flow_and_cache = JSON.parse(reader.result);
 
-          // Detect if there's no cache data
-          if (!flow_and_cache.cache) {
-            // Support for loading old flows w/o cache data:
-            loadFlow(flow_and_cache);
-            return;
-          }
-
-          // Then we need to extract the JSON of the flow vs the cache data
-          const flow = flow_and_cache.flow;
-          const cache = flow_and_cache.cache;
-
-          // We need to send the cache data to the backend first,
-          // before we can load the flow itself...
-          importCache(cache).then(() => {
-            // We load the ReactFlow instance last
-            loadFlow(flow);
-          }).catch(err => {
-            // On an error, still try to load the flow itself:
-            rejected("Error encountered when importing cache data:" + err.message + "\n\nTrying to load flow regardless...");
-            loadFlow(flow);
-          });
+          // Import it to React Flow and import cache data on the backend
+          importFlowFromJSON(flow_and_cache);
 
         } catch (error) {
-          console.error("Error parsing JSON file:", error);
+          handleError(error);
         }
       });
 
@@ -264,10 +281,34 @@ const App = () => {
     input.click();
   };
 
+  // Load flow from examples modal
+  const onSelectExampleFlow = (filename) => {
+    // Fetch the example flow data from the backend
+    fetch(BASE_URL + 'app/fetchExampleFlow', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+        body: JSON.stringify({
+            'name': filename,
+        }),
+    }, handleError).then(function(res) {
+        return res.json();
+    }, handleError).then(function(json) {
+        if (!json)
+          throw new Error('Request to fetch example flow was sent to backend server, but there was no response.');
+        else if (json.error || !json.data)
+          throw new Error('Error importing example flow:' + json.error);
+        
+        // We have the data, import it:
+        importFlowFromJSON(json.data);
+
+    }, handleError).catch(handleError);
+  };
+
   return (
     <div>
       <GlobalSettingsModal ref={settingsModal} />
       <AlertModal ref={alertModal} />
+      <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
       <div style={{ height: '100vh', width: '100%', backgroundColor: '#eee' }}>
         <ReactFlow
           onNodesChange={onNodesChange}
@@ -290,20 +331,30 @@ const App = () => {
         </ReactFlow>
       </div>
       <div id="custom-controls" style={{position: 'fixed', left: '10px', top: '10px', zIndex:8}}>
-        <button onClick={addTextFieldsNode}>Add text fields node</button>
-        <button onClick={addPromptNode}>Add prompt node</button>
-        <button onClick={addEvalNode}>Add evaluator node</button>
-        <button onClick={addVisNode}>Add vis node</button>
-        <button onClick={addInspectNode}>Add inspect node</button>
-        <button onClick={addScriptNode}>Add script node</button>
-        <button onClick={addCsvNode}>Add csv node</button>
-        {/* <button onClick={saveFlow} style={{marginLeft: '12px'}}>Save</button>
-        <button onClick={loadFlowFromCache}>Load</button> */}
-        <button onClick={exportFlow} style={{marginLeft: '12px'}}>Export</button>
-        <button onClick={importFlow}>Import</button>
+        <Menu transitionProps={{ transition: 'pop-top-left' }}
+                          position="top-start"
+                          width={220}
+                          closeOnClickOutside={true}
+                      >
+          <Menu.Target>
+              <Button size="sm" variant="gradient" compact mr='sm'>Add Node +</Button>
+          </Menu.Target>
+          <Menu.Dropdown>
+              <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields </Menu.Item>
+              <Menu.Item onClick={addPromptNode} icon={'💬'}> Prompt Node </Menu.Item>
+              <Menu.Item onClick={addEvalNode} icon={<IconTerminal size="16px" />}> Evaluator Node </Menu.Item>
+              <Menu.Item onClick={addVisNode} icon={'📊'}> Vis Node </Menu.Item>
+              <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
+              <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>
+              <Menu.Item onClick={addScriptNode} icon={<IconSettingsAutomation size="16px" />}> Global Scripts </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+        <Button onClick={exportFlow} size="sm" variant="outline" compact mr='xs'>Export</Button>
+        <Button onClick={importFlowFromFile} size="sm" variant="outline" compact>Import</Button>
       </div>
       <div style={{position: 'fixed', right: '10px', top: '10px', zIndex: 8}}>
-        <Button onClick={onClickSettings} size="sm" variant="gray" compact><IconSettings size={"100%"} /></Button>
+        <Button onClick={onClickExamples} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> Example Flows </Button>
+        <Button onClick={onClickSettings} size="sm" variant="outline" compact><IconSettings size={"100%"} /></Button>
       </div>
     </div>
   );

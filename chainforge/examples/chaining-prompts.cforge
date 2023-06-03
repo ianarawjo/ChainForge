@@ -1,0 +1,2684 @@
+{
+  "flow": {
+    "nodes": [
+      {
+        "width": 312,
+        "height": 422,
+        "id": "prompt-1683813164213",
+        "type": "prompt",
+        "data": {
+          "prompt": "Who invented the {tool}?",
+          "n": 3,
+          "llms": [
+            {
+              "key": "6a97026b-90b8-4d57-8798-a8d183e09189",
+              "name": "GPT3.5",
+              "emoji": "🙂",
+              "model": "gpt-3.5-turbo",
+              "base_model": "gpt-3.5-turbo",
+              "temp": 1,
+              "settings": {
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 1,
+                "top_p": 1,
+                "stop": [],
+                "presence_penalty": 0,
+                "frequency_penalty": 0
+              },
+              "formData": {
+                "shortname": "GPT3.5"
+              }
+            }
+          ],
+          "fields": [
+            {
+              "text": "Willis Carrier is credited with inventing the modern air conditioner in 1902.",
+              "fill_history": {
+                "tool": "air conditioner"
+              }
+            },
+            {
+              "text": "Willis Carrier is credited with inventing the modern air conditioning system in 1902.",
+              "fill_history": {
+                "tool": "air conditioner"
+              }
+            },
+            {
+              "text": "The air conditioner was invented by Willis Carrier in 1902.",
+              "fill_history": {
+                "tool": "air conditioner"
+              }
+            },
+            {
+              "text": "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+              "fill_history": {
+                "tool": "vacuum cleaner"
+              }
+            },
+            {
+              "text": "The vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+              "fill_history": {
+                "tool": "vacuum cleaner"
+              }
+            },
+            {
+              "text": "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.",
+              "fill_history": {
+                "tool": "vacuum cleaner"
+              }
+            },
+            {
+              "text": "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.",
+              "fill_history": {
+                "tool": "lightbulb"
+              }
+            },
+            {
+              "text": "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.",
+              "fill_history": {
+                "tool": "lightbulb"
+              }
+            },
+            {
+              "text": "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.",
+              "fill_history": {
+                "tool": "lightbulb"
+              }
+            },
+            {
+              "text": "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.",
+              "fill_history": {
+                "tool": "chainsaw"
+              }
+            },
+            {
+              "text": "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.",
+              "fill_history": {
+                "tool": "chainsaw"
+              }
+            },
+            {
+              "text": "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.",
+              "fill_history": {
+                "tool": "chainsaw"
+              }
+            },
+            {
+              "text": "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.",
+              "fill_history": {
+                "tool": "back-propagation algorithm"
+              }
+            },
+            {
+              "text": "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.",
+              "fill_history": {
+                "tool": "back-propagation algorithm"
+              }
+            },
+            {
+              "text": "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.",
+              "fill_history": {
+                "tool": "back-propagation algorithm"
+              }
+            },
+            {
+              "text": "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.",
+              "fill_history": {
+                "tool": "coffee maker"
+              }
+            },
+            {
+              "text": "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.",
+              "fill_history": {
+                "tool": "coffee maker"
+              }
+            },
+            {
+              "text": "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.",
+              "fill_history": {
+                "tool": "coffee maker"
+              }
+            }
+          ]
+        },
+        "position": {
+          "x": 480,
+          "y": 480
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": 480,
+          "y": 480
+        },
+        "dragging": false
+      },
+      {
+        "width": 722,
+        "height": 546,
+        "id": "vis-1683813164213",
+        "type": "vis",
+        "data": {
+          "input": "evalNode-1683814933430",
+          "refresh": false,
+          "title": "Number of entities in responses",
+          "selected_vars": [
+            "tool"
+          ],
+          "vars": [
+            {
+              "value": "text",
+              "label": "text"
+            },
+            {
+              "value": "tool",
+              "label": "tool"
+            }
+          ]
+        },
+        "position": {
+          "x": 1568,
+          "y": 448
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": 1568,
+          "y": 448
+        },
+        "dragging": false
+      },
+      {
+        "width": 307,
+        "height": 382,
+        "id": "inspect-1683813164213",
+        "type": "inspect",
+        "data": {
+          "input": "promptNode-1683813691363",
+          "refresh": false
+        },
+        "position": {
+          "x": 1200,
+          "y": 672
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": 1200,
+          "y": 672
+        },
+        "dragging": false
+      },
+      {
+        "width": 312,
+        "height": 422,
+        "id": "promptNode-1683813691363",
+        "type": "prompt",
+        "data": {
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
+          "llms": [
+            {
+              "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+              "name": "GPT3.5",
+              "emoji": "🙂",
+              "model": "gpt-3.5-turbo",
+              "base_model": "gpt-3.5-turbo",
+              "temp": 1,
+              "settings": {
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 0.4,
+                "top_p": 1,
+                "stop": [],
+                "presence_penalty": 0,
+                "frequency_penalty": 0
+              },
+              "formData": {
+                "shortname": "GPT3.5",
+                "model": "gpt-3.5-turbo",
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 0.4,
+                "top_p": 1,
+                "stop": "",
+                "presence_penalty": 0,
+                "frequency_penalty": 0
+              }
+            }
+          ],
+          "fields": [
+            {
+              "text": "Thomas Edison",
+              "fill_history": {
+                "text": "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.",
+                "tool": "lightbulb"
+              }
+            },
+            {
+              "text": "Willis Carrier",
+              "fill_history": {
+                "text": "Willis Carrier is credited with inventing the modern air conditioner in 1902.",
+                "tool": "air conditioner"
+              }
+            },
+            {
+              "text": "Hubert Cecil Booth.",
+              "fill_history": {
+                "text": "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+                "tool": "vacuum cleaner"
+              }
+            },
+            {
+              "text": "Hubert Cecil Booth.",
+              "fill_history": {
+                "text": "The vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+                "tool": "vacuum cleaner"
+              }
+            },
+            {
+              "text": "Thomas Edison",
+              "fill_history": {
+                "text": "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.",
+                "tool": "lightbulb"
+              }
+            },
+            {
+              "text": "British, Hubert Cecil Booth",
+              "fill_history": {
+                "text": "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.",
+                "tool": "vacuum cleaner"
+              }
+            },
+            {
+              "text": "Willis Carrier",
+              "fill_history": {
+                "text": "Willis Carrier is credited with inventing the modern air conditioning system in 1902.",
+                "tool": "air conditioner"
+              }
+            },
+            {
+              "text": "Thomas Edison.",
+              "fill_history": {
+                "text": "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.",
+                "tool": "lightbulb"
+              }
+            },
+            {
+              "text": "Willis Carrier.",
+              "fill_history": {
+                "text": "The air conditioner was invented by Willis Carrier in 1902.",
+                "tool": "air conditioner"
+              }
+            },
+            {
+              "text": "Melitta Bentz, German",
+              "fill_history": {
+                "text": "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.",
+                "tool": "coffee maker"
+              }
+            },
+            {
+              "text": "Andreas Stihl, James Shand.",
+              "fill_history": {
+                "text": "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.",
+                "tool": "chainsaw"
+              }
+            },
+            {
+              "text": "Andreas Stihl, Stihl",
+              "fill_history": {
+                "text": "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.",
+                "tool": "chainsaw"
+              }
+            },
+            {
+              "text": "Frenchman, Melitta Bentz",
+              "fill_history": {
+                "text": "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.",
+                "tool": "coffee maker"
+              }
+            },
+            {
+              "text": "Paul Werbos, David Rumelhart, Geoffrey Hinton, Ronald Williams.",
+              "fill_history": {
+                "text": "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.",
+                "tool": "back-propagation algorithm"
+              }
+            },
+            {
+              "text": "Louis Bernard Rabaut, Frenchman, Melitta Bentz.",
+              "fill_history": {
+                "text": "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.",
+                "tool": "coffee maker"
+              }
+            },
+            {
+              "text": "Paul Werbos, David Rumelhart, Jay McClelland, Geoffrey Hinton.",
+              "fill_history": {
+                "text": "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.",
+                "tool": "back-propagation algorithm"
+              }
+            },
+            {
+              "text": "David Rumelhart, Geoffrey Hinton, Ronald Williams.",
+              "fill_history": {
+                "text": "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.",
+                "tool": "back-propagation algorithm"
+              }
+            },
+            {
+              "text": "Scottish, John Aitken, James Jeffray, early 1900s, gasoline-powered, Andreas Stihl.",
+              "fill_history": {
+                "text": "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.",
+                "tool": "chainsaw"
+              }
+            }
+          ]
+        },
+        "position": {
+          "x": 832,
+          "y": 480
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": 832,
+          "y": 480
+        },
+        "dragging": false
+      },
+      {
+        "width": 312,
+        "height": 195,
+        "id": "csvNode-1683814654172",
+        "type": "csv",
+        "data": {
+          "text": "chainsaw, lightbulb, vacuum cleaner, air conditioner, back-propagation algorithm, coffee maker",
+          "fields": [
+            "chainsaw",
+            "lightbulb",
+            "vacuum cleaner",
+            "air conditioner",
+            "back-propagation algorithm",
+            "coffee maker"
+          ]
+        },
+        "position": {
+          "x": 112,
+          "y": 496
+        },
+        "selected": true,
+        "positionAbsolute": {
+          "x": 112,
+          "y": 496
+        },
+        "dragging": false
+      },
+      {
+        "width": 333,
+        "height": 184,
+        "id": "evalNode-1683814933430",
+        "type": "evaluator",
+        "data": {
+          "code": "def evaluate(response):\n  return {'Number of entities': \\\n          len(response.text.split(','))}"
+        },
+        "position": {
+          "x": 1184,
+          "y": 464
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": 1184,
+          "y": 464
+        },
+        "dragging": false
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1-2",
+        "source": "prompt-1683813164213",
+        "target": "eval-1683813164213",
+        "interactionWidth": 100
+      },
+      {
+        "source": "promptNode-1683813691363",
+        "sourceHandle": "prompt",
+        "target": "inspect-1683813164213",
+        "targetHandle": "input",
+        "id": "reactflow__edge-promptNode-1683813691363prompt-inspect-1683813164213input"
+      },
+      {
+        "source": "promptNode-1683813691363",
+        "sourceHandle": "prompt",
+        "target": "evalNode-1683814933430",
+        "targetHandle": "responseBatch",
+        "id": "reactflow__edge-promptNode-1683813691363prompt-evalNode-1683814933430responseBatch"
+      },
+      {
+        "source": "evalNode-1683814933430",
+        "sourceHandle": "output",
+        "target": "vis-1683813164213",
+        "targetHandle": "input",
+        "id": "reactflow__edge-evalNode-1683814933430output-vis-1683813164213input"
+      },
+      {
+        "source": "csvNode-1683814654172",
+        "sourceHandle": "output",
+        "target": "prompt-1683813164213",
+        "targetHandle": "tool",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-csvNode-1683814654172output-prompt-1683813164213tool"
+      },
+      {
+        "source": "prompt-1683813164213",
+        "sourceHandle": "prompt",
+        "target": "promptNode-1683813691363",
+        "targetHandle": "text",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-prompt-1683813164213prompt-promptNode-1683813691363text"
+      }
+    ],
+    "viewport": {
+      "x": 1,
+      "y": -199,
+      "zoom": 1
+    }
+  },
+  "cache": {
+    "csvNode-1683814654172.json": {},
+    "evalNode-1683814933430.json": [
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 1
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.\"",
+        "responses": [
+          "Thomas Edison"
+        ],
+        "tokens": {
+          "completion_tokens": 2,
+          "prompt_tokens": 57,
+          "total_tokens": 59
+        },
+        "vars": {
+          "text": "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.",
+          "tool": "lightbulb"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 1
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioner in 1902.\"",
+        "responses": [
+          "Willis Carrier"
+        ],
+        "tokens": {
+          "completion_tokens": 3,
+          "prompt_tokens": 53,
+          "total_tokens": 56
+        },
+        "vars": {
+          "text": "Willis Carrier is credited with inventing the modern air conditioner in 1902.",
+          "tool": "air conditioner"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 1
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
+        "responses": [
+          "Hubert Cecil Booth."
+        ],
+        "tokens": {
+          "completion_tokens": 5,
+          "prompt_tokens": 53,
+          "total_tokens": 58
+        },
+        "vars": {
+          "text": "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+          "tool": "vacuum cleaner"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 1
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
+        "responses": [
+          "Hubert Cecil Booth."
+        ],
+        "tokens": {
+          "completion_tokens": 5,
+          "prompt_tokens": 51,
+          "total_tokens": 56
+        },
+        "vars": {
+          "text": "The vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+          "tool": "vacuum cleaner"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 1
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.\"",
+        "responses": [
+          "Thomas Edison"
+        ],
+        "tokens": {
+          "completion_tokens": 2,
+          "prompt_tokens": 57,
+          "total_tokens": 59
+        },
+        "vars": {
+          "text": "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.",
+          "tool": "lightbulb"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 2
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.\"",
+        "responses": [
+          "British, Hubert Cecil Booth"
+        ],
+        "tokens": {
+          "completion_tokens": 6,
+          "prompt_tokens": 70,
+          "total_tokens": 76
+        },
+        "vars": {
+          "text": "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.",
+          "tool": "vacuum cleaner"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 1
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioning system in 1902.\"",
+        "responses": [
+          "Willis Carrier"
+        ],
+        "tokens": {
+          "completion_tokens": 3,
+          "prompt_tokens": 54,
+          "total_tokens": 57
+        },
+        "vars": {
+          "text": "Willis Carrier is credited with inventing the modern air conditioning system in 1902.",
+          "tool": "air conditioner"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 1
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.\"",
+        "responses": [
+          "Thomas Edison."
+        ],
+        "tokens": {
+          "completion_tokens": 3,
+          "prompt_tokens": 90,
+          "total_tokens": 93
+        },
+        "vars": {
+          "text": "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.",
+          "tool": "lightbulb"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 1
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The air conditioner was invented by Willis Carrier in 1902.\"",
+        "responses": [
+          "Willis Carrier."
+        ],
+        "tokens": {
+          "completion_tokens": 4,
+          "prompt_tokens": 49,
+          "total_tokens": 53
+        },
+        "vars": {
+          "text": "The air conditioner was invented by Willis Carrier in 1902.",
+          "tool": "air conditioner"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 2
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.\"",
+        "responses": [
+          "Melitta Bentz, German"
+        ],
+        "tokens": {
+          "completion_tokens": 6,
+          "prompt_tokens": 126,
+          "total_tokens": 132
+        },
+        "vars": {
+          "text": "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.",
+          "tool": "coffee maker"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 2
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.\"",
+        "responses": [
+          "Andreas Stihl, James Shand."
+        ],
+        "tokens": {
+          "completion_tokens": 10,
+          "prompt_tokens": 93,
+          "total_tokens": 103
+        },
+        "vars": {
+          "text": "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.",
+          "tool": "chainsaw"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 2
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.\"",
+        "responses": [
+          "Andreas Stihl, Stihl"
+        ],
+        "tokens": {
+          "completion_tokens": 9,
+          "prompt_tokens": 93,
+          "total_tokens": 102
+        },
+        "vars": {
+          "text": "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.",
+          "tool": "chainsaw"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 2
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.\"",
+        "responses": [
+          "Frenchman, Melitta Bentz"
+        ],
+        "tokens": {
+          "completion_tokens": 7,
+          "prompt_tokens": 108,
+          "total_tokens": 115
+        },
+        "vars": {
+          "text": "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.",
+          "tool": "coffee maker"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 4
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.\"",
+        "responses": [
+          "Paul Werbos, David Rumelhart, Geoffrey Hinton, Ronald Williams."
+        ],
+        "tokens": {
+          "completion_tokens": 16,
+          "prompt_tokens": 114,
+          "total_tokens": 130
+        },
+        "vars": {
+          "text": "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.",
+          "tool": "back-propagation algorithm"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 3
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.\"",
+        "responses": [
+          "Louis Bernard Rabaut, Frenchman, Melitta Bentz."
+        ],
+        "tokens": {
+          "completion_tokens": 13,
+          "prompt_tokens": 82,
+          "total_tokens": 95
+        },
+        "vars": {
+          "text": "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.",
+          "tool": "coffee maker"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 4
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.\"",
+        "responses": [
+          "Paul Werbos, David Rumelhart, Jay McClelland, Geoffrey Hinton."
+        ],
+        "tokens": {
+          "completion_tokens": 18,
+          "prompt_tokens": 84,
+          "total_tokens": 102
+        },
+        "vars": {
+          "text": "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.",
+          "tool": "back-propagation algorithm"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 3
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.\"",
+        "responses": [
+          "David Rumelhart, Geoffrey Hinton, Ronald Williams."
+        ],
+        "tokens": {
+          "completion_tokens": 12,
+          "prompt_tokens": 98,
+          "total_tokens": 110
+        },
+        "vars": {
+          "text": "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.",
+          "tool": "back-propagation algorithm"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "KeyValue_Numeric",
+          "items": [
+            {
+              "Number of entities": 6
+            }
+          ]
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.\"",
+        "responses": [
+          "Scottish, John Aitken, James Jeffray, early 1900s, gasoline-powered, Andreas Stihl."
+        ],
+        "tokens": {
+          "completion_tokens": 26,
+          "prompt_tokens": 103,
+          "total_tokens": 129
+        },
+        "vars": {
+          "text": "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.",
+          "tool": "chainsaw"
+        }
+      }
+    ],
+    "inspect-1683813164213.json": {},
+    "prompt-1683813164213.json": {
+      "cache_files": {
+        "prompt-1683813164213_0.json": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "6a97026b-90b8-4d57-8798-a8d183e09189",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1
+        }
+      },
+      "responses_last_run": [
+        {
+          "llm": "GPT3.5",
+          "prompt": "Who invented the air conditioner?",
+          "responses": [
+            "Willis Carrier is credited with inventing the modern air conditioner in 1902.",
+            "Willis Carrier is credited with inventing the modern air conditioning system in 1902.",
+            "The air conditioner was invented by Willis Carrier in 1902."
+          ],
+          "tokens": {
+            "completion_tokens": 48,
+            "prompt_tokens": 25,
+            "total_tokens": 73
+          },
+          "vars": {
+            "tool": "air conditioner"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Who invented the vacuum cleaner?",
+          "responses": [
+            "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+            "The vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+            "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets."
+          ],
+          "tokens": {
+            "completion_tokens": 66,
+            "prompt_tokens": 25,
+            "total_tokens": 91
+          },
+          "vars": {
+            "tool": "vacuum cleaner"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Who invented the lightbulb?",
+          "responses": [
+            "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.",
+            "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.",
+            "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals."
+          ],
+          "tokens": {
+            "completion_tokens": 96,
+            "prompt_tokens": 26,
+            "total_tokens": 122
+          },
+          "vars": {
+            "tool": "lightbulb"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Who invented the chainsaw?",
+          "responses": [
+            "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.",
+            "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.",
+            "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl."
+          ],
+          "tokens": {
+            "completion_tokens": 181,
+            "prompt_tokens": 25,
+            "total_tokens": 206
+          },
+          "vars": {
+            "tool": "chainsaw"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Who invented the back-propagation algorithm?",
+          "responses": [
+            "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.",
+            "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.",
+            "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986."
+          ],
+          "tokens": {
+            "completion_tokens": 188,
+            "prompt_tokens": 27,
+            "total_tokens": 215
+          },
+          "vars": {
+            "tool": "back-propagation algorithm"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Who invented the coffee maker?",
+          "responses": [
+            "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.",
+            "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.",
+            "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today."
+          ],
+          "tokens": {
+            "completion_tokens": 208,
+            "prompt_tokens": 25,
+            "total_tokens": 233
+          },
+          "vars": {
+            "tool": "coffee maker"
+          }
+        }
+      ]
+    },
+    "prompt-1683813164213_0.json": {
+      "Who invented the air conditioner?": {
+        "info": {
+          "tool": "air conditioner"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Who invented the air conditioner?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Who invented the air conditioner?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 3,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Willis Carrier is credited with inventing the modern air conditioner in 1902.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 1,
+              "message": {
+                "content": "Willis Carrier is credited with inventing the modern air conditioning system in 1902.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 2,
+              "message": {
+                "content": "The air conditioner was invented by Willis Carrier in 1902.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560493,
+          "id": "chatcmpl-7MLZVX9DPtbPqGNKbqapYW6c9ZMbK",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 48,
+            "prompt_tokens": 25,
+            "total_tokens": 73
+          }
+        },
+        "responses": [
+          "Willis Carrier is credited with inventing the modern air conditioner in 1902.",
+          "Willis Carrier is credited with inventing the modern air conditioning system in 1902.",
+          "The air conditioner was invented by Willis Carrier in 1902."
+        ]
+      },
+      "Who invented the back-propagation algorithm?": {
+        "info": {
+          "tool": "back-propagation algorithm"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Who invented the back-propagation algorithm?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Who invented the back-propagation algorithm?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 3,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 1,
+              "message": {
+                "content": "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 2,
+              "message": {
+                "content": "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560493,
+          "id": "chatcmpl-7MLZVtMECEb20oYyBzinVKjzOvIM2",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 188,
+            "prompt_tokens": 27,
+            "total_tokens": 215
+          }
+        },
+        "responses": [
+          "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.",
+          "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.",
+          "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986."
+        ]
+      },
+      "Who invented the chainsaw?": {
+        "info": {
+          "tool": "chainsaw"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Who invented the chainsaw?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Who invented the chainsaw?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 3,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 1,
+              "message": {
+                "content": "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 2,
+              "message": {
+                "content": "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560493,
+          "id": "chatcmpl-7MLZViKPGL6Y3NOEw6aYlXwJaCgOy",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 181,
+            "prompt_tokens": 25,
+            "total_tokens": 206
+          }
+        },
+        "responses": [
+          "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.",
+          "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.",
+          "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl."
+        ]
+      },
+      "Who invented the coffee maker?": {
+        "info": {
+          "tool": "coffee maker"
+        },
+        "llm": "gpt-3.5-turbo",
+        "prompt": "Who invented the coffee maker?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Who invented the coffee maker?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 3,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 1,
+              "message": {
+                "content": "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 2,
+              "message": {
+                "content": "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560493,
+          "id": "chatcmpl-7MLZVMC0BzlgoOftQp5y8aDKMwlvG",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 208,
+            "prompt_tokens": 25,
+            "total_tokens": 233
+          }
+        },
+        "responses": [
+          "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.",
+          "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.",
+          "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today."
+        ]
+      },
+      "Who invented the lightbulb?": {
+        "info": {
+          "tool": "lightbulb"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Who invented the lightbulb?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Who invented the lightbulb?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 3,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 1,
+              "message": {
+                "content": "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 2,
+              "message": {
+                "content": "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560493,
+          "id": "chatcmpl-7MLZV6zFQqTni6qLPti2bRVgdfsFY",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 96,
+            "prompt_tokens": 26,
+            "total_tokens": 122
+          }
+        },
+        "responses": [
+          "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.",
+          "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.",
+          "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals."
+        ]
+      },
+      "Who invented the vacuum cleaner?": {
+        "info": {
+          "tool": "vacuum cleaner"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Who invented the vacuum cleaner?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Who invented the vacuum cleaner?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 3,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 1,
+              "message": {
+                "content": "The vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+                "role": "assistant"
+              }
+            },
+            {
+              "finish_reason": "stop",
+              "index": 2,
+              "message": {
+                "content": "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560493,
+          "id": "chatcmpl-7MLZVkcFT687pbAyKGlGC7ZO2ky0K",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 66,
+            "prompt_tokens": 25,
+            "total_tokens": 91
+          }
+        },
+        "responses": [
+          "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+          "The vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+          "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets."
+        ]
+      }
+    },
+    "promptNode-1683813691363.json": {
+      "cache_files": {
+        "promptNode-1683813691363_0.json": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1
+        }
+      },
+      "responses_last_run": [
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.\"",
+          "responses": [
+            "Thomas Edison"
+          ],
+          "tokens": {
+            "completion_tokens": 2,
+            "prompt_tokens": 57,
+            "total_tokens": 59
+          },
+          "vars": {
+            "text": "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.",
+            "tool": "lightbulb"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioner in 1902.\"",
+          "responses": [
+            "Willis Carrier"
+          ],
+          "tokens": {
+            "completion_tokens": 3,
+            "prompt_tokens": 53,
+            "total_tokens": 56
+          },
+          "vars": {
+            "text": "Willis Carrier is credited with inventing the modern air conditioner in 1902.",
+            "tool": "air conditioner"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
+          "responses": [
+            "Hubert Cecil Booth."
+          ],
+          "tokens": {
+            "completion_tokens": 5,
+            "prompt_tokens": 53,
+            "total_tokens": 58
+          },
+          "vars": {
+            "text": "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+            "tool": "vacuum cleaner"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
+          "responses": [
+            "Hubert Cecil Booth."
+          ],
+          "tokens": {
+            "completion_tokens": 5,
+            "prompt_tokens": 51,
+            "total_tokens": 56
+          },
+          "vars": {
+            "text": "The vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+            "tool": "vacuum cleaner"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.\"",
+          "responses": [
+            "Thomas Edison"
+          ],
+          "tokens": {
+            "completion_tokens": 2,
+            "prompt_tokens": 57,
+            "total_tokens": 59
+          },
+          "vars": {
+            "text": "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.",
+            "tool": "lightbulb"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.\"",
+          "responses": [
+            "British, Hubert Cecil Booth"
+          ],
+          "tokens": {
+            "completion_tokens": 6,
+            "prompt_tokens": 70,
+            "total_tokens": 76
+          },
+          "vars": {
+            "text": "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.",
+            "tool": "vacuum cleaner"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioning system in 1902.\"",
+          "responses": [
+            "Willis Carrier"
+          ],
+          "tokens": {
+            "completion_tokens": 3,
+            "prompt_tokens": 54,
+            "total_tokens": 57
+          },
+          "vars": {
+            "text": "Willis Carrier is credited with inventing the modern air conditioning system in 1902.",
+            "tool": "air conditioner"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.\"",
+          "responses": [
+            "Thomas Edison."
+          ],
+          "tokens": {
+            "completion_tokens": 3,
+            "prompt_tokens": 90,
+            "total_tokens": 93
+          },
+          "vars": {
+            "text": "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.",
+            "tool": "lightbulb"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The air conditioner was invented by Willis Carrier in 1902.\"",
+          "responses": [
+            "Willis Carrier."
+          ],
+          "tokens": {
+            "completion_tokens": 4,
+            "prompt_tokens": 49,
+            "total_tokens": 53
+          },
+          "vars": {
+            "text": "The air conditioner was invented by Willis Carrier in 1902.",
+            "tool": "air conditioner"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.\"",
+          "responses": [
+            "Melitta Bentz, German"
+          ],
+          "tokens": {
+            "completion_tokens": 6,
+            "prompt_tokens": 126,
+            "total_tokens": 132
+          },
+          "vars": {
+            "text": "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.",
+            "tool": "coffee maker"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.\"",
+          "responses": [
+            "Andreas Stihl, James Shand."
+          ],
+          "tokens": {
+            "completion_tokens": 10,
+            "prompt_tokens": 93,
+            "total_tokens": 103
+          },
+          "vars": {
+            "text": "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.",
+            "tool": "chainsaw"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.\"",
+          "responses": [
+            "Andreas Stihl, Stihl"
+          ],
+          "tokens": {
+            "completion_tokens": 9,
+            "prompt_tokens": 93,
+            "total_tokens": 102
+          },
+          "vars": {
+            "text": "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.",
+            "tool": "chainsaw"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.\"",
+          "responses": [
+            "Frenchman, Melitta Bentz"
+          ],
+          "tokens": {
+            "completion_tokens": 7,
+            "prompt_tokens": 108,
+            "total_tokens": 115
+          },
+          "vars": {
+            "text": "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.",
+            "tool": "coffee maker"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.\"",
+          "responses": [
+            "Paul Werbos, David Rumelhart, Geoffrey Hinton, Ronald Williams."
+          ],
+          "tokens": {
+            "completion_tokens": 16,
+            "prompt_tokens": 114,
+            "total_tokens": 130
+          },
+          "vars": {
+            "text": "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.",
+            "tool": "back-propagation algorithm"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.\"",
+          "responses": [
+            "Louis Bernard Rabaut, Frenchman, Melitta Bentz."
+          ],
+          "tokens": {
+            "completion_tokens": 13,
+            "prompt_tokens": 82,
+            "total_tokens": 95
+          },
+          "vars": {
+            "text": "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.",
+            "tool": "coffee maker"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.\"",
+          "responses": [
+            "Paul Werbos, David Rumelhart, Jay McClelland, Geoffrey Hinton."
+          ],
+          "tokens": {
+            "completion_tokens": 18,
+            "prompt_tokens": 84,
+            "total_tokens": 102
+          },
+          "vars": {
+            "text": "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.",
+            "tool": "back-propagation algorithm"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.\"",
+          "responses": [
+            "David Rumelhart, Geoffrey Hinton, Ronald Williams."
+          ],
+          "tokens": {
+            "completion_tokens": 12,
+            "prompt_tokens": 98,
+            "total_tokens": 110
+          },
+          "vars": {
+            "text": "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.",
+            "tool": "back-propagation algorithm"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.\"",
+          "responses": [
+            "Scottish, John Aitken, James Jeffray, early 1900s, gasoline-powered, Andreas Stihl."
+          ],
+          "tokens": {
+            "completion_tokens": 26,
+            "prompt_tokens": 103,
+            "total_tokens": 129
+          },
+          "vars": {
+            "text": "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.",
+            "tool": "chainsaw"
+          }
+        }
+      ]
+    },
+    "promptNode-1683813691363_0.json": {
+      "Return only a comma-separated list of named entities that appear in the following text: \"The air conditioner was invented by Willis Carrier in 1902.\"": {
+        "info": {
+          "text": "The air conditioner was invented by Willis Carrier in 1902.",
+          "tool": "air conditioner"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The air conditioner was invented by Willis Carrier in 1902.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The air conditioner was invented by Willis Carrier in 1902.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Willis Carrier.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdcW11hokaB6NSv73YwU21eeqE",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 4,
+            "prompt_tokens": 49,
+            "total_tokens": 53
+          }
+        },
+        "responses": [
+          "Willis Carrier."
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.\"": {
+        "info": {
+          "text": "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.",
+          "tool": "back-propagation algorithm"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "David Rumelhart, Geoffrey Hinton, Ronald Williams.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560502,
+          "id": "chatcmpl-7MLZeG7i3QVgAHiPMZkhZk5agAE8O",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 12,
+            "prompt_tokens": 98,
+            "total_tokens": 110
+          }
+        },
+        "responses": [
+          "David Rumelhart, Geoffrey Hinton, Ronald Williams."
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.\"": {
+        "info": {
+          "text": "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.",
+          "tool": "back-propagation algorithm"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Paul Werbos, David Rumelhart, Geoffrey Hinton, Ronald Williams.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdKqohyHyGUXp3bKEE4Dh06Uae",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 16,
+            "prompt_tokens": 114,
+            "total_tokens": 130
+          }
+        },
+        "responses": [
+          "Paul Werbos, David Rumelhart, Geoffrey Hinton, Ronald Williams."
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.\"": {
+        "info": {
+          "text": "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.",
+          "tool": "back-propagation algorithm"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Paul Werbos, David Rumelhart, Jay McClelland, Geoffrey Hinton.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdXo3IUfbr4wfZ5y4jFprQMm29",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 18,
+            "prompt_tokens": 84,
+            "total_tokens": 102
+          }
+        },
+        "responses": [
+          "Paul Werbos, David Rumelhart, Jay McClelland, Geoffrey Hinton."
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.\"": {
+        "info": {
+          "text": "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.",
+          "tool": "chainsaw"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Andreas Stihl, James Shand.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdmWOWJXBTZmZmTkv3C7n35Ahb",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 10,
+            "prompt_tokens": 93,
+            "total_tokens": 103
+          }
+        },
+        "responses": [
+          "Andreas Stihl, James Shand."
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.\"": {
+        "info": {
+          "text": "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.",
+          "tool": "chainsaw"
+        },
+        "llm": "gpt-3.5-turbo",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Scottish, John Aitken, James Jeffray, early 1900s, gasoline-powered, Andreas Stihl.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdKzFBnPJXiUwxShpCNfRTgxS2",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 26,
+            "prompt_tokens": 103,
+            "total_tokens": 129
+          }
+        },
+        "responses": [
+          "Scottish, John Aitken, James Jeffray, early 1900s, gasoline-powered, Andreas Stihl."
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.\"": {
+        "info": {
+          "text": "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.",
+          "tool": "chainsaw"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Andreas Stihl, Stihl",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdxdkC24bBNnxcPQHpNW86KJF4",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 9,
+            "prompt_tokens": 93,
+            "total_tokens": 102
+          }
+        },
+        "responses": [
+          "Andreas Stihl, Stihl"
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.\"": {
+        "info": {
+          "text": "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.",
+          "tool": "coffee maker"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Louis Bernard Rabaut, Frenchman, Melitta Bentz.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdyyUSR7AhStVM9PW2ZhDr5JYh",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 13,
+            "prompt_tokens": 82,
+            "total_tokens": 95
+          }
+        },
+        "responses": [
+          "Louis Bernard Rabaut, Frenchman, Melitta Bentz."
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.\"": {
+        "info": {
+          "text": "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.",
+          "tool": "coffee maker"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Frenchman, Melitta Bentz",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560502,
+          "id": "chatcmpl-7MLZe7RViYWvv5NmoFnefeVrDjLXn",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 7,
+            "prompt_tokens": 108,
+            "total_tokens": 115
+          }
+        },
+        "responses": [
+          "Frenchman, Melitta Bentz"
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.\"": {
+        "info": {
+          "text": "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.",
+          "tool": "vacuum cleaner"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "British, Hubert Cecil Booth",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdXQlcGlb2Ioh1f6awoiNyfAwD",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 6,
+            "prompt_tokens": 70,
+            "total_tokens": 76
+          }
+        },
+        "responses": [
+          "British, Hubert Cecil Booth"
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"": {
+        "info": {
+          "text": "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+          "tool": "vacuum cleaner"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Hubert Cecil Booth.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdfpmIQuAQ7ydQ4Y4YFvgh6VDk",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 5,
+            "prompt_tokens": 53,
+            "total_tokens": 58
+          }
+        },
+        "responses": [
+          "Hubert Cecil Booth."
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.\"": {
+        "info": {
+          "text": "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.",
+          "tool": "coffee maker"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Melitta Bentz, German",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdgBQlvKF7bTwyZbeUTE5gPJBC",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 6,
+            "prompt_tokens": 126,
+            "total_tokens": 132
+          }
+        },
+        "responses": [
+          "Melitta Bentz, German"
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"The vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"": {
+        "info": {
+          "text": "The vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
+          "tool": "vacuum cleaner"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"The vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Hubert Cecil Booth.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdrd4T9vqus3p15YJahvB7Flvm",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 5,
+            "prompt_tokens": 51,
+            "total_tokens": 56
+          }
+        },
+        "responses": [
+          "Hubert Cecil Booth."
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.\"": {
+        "info": {
+          "text": "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.",
+          "tool": "lightbulb"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Thomas Edison",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdRmUOfBkGLZcAFCcR4ex1B6Zh",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 2,
+            "prompt_tokens": 57,
+            "total_tokens": 59
+          }
+        },
+        "responses": [
+          "Thomas Edison"
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.\"": {
+        "info": {
+          "text": "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.",
+          "tool": "lightbulb"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Thomas Edison",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdMEuNOkRxlrMifKi3SXzqADoF",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 2,
+            "prompt_tokens": 57,
+            "total_tokens": 59
+          }
+        },
+        "responses": [
+          "Thomas Edison"
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.\"": {
+        "info": {
+          "text": "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.",
+          "tool": "lightbulb"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Thomas Edison.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdTCsxw8djsW7nrAcZzlfdQ4FD",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 3,
+            "prompt_tokens": 90,
+            "total_tokens": 93
+          }
+        },
+        "responses": [
+          "Thomas Edison."
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioner in 1902.\"": {
+        "info": {
+          "text": "Willis Carrier is credited with inventing the modern air conditioner in 1902.",
+          "tool": "air conditioner"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioner in 1902.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioner in 1902.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Willis Carrier",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdP9YY6qjNRJZKCDhqch1WIoMY",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 3,
+            "prompt_tokens": 53,
+            "total_tokens": 56
+          }
+        },
+        "responses": [
+          "Willis Carrier"
+        ]
+      },
+      "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioning system in 1902.\"": {
+        "info": {
+          "text": "Willis Carrier is credited with inventing the modern air conditioning system in 1902.",
+          "tool": "air conditioner"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioning system in 1902.\"",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioning system in 1902.\"",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 0.4,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "Willis Carrier",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1685560501,
+          "id": "chatcmpl-7MLZdozLZtKYO779rutQDRXlWUgV7",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 3,
+            "prompt_tokens": 54,
+            "total_tokens": 57
+          }
+        },
+        "responses": [
+          "Willis Carrier"
+        ]
+      }
+    },
+    "vis-1683813164213.json": {}
+  }
+}

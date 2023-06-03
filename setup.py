@@ -6,7 +6,7 @@ def readme():
 
 setup(
     name='chainforge',
-    version='0.1.3',
+    version='0.1.3.1',
     packages=find_packages(),
     author="Ian Arawjo",
     description="A Visual Programming Environment for Prompt Engineering",
@@ -28,6 +28,7 @@ setup(
         "anthropic",
         "google-generativeai",
         "dalaipy>=2.0.2",
+        "mistune>=2.0",  # for LLM response markdown parsing
     ],
     entry_points={
         'console_scripts': [
