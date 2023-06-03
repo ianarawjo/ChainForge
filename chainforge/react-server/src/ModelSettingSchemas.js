@@ -20,7 +20,7 @@ export const AvailableLLMs = [
 ];
 
 const ChatGPTSettings = {
-    fullName: "GPT-3.5 (ChatGPT)",
+    fullName: "GPT-3.5+ (OpenAI)",
     schema: {
         "type": "object",
         "required": [
@@ -36,8 +36,8 @@ const ChatGPTSettings = {
             "model": {
                 "type": "string",
                 "title": "Model Version",
-                "description": "Select a version of GPT3.5 to query. For more details on the differences, see the OpenAI API documentation. (Note that all ChainForge OpenAI calls use the Chat Completions API; we intend to support just Completions in the future.)",
-                "enum": ["gpt-3.5-turbo", "gpt-3.5-turbo-0301", "text-davinci-003", "text-davinci-002", "code-davinci-002"],
+                "description": "Select an OpenAI model to query. For more details on the differences, see the OpenAI API documentation.",
+                "enum": ["gpt-3.5-turbo", "gpt-3.5-turbo-0301", "gpt-4", "gpt-4-0314", "gpt-4-32k", "gpt-4-32k-0314", "text-davinci-003", "text-davinci-002", "code-davinci-002"],
                 "default": "gpt-3.5-turbo"
             },
             "system_msg": {
@@ -158,7 +158,7 @@ const ChatGPTSettings = {
 };
 
 const GPT4Settings = {
-    fullName: "GPT-4",
+    fullName: ChatGPTSettings.fullName,
     schema: {
       "type": "object",
         "required": [
@@ -173,15 +173,17 @@ const GPT4Settings = {
               "default": "GPT-4"
             },
             "model": {
-              "type": "string",
-              "title": "Model Version",
-              "description": "Select a version of GPT-4 to query. For more details on the differences, see the OpenAI API documentation. (Note that all ChainForge OpenAI calls use the Chat Completions API; we intend to support just Completions in the future.)",
-              "enum": ["gpt-4", "gpt-4-0314", "gpt-4-32k", "gpt-4-32k-0314"],
+              ...ChatGPTSettings.schema.properties.model,
               "default": "gpt-4"
-            },
+            }
         }
     },
-    uiSchema: ChatGPTSettings.uiSchema,
+    uiSchema: {
+      ...ChatGPTSettings.uiSchema,
+      "model": {
+        "ui:help": "Defaults to gpt-4.",
+      },
+    },
     postprocessors: ChatGPTSettings.postprocessors,
 };
 

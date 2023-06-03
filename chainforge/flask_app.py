@@ -18,8 +18,9 @@ app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
 # Set up CORS for specific routes
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
-# The cache base directory
+# The cache and examples files base directories
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
+EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
 
 # Serve React app (static; no hot reloading)
 @app.route("/")
@@ -833,6 +834,46 @@ def importCache():
 
     # Report success
     ret = jsonify({'result': True})
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
+
+
+@app.route('/app/fetchExampleFlow', methods=['POST'])
+def fetchExampleFlow():
+    """
+        Fetches the example flow data, given its filename. The filename should be the 
+        name of a file in the examples/ folder of the package. 
+
+        Used for loading examples in the Example Flow modal.
+
+        POST'd data should be in form:
+        { 
+            name: <str>  # The filename (without .cforge extension)
+        }
+    """
+    # Verify post'd data
+    data = request.get_json()
+    if 'name' not in data:
+        return jsonify({'error': 'Missing "name" parameter to fetchExampleFlow.'})
+
+    # Verify 'examples' directory exists:
+    if not os.path.isdir(EXAMPLES_DIR):
+        dirpath = os.path.dirname(os.path.realpath(__file__))
+        return jsonify({'error': f'Could not find an examples/ directory at path {dirpath}'})
+
+    # Check if the file is there:
+    filepath = os.path.join(EXAMPLES_DIR, data['name'] + '.cforge')
+    if not os.path.isfile(filepath):
+        return jsonify({'error': f"Could not find an example flow named {data['name']}"})
+
+    # Load the file and return its data:
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            filedata = json.load(f)
+    except Exception as e:
+        return jsonify({'error': f"Error parsing example flow at {filepath}: {str(e)}"})
+    
+    ret = jsonify({'data': filedata})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
