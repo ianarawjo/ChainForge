@@ -1,5 +1,3 @@
-import sys
-import os
 import socketio
 import time as time
 
@@ -27,7 +25,7 @@ class Dalai:
         try:
             self.sio.connect(server)
             self.ISCONNECTED = True
-        except Exception as e:
+        except Exception:
             raise NoServerException("NoServerException: No server was found, please make sure you have initiated your Dalai server")
 
         self.call_backs()
@@ -51,7 +49,7 @@ class Dalai:
                 self.CURRENT_ID = req_id
 
                 # And if it's not already in results
-                if not req_id in self.RESULTS:
+                if req_id not in self.RESULTS:
                     # then initially stuff it with this data
                     self.RESULTS[req_id] = data
                     # and add this request id to the last 
@@ -92,11 +90,12 @@ class Dalai:
         return True
 
     def generate_request(self, prompt, model, id='0', n_predict=128, repeat_last_n=64, repeat_penalty=1.3, seed=-1, temp=0.5, threads=4, top_k=40, top_p=0.9):
-        request = {'debug': False, 'id':id, 'model':model, 'models':[model], 'n_predict':n_predict, 'prompt':prompt, 'repeat_last_n':repeat_last_n, 'repeat_penalty':repeat_penalty, 'seed':seed, 'temp':temp, 'threads':threads, 'top_k':top_k, 'top_p':top_p}
+        request = {'debug': False, 'id':id, 'model':model, 'models':[model], 'n_predict':n_predict, 'prompt':prompt, 
+                   'repeat_last_n':repeat_last_n, 'repeat_penalty':repeat_penalty, 'seed':seed, 'temp':temp, 'threads':threads, 'top_k':top_k, 'top_p':top_p}
         return request
     
     def request(self, prompt, prettify=True):
-        if prettify == False:
+        if prettify is False:
             return self.generate(prompt)
         else:
             response = self.generate(prompt)['response']

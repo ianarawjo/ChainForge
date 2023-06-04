@@ -1,14 +1,13 @@
-import json, os, asyncio, sys, argparse, threading, traceback
+import json, os, asyncio, sys, traceback
 from dataclasses import dataclass
 from enum import Enum
 from typing import Union, List
 from statistics import mean, median, stdev
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from flask_socketio import SocketIO
 from chainforge.promptengine.query import PromptLLM, PromptLLMDummy
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
-from chainforge.promptengine.utils import LLM, extract_responses, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
+from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
 
 # Setup Flask app to serve static version of React front-end
 BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
@@ -64,7 +63,6 @@ def get_filenames_for_id(cache_id: str, include_basefile=True) -> List[str]:
         return [base_file]
 
 def remove_cached_responses(cache_id: str):
-    all_cache_files = get_files_at_dir(CACHE_DIR)
     cache_files = get_filenames_for_id(cache_id)
     for filename in cache_files:
         os.remove(os.path.join(CACHE_DIR, filename))
@@ -89,7 +87,7 @@ def load_cache_responses(filename: str) -> List[dict]:
     elif isinstance(data, list):
         return data
     else:
-        raise Exception(f"Could not find cache file for id {cache_id}")
+        raise Exception(f"Could not find cache file for id {filename}")
 
 def gen_unique_cache_filename(cache_id, prev_filenames: List[str]) -> str:
     idx = 0
@@ -233,8 +231,13 @@ def run_over_responses(eval_func, responses: list, scope: str) -> list:
                 }
         else:  
             # Run evaluator func over the entire response batch
-            ev = eval_func(res)
-            ev_type = typeof_set(set((type(ev),)))
+            ev = eval_func([
+                    ResponseInfo(text=r,
+                                 prompt=resp_obj['prompt'],
+                                 var=resp_obj['vars'],
+                                 llm=resp_obj['llm'])
+                for r in res])
+            ev_type = check_typeof_vals([ev])
             if ev_type == MetricType.Numeric:
                 resp_obj['eval_res'] = {
                     'mean': ev,
@@ -304,7 +307,8 @@ def countQueries():
         POST'd data should be in the form: 
         {
             'prompt': str  # the prompt template, with any {{}} vars
-            'vars': dict  # a dict of the template variables to fill the prompt template with, by name. For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
+            'vars': dict  # a dict of the template variables to fill the prompt template with, by name. 
+                          # For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
             'llms': list  # the list of LLMs you will query
             'n': int  # how many responses expected per prompt
             'id': str (optional)  # a unique ID of the node with cache'd responses. If missing, assumes no cache will be used.
@@ -340,8 +344,6 @@ def countQueries():
         num_responses_req[llm_key] += num
     
     for llm_spec in data['llms']:
-        llm_name = extract_llm_name(llm_spec)
-        llm_params = extract_llm_params(llm_spec)
         llm_key = extract_llm_key(llm_spec)
 
         # Find the response cache file for the specific LLM, if any
@@ -416,7 +418,8 @@ async def queryLLM():
             'llm': str | list[str] | list[dict]  # a string, list of strings, or list of LLM spec dicts specifying the LLM(s) to query.
             'n': int  # the amount of generations for each prompt. All LLMs will be queried the same number of times 'n' per each prompt.
             'prompt': str  # the prompt template, with any {{}} vars
-            'vars': dict  # a dict of the template variables to fill the prompt template with, by name. For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
+            'vars': dict  # a dict of the template variables to fill the prompt template with, by name. 
+                          # For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
             'api_keys': dict  # (optional) a dict of {api_name: api_key} pairs. Supported key names: OpenAI, Anthropic, Google
             'no_cache': bool (optional)  # delete any cache'd responses for 'id' (always call the LLM fresh)
         }
@@ -552,7 +555,7 @@ async def queryLLM():
             responses[item['llm_key']] = item['responses']
 
     except Exception as e:
-        print(f'error requesting responses:', e)
+        print('Error requesting responses:', e)
         print(traceback.format_exc())
         return jsonify({'error': str(e)})
 
@@ -651,7 +654,7 @@ def execute():
 
         # Double-check that there is an 'evaluate' method in our namespace. 
         # This will throw a NameError if not: 
-        evaluate
+        evaluate  # noqa
     except Exception as e:
         return jsonify({'error': f'Could not compile evaluator code. Error message:\n{str(e)}'})
 
@@ -670,7 +673,7 @@ def execute():
         # Run the evaluator over them: 
         # NOTE: 'evaluate' here was defined dynamically from 'exec' above. 
         try:
-            evald_responses = run_over_responses(evaluate, responses, scope=data['scope'])
+            evald_responses = run_over_responses(evaluate, responses, scope=data['scope'])  # noqa
         except Exception as e:
             return jsonify({'error': f'Error encountered while trying to run "evaluate" method:\n{str(e)}'})
 
@@ -708,7 +711,7 @@ def checkEvalFunc():
     """
     data = request.get_json()
     if 'code' not in data:
-        return jsonify({'result': False, 'error': f'Could not evaluate code. Error message:\n{str(e)}'})
+        return jsonify({'result': False, 'error': 'Could not find "code" in message from front-end.'})
 
     # DANGER DANGER! Running exec on code passed through front-end. Make sure it's trusted!
     try:
@@ -716,7 +719,7 @@ def checkEvalFunc():
 
         # Double-check that there is an 'evaluate' method in our namespace. 
         # This will throw a NameError if not: 
-        evaluate
+        evaluate  # noqa
         return jsonify({'result': True})
     except Exception as e:
         return jsonify({'result': False, 'error': f'Could not compile evaluator code. Error message:\n{str(e)}'})

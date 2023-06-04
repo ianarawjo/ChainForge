@@ -1,9 +1,8 @@
-from typing import Dict, Tuple, List, Union, Optional, Callable
+from typing import Dict, Tuple, List, Union, Optional
 import json, os, time, asyncio
 from string import Template
-import concurrent.futures
 
-from chainforge.promptengine.models import LLM, RATE_LIMITS
+from chainforge.promptengine.models import LLM
 
 DALAI_MODEL = None
 DALAI_RESPONSE = None
@@ -393,7 +392,7 @@ def is_valid_json(json_dict: dict) -> bool:
         try:
             json.dumps(json_dict)
             return True
-        except:
+        except Exception:
             pass
     return False
 

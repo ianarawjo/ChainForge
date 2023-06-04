@@ -33,7 +33,7 @@ class PromptPipeline:
         """
         # Double-check that properties is the correct type (JSON dict):
         if not is_valid_json(properties):
-            raise ValueError(f"Properties argument is not valid JSON.")
+            raise ValueError("Properties argument is not valid JSON.")
 
         # Load any cache'd responses
         responses = self._load_cached_responses()
@@ -70,10 +70,23 @@ class PromptPipeline:
             if max_req > 1:                
                 # Call the LLM asynchronously to generate a response, sending off
                 # requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
-                tasks.append(self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp, query_number=num_queries, rate_limit_batch_size=max_req, rate_limit_wait_secs=wait_secs, **llm_params))
+                tasks.append(self._prompt_llm(llm=llm, 
+                                              prompt=prompt, 
+                                              n=n, 
+                                              temperature=temperature, 
+                                              past_resp_obj=cached_resp, 
+                                              query_number=num_queries, 
+                                              rate_limit_batch_size=max_req, 
+                                              rate_limit_wait_secs=wait_secs, 
+                                              **llm_params))
             else:
                 # Block. Await + yield a single LLM call.
-                _, query, response, past_resp_obj = await self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp, **llm_params)
+                _, query, response, past_resp_obj = await self._prompt_llm(llm=llm, 
+                                                                           prompt=prompt, 
+                                                                           n=n, 
+                                                                           temperature=temperature, 
+                                                                           past_resp_obj=cached_resp, 
+                                                                           **llm_params)
 
                 # Create a response obj to represent the response
                 resp_obj = {
@@ -148,7 +161,8 @@ class PromptPipeline:
 
     async def _prompt_llm(self, 
                           llm: LLM, 
-                          prompt: PromptTemplate, n: int = 1, 
+                          prompt: PromptTemplate, 
+                          n: int = 1, 
                           temperature: float = 1.0, 
                           past_resp_obj: Optional[Dict] = None,
                           query_number: Optional[int] = None,
