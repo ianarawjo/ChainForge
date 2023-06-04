@@ -5,7 +5,7 @@ from typing import Union, List
 from statistics import mean, median, stdev
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from chainforge.promptengine.query import PromptLLM, PromptLLMDummy
+from chainforge.promptengine.query import PromptLLM, PromptLLMDummy, LLMResponseException
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
 from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
 
@@ -490,6 +490,7 @@ async def queryLLM():
 
     # For each LLM, generate and cache responses:
     responses = {}
+    all_errors = {}
     num_generations = data['n'] if 'n' in data else 1
     tempfilepath = os.path.join(CACHE_DIR, f"_temp_{data['id']}.txt")
     if not is_valid_filepath(tempfilepath):
@@ -516,25 +517,38 @@ async def queryLLM():
         # Prompt the LLM with all permutations of the input prompt template:
         # NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
         resps = []
+        errors = []
         num_resps = 0
+        num_errors = 0
         try:
             print(f'Querying {llm}...')
+
+            # Yield responses for 'llm' for each prompt generated from the root template 'prompt' and template variables in 'properties':
             async for response in prompter.gen_responses(properties=data['vars'], llm=llm, n=num_generations, **llm_params):
-                # The response name will be the name of the LLM. However,
-                # for the front-end it is more informative to store the user-provided nickname. 
-                response['llm'] = llm_nickname
 
-                resps.append(response)
-                print(f"collected response from {llm.name}:", str(response))
+                # Check for selective failure
+                if isinstance(response, LLMResponseException):  # The request failed
+                    print(f"error when fetching response from {llm.name}: {response}")
+                    num_errors += 1
+                    errors.append(str(response))
+                else:  # The request succeeded
+                    # The response name will be the name of the LLM. However,
+                    # for the front-end it is more informative to store the user-provided nickname. 
+                    response['llm'] = llm_nickname
 
-                num_resps += len(response['responses'])
-
-                # Save the number of responses collected to a temp file on disk
+                    print(f"collected response from {llm.name}:", str(response))
+                    num_resps += len(response['responses'])
+                    resps.append(response)
+                
+                # Save the current progress to a temp file on disk
                 with open(tempfilepath, 'r', encoding='utf-8') as f:
                     txt = f.read().strip()
                 
                 cur_data = json.loads(txt) if len(txt) > 0 else {}
-                cur_data[llm_key] = num_resps
+                cur_data[llm_key] = {
+                    'success': num_resps,
+                    'error': num_errors
+                }
                 
                 with open(tempfilepath, 'w', encoding='utf-8') as f:
                     json.dump(cur_data, f)
@@ -543,8 +557,8 @@ async def queryLLM():
             print(traceback.format_exc())
             raise e
         
-        return {'llm_key': llm_key, 'responses': resps}
-            
+        return {'llm_key': llm_key, 'responses': resps, 'errors': errors}
+        
     try:
         # Request responses simultaneously across LLMs
         tasks = [query(llm_spec) for llm_spec in llms]
@@ -553,6 +567,8 @@ async def queryLLM():
         llm_results = await asyncio.gather(*tasks)
         for item in llm_results:
             responses[item['llm_key']] = item['responses']
+            if len(item['errors']) > 0:
+                all_errors[item['llm_key']] = item['errors']
 
     except Exception as e:
         print('Error requesting responses:', e)
@@ -584,8 +600,8 @@ async def queryLLM():
         json.dump(cache_data, f)
 
     # Return all responses for all LLMs
-    print('returning responses:', res)
-    ret = jsonify({'responses': res})
+    print('returning responses:', res, 'errors:', all_errors)
+    ret = jsonify({'responses': res, 'errors': all_errors})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 

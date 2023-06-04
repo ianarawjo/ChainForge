@@ -89,17 +89,35 @@ const PromptNode = ({ data, id }) => {
         return item;
     }));
   }, [llmItemsCurrState]);
+  const ensureLLMItemsErrorProgress = useCallback((llm_keys_w_errors) => {
+    setLLMItems(llmItemsCurrState.map(item => {
+        if (llm_keys_w_errors.includes(item.key)) {
+            if (!item.progress)
+                item.progress = { success: 0, error: 100 };
+            else {
+                const succ_perc = item.progress.success;
+                item.progress = { success: succ_perc, error: 100 - succ_perc };
+            }
+        } else {
+            if (item.progress && item.progress.success === 0)
+                item.progress = undefined;
+        }
+
+        return item;
+    }));
+  }, [llmItemsCurrState]);
   
   const getLLMListItemForKey = useCallback((key) => {
     return llmItemsCurrState.find((item) => item.key === key);
   }, [llmItemsCurrState]);
 
   // Progress when querying responses
-  const [progress, setProgress] = useState(100);
+  const [progress, setProgress] = useState(undefined);
+  const [progressAnimated, setProgressAnimated] = useState(true);
   const [runTooltip, setRunTooltip] = useState(null);
 
   const triggerAlert = useCallback((msg) => {
-    setProgress(100);
+    setProgress(undefined);
     resetLLMItemsProgress();
     alertModal.current.trigger(msg);
   }, [resetLLMItemsProgress, alertModal]);
@@ -346,6 +364,7 @@ const PromptNode = ({ data, id }) => {
     // Set status indicator
     setStatus('loading');
     setResponsePreviews([]);
+    setProgressAnimated(true);
 
     const [py_prompt_template, pulled_data] = pullInputData();
 
@@ -385,9 +404,9 @@ const PromptNode = ({ data, id }) => {
         // for task 'queryllm' with id 'id', and stop when it reads progress >= 'max'. 
         socket.on("connect", (msg) => {
             // Initialize progress bars to small amounts
-            setProgress(5);
+            setProgress({ success: 2, error: 0 });
             setLLMItems(llmItemsCurrState.map(item => {
-                item.progress = 0;
+                item.progress = { success: 0, error: 0 };
                 return item;
             }));
 
@@ -412,17 +431,28 @@ const PromptNode = ({ data, id }) => {
 
             // Update individual progress bars
             const num_llms = llmItemsCurrState.length;
+            const num_resp_per_llm = (max_responses / num_llms);
             setLLMItems(llmItemsCurrState.map(item => {
-                if (item.key in counts)
-                    item.progress = counts[item.key] / (max_responses / num_llms) * 100;
+                if (item.key in counts) {
+                    item.progress = {
+                        success: counts[item.key]['success'] / num_resp_per_llm * 100,
+                        error: counts[item.key]['error'] / num_resp_per_llm * 100,
+                    }
+                }
                 return item;
             }));
             
             // Update total progress bar
-            const total_num_resps = Object.keys(counts).reduce((acc, llm_key) => {
-                return acc + counts[llm_key];
+            const total_num_success = Object.keys(counts).reduce((acc, llm_key) => {
+                return acc + counts[llm_key]['success'];
             }, 0);
-            setProgress(Math.max(5, total_num_resps / max_responses * 100));
+            const total_num_error = Object.keys(counts).reduce((acc, llm_key) => {
+                return acc + counts[llm_key]['error'];
+            }, 0);
+            setProgress({
+                success: Math.max(5, total_num_success / max_responses * 100),
+                error: total_num_error / max_responses * 100 }
+            );
         });
 
         // The process has finished; close the connection:
@@ -453,16 +483,42 @@ const PromptNode = ({ data, id }) => {
                 setStatus('error');
                 triggerAlert('Request was sent and received by backend server, but there was no response.');
             }
-            else if (json.responses) {
+            else if (json.responses && json.errors) {
+                FINISHED_QUERY = true;
 
-                // Success! Change status to 'ready':
+                // If there was at least one error collecting a response...
+                const llms_w_errors = Object.keys(json.errors);
+                if (llms_w_errors.length > 0) {
+                    // Remove the total progress bar
+                    setProgress(undefined);
+
+                    // Ensure there's a sliver of error displayed in the progress bar
+                    // of every LLM item that has an error:
+                    ensureLLMItemsErrorProgress(llms_w_errors);
+
+                    // Set error status
+                    setStatus('error');
+
+                    // Trigger alert and display one error message per LLM of all collected errors:
+                    let combined_err_msg = "";
+                    llms_w_errors.forEach(llm_key => {
+                        const item = getLLMListItemForKey(llm_key);                        
+                        combined_err_msg += item.name + ': ' + json.errors[llm_key][0] + '\n';
+                    });
+                    // We trigger the alert directly (don't use triggerAlert) here because we want to keep the progress bar:
+                    alertModal.current.trigger('Errors collecting responses. Re-run prompt node to retry.\n\n'+combined_err_msg);
+
+                    return;
+                }
+
+                // All responses collected! Change status to 'ready':
                 setStatus('ready');
 
                 // Remove progress bars
-                setProgress(100);
-                resetLLMItemsProgress();
-                FINISHED_QUERY = true;
-
+                setProgress(undefined);
+                setProgressAnimated(true);
+                resetLLMItemsProgress()
+                
                 // Save prompt text so we remember what prompt we have responses cache'd for:
                 setPromptTextOnLastRun(promptText);
 
@@ -599,15 +655,14 @@ const PromptNode = ({ data, id }) => {
             
             <div className="nodrag">
                 <LLMList llms={llmItems} onItemsChange={onLLMListItemsChange} />
-                {/* <input type="checkbox" id="gpt3.5" name="gpt3.5" value="gpt3.5" defaultChecked={true} onChange={handleLLMChecked} />
-                <label htmlFor="gpt3.5">GPT3.5  </label>
-                <input type="checkbox" id="gpt4" name="gpt4" value="gpt4" defaultChecked={false} onChange={handleLLMChecked} />
-                <label htmlFor="gpt4">GPT4  </label>
-                <input type="checkbox" id="alpaca.7B" name="alpaca.7B" value="alpaca.7B" defaultChecked={false} onChange={handleLLMChecked} />
-                <label htmlFor="alpaca.7B">Alpaca 7B</label> */}
             </div>
         </div>
-        {progress < 100 ? (<Progress value={progress} animate />) : <></>}
+        {progress !== undefined ? 
+            (<Progress animate={progressAnimated} sections={[
+                { value: progress.success, color: 'blue', tooltip: 'API call succeeded' },
+                { value: progress.error, color: 'red', tooltip: 'Error collecting response' }
+            ]} />)
+        : <></>}
         <div className="response-preview-container nowheel">
             {responsePreviews}
         </div>

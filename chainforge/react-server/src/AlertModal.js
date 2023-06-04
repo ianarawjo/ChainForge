@@ -21,7 +21,7 @@ const AlertModal = forwardRef((props, ref) => {
 
   return (
     <Modal opened={opened} onClose={close} title="Error" styles={{header: {backgroundColor: '#E52A2A', color: 'white'}, root: {position: 'relative', left: '-80px'}}}>
-      <p>{alertMsg}</p>
+      <p style={{whiteSpace: 'pre-line'}}>{alertMsg}</p>
     </Modal>
   );
 });

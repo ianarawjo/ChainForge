@@ -49,7 +49,11 @@ def readCounts(data):
         
         # Calculate the total sum of responses
         # TODO: This is a naive approach; we need to make this more complex and factor in cache'ing in future
-        n = sum([int(n) for llm, n in queries.items()])
+        n = 0
+        for progress in queries.values():
+            for val in progress.values():
+                # Regardless of the status 'success' or 'error', sums how many succeeded:
+                n += int(val)
         
         # If something's changed...
         if init_run or last_n != n:
