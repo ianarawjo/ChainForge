@@ -6,6 +6,7 @@ import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks from './TemplateHooksComponent'
 import LLMList from './LLMListComponent'
+import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 import {BASE_URL} from './store';
 import io from 'socket.io-client';
 import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas'
@@ -70,6 +71,7 @@ const PromptNode = ({ data, id }) => {
   // API Keys (set by user in popup GlobalSettingsModal)
   const apiKeys = useStore((state) => state.apiKeys);
 
+  const [jsonResponses, setJSONResponses] = useState(null);
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const [promptText, setPromptText] = useState(data.prompt || "");
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
@@ -79,6 +81,9 @@ const PromptNode = ({ data, id }) => {
 
   // For displaying error messages to user
   const alertModal = useRef(null);
+
+  // For a way to inspect responses without having to attach a dedicated node
+  const inspectModal = useRef(null);
 
   // Selecting LLM models to prompt
   const [llmItems, setLLMItems] = useState(data.llms || initLLMs.map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i})));
@@ -121,6 +126,11 @@ const PromptNode = ({ data, id }) => {
     resetLLMItemsProgress();
     alertModal.current.trigger(msg);
   }, [resetLLMItemsProgress, alertModal]);
+
+  const showResponseInspector = useCallback(() => {
+    if (inspectModal && inspectModal.current && jsonResponses)
+        inspectModal.current.trigger();
+  }, [inspectModal, jsonResponses]);
 
   const addModel = useCallback((model) => {
     // Get the item for that model
@@ -568,6 +578,9 @@ const PromptNode = ({ data, id }) => {
                     }
                 });
 
+                // Store responses
+                setJSONResponses(json.responses);
+
                 // Log responses for debugging:
                 console.log(json.responses);
             } else {
@@ -612,6 +625,7 @@ const PromptNode = ({ data, id }) => {
                 handleRunHover={handleRunHover}
                 runButtonTooltip={runTooltip}
                 />
+    <LLMResponseInspectorModal ref={inspectModal} jsonResponses={jsonResponses} prompt={promptText} />
       <div className="input-field">
         <textarea
           rows="4"
@@ -663,7 +677,7 @@ const PromptNode = ({ data, id }) => {
                 { value: progress.error, color: 'red', tooltip: 'Error collecting response' }
             ]} />)
         : <></>}
-        <div className="response-preview-container nowheel">
+        <div className="response-preview-container nowheel" onClick={showResponseInspector}>
             {responsePreviews}
         </div>
       </div>

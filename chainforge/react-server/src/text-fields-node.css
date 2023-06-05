@@ -183,6 +183,9 @@
     border: 1px solid #999;
     border-radius: 5px;
   }
+  .inspect-multiselect {
+    margin-bottom: 6px;
+  }
   .inspect-response-container {
     overflow-y: scroll;
     min-width: 150px;
@@ -205,6 +208,24 @@
   .response-var-value {
     font-family: monospace;
     font-size: 9pt;
+  }
+  .inspect-modal-prompt-box {
+    background-color: #eee;
+    padding: 10px;
+    margin: 0px 0px 10px 0px;
+    border-bottom-style: solid;
+    border-bottom-color: #aaa;
+    box-shadow: 1px 1px 8px #ccc;
+    max-height: 200px;
+  }
+  .inspect-modal-prompt-text {
+    font-family: monospace;
+    font-size: 11pt;
+    white-space: pre-line;
+  }
+  .inspect-modal-prompt-prefix {
+    font-size: 10pt;
+    font-weight: bold;
   }
 
   .small-response {
