@@ -392,12 +392,33 @@ const VisNode = ({ data, id }) => {
                 const names_1 = new Set(responses.map(r => r.vars[varnames[1]].trim()));
                 const shortnames_1 = genUniqueShortnames(names_1);
 
-                spec = {
-                    type: 'scatter3d',
-                    x: responses.map(r => r.vars[varnames[0]]).map(s => shortnames_0[s]),
-                    y: responses.map(r => r.vars[varnames[1]]).map(s => shortnames_1[s]),
-                    z: responses.map(r => get_items(r.eval_res).reduce((acc, val) => (acc + val), 0) / r.eval_res.items.length), // calculates mean
-                    mode: 'markers',
+                if (llm_names.length === 1) {
+                    spec = {
+                        type: 'scatter3d',
+                        x: responses.map(r => r.vars[varnames[0]]).map(s => shortnames_0[s]),
+                        y: responses.map(r => r.vars[varnames[1]]).map(s => shortnames_1[s]),
+                        z: responses.map(r => get_items(r.eval_res).reduce((acc, val) => (acc + val), 0) / r.eval_res.items.length), // calculates mean
+                        mode: 'markers',
+                        marker: {
+                            color: getColorForLLMAndSetIfNotFound(llm_names[0])
+                        }
+                    };
+                } else {
+                    spec = [];
+                    llm_names.forEach(llm => {
+                        const resps = responses.filter((r) => r.llm === llm);
+                        spec.push({
+                            type: 'scatter3d',
+                            x: resps.map(r => r.vars[varnames[0]]).map(s => shortnames_0[s]),
+                            y: resps.map(r => r.vars[varnames[1]]).map(s => shortnames_1[s]),
+                            z: resps.map(r => get_items(r.eval_res).reduce((acc, val) => (acc + val), 0) / r.eval_res.items.length), // calculates mean
+                            mode: 'markers',
+                            marker: {
+                                color: getColorForLLMAndSetIfNotFound(llm)
+                            },
+                            name: llm,
+                        });
+                    });
                 }
             }
         }
