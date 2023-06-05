@@ -35,6 +35,7 @@ const selector = (state) => ({
   addNode: state.addNode,
   setNodes: state.setNodes,
   setEdges: state.setEdges,
+  resetLLMColors: state.resetLLMColors,
 });
 
 // import AnimatedConnectionLine from './AnimatedConnectionLine';
@@ -55,7 +56,7 @@ const snapGrid = [16, 16];
 const App = () => {
 
   // Get nodes, edges, etc. state from the Zustand store:
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, setNodes, setEdges } = useStore(selector, shallow);
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, setNodes, setEdges, resetLLMColors } = useStore(selector, shallow);
 
   // For saving / loading
   const [rfInstance, setRfInstance] = useState(null);
@@ -161,6 +162,7 @@ const App = () => {
     if (flow) {
       const { x = 0, y = 0, zoom = 1 } = flow.viewport;
       // setViewport({ x, y, zoom });
+      resetLLMColors();
       setNodes(flow.nodes || []);
       setEdges(flow.edges || []); 
     }

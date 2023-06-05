@@ -104,6 +104,13 @@ const useStore = create((set, get) => ({
   setColorForLLM: (llm_name, color) => {
     get().llmColors[llm_name] = color;
   },
+
+  // Resets (removes) all LLM colors
+  resetLLMColors: () => {
+    set({
+      llmColors: []
+    });
+  },
  
   inputEdgesForNode: (sourceNodeId) => {
     return get().edges.filter(e => e.target == sourceNodeId);
