@@ -254,7 +254,7 @@ class PromptLLMDummy(PromptLLM):
         # Wait a random amount of time, to simulate wait times from real queries
         await asyncio.sleep(random.uniform(0.1, 3))
 
-        if random.random() > 0.5:
+        if random.random() > 0.2:
             # Return a random string of characters of random length (within a predefined range)
             return prompt, {'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(random.randint(25, 80))) for _ in range(n)], past_resp_obj
         else:
