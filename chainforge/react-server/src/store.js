@@ -210,7 +210,7 @@ const useStore = create((set, get) => ({
     // Get the target node information
     const target = get().getNode(connection.target);
     
-    if (target.type === 'vis' || target.type === 'inspect') {
+    if (target.type === 'vis' || target.type === 'inspect' || target.type === 'elena') {
       get().setDataPropsForNode(target.id, { input: connection.source });
     }
 

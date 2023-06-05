@@ -20,6 +20,7 @@ import ScriptNode from './ScriptNode';
 import AlertModal from './AlertModal';
 import CsvNode from './CsvNode';
 import TabularDataNode from './TabularDataNode';
+import ElenaInspectNode from './ElenaInspectNode';
 import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
 import AreYouSureModal from './AreYouSureModal';
@@ -52,6 +53,7 @@ const nodeTypes = {
   script: ScriptNode,
   csv: CsvNode,
   table: TabularDataNode,
+  elena: ElenaInspectNode,
 };
 
 // const connectionLineStyle = { stroke: '#ddd' };
@@ -128,6 +130,11 @@ const App = () => {
   const addTabularDataNode = (event) => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'table-'+Date.now(), type: 'table', data: {}, position: {x: x-200, y:y-100} });
+  };
+
+  const addElenaNode = (event) => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'elenaNode-'+Date.now(), type: 'elena', data: {}, position: {x: x-200, y:y-100} });
   };
 
   const onClickExamples = () => {
@@ -493,6 +500,7 @@ const App = () => {
               <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
               <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>
               <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
+              <Menu.Item onClick={addElenaNode} icon={'🔍'}> Elena's Inspect Node </Menu.Item>
               <Menu.Item onClick={addScriptNode} icon={<IconSettingsAutomation size="16px" />}> Global Scripts </Menu.Item>
           </Menu.Dropdown>
         </Menu>
