@@ -262,7 +262,7 @@ const LLMResponseInspector = ({ jsonResponses }) => {
     const divs = groupByVars(responses, selected_vars, [], null);
     setResponses(divs);
 
-  }, [multiSelectValue, multiSelectVars, jsonResponses]);
+  }, [multiSelectValue, jsonResponses]);
 
   // When the user clicks an item in the drop-down,
   // we want to autoclose the multiselect drop-down:
