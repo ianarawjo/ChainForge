@@ -85,6 +85,9 @@ const InspectorNode = ({ data, id }) => {
   const [multiSelectVars, setMultiSelectVars] = useState(data.vars || []);
   const [multiSelectValue, setMultiSelectValue] = useState(data.selected_vars || []);
 
+  // Global lookup for what color to use per LLM
+  const getColorForLLMAndSetIfNotFound = useStore((state) => state.getColorForLLMAndSetIfNotFound);
+
   // Update the visualization when the MultiSelect values change:
   useEffect(() => {
     if (!jsonResponses || (Array.isArray(jsonResponses) && jsonResponses.length === 0))
@@ -93,14 +96,11 @@ const InspectorNode = ({ data, id }) => {
     const responses = jsonResponses;
     const selected_vars = multiSelectValue;
 
-    // Find all LLMs in responses and store as array
-    let found_llms = getLLMsInResponses(responses);
-
-    // Assign a color to each LLM in responses
-    const llm_colors = ['#ace1aeb1', '#f1b963b1', '#e46161b1', '#f8f398b1', '#defcf9b1', '#cadefcb1', '#c3bef0b1', '#cca8e9b1'];
-    const llm_badge_colors = ['green', 'orange', 'red', 'yellow', 'cyan', 'indigo', 'grape'];
-    const color_for_llm = (llm) => llm_colors[found_llms.indexOf(llm) % llm_colors.length];
-    const badge_color_for_llm = (llm) => llm_badge_colors[found_llms.indexOf(llm) % llm_badge_colors.length];
+    // Functions to associate a color to each LLM in responses
+    // const llm_colors = ['#ace1aeb1', '#f1b963b1', '#e46161b1', '#f8f398b1', '#defcf9b1', '#cadefcb1', '#c3bef0b1', '#cca8e9b1'];
+    const color_for_llm = (llm) => (getColorForLLMAndSetIfNotFound(llm) + '99');
+    // const llm_badge_colors = ['green', 'orange', 'red', 'yellow', 'cyan', 'indigo', 'grape'];
+    const badge_color_for_llm = (llm) => 'blue';
     const response_box_colors = ['#eee', '#fff', '#eee', '#ddd', '#eee', '#ddd', '#eee'];
     const rgroup_color = (depth) => response_box_colors[depth % response_box_colors.length];
 

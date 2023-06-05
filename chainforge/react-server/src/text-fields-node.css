@@ -281,7 +281,8 @@
     margin: 10px -9px -9px -9px;
     max-height: 100px;
     overflow-y: auto;
-    background-color: #ceeaf5b1; /* ACE1AF */
+    background-color: #ceeaf5b1;
+    cursor: zoom-in;
   }
   .response-box {
     padding: 2px;

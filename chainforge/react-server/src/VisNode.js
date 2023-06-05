@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Handle } from 'react-flow-renderer';
 import { MultiSelect } from '@mantine/core';
-import useStore from './store';
+import useStore, { colorPalettes } from './store';
 import Plot from 'react-plotly.js';
 import NodeLabel from './NodeLabelComponent';
 import PlotLegend from './PlotLegend';
@@ -69,6 +69,8 @@ const genUniqueShortnames = (names) => {
 const VisNode = ({ data, id }) => {
 
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+    const getColorForLLMAndSetIfNotFound = useStore((state) => state.getColorForLLMAndSetIfNotFound);
+
     const [plotlySpec, setPlotlySpec] = useState([]);
     const [plotlyLayout, setPlotlyLayout] = useState({});
     const [pastInputs, setPastInputs] = useState([]);
@@ -123,7 +125,7 @@ const VisNode = ({ data, id }) => {
 
         // Create Plotly spec here
         const varnames = multiSelectValue;
-        const colors = ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#cadefc', '#f8f398'];
+        const varcolors = colorPalettes.var; // ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#cadefc', '#f8f398'];
         let spec = [];
         let layout = {
             autosize: true, title: '', margin: {
@@ -170,12 +172,12 @@ const VisNode = ({ data, id }) => {
             return eval_res_obj.items;
         };
 
-        const plot_simple_boxplot = (resp_to_x) => {
+        const plot_simple_boxplot = (resp_to_x, group_type) => {
             // Get all possible values of the single variable response ('name' vals)
             const names = new Set(responses.map(resp_to_x));
             const shortnames = genUniqueShortnames(names);
 
-            let color_idx = 0;
+            let name_idx = 0;
             for (const name of names) {
                 let x_items = [];
                 let text_items = [];
@@ -185,13 +187,19 @@ const VisNode = ({ data, id }) => {
                     text_items = text_items.concat(createHoverTexts(r.responses));
                 });
 
+                // Lookup the color per LLM when displaying LLM differences, 
+                // otherwise use the palette for displaying variables.
+                const color = (group_type === 'llm') ? 
+                                getColorForLLMAndSetIfNotFound(name) 
+                            :   varcolors[name_idx % varcolors.length];
+
                 if (typeof_eval_res === 'Boolean') {
                     // Unique case: Plot a histogram for boolean (true/false) categorical data.
                     spec.push({
                         type: 'histogram',
                         histfunc: "sum",
                         name: shortnames[name],
-                        marker: {color: colors[color_idx % colors.length]},
+                        marker: {color: color},
                         y: x_items,
                         orientation: 'h',
                     });
@@ -206,11 +214,11 @@ const VisNode = ({ data, id }) => {
                         text: text_items, 
                         hovertemplate: '%{text}', 
                         orientation: 'h',
-                        marker: { color: colors[color_idx % colors.length] }
+                        marker: { color: color }
                     });
                 }
 
-                color_idx += 1;
+                name_idx += 1;
             }
             layout.hovermode = 'closest';
 
@@ -247,7 +255,7 @@ const VisNode = ({ data, id }) => {
                         type: 'histogram',
                         histfunc: "sum",
                         name: llm,
-                        marker: {color: colors[idx % colors.length]},
+                        marker: {color: getColorForLLMAndSetIfNotFound(llm)},
                         x: x_items.map(i => i === true ? "1" : "0"),
                         y: y_items,
                         orientation: 'h',
@@ -258,7 +266,7 @@ const VisNode = ({ data, id }) => {
                     spec.push({
                         type: 'box',
                         name: llm,
-                        marker: {color: colors[idx % colors.length]},
+                        marker: {color: getColorForLLMAndSetIfNotFound(llm)},
                         x: x_items,
                         y: y_items,
                         boxpoints: 'all',
@@ -283,7 +291,7 @@ const VisNode = ({ data, id }) => {
                 let unique_vals = getUniqueKeysInResponses(responses, (resp_obj) => resp_obj.vars[varnames[0]]);
                 // const response_txts = responses.map(res_obj => res_obj.responses).flat();
 
-                let group_colors = colors;
+                let group_colors = varcolors;
                 const unselected_line_color = '#ddd';
                 const spec_colors = responses.map(resp_obj => {
                     const idx = unique_vals.indexOf(resp_obj.vars[varnames[0]]);
@@ -362,17 +370,17 @@ const VisNode = ({ data, id }) => {
             if (varnames.length === 0) {
                 // No variables means they used a single prompt (no template) to generate responses
                 // (Users are likely evaluating differences in responses between LLMs)
-                plot_simple_boxplot((r) => r.llm);
+                plot_simple_boxplot((r) => r.llm, 'llm');
             }
             else if (varnames.length === 1) {
                 // 1 var; numeric eval
                 if (llm_names.length === 1) {
                     // Simple box plot, as there is only a single LLM in the response
-                    plot_simple_boxplot((r) => r.vars[varnames[0]].trim());
+                    plot_simple_boxplot((r) => r.vars[varnames[0]].trim(), 'var');
                 } else {
                     // There are multiple LLMs in the response; do a grouped box plot by LLM.
                     // Note that 'name' is now the LLM, and 'x' stores the value of the var: 
-                    plot_grouped_boxplot((r) => r.vars[varnames[0]].trim());
+                    plot_grouped_boxplot((r) => r.vars[varnames[0]].trim(), 'var');
                 }
             }
             else if (varnames.length === 2) {
