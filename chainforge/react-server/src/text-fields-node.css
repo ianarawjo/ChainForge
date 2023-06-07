@@ -96,6 +96,9 @@
     align-items: center;
     margin-bottom: 5px;
   }
+  .input-field textarea {
+    font-family: monospace;
+  }
 
   .remove-text-field-btn {
     margin-left: 3px;
