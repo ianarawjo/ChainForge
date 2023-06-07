@@ -4,7 +4,7 @@ import { Menu, Badge, Progress } from '@mantine/core';
 import { v4 as uuid } from 'uuid';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
-import TemplateHooks from './TemplateHooksComponent'
+import TemplateHooks, { extractBracketedSubstrings, toPyTemplateFormat } from './TemplateHooksComponent'
 import LLMList from './LLMListComponent'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 import {BASE_URL} from './store';
@@ -163,16 +163,8 @@ const PromptNode = ({ data, id }) => {
 
   const refreshTemplateHooks = (text) => {
     // Update template var fields + handles
-    const braces_regex = /(?<!\\){(.*?)(?<!\\)}/g;  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
-    const found_template_vars = text.match(braces_regex);
-    if (found_template_vars && found_template_vars.length > 0) {
-        const temp_var_names = found_template_vars.map(
-            name => name.substring(1, name.length-1)  // remove brackets {}
-        )
-        setTemplateVars(temp_var_names);
-    } else {
-        setTemplateVars([]);
-    }
+    const found_template_vars = extractBracketedSubstrings(text);  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
+    setTemplateVars(found_template_vars);
   };
 
   const handleInputChange = (event) => {
@@ -239,7 +231,7 @@ const PromptNode = ({ data, id }) => {
     get_outputs(templateVars, id);
 
     // Get Pythonic version of the prompt, by adding a $ before any template variables in braces:
-    const str_to_py_template_format = (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
+    const str_to_py_template_format = toPyTemplateFormat; // (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
     const to_py_template_format = (str_or_obj) => {
         if (typeof str_or_obj === 'object') {
             let new_vars = {};
