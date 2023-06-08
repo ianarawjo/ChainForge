@@ -68,7 +68,7 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 
 Highest priority:
 - **Tabular data nodes**: Input data using tables (`csv`, `Excel`, `jsonl`). Have column values accessible in Evaluator nodes, even those which aren't directly input into the prompt template parameter but are on the same row. 
-- **Ground truth evaluation flows**: An example in Example Flows that shows how to measure against a ground truth (a common type of evaluation, e.g. see OpenAI evals).
+- **Ground truth evaluation flows**: Add examples to Example Flows which show how to measure against a ground truth (a common type of evaluation, e.g. see OpenAI evals).
 - **LLM annotator nodes**: Select an LLM to evaluate and "tag" responses (for instance, named-entity recognition). Currently, one can chain prompt nodes into prompt nodes, but the final output loses information on which LLM generated the input response.
 - **Out-of-the-box benchmarks**: Basic integration with common benchmarks like HumanEval and OpenAI evals, so that, with the click of a button, you can check a model against a popular benchmark, no additional coding required. 
 
