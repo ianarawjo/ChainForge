@@ -357,9 +357,16 @@
     margin-bottom: 4px;
   }
 
-  .text-field-fixed {
+  /* Allows resizing the Mantine Textarea component */
+  .text-field-fixed .mantine-Textarea-wrapper textarea {
     resize: vertical;
+    overflow-y: auto;
     width: 280px;
+    padding: calc(1.25rem / 3);
+    font-size: 10pt;
+    font-family: monospace;
+    line-height: 1.2;
+    border-color: #999;
   }
 
   .add-text-field-btn {

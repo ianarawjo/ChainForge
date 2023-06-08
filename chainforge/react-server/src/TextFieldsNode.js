@@ -1,24 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { IconTextPlus } from '@tabler/icons-react'
+import { Textarea } from '@mantine/core';
+import { IconTextPlus } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
-
-/**
- *  The way React handles text areas is annoying: it resets the cursor position upon every edit 
- *  (See https://stackoverflow.com/questions/46000544/react-controlled-input-cursor-jumps). 
- *  We can try to fix this (see commented out code below), but if we do, we
- *  still run into race conditions around rendering. The simplest solution that 
- *  already works is to not use "value", but rather store the value of a textarea within the <></>. 
- *  This, however, spits out an error (even though it works just fine). We surpress this error 
- *  with the following:
- * 
- *  TODO: Make this more proper in the future!
- */
-const originalWarn = console.error.bind(console.error);
-console.error = (msg) => 
-    !msg.toString().includes('Use the `defaultValue` or `value` props instead of setting children on <textarea>') && originalWarn(msg);
 
 // Helper funcs
 const union = (setA, setB) => {
@@ -46,44 +32,66 @@ const TextFieldsNode = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const delButtonId = 'del-';
 
+  const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
+
   const getUID = useCallback(() => {
-    if (data.fields) {
-      return 'f' + (1 + Object.keys(data.fields).reduce((acc, key) => (
+    if (textfieldsValues) {
+      return 'f' + (1 + Object.keys(textfieldsValues).reduce((acc, key) => (
         Math.max(acc, parseInt(key.slice(1)))
       ), 0)).toString();
     } else {
       return 'f0';
     }
-  }, [data.fields]);
+  }, [textfieldsValues]);
 
-  // const [cursor, setCursor] = useState(null);
-  // const handleFocusField = useCallback((target) => {
-  //   if (!cursor || !target) return;
+  // Handle delete text field.
+  const handleDelete = useCallback((event) => {
+    // Update the data for this text field's id.
+    let new_fields = { ...textfieldsValues };
+    var item_id = event.target.id.substring(delButtonId.length);
+    delete new_fields[item_id];
+    // if the new_data is empty, initialize it with one empty field
+    if (Object.keys(new_fields).length === 0) {
+      new_fields[getUID()] = "";
+    }
+    setTextfieldsValues(new_fields);
+    setDataPropsForNode(id, {fields: new_fields});
+  }, [textfieldsValues, id, delButtonId, setDataPropsForNode]);
 
-  //   const [last_focused_id, last_cursor_pos] = cursor;
-  //   console.log(last_focused_id, target.id);
-  //   if (target.id === last_focused_id) {
-  //     target.setSelectionRange(last_cursor_pos, last_cursor_pos);
-  //     setCursor(null);
-  //     console.log('reset cursor pos');
-  //   }
-  // }, [cursor]);
+  // Initialize fields (run once at init)
+  useEffect(() => {
+    if (!textfieldsValues || Object.keys(textfieldsValues).length === 0) {
+      let init_fields = {};
+      init_fields[getUID()] = "";
+      setTextfieldsValues(init_fields);
+      setDataPropsForNode(id, { fields: init_fields });
+    }
+  }, []);
 
-  // Handle a change in a text fields' input.
-  const handleInputChange = useCallback((event) => {
+  // Add a text field
+  const handleAddField = useCallback(() => {
+    let new_fields = {...textfieldsValues};
+    new_fields[getUID()] = "";
+    setTextfieldsValues(new_fields);
+    setDataPropsForNode(id, { fields: new_fields });
+  }, [textfieldsValues, id, setDataPropsForNode]);
 
-    // Update the data for this text fields' id.
-    let new_data = { 'fields': {...data.fields} };
-    new_data.fields[event.target.id] = event.target.value;
+  // Save the state of a textfield when it changes and update hooks
+  const handleTextFieldChange = useCallback((field_id, val) => {
 
-    // Save the cursor pos, since React won't keep track of this
-    // setCursor([event.target.id, event.target.selectionStart]);
+    // Update the value of the controlled Textarea component
+    let new_fields = {...textfieldsValues};
+    new_fields[field_id] = val;
+    setTextfieldsValues(new_fields);
+
+    // Update the data for the ReactFlow node
+    let new_data = { 'fields': new_fields };
 
     // TODO: Optimize this check.
     let all_found_vars = new Set();
     const new_field_ids = Object.keys(new_data.fields);
-    new_field_ids.forEach((fieldId) => {
-      let found_vars = extractBracketedSubstrings(new_data['fields'][fieldId]);
+    new_field_ids.forEach((fid) => {
+      let found_vars = extractBracketedSubstrings(new_data['fields'][fid]);
       if (found_vars && found_vars.length > 0) {
         all_found_vars = union(all_found_vars, new Set(found_vars));
       }
@@ -99,55 +107,16 @@ const TextFieldsNode = ({ data, id }) => {
     }
 
     setDataPropsForNode(id, new_data);
-  }, [data.fields, id, templateVars]);
 
-  // Handle delete text field.
-  const handleDelete = useCallback((event) => {
-    // Update the data for this text field's id.
-    let new_data = { 'fields': { ...data.fields } };
-    var item_id = event.target.id.substring(delButtonId.length);
-    delete new_data.fields[item_id];
-    // if the new_data is empty, initialize it with one empty field
-    if (Object.keys(new_data.fields).length === 0) {
-      new_data.fields[getUID()] = '';
-    }
-    setDataPropsForNode(id, new_data);
-  }, [data, id, setDataPropsForNode]);
+  }, [textfieldsValues, templateVars, id]);
 
-  // Initialize fields (run once at init)
-  useEffect(() => {
-    if (!data.fields)
-      setDataPropsForNode(id, { fields: {[getUID()]: ''}} );
-  }, []);
-
-  // Add a field
-  const handleAddField = useCallback(() => {
-    // Update the data for this text fields' id.
-    let new_data = { 'fields': {...data.fields} };
-    new_data.fields[getUID()] = "";
-    setDataPropsForNode(id, new_data);
-  }, [data, id, setDataPropsForNode]);
-
-  const [textFields, setTextFields] = useState([]);
-
-  // Dynamically update the y-position of the template hook <Handle>s
+  // Dynamically update the textareas and position of the template hooks
   const ref = useRef(null);
   const [hooksY, setHooksY] = useState(120);
   useEffect(() => {
     const node_height = ref.current.clientHeight;
     setHooksY(node_height + 75);
-
-    if (data.fields) {
-      setTextFields(
-        Object.keys(data.fields).map(i => (
-          <div className="input-field" key={i}>
-            <textarea id={i} name={i} className="text-field-fixed nodrag" rows="2" cols="40" onChange={handleInputChange}>{data.fields[i]}</textarea>
-            {Object.keys(data.fields).length > 1 ? (<button id={delButtonId + i} className="remove-text-field-btn nodrag" onClick={handleDelete}>X</button>) : <></>}
-          </div>
-      )));
-    }
-
-  }, [data.fields, handleInputChange]);
+  }, [textfieldsValues, handleTextFieldChange]);
 
   const setRef = useCallback((elem) => {
     // To listen for resize events of the textarea, we need to use a ResizeObserver.
@@ -170,7 +139,15 @@ const TextFieldsNode = ({ data, id }) => {
     <div className="text-fields-node cfnode">
       <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} />
       <div ref={setRef}>
-        {textFields}
+        {Object.keys(textfieldsValues).map(i => (
+          <div className="input-field" key={i}>
+            <Textarea id={i} name={i} 
+                      className="text-field-fixed nodrag" 
+                      minRows="2"
+                      value={textfieldsValues[i]}  
+                      onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)} />
+            {Object.keys(textfieldsValues).length > 1 ? (<button id={delButtonId + i} className="remove-text-field-btn nodrag" onClick={handleDelete}>X</button>) : <></>}
+          </div>))}
       </div>
       <Handle
         type="source"
