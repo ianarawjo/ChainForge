@@ -10,7 +10,7 @@ export default function StatusIndicator({ status }) {
         );
     case 'error':  // Display red 'error' icon
         return ( 
-            <div className="status-icon error-status">&#10006;<span className='status-tooltip'>Error collecting responses. Check console for more info.</span></div>
+            <div className="status-icon error-status">&#10006;<span className='status-tooltip'>Error collecting responses.</span></div>
         );
     case 'loading':  // Display animated 'loading' spinner icon 
         return (

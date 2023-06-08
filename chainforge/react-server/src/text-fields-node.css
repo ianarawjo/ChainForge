@@ -96,6 +96,9 @@
     align-items: center;
     margin-bottom: 5px;
   }
+  .input-field textarea {
+    font-family: monospace;
+  }
 
   .remove-text-field-btn {
     margin-left: 3px;
@@ -183,6 +186,9 @@
     border: 1px solid #999;
     border-radius: 5px;
   }
+  .inspect-multiselect {
+    margin-bottom: 6px;
+  }
   .inspect-response-container {
     overflow-y: scroll;
     min-width: 150px;
@@ -205,6 +211,24 @@
   .response-var-value {
     font-family: monospace;
     font-size: 9pt;
+  }
+  .inspect-modal-prompt-box {
+    background-color: #eee;
+    padding: 10px;
+    margin: 0px 0px 10px 0px;
+    border-bottom-style: solid;
+    border-bottom-color: #aaa;
+    box-shadow: 1px 1px 8px #ccc;
+    max-height: 200px;
+  }
+  .inspect-modal-prompt-text {
+    font-family: monospace;
+    font-size: 11pt;
+    white-space: pre-line;
+  }
+  .inspect-modal-prompt-prefix {
+    font-size: 10pt;
+    font-weight: bold;
   }
 
   .small-response {
@@ -281,7 +305,8 @@
     margin: 10px -9px -9px -9px;
     max-height: 100px;
     overflow-y: auto;
-    background-color: #ace1aeb1; /* ACE1AF */
+    background-color: #ceeaf5b1;
+    cursor: zoom-in;
   }
   .response-box {
     padding: 2px;

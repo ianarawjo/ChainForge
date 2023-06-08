@@ -3,6 +3,62 @@ import { Handle, useUpdateNodeInternals } from 'react-flow-renderer';
 import { Badge } from '@mantine/core';
 import useStore from './store'
 
+export const extractBracketedSubstrings = (text) => {
+    /** Given some text in template format:
+     *      This is a {test}
+     *  extracts only the groups within braces, excluding
+     *  any escaped braces \{ \}. 
+     * 
+     *  NOTE: We don't use Regex here for compatibility of browsers
+     *  that don't support negative lookbehinds/aheads (e.g., Safari).
+     */
+    let prev_c = '';
+    let group_start_idx = -1;
+    let capture_groups = [];
+    for (let i = 0; i < text.length; i += 1) {
+        const c = text[i];
+        if (prev_c !== '\\') { // Skipped escaped chars
+            if (group_start_idx === -1 && c === '{')
+                group_start_idx = i;
+            else if (group_start_idx > -1 && c === '}') {
+                if (group_start_idx + 1 < i)  // Skip {} empty braces
+                    capture_groups.push(text.substring(group_start_idx+1, i));
+                group_start_idx = -1;
+            }
+        }
+        prev_c = c;
+    }
+    return capture_groups;
+};
+
+export const toPyTemplateFormat = (text) => {
+    /** Given some text in template format:
+     *      This is a {test}
+     *  adds a $ before each valid {.
+     * 
+     *  NOTE: We don't use Regex here for compatibility of browsers
+     *  that don't support negative lookbehinds/aheads (e.g., Safari).
+     */
+    let str = text.slice(0);
+    let prev_c = '';
+    let group_start_idx = -1;
+    for (let i = 0; i < str.length; i += 1) {
+        let c = str[i];
+        if (prev_c !== '\\') { // Skipped escaped chars
+            if (group_start_idx === -1 && c === '{') {
+                // Insert a $ before the {:
+                str = str.slice(0, i) + '$' + str.slice(i);
+                group_start_idx = i + 1;
+                i += 1;
+            } else if (group_start_idx > -1 && c === '}') {
+                group_start_idx = -1;
+            }
+        }
+        prev_c = c;
+    }
+    return str;
+};
+
 export default function TemplateHooks({ vars, nodeId, startY }) {
 
     const edges = useStore((state) => state.edges);

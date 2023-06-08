@@ -26,7 +26,7 @@ class PromptTemplate:
         """
         try:
             Template(templateStr)
-        except:
+        except Exception:
             raise Exception("Invalid template formatting for string:", templateStr)
         self.template = templateStr
         self.fill_history = {}
@@ -49,7 +49,7 @@ class PromptTemplate:
         try:
             Template(self.template).substitute({})
             return True # no exception raised means there was nothing to substitute...
-        except KeyError as e:
+        except KeyError:
             return False
         
     def fill(self, paramDict: Dict[str, Union[str, Dict[str, str]]]) -> 'PromptTemplate':

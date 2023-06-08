@@ -1,8 +1,13 @@
 from abc import abstractmethod
 from typing import List, Dict, Tuple, Iterator, Union, Optional
 import json, os, asyncio, random, string
-from chainforge.promptengine.utils import LLM, RATE_LIMITS, call_chatgpt, call_dalai, call_anthropic, call_google_palm, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
+from chainforge.promptengine.utils import call_chatgpt, call_dalai, call_anthropic, call_google_palm, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
+from chainforge.promptengine.models import LLM, RATE_LIMITS
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
+
+class LLMResponseException(Exception):
+    """ Raised when there is an error generating a single response from an LLM """
+    pass
 
 """
     Abstract class that captures a generic querying interface to prompt LLMs
@@ -18,22 +23,27 @@ class PromptPipeline:
     def gen_prompts(self, properties) -> Iterator[PromptTemplate]:
         raise NotImplementedError("Please Implement the gen_prompts method")
     
-    async def gen_responses(self, properties, llm: LLM, n: int = 1, temperature: float = 1.0, **llm_params) -> Iterator[Dict]:
+    async def gen_responses(self, properties, llm: LLM, n: int = 1, temperature: float = 1.0, **llm_params) -> Iterator[Union[Dict, LLMResponseException]]:
         """
             Calls LLM 'llm' with all prompts, and yields responses as dicts in format {prompt, query, response, llm, info}.
 
             Queries are sent off asynchronously (if possible).
-            Yields responses as they come in.
+            Yields responses as they come in. All LLM calls that yield errors (e.g., 'rate limit' error)
+            will yield an individual LLMResponseException, so downstream tasks must check for this exception type.
 
-            By default, for each response, this also saves reponses to disk as JSON at the filepath given during init. 
+            By default, for each response successfully collected, this also saves reponses to disk as JSON at the filepath given during init. 
             (Very useful for saving money in case something goes awry!)
             To clear the cached responses, call clear_cached_responses(). 
+
+            NOTE: The reason we collect, rather than raise, LLMResponseExceptions is because some API calls 
+                  may still succeed, even if some fail. We don't want to stop listening to pending API calls, 
+                  because we may lose money. Instead, we fail selectively. 
 
             Do not override this function.
         """
         # Double-check that properties is the correct type (JSON dict):
         if not is_valid_json(properties):
-            raise ValueError(f"Properties argument is not valid JSON.")
+            raise ValueError("Properties argument is not valid JSON.")
 
         # Load any cache'd responses
         responses = self._load_cached_responses()
@@ -70,10 +80,28 @@ class PromptPipeline:
             if max_req > 1:                
                 # Call the LLM asynchronously to generate a response, sending off
                 # requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
-                tasks.append(self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp, query_number=num_queries, rate_limit_batch_size=max_req, rate_limit_wait_secs=wait_secs, **llm_params))
+                tasks.append(self._prompt_llm(llm=llm, 
+                                              prompt=prompt, 
+                                              n=n, 
+                                              temperature=temperature, 
+                                              past_resp_obj=cached_resp, 
+                                              query_number=num_queries, 
+                                              rate_limit_batch_size=max_req, 
+                                              rate_limit_wait_secs=wait_secs, 
+                                              **llm_params))
             else:
                 # Block. Await + yield a single LLM call.
-                _, query, response, past_resp_obj = await self._prompt_llm(llm, prompt, n, temperature, past_resp_obj=cached_resp, **llm_params)
+                _, query, response, past_resp_obj = await self._prompt_llm(llm=llm, 
+                                                                           prompt=prompt, 
+                                                                           n=n, 
+                                                                           temperature=temperature, 
+                                                                           past_resp_obj=cached_resp, 
+                                                                           **llm_params)
+
+                # Check for selective failure
+                if query is None and isinstance(response, LLMResponseException):
+                    yield response  # yield the LLMResponseException
+                    continue
 
                 # Create a response obj to represent the response
                 resp_obj = {
@@ -100,6 +128,11 @@ class PromptPipeline:
         for task in asyncio.as_completed(tasks):
             # Collect the response from the earliest completed task
             prompt, query, response, past_resp_obj = await task
+
+            # Check for selective failure
+            if query is None and isinstance(response, LLMResponseException):
+                yield response  # yield the LLMResponseException
+                continue
 
             # Each prompt has a history of what was filled in from its base template.
             # This data --like, "class", "language", "library" etc --can be useful when parsing responses.
@@ -148,7 +181,8 @@ class PromptPipeline:
 
     async def _prompt_llm(self, 
                           llm: LLM, 
-                          prompt: PromptTemplate, n: int = 1, 
+                          prompt: PromptTemplate, 
+                          n: int = 1, 
                           temperature: float = 1.0, 
                           past_resp_obj: Optional[Dict] = None,
                           query_number: Optional[int] = None,
@@ -171,16 +205,25 @@ class PromptPipeline:
                     print(f"Batch rate limit of {rate_limit_batch_size} reached for LLM {llm}. Waiting {wait_secs} seconds until sending request batch #{batch_num}...")
                 await asyncio.sleep(wait_secs)
 
+        # Get the correct API call for the given LLM:
+        call_llm = None
         if llm.name[:6] == 'OpenAI':
-            query, response = await call_chatgpt(str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
+            call_llm = call_chatgpt
         elif llm.name[:5] == 'PaLM2':
-            query, response = await call_google_palm(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
+            call_llm = call_google_palm
         elif llm.name[:5] == 'Dalai':
-            query, response = await call_dalai(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
+            call_llm = call_dalai
         elif llm.value[:6] == 'claude':
-            query, response = await call_anthropic(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
+            call_llm = call_anthropic
         else:
             raise Exception(f"Language model {llm} is not supported.")
+        
+        # Now try to call the API. If it fails for whatever reason, 'soft fail' by returning
+        # an LLMResponseException object as the 'response'.
+        try:
+            query, response = await call_llm(prompt=str(prompt), model=llm, n=n, temperature=temperature, **llm_params)
+        except Exception as e:
+            return prompt, None, LLMResponseException(str(e)), None
         
         return prompt, query, response, past_resp_obj
 
@@ -210,5 +253,10 @@ class PromptLLMDummy(PromptLLM):
     async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0, past_resp_obj: Optional[Dict] = None, **params) -> Tuple[Dict, Dict]:
         # Wait a random amount of time, to simulate wait times from real queries
         await asyncio.sleep(random.uniform(0.1, 3))
-        # Return a random string of characters of random length (within a predefined range)
-        return prompt, {'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(random.randint(25, 80))) for _ in range(n)], past_resp_obj
+
+        if random.random() > 0.2:
+            # Return a random string of characters of random length (within a predefined range)
+            return prompt, {'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(random.randint(25, 80))) for _ in range(n)], past_resp_obj
+        else:
+            # Return a mock 'error' making the API request
+            return prompt, None, LLMResponseException('Dummy error'), past_resp_obj

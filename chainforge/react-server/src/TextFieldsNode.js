@@ -3,7 +3,7 @@ import { Handle } from 'react-flow-renderer';
 import { IconTextPlus } from '@tabler/icons-react'
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
-import TemplateHooks from './TemplateHooksComponent';
+import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
 
 /**
  *  The way React handles text areas is annoying: it resets the cursor position upon every edit 
@@ -81,12 +81,10 @@ const TextFieldsNode = ({ data, id }) => {
 
     // TODO: Optimize this check.
     let all_found_vars = new Set();
-    const braces_regex = /(?<!\\){(.*?)(?<!\\)}/g;  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
     const new_field_ids = Object.keys(new_data.fields);
     new_field_ids.forEach((fieldId) => {
-      let found_vars = new_data['fields'][fieldId].match(braces_regex);
+      let found_vars = extractBracketedSubstrings(new_data['fields'][fieldId]);
       if (found_vars && found_vars.length > 0) {
-        found_vars = found_vars.map(name => name.substring(1, name.length-1));  // remove brackets {}
         all_found_vars = union(all_found_vars, new Set(found_vars));
       }
     });

@@ -1,13 +1,7 @@
-import json, os, asyncio, sys, argparse, threading
-from dataclasses import dataclass
-from statistics import mean, median, stdev
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+import json, os, argparse, threading
+from flask import Flask
 from flask_socketio import SocketIO
 from chainforge.flask_app import run_server
-from chainforge.promptengine.query import PromptLLM, PromptLLMDummy
-from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
-from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists
 
 # Setup the socketio app
 app = Flask(__name__)
@@ -48,14 +42,18 @@ def readCounts(data):
         try: 
             with open(tempfilepath, 'r', encoding='utf-8') as f:
                 queries = json.load(f)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
              # If the temp file was deleted during executing, the Flask 'queryllm' func must've terminated successfully:
              socketio.emit('finish', 'success', namespace='/queryllm')
              return
         
         # Calculate the total sum of responses
         # TODO: This is a naive approach; we need to make this more complex and factor in cache'ing in future
-        n = sum([int(n) for llm, n in queries.items()])
+        n = 0
+        for progress in queries.values():
+            for val in progress.values():
+                # Regardless of the status 'success' or 'error', sums how many succeeded:
+                n += int(val)
         
         # If something's changed...
         if init_run or last_n != n:
