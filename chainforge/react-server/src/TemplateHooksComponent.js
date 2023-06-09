@@ -59,7 +59,7 @@ export const toPyTemplateFormat = (text) => {
     return str;
 };
 
-export default function TemplateHooks({ vars, nodeId, startY }) {
+export default function TemplateHooks({ vars, nodeId, startY, position }) {
 
     const edges = useStore((state) => state.edges);
     const onEdgesChange = useStore((state) => state.onEdgesChange);
@@ -75,16 +75,16 @@ export default function TemplateHooks({ vars, nodeId, startY }) {
 
     const genTemplateHooks = useCallback((temp_var_names, names_to_blink) => {
         // Generate handles 
+        const pos = position !== undefined ? position : 'left';
         return temp_var_names.map((name, idx) => {
             const className = (names_to_blink.includes(name)) ? 'hook-tag text-blink' : 'hook-tag';
-            const pos = (idx * 35) + startY + 'px';
-            const style = { top: pos,  background: '#555' };
-            return (<div key={name} className={className} >
+            const style = { top: ((idx * 35) + startY + 'px'),  background: '#555' };
+            return (<div key={name} className={className} style={{display: 'flex', justifyContent: pos}} >
                 <Badge color="indigo" size="md" radius="sm" style={{textTransform: 'none'}}>{name}</Badge>
-                <Handle type="target" position="left" id={name} key={name} style={style} />
+                <Handle type="target" position={pos} id={name} key={name} style={style} />
             </div>);
         });
-    }, [startY]);
+    }, [startY, position]);
 
     const [templateHooks, setTemplateHooks] = useState([]);
 

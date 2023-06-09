@@ -18,6 +18,7 @@ import InspectNode from './InspectorNode';
 import ScriptNode from './ScriptNode';
 import AlertModal from './AlertModal';
 import CsvNode from './CsvNode';
+import TabularDataNode from './TabularDataNode';
 import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
 import './text-fields-node.css';
@@ -48,6 +49,7 @@ const nodeTypes = {
   inspect: InspectNode,
   script: ScriptNode,
   csv: CsvNode,
+  table: TabularDataNode,
 };
 
 const connectionLineStyle = { stroke: '#ddd' };
@@ -109,6 +111,10 @@ const App = () => {
   const addCsvNode = (event) => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'csvNode-'+Date.now(), type: 'csv', data: {}, position: {x: x-200, y:y-100} });
+  };
+  const addTabularDataNode = (event) => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'table-'+Date.now(), type: 'table', data: {}, position: {x: x-200, y:y-100} });
   };
 
   const onClickExamples = () => {
@@ -348,6 +354,7 @@ const App = () => {
               <Menu.Item onClick={addVisNode} icon={'📊'}> Vis Node </Menu.Item>
               <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
               <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>
+              <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
               <Menu.Item onClick={addScriptNode} icon={<IconSettingsAutomation size="16px" />}> Global Scripts </Menu.Item>
           </Menu.Dropdown>
         </Menu>

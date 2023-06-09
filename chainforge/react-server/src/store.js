@@ -20,6 +20,7 @@ const initialNodes = [
   { id: initprompt, type: 'prompt', data: { prompt: 'Who invented the lightbulb?', n: 1 }, position: { x: 430, y: 250 } },
   { id: initeval, type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 850, y: 150 } },
   { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 25, y: 150 } },
+  { id: uid('table'), type: 'table', data: {}, position: { x: 35, y: 250 } },
   { id: uid('vis'), type: 'vis', data: {}, position: { x: 1350, y: 250 } },
   { id: uid('inspect'), type: 'inspect', data: {}, position: { x:900, y:600 } },
 ];

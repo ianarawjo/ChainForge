@@ -3,7 +3,7 @@ import { Handle } from 'react-flow-renderer';
 import { Textarea } from '@mantine/core';
 import { IconTextPlus } from '@tabler/icons-react';
 import useStore from './store';
-import NodeLabel from './NodeLabelComponent'
+import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
 
 // Helper funcs
@@ -122,18 +122,21 @@ const TextFieldsNode = ({ data, id }) => {
     // To listen for resize events of the textarea, we need to use a ResizeObserver.
     // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div wrapping textfields.
     // NOTE: This won't work on older browsers, but there's no alternative solution.
-    if (!ref.current && window.ResizeObserver) {
+    if (!ref.current && elem && window.ResizeObserver) {
+      let past_hooks_y = 120;
       const observer = new ResizeObserver(() => {
         if (!ref || !ref.current) return;
-        const new_hooks_y = ref.current.clientHeight + 75;
-        if (hooksY !== new_hooks_y)
+        const new_hooks_y = ref.current.clientHeight + 70;
+        if (past_hooks_y !== new_hooks_y) {
           setHooksY(new_hooks_y);
+          past_hooks_y = new_hooks_y;
+        }
       });
 
       observer.observe(elem);
+      ref.current = elem;
     }
-    ref.current = elem;
-  }, [ref, hooksY]);
+  }, [ref]);
 
   return (
     <div className="text-fields-node cfnode">

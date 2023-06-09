@@ -320,11 +320,47 @@
   }
 
   .cfnode {
-    border-color: #999;
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #999;
+    border-radius: 5px;
+    /* box-shadow: 1px 1px 8px #ccc; Slows it down */
   }
   .cfnode:hover {
     border-color: #222;
   }
+
+  .tabular-data-node {
+    min-width: 280px;
+  }
+  .tabular-data-container {
+    resize: both;
+    overflow: auto;
+    max-width: 800px;
+    border-bottom-style: solid;
+    border-right-style: solid;
+    border-color: #ccc;
+    display: inline-block;
+  }
+  .add-table-row-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+  /* .add-column-btn {
+    position: relative;
+    float: right;
+    margin-top: 6px;
+    height: 80px; 
+    width: 20px;
+  }
+  .add-column-btn span {
+    position: absolute;
+    top: 60%;
+    transform-origin: top left;
+    transform: translate(-50%) rotate(-90deg);
+  } */
   
   .var-select-toolbar {
     text-align: right;
@@ -362,7 +398,7 @@
     resize: vertical;
     overflow-y: auto;
     width: 280px;
-    padding: calc(1.25rem / 3);
+    padding: calc(0.5rem / 3);
     font-size: 10pt;
     font-family: monospace;
     line-height: 1.2;
