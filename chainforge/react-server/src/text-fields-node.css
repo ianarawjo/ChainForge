@@ -337,10 +337,25 @@
     resize: both;
     overflow: auto;
     max-width: 800px;
+    min-width: inherit;
     border-bottom-style: solid;
     border-right-style: solid;
     border-color: #ccc;
     display: inline-block;
+  }
+  .table-col-edit-btn {
+    position: relative;
+    top: 1px;
+    margin: 0px;
+    padding: 2px;
+    color: #bbb;
+    cursor: pointer;
+  }
+  .table-col-edit-btn:hover {
+    background-color: #eee;
+  }
+  .table-col-edit-btn:active {
+    background-color: #ddd;
   }
   .add-table-row-btn {
     display: flex;

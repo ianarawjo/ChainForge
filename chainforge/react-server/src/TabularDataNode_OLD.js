@@ -1,13 +1,82 @@
-import React, { useState, useRef, useEffect, useCallback, forwardRef, useId } from 'react';
+import React, { useState, useRef, useEffect, useCallback, forwardRef } from 'react';
 import { Handle } from 'react-flow-renderer';
 import { Menu, Textarea } from '@mantine/core';
 import EditableTable from './EditableTable';
-import { v4 as uuidv4 } from 'uuid';
 import { IconPencil, IconArrowLeft, IconArrowRight, IconX, IconArrowBarToUp, IconArrowBarToDown } from '@tabler/icons-react';
 import TemplateHooks from './TemplateHooksComponent';
 import NodeLabel from './NodeLabelComponent';
 
 const testData = [
+  {
+    firstName: 'Dylan',
+    lastName: 'Murray',
+    address: '261 Erdman Ford',
+    city: 'East Daphne',
+    state: 'Kentucky',
+  },
+  {
+    firstName: 'Raquel',
+    lastName: 'Kohler',
+    address: '769 Dominic Grove',
+    city: 'Columbus',
+    state: 'Ohio',
+  },
+  {
+    firstName: 'Ervin',
+    lastName: 'Reinger',
+    address: '566 Brakus Inlet',
+    city: 'South Linda',
+    state: 'West Virginia',
+  },
+  {
+    firstName: 'Brittany',
+    lastName: 'McCullough',
+    address: '722 Emie Stream',
+    city: 'Lincoln',
+    state: 'Nebraska',
+  },
+  {
+    firstName: 'Branson',
+    lastName: 'Frami',
+    address: '32188 Larkin Turnpike',
+    city: 'Charleston',
+    state: 'South Carolina',
+  },
+  {
+    firstName: 'Dylan',
+    lastName: 'Murray',
+    address: '261 Erdman Ford',
+    city: 'East Daphne',
+    state: 'Kentucky',
+  },
+  {
+    firstName: 'Raquel',
+    lastName: 'Kohler',
+    address: '769 Dominic Grove',
+    city: 'Columbus',
+    state: 'Ohio',
+  },
+  {
+    firstName: 'Ervin',
+    lastName: 'Reinger',
+    address: '566 Brakus Inlet',
+    city: 'South Linda',
+    state: 'West Virginia',
+  },
+  {
+    firstName: 'Brittany',
+    lastName: 'McCullough',
+    address: '722 Emie Stream',
+    city: 'Lincoln',
+    state: 'Nebraska',
+  },
+  {
+    firstName: 'Branson',
+    lastName: 'Frami',
+    address: '32188 Larkin Turnpike',
+    city: 'Charleston',
+    state: 'South Carolina',
+  },
   {
     firstName: 'Dylan',
     lastName: 'Murray',
@@ -71,11 +140,10 @@ const testColumns = [
 
 const TabularDataNode = ({ data, id }) => {
 
-  const [tableData, setTableData] = useState([...testData].map(row => {
-    row.__uid = uuidv4();
-    return row;
-  }));
-  const [tableColumns, setTableColumns] = useState([...testColumns]);
+  const tableRef = useRef(null);
+
+  const [tableData, setTableData] = useState(testData || []);
+  const [tableColumns, setTableColumns] = useState(testColumns || []);
   const [templateVars, setTemplateVars] = useState(['First Name', 'Last Name']);
 
   const [contextMenuPos, setContextMenuPos] = useState({left: -100, top:0});
@@ -88,18 +156,19 @@ const TabularDataNode = ({ data, id }) => {
   const ref = useRef(null);
   const [hooksY, setHooksY] = useState(120);
 
-  const handleSaveCell = useCallback((rowIdx, columnName, value) => {
-    console.log('handleSaveCell', rowIdx, columnName, value);
-    tableData[rowIdx][columnName] = value;
-    setTableData([...tableData]);
+  const handleSaveCell = useCallback((cell, value) => {
+    console.log(`there are ${tableData.length} rows in table`);
+    console.log('saving cell', cell.row.index, cell.column.id);
+    tableData[cell.row.index][cell.column.id] = value;
+    setTableData([...tableData]); //re-render with new data
   }, [tableData]);
 
   // Adds a new row to the table
   const handleAddRow = useCallback(() => {
     // Creates a blank row with the same columns as the table
-    const blank_row = {__uid: uuidv4()};
+    const blank_row = {};
     tableColumns.forEach(o => {
-      blank_row[o.key] = '';
+      blank_row[o.accessorKey] = '';
     });
 
     // Adds the row to the table
@@ -116,12 +185,12 @@ const TabularDataNode = ({ data, id }) => {
     // Create a unique ID to refer to this new column
     const uid = `col-${Date.now()}`;
     const new_col = {
-      key: uid,
+      accessorKey: uid,
       header: 'New Column',  // default name
     };
 
     // Insert the new column into the columns array
-    const startColIdx = tableColumns.findIndex((elem) => elem.key === startColKey);
+    const startColIdx = tableColumns.findIndex((elem) => elem.accessorKey === startColKey);
     if (dir === -1)
       tableColumns.splice(startColIdx, 0, new_col);
     else if (dir === 1)
@@ -140,7 +209,7 @@ const TabularDataNode = ({ data, id }) => {
   // Removes a column
   const handleRemoveColumn = useCallback((colKey) => {
     // Find the index of the column
-    const colIdx = tableColumns.findIndex((elem) => elem.key === colKey);
+    const colIdx = tableColumns.findIndex((elem) => elem.accessorKey === colKey);
     if (colIdx === -1) {
       console.error(`Could not find a column with key ${colKey} in the table.`);
       return;
@@ -166,6 +235,12 @@ const TabularDataNode = ({ data, id }) => {
       return; 
     }
 
+    const print_firstnames = (data) => {
+      data.forEach((row, idx) => {
+        console.log(idx.toString() + ' ' + row.firstName);
+      });
+    };
+
     // Remove the select row
     console.log('deleting row', tableData[selectedRow-1].firstName);
     tableData.splice(selectedRow-1, 1);
@@ -173,7 +248,7 @@ const TabularDataNode = ({ data, id }) => {
 
     // Save state
     setTableData([...tableData]);
-  }, [tableData, selectedRow]);
+  }, [tableData, selectedRow, tableRef]);
 
   // Scrolls to bottom of the table when scrollToBottom toggle is true
   useEffect(() => {
@@ -183,6 +258,25 @@ const TabularDataNode = ({ data, id }) => {
       setScrollToBottom(false);
     }
   }, [scrollToBottom]);
+
+  // const renderCellTextarea = 
+
+  // Set table column custom editing textareas
+  useEffect(() => {
+    let cols = [...tableColumns];
+    cols.forEach(c => {
+      c.Cell = ({cell}) => {
+        return <CellTextarea cell={cell} handleSaveCell={handleSaveCell} />;
+        // return <Textarea autosize={true} 
+        //                  value={cell.getValue()}
+        //                  onChange={(e) => handleSaveCell(cell, e.currentTarget.value)} 
+        //                  minRows={1} 
+        //                  maxRows={4} 
+        //                  styles={cellTextareaStyle} />
+      };
+    });
+    setTableColumns(cols);
+  }, [handleSaveCell]);
 
   // To listen for resize events of the table container, we need to use a ResizeObserver.
   // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div container.
@@ -223,6 +317,7 @@ const TabularDataNode = ({ data, id }) => {
       </Menu>
 
       <div ref={setRef} className='tabular-data-container nowheel nodrag' onPointerDown={() => setContextMenuOpened(false)} onContextMenu={(e) => {
+
         e.preventDefault();
 
         if (e.target.localName === 'textarea') {
@@ -238,8 +333,101 @@ const TabularDataNode = ({ data, id }) => {
           const rowIndex = e.target.parentNode?.parentNode?.parentNode?.parentNode?.rowIndex;
           setSelectedRow(rowIndex);
         }
-      }} >
-        <EditableTable rows={tableData} columns={tableColumns} handleSaveCell={handleSaveCell} handleRemoveColumn={handleRemoveColumn} handleInsertColumn={handleInsertColumn} />
+        
+      }}>
+        <MantineReactTable
+          tableInstanceRef={tableRef}
+          columns={tableColumns}
+          data={tableData}
+          // editingMode="cell"
+          enableColumnResizing
+          enableEditing
+          enableBottomToolbar={false}
+          enableTopToolbar={false}
+          enablePagination={false}
+          enableRowActions={false}
+          enableSorting={false}
+
+          renderColumnActionsMenuItems={({column, table}) => {
+            const colkey = column.id;
+            return [
+              <Menu.Item key='rename_col'><IconPencil size='10pt' />&nbsp;Rename column</Menu.Item>,
+              <Menu.Item key='insert_left' onClick={() => handleInsertColumn(colkey, -1)}><IconArrowLeft size='10pt' />&nbsp;Insert column to left</Menu.Item>,
+              <Menu.Item key='insert_right' onClick={() => handleInsertColumn(colkey, 1)}><IconArrowRight size='10pt' />&nbsp;Insert column to right</Menu.Item>,
+              <Menu.Item key='remove_col' onClick={() => handleRemoveColumn(colkey)}><IconX size='8pt' /> Remove column</Menu.Item>
+            ];
+          }}
+
+          state={{
+            density: 'xs',
+            columnOrder: tableColumns.map(c => c.accessorKey),
+          }}
+
+          mantinePaperProps={{
+            sx: {
+              border: '0 !important',
+              boxShadow: 'none',
+            }
+          }}
+          mantineTopToolbarProps={{
+            sx: {
+              '& div': {
+                padding: '0px',
+                margin: '0px'
+              }
+            }
+          }}
+          // mantineEditTextInputProps={({ cell }) => ({
+          //   //onBlur is more efficient, but could use onChange instead
+          //   onBlur: (event) => {
+          //     handleSaveCell(cell, event.target.value);
+          //   },
+          //   onChange: (event) => {
+          //     console.log('on edit text change');
+          //   },
+          //   variant: 'filled',
+          // })}
+
+          mantineTableHeadProps={{
+            sx: {
+              '& tr th': {
+                padding: '0rem 0.625rem 0.3rem 0.625rem !important'
+              }
+            },
+          }}
+
+          // Set the style of individual cells in the table
+          mantineTableBodyProps={{
+            sx: {  
+              // '& tr td': {   // For editingMode="cell"
+              //   padding: '2px !important',  //Unfortunately we need to mark this as !important to get it to work
+              //   fontFamily: 'monospace',
+              //   fontSize: '10pt !important',
+              //   height: '12pt',
+              //   minHeight: '10pt',
+              //   margin: '0px',
+              //   backgroundColor: '#fff',
+              //   overflowWrap: 'break-word',
+              //   whiteSpace: 'pre-wrap',
+              //   textTransform: 'none'
+              // }
+              '& tr td': {   // For when editingMode="table"
+                padding: '2px !important',  //Unfortunately we need to mark this as !important to get it to work
+              },
+              '& tr td div input': {   
+                fontFamily: 'monospace',
+                fontSize: '10pt',
+                padding: '2px',
+                height: '12pt',
+                minHeight: '10pt',
+                margin: '0px',
+                backgroundColor: '#fff',
+                overflowWrap: 'break-word',
+                whiteSpace: 'pre-wrap',
+              }
+            }
+          }}
+        />
       </div>
 
       <div className="add-table-row-btn">
@@ -247,6 +435,13 @@ const TabularDataNode = ({ data, id }) => {
       </div>
 
       <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} position='right' />
+      
+      {/* <Handle
+        type="source"
+        position="right"
+        id="output"
+        style={{ top: "50%", background: '#555' }}
+      /> */}
     </div>
   );
 };
