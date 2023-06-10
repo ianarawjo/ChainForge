@@ -360,10 +360,15 @@
     background-color: #ddd;
   }
   .add-table-row-btn {
+    position: absolute;
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-top: 2px;
+  }
+  .add-table-row-btn button {
+    margin-right: 10px;
   }
   /* .add-column-btn {
     position: relative;
@@ -400,7 +405,7 @@
   }
 
   .hook-tag {
-    padding-top: 11px;;
+    padding-top: 5px;;
     padding-bottom: 3px;
   }
 

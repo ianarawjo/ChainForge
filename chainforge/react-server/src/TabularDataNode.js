@@ -76,7 +76,6 @@ const TabularDataNode = ({ data, id }) => {
     return row;
   }));
   const [tableColumns, setTableColumns] = useState([...testColumns]);
-  const [templateVars, setTemplateVars] = useState(['First Name', 'Last Name']);
 
   const [contextMenuPos, setContextMenuPos] = useState({left: -100, top:0});
   const [contextMenuOpened, setContextMenuOpened] = useState(false);
@@ -220,7 +219,7 @@ const TabularDataNode = ({ data, id }) => {
       let past_hooks_y = 120;
       const observer = new ResizeObserver(() => {
         if (!ref || !ref.current) return;
-        const new_hooks_y = ref.current.clientHeight + 100;
+        const new_hooks_y = ref.current.clientHeight + 68;
         if (past_hooks_y !== new_hooks_y) {
           setHooksY(new_hooks_y);
           past_hooks_y = new_hooks_y;
@@ -276,11 +275,14 @@ const TabularDataNode = ({ data, id }) => {
         <EditableTable rows={tableData} columns={tableColumns} handleSaveCell={handleSaveCell} handleRemoveColumn={handleRemoveColumn} handleInsertColumn={handleInsertColumn} />
       </div>
 
-      <div className="add-table-row-btn">
-        <button onClick={handleAddRow}>add row +</button>
+      <div className="tabular-data-footer">
+        <div className="add-table-row-btn">
+          <button onClick={handleAddRow}>add row +</button>
+        </div>
+        
+        <TemplateHooks vars={tableColumns.map(col => col.header)} nodeId={id} startY={hooksY} position='right' />
       </div>
-
-      <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} position='right' />
+      
     </div>
   );
 };

@@ -115,7 +115,7 @@ const TextFieldsNode = ({ data, id }) => {
   const [hooksY, setHooksY] = useState(120);
   useEffect(() => {
     const node_height = ref.current.clientHeight;
-    setHooksY(node_height + 75);
+    setHooksY(node_height + 68);
   }, [textfieldsValues, handleTextFieldChange]);
 
   const setRef = useCallback((elem) => {
@@ -126,7 +126,7 @@ const TextFieldsNode = ({ data, id }) => {
       let past_hooks_y = 120;
       const observer = new ResizeObserver(() => {
         if (!ref || !ref.current) return;
-        const new_hooks_y = ref.current.clientHeight + 70;
+        const new_hooks_y = ref.current.clientHeight + 68;
         if (past_hooks_y !== new_hooks_y) {
           setHooksY(new_hooks_y);
           past_hooks_y = new_hooks_y;
