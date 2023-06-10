@@ -348,7 +348,9 @@
     top: 1px;
     margin: 0px;
     padding: 2px;
-    color: #bbb;
+    color: #888;
+    width: '12px';
+    height: '12px';
     cursor: pointer;
   }
   .table-col-edit-btn:hover {

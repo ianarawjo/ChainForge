@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, forwardRef } from 'react';
-import { Table, Textarea, Menu, Button } from '@mantine/core';
+import { Table, Textarea, Menu, Button, TextInput } from '@mantine/core';
 import { IconDots, IconPencil, IconArrowLeft, IconArrowRight, IconX } from '@tabler/icons-react';
 
 const cellTextareaStyle = {
@@ -7,6 +7,18 @@ const cellTextareaStyle = {
     border: '0',
     fontFamily: 'monospace',
     fontSize: '10pt',
+    padding: '2px !important',
+    minHeight: '10pt',
+    lineHeight: '1.2',
+    whiteSpace: 'pre-wrap',
+    background: 'transparent'
+  }
+};
+const headerTextareaStyle = {
+  input: {
+    border: '0',
+    fontSize: '10pt',
+    fontWeight: '600',
     padding: '2px !important',
     minHeight: '10pt',
     lineHeight: '1.2',
@@ -32,7 +44,7 @@ const CellTextarea = ({ initialValue, rowIdx, column, handleSaveCell, onContextM
                    onBlur={(e) => handleSaveCell(rowIdx, column.key, e.currentTarget.value)}
                    minRows={1} 
                    maxRows={6} 
-                   styles={cellTextareaStyle} />;
+                   styles={rowIdx > -1 ? cellTextareaStyle : headerTextareaStyle} />;
 };
 
 /**
@@ -63,7 +75,7 @@ const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, hand
         {columns.map(c => (
           <th key={c.key} style={tableHeaderStyle}>
             <div style={{display: 'flex', justifyContent: 'space-between'}}>
-              <span>{c.header}</span>
+              <CellTextarea initialValue={c.header} rowIdx={-1} column={c} handleSaveCell={handleSaveCell} />
               <Menu closeOnClickOutside styles={{dropdown: {boxShadow: '1px 1px 4px #ccc'}}}>
                 <Menu.Target>
                   <IconDots size='12pt' className='table-col-edit-btn' />

@@ -88,11 +88,20 @@ const TabularDataNode = ({ data, id }) => {
   const ref = useRef(null);
   const [hooksY, setHooksY] = useState(120);
 
-  const handleSaveCell = useCallback((rowIdx, columnName, value) => {
-    console.log('handleSaveCell', rowIdx, columnName, value);
-    tableData[rowIdx][columnName] = value;
+  const handleSaveCell = useCallback((rowIdx, columnKey, value) => {
+    if (rowIdx === -1) {
+      // Saving the column header
+      setTableColumns(tableColumns.map(col => {
+        if (col.key === columnKey)
+          col.header = value;
+        return col;
+      }));
+      return;
+    }
+    console.log('handleSaveCell', rowIdx, columnKey, value);
+    tableData[rowIdx][columnKey] = value;
     setTableData([...tableData]);
-  }, [tableData]);
+  }, [tableData, tableColumns]);
 
   // Adds a new row to the table
   const handleAddRow = useCallback(() => {
@@ -167,13 +176,33 @@ const TabularDataNode = ({ data, id }) => {
     }
 
     // Remove the select row
-    console.log('deleting row', tableData[selectedRow-1].firstName);
     tableData.splice(selectedRow-1, 1);
-    console.log(`there are now ${tableData.length} rows of the table`);
 
     // Save state
     setTableData([...tableData]);
   }, [tableData, selectedRow]);
+
+  // Removes a row of the table, at <table> index 'selectedRow'
+  const handleInsertRow = useCallback((offset) => {
+    if (!selectedRow) {
+      console.warn('No row selected to insert from.');
+      return; 
+    }
+
+    const insertIdx = selectedRow + offset;
+
+    // Creates a blank row with the same columns as the table
+    const blank_row = {__uid: uuidv4()};
+    tableColumns.forEach(o => {
+      blank_row[o.key] = '';
+    });
+
+    // Adds the row to the table at the requested position
+    let new_rows = tableData.slice(0, insertIdx).concat([blank_row], tableData.slice(insertIdx));
+
+    // Save state
+    setTableData([...new_rows]);
+  }, [tableData, tableColumns, selectedRow]);
 
   // Scrolls to bottom of the table when scrollToBottom toggle is true
   useEffect(() => {
@@ -216,8 +245,8 @@ const TabularDataNode = ({ data, id }) => {
         }
       }}>
         <Menu.Dropdown>
-          <Menu.Item><IconArrowBarToUp size='10pt' /> Insert Row Above</Menu.Item>
-          <Menu.Item><IconArrowBarToDown size='10pt' /> Insert Row Below</Menu.Item>
+          <Menu.Item onClick={() => handleInsertRow(-1)}><IconArrowBarToUp size='10pt' /> Insert Row Above</Menu.Item>
+          <Menu.Item onClick={() => handleInsertRow(0)}><IconArrowBarToDown size='10pt' /> Insert Row Below</Menu.Item>
           <Menu.Item onClick={handleRemoveRow}><IconX size='8pt' /> Delete row</Menu.Item>
         </Menu.Dropdown>
       </Menu>
@@ -226,17 +255,22 @@ const TabularDataNode = ({ data, id }) => {
         e.preventDefault();
 
         if (e.target.localName === 'textarea') {
-          setContextMenuPos({
-            left: e.pageX,
-            top: e.pageY
-          });
-          setContextMenuOpened(true);
-
           // Some really sketchy stuff to get the row index....
           // :: We've clicked on an 'input' element. We know that there is a 'td' element 3 levels up, and a 'tr' 4 levels up.
           // :: NOTE: We can also get the cell clicked on with e.target.parentNode?.parentNode?.parentNode?.cellIndex.
-          const rowIndex = e.target.parentNode?.parentNode?.parentNode?.parentNode?.rowIndex;
-          setSelectedRow(rowIndex);
+          const grandparent = e.target.parentNode?.parentNode?.parentNode?.parentNode;
+          const rowIndex = grandparent?.rowIndex;
+          const cellIndex = grandparent?.cellIndex;
+          if (rowIndex !== undefined) {  // A cell of the table was right-clicked on
+            setSelectedRow(rowIndex);
+            setContextMenuPos({
+              left: e.pageX,
+              top: e.pageY
+            });
+            setContextMenuOpened(true);
+          } else if (cellIndex !== undefined) { // A column header was right-clicked on
+            setSelectedRow(undefined);
+          }
         }
       }} >
         <EditableTable rows={tableData} columns={tableColumns} handleSaveCell={handleSaveCell} handleRemoveColumn={handleRemoveColumn} handleInsertColumn={handleInsertColumn} />
