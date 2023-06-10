@@ -9,7 +9,8 @@ import { IconPencil, IconArrowLeft, IconArrowRight, IconX, IconArrowBarToUp, Ico
 import TemplateHooks from './TemplateHooksComponent';
 import NodeLabel from './NodeLabelComponent';
 import AlertModal from './AlertModal';
-import RenameValueModal from './RenameColumnModal';
+import RenameValueModal from './RenameValueModal';
+import useStore from './store';
 
 const testData = [
   {
@@ -75,11 +76,12 @@ const testColumns = [
 
 const TabularDataNode = ({ data, id }) => {
 
-  const [tableData, setTableData] = useState([...testData].map(row => {
+  const [tableData, setTableData] = useState(data.rows || [...testData].map(row => {
     row.__uid = uuidv4();
     return row;
   }));
-  const [tableColumns, setTableColumns] = useState([...testColumns]);
+  const [tableColumns, setTableColumns] = useState(data.columns || [...testColumns]);
+  const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
   const [contextMenuPos, setContextMenuPos] = useState({left: -100, top:0});
   const [contextMenuOpened, setContextMenuOpened] = useState(false);
@@ -284,7 +286,7 @@ const TabularDataNode = ({ data, id }) => {
 
     // Construct the table rows by swapping the header names for our new columm keys
     let rows = jsonl.map(o => {
-      let row = {};
+      let row = { __uid: uuidv4() };
       Object.keys(o).forEach(header => {
         const raw_val = o[header];
         const val = typeof raw_val === 'object' ? JSON.stringify(raw_val) : raw_val;
@@ -390,6 +392,11 @@ const TabularDataNode = ({ data, id }) => {
       setScrollToBottom(false);
     }
   }, [scrollToBottom]);
+
+  // Updates the internal data store whenever the table data changes
+  useEffect(() => {
+    setDataPropsForNode(id, { rows: tableData, columns: tableColumns });
+  }, [tableData, tableColumns]);
 
   const handleError = (err) => {
     if (alertModal.current)

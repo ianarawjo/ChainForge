@@ -211,8 +211,6 @@ const App = () => {
 
   // Import data to the cache stored on the local filesystem (in backend)
   const importCache = (cache_data) => {
-    
-
     return fetch(BASE_URL + 'app/importCache', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
