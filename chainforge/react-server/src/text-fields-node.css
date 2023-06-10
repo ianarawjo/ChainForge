@@ -204,6 +204,22 @@
     padding: 2px 8px 4px 8px;
     line-height: 9pt;
   }
+  .response-var-inline-container {
+    display: flex;
+    align-items: start;
+    flex-wrap: wrap;
+    justify-content: left;
+    /* font-style: italic; */
+    padding-bottom: 1px;
+  }
+  .response-var-inline {
+    margin: 0px 4px;
+    background-color: #ffffff44;
+    color: #00000088;
+    border-radius: 4px;
+    mix-blend-mode: color-burn;
+    padding: 0px 4px;
+  }
   .response-var-name {
     font-size: 9pt;
     font-weight: bold;

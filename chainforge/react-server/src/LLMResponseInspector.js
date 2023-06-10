@@ -23,13 +23,6 @@ const filterDict = (dict, keyFilterFunc) => {
       return acc;
   }, {});
 };
-const vars_to_str = (vars) => {
-  const pairs = Object.keys(vars).map(varname => {
-      const s = truncStr(vars[varname].trim(), 12);
-      return `${varname} = '${s}'`;
-  });
-  return pairs;
-};
 const groupResponsesBy = (responses, keyFunc) => {
   let responses_by_key = {};
   let unspecified_group = [];
@@ -195,13 +188,26 @@ const LLMResponseInspector = ({ jsonResponses }) => {
                 // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
                 // (e.g., the vars that weren't part of the initial 'varnames' list that form the groupings)
                 const unused_vars = filterDict(res_obj.vars, v => !eatenvars.includes(v));
-                const vars = vars_to_str(unused_vars);
-                const var_tags = vars.map((v) => 
-                    (<Badge key={v} color="blue" size="xs">{v}</Badge>)
-                );
+
+                const vars_to_str = (vars) => {
+                  const pairs = Object.keys(vars).map(varname => {
+                      const s = truncStr(vars[varname].trim(), 12);
+                      return `${varname} = '${s}'`;
+                  });
+                  return pairs;
+                };
+
+                const var_tags = Object.keys(unused_vars).map((varname) => {
+                    const v = truncStr(unused_vars[varname].trim(), 12);
+                    return (<div key={varname} className="response-var-inline" >
+                      <span className="response-var-name">{varname}&nbsp;=&nbsp;</span><span className="response-var-value">{v}</span>
+                    </div>);
+                });
                 return (
                     <div key={"r"+res_idx} className="response-box" style={{ backgroundColor: color_for_llm(res_obj.llm) }}>
-                        {var_tags}
+                        <div className="response-var-inline-container">
+                          {var_tags}
+                        </div>
                         {eatenvars.includes('LLM') ?
                               ps
                             : (<div className="response-item-llm-name-wrapper">

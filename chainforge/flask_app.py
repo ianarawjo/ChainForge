@@ -323,8 +323,6 @@ def countQueries():
     try:
         gen_prompts = PromptPermutationGenerator(PromptTemplate(data['prompt']))
         all_prompt_permutations = list(gen_prompts(data['vars']))
-        for p in all_prompt_permutations:
-            print(p)
     except Exception as e:
         return jsonify({'error': str(e)})
     
