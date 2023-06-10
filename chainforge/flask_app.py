@@ -32,11 +32,12 @@ for model in LLM:
 
 @dataclass
 class ResponseInfo:
-    """Stores info about a single response. Passed to evaluator functions."""
-    text: str
-    prompt: str
-    var: dict
-    llm: str
+    """Stores info about a single LLM response. Passed to evaluator functions."""
+    text: str  # The text of the LLM response
+    prompt: str  # The text of the prompt using to query the LLM
+    var: dict  # A dictionary of arguments that filled in the prompt template used to generate the final prompt
+    meta: dict  # A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
+    llm: str  # The name of the LLM queried (the nickname in ChainForge)
 
     def __str__(self):
         return self.text
@@ -44,6 +45,7 @@ class ResponseInfo:
 def to_standard_format(r: dict) -> list:
     resp_obj = {
         'vars': r['info'],
+        'metavars': r['metavars'] if 'metavars' in r else {},
         'llm': r['llm'],
         'prompt': r['prompt'],
         'responses': r['responses'],
@@ -204,6 +206,7 @@ def run_over_responses(eval_func, responses: list, scope: str) -> list:
                             text=r,
                             prompt=resp_obj['prompt'],
                             var=resp_obj['vars'],
+                            meta=resp_obj['metavars'] if 'metavars' in resp_obj else {},
                             llm=resp_obj['llm'])
                     ) for r in res]
 
