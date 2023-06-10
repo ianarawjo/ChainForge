@@ -193,7 +193,8 @@
     overflow-y: scroll;
     min-width: 150px;
     width: 280px;
-    height: 100px;
+    min-height: 200px;
+    height: 200px;
     max-width: 650px;
     max-height: 650px;
     resize: both;
