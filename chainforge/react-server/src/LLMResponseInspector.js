@@ -188,17 +188,8 @@ const LLMResponseInspector = ({ jsonResponses }) => {
                 // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
                 // (e.g., the vars that weren't part of the initial 'varnames' list that form the groupings)
                 const unused_vars = filterDict(res_obj.vars, v => !eatenvars.includes(v));
-
-                const vars_to_str = (vars) => {
-                  const pairs = Object.keys(vars).map(varname => {
-                      const s = truncStr(vars[varname].trim(), 12);
-                      return `${varname} = '${s}'`;
-                  });
-                  return pairs;
-                };
-
                 const var_tags = Object.keys(unused_vars).map((varname) => {
-                    const v = truncStr(unused_vars[varname].trim(), 12);
+                    const v = truncStr(unused_vars[varname].trim(), 18);
                     return (<div key={varname} className="response-var-inline" >
                       <span className="response-var-name">{varname}&nbsp;=&nbsp;</span><span className="response-var-value">{v}</span>
                     </div>);
@@ -238,7 +229,7 @@ const LLMResponseInspector = ({ jsonResponses }) => {
                                                 ? groupResponsesBy(resps, (r => r.llm)) 
                                                 : groupResponsesBy(resps, (r => ((group_name in r.vars) ? r.vars[group_name] : null)));
         const get_header = (group_name === 'LLM') 
-                            ? ((key, val) => (<Badge key={val} color={badge_color_for_llm(val)} size="sm">{val}</Badge>))
+                            ? ((key, val) => (<div key={val} style={{backgroundColor: color_for_llm(val)}} className='response-llm-header'>{val}</div>))
                             : ((key, val) => getHeaderBadge(key, val));
         
         // Now produce nested divs corresponding to the groups
@@ -287,7 +278,7 @@ const LLMResponseInspector = ({ jsonResponses }) => {
                  label={<span style={{marginTop: '0px', fontWeight: 'normal'}}>Group responses by (order matters):</span>}
                  data={multiSelectVars}
                  placeholder="Pick vars to group responses, in order of importance"
-                 size="xs"
+                 size='xs'
                  value={multiSelectValue}
                  clearSearchOnChange={true}
                  clearSearchOnBlur={true} />

@@ -212,6 +212,14 @@
     /* font-style: italic; */
     padding-bottom: 1px;
   }
+  .response-llm-header {
+    font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    font-size: 9pt;
+    font-weight: 500;
+    padding: 4px 4px 4px 7px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 15px;
+  }
   .response-var-inline {
     margin: 0px 4px;
     background-color: #ffffff44;
@@ -219,6 +227,13 @@
     border-radius: 4px;
     mix-blend-mode: color-burn;
     padding: 0px 4px;
+  }
+  .response-var-inline > .response-var-name {
+    font-size: 8pt;
+    font-weight: normal;
+  }
+  .response-var-inline > .response-var-value {
+    font-size: 8pt;
   }
   .response-var-name {
     font-size: 9pt;
@@ -310,7 +325,9 @@
     font-size: 8pt;
     font-weight: bold;
     font-style: italic;
-    color: #000;
+    mix-blend-mode: color-burn;
+    color: #000000bb;
+    background-color: #ffffff44;
     opacity: 0.7;
     text-align: right;
     padding-right: 4px;
