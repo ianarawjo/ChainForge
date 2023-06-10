@@ -11,8 +11,8 @@ const cellTextareaStyle = {
     minHeight: '10pt',
     lineHeight: '1.2',
     whiteSpace: 'pre-wrap',
-    background: 'transparent'
-  }
+    background: 'transparent',
+  }, 
 };
 const headerTextareaStyle = {
   input: {
@@ -23,8 +23,9 @@ const headerTextareaStyle = {
     minHeight: '10pt',
     lineHeight: '1.2',
     whiteSpace: 'pre-wrap',
-    background: 'transparent'
-  }
+    background: 'transparent',
+    width: '100px'
+  },
 };
 const tableHeaderStyle = {
   paddingBottom: '4px'
@@ -32,6 +33,10 @@ const tableHeaderStyle = {
 
 const CellTextarea = ({ initialValue, rowIdx, column, handleSaveCell, onContextMenu }) => {
   const [value, setValue] = useState(initialValue);
+
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
 
   return <Textarea autosize={true} 
                    autoComplete='off'
@@ -50,7 +55,7 @@ const CellTextarea = ({ initialValue, rowIdx, column, handleSaveCell, onContextM
 /**
  * A table with multi-line textareas that is always editable and relatively fast.
  */
-const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, handleRemoveColumn }) => {
+const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, handleRemoveColumn, handleRenameColumn }) => {
 
   const [trows, setTrows] = useState([]);
   const [thead, setThead] = useState([]);
@@ -81,7 +86,7 @@ const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, hand
                   <IconDots size='12pt' className='table-col-edit-btn' />
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Item key='rename_col'><IconPencil size='10pt' />&nbsp;Rename column</Menu.Item>
+                  <Menu.Item key='rename_col' onClick={() => handleRenameColumn(c)}><IconPencil size='10pt' />&nbsp;Rename column</Menu.Item>
                   <Menu.Item key='insert_left' onClick={() => handleInsertColumn(c.key, -1)}><IconArrowLeft size='10pt' />&nbsp;Insert column to left</Menu.Item>
                   <Menu.Item key='insert_right' onClick={() => handleInsertColumn(c.key, 1)}><IconArrowRight size='10pt' />&nbsp;Insert column to right</Menu.Item>
                   <Menu.Item key='remove_col' onClick={() => handleRemoveColumn(c.key)}><IconX size='8pt' /> Remove column</Menu.Item>
@@ -96,7 +101,7 @@ const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, hand
   }, [rows, columns]);
 
   return (
-    <Table verticalSpacing={'0px'} highlightOnHover>
+    <Table verticalSpacing={'0px'} striped highlightOnHover className='editable-table'>
       <thead>{thead}</thead>
       <tbody>{trows}</tbody>
     </Table>

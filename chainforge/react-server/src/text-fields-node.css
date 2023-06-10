@@ -338,10 +338,23 @@
     overflow: auto;
     max-width: 800px;
     min-width: inherit;
+    max-height: 700px;
     border-bottom-style: solid;
     border-right-style: solid;
     border-color: #ccc;
     display: inline-block;
+  }
+  .tabular-data-container td {
+    white-space: nowrap;
+    width: min-content;
+  }
+  .tabular-data-container th {
+    white-space: nowrap;
+    width: min-content;
+  }
+  .editable-table {
+    table-layout: auto;
+    width: 100%;
   }
   .table-col-edit-btn {
     position: relative;

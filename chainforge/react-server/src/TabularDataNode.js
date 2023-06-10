@@ -1,11 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback, forwardRef, useId } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Textarea } from '@mantine/core';
+import { Menu, Modal, TextInput, Button, Tooltip } from '@mantine/core';
 import EditableTable from './EditableTable';
+import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 import { v4 as uuidv4 } from 'uuid';
 import { IconPencil, IconArrowLeft, IconArrowRight, IconX, IconArrowBarToUp, IconArrowBarToDown } from '@tabler/icons-react';
 import TemplateHooks from './TemplateHooksComponent';
 import NodeLabel from './NodeLabelComponent';
+import AlertModal from './AlertModal';
+import RenameValueModal from './RenameColumnModal';
 
 const testData = [
   {
@@ -87,6 +91,13 @@ const TabularDataNode = ({ data, id }) => {
   const ref = useRef(null);
   const [hooksY, setHooksY] = useState(120);
 
+  // For displaying error messages to user
+  const alertModal = useRef(null);
+
+  // For renaming a column
+  const renameColumnModal = useRef(null);
+  const [renameColumnInitialVal, setRenameColumnInitialVal] = useState("");
+
   const handleSaveCell = useCallback((rowIdx, columnKey, value) => {
     if (rowIdx === -1) {
       // Saving the column header
@@ -167,6 +178,25 @@ const TabularDataNode = ({ data, id }) => {
     setTableData([...tableData]);
   }, [tableColumns, tableData]);
 
+  // Opens a modal popup to let user rename a column
+  const openRenameColumnModal = useCallback((col) => {
+    setRenameColumnInitialVal(col);
+    if (renameColumnModal && renameColumnModal.current)
+      renameColumnModal.current.trigger();
+  }, [renameColumnModal]);
+  const handleRenameColumn = useCallback((new_header) => {
+    if (typeof renameColumnInitialVal !== 'object') {
+      console.error('Initial column value was not set.');
+      return;
+    }
+    const new_cols = tableColumns.map(c => {
+      if (c.key === renameColumnInitialVal.key)
+        c.header = new_header;
+      return c;
+    });
+    setTableColumns([...new_cols]);
+  }, [tableColumns, renameColumnInitialVal]);
+
   // Removes a row of the table, at <table> index 'selectedRow'
   const handleRemoveRow = useCallback(() => {
     if (!selectedRow) {
@@ -203,6 +233,155 @@ const TabularDataNode = ({ data, id }) => {
     setTableData([...new_rows]);
   }, [tableData, tableColumns, selectedRow]);
 
+  // Opens a context window inside the table
+  // Currently only opens if a row cell textarea was right-clicked. 
+  // TODO: Improve this to work on other parts of the table too (e.g., column headers and between rows)
+  const handleOpenTableContextMenu = (e) => {
+    e.preventDefault();
+
+    if (e.target.localName === 'textarea') {
+      // Some really sketchy stuff to get the row index....
+      // :: We've clicked on an 'input' element. We know that there is a 'td' element 3 levels up, and a 'tr' 4 levels up.
+      // :: NOTE: We can also get the cell clicked on with e.target.parentNode?.parentNode?.parentNode?.cellIndex.
+      const grandparent = e.target.parentNode?.parentNode?.parentNode?.parentNode;
+      const rowIndex = grandparent?.rowIndex;
+      const cellIndex = grandparent?.cellIndex;
+      if (rowIndex !== undefined) {  // A cell of the table was right-clicked on
+        setSelectedRow(rowIndex);
+        setContextMenuPos({
+          left: e.pageX,
+          top: e.pageY
+        });
+        setContextMenuOpened(true);
+      } else if (cellIndex !== undefined) { // A column header was right-clicked on
+        setSelectedRow(undefined);
+      }
+    }
+  };
+
+  // Import list of JSON data to the table
+  // NOTE: JSON objects should be in row format, with keys 
+  //       as the header names. The internal keys of the columns will use uids to be unique. 
+  const importJSONList = (jsonl) => {
+    if (!Array.isArray(jsonl)) {
+      throw new Error("Imported tabular data is not in array format: " + jsonl.toString())
+    }
+
+    // Extract unique column names
+    let headers = new Set();
+    jsonl.forEach(o => Object.keys(o).forEach(key => headers.add(key)));
+
+    // Create new columns with unique ids c0, c1 etc
+    let cols = Array.from(headers).map((h, idx) => ({
+      header: h, key: `c${idx.toString()}`
+    }));
+
+    // Construct a lookup table from header name to our new key uid
+    let col_key_lookup = {};
+    cols.forEach(c => {
+      col_key_lookup[c.header] = c.key;
+    });
+
+    // Construct the table rows by swapping the header names for our new columm keys
+    let rows = jsonl.map(o => {
+      let row = {};
+      Object.keys(o).forEach(header => {
+        const raw_val = o[header];
+        const val = typeof raw_val === 'object' ? JSON.stringify(raw_val) : raw_val;
+        row[col_key_lookup[header]] = val;
+      })
+      return row;
+    });
+
+    // Save the new columns and rows
+    setTableColumns(cols);
+    setTableData(rows);
+  };
+
+  // Import tabular data from a file
+  // NOTE: Assumes first row of table is a header
+  const openImportFileModal = async () => {
+    // Create an input element with type "file" and accept only JSON files
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json, .jsonl, .xlsx, .xls, .csv";
+
+    const parseJSONL = (txt) => {
+      return txt.trim().split('\n').map((line) => JSON.parse(line));
+    };
+
+    // Handle file selection
+    input.addEventListener("change", function(event) {
+
+      const file = event.target.files[0];
+      const reader = new FileReader();
+
+      // Extract the file extension from the file name
+      const extension = file.name.split('.').pop();
+
+      // Handle file load event
+      reader.addEventListener("load", function() {
+        try {
+          // Try to parse the file using the appropriate file reader
+          let jsonl = null;
+          switch (extension) {
+
+            case 'jsonl':
+              // Should be a newline-separated list of JSON objects, e.g. {}\n{}\n{}
+              // Split the result on newlines and JSON parse individual lines: 
+              jsonl = parseJSONL(reader.result);
+              // Load the JSON list into the table
+              importJSONList(jsonl);
+              break;
+
+            case 'json':
+              // Should be a list of JSON objects, e.g. in format [{...}]
+              try {
+                jsonl = JSON.parse(reader.result);
+              } catch (error) {
+                // Just in case, try to parse it as a JSONL file instead...
+                jsonl = parseJSONL(reader.result);
+              }
+              importJSONList(jsonl);
+              break;
+
+            case 'xlsx':
+              // Parse data using XLSX
+              const wb = XLSX.read(reader.result, { type:'binary' });
+              // Extract the first worksheet
+              const wsname = wb.SheetNames[0];
+              const ws = wb.Sheets[wsname];
+              // Convert to JSON list format, assuming the first row is a 'header':
+              jsonl = XLSX.utils.sheet_to_json(ws);
+              // Load the JSON list into the table
+              importJSONList(jsonl);
+              break;
+
+            case 'csv':
+              // Parse the CSV string to a list,
+              // assuming the first row is a header
+              const papa_parsed = Papa.parse(reader.result, {header: true});
+              importJSONList(papa_parsed.data);
+              break;
+
+            default:
+              throw new Error(`Unknown file extension: ${extension}`)
+          }
+        } catch (error) {
+          handleError(error);
+        }
+      });
+
+      // Read the selected file using the appropriate reader
+      if (extension === 'xlsx' || extension === 'xls')
+        reader.readAsBinaryString(file);
+      else reader.readAsText(file);
+    });
+
+    // Trigger the file selector
+    input.click();
+  };
+
   // Scrolls to bottom of the table when scrollToBottom toggle is true
   useEffect(() => {
     if (scrollToBottom) {
@@ -211,6 +390,12 @@ const TabularDataNode = ({ data, id }) => {
       setScrollToBottom(false);
     }
   }, [scrollToBottom]);
+
+  const handleError = (err) => {
+    if (alertModal.current)
+      alertModal.current.trigger(err.message);
+    console.error(err.message);
+  };
 
   // To listen for resize events of the table container, we need to use a ResizeObserver.
   // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div container.
@@ -233,8 +418,23 @@ const TabularDataNode = ({ data, id }) => {
 
   return (
     <div className="tabular-data-node cfnode" onPointerDown={() => setContextMenuOpened(false)}>
-      <NodeLabel title={data.title || 'Tabular Data Node'} nodeId={id} icon={'🗂️'} />
+      <NodeLabel title={data.title || 'Tabular Data Node'} 
+                 nodeId={id} 
+                 icon={'🗂️'}
+                 customButtons={[
+                  <Tooltip label="Accepts xlsx, jsonl, and csv files with a header row">
+                    <button className="custom-button" key="import-data" onClick={openImportFileModal}>Import data</button>
+                  </Tooltip>
+                 ]} />
       
+      <AlertModal ref={alertModal} />
+
+      <RenameValueModal ref={renameColumnModal} 
+                        initialValue={(typeof renameColumnInitialVal === 'object') ? renameColumnInitialVal.header : ""} 
+                        title="Rename column"
+                        label="New column name" 
+                        onSubmit={handleRenameColumn} />
+
       <Menu opened={contextMenuOpened} withinPortal={true} onChange={setContextMenuOpened} styles={{
         dropdown: {
           position: 'absolute',
@@ -250,29 +450,8 @@ const TabularDataNode = ({ data, id }) => {
         </Menu.Dropdown>
       </Menu>
 
-      <div ref={setRef} className='tabular-data-container nowheel nodrag' onPointerDown={() => setContextMenuOpened(false)} onContextMenu={(e) => {
-        e.preventDefault();
-
-        if (e.target.localName === 'textarea') {
-          // Some really sketchy stuff to get the row index....
-          // :: We've clicked on an 'input' element. We know that there is a 'td' element 3 levels up, and a 'tr' 4 levels up.
-          // :: NOTE: We can also get the cell clicked on with e.target.parentNode?.parentNode?.parentNode?.cellIndex.
-          const grandparent = e.target.parentNode?.parentNode?.parentNode?.parentNode;
-          const rowIndex = grandparent?.rowIndex;
-          const cellIndex = grandparent?.cellIndex;
-          if (rowIndex !== undefined) {  // A cell of the table was right-clicked on
-            setSelectedRow(rowIndex);
-            setContextMenuPos({
-              left: e.pageX,
-              top: e.pageY
-            });
-            setContextMenuOpened(true);
-          } else if (cellIndex !== undefined) { // A column header was right-clicked on
-            setSelectedRow(undefined);
-          }
-        }
-      }} >
-        <EditableTable rows={tableData} columns={tableColumns} handleSaveCell={handleSaveCell} handleRemoveColumn={handleRemoveColumn} handleInsertColumn={handleInsertColumn} />
+      <div ref={setRef} className='tabular-data-container nowheel nodrag' onPointerDown={() => setContextMenuOpened(false)} onContextMenu={handleOpenTableContextMenu} >
+        <EditableTable rows={tableData} columns={tableColumns} handleSaveCell={handleSaveCell} handleRemoveColumn={handleRemoveColumn} handleInsertColumn={handleInsertColumn} handleRenameColumn={openRenameColumnModal} />
       </div>
 
       <div className="tabular-data-footer">
