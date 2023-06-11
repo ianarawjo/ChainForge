@@ -13,6 +13,9 @@ const cellTextareaStyle = {
     whiteSpace: 'pre-wrap',
     background: 'transparent',
   }, 
+  root: {
+    width: 'inherit'
+  }
 };
 const headerTextareaStyle = {
   input: {
@@ -24,8 +27,10 @@ const headerTextareaStyle = {
     lineHeight: '1.2',
     whiteSpace: 'pre-wrap',
     background: 'transparent',
-    width: '100px'
   },
+  root: {
+    width: 'inherit'
+  }
 };
 const tableHeaderStyle = {
   paddingBottom: '4px'
@@ -64,11 +69,12 @@ const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, hand
   useEffect(() => {
     const cols = columns || [];
 
-    setTrows(rows.map((row, rowIdx) => (
+    setTrows(rows.map((row, rowIdx) => ( // For some reason, table autosizing is broken by textareas. We'll live with it for now, but flagged to fix in the future.
       <tr key={row.__uid}>
         {cols.map(c => {
           const txt = (c.key in row) ? row[c.key] : "";
-          return (<td key={c.key}>
+          return (<td key={`${row.__uid}-${c.key}`} style={{position: 'relative'}}>
+            {/* <p onBlur={() => console.log('changed')} style={{whiteSpace: 'pre-wrap', overflowY: 'scroll', maxHeight: '100px', fontFamily: 'monospace', fontSize: '10pt', lineHeight: '1.2', cursor: 'text'}} contentEditable suppressContentEditableWarning={true}>{txt}</p> */}
             <CellTextarea initialValue={txt} rowIdx={rowIdx} column={c} handleSaveCell={handleSaveCell} />
           </td>);
         })}

@@ -216,6 +216,21 @@
     max-height: 650px;
     resize: both;
   }
+  .inspect-modal-response-container .response-var-header {
+    padding: 10px;
+  }
+  .inspect-modal-response-container .response-var-name {
+    font-size: 11pt;
+  }
+  .inspect-modal-response-container .response-var-value {
+    font-size: 11pt;
+  }
+  .inspect-modal-response-container .response-llm-header {
+    font-size: 10pt;
+  }
+  .inspect-modal-response-container .small-response {
+    font-size: 10pt;
+  }
   .response-var-header {
     background-color: #e0f4fa;
     border-radius: 1px;
@@ -240,10 +255,11 @@
   }
   .response-var-inline {
     margin: 0px 4px;
-    background-color: #ffffff99;
-    color: #000000bb;
+    /* background-color: #ffffff33; */
+    color: #00000088;
     border-radius: 4px;
-    mix-blend-mode: color-burn;
+    text-rendering: optimizeSpeed;
+    /* mix-blend-mode: color-burn; */
     padding: 0px 4px;
   }
   .response-var-inline > .response-var-name {
@@ -343,7 +359,7 @@
     font-size: 8pt;
     font-weight: bold;
     font-style: italic;
-    mix-blend-mode: color-burn;
+    /* mix-blend-mode: color-burn; */
     color: #000000bb;
     background-color: #ffffff44;
     opacity: 0.7;
@@ -393,19 +409,16 @@
     border-bottom-style: solid;
     border-right-style: solid;
     border-color: #ccc;
-    display: inline-block;
+    display: block;
   }
   .tabular-data-container td {
     white-space: nowrap;
-    width: min-content;
   }
   .tabular-data-container th {
     white-space: nowrap;
-    width: min-content;
   }
   .editable-table {
     table-layout: auto;
-    width: 100%;
   }
   .table-col-edit-btn {
     position: relative;

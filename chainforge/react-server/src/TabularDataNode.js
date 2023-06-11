@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, forwardRef, useId } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Modal, TextInput, Button, Tooltip } from '@mantine/core';
+import { Menu, Modal, TextInput, Button, Tooltip, Textarea, Table } from '@mantine/core';
 import EditableTable from './EditableTable';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
@@ -458,6 +458,25 @@ const TabularDataNode = ({ data, id }) => {
       </Menu>
 
       <div ref={setRef} className='tabular-data-container nowheel nodrag' onPointerDown={() => setContextMenuOpened(false)} onContextMenu={handleOpenTableContextMenu} >
+        {/* <Table style={{tableLayout: 'auto', width: '100%'}}>
+          <thead><tr>
+            <th><div style={{display: 'flex', justifyContent: 'space-between'}}> <span>Col 1</span><Button>Hello</Button> </div></th>
+            <th>Col 2</th>
+            <th>Col 3</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td><Textarea autosize value="Some really long text here"></Textarea></td>
+              <td><Textarea autosize value="1"></Textarea></td>
+              <td><Textarea autosize value="What is this"></Textarea></td>
+            </tr>
+            <tr>
+              <td>Other really long text goes here</td>
+              <td>2</td>
+              <td>Third times a charm</td>
+            </tr>
+          </tbody>
+        </Table> */}
         <EditableTable rows={tableData} columns={tableColumns} handleSaveCell={handleSaveCell} handleRemoveColumn={handleRemoveColumn} handleInsertColumn={handleInsertColumn} handleRenameColumn={openRenameColumnModal} />
       </div>
 
