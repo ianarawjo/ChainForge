@@ -38,7 +38,11 @@ Click the "Example Flows" button on the top-right corner and select one. Here is
 
 <img width="1593" alt="basic-compare" src="https://github.com/ianarawjo/ChainForge/assets/5251713/43c87ab7-aabd-41ba-8d9b-e7e9ebe25c75">
 
-For finer details about the features of available nodes, check out the [User Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
+You can also conduct **ground truth evaluations** using Tabular Data nodes. For instance, we can compare each LLM's ability to answer math problems  by comparing each response to the expected answer:
+
+<img width="1770" alt="Screen Shot 2023-06-11 at 11 51 28 AM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/3a038fa6-46af-42d8-ac82-e94f7c239b10">
+
+For finer details about the features of available nodes, check out the [Node Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
 # Features
 
