@@ -148,7 +148,7 @@ const LLMResponseInspector = ({ jsonResponses }) => {
 
     const getHeaderBadge = (key, val) => {
       if (val) {
-        const s = truncStr(val.trim(), 144);
+        const s = truncStr(val.trim(), 1024);
         return (<div className="response-var-header">
           <span className="response-var-name">{key}&nbsp;=&nbsp;</span><span className="response-var-value">"{s}"</span>
         </div>);

@@ -6,6 +6,12 @@
     min-width: 200px;
   }
 
+  hr {
+    border: none;
+    background-color: #bbb;
+    height: 1px;
+  }
+
   .small-standard-font {
     font-size: 10pt;
     font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
@@ -218,6 +224,7 @@
   }
   .inspect-modal-response-container .response-var-header {
     padding: 10px;
+    line-height: 1.2;
   }
   .inspect-modal-response-container .response-var-name {
     font-size: 11pt;
@@ -235,7 +242,7 @@
     background-color: #e0f4fa;
     border-radius: 1px;
     padding: 2px 8px 4px 8px;
-    line-height: 9pt;
+    line-height: 0.9;
   }
   .response-var-inline-container {
     display: flex;
@@ -275,7 +282,7 @@
   }
   .response-var-value {
     font-family: monospace;
-    font-size: 9pt;
+    font-size: 8pt;
   }
   .inspect-modal-prompt-box {
     background-color: #eee;
@@ -408,6 +415,8 @@
     max-height: 700px;
     border-bottom-style: solid;
     border-right-style: solid;
+    border-bottom-width: 1px;
+    border-right-width: 1px;
     border-color: #ccc;
     display: block;
   }

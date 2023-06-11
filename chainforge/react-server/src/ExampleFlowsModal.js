@@ -65,9 +65,14 @@ const ExampleFlowsModal = forwardRef((props, ref) => {
                          filename="chaining-prompts"
                          onSelect={onSelect}
         />
-        <ExampleFlowCard title="Compare system messages"
+        <ExampleFlowCard title="Measure impact of system message on response"
                          description="Compares response quality across different ChatGPT system prompts. Visualizes how well it sticks to the instructions to only print Racket code."
                          filename="comparing-system-msg"
+                         onSelect={onSelect}
+        />
+        <ExampleFlowCard title="Ground truth evaluation for math problems"
+                         description="Uses a tabular data node to evaluate LLM performance on basic math problems. Compares responses to expected answer and plots performance across LLMs."
+                         filename="basic-math"
                          onSelect={onSelect}
         />
         {/* <ExampleFlowCard title="Test mathematical ability"

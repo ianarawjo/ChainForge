@@ -1,0 +1,1783 @@
+{
+  "flow": {
+    "nodes": [
+      {
+        "width": 312,
+        "height": 501,
+        "id": "prompt-1686496332028",
+        "type": "prompt",
+        "data": {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "n": 1,
+          "llms": [
+            {
+              "key": "9fbdcc67-7c5f-4cd5-a2e4-6f2d4a190cd0",
+              "settings": {
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 1,
+                "top_p": 1,
+                "stop": [],
+                "presence_penalty": 0,
+                "frequency_penalty": 0
+              },
+              "name": "GPT3.5",
+              "emoji": "🙂",
+              "model": "gpt-3.5-turbo",
+              "base_model": "gpt-3.5-turbo",
+              "temp": 1
+            },
+            {
+              "key": "667e0d14-527b-4fe7-afdc-219504729e6d",
+              "name": "GPT4",
+              "emoji": "🥵",
+              "model": "gpt-4",
+              "base_model": "gpt-4",
+              "temp": 1,
+              "settings": {
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 1,
+                "top_p": 1,
+                "stop": [],
+                "presence_penalty": 0,
+                "frequency_penalty": 0
+              },
+              "formData": {
+                "shortname": "GPT4"
+              }
+            },
+            {
+              "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
+              "name": "PaLM2",
+              "emoji": "🦬",
+              "model": "chat-bison-001",
+              "base_model": "palm2-bison",
+              "temp": 0.7,
+              "settings": {
+                "temperature": 0.5,
+                "top_k": -1,
+                "top_p": -1,
+                "max_output_tokens": 512,
+                "stop_sequences": []
+              },
+              "formData": {
+                "shortname": "PaLM2"
+              }
+            }
+          ],
+          "fields": [
+            {
+              "text": "4.",
+              "fill_history": {
+                "question": "What is 2 + 2?"
+              }
+            },
+            {
+              "text": "3",
+              "fill_history": {
+                "question": "What is the square root of 9?"
+              }
+            },
+            {
+              "text": "1997.",
+              "fill_history": {
+                "question": "What year was the 50th anniversary of the invention of the transistor?"
+              }
+            },
+            {
+              "text": "125",
+              "fill_history": {
+                "question": "What is 5 to the power of 3?"
+              }
+            },
+            {
+              "text": "54",
+              "fill_history": {
+                "question": "What is 2 multiplied by the cubic root of 729?"
+              }
+            },
+            {
+              "text": "4",
+              "fill_history": {
+                "question": "What is 2 + 2?"
+              }
+            },
+            {
+              "text": "3",
+              "fill_history": {
+                "question": "What is the square root of 9?"
+              }
+            },
+            {
+              "text": "1997",
+              "fill_history": {
+                "question": "What year was the 50th anniversary of the invention of the transistor?"
+              }
+            },
+            {
+              "text": "125",
+              "fill_history": {
+                "question": "What is 5 to the power of 3?"
+              }
+            },
+            {
+              "text": "12",
+              "fill_history": {
+                "question": "What is 2 multiplied by the cubic root of 729?"
+              }
+            },
+            {
+              "text": "2+2=4",
+              "fill_history": {
+                "question": "What is 2 + 2?"
+              }
+            },
+            {
+              "text": "The square root of 9 is 3.",
+              "fill_history": {
+                "question": "What is the square root of 9?"
+              }
+            },
+            {
+              "text": "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997.",
+              "fill_history": {
+                "question": "What year was the 50th anniversary of the invention of the transistor?"
+              }
+            },
+            {
+              "text": "5 to the power of 3 is 125.",
+              "fill_history": {
+                "question": "What is 5 to the power of 3?"
+              }
+            },
+            {
+              "text": "2 multiplied by the cubic root of 729 is 27.",
+              "fill_history": {
+                "question": "What is 2 multiplied by the cubic root of 729?"
+              }
+            }
+          ]
+        },
+        "position": {
+          "x": 450,
+          "y": 200
+        },
+        "selected": false,
+        "dragging": false,
+        "positionAbsolute": {
+          "x": 450,
+          "y": 200
+        }
+      },
+      {
+        "width": 333,
+        "height": 182,
+        "id": "eval-1686496332028",
+        "type": "evaluator",
+        "data": {
+          "code": "def evaluate(response):\n  return response.text[:4] == \\\n         response.meta['Expected']",
+          "title": "Whether expected answer"
+        },
+        "position": {
+          "x": 816,
+          "y": 176
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": 816,
+          "y": 176
+        },
+        "dragging": false
+      },
+      {
+        "width": 608,
+        "height": 490,
+        "id": "vis-1686496332028",
+        "type": "vis",
+        "data": {
+          "input": "eval-1686496332028",
+          "vars": [
+            {
+              "value": "question",
+              "label": "question"
+            }
+          ],
+          "selected_vars": [],
+          "refresh": false,
+          "title": "How correct each LLM was on the math questions"
+        },
+        "position": {
+          "x": 1200,
+          "y": 176
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": 1200,
+          "y": 176
+        },
+        "dragging": false
+      },
+      {
+        "width": 302,
+        "height": 260,
+        "id": "inspect-1686496332028",
+        "type": "inspect",
+        "data": {
+          "input": "prompt-1686496332028",
+          "refresh": false
+        },
+        "position": {
+          "x": 816,
+          "y": 416
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": 816,
+          "y": 416
+        },
+        "dragging": false
+      },
+      {
+        "width": 443,
+        "height": 342,
+        "id": "table-1686496353296",
+        "type": "table",
+        "data": {
+          "rows": [
+            {
+              "__uid": "15b96ab6-ac8f-4c66-8bb0-92384e55fb68",
+              "question": "What is 2 + 2?",
+              "answer": "4"
+            },
+            {
+              "__uid": "fc207d76-1f61-47b2-b3fd-c059be2f69ff",
+              "question": "What is the square root of 9?",
+              "answer": "3"
+            },
+            {
+              "__uid": "e3963edf-a0c4-406c-bcc3-f9cc092f8bca",
+              "question": "What year was the 50th anniversary of the invention of the transistor?",
+              "answer": "1997"
+            },
+            {
+              "__uid": "fb9e2d1c-3023-451a-9570-964579c4390b",
+              "question": "What is 5 to the power of 3?",
+              "answer": "125"
+            },
+            {
+              "__uid": "8d6dbad2-d877-4f87-ba1a-5f0b815cc277",
+              "question": "What is 2 multiplied by the cubic root of 729?",
+              "answer": "18"
+            }
+          ],
+          "columns": [
+            {
+              "key": "question",
+              "header": "Question"
+            },
+            {
+              "key": "answer",
+              "header": "Expected"
+            }
+          ]
+        },
+        "position": {
+          "x": -48,
+          "y": 176
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": -48,
+          "y": 176
+        },
+        "dragging": false
+      }
+    ],
+    "edges": [
+      {
+        "source": "table-1686496353296",
+        "sourceHandle": "Question",
+        "target": "prompt-1686496332028",
+        "targetHandle": "question",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-table-1686496353296Question-prompt-1686496332028question"
+      },
+      {
+        "source": "prompt-1686496332028",
+        "sourceHandle": "prompt",
+        "target": "inspect-1686496332028",
+        "targetHandle": "input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-prompt-1686496332028prompt-inspect-1686496332028input"
+      },
+      {
+        "source": "prompt-1686496332028",
+        "sourceHandle": "prompt",
+        "target": "eval-1686496332028",
+        "targetHandle": "responseBatch",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-prompt-1686496332028prompt-eval-1686496332028responseBatch"
+      },
+      {
+        "source": "eval-1686496332028",
+        "sourceHandle": "output",
+        "target": "inspectNode-1686496774695",
+        "targetHandle": "input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-eval-1686496332028output-inspectNode-1686496774695input"
+      },
+      {
+        "source": "eval-1686496332028",
+        "sourceHandle": "output",
+        "target": "inspectNode-1686496840189",
+        "targetHandle": "input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-eval-1686496332028output-inspectNode-1686496840189input"
+      },
+      {
+        "source": "eval-1686496332028",
+        "sourceHandle": "output",
+        "target": "vis-1686496332028",
+        "targetHandle": "input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-eval-1686496332028output-vis-1686496332028input"
+      }
+    ],
+    "viewport": {
+      "x": 97,
+      "y": 36,
+      "zoom": 1
+    }
+  },
+  "cache": {
+    "eval-1686496332028.json": [
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            false
+          ]
+        },
+        "llm": "GPT3.5",
+        "metavars": {
+          "Expected": "4"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+        "responses": [
+          "4."
+        ],
+        "tokens": {
+          "completion_tokens": 2,
+          "prompt_tokens": 46,
+          "total_tokens": 48
+        },
+        "vars": {
+          "question": "What is 2 + 2?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            true
+          ]
+        },
+        "llm": "GPT3.5",
+        "metavars": {
+          "Expected": "3"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+        "responses": [
+          "3"
+        ],
+        "tokens": {
+          "completion_tokens": 1,
+          "prompt_tokens": 47,
+          "total_tokens": 48
+        },
+        "vars": {
+          "question": "What is the square root of 9?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            true
+          ]
+        },
+        "llm": "GPT3.5",
+        "metavars": {
+          "Expected": "1997"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+        "responses": [
+          "1997."
+        ],
+        "tokens": {
+          "completion_tokens": 3,
+          "prompt_tokens": 53,
+          "total_tokens": 56
+        },
+        "vars": {
+          "question": "What year was the 50th anniversary of the invention of the transistor?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            true
+          ]
+        },
+        "llm": "GPT3.5",
+        "metavars": {
+          "Expected": "125"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+        "responses": [
+          "125"
+        ],
+        "tokens": {
+          "completion_tokens": 1,
+          "prompt_tokens": 49,
+          "total_tokens": 50
+        },
+        "vars": {
+          "question": "What is 5 to the power of 3?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            false
+          ]
+        },
+        "llm": "GPT3.5",
+        "metavars": {
+          "Expected": "18"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+        "responses": [
+          "54"
+        ],
+        "tokens": {
+          "completion_tokens": 1,
+          "prompt_tokens": 51,
+          "total_tokens": 52
+        },
+        "vars": {
+          "question": "What is 2 multiplied by the cubic root of 729?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            true
+          ]
+        },
+        "llm": "GPT4",
+        "metavars": {
+          "Expected": "4"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+        "responses": [
+          "4"
+        ],
+        "tokens": {
+          "completion_tokens": 1,
+          "prompt_tokens": 44,
+          "total_tokens": 45
+        },
+        "vars": {
+          "question": "What is 2 + 2?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            true
+          ]
+        },
+        "llm": "GPT4",
+        "metavars": {
+          "Expected": "3"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+        "responses": [
+          "3"
+        ],
+        "tokens": {
+          "completion_tokens": 1,
+          "prompt_tokens": 45,
+          "total_tokens": 46
+        },
+        "vars": {
+          "question": "What is the square root of 9?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            true
+          ]
+        },
+        "llm": "GPT4",
+        "metavars": {
+          "Expected": "1997"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+        "responses": [
+          "1997"
+        ],
+        "tokens": {
+          "completion_tokens": 2,
+          "prompt_tokens": 51,
+          "total_tokens": 53
+        },
+        "vars": {
+          "question": "What year was the 50th anniversary of the invention of the transistor?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            true
+          ]
+        },
+        "llm": "GPT4",
+        "metavars": {
+          "Expected": "125"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+        "responses": [
+          "125"
+        ],
+        "tokens": {
+          "completion_tokens": 1,
+          "prompt_tokens": 47,
+          "total_tokens": 48
+        },
+        "vars": {
+          "question": "What is 5 to the power of 3?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            false
+          ]
+        },
+        "llm": "GPT4",
+        "metavars": {
+          "Expected": "18"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+        "responses": [
+          "12"
+        ],
+        "tokens": {
+          "completion_tokens": 1,
+          "prompt_tokens": 49,
+          "total_tokens": 50
+        },
+        "vars": {
+          "question": "What is 2 multiplied by the cubic root of 729?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            false
+          ]
+        },
+        "llm": "PaLM2",
+        "metavars": {
+          "Expected": "4"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+        "responses": [
+          "2+2=4"
+        ],
+        "tokens": {},
+        "vars": {
+          "question": "What is 2 + 2?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            false
+          ]
+        },
+        "llm": "PaLM2",
+        "metavars": {
+          "Expected": "3"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+        "responses": [
+          "The square root of 9 is 3."
+        ],
+        "tokens": {},
+        "vars": {
+          "question": "What is the square root of 9?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            false
+          ]
+        },
+        "llm": "PaLM2",
+        "metavars": {
+          "Expected": "1997"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+        "responses": [
+          "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
+        ],
+        "tokens": {},
+        "vars": {
+          "question": "What year was the 50th anniversary of the invention of the transistor?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            false
+          ]
+        },
+        "llm": "PaLM2",
+        "metavars": {
+          "Expected": "125"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+        "responses": [
+          "5 to the power of 3 is 125."
+        ],
+        "tokens": {},
+        "vars": {
+          "question": "What is 5 to the power of 3?"
+        }
+      },
+      {
+        "eval_res": {
+          "dtype": "Categorical",
+          "items": [
+            false
+          ]
+        },
+        "llm": "PaLM2",
+        "metavars": {
+          "Expected": "18"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+        "responses": [
+          "2 multiplied by the cubic root of 729 is 27."
+        ],
+        "tokens": {},
+        "vars": {
+          "question": "What is 2 multiplied by the cubic root of 729?"
+        }
+      }
+    ],
+    "inspect-1686496332028.json": {},
+    "prompt-1686496332028.json": {
+      "cache_files": {
+        "prompt-1686496332028_0.json": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "key": "9fbdcc67-7c5f-4cd5-a2e4-6f2d4a190cd0",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1
+        },
+        "prompt-1686496332028_1.json": {
+          "base_model": "palm2-bison",
+          "emoji": "🦬",
+          "formData": {
+            "shortname": "PaLM2"
+          },
+          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
+          "model": "chat-bison-001",
+          "name": "PaLM2",
+          "settings": {
+            "max_output_tokens": 512,
+            "stop_sequences": [],
+            "temperature": 0.5,
+            "top_k": -1,
+            "top_p": -1
+          },
+          "temp": 0.7
+        },
+        "prompt-1686496332028_2.json": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "667e0d14-527b-4fe7-afdc-219504729e6d",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1
+        }
+      },
+      "responses_last_run": [
+        {
+          "llm": "GPT3.5",
+          "metavars": {
+            "Expected": "4"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+          "responses": [
+            "4."
+          ],
+          "tokens": {
+            "completion_tokens": 2,
+            "prompt_tokens": 46,
+            "total_tokens": 48
+          },
+          "vars": {
+            "question": "What is 2 + 2?"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "metavars": {
+            "Expected": "3"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+          "responses": [
+            "3"
+          ],
+          "tokens": {
+            "completion_tokens": 1,
+            "prompt_tokens": 47,
+            "total_tokens": 48
+          },
+          "vars": {
+            "question": "What is the square root of 9?"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "metavars": {
+            "Expected": "1997"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+          "responses": [
+            "1997."
+          ],
+          "tokens": {
+            "completion_tokens": 3,
+            "prompt_tokens": 53,
+            "total_tokens": 56
+          },
+          "vars": {
+            "question": "What year was the 50th anniversary of the invention of the transistor?"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "metavars": {
+            "Expected": "125"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+          "responses": [
+            "125"
+          ],
+          "tokens": {
+            "completion_tokens": 1,
+            "prompt_tokens": 49,
+            "total_tokens": 50
+          },
+          "vars": {
+            "question": "What is 5 to the power of 3?"
+          }
+        },
+        {
+          "llm": "GPT3.5",
+          "metavars": {
+            "Expected": "18"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+          "responses": [
+            "54"
+          ],
+          "tokens": {
+            "completion_tokens": 1,
+            "prompt_tokens": 51,
+            "total_tokens": 52
+          },
+          "vars": {
+            "question": "What is 2 multiplied by the cubic root of 729?"
+          }
+        },
+        {
+          "llm": "GPT4",
+          "metavars": {
+            "Expected": "4"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+          "responses": [
+            "4"
+          ],
+          "tokens": {
+            "completion_tokens": 1,
+            "prompt_tokens": 44,
+            "total_tokens": 45
+          },
+          "vars": {
+            "question": "What is 2 + 2?"
+          }
+        },
+        {
+          "llm": "GPT4",
+          "metavars": {
+            "Expected": "3"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+          "responses": [
+            "3"
+          ],
+          "tokens": {
+            "completion_tokens": 1,
+            "prompt_tokens": 45,
+            "total_tokens": 46
+          },
+          "vars": {
+            "question": "What is the square root of 9?"
+          }
+        },
+        {
+          "llm": "GPT4",
+          "metavars": {
+            "Expected": "1997"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+          "responses": [
+            "1997"
+          ],
+          "tokens": {
+            "completion_tokens": 2,
+            "prompt_tokens": 51,
+            "total_tokens": 53
+          },
+          "vars": {
+            "question": "What year was the 50th anniversary of the invention of the transistor?"
+          }
+        },
+        {
+          "llm": "GPT4",
+          "metavars": {
+            "Expected": "125"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+          "responses": [
+            "125"
+          ],
+          "tokens": {
+            "completion_tokens": 1,
+            "prompt_tokens": 47,
+            "total_tokens": 48
+          },
+          "vars": {
+            "question": "What is 5 to the power of 3?"
+          }
+        },
+        {
+          "llm": "GPT4",
+          "metavars": {
+            "Expected": "18"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+          "responses": [
+            "12"
+          ],
+          "tokens": {
+            "completion_tokens": 1,
+            "prompt_tokens": 49,
+            "total_tokens": 50
+          },
+          "vars": {
+            "question": "What is 2 multiplied by the cubic root of 729?"
+          }
+        },
+        {
+          "llm": "PaLM2",
+          "metavars": {
+            "Expected": "4"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+          "responses": [
+            "2+2=4"
+          ],
+          "tokens": {},
+          "vars": {
+            "question": "What is 2 + 2?"
+          }
+        },
+        {
+          "llm": "PaLM2",
+          "metavars": {
+            "Expected": "3"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+          "responses": [
+            "The square root of 9 is 3."
+          ],
+          "tokens": {},
+          "vars": {
+            "question": "What is the square root of 9?"
+          }
+        },
+        {
+          "llm": "PaLM2",
+          "metavars": {
+            "Expected": "1997"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+          "responses": [
+            "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
+          ],
+          "tokens": {},
+          "vars": {
+            "question": "What year was the 50th anniversary of the invention of the transistor?"
+          }
+        },
+        {
+          "llm": "PaLM2",
+          "metavars": {
+            "Expected": "125"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+          "responses": [
+            "5 to the power of 3 is 125."
+          ],
+          "tokens": {},
+          "vars": {
+            "question": "What is 5 to the power of 3?"
+          }
+        },
+        {
+          "llm": "PaLM2",
+          "metavars": {
+            "Expected": "18"
+          },
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+          "responses": [
+            "2 multiplied by the cubic root of 729 is 27."
+          ],
+          "tokens": {},
+          "vars": {
+            "question": "What is 2 multiplied by the cubic root of 729?"
+          }
+        }
+      ]
+    },
+    "prompt-1686496332028_0.json": {
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?": {
+        "info": {
+          "question": "What is 2 + 2?"
+        },
+        "llm": "gpt-3.5-turbo",
+        "metavars": {
+          "Expected Answer": "4"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "4.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1686496680,
+          "id": "chatcmpl-7QH7IhEZXfMOo6nrnF69msD7XGUFd",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 2,
+            "prompt_tokens": 46,
+            "total_tokens": 48
+          }
+        },
+        "responses": [
+          "4."
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?": {
+        "info": {
+          "question": "What is 2 multiplied by the cubic root of 729?"
+        },
+        "llm": "GPT3.5",
+        "metavars": {
+          "Expected Answer": "18"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "54",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1686496679,
+          "id": "chatcmpl-7QH7H4evsq3RIsvVkzMDZyFSTcRiR",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 1,
+            "prompt_tokens": 51,
+            "total_tokens": 52
+          }
+        },
+        "responses": [
+          "54"
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?": {
+        "info": {
+          "question": "What is 5 to the power of 3?"
+        },
+        "llm": "GPT3.5",
+        "metavars": {
+          "Expected Answer": "125"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "125",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1686496680,
+          "id": "chatcmpl-7QH7IL3zyNy1qRJIZ7pHRT2itdFxU",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 1,
+            "prompt_tokens": 49,
+            "total_tokens": 50
+          }
+        },
+        "responses": [
+          "125"
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?": {
+        "info": {
+          "question": "What is the square root of 9?"
+        },
+        "llm": "GPT3.5",
+        "metavars": {
+          "Expected Answer": "3"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "3",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1686496680,
+          "id": "chatcmpl-7QH7IQiQOuw3rgk8bCjadBFJmoHPI",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 1,
+            "prompt_tokens": 47,
+            "total_tokens": 48
+          }
+        },
+        "responses": [
+          "3"
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?": {
+        "info": {
+          "question": "What year was the 50th anniversary of the invention of the transistor?"
+        },
+        "llm": "GPT3.5",
+        "metavars": {
+          "Expected Answer": "1997"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "1997.",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1686496679,
+          "id": "chatcmpl-7QH7HarcW5kMzCeR20W8almasmPT7",
+          "model": "gpt-3.5-turbo-0301",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 3,
+            "prompt_tokens": 53,
+            "total_tokens": 56
+          }
+        },
+        "responses": [
+          "1997."
+        ]
+      }
+    },
+    "prompt-1686496332028_1.json": {
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?": {
+        "info": {
+          "question": "What is 2 + 2?"
+        },
+        "llm": "PaLM2",
+        "metavars": {
+          "Expected Answer": "4"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+        "query": {
+          "candidate_count": 1,
+          "model": "models/chat-bison-001",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+          "temperature": 0.5
+        },
+        "raw_response": {
+          "candidate_count": 1,
+          "candidates": [
+            {
+              "author": "1",
+              "content": "2+2=4"
+            }
+          ],
+          "context": "",
+          "examples": [],
+          "messages": [
+            {
+              "author": "0",
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?"
+            },
+            {
+              "author": "1",
+              "content": "2+2=4"
+            }
+          ],
+          "model": "models/chat-bison-001",
+          "temperature": 0.5,
+          "top_k": null,
+          "top_p": null
+        },
+        "responses": [
+          "2+2=4"
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?": {
+        "info": {
+          "question": "What is 2 multiplied by the cubic root of 729?"
+        },
+        "llm": "chat-bison-001",
+        "metavars": {
+          "Expected Answer": "18"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+        "query": {
+          "candidate_count": 1,
+          "model": "models/chat-bison-001",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+          "temperature": 0.5
+        },
+        "raw_response": {
+          "candidate_count": 1,
+          "candidates": [
+            {
+              "author": "1",
+              "content": "2 multiplied by the cubic root of 729 is 27."
+            }
+          ],
+          "context": "",
+          "examples": [],
+          "messages": [
+            {
+              "author": "0",
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?"
+            },
+            {
+              "author": "1",
+              "content": "2 multiplied by the cubic root of 729 is 27."
+            }
+          ],
+          "model": "models/chat-bison-001",
+          "temperature": 0.5,
+          "top_k": null,
+          "top_p": null
+        },
+        "responses": [
+          "2 multiplied by the cubic root of 729 is 27."
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?": {
+        "info": {
+          "question": "What is 5 to the power of 3?"
+        },
+        "llm": "PaLM2",
+        "metavars": {
+          "Expected Answer": "125"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+        "query": {
+          "candidate_count": 1,
+          "model": "models/chat-bison-001",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+          "temperature": 0.5
+        },
+        "raw_response": {
+          "candidate_count": 1,
+          "candidates": [
+            {
+              "author": "1",
+              "content": "5 to the power of 3 is 125."
+            }
+          ],
+          "context": "",
+          "examples": [],
+          "messages": [
+            {
+              "author": "0",
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?"
+            },
+            {
+              "author": "1",
+              "content": "5 to the power of 3 is 125."
+            }
+          ],
+          "model": "models/chat-bison-001",
+          "temperature": 0.5,
+          "top_k": null,
+          "top_p": null
+        },
+        "responses": [
+          "5 to the power of 3 is 125."
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?": {
+        "info": {
+          "question": "What is the square root of 9?"
+        },
+        "llm": "PaLM2",
+        "metavars": {
+          "Expected Answer": "3"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+        "query": {
+          "candidate_count": 1,
+          "model": "models/chat-bison-001",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+          "temperature": 0.5
+        },
+        "raw_response": {
+          "candidate_count": 1,
+          "candidates": [
+            {
+              "author": "1",
+              "content": "The square root of 9 is 3."
+            }
+          ],
+          "context": "",
+          "examples": [],
+          "messages": [
+            {
+              "author": "0",
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?"
+            },
+            {
+              "author": "1",
+              "content": "The square root of 9 is 3."
+            }
+          ],
+          "model": "models/chat-bison-001",
+          "temperature": 0.5,
+          "top_k": null,
+          "top_p": null
+        },
+        "responses": [
+          "The square root of 9 is 3."
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?": {
+        "info": {
+          "question": "What year was the 50th anniversary of the invention of the transistor?"
+        },
+        "llm": "PaLM2",
+        "metavars": {
+          "Expected Answer": "1997"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+        "query": {
+          "candidate_count": 1,
+          "model": "models/chat-bison-001",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+          "temperature": 0.5
+        },
+        "raw_response": {
+          "candidate_count": 1,
+          "candidates": [
+            {
+              "author": "1",
+              "content": "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
+            }
+          ],
+          "context": "",
+          "examples": [],
+          "messages": [
+            {
+              "author": "0",
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?"
+            },
+            {
+              "author": "1",
+              "content": "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
+            }
+          ],
+          "model": "models/chat-bison-001",
+          "temperature": 0.5,
+          "top_k": null,
+          "top_p": null
+        },
+        "responses": [
+          "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
+        ]
+      }
+    },
+    "prompt-1686496332028_2.json": {
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?": {
+        "info": {
+          "question": "What is 2 + 2?"
+        },
+        "llm": "GPT4",
+        "metavars": {
+          "Expected Answer": "4"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-4",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "4",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1686496680,
+          "id": "chatcmpl-7QH7IfQMLwGU9ChcDnASzQEL7XfLb",
+          "model": "gpt-4-0314",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 1,
+            "prompt_tokens": 44,
+            "total_tokens": 45
+          }
+        },
+        "responses": [
+          "4"
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?": {
+        "info": {
+          "question": "What is 2 multiplied by the cubic root of 729?"
+        },
+        "llm": "gpt-4",
+        "metavars": {
+          "Expected Answer": "18"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-4",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "12",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1686496694,
+          "id": "chatcmpl-7QH7Wa9V9PveSzmDXwYz2PL0BjFF4",
+          "model": "gpt-4-0314",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 1,
+            "prompt_tokens": 49,
+            "total_tokens": 50
+          }
+        },
+        "responses": [
+          "12"
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?": {
+        "info": {
+          "question": "What is 5 to the power of 3?"
+        },
+        "llm": "GPT4",
+        "metavars": {
+          "Expected Answer": "125"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-4",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "125",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1686496679,
+          "id": "chatcmpl-7QH7HYxQLOayvVKFZwmJAMm6vv0EM",
+          "model": "gpt-4-0314",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 1,
+            "prompt_tokens": 47,
+            "total_tokens": 48
+          }
+        },
+        "responses": [
+          "125"
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?": {
+        "info": {
+          "question": "What is the square root of 9?"
+        },
+        "llm": "GPT4",
+        "metavars": {
+          "Expected Answer": "3"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-4",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "3",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1686496680,
+          "id": "chatcmpl-7QH7IswMdgGBlgESAGyiih4KxT533",
+          "model": "gpt-4-0314",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 1,
+            "prompt_tokens": 45,
+            "total_tokens": 46
+          }
+        },
+        "responses": [
+          "3"
+        ]
+      },
+      "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?": {
+        "info": {
+          "question": "What year was the 50th anniversary of the invention of the transistor?"
+        },
+        "llm": "GPT4",
+        "metavars": {
+          "Expected Answer": "1997"
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+        "query": {
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "content": "You are a helpful assistant.",
+              "role": "system"
+            },
+            {
+              "content": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+              "role": "user"
+            }
+          ],
+          "model": "gpt-4",
+          "n": 1,
+          "presence_penalty": 0,
+          "temperature": 1,
+          "top_p": 1
+        },
+        "raw_response": {
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "1997",
+                "role": "assistant"
+              }
+            }
+          ],
+          "created": 1686496679,
+          "id": "chatcmpl-7QH7H1NNyFZM88oRILZZzvcCcsB5a",
+          "model": "gpt-4-0314",
+          "object": "chat.completion",
+          "usage": {
+            "completion_tokens": 2,
+            "prompt_tokens": 51,
+            "total_tokens": 53
+          }
+        },
+        "responses": [
+          "1997"
+        ]
+      }
+    },
+    "table-1686496353296.json": {},
+    "vis-1686496332028.json": {}
+  }
+}

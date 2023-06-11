@@ -12,75 +12,36 @@ import AlertModal from './AlertModal';
 import RenameValueModal from './RenameValueModal';
 import useStore from './store';
 
-const testData = [
+const defaultRows = [
   {
-    firstName: 'Dylan',
-    lastName: 'Murray',
-    address: '261 Erdman Ford',
-    city: 'East Daphne',
-    state: 'Kentucky',
+    question: 'What is 2+2?',
+    answer: '4',
   },
   {
-    firstName: 'Raquel',
-    lastName: 'Kohler',
-    address: '769 Dominic Grove',
-    city: 'Columbus',
-    state: 'Ohio',
-  },
-  {
-    firstName: 'Ervin',
-    lastName: 'Reinger',
-    address: '566 Brakus Inlet',
-    city: 'South Linda',
-    state: 'West Virginia',
-  },
-  {
-    firstName: 'Brittany',
-    lastName: 'McCullough',
-    address: '722 Emie Stream',
-    city: 'Lincoln',
-    state: 'Nebraska',
-  },
-  {
-    firstName: 'Branson',
-    lastName: 'Frami',
-    address: '32188 Larkin Turnpike',
-    city: 'Charleston',
-    state: 'South Carolina',
+    question: '',
+    answer: '',
   },
 ];
-const testColumns = [
-    //column definitions...
-    {
-      key: 'firstName',
-      header: 'First Name',
-    },
-    {
-      key: 'lastName',
-      header: 'Last Name',
-    },
 
+const defaultColumns = [
     {
-      key: 'address',
-      header: 'Address',
+      key: 'question',
+      header: 'Question',
     },
     {
-      key: 'city',
-      header: 'City',
+      key: 'answer',
+      header: 'Expected Answer',
     },
-    {
-      key: 'state',
-      header: 'State',
-    }, //end
 ];
 
 const TabularDataNode = ({ data, id }) => {
 
-  const [tableData, setTableData] = useState(data.rows || [...testData].map(row => {
-    row.__uid = uuidv4();
-    return row;
+  const [tableData, setTableData] = useState(data.rows || [...defaultRows].map(row => {
+    return {__uid: uuidv4(), ...row};
   }));
-  const [tableColumns, setTableColumns] = useState(data.columns || [...testColumns]);
+  const [tableColumns, setTableColumns] = useState(data.columns || [...defaultColumns].map(col => {
+    return {...col};
+  }));
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
   const [contextMenuPos, setContextMenuPos] = useState({left: -100, top:0});
@@ -458,25 +419,6 @@ const TabularDataNode = ({ data, id }) => {
       </Menu>
 
       <div ref={setRef} className='tabular-data-container nowheel nodrag' onPointerDown={() => setContextMenuOpened(false)} onContextMenu={handleOpenTableContextMenu} >
-        {/* <Table style={{tableLayout: 'auto', width: '100%'}}>
-          <thead><tr>
-            <th><div style={{display: 'flex', justifyContent: 'space-between'}}> <span>Col 1</span><Button>Hello</Button> </div></th>
-            <th>Col 2</th>
-            <th>Col 3</th>
-          </tr></thead>
-          <tbody>
-            <tr>
-              <td><Textarea autosize value="Some really long text here"></Textarea></td>
-              <td><Textarea autosize value="1"></Textarea></td>
-              <td><Textarea autosize value="What is this"></Textarea></td>
-            </tr>
-            <tr>
-              <td>Other really long text goes here</td>
-              <td>2</td>
-              <td>Third times a charm</td>
-            </tr>
-          </tbody>
-        </Table> */}
         <EditableTable rows={tableData} columns={tableColumns} handleSaveCell={handleSaveCell} handleRemoveColumn={handleRemoveColumn} handleInsertColumn={handleInsertColumn} handleRenameColumn={openRenameColumnModal} />
       </div>
 

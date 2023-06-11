@@ -104,11 +104,11 @@ const EvaluatorNode = ({ data, id }) => {
           return;
         }
         
-        // Ping any vis nodes attached to this node to refresh their contents:
+        // Ping any vis + inspect nodes attached to this node to refresh their contents:
         const output_nodes = outputEdgesForNode(id).map(e => e.target);
         output_nodes.forEach(n => {
             const node = getNode(n);
-            if (node && node.type === 'vis') {
+            if (node && (node.type === 'vis' || node.type === 'inspect')) {
                 setDataPropsForNode(node.id, { refresh: true });
             }
         });
