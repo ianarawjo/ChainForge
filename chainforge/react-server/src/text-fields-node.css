@@ -6,6 +6,12 @@
     min-width: 200px;
   }
 
+  hr {
+    border: none;
+    background-color: #bbb;
+    height: 1px;
+  }
+
   .small-standard-font {
     font-size: 10pt;
     font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
@@ -29,7 +35,7 @@
 
     /* Position the tooltip */
     position: absolute;
-    z-index: 1;
+    z-index: 9000;
   }
   .status-icon:hover .status-tooltip {
     visibility: visible;
@@ -149,6 +155,23 @@
     border-radius: 5px;
     min-width: 280px;
   }
+  .eval-output-footer {
+    margin: 10px -9px -9px -9px;
+    min-height: 100px;
+    max-height: 100px;
+    /* cursor: zoom-in; */
+  }
+  .eval-output-footer p {
+    position: absolute;
+    overflow: scroll;
+    white-space: pre-wrap;
+    font-family: 'Monaco', Courier, monospace;
+    font-size: 9pt;
+    margin: 6px 8px 6px 8px;
+    padding-top: 2px;
+    padding-bottom: 0px;
+    max-height: 90px;
+  }
 
   .ace-editor-container {
     resize:vertical;
@@ -193,16 +216,65 @@
     overflow-y: scroll;
     min-width: 150px;
     width: 280px;
-    height: 100px;
+    min-height: 200px;
+    height: 200px;
     max-width: 650px;
     max-height: 650px;
     resize: both;
+  }
+  .inspect-modal-response-container .response-var-header {
+    padding: 10px;
+    line-height: 1.2;
+  }
+  .inspect-modal-response-container .response-var-name {
+    font-size: 11pt;
+  }
+  .inspect-modal-response-container .response-var-value {
+    font-size: 11pt;
+  }
+  .inspect-modal-response-container .response-llm-header {
+    font-size: 10pt;
+  }
+  .inspect-modal-response-container .small-response {
+    font-size: 10pt;
   }
   .response-var-header {
     background-color: #e0f4fa;
     border-radius: 1px;
     padding: 2px 8px 4px 8px;
-    line-height: 9pt;
+    line-height: 0.9;
+  }
+  .response-var-inline-container {
+    display: flex;
+    align-items: start;
+    flex-wrap: wrap;
+    justify-content: left;
+    /* font-style: italic; */
+    padding-bottom: 1px;
+  }
+  .response-llm-header {
+    font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    font-size: 9pt;
+    font-weight: 500;
+    padding: 4px 4px 4px 7px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 15px;
+  }
+  .response-var-inline {
+    margin: 0px 4px;
+    /* background-color: #ffffff33; */
+    color: #00000088;
+    border-radius: 4px;
+    text-rendering: optimizeSpeed;
+    /* mix-blend-mode: color-burn; */
+    padding: 0px 4px;
+  }
+  .response-var-inline > .response-var-name {
+    font-size: 8pt;
+    font-weight: normal;
+  }
+  .response-var-inline > .response-var-value {
+    font-size: 8pt;
   }
   .response-var-name {
     font-size: 9pt;
@@ -210,7 +282,7 @@
   }
   .response-var-value {
     font-family: monospace;
-    font-size: 9pt;
+    font-size: 8pt;
   }
   .inspect-modal-prompt-box {
     background-color: #eee;
@@ -294,7 +366,9 @@
     font-size: 8pt;
     font-weight: bold;
     font-style: italic;
-    color: #000;
+    /* mix-blend-mode: color-burn; */
+    color: #000000bb;
+    background-color: #ffffff44;
     opacity: 0.7;
     text-align: right;
     padding-right: 4px;
@@ -320,11 +394,81 @@
   }
 
   .cfnode {
-    border-color: #999;
+    background-color: #fff;
+    padding: 10px;
+    border: 1px solid #999;
+    border-radius: 5px;
+    /* box-shadow: 1px 1px 8px #ccc; Slows it down */
   }
   .cfnode:hover {
     border-color: #222;
   }
+
+  .tabular-data-node {
+    min-width: 280px;
+  }
+  .tabular-data-container {
+    resize: both;
+    overflow: auto;
+    max-width: 800px;
+    min-width: inherit;
+    max-height: 700px;
+    border-bottom-style: solid;
+    border-right-style: solid;
+    border-bottom-width: 1px;
+    border-right-width: 1px;
+    border-color: #ccc;
+    display: block;
+  }
+  .tabular-data-container td {
+    white-space: nowrap;
+  }
+  .tabular-data-container th {
+    white-space: nowrap;
+  }
+  .editable-table {
+    table-layout: auto;
+  }
+  .table-col-edit-btn {
+    position: relative;
+    top: 1px;
+    margin: 0px;
+    padding: 2px;
+    color: #888;
+    width: '12px';
+    height: '12px';
+    cursor: pointer;
+  }
+  .table-col-edit-btn:hover {
+    background-color: #eee;
+  }
+  .table-col-edit-btn:active {
+    background-color: #ddd;
+  }
+  .add-table-row-btn {
+    position: absolute;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+  .add-table-row-btn button {
+    margin-right: 10px;
+  }
+  /* .add-column-btn {
+    position: relative;
+    float: right;
+    margin-top: 6px;
+    height: 80px; 
+    width: 20px;
+  }
+  .add-column-btn span {
+    position: absolute;
+    top: 60%;
+    transform-origin: top left;
+    transform: translate(-50%) rotate(-90deg);
+  } */
   
   .var-select-toolbar {
     text-align: right;
@@ -347,7 +491,7 @@
   }
 
   .hook-tag {
-    padding-top: 11px;;
+    padding-top: 5px;;
     padding-bottom: 3px;
   }
 
@@ -357,9 +501,16 @@
     margin-bottom: 4px;
   }
 
-  .text-field-fixed {
+  /* Allows resizing the Mantine Textarea component */
+  .text-field-fixed .mantine-Textarea-wrapper textarea {
     resize: vertical;
+    overflow-y: auto;
     width: 280px;
+    padding: calc(0.5rem / 3);
+    font-size: 10pt;
+    font-family: monospace;
+    line-height: 1.2;
+    border-color: #999;
   }
 
   .add-text-field-btn {

@@ -58,6 +58,7 @@ class PromptPipeline:
 
             prompt_str = str(prompt)
             info = prompt.fill_history
+            metavars = prompt.metavars
 
             cached_resp = responses[prompt_str] if prompt_str in responses else None
             extracted_resps = cached_resp["responses"] if cached_resp is not None else []
@@ -74,6 +75,7 @@ class PromptPipeline:
                     # We want to use the new info, since 'vars' could have changed even though 
                     # the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
                     "info": info,
+                    "metavars": metavars
                 }
                 continue
 
@@ -111,6 +113,7 @@ class PromptPipeline:
                     "raw_response": response,
                     "llm": llm.value,
                     "info": info,
+                    "metavars": metavars
                 }
 
                 # Merge the response obj with the past one, if necessary
@@ -137,6 +140,7 @@ class PromptPipeline:
             # Each prompt has a history of what was filled in from its base template.
             # This data --like, "class", "language", "library" etc --can be useful when parsing responses.
             info = prompt.fill_history
+            metavars = prompt.metavars
 
             # Create a response obj to represent the response
             resp_obj = {
@@ -146,6 +150,7 @@ class PromptPipeline:
                 "raw_response": response,
                 "llm": llm.value,
                 "info": info,
+                "metavars": metavars,
             }
 
             # Merge the response obj with the past one, if necessary

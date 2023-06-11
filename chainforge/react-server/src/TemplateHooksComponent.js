@@ -34,7 +34,7 @@ export const extractBracketedSubstrings = (text) => {
 export const toPyTemplateFormat = (text) => {
     /** Given some text in template format:
      *      This is a {test}
-     *  adds a $ before each valid {.
+     *  adds a $ before each valid {. It also escapes each initial $ with another $ ($$).
      * 
      *  NOTE: We don't use Regex here for compatibility of browsers
      *  that don't support negative lookbehinds/aheads (e.g., Safari).
@@ -44,6 +44,12 @@ export const toPyTemplateFormat = (text) => {
     let group_start_idx = -1;
     for (let i = 0; i < str.length; i += 1) {
         let c = str[i];
+        if (c === '$') { // Escape $'s by inserting another one before it
+            str = str.slice(0, i) + '$' + str.slice(i);
+            i += 1;
+            prev_c = c;
+            continue;
+        }
         if (prev_c !== '\\') { // Skipped escaped chars
             if (group_start_idx === -1 && c === '{') {
                 // Insert a $ before the {:
@@ -59,7 +65,7 @@ export const toPyTemplateFormat = (text) => {
     return str;
 };
 
-export default function TemplateHooks({ vars, nodeId, startY }) {
+export default function TemplateHooks({ vars, nodeId, startY, position }) {
 
     const edges = useStore((state) => state.edges);
     const onEdgesChange = useStore((state) => state.onEdgesChange);
@@ -75,16 +81,17 @@ export default function TemplateHooks({ vars, nodeId, startY }) {
 
     const genTemplateHooks = useCallback((temp_var_names, names_to_blink) => {
         // Generate handles 
+        const pos = position !== undefined ? position : 'left';
+        const handle_type = pos === 'left' ? "target" : "source";
         return temp_var_names.map((name, idx) => {
             const className = (names_to_blink.includes(name)) ? 'hook-tag text-blink' : 'hook-tag';
-            const pos = (idx * 35) + startY + 'px';
-            const style = { top: pos,  background: '#555' };
-            return (<div key={name} className={className} >
+            const style = { top: ((idx * 28) + startY + 'px'),  background: '#555' };
+            return (<div key={name} className={className} style={{display: 'flex', justifyContent: pos}} >
                 <Badge color="indigo" size="md" radius="sm" style={{textTransform: 'none'}}>{name}</Badge>
-                <Handle type="target" position="left" id={name} key={name} style={style} />
+                <Handle type={handle_type} position={pos} id={name} key={name} style={style} />
             </div>);
         });
-    }, [startY]);
+    }, [startY, position]);
 
     const [templateHooks, setTemplateHooks] = useState([]);
 

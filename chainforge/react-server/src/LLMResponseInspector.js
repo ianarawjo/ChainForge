@@ -23,13 +23,6 @@ const filterDict = (dict, keyFilterFunc) => {
       return acc;
   }, {});
 };
-const vars_to_str = (vars) => {
-  const pairs = Object.keys(vars).map(varname => {
-      const s = truncStr(vars[varname].trim(), 12);
-      return `${varname} = '${s}'`;
-  });
-  return pairs;
-};
 const groupResponsesBy = (responses, keyFunc) => {
   let responses_by_key = {};
   let unspecified_group = [];
@@ -132,15 +125,16 @@ const LLMResponseInspector = ({ jsonResponses }) => {
     });
 
     // Set the variables accessible in the MultiSelect for 'group by'
-    setMultiSelectVars(Array.from(found_vars).map(name => (
+    let msvars = Array.from(found_vars).map(name => (
       // We add a $ prefix to mark this as a prompt parameter, and so 
       // in the future we can add special types of variables without name collisions
       {value: `${name}`, label: name} 
-    )).concat({value: 'LLM', label: 'LLM'}));
+    )).concat({value: 'LLM', label: 'LLM'});
+    setMultiSelectVars(msvars);
     
-    // If this is the first time receiving responses, set the multiSelectValue to 'LLM'
+    // If this is the first time receiving responses, set the multiSelectValue to whatever is the first:
     if (!receivedResponsesOnce) {
-      setMultiSelectValue(['LLM']);
+      setMultiSelectValue([msvars[0].value]);
       setReceivedResponsesOnce(true);
     }
 
@@ -149,14 +143,12 @@ const LLMResponseInspector = ({ jsonResponses }) => {
 
     // Functions to associate a color to each LLM in responses
     const color_for_llm = (llm) => (getColorForLLMAndSetIfNotFound(llm) + '99');
-    // const llm_badge_colors = ['green', 'orange', 'red', 'yellow', 'cyan', 'indigo', 'grape'];
-    const badge_color_for_llm = (llm) => 'blue';  // TODO: Fix to be consistent w/ llm color (this is hard bc Mantine only allows predefined colors, so we need to make a map)
     const response_box_colors = ['#eee', '#fff', '#eee', '#ddd', '#eee', '#ddd', '#eee'];
     const rgroup_color = (depth) => response_box_colors[depth % response_box_colors.length];
 
     const getHeaderBadge = (key, val) => {
       if (val) {
-        const s = truncStr(val.trim(), 144);
+        const s = truncStr(val.trim(), 1024);
         return (<div className="response-var-header">
           <span className="response-var-name">{key}&nbsp;=&nbsp;</span><span className="response-var-value">"{s}"</span>
         </div>);
@@ -195,13 +187,17 @@ const LLMResponseInspector = ({ jsonResponses }) => {
                 // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
                 // (e.g., the vars that weren't part of the initial 'varnames' list that form the groupings)
                 const unused_vars = filterDict(res_obj.vars, v => !eatenvars.includes(v));
-                const vars = vars_to_str(unused_vars);
-                const var_tags = vars.map((v) => 
-                    (<Badge key={v} color="blue" size="xs">{v}</Badge>)
-                );
+                const var_tags = Object.keys(unused_vars).map((varname) => {
+                    const v = truncStr(unused_vars[varname].trim(), 18);
+                    return (<div key={varname} className="response-var-inline" >
+                      <span className="response-var-name">{varname}&nbsp;=&nbsp;</span><span className="response-var-value">{v}</span>
+                    </div>);
+                });
                 return (
                     <div key={"r"+res_idx} className="response-box" style={{ backgroundColor: color_for_llm(res_obj.llm) }}>
-                        {var_tags}
+                        <div className="response-var-inline-container">
+                          {var_tags}
+                        </div>
                         {eatenvars.includes('LLM') ?
                               ps
                             : (<div className="response-item-llm-name-wrapper">
@@ -232,7 +228,7 @@ const LLMResponseInspector = ({ jsonResponses }) => {
                                                 ? groupResponsesBy(resps, (r => r.llm)) 
                                                 : groupResponsesBy(resps, (r => ((group_name in r.vars) ? r.vars[group_name] : null)));
         const get_header = (group_name === 'LLM') 
-                            ? ((key, val) => (<Badge key={val} color={badge_color_for_llm(val)} size="sm">{val}</Badge>))
+                            ? ((key, val) => (<div key={val} style={{backgroundColor: color_for_llm(val)}} className='response-llm-header'>{val}</div>))
                             : ((key, val) => getHeaderBadge(key, val));
         
         // Now produce nested divs corresponding to the groups
@@ -281,7 +277,7 @@ const LLMResponseInspector = ({ jsonResponses }) => {
                  label={<span style={{marginTop: '0px', fontWeight: 'normal'}}>Group responses by (order matters):</span>}
                  data={multiSelectVars}
                  placeholder="Pick vars to group responses, in order of importance"
-                 size="xs"
+                 size='xs'
                  value={multiSelectValue}
                  clearSearchOnChange={true}
                  clearSearchOnBlur={true} />

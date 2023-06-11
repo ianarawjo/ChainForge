@@ -211,7 +211,7 @@ const PromptNode = ({ data, id }) => {
                     let out = output(e.source, e.sourceHandle);
                     if (!out || !Array.isArray(out) || out.length === 0) return;
 
-                    // Check the format of the output. Can be str or dict with 'text' and 'vars' attrs:
+                    // Check the format of the output. Can be str or dict with 'text' and more attrs:
                     if (typeof out[0] === 'object') {
                         out.forEach(obj => store_data([obj], varname, pulled_data));
                     }
@@ -234,11 +234,19 @@ const PromptNode = ({ data, id }) => {
     const str_to_py_template_format = toPyTemplateFormat; // (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
     const to_py_template_format = (str_or_obj) => {
         if (typeof str_or_obj === 'object') {
-            let new_vars = {};
-            Object.keys(str_or_obj.fill_history).forEach(v => {
-                new_vars[v] = str_to_py_template_format(str_or_obj.fill_history[v]);
+            let new_obj = { text: str_to_py_template_format(str_or_obj.text), fill_history: {}};
+            // Convert fill history vars to py template format
+            if (str_or_obj.fill_history) {
+                Object.keys(str_or_obj.fill_history).forEach(v => {
+                    new_obj.fill_history[v] = str_to_py_template_format(str_or_obj.fill_history[v]);
+                });
+            }
+            // Carry all other properties of the object over:
+            Object.keys(str_or_obj).forEach(key => {
+                if (key !== 'text' && key !== 'fill_history')
+                    new_obj[key] = str_or_obj[key];
             });
-            return {text: str_to_py_template_format(str_or_obj.text), fill_history: new_vars};
+            return new_obj;
         } else
             return str_to_py_template_format(str_or_obj);
     };
@@ -624,7 +632,7 @@ const PromptNode = ({ data, id }) => {
           cols="40"
           defaultValue={data.prompt}
           onChange={handleInputChange}
-          className="nodrag"
+          className="nodrag nowheel"
         />
         <Handle
           type="source"
@@ -633,7 +641,7 @@ const PromptNode = ({ data, id }) => {
           style={{ top: '50%', background: '#555' }}
         />
       </div>
-      <TemplateHooks vars={templateVars} nodeId={id} startY={145} />
+      <TemplateHooks vars={templateVars} nodeId={id} startY={138} />
       <hr />
       <div>
         <div style={{marginBottom: '10px', padding: '4px'}}>

@@ -25,6 +25,8 @@ const EvaluatorNode = ({ data, id }) => {
 
   const [codeText, setCodeText] = useState(data.code);
   const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
+  const [lastRunLogs, setLastRunLogs] = useState("");
+  const [lastRunSuccess, setLastRunSuccess] = useState(true);
   const [mapScope, setMapScope] = useState('response');
 
   const handleCodeChange = (code) => {
@@ -58,6 +60,7 @@ const EvaluatorNode = ({ data, id }) => {
     }
 
     setStatus('loading');
+    setLastRunLogs("");
 
     const rejected = (err_msg) => {
       setStatus('error');
@@ -85,23 +88,33 @@ const EvaluatorNode = ({ data, id }) => {
     }, rejected).then(function(response) {
         return response.json();
     }, rejected).then(function(json) {
+        // Store any Python print output
+        if (json?.logs) {
+          let logs = json.logs;
+          if (json.error)
+            logs.push(json.error);
+          setLastRunLogs(logs.join('\n   > '));
+        }
+    
         // Check if there's an error; if so, bubble it up to user and exit:
         if (!json || json.error) {
           setStatus('error');
+          setLastRunSuccess(false);
           alertModal.current.trigger(json ? json.error : 'Unknown error encountered when requesting evaluations: empty response returned.');
           return;
         }
         
-        // Ping any vis nodes attached to this node to refresh their contents:
+        // Ping any vis + inspect nodes attached to this node to refresh their contents:
         const output_nodes = outputEdgesForNode(id).map(e => e.target);
         output_nodes.forEach(n => {
             const node = getNode(n);
-            if (node && node.type === 'vis') {
+            if (node && (node.type === 'vis' || node.type === 'inspect')) {
                 setDataPropsForNode(node.id, { refresh: true });
             }
         });
 
         setCodeTextOnLastRun(codeTextOnRun);
+        setLastRunSuccess(true);
         setStatus('ready');
     }, rejected);
   };
@@ -167,16 +180,14 @@ const EvaluatorNode = ({ data, id }) => {
           />
         </div>
       </div>
-      {/* <hr/>
-      <div>
-        <div className="code-mirror-field-header">Method to reduce across <span className="code-style">responses</span>:</div>
-        <select name="method" id="method" onChange={handleOnReduceMethodSelect} className="nodrag">
-            <option value="none">None</option>
-            <option value="avg">Average across</option>
-        </select>
-        <span> </span>
-        <input type="text" id="method-vars" name="method-vars" onChange={handleReduceVarsChange} disabled={reduceMethod === 'none'} className="nodrag" />
-      </div> */}
+
+      {(lastRunLogs && lastRunLogs.length > 0) ? 
+        (<div className="eval-output-footer nowheel" style={{backgroundColor: (lastRunSuccess ? '#eee' : '#f19e9eb1')}}>
+          <p style={{color: (lastRunSuccess ? '#999' : '#a10f0f')}}><strong>out:</strong> {lastRunLogs}</p>
+        </div>)
+        : (<></>)
+      }
+        
     </div>
   );
 };

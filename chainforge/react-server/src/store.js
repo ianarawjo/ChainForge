@@ -17,11 +17,11 @@ const uid = (id) => `${id}-${Date.now()}`;
 const initprompt = uid('prompt');
 const initeval = uid('eval');
 const initialNodes = [
-  { id: initprompt, type: 'prompt', data: { prompt: 'Who invented the lightbulb?', n: 1 }, position: { x: 430, y: 250 } },
-  { id: initeval, type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 850, y: 150 } },
-  { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 25, y: 150 } },
-  { id: uid('vis'), type: 'vis', data: {}, position: { x: 1350, y: 250 } },
-  { id: uid('inspect'), type: 'inspect', data: {}, position: { x:900, y:600 } },
+  { id: initprompt, type: 'prompt', data: { prompt: 'What is an example of ownership and borrowing in Rust?', n: 1 }, position: { x: 450, y: 200 } },
+  { id: initeval, type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 820, y: 150 } },
+  { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 80, y: 270 } },
+  { id: uid('vis'), type: 'vis', data: {}, position: { x: 1200, y: 250 } },
+  { id: uid('inspect'), type: 'inspect', data: {}, position: { x:820, y:400 } },
 ];
 const initialEdges = [];
 const initialAPIKeys = {};
@@ -122,6 +122,43 @@ const useStore = create((set, get) => ({
     // Get the source node
     const src_node = get().getNode(sourceNodeId);
     if (src_node) {
+
+      // If the source node has tabular data, use that:
+      if (src_node.type === 'table') {
+        if ("rows" in src_node.data && "columns" in src_node.data) {
+          const rows = src_node.data.rows;
+          const columns = src_node.data.columns;
+
+          // The sourceHandleKey is the key of the column in the table that we're interested in:
+          const src_col = columns.find(c => c.header === sourceHandleKey);
+          if (src_col !== undefined) {
+
+            // Construct a lookup table from column key to header name, 
+            // as the 'metavars' dict should be keyed by column *header*, not internal key:
+            let col_header_lookup = {};
+            columns.forEach(c => {
+              col_header_lookup[c.key] = c.header;
+            });
+
+            // Extract all the data for every row of the source column, appending the other values as 'meta-vars':
+            return rows.map(row => {
+              const row_excluding_col = {};
+              Object.keys(row).forEach(key => {
+                if (key !== src_col.key && key !== '__uid')
+                  row_excluding_col[col_header_lookup[key]] = row[key];
+              });
+              return {
+                text: ((src_col.key in row) ? row[src_col.key] : ""),
+                metavars: row_excluding_col,
+                associate_id: row.__uid, // this is used by the backend to 'carry' certain values together
+              }
+            });
+          } else {
+            console.error(`Could not find table column with source handle name ${sourceHandleKey}`);
+            return null;
+          }
+        }
+      } else {
         // Get the data related to that handle:
         if ("fields" in src_node.data) {
           if (Array.isArray(src_node.data["fields"]))
@@ -131,9 +168,10 @@ const useStore = create((set, get) => ({
         }
         // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:
         else return src_node.data[sourceHandleKey];
+      }
     } else {
-        console.error("Could not find node with id", sourceNodeId);
-        return null;
+      console.error("Could not find node with id", sourceNodeId);
+      return null;
     }
   },
   setDataPropsForNode: (id, data_props) => {
