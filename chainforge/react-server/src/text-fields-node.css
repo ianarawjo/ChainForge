@@ -29,7 +29,7 @@
 
     /* Position the tooltip */
     position: absolute;
-    z-index: 1;
+    z-index: 9000;
   }
   .status-icon:hover .status-tooltip {
     visibility: visible;
@@ -148,6 +148,23 @@
     border: 1px solid #999;
     border-radius: 5px;
     min-width: 280px;
+  }
+  .eval-output-footer {
+    margin: 10px -9px -9px -9px;
+    min-height: 100px;
+    max-height: 100px;
+    /* cursor: zoom-in; */
+  }
+  .eval-output-footer p {
+    position: absolute;
+    overflow: scroll;
+    white-space: pre-wrap;
+    font-family: 'Monaco', Courier, monospace;
+    font-size: 9pt;
+    margin: 6px 8px 6px 8px;
+    padding-top: 2px;
+    padding-bottom: 0px;
+    max-height: 90px;
   }
 
   .ace-editor-container {

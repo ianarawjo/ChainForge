@@ -25,6 +25,7 @@ const EvaluatorNode = ({ data, id }) => {
 
   const [codeText, setCodeText] = useState(data.code);
   const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
+  const [lastRunLogs, setLastRunLogs] = useState("");
   const [mapScope, setMapScope] = useState('response');
 
   const handleCodeChange = (code) => {
@@ -58,6 +59,7 @@ const EvaluatorNode = ({ data, id }) => {
     }
 
     setStatus('loading');
+    setLastRunLogs("");
 
     const rejected = (err_msg) => {
       setStatus('error');
@@ -85,6 +87,12 @@ const EvaluatorNode = ({ data, id }) => {
     }, rejected).then(function(response) {
         return response.json();
     }, rejected).then(function(json) {
+        // Store any Python print output
+        if (json?.logs) {
+          console.log(json.logs);
+          setLastRunLogs(json.logs.join('\n   > '));
+        }
+    
         // Check if there's an error; if so, bubble it up to user and exit:
         if (!json || json.error) {
           setStatus('error');
@@ -167,16 +175,14 @@ const EvaluatorNode = ({ data, id }) => {
           />
         </div>
       </div>
-      {/* <hr/>
-      <div>
-        <div className="code-mirror-field-header">Method to reduce across <span className="code-style">responses</span>:</div>
-        <select name="method" id="method" onChange={handleOnReduceMethodSelect} className="nodrag">
-            <option value="none">None</option>
-            <option value="avg">Average across</option>
-        </select>
-        <span> </span>
-        <input type="text" id="method-vars" name="method-vars" onChange={handleReduceVarsChange} disabled={reduceMethod === 'none'} className="nodrag" />
-      </div> */}
+
+      {(lastRunLogs && lastRunLogs.length > 0) ? 
+        (<div className="eval-output-footer nowheel" style={{backgroundColor: (status === 'error' ? '#f19e9eb1' : '#eee')}}>
+          <p style={{color: (status === 'error' ? '#a10f0f' : '#999')}}><strong>out:</strong> {lastRunLogs}</p>
+        </div>)
+        : (<></>)
+      }
+        
     </div>
   );
 };

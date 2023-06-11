@@ -9,6 +9,12 @@ from chainforge.promptengine.query import PromptLLM, PromptLLMDummy, LLMResponse
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
 from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
 
+
+""" =================
+    SETUP AND GLOBALS
+    =================
+"""
+
 # Setup Flask app to serve static version of React front-end
 BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
 STATIC_DIR = os.path.join(BUILD_DIR, 'static')
@@ -21,14 +27,70 @@ cors = CORS(app, resources={r"/*": {"origins": "*"}})
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
 
-# Serve React app (static; no hot reloading)
-@app.route("/")
-def index():
-    return render_template("index.html")
-
 LLM_NAME_MAP = {} 
 for model in LLM:
     LLM_NAME_MAP[model.value] = model
+
+class MetricType(Enum):
+    KeyValue = 0
+    KeyValue_Numeric = 1
+    KeyValue_Categorical = 2
+    KeyValue_Mixed = 3
+    Numeric = 4
+    Categorical = 5
+    Mixed = 6
+    Unknown = 7
+    Empty = 8
+
+
+""" ==============
+    UTIL FUNCTIONS
+    ==============
+"""
+
+HIJACKED_PRINT_LOG_FILE = None
+ORIGINAL_PRINT_METHOD = None
+def HIJACK_PYTHON_PRINT() -> None:
+    # Hijacks Python's print function, so that we can log 
+    # the outputs when the evaluator is run:
+    import builtins
+    import tempfile
+    global HIJACKED_PRINT_LOG_FILE, ORIGINAL_PRINT_METHOD
+
+    # Create a temporary file for logging and keep it open
+    HIJACKED_PRINT_LOG_FILE = tempfile.NamedTemporaryFile(mode='a+', delete=False)
+
+    # Create a wrapper over the original print method, and save the original print
+    ORIGINAL_PRINT_METHOD = print
+    def hijacked_print(*args, **kwargs):
+        if 'file' in kwargs:
+            # We don't want to override any library that's using print to a file.
+            ORIGINAL_PRINT_METHOD(*args, **kwargs)
+        else:
+            ORIGINAL_PRINT_METHOD(*args, **kwargs, file=HIJACKED_PRINT_LOG_FILE)
+    
+    # Replace the original print function with the custom print function
+    builtins.print = hijacked_print
+
+def REVERT_PYTHON_PRINT() -> List[str]:
+    # Reverts back to original Python print method 
+    # NOTE: Call this after hijack, and make sure you've caught all exceptions!
+    import builtins
+    global ORIGINAL_PRINT_METHOD, HIJACKED_PRINT_LOG_FILE
+    
+    logs = []
+    if HIJACKED_PRINT_LOG_FILE is not None:
+        # Read the log file 
+        HIJACKED_PRINT_LOG_FILE.seek(0)
+        logs = HIJACKED_PRINT_LOG_FILE.read().split('\n')
+
+    if ORIGINAL_PRINT_METHOD is not None:
+        builtins.print = ORIGINAL_PRINT_METHOD
+
+    HIJACKED_PRINT_LOG_FILE.close()
+    HIJACKED_PRINT_LOG_FILE = None
+
+    return logs
 
 @dataclass
 class ResponseInfo:
@@ -135,17 +197,6 @@ def matching_settings(cache_llm_spec: dict, llm_spec: dict):
             if param in cache_llm_params and cache_llm_params[param] != val:
                 return False
     return True
-
-class MetricType(Enum):
-    KeyValue = 0
-    KeyValue_Numeric = 1
-    KeyValue_Categorical = 2
-    KeyValue_Mixed = 3
-    Numeric = 4
-    Categorical = 5
-    Mixed = 6
-    Unknown = 7
-    Empty = 8
 
 def check_typeof_vals(arr: list) -> MetricType:
     if len(arr) == 0: return MetricType.Empty
@@ -301,6 +352,18 @@ def reduce_responses(responses: list, vars: list) -> list:
         })
     
     return ret
+
+
+
+""" ===================
+    FLASK SERVER ROUTES
+    ===================
+"""
+
+# Serve React app (static; no hot reloading)
+@app.route("/")
+def index():
+    return render_template("index.html")
 
 @app.route('/app/countQueriesRequired', methods=['POST'])
 def countQueries():
@@ -680,10 +743,11 @@ def execute():
     # Load all responses with the given ID:
     all_cache_files = get_files_at_dir(CACHE_DIR)
     all_evald_responses = []
+    all_logs = []
     for cache_id in data['responses']:
         fname = f"{cache_id}.json"
         if fname not in all_cache_files:
-            return jsonify({'error': f'Did not find cache file for id {cache_id}'})
+            return jsonify({'error': f'Did not find cache file for id {cache_id}', 'logs': all_logs})
 
         # Load the raw responses from the cache
         responses = load_cache_responses(fname)
@@ -692,9 +756,12 @@ def execute():
         # Run the evaluator over them: 
         # NOTE: 'evaluate' here was defined dynamically from 'exec' above. 
         try:
+            HIJACK_PYTHON_PRINT()
             evald_responses = run_over_responses(evaluate, responses, scope=data['scope'])  # noqa
+            all_logs.extend(REVERT_PYTHON_PRINT())
         except Exception as e:
-            return jsonify({'error': f'Error encountered while trying to run "evaluate" method:\n{str(e)}'})
+            all_logs.extend(REVERT_PYTHON_PRINT())
+            return jsonify({'error': f'Error encountered while trying to run "evaluate" method:\n{str(e)}', 'logs': all_logs})
 
         # Perform any reduction operations:
         if 'reduce_vars' in data and len(data['reduce_vars']) > 0:
@@ -709,7 +776,7 @@ def execute():
     with open(cache_filepath, "w", encoding='utf-8') as f:
         json.dump(all_evald_responses, f)
 
-    ret = jsonify({'responses': all_evald_responses})
+    ret = jsonify({'responses': all_evald_responses, 'logs': all_logs})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
