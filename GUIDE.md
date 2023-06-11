@@ -1,4 +1,4 @@
-# User Guide
+# Node and Features Guide
 
 An explanation of all nodes and features currently available in the alpha version of ChainForge. 
 
@@ -60,6 +60,30 @@ This way, you can chain prompt templates together to, for instance, test what th
 All prompt variables will be accessible later on in an evaluation chain, including the templates themselves.
 
 ------------------
+## Tabular Data Node
+
+Tabular data provides an easy way to enter associated prompt parameters or import existing datasets and benchmarks. A typical use case is **ground truth evaluation**, where we have some inputs to a prompt, and an "ideal" or expected answer:
+
+<img width="1377" alt="Screen Shot 2023-06-10 at 2 23 13 PM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/e3dd6941-47d4-4eee-b8b1-d9007f7aae15">
+
+Here, we see **variables `{first}`, `{last}`, and `{invention}` "carry together" when filling the prompt template**: ChainForge knows they are all associated with one another, connected via the row. Thus, it constructs 4 prompts from the input parameters. This is different than using separate Textfields nodes as input, which will calculate the cross product of all inputs (as described in Prompt Node above).
+
+You can press Import data to import files with format `jsonl`, `xlsx`, and `csv`. 
+
+> **Note**
+> Excel and CSV files must have a header row with column names.
+
+To insert a row or delete one, right-click on a row cell:
+
+<img width="482" alt="tabular-data-row-dropdown" src="https://github.com/ianarawjo/ChainForge/assets/5251713/2290cda2-fa6c-48fa-84c3-80dac95770fa">
+
+To insert a column, rename or delete one, click on the column `...` button:
+
+<img width="468" alt="tabular-data-col-dropdown" src="https://github.com/ianarawjo/ChainForge/assets/5251713/2c107d19-a15f-428c-8326-25a0cc07468a">
+
+You can also change cell text by simply editing it.
+
+------------------
 ## CSV Node
 Create a comma-separated list of values to input into a prompt parameter:
 
@@ -96,15 +120,20 @@ For instance, here is a basic evaluator to check the length of the response:
 
 <img width="355" alt="Screen Shot 2023-05-22 at 1 50 13 PM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/bfc0b5e5-92a9-46d2-9df6-5792843466e1">
 
-The `response` argument is a `ResponseInfo` object: 
+The `response` argument is a `ResponseInfo` object. From the source code:
 ```python
 class ResponseInfo:
-    text: str
-    prompt: str
-    var: dict
-    llm: str
+    """Stores info about a single LLM response. Passed to evaluator functions."""
+    text: str  # The text of the LLM response
+    prompt: str  # The text of the prompt using to query the LLM
+    var: dict  # A dictionary of arguments that filled in the prompt template used to generate the final prompt
+    meta: dict  # A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
+    llm: str  # The name of the LLM queried (the nickname in ChainForge)
+
+    def __str__(self):
+        return self.text
 ```
-Use `var` to get access to prompt parameter values. For instance, suppose we have the prompt:
+Use `var` to get access to values that were input into a prompt template. For instance, suppose we have the prompt:
 
 > What year was {game} released?
 
@@ -126,7 +155,17 @@ def evaluate(response):
   return release_year(response.var['game']) == extract_year(response.text)
 ```
 
-**Return values must currently be of the following types:**
+A simpler solution, however, may be to use a Tabular Data node and `response.meta` with the year of the game's release as a column of the table. For instance, here is an analogous situation of comparing the LLM's response to the 'ground truth' for math problem questions:
+
+<img width="1770" alt="Screen Shot 2023-06-11 at 11 51 28 AM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/3a038fa6-46af-42d8-ac82-e94f7c239b10">
+
+We use `response.meta['Expected']` to get the value of the table associated with the inputs. Notice that "Expected" _was not an input parameter to the prompt_. Instead, "Expected" is associated with a prompt input variable `question` (which you could access using `response.var['question']`). Using `meta` (short for metadata) like this can be quite useful when writing more complex evaluations.
+
+If you're curious about the response format or need to debug your evaluations, Evaluator Nodes expose `print` output within the `evaluate` function, so you can use Python `print` or `raise Exception` functions to get feedback:
+
+<img width="377" alt="Screen Shot 2023-06-10 at 8 29 38 PM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/6863c427-ef59-4e8d-92c3-fe8e92ad7415">
+
+### Return values of Evaluator Nodes must currently be of the following types:
  - Numeric
  - Boolean (`true` or `false`)
  - Dictionaries with numeric data (key-value pairs of type `{<str>: <number>}`
