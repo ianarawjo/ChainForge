@@ -26,6 +26,7 @@ const EvaluatorNode = ({ data, id }) => {
   const [codeText, setCodeText] = useState(data.code);
   const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
   const [lastRunLogs, setLastRunLogs] = useState("");
+  const [lastRunSuccess, setLastRunSuccess] = useState(true);
   const [mapScope, setMapScope] = useState('response');
 
   const handleCodeChange = (code) => {
@@ -89,13 +90,16 @@ const EvaluatorNode = ({ data, id }) => {
     }, rejected).then(function(json) {
         // Store any Python print output
         if (json?.logs) {
-          console.log(json.logs);
-          setLastRunLogs(json.logs.join('\n   > '));
+          let logs = json.logs;
+          if (json.error)
+            logs.push(json.error);
+          setLastRunLogs(logs.join('\n   > '));
         }
     
         // Check if there's an error; if so, bubble it up to user and exit:
         if (!json || json.error) {
           setStatus('error');
+          setLastRunSuccess(false);
           alertModal.current.trigger(json ? json.error : 'Unknown error encountered when requesting evaluations: empty response returned.');
           return;
         }
@@ -110,6 +114,7 @@ const EvaluatorNode = ({ data, id }) => {
         });
 
         setCodeTextOnLastRun(codeTextOnRun);
+        setLastRunSuccess(true);
         setStatus('ready');
     }, rejected);
   };
@@ -177,8 +182,8 @@ const EvaluatorNode = ({ data, id }) => {
       </div>
 
       {(lastRunLogs && lastRunLogs.length > 0) ? 
-        (<div className="eval-output-footer nowheel" style={{backgroundColor: (status === 'error' ? '#f19e9eb1' : '#eee')}}>
-          <p style={{color: (status === 'error' ? '#a10f0f' : '#999')}}><strong>out:</strong> {lastRunLogs}</p>
+        (<div className="eval-output-footer nowheel" style={{backgroundColor: (lastRunSuccess ? '#eee' : '#f19e9eb1')}}>
+          <p style={{color: (lastRunSuccess ? '#999' : '#a10f0f')}}><strong>out:</strong> {lastRunLogs}</p>
         </div>)
         : (<></>)
       }
