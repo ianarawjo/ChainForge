@@ -32,7 +32,6 @@ You can set your API keys by clicking the Settings icon in the top-right corner.
 
 ## Example evaluation flows
 
-
 We've prepared a couple example flows to give you a sense of what's possible with Chainforge.
 Click the "Example Flows" button on the top-right corner and select one. Here is a basic comparison example, plotting the length of responses across different models and arguments for the prompt parameter `{game}`:
 
@@ -71,10 +70,9 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 ## Future Planned Features
 
 Highest priority:
-- **Tabular data nodes**: Input data using tables (`csv`, `Excel`, `jsonl`). Have column values accessible in Evaluator nodes, even those which aren't directly input into the prompt template parameter but are on the same row. 
-- **Ground truth evaluation flows**: Add examples to Example Flows which show how to measure against a ground truth (a common type of evaluation, e.g. see OpenAI evals).
-- **LLM annotator nodes**: Select an LLM to evaluate and "tag" responses (for instance, named-entity recognition). Currently, one can chain prompt nodes into prompt nodes, but the final output loses information on which LLM generated the input response.
+- **Ground truth evaluation flows**: Add more examples to Example Flows which show how to measure against a ground truth (a common type of evaluation, e.g. see OpenAI evals).
 - **Out-of-the-box benchmarks**: Basic integration with common benchmarks like HumanEval and OpenAI evals, so that, with the click of a button, you can check a model against a popular benchmark, no additional coding required. 
+- **LLM annotator nodes**: Select an LLM to evaluate and "tag" responses (for instance, named-entity recognition). Currently, one can chain prompt nodes into prompt nodes, but the final output loses information on which LLM generated the input response.
 
 Medium-to-low priority:
 - **LMQL and Microsoft guidance nodes**: Support for prompt pipelines that involve LMQL and {{guidance}} code, esp. inspecting masked response variables. 
