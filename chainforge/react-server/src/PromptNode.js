@@ -632,7 +632,7 @@ const PromptNode = ({ data, id }) => {
           cols="40"
           defaultValue={data.prompt}
           onChange={handleInputChange}
-          className="nodrag"
+          className="nodrag nowheel"
         />
         <Handle
           type="source"

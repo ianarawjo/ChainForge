@@ -125,15 +125,16 @@ const LLMResponseInspector = ({ jsonResponses }) => {
     });
 
     // Set the variables accessible in the MultiSelect for 'group by'
-    setMultiSelectVars(Array.from(found_vars).map(name => (
+    let msvars = Array.from(found_vars).map(name => (
       // We add a $ prefix to mark this as a prompt parameter, and so 
       // in the future we can add special types of variables without name collisions
       {value: `${name}`, label: name} 
-    )).concat({value: 'LLM', label: 'LLM'}));
+    )).concat({value: 'LLM', label: 'LLM'});
+    setMultiSelectVars(msvars);
     
-    // If this is the first time receiving responses, set the multiSelectValue to 'LLM'
+    // If this is the first time receiving responses, set the multiSelectValue to whatever is the first:
     if (!receivedResponsesOnce) {
-      setMultiSelectValue(['LLM']);
+      setMultiSelectValue([msvars[0].value]);
       setReceivedResponsesOnce(true);
     }
 
@@ -142,8 +143,6 @@ const LLMResponseInspector = ({ jsonResponses }) => {
 
     // Functions to associate a color to each LLM in responses
     const color_for_llm = (llm) => (getColorForLLMAndSetIfNotFound(llm) + '99');
-    // const llm_badge_colors = ['green', 'orange', 'red', 'yellow', 'cyan', 'indigo', 'grape'];
-    const badge_color_for_llm = (llm) => 'blue';  // TODO: Fix to be consistent w/ llm color (this is hard bc Mantine only allows predefined colors, so we need to make a map)
     const response_box_colors = ['#eee', '#fff', '#eee', '#ddd', '#eee', '#ddd', '#eee'];
     const rgroup_color = (depth) => response_box_colors[depth % response_box_colors.length];
 

@@ -90,6 +90,8 @@ def REVERT_PYTHON_PRINT() -> List[str]:
     HIJACKED_PRINT_LOG_FILE.close()
     HIJACKED_PRINT_LOG_FILE = None
 
+    if len(logs) == 1 and len(logs[0].strip()) == 0:
+        logs = []
     return logs
 
 @dataclass
