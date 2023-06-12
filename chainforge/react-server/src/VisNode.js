@@ -9,6 +9,7 @@ import {BASE_URL} from './store';
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
+    if (s === undefined) return s;
     if (s.length > maxLen) // Cut the name short if it's long
         return s.substring(0, maxLen) + '...'
     else
@@ -165,6 +166,19 @@ const VisNode = ({ data, id }) => {
             // default to Parallel Coordinates plot, with the 1 var values on the y-axis as colored groups, and metrics on x-axis.
             // For multiple LLMs, add a control drop-down selector to switch the LLM visualized in the plot.
         }
+
+        const get_var = (resp_obj, varname, empty_str_if_undefined=false) => {
+            const v = resp_obj.vars[varname];
+            if (v === undefined && empty_str_if_undefined)
+                return "";
+            return v;
+        };
+
+        const get_var_and_trim = (resp_obj, varname, empty_str_if_undefined=false) => {
+            const v = get_var(resp_obj, varname, empty_str_if_undefined);
+            if (v !== undefined) return v.trim();
+            else return v;
+        };
 
         const get_items = (eval_res_obj) => {
             if (typeof_eval_res.includes('KeyValue'))
@@ -376,27 +390,27 @@ const VisNode = ({ data, id }) => {
                 // 1 var; numeric eval
                 if (llm_names.length === 1) {
                     // Simple box plot, as there is only a single LLM in the response
-                    plot_simple_boxplot((r) => r.vars[varnames[0]].trim(), 'var');
+                    plot_simple_boxplot((r) => get_var_and_trim(r, varnames[0]), 'var');
                 } else {
                     // There are multiple LLMs in the response; do a grouped box plot by LLM.
                     // Note that 'name' is now the LLM, and 'x' stores the value of the var: 
-                    plot_grouped_boxplot((r) => r.vars[varnames[0]].trim(), 'var');
+                    plot_grouped_boxplot((r) => get_var_and_trim(r, varnames[0]), 'var');
                 }
             }
             else if (varnames.length === 2) {
                 // Input is 2 vars; numeric eval
                 // Display a 3D scatterplot with 2 dimensions:
 
-                const names_0 = new Set(responses.map(r => r.vars[varnames[0]].trim()));
+                const names_0 = new Set(responses.map(r => get_var_and_trim(r, varnames[0])));
                 const shortnames_0 = genUniqueShortnames(names_0);
-                const names_1 = new Set(responses.map(r => r.vars[varnames[1]].trim()));
+                const names_1 = new Set(responses.map(r => get_var_and_trim(r, varnames[1])));
                 const shortnames_1 = genUniqueShortnames(names_1);
 
                 if (llm_names.length === 1) {
                     spec = {
                         type: 'scatter3d',
-                        x: responses.map(r => r.vars[varnames[0]]).map(s => shortnames_0[s]),
-                        y: responses.map(r => r.vars[varnames[1]]).map(s => shortnames_1[s]),
+                        x: responses.map(r => get_var(r, varnames[0], true)).map(s => shortnames_0[s]),
+                        y: responses.map(r => get_var(r, varnames[1], true)).map(s => shortnames_1[s]),
                         z: responses.map(r => get_items(r.eval_res).reduce((acc, val) => (acc + val), 0) / r.eval_res.items.length), // calculates mean
                         mode: 'markers',
                         marker: {
@@ -409,8 +423,8 @@ const VisNode = ({ data, id }) => {
                         const resps = responses.filter((r) => r.llm === llm);
                         spec.push({
                             type: 'scatter3d',
-                            x: resps.map(r => r.vars[varnames[0]]).map(s => shortnames_0[s]),
-                            y: resps.map(r => r.vars[varnames[1]]).map(s => shortnames_1[s]),
+                            x: resps.map(r => get_var(r, varnames[0], true)).map(s => shortnames_0[s]),
+                            y: resps.map(r => get_var(r, varnames[1], true)).map(s => shortnames_1[s]),
                             z: resps.map(r => get_items(r.eval_res).reduce((acc, val) => (acc + val), 0) / r.eval_res.items.length), // calculates mean
                             mode: 'markers',
                             marker: {
@@ -454,7 +468,13 @@ const VisNode = ({ data, id }) => {
                 // Store responses and extract + store vars
                 setResponses(json.responses);
 
-                const varnames = Object.keys(json.responses[0].vars);
+                // Find all vars in responses
+                let varnames = new Set();
+                json.responses.forEach(resp_obj => 
+                    Object.keys(resp_obj.vars).forEach(v => varnames.add(v))
+                );
+                varnames = Array.from(varnames);
+
                 const msvars = varnames.map(name => ({value: name, label: name}));
 
                 // Check for a change in available parameters
