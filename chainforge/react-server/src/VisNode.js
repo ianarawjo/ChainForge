@@ -130,7 +130,7 @@ const VisNode = ({ data, id }) => {
         let spec = [];
         let layout = {
             autosize: true, title: '', margin: {
-                l: 125, r: 0, b: 36, t: 20, pad: 0
+                l: 125, r: 0, b: 36, t: 20, pad: 6
             }
         };
 
@@ -187,19 +187,40 @@ const VisNode = ({ data, id }) => {
         };
 
         const plot_simple_boxplot = (resp_to_x, group_type) => {
-            // Get all possible values of the single variable response ('name' vals)
-            const names = new Set(responses.map(resp_to_x));
-            const shortnames = genUniqueShortnames(names);
+            let names = new Set();
+            const plotting_categorical_vars = group_type === 'var' && typeof_eval_res === 'Categorical';
+
+            // When we're plotting vars, we want the stacked bar colors to be the *categories*,
+            // and the x_items to be the names of vars, so that the left axis is a vertical list of varnames.
+            if (plotting_categorical_vars) {
+                // Get all categories present in the evaluation results
+                responses.forEach(r => get_items(r.eval_res).forEach(i => names.add(i)));
+                console.log(responses);
+            } else {
+                // Get all possible values of the single variable response ('name' vals)
+                names = new Set(responses.map(resp_to_x));
+            }
+
+            const shortnames = genUniqueShortnames(names);   
 
             let name_idx = 0;
             for (const name of names) {
                 let x_items = [];
                 let text_items = [];
-                responses.forEach(r => {
-                    if (resp_to_x(r) !== name) return;
-                    x_items = x_items.concat(get_items(r.eval_res));
-                    text_items = text_items.concat(createHoverTexts(r.responses));
-                });
+
+                if (plotting_categorical_vars) {
+                    responses.forEach(r => {
+                        // Get all evaluation results for this response which match the category 'name':
+                        const eval_res = get_items(r.eval_res).filter(i => i === name);
+                        x_items = x_items.concat(new Array(eval_res.length).fill(resp_to_x(r)));
+                    });
+                } else {
+                    responses.forEach(r => {
+                        if (resp_to_x(r) !== name) return;
+                        x_items = x_items.concat(get_items(r.eval_res));
+                        text_items = text_items.concat(createHoverTexts(r.responses));
+                    });
+                }
 
                 // Lookup the color per LLM when displaying LLM differences, 
                 // otherwise use the palette for displaying variables.
@@ -207,8 +228,9 @@ const VisNode = ({ data, id }) => {
                                 getColorForLLMAndSetIfNotFound(name) 
                             :   varcolors[name_idx % varcolors.length];
 
-                if (typeof_eval_res === 'Boolean') {
-                    // Unique case: Plot a histogram for boolean (true/false) categorical data.
+                if (typeof_eval_res === 'Boolean' || typeof_eval_res === 'Categorical')  {
+                    // Plot a histogram for categorical data.
+                    console.log(x_items, shortnames[name])
                     spec.push({
                         type: 'histogram',
                         histfunc: "sum",
@@ -264,7 +286,7 @@ const VisNode = ({ data, id }) => {
                 }
 
                 if (typeof_eval_res === 'Boolean') {
-                    // Unique case: Plot a histogram for boolean (true/false) categorical data.
+                    // Plot a histogram for boolean (true/false) categorical data.
                     spec.push({
                         type: 'histogram',
                         histfunc: "sum",
