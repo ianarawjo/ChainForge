@@ -9,13 +9,15 @@ DALAI_RESPONSE = None
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 GOOGLE_PALM_API_KEY = os.environ.get("PALM_API_KEY")
+AZURE_OPENAI_KEY = os.environ.get("AZURE_OPENAI_KEY")
+AZURE_OPENAI_ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT")
 
 def set_api_keys(api_keys):
     """
         Sets the local API keys for the revelant LLM API(s).
         Currently only supports 'OpenAI', 'Anthropic'. 
     """
-    global ANTHROPIC_API_KEY, GOOGLE_PALM_API_KEY
+    global ANTHROPIC_API_KEY, GOOGLE_PALM_API_KEY, AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT
     def key_is_present(name):
         return name in api_keys and len(api_keys[name].strip()) > 0
     if key_is_present('OpenAI'):
@@ -25,6 +27,10 @@ def set_api_keys(api_keys):
         ANTHROPIC_API_KEY = api_keys['Anthropic']
     if key_is_present('Google'):
         GOOGLE_PALM_API_KEY = api_keys['Google']
+    if key_is_present('Azure_OpenAI'):
+        AZURE_OPENAI_KEY = api_keys['Azure_OpenAI']
+    if key_is_present('Azure_OpenAI_Endpoint'):
+        AZURE_OPENAI_ENDPOINT = api_keys['Azure_OpenAI_Endpoint']
     # Soft fail for non-present keys
 
 async def make_sync_call_async(sync_method, *args, **params):
@@ -66,6 +72,62 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 
     }
 
     if 'davinci' in model:
+        openai_call = openai.Completion.acreate
+        query['prompt'] = prompt
+    else:
+        openai_call = openai.ChatCompletion.acreate
+        query['messages'] = [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": prompt},
+        ]
+    
+    try:
+        response = await openai_call(**query)
+    except Exception as e:
+        if (isinstance(e, openai.error.AuthenticationError)):
+            raise Exception("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local Python environment.")
+        raise e
+    
+    return query, response
+
+async def call_azure_openai(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0, 
+                            deployment_name: str = 'gpt-35-turbo', 
+                            model_type: str = "chat-completion", 
+                            api_version: str = "2023-05-15", 
+                            system_msg: Optional[str]=None, 
+                            **params) -> Tuple[Dict, Dict]:
+    """
+        Calls an OpenAI chat model GPT3.5 or GPT4 via Microsoft Azure services.
+        Returns raw query and response JSON dicts. 
+
+        NOTE: It is recommended to set an environment variables AZURE_OPENAI_KEY and AZURE_OPENAI_ENDPOINT
+    """
+    global AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT
+    if AZURE_OPENAI_KEY is None:
+        raise Exception("Could not find an Azure OpenAPI Key to use. Double-check that your key is set in Settings or in your local Python environment.")
+    if AZURE_OPENAI_ENDPOINT is None:
+        raise Exception("Could not find an Azure OpenAI Endpoint to use. Double-check that your endpoint is set in Settings or in your local Python environment.")
+
+    import openai
+    openai.api_type = "azure"
+    openai.api_version = api_version
+    openai.api_key = AZURE_OPENAI_KEY
+    openai.api_base = AZURE_OPENAI_ENDPOINT
+
+    if 'stop' in params and not isinstance(params['stop'], list) or len(params['stop']) == 0:
+        del params['stop']
+
+    print(f"Querying Azure OpenAI deployed model '{deployment_name}' at endpoint '{AZURE_OPENAI_ENDPOINT}' with prompt '{prompt}'...")
+    system_msg = "You are a helpful assistant." if system_msg is None else system_msg
+    
+    query = {
+        "engine": deployment_name,  # this differs from a basic OpenAI call
+        "n": n,
+        "temperature": temperature,
+        **params,  # 'the rest' of the settings, passed from a front-end app
+    }
+
+    if model_type == 'text-completion':
         openai_call = openai.Completion.acreate
         query['prompt'] = prompt
     else:
@@ -314,6 +376,18 @@ def _extract_openai_completion_responses(response: dict) -> List[str]:
         for c in choices
     ]
 
+def _extract_openai_responses(response: dict) -> List[str]:
+    """
+        Deduces the format of an OpenAI model response (completion or chat)
+        and extracts the response text using the appropriate method.
+    """
+    if len(response["choices"]) == 0: return []
+    first_choice = response["choices"][0]
+    if "message" in first_choice:
+        return _extract_chatgpt_responses(response)
+    else:
+        return _extract_openai_completion_responses(response)
+
 def _extract_palm_responses(completion) -> List[str]:
     """
         Extracts the text part of a 'Completion' object from Google PaLM2 `generate_text` or `chat`
@@ -337,6 +411,8 @@ def extract_responses(response: Union[list, dict], llm: Union[LLM, str]) -> List
             return _extract_openai_completion_responses(response)
         else:
             return _extract_chatgpt_responses(response)
+    elif llm_str[:5] == 'Azure':
+        return _extract_openai_responses(response)
     elif llm_str[:5] == 'PaLM2':
         return _extract_palm_responses(response)
     elif llm_str[:5] == 'Dalai':

@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import List, Dict, Tuple, Iterator, Union, Optional
 import json, os, asyncio, random, string
-from chainforge.promptengine.utils import call_chatgpt, call_dalai, call_anthropic, call_google_palm, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
+from chainforge.promptengine.utils import call_chatgpt, call_dalai, call_anthropic, call_google_palm, call_azure_openai, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
 from chainforge.promptengine.models import LLM, RATE_LIMITS
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
 
@@ -214,6 +214,8 @@ class PromptPipeline:
         call_llm = None
         if llm.name[:6] == 'OpenAI':
             call_llm = call_chatgpt
+        elif llm.name[:5] == 'Azure':
+            call_llm = call_azure_openai
         elif llm.name[:5] == 'PaLM2':
             call_llm = call_google_palm
         elif llm.name[:5] == 'Dalai':

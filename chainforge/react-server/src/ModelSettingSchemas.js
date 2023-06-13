@@ -17,7 +17,16 @@ export const AvailableLLMs = [
   { name: "Alpaca.7B", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 },
   { name: "Claude", emoji: "📚", model: "claude-v1", base_model: "claude-v1", temp: 0.5 },
   { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
+  { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
 ];
+
+const filterDict = (dict, keyFilterFunc) => {
+  return Object.keys(dict).reduce((acc, key) => {
+      if (keyFilterFunc(key) === true)
+          acc[key] = dict[key];
+      return acc;
+  }, {});
+};
 
 const ChatGPTSettings = {
     fullName: "GPT-3.5+ (OpenAI)",
@@ -42,7 +51,7 @@ const ChatGPTSettings = {
             },
             "system_msg": {
                 "type": "string",
-                "title": "System Message",
+                "title": "System Message (chat models only)",
                 "description": "Many conversations begin with a system message to gently instruct the assistant. By default, ChainForge includes the suggested 'You are a helpful assistant.'",
                 "default": "You are a helpful assistant."
             },
@@ -548,6 +557,49 @@ const DalaiModelSettings = {
   postprocessors: {}
 };
 
+const AzureOpenAISettings = {
+  fullName: "Azure OpenAI Model",
+  schema: {
+    "type": "object",
+      "required": [
+        "shortname",
+        "deployment_name",
+      ],
+      "properties": {
+        "shortname": {
+          "type": "string",
+          "title": "Nickname",
+          "description": "Unique identifier to appear in ChainForge. Keep it short.",
+          "default": "Azure-OpenAI"
+        },
+        "deployment_name": {
+          "type": "string",
+          "title": "Deployment name",
+          "description": "The deployment name you chose when you deployed the model in Azure services (also known as the 'deployment_id' or 'engine'). This must exactly match the name of the deployed resource, or the request will fail.",
+          "default": "gpt-35-turbo",
+        },
+        "model_type": {
+          "type": "string",
+          "title": "Model Type (Chat or Completions)",
+          "description": "Select the type of model you are querying. For instance, if you host GPT3.5, select chat-completion; if you host davinci, use text-completion.",
+          "enum": ["chat-completion", "text-completion"],
+          "default": "chat-completion"
+        },
+        "api_version": {
+          "type": "string",
+          "title": "API Version (date)",
+          "description": "Used when calling the OpenAI API through Azure services. Normally you don't need to change this setting.",
+          "default": "2023-05-15"
+        },
+        ...filterDict(ChatGPTSettings.schema.properties, (key) => key !== 'model'),
+      }
+  },
+  uiSchema: {
+    ...ChatGPTSettings.uiSchema,
+  },
+  postprocessors: ChatGPTSettings.postprocessors,
+};
+
 // A lookup table indexed by base_model. 
 export const ModelSettings = {
   'gpt-3.5-turbo': ChatGPTSettings,
@@ -555,6 +607,7 @@ export const ModelSettings = {
   'claude-v1': ClaudeSettings,
   'palm2-bison': PaLM2Settings,
   'dalai': DalaiModelSettings,
+  'azure-openai': AzureOpenAISettings,
 };
 
 export const getTemperatureSpecForModel = (modelName) => {
