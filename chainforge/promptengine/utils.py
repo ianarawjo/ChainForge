@@ -121,7 +121,11 @@ async def call_azure_openai(prompt: str, model: LLM, n: int = 1, temperature: fl
     openai.api_base = AZURE_OPENAI_ENDPOINT
 
     if 'stop' in params and not isinstance(params['stop'], list) or len(params['stop']) == 0:
-        del params['stop']
+        del params['stop']  
+    if 'functions' in params and not isinstance(params['functions'], list) or len(params['functions']) == 0:
+        del params['functions']
+    if 'function_call' in params and not isinstance(params['function_call'], str) or len(params['function_call'].strip()) == 0:
+        del params['function_call']
 
     print(f"Querying Azure OpenAI deployed model '{deployment_name}' at endpoint '{AZURE_OPENAI_ENDPOINT}' with prompt '{prompt}'...")
     system_msg = "You are a helpful assistant." if system_msg is None else system_msg
