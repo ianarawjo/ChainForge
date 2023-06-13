@@ -6,11 +6,16 @@ from enum import Enum
 class LLM(str, Enum):
     """ OpenAI Chat """
     OpenAI_ChatGPT = "gpt-3.5-turbo"
+    OpenAI_ChatGPT_16k = "gpt-3.5-turbo-16k"
+    OpenAI_ChatGPT_16k_0613 = "gpt-3.5-turbo-16k-0613"
     OpenAI_ChatGPT_0301 = "gpt-3.5-turbo-0301"
+    OpenAI_ChatGPT_0613 = "gpt-3.5-turbo-0613"
     OpenAI_GPT4 = "gpt-4"
     OpenAI_GPT4_0314 = "gpt-4-0314"
+    OpenAI_GPT4_0613 = "gpt-4-0613"
     OpenAI_GPT4_32k = "gpt-4-32k"
     OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314"
+    OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613"
 
     """ OpenAI Text Completions """
     OpenAI_Davinci003 = "text-davinci-003"
