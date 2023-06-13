@@ -75,6 +75,11 @@ const ExampleFlowsModal = forwardRef((props, ref) => {
                          filename="basic-math"
                          onSelect={onSelect}
         />
+        <ExampleFlowCard title="Detect whether OpenAI function call was triggered"
+                         description="Basic example showing whether a given prompt triggered an OpenAI function call. Also shows difference between ChatGPT prior to function calls, and function call version."
+                         filename="basic-function-calls"
+                         onSelect={onSelect}
+        />
         {/* <ExampleFlowCard title="Test mathematical ability"
                          description="Evaluate the ability of different LLMs to perform basic math and get the correct answer. Showcases chaining prompt templates and using prompt variables in Evaluate nodes."
         />

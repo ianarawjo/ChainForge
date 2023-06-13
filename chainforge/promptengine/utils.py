@@ -46,7 +46,9 @@ async def make_sync_call_async(sync_method, *args, **params):
         method = partial_sync_meth
     return await loop.run_in_executor(None, method, *args)
 
-async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0, system_msg: Optional[str]=None, **params) -> Tuple[Dict, Dict]:
+async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0, 
+                       system_msg: Optional[str]=None,
+                       **params) -> Tuple[Dict, Dict]:
     """
         Calls GPT3.5 via OpenAI's API. 
         Returns raw query and response JSON dicts. 
@@ -59,11 +61,15 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 
 
     model = model.value
     if 'stop' in params and not isinstance(params['stop'], list) or len(params['stop']) == 0:
-        del params['stop']
+        del params['stop']  
+    if 'functions' in params and not isinstance(params['functions'], list) or len(params['functions']) == 0:
+        del params['functions']
+    if 'function_call' in params and not isinstance(params['function_call'], str) or len(params['function_call'].strip()) == 0:
+        del params['function_call']
 
     print(f"Querying OpenAI model '{model}' with prompt '{prompt}'...")
     system_msg = "You are a helpful assistant." if system_msg is None else system_msg
-    
+
     query = {
         "model": model,
         "n": n,
@@ -71,10 +77,10 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 
         **params,  # 'the rest' of the settings, passed from a front-end app
     }
 
-    if 'davinci' in model:
+    if 'davinci' in model:  # text completions model
         openai_call = openai.Completion.acreate
         query['prompt'] = prompt
-    else:
+    else:  # chat model
         openai_call = openai.ChatCompletion.acreate
         query['messages'] = [
             {"role": "system", "content": system_msg},
@@ -352,15 +358,29 @@ async def call_dalai(prompt: str, model: LLM, server: str="http://localhost:4000
 
     return query, responses
 
+def _extract_openai_chat_choice_content(choice: dict) -> str:
+    """
+        Extracts the relevant portion of a OpenAI chat response.
+        
+        Note that chat choice objects can now include 'function_call' and a blank 'content' response.
+        This method detects a 'function_call's presence, prepends [[FUNCTION]] and converts the function call into Python format. 
+    """
+    if choice['finish_reason'] == 'function_call' or choice["message"]["content"] is None or \
+       ('function_call' in choice['message'] and len(choice['message']['function_call']) > 0):
+        func = choice['message']['function_call']
+        return '[[FUNCTION]] ' + func['name'] + str(func['arguments'])
+    else:
+        return choice["message"]["content"]
+
 def _extract_chatgpt_responses(response: dict) -> List[str]:
     """
-        Extracts the text part of a response JSON from ChatGPT. If there are more
+        Extracts the text part of a response JSON from ChatGPT. If there is more
         than 1 response (e.g., asking the LLM to generate multiple responses), 
         this produces a list of all returned responses.
     """
     choices = response["choices"]
     return [
-        c["message"]["content"]
+        _extract_openai_chat_choice_content(c)
         for c in choices
     ]
 

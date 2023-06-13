@@ -36,6 +36,19 @@ const groupResponsesBy = (responses, keyFunc) => {
   });
   return [responses_by_key, unspecified_group];
 };
+const countResponsesBy = (responses, keyFunc) => {
+  let responses_by_key = {};
+  let unspecified_group = [];
+  responses.forEach(item => {
+      const key = keyFunc(item);
+      const d = key !== null ? responses_by_key : unspecified_group;
+      if (key in d)
+          d[key] += 1;
+      else
+          d[key] = 1;
+  });
+  return [responses_by_key, unspecified_group];
+};
 const getEvalResultStr = (eval_item) => {
   if (Array.isArray(eval_item)) {
       return 'scores: ' + eval_item.join(', ');
@@ -171,16 +184,28 @@ const LLMResponseInspector = ({ jsonResponses }) => {
 
                 const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
 
+                // Bucket responses that have the same text, and sort by the 
+                // number of same responses so that the top div is the most prevalent response:
+                const same_resp_text_counts = countResponsesBy(res_obj.responses, (r) => r)[0];
+                const same_resp_keys = Object.keys(same_resp_text_counts).sort((key1, key2) => (same_resp_text_counts[key2] - same_resp_text_counts[key1]));
+
                 // Spans for actual individual response texts
                 const ps = eval_res_items ? (
-                    res_obj.responses.map((r, idx) => (
+                  same_resp_keys.map((r, idx) => (
                         <div key={idx}>
                             <pre className="small-response">{r}</pre>
                             <p className="small-response-metrics">{getEvalResultStr(eval_res_items[idx])}</p>
                         </div>
                     ))) : (
-                    res_obj.responses.map((r, idx) => (
-                        <pre key={idx} className="small-response">{r}</pre>
+                      same_resp_keys.map((r, idx) => (
+                        <div key={idx}>
+                          {same_resp_text_counts[r] > 1 ? 
+                            (<span className="num-same-responses">{same_resp_text_counts[r]} times</span>)
+                          : <></>}
+                          <pre className="small-response">{r}</pre>
+                          
+                        </div>
+                        
                     )));
 
                 // At the deepest level, there may still be some vars left over. We want to display these
