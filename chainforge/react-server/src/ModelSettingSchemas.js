@@ -37,7 +37,7 @@ const ChatGPTSettings = {
                 "type": "string",
                 "title": "Model Version",
                 "description": "Select an OpenAI model to query. For more details on the differences, see the OpenAI API documentation.",
-                "enum": ["gpt-3.5-turbo", "gpt-3.5-turbo-0301", "gpt-4", "gpt-4-0314", "gpt-4-32k", "gpt-4-32k-0314", "text-davinci-003", "text-davinci-002", "code-davinci-002"],
+                "enum": ["gpt-3.5-turbo", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-0301", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613", "gpt-4", "gpt-4-0613", "gpt-4-0314", "gpt-4-32k", "gpt-4-32k-0613", "gpt-4-32k-0314", "text-davinci-003", "text-davinci-002", "code-davinci-002"],
                 "default": "gpt-3.5-turbo"
             },
             "system_msg": {
@@ -54,6 +54,18 @@ const ChatGPTSettings = {
                 "minimum": 0,
                 "maximum": 2,
                 "multipleOf": 0.01
+            },
+            "functions": {
+              "type": "string",
+              "title": "functions",
+              "description": "A list of JSON schema objects, each with 'name', 'description', and 'parameters' keys, which describe functions the model may generate JSON inputs for. For more info, see https://github.com/openai/openai-cookbook/blob/main/examples/How_to_call_functions_with_chat_models.ipynb",
+              "default": "",
+            },
+            "function_call": {
+              "type": "string",
+              "title": "function_call",
+              "description": "Controls how the model responds to function calls. 'none' means the model does not call a function, and responds to the end-user. 'auto' means the model can pick between an end-user or calling a function. Specifying a particular function name forces the model to call only that function. Leave blank for default behavior.",
+              "default": "",
             },
             "top_p": {
                 "type": "number",
@@ -124,6 +136,13 @@ const ChatGPTSettings = {
           "ui:help": "Defaults to 1.0. Leave at default if you prefer to set top_p.",
           "ui:widget": "range"
         },
+        "functions": {
+          "ui:help": "Leave blank to not specify any functions. NOTE: JSON schema MUST NOT have trailing commas.",
+          "ui:widget": "textarea",
+        },
+        "function_call": {
+          "ui:help": "'none' is the default when no functions are present. 'auto' is the default if functions are present.",
+        },
         "top_p": {
           "ui:help": "Defaults to 1.0. Leave at default if you prefer to set temperature.",
           "ui:widget": "range"
@@ -150,6 +169,16 @@ const ChatGPTSettings = {
     },
 
     postprocessors: {
+      'functions': (str) => {
+        if (str.trim().length === 0) return [];
+        return JSON.parse(str);  // parse the JSON schema 
+      },
+      'function_call': (str) => {
+        const s = str.trim();
+        if (s.length === 0) return '';
+        if (s === 'auto' || s === 'none') return s;
+        else return { 'name': s };
+      },
       'stop': (str) => {
         if (str.trim().length === 0) return [];
         return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
