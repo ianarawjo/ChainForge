@@ -21,6 +21,9 @@ class LLM(str, Enum):
     OpenAI_Davinci003 = "text-davinci-003"
     OpenAI_Davinci002 = "text-davinci-002"
 
+    """ Azure OpenAI Endpoints """
+    Azure_OpenAI = "azure-openai"
+
     """ Dalai-served models (Alpaca and Llama) """
     Dalai_Alpaca_7B = "alpaca.7B"
     Dalai_Alpaca_13B = "alpaca.13B"

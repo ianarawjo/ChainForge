@@ -1,5 +1,5 @@
 import React, { useState, forwardRef, useImperativeHandle } from 'react';
-import { TextInput, Checkbox, Button, Group, Box, Modal } from '@mantine/core';
+import { TextInput, Checkbox, Button, Group, Box, Modal, Divider, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import useStore from './store';
@@ -13,6 +13,8 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
       OpenAI: '',
       Anthropic: '',
       Google: '',
+      Azure_OpenAI: '',
+      Azure_OpenAI_Endpoint: '',
     },
 
     validate: {
@@ -58,6 +60,23 @@ return (
                   label="Google PaLM API Key"
                   placeholder="Paste your Google PaLM API key here"
                   {...form.getInputProps('Google')}
+                />
+                <br />
+
+                <Divider my="xs" label="Microsoft Azure" labelPosition="center" />
+                <TextInput
+                  label="Azure OpenAI Key"
+                  description={<span>For more details on Azure OpenAI, see <a href="https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/create-resource?pivots=web-portal" target="_blank" style={{color: '#1E90FF', textDecoration:'none'}}>Microsoft Learn.</a> Note that you will have to set the Deployment Name in the Settings of any Azure OpenAI model you add to a Prompt Node.</span>}
+                    
+                  placeholder="Paste your Azure OpenAI Key here"
+                  {...form.getInputProps('Azure_OpenAI')}
+                  style={{marginBottom: '8pt'}}
+                />
+
+                <TextInput
+                  label="Azure OpenAI Endpoint"
+                  placeholder="Paste your Azure OpenAI Endpoint here"
+                  {...form.getInputProps('Azure_OpenAI_Endpoint')}
                 />
 
                 <Group position="right" mt="md">
