@@ -195,7 +195,6 @@ const VisNode = ({ data, id }) => {
             if (plotting_categorical_vars) {
                 // Get all categories present in the evaluation results
                 responses.forEach(r => get_items(r.eval_res).forEach(i => names.add(i)));
-                console.log(responses);
             } else {
                 // Get all possible values of the single variable response ('name' vals)
                 names = new Set(responses.map(resp_to_x));
@@ -230,7 +229,6 @@ const VisNode = ({ data, id }) => {
 
                 if (typeof_eval_res === 'Boolean' || typeof_eval_res === 'Categorical')  {
                     // Plot a histogram for categorical data.
-                    console.log(x_items, shortnames[name])
                     spec.push({
                         type: 'histogram',
                         histfunc: "sum",

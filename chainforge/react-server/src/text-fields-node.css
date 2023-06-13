@@ -238,6 +238,9 @@
   .inspect-modal-response-container .small-response {
     font-size: 10pt;
   }
+  .inspect-modal-response-container .num-same-responses {
+    font-size: 10pt;
+  }
   .response-var-header {
     background-color: #e0f4fa;
     border-radius: 1px;
@@ -324,6 +327,23 @@
     margin: 0px 20px 8px 20px;
     background-color: rgba(255, 255, 255, 0.6);
     color: #333;
+  }
+  .num-same-responses {
+    position: relative;
+    display: block;
+    float: right;
+    text-align: center;
+    top: 2pt;
+    right: 3px;
+    /* width: 12pt; */
+    padding: 1px 4px;
+    height: 12pt;
+    background-color: #00000033;
+    border-radius: 5px;
+    font-size: 9pt;
+    font-weight: 500;
+    color: white;
+    overflow: hidden;
   }
 
   .llm-response-container {
