@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { SimpleGrid, Card, Modal, Image, Group, Text, Button, Badge } from '@mantine/core';
+import { SimpleGrid, Card, Modal, Image, Group, Text, Button, Badge, Tabs } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 
 import { IconChartDots3 } from '@tabler/icons-react';
@@ -49,44 +49,58 @@ const ExampleFlowsModal = forwardRef((props, ref) => {
 
   return (
     <Modal size='xl' opened={opened} onClose={close} title={<div><IconChartDots3 size={24} style={{position:'relative', marginRight: '8px', top: '4px'}} /><span style={{fontSize: '14pt'}}>Example Flows</span></div>} closeOnClickOutside={true} style={{position: 'relative', 'left': '-100px'}}>      
-      <SimpleGrid cols={3} spacing='sm' verticalSpacing='sm'>
-        <ExampleFlowCard title="Compare length of responses across LLMs"
-                         description="A simple evaluation with a prompt template, some inputs, and three models to prompt. Visualizes variability in response length." 
-                         filename="basic-comparison"
-                         onSelect={onSelect}
-        />
-        <ExampleFlowCard title="Robustness to prompt injection attacks"
-                         description="Get a sense of different model's robustness against prompt injection attacks." 
-                         filename="prompt-injection-test"
-                         onSelect={onSelect}
-        />
-        <ExampleFlowCard title="Use an LLM as an evaluator"
-                         description="Chain one prompt into another to extract entities from a text response. Plots number of entities." 
-                         filename="chaining-prompts"
-                         onSelect={onSelect}
-        />
-        <ExampleFlowCard title="Measure impact of system message on response"
-                         description="Compares response quality across different ChatGPT system prompts. Visualizes how well it sticks to the instructions to only print Racket code."
-                         filename="comparing-system-msg"
-                         onSelect={onSelect}
-        />
-        <ExampleFlowCard title="Ground truth evaluation for math problems"
-                         description="Uses a tabular data node to evaluate LLM performance on basic math problems. Compares responses to expected answer and plots performance across LLMs."
-                         filename="basic-math"
-                         onSelect={onSelect}
-        />
-        <ExampleFlowCard title="Detect whether OpenAI function call was triggered"
-                         description="Basic example showing whether a given prompt triggered an OpenAI function call. Also shows difference between ChatGPT prior to function calls, and function call version."
-                         filename="basic-function-calls"
-                         onSelect={onSelect}
-        />
-        {/* <ExampleFlowCard title="Test mathematical ability"
-                         description="Evaluate the ability of different LLMs to perform basic math and get the correct answer. Showcases chaining prompt templates and using prompt variables in Evaluate nodes."
-        />
-        <ExampleFlowCard title="Does it conform to spec?"
-                         description="Test how well a prompt and model conforms to a specification (instructed to format its output a certain way). Extracts and parses JSON outputs."
-        /> */}
-      </SimpleGrid>
+      <Tabs defaultValue="examples">
+        <Tabs.List>
+          <Tabs.Tab value="examples" >Basic Examples</Tabs.Tab>
+          <Tabs.Tab value="openai-evals" >OpenAI Evals</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="examples" pt="xs">
+          <SimpleGrid cols={3} spacing='sm' verticalSpacing='sm'>
+            <ExampleFlowCard title="Compare length of responses across LLMs"
+                            description="A simple evaluation with a prompt template, some inputs, and three models to prompt. Visualizes variability in response length." 
+                            filename="basic-comparison"
+                            onSelect={onSelect}
+            />
+            <ExampleFlowCard title="Robustness to prompt injection attacks"
+                            description="Get a sense of different model's robustness against prompt injection attacks." 
+                            filename="prompt-injection-test"
+                            onSelect={onSelect}
+            />
+            <ExampleFlowCard title="Use an LLM as an evaluator"
+                            description="Chain one prompt into another to extract entities from a text response. Plots number of entities." 
+                            filename="chaining-prompts"
+                            onSelect={onSelect}
+            />
+            <ExampleFlowCard title="Measure impact of system message on response"
+                            description="Compares response quality across different ChatGPT system prompts. Visualizes how well it sticks to the instructions to only print Racket code."
+                            filename="comparing-system-msg"
+                            onSelect={onSelect}
+            />
+            <ExampleFlowCard title="Ground truth evaluation for math problems"
+                            description="Uses a tabular data node to evaluate LLM performance on basic math problems. Compares responses to expected answer and plots performance across LLMs."
+                            filename="basic-math"
+                            onSelect={onSelect}
+            />
+            <ExampleFlowCard title="Detect whether OpenAI function call was triggered"
+                            description="Basic example showing whether a given prompt triggered an OpenAI function call. Also shows difference between ChatGPT prior to function calls, and function call version."
+                            filename="basic-function-calls"
+                            onSelect={onSelect}
+            />
+            {/* <ExampleFlowCard title="Test mathematical ability"
+                            description="Evaluate the ability of different LLMs to perform basic math and get the correct answer. Showcases chaining prompt templates and using prompt variables in Evaluate nodes."
+            />
+            <ExampleFlowCard title="Does it conform to spec?"
+                            description="Test how well a prompt and model conforms to a specification (instructed to format its output a certain way). Extracts and parses JSON outputs."
+            /> */}
+          </SimpleGrid> 
+        </Tabs.Panel>
+
+        <Tabs.Panel value="openai-evals" pt="xs">
+          These are flows extracted from the <a href='https://github.com/openai/evals' target='_blank'>OpenAI evals</a> benchmarking CI package.
+        </Tabs.Panel>
+      </Tabs>
+      
     </Modal>
   );
 });
