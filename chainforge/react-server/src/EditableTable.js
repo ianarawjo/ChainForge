@@ -36,6 +36,24 @@ const tableHeaderStyle = {
   paddingBottom: '4px'
 };
 
+/* Set the cursor position to start of innerText in a content editable div. */
+const forceFocusContentEditable = (e) => {
+  // We need to do some jujitsu here, because apparently divs with no text don't autofocus the cursor
+  // properly the first time they are clicked. Instead we (a) detect an empty div and (b) force the cursor to focus on it:
+  if (e.target.innerText.length === 0) {
+    const node = e.target;
+    let range = document.createRange();
+    range.selectNode(node);
+    range.setStart(node, 0);
+    range.setEnd(node, 0);
+
+    let selection = window.getSelection();
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+};
+
 const CellTextarea = ({ initialValue, rowIdx, column, handleSaveCell, onContextMenu }) => {
   const [value, setValue] = useState(initialValue);
 
@@ -74,8 +92,14 @@ const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, hand
         {cols.map(c => {
           const txt = (c.key in row) ? row[c.key] : "";
           return (<td key={`${row.__uid}-${c.key}`} style={{position: 'relative'}}>
-            {/* <p onBlur={() => console.log('changed')} style={{whiteSpace: 'pre-wrap', overflowY: 'scroll', maxHeight: '100px', fontFamily: 'monospace', fontSize: '10pt', lineHeight: '1.2', cursor: 'text'}} contentEditable suppressContentEditableWarning={true}>{txt}</p> */}
-            <CellTextarea initialValue={txt} rowIdx={rowIdx} column={c} handleSaveCell={handleSaveCell} />
+            {/* We use contenteditable because it loads *much* faster than textareas, which is important for big tables. */}
+            <p placeholder={c.header} 
+               onClick={forceFocusContentEditable}
+               onBlur={(e) => handleSaveCell(rowIdx, c.key, e.currentTarget.innerText)} 
+               className='content-editable-div' 
+               contentEditable 
+               suppressContentEditableWarning={true}>{txt}</p>
+            {/* <CellTextarea initialValue={txt} rowIdx={rowIdx} column={c} handleSaveCell={handleSaveCell} /> */}
           </td>);
         })}
       </tr>
@@ -86,10 +110,15 @@ const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, hand
         {columns.map(c => (
           <th key={c.key} style={tableHeaderStyle}>
             <div style={{display: 'flex', justifyContent: 'space-between'}}>
-              <CellTextarea initialValue={c.header} rowIdx={-1} column={c} handleSaveCell={handleSaveCell} />
+              {/* <CellTextarea initialValue={c.header} rowIdx={-1} column={c} handleSaveCell={handleSaveCell} /> */}
+              <p onClick={forceFocusContentEditable}
+                 onBlur={(e) => handleSaveCell(-1, c.key, e.currentTarget.innerText)} 
+                 className='content-editable-div' 
+                 contentEditable 
+                 suppressContentEditableWarning={true}>{c.header}</p>
               <Menu closeOnClickOutside styles={{dropdown: {boxShadow: '1px 1px 4px #ccc'}}}>
                 <Menu.Target>
-                  <IconDots size='12pt' className='table-col-edit-btn' />
+                  <IconDots size='12pt' style={{padding: '0px', marginTop: '8pt', marginLeft: '2pt'}} className='table-col-edit-btn' />
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item key='rename_col' onClick={() => handleRenameColumn(c)}><IconPencil size='10pt' />&nbsp;Rename column</Menu.Item>

@@ -8,7 +8,7 @@ import ReactFlow, {
   useReactFlow,
   useViewport
 } from 'react-flow-renderer';
-import { Button, Menu } from '@mantine/core';
+import { Button, Menu, LoadingOverlay } from '@mantine/core';
 import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation } from '@tabler/icons-react';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
@@ -52,7 +52,7 @@ const nodeTypes = {
   table: TabularDataNode,
 };
 
-const connectionLineStyle = { stroke: '#ddd' };
+// const connectionLineStyle = { stroke: '#ddd' };
 const snapGrid = [16, 16];
 
 const App = () => {
@@ -71,6 +71,9 @@ const App = () => {
 
   // For displaying error messages to user
   const alertModal = useRef(null);
+
+  // For displaying a pending 'loading' status
+  const [isLoading, setIsLoading] = useState(false);
 
   // Helper 
   const getWindowSize = () => ({width: window.innerWidth, height: window.innerHeight});
@@ -127,6 +130,7 @@ const App = () => {
   };
 
   const handleError = (err) => {
+    setIsLoading(false);
     if (alertModal.current)
       alertModal.current.trigger(err.message);
     console.error(err.message);
@@ -287,14 +291,52 @@ const App = () => {
     input.click();
   };
 
+  // Downloads the selected OpenAI eval file (preconverted to a .cforge flow)
+  const importFlowFromOpenAIEval = (evalname) => {
+    // Trigger the 'loading' modal
+    setIsLoading(true);
+
+    fetch(BASE_URL + 'app/fetchOpenAIEval', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+      body: JSON.stringify({
+        name: evalname,
+      }),
+    }, handleError).then(function(response) {
+      return response.json();
+    }, handleError).then(function(json) {
+      // Close the loading modal
+      setIsLoading(false);
+
+      // Detect any issues with the response
+      if (!json) {
+        handleError('Request was sent and received by backend server, but there was no response.');
+        return undefined;
+      } else if (json.error || !json.data) {
+        handleError(json.error || 'Unknown error when fetching file for OpenAI eval from backend server.');
+        return undefined;
+      }
+
+      // Import the JSON to React Flow and import cache data on the backend
+      importFlowFromJSON(json.data);
+    }).catch(handleError);
+  };
+
   // Load flow from examples modal
-  const onSelectExampleFlow = (filename) => {
+  const onSelectExampleFlow = (name, example_category) => {
+    console.log(name, example_category);
+    // Detect a special category of the example flow, and use the right loader for it:
+    if (example_category === 'openai-eval') {
+      importFlowFromOpenAIEval(name);
+      return;
+    }
+    
     // Fetch the example flow data from the backend
     fetch(BASE_URL + 'app/fetchExampleFlow', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
         body: JSON.stringify({
-            'name': filename,
+            'name': name,
         }),
     }, handleError).then(function(res) {
         return res.json();
@@ -314,6 +356,7 @@ const App = () => {
     <div>
       <GlobalSettingsModal ref={settingsModal} />
       <AlertModal ref={alertModal} />
+      <LoadingOverlay visible={isLoading} overlayBlur={1} />
       <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
       <div style={{ height: '100vh', width: '100%', backgroundColor: '#eee' }}>
         <ReactFlow

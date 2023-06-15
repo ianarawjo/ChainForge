@@ -1,5 +1,11 @@
+import re
 from string import Template
 from typing import Dict, List, Union
+
+def escape_dollar_signs(s: str) -> str:
+    pattern = r'\$(?![{])'
+    replaced_string = re.sub(pattern, '$$', s)
+    return replaced_string
 
 class PromptTemplate:
     """
@@ -24,6 +30,9 @@ class PromptTemplate:
             Initialize a PromptTemplate with a string in string.Template format.
             (See https://docs.python.org/3/library/string.html#template-strings for more details.)
         """
+        # NOTE: ChainForge only supports placeholders with braces {}
+        # We detect any $ without { to the right of them, and insert a '$' before it to escape the $.  
+        templateStr = escape_dollar_signs(templateStr)
         try:
             Template(templateStr)
         except Exception:
@@ -188,6 +197,15 @@ class PromptPermutationGenerator:
 
 # Test cases
 if __name__ == '__main__':
+    # Dollar sign escape works 
+    tests = ["What is $2 + $2?", "If I have $4 and I want ${dollars} then how many do I have?", "$4 is equal to ${dollars}?", "${what} is the $400?"]
+    escaped_tests = [escape_dollar_signs(t) for t in tests]
+    print(escaped_tests)
+    assert escaped_tests[0] == "What is $$2 + $$2?"
+    assert escaped_tests[1] == "If I have $$4 and I want ${dollars} then how many do I have?"
+    assert escaped_tests[2] == "$$4 is equal to ${dollars}?"
+    assert escaped_tests[3] == "${what} is the $$400?"
+
     # Single template
     gen = PromptPermutationGenerator('What is the ${timeframe} when ${person} was born?')
     res = [r for r in gen({'timeframe': ['year', 'decade', 'century'], 'person': ['Howard Hughes', 'Toni Morrison', 'Otis Redding']})]

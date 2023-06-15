@@ -110,19 +110,19 @@ const VisNode = ({ data, id }) => {
         const llm_names = getLLMsInResponses(responses);
 
         // If there are variables but no variables are selected and only 1 LLM is present...
-        if (llm_names.length <= 1 && multiSelectVars && multiSelectVars.length > 0 && multiSelectValue.length === 0) {
-            console.warn('No variables selected to plot.');
-            setSelectedLegendItems(null);
-            setPlotLegend(null);
-            setPlotlySpec([]);
-            setPlotlyLayout({});
-            setPlaceholderText(
-                <p style={{maxWidth: '220px', backgroundColor: '#f0f0aa', padding: '10px', fontSize: '10pt'}}>{
-                    "Please select at least one parameter to plot."
-                }</p>
-            )
-            return;
-        }
+        // if (llm_names.length <= 1 && multiSelectVars && multiSelectVars.length > 0 && multiSelectValue.length === 0) {
+        //     console.warn('No variables selected to plot.');
+        //     setSelectedLegendItems(null);
+        //     setPlotLegend(null);
+        //     setPlotlySpec([]);
+        //     setPlotlyLayout({});
+        //     setPlaceholderText(
+        //         <p style={{maxWidth: '220px', backgroundColor: '#f0f0aa', padding: '10px', fontSize: '10pt'}}>{
+        //             "Please select at least one parameter to plot."
+        //         }</p>
+        //     )
+        //     return;
+        // }
 
         // Create Plotly spec here
         const varnames = multiSelectValue;
@@ -499,9 +499,9 @@ const VisNode = ({ data, id }) => {
 
                 // Check for a change in available parameters
                 if (!multiSelectVars || !multiSelectValue || !areSetsEqual(new Set(varnames), new Set(multiSelectVars.map(o => o.value)))) {
-                    setMultiSelectValue(varnames);
+                    setMultiSelectValue([]);
                     setMultiSelectVars(msvars);
-                    setDataPropsForNode(id, { vars: msvars, selected_vars: varnames });
+                    setDataPropsForNode(id, { vars: msvars, selected_vars: [] });
                 }
                 // From here a React effect will detect the changes to these values and display a new plot
             }

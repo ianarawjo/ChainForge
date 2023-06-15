@@ -430,9 +430,11 @@
   .tabular-data-container {
     resize: both;
     overflow: auto;
-    max-width: 800px;
+    /* max-width: 800px; */
+    width: 400px;
     min-width: inherit;
-    max-height: 700px;
+    height: 300px;
+    /* max-height: 700px; */
     border-bottom-style: solid;
     border-right-style: solid;
     border-bottom-width: 1px;
@@ -464,6 +466,23 @@
   }
   .table-col-edit-btn:active {
     background-color: #ddd;
+  }
+  .content-editable-div {
+    white-space: pre-wrap; 
+    overflow-y: scroll;
+    max-height: 150px;
+    font-family: monospace;
+    font-size: 10pt;
+    line-height: 1.2; 
+    cursor: text;
+  }
+  th .content-editable-div {
+    font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  }
+  [contenteditable=true]:empty:not(:focus):before{
+    content:attr(placeholder);
+    color:grey;
+    font-style:italic;
   }
   .add-table-row-btn {
     position: absolute;

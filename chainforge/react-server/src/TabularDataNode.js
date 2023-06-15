@@ -202,11 +202,10 @@ const TabularDataNode = ({ data, id }) => {
   const handleOpenTableContextMenu = (e) => {
     e.preventDefault();
 
-    if (e.target.localName === 'textarea') {
+    if (e.target.localName === 'p') {
       // Some really sketchy stuff to get the row index....
-      // :: We've clicked on an 'input' element. We know that there is a 'td' element 3 levels up, and a 'tr' 4 levels up.
-      // :: NOTE: We can also get the cell clicked on with e.target.parentNode?.parentNode?.parentNode?.cellIndex.
-      const grandparent = e.target.parentNode?.parentNode?.parentNode?.parentNode;
+      // :: We've clicked on an 'input' element. We know that there is a 'td' element 1 level up, and a 'tr' 2 levels up.
+      const grandparent = e.target.parentNode?.parentNode;
       const rowIndex = grandparent?.rowIndex;
       const cellIndex = grandparent?.cellIndex;
       if (rowIndex !== undefined) {  // A cell of the table was right-clicked on
