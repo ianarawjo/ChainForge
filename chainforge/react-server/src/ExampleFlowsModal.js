@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { SimpleGrid, Card, Modal, Image, Group, Text, Button, Badge, Tabs } from '@mantine/core';
+import { SimpleGrid, Card, Modal, Image, Group, Text, Button, Badge, Tabs, Alert, Code } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-
-import { IconChartDots3 } from '@tabler/icons-react';
+import { IconChartDots3, IconAlertCircle } from '@tabler/icons-react';
+import { BASE_URL } from './store';
 
 /** Example flows to help users get started and see what CF can do */
 const ExampleFlowCard = ({ title, description, buttonText, filename, onSelect }) => {
@@ -36,7 +36,7 @@ const ExampleFlowsModal = forwardRef((props, ref) => {
 
   // Callback for when an example flow is selected. Passed the name of the selected flow.
   const onSelect = props.onSelect ? (
-    (filename) => {close(); props.onSelect(filename);}
+    (filename, category) => {close(); props.onSelect(filename, category);}
   ) : undefined;
 
   // This gives the parent access to triggering the modal alert
@@ -97,7 +97,19 @@ const ExampleFlowsModal = forwardRef((props, ref) => {
         </Tabs.Panel>
 
         <Tabs.Panel value="openai-evals" pt="xs">
-          These are flows extracted from the <a href='https://github.com/openai/evals' target='_blank'>OpenAI evals</a> benchmarking CI package.
+          <Text size='sm'>
+            These flows are generated from the <a href='https://github.com/openai/evals' target='_blank'>OpenAI evals</a> benchmarking CI package. 
+            We currently load evals with a common system message, a single 'turn' (prompt), and evaluation types of 'includes', 'match', and 'fuzzy match'.
+          </Text>
+          <ExampleFlowCard title="Evaluate something cool"
+                            description="A description of the OpenAI eval goes here."
+                            filename="oaieval-test"
+                            onSelect={(name) => onSelect(name, 'openai-eval')}
+          /> 
+          {/* <Alert icon={<IconAlertCircle size="2rem" />} title="Bummer!" color="orange" mt="md" pl="sm" styles={{message: {fontSize: '12pt'}, title: {fontSize: '12pt'}}}>
+            We detected that you do not have the <Code>evals</Code> package installed. To load ChainForge flows from OpenAI evals, install <Code>evals</Code> in the Python environment where you are running ChainForge:
+            <Code style={{fontSize: '12pt'}} block mt="sm">pip install evals</Code>
+          </Alert> */}
         </Tabs.Panel>
       </Tabs>
       

@@ -968,6 +968,74 @@ def fetchExampleFlow():
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
+@app.route('/app/fetchOpenAIEval', methods=['POST'])
+def fetchOpenAIEval():
+    """
+        Fetches a preconverted OpenAI eval as a .cforge JSON file.
+
+        First detects if the eval is already in the cache. If the eval is already downloaded, 
+        it will be stored in examples/ folder of the package under a new oaievals directory. 
+        If it's not in the cache, it will download it from the ChainForge webserver.
+
+        POST'd data should be in form:
+        { 
+            name: <str>  # The name of the eval to grab (without .cforge extension)
+        }
+    """
+    # Verify post'd data
+    data = request.get_json()
+    if 'name' not in data:
+        return jsonify({'error': 'Missing "name" parameter to fetchOpenAIEval.'})
+    evalname = data['name']
+
+    # Verify 'examples' directory exists:
+    if not os.path.isdir(EXAMPLES_DIR):
+        dirpath = os.path.dirname(os.path.realpath(__file__))
+        return jsonify({'error': f'Could not find an examples/ directory at path {dirpath}'})
+
+    # Check if an oaievals subdirectory exists; if so, check for the file; if not create it:
+    oaievals_cache_dir = os.path.join(EXAMPLES_DIR, "oaievals")
+    if os.path.isdir(oaievals_cache_dir):
+        filepath = os.path.join(oaievals_cache_dir, evalname + '.cforge')
+        if os.path.isfile(filepath):
+            # File was already downloaded. Load it from cache:
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    filedata = json.load(f)
+            except Exception as e:
+                return jsonify({'error': f"Error parsing OpenAI evals flow at {filepath}: {str(e)}"})
+            ret = jsonify({'data': filedata})
+            ret.headers.add('Access-Control-Allow-Origin', '*')
+            return ret
+        # File was not downloaded
+    else:
+        # Directory does not exist yet; create it
+        try:
+            os.mkdir(oaievals_cache_dir)
+        except Exception as e:
+            return jsonify({'error': f"Error creating a new directory 'oaievals' at filepath {oaievals_cache_dir}: {str(e)}"})
+
+    # Download the preconverted OpenAI eval from the ChainForge webserver
+    import requests
+    # _url = f"https://chainforge.therottingcartridge.com/openai-evals/{evalname}.cforge"
+    _url = "https://raw.githubusercontent.com/ianarawjo/ChainForge/main/chainforge/examples/basic-comparison.cforge"  # testing
+    response = requests.get(_url)
+
+    # Check if the request was successful (status code 200)
+    if response.status_code == 200:
+        # Parse the response as JSON
+        filedata = response.json(encoding='utf8')
+
+        # Store to the cache:
+        with open(os.path.join(oaievals_cache_dir, evalname + '.cforge'), 'w', encoding='utf8') as f:
+            json.dump(filedata, f)
+    else:
+        print("Error:", response.status_code)
+        return jsonify({'error': f"Error downloading OpenAI evals flow from {_url}: status code {response.status_code}"})
+
+    ret = jsonify({'data': filedata})
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
 
 def run_server(host="", port=8000, cmd_args=None):
     if cmd_args is not None and cmd_args.dummy_responses:

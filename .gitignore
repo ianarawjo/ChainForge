@@ -2,6 +2,7 @@
 chainforge/react-server/node_modules
 __pycache__
 chainforge/cache
+chainforge/examples/oaievals/
 
 # package build folders (sdist)
 chainforge.egg-info/
