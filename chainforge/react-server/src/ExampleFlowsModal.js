@@ -216,7 +216,7 @@ const ExampleFlowCard = ({ title, description, buttonText, filename, onSelect })
         {description}
       </Text>
 
-      <Button onClick={() => onSelect(filename)} variant="light" color="blue" fullWidth mt="md" radius="md">
+      <Button onClick={() => onSelect(filename)} variant="light" color="blue" fullWidth size='sm' mt="md" radius="md">
         {buttonText ? buttonText : 'Try me'}
       </Button>
       
