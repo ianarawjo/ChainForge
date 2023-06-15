@@ -21,6 +21,7 @@ setup(
         "flask[async]",
         "flask_cors",
         "flask_socketio",
+        "requests",
         "python-socketio",
         "gevent-websocket",
         "urllib3==1.26.6",
