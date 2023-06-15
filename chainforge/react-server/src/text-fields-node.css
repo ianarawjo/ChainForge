@@ -432,7 +432,8 @@
     overflow: auto;
     max-width: 800px;
     min-width: inherit;
-    max-height: 700px;
+    height: 300px;
+    /* max-height: 700px; */
     border-bottom-style: solid;
     border-right-style: solid;
     border-bottom-width: 1px;
@@ -464,6 +465,20 @@
   }
   .table-col-edit-btn:active {
     background-color: #ddd;
+  }
+  .content-editable-div {
+    white-space: pre-wrap; 
+    overflow-y: scroll;
+    max-height: 150px;
+    font-family: monospace;
+    font-size: 10pt;
+    line-height: 1.2; 
+    cursor: text;
+  }
+  [contenteditable=true]:empty:not(:focus):before{
+    content:attr(placeholder);
+    color:grey;
+    font-style:italic;
   }
   .add-table-row-btn {
     position: absolute;

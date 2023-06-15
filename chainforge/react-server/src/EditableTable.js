@@ -36,6 +36,19 @@ const tableHeaderStyle = {
   paddingBottom: '4px'
 };
 
+/* Set the cursor position to start of innerText in a content editable div. */
+const forceFocusContentEditable = (node) => {
+  let range = document.createRange();
+  range.selectNode(node);
+  range.setStart(node, 0);
+  range.setEnd(node, 0);
+
+  let selection = window.getSelection();
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+};
+
 const CellTextarea = ({ initialValue, rowIdx, column, handleSaveCell, onContextMenu }) => {
   const [value, setValue] = useState(initialValue);
 
@@ -74,8 +87,19 @@ const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, hand
         {cols.map(c => {
           const txt = (c.key in row) ? row[c.key] : "";
           return (<td key={`${row.__uid}-${c.key}`} style={{position: 'relative'}}>
-            {/* <p onBlur={() => console.log('changed')} style={{whiteSpace: 'pre-wrap', overflowY: 'scroll', maxHeight: '100px', fontFamily: 'monospace', fontSize: '10pt', lineHeight: '1.2', cursor: 'text'}} contentEditable suppressContentEditableWarning={true}>{txt}</p> */}
-            <CellTextarea initialValue={txt} rowIdx={rowIdx} column={c} handleSaveCell={handleSaveCell} />
+            {/* We use contenteditable because it loads *much* faster than textareas, which is important for big tables. */}
+            <p placeholder={c.header} 
+               onClick={(e) => {
+                // We need to do some jujitsu here, because apparently divs with no text don't autofocus the cursor
+                // properly the first time they are clicked. Instead we (a) detect an empty div and (b) force the cursor to focus on it:
+                if (e.target.innerText.length === 0)
+                  forceFocusContentEditable(e.target);
+               }}
+               onBlur={(e) => handleSaveCell(rowIdx, c.key, e.currentTarget.innerText)} 
+               className='content-editable-div' 
+               contentEditable 
+               suppressContentEditableWarning={true}>{txt}</p>
+            {/* <CellTextarea initialValue={txt} rowIdx={rowIdx} column={c} handleSaveCell={handleSaveCell} /> */}
           </td>);
         })}
       </tr>

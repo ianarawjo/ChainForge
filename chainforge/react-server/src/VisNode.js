@@ -499,9 +499,9 @@ const VisNode = ({ data, id }) => {
 
                 // Check for a change in available parameters
                 if (!multiSelectVars || !multiSelectValue || !areSetsEqual(new Set(varnames), new Set(multiSelectVars.map(o => o.value)))) {
-                    setMultiSelectValue(varnames);
+                    setMultiSelectValue([]);
                     setMultiSelectVars(msvars);
-                    setDataPropsForNode(id, { vars: msvars, selected_vars: varnames });
+                    setDataPropsForNode(id, { vars: msvars, selected_vars: [] });
                 }
                 // From here a React effect will detect the changes to these values and display a new plot
             }

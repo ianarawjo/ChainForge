@@ -296,15 +296,16 @@ const ExampleFlowsModal = forwardRef((props, ref) => {
         </Tabs.Panel>
 
         <Tabs.Panel value="openai-evals" pt="xs">
-          <Text size='sm'>
+          <Text size='sm' pl='sm'>
             These flows are generated from the <a href='https://github.com/openai/evals' target='_blank'>OpenAI evals</a> benchmarking CI package. 
-            We currently load evals with a common system message, a single 'turn' (prompt), and evaluation types of 'includes', 'match', and 'fuzzy match'.
+            We currently load evals with a common system message, a single 'turn' (prompt), and evaluation types of 'includes', 'match', and 'fuzzy match',
+            and a reasonable number of prompts. &nbsp;<i>Warning: some evals include tables with 1000 prompts or more. </i>
           </Text>
-          <SimpleGrid cols={3} spacing='sm' verticalSpacing='sm'>
+          <SimpleGrid cols={3} spacing='sm' verticalSpacing='sm' mt="md">
           {
             Object.keys(OAIEVALS).map(evalname => (
               <ExampleFlowCard title={evalname}
-                            description={OAIEVALS[evalname] || 'No description.'}
+                            description={OAIEVALS[evalname] || 'No description was provided.'}
                             filename={evalname}
                             onSelect={(name) => onSelect(name, 'openai-eval')}
               /> 
