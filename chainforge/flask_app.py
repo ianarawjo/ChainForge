@@ -1023,7 +1023,7 @@ def fetchOpenAIEval():
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
         # Parse the response as JSON
-        filedata = response.json(encoding='utf8')
+        filedata = response.json()
 
         # Store to the cache:
         with open(os.path.join(oaievals_cache_dir, evalname + '.cforge'), 'w', encoding='utf8') as f:

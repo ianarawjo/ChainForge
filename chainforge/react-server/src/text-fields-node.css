@@ -430,7 +430,8 @@
   .tabular-data-container {
     resize: both;
     overflow: auto;
-    max-width: 800px;
+    /* max-width: 800px; */
+    width: 400px;
     min-width: inherit;
     height: 300px;
     /* max-height: 700px; */
@@ -474,6 +475,9 @@
     font-size: 10pt;
     line-height: 1.2; 
     cursor: text;
+  }
+  th .content-editable-div {
+    font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   }
   [contenteditable=true]:empty:not(:focus):before{
     content:attr(placeholder);

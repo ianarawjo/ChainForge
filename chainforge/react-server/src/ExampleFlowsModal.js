@@ -292,7 +292,7 @@ const ExampleFlowsModal = forwardRef((props, ref) => {
 
         <Tabs.Panel value="openai-evals" pt="xs">
           <Text size='sm' pl='sm'>
-            These flows are generated from the <a href='https://github.com/openai/evals' target='_blank'>OpenAI evals</a> benchmarking CI package. 
+            These flows are generated from the <a href='https://github.com/openai/evals' target='_blank'>OpenAI evals</a> benchmarking package. 
             We currently load evals with a common system message, a single 'turn' (prompt), and evaluation types of 'includes', 'match', and 'fuzzy match',
             and a reasonable number of prompts. &nbsp;<i>Warning: some evals include tables with 1000 prompts or more. </i>
           </Text>
