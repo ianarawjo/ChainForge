@@ -159,12 +159,6 @@ const VisNode = ({ data, id }) => {
         if (typeof_eval_res.includes('KeyValue')) {
             metric_axes_labels = Object.keys(responses[0].eval_res.items[0]);
             num_metrics = metric_axes_labels.length;
-
-            // if (metric_axes_labels.length > 1)
-            //     throw Error('Dict metrics with more than one key are currently unsupported.')
-            // TODO: When multiple metrics are present, and 1 var is selected (can be multiple LLMs as well), 
-            // default to Parallel Coordinates plot, with the 1 var values on the y-axis as colored groups, and metrics on x-axis.
-            // For multiple LLMs, add a control drop-down selector to switch the LLM visualized in the plot.
         }
 
         const get_var = (resp_obj, varname, empty_str_if_undefined=false) => {
@@ -184,6 +178,77 @@ const VisNode = ({ data, id }) => {
             if (typeof_eval_res.includes('KeyValue'))
                 return eval_res_obj.items.map(item => item[metric_axes_labels[0]]);
             return eval_res_obj.items;
+        };
+
+        // Only for Boolean data
+        const plot_accuracy = (resp_to_x, group_type) => {
+            // Plots the percentage of 'true' evaluations out of the total number of evaluations,
+            // per category of 'resp_to_x', as a horizontal bar chart, with different colors per category.
+            let names = new Set(responses.map(resp_to_x));
+            const shortnames = genUniqueShortnames(names);   
+            let name_idx = 0;
+            let x_items = [];
+            let y_items = [];
+            let marker_colors = [];
+            for (const name of names) {
+                 // Add a shortened version of the name as the y-tick
+                 y_items.push(shortnames[name]);
+                 
+                // Calculate how much percentage a single 'true' value counts for:
+                const num_eval_scores = responses.reduce((acc, r) => {
+                    if (resp_to_x(r) !== name) return acc;
+                    else return acc + get_items(r.eval_res).length;
+                }, 0);
+                const perc_scalar = 100 / num_eval_scores;
+
+                // Calculate the length of the bar
+                x_items.push(
+                    responses.reduce((acc, r) => {
+                        if (resp_to_x(r) !== name) return acc;
+                        else return acc + get_items(r.eval_res).filter(res => res === true).length * perc_scalar;
+                    }, 0)
+                )
+
+                // Lookup the color per LLM when displaying LLM differences, 
+                // otherwise use the palette for displaying variables.
+                const color = (group_type === 'llm') ? 
+                                getColorForLLMAndSetIfNotFound(name) 
+                            :   varcolors[name_idx % varcolors.length];
+                marker_colors.push(color);
+                name_idx += 1;
+            }
+            
+            // Set the left margin to fit the text
+            layout.margin.l = Math.max(...y_items.map(i => i.length)) * 9;
+
+            spec = [{
+                type: 'bar',
+                y: y_items,
+                x: x_items,
+                marker: {
+                    color: marker_colors,
+                },
+                // error_x: { // TODO: Error bars
+                //     type: 'data',
+                //     array: [0.5, 1, 2],
+                //     visible: true
+                // },
+                hovertemplate: '%{x:.2f}\%<extra>%{y}</extra>',
+                showtrace: false,
+                orientation: 'h',
+            }];
+            layout.xaxis = { range: [0, 100], tickmode: "linear", tick0: 0, dtick: 10 };
+
+            if (metric_axes_labels.length > 0)
+                layout.xaxis = { 
+                    title: { font: {size: 12}, text: metric_axes_labels[0] },
+                    ...layout.xaxis,
+                };
+            else
+                layout.xaxis = {
+                    title: { font: {size: 12}, text: '% percent true' },
+                    ...layout.xaxis,
+                };
         };
 
         const plot_simple_boxplot = (resp_to_x, group_type) => {
@@ -311,6 +376,7 @@ const VisNode = ({ data, id }) => {
                 }
             });
             layout.boxmode = 'group';
+            layout.bargap = 0.5;
 
             if (metric_axes_labels.length > 0)
                 layout.xaxis = { 
@@ -404,7 +470,10 @@ const VisNode = ({ data, id }) => {
             if (varnames.length === 0) {
                 // No variables means they used a single prompt (no template) to generate responses
                 // (Users are likely evaluating differences in responses between LLMs)
-                plot_simple_boxplot((r) => r.llm, 'llm');
+                if (typeof_eval_res === 'Boolean')
+                    plot_accuracy((r) => r.llm, 'llm')
+                else
+                    plot_simple_boxplot((r) => r.llm, 'llm');
             }
             else if (varnames.length === 1) {
                 // 1 var; numeric eval
