@@ -70,8 +70,7 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 ## Future Planned Features
 
 Highest priority:
-- **Ground truth evaluation flows**: Add more examples to Example Flows which show how to measure against a ground truth (a common type of evaluation, e.g. see OpenAI evals).
-- **Out-of-the-box benchmarks**: Basic integration with common benchmarks like HumanEval and OpenAI evals, so that, with the click of a button, you can check a model against a popular benchmark, no additional coding required. 
+- **Improved vis and inspect nodes**: Better UX and more features, such as collapsing variable groups in response inspectors and more control over visualizations displayed in vis nodes beyond the default
 - **LLM annotator nodes**: Select an LLM to evaluate and "tag" responses (for instance, named-entity recognition). Currently, one can chain prompt nodes into prompt nodes, but the final output loses information on which LLM generated the input response.
 
 Medium-to-low priority:
