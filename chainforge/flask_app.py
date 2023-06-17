@@ -604,7 +604,6 @@ async def queryLLM():
                     # for the front-end it is more informative to store the user-provided nickname. 
                     response['llm'] = llm_nickname
 
-                    print(f"collected response from {llm.name}:", str(response))
                     num_resps += len(response['responses'])
                     resps.append(response)
                 

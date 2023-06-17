@@ -527,7 +527,7 @@ const PromptNode = ({ data, id }) => {
                 // Remove progress bars
                 setProgress(undefined);
                 setProgressAnimated(true);
-                resetLLMItemsProgress()
+                resetLLMItemsProgress();
                 
                 // Save prompt text so we remember what prompt we have responses cache'd for:
                 setPromptTextOnLastRun(promptText);
@@ -596,8 +596,7 @@ const PromptNode = ({ data, id }) => {
         .then(open_progress_listener_socket)
         .then(query_llms)
         .catch(rejected);
-    
-  }
+  };
 
   const handleNumGenChange = (event) => {
     let n = event.target.value;

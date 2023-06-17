@@ -467,6 +467,7 @@ def merge_response_objs(resp_obj_A: Union[dict, None], resp_obj_B: Union[dict, N
         "query": resp_obj_B['query'],
         "llm": resp_obj_B['llm'],
         "info": resp_obj_B['info'],
+        "metavars": resp_obj_B['metavars'],
     }
 
 def create_dir_if_not_exists(path: str) -> None:

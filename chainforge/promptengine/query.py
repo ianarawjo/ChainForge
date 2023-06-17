@@ -51,8 +51,9 @@ class PromptPipeline:
         # Query LLM with each prompt, yield + cache the responses
         tasks = []
         max_req, wait_secs = RATE_LIMITS[llm] if llm in RATE_LIMITS else (1, 0)
+        num_queries_sent = -1
         
-        for num_queries, prompt in enumerate(self.gen_prompts(properties)):
+        for prompt in self.gen_prompts(properties):
             if isinstance(prompt, PromptTemplate) and not prompt.is_concrete():
                 raise Exception(f"Cannot send a prompt '{prompt}' to LLM: Prompt is a template.")
 
@@ -65,7 +66,7 @@ class PromptPipeline:
             
             # First check if there is already a response for this item under these settings. If so, we can save an LLM call:
             if cached_resp and len(extracted_resps) >= n:
-                print(f"   - Found cache'd response for prompt {prompt_str}. Using...")
+                print(f" - Found cache'd response for prompt {prompt_str}. Using...")
                 yield {
                     "prompt": prompt_str,
                     "query": cached_resp["query"],
@@ -79,6 +80,8 @@ class PromptPipeline:
                 }
                 continue
 
+            num_queries_sent += 1
+
             if max_req > 1:                
                 # Call the LLM asynchronously to generate a response, sending off
                 # requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
@@ -87,7 +90,7 @@ class PromptPipeline:
                                               n=n, 
                                               temperature=temperature, 
                                               past_resp_obj=cached_resp, 
-                                              query_number=num_queries, 
+                                              query_number=num_queries_sent, 
                                               rate_limit_batch_size=max_req, 
                                               rate_limit_wait_secs=wait_secs, 
                                               **llm_params))
@@ -123,6 +126,8 @@ class PromptPipeline:
                 # Save the current state of cache'd responses to a JSON file
                 responses[resp_obj["prompt"]] = resp_obj
                 self._cache_responses(responses)
+
+                print(f" - collected response from {llm.value} for prompt:", resp_obj['prompt'])
 
                 # Yield the response
                 yield resp_obj
@@ -161,6 +166,8 @@ class PromptPipeline:
             # NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
             responses[resp_obj["prompt"]] = resp_obj
             self._cache_responses(responses)
+
+            print(f" - collected response from {llm.value} for prompt:", resp_obj['prompt'])
 
             # Yield the response
             yield resp_obj

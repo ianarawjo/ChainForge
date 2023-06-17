@@ -213,7 +213,7 @@ const VisNode = ({ data, id }) => {
                 // otherwise use the palette for displaying variables.
                 const color = (group_type === 'llm') ? 
                                 getColorForLLMAndSetIfNotFound(name) 
-                            :   varcolors[name_idx % varcolors.length];
+                            :   getColorForLLMAndSetIfNotFound(responses[0].llm);
                 marker_colors.push(color);
                 name_idx += 1;
             }
@@ -303,6 +303,7 @@ const VisNode = ({ data, id }) => {
                         orientation: 'h',
                     });
                     layout.barmode = "stack";
+                    layout.yaxis = { showticklabels: true, dtick: 1, type: 'category' };
                 } else {
                     // Plot a boxplot for all other cases.
                     spec.push({
@@ -324,6 +325,7 @@ const VisNode = ({ data, id }) => {
             if (metric_axes_labels.length > 0)
                 layout.xaxis = { 
                     title: { font: {size: 12}, text: metric_axes_labels[0] },
+                    ...layout.xaxis,
                 };
         };
 
@@ -478,8 +480,13 @@ const VisNode = ({ data, id }) => {
             else if (varnames.length === 1) {
                 // 1 var; numeric eval
                 if (llm_names.length === 1) {
-                    // Simple box plot, as there is only a single LLM in the response
-                    plot_simple_boxplot((r) => get_var_and_trim(r, varnames[0]), 'var');
+                    if (typeof_eval_res === 'Boolean')
+                        // Accuracy plot per value of the selected variable:
+                        plot_accuracy((r) => get_var_and_trim(r, varnames[0]), 'var');
+                    else {
+                        // Simple box plot, as there is only a single LLM in the response
+                        plot_simple_boxplot((r) => get_var_and_trim(r, varnames[0]), 'var');
+                    }
                 } else {
                     // There are multiple LLMs in the response; do a grouped box plot by LLM.
                     // Note that 'name' is now the LLM, and 'x' stores the value of the var: 
