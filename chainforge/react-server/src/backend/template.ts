@@ -1,0 +1,349 @@
+
+function len(o: object | string | Array<any>): number {
+    // Acts akin to Python's builtin 'len' method
+    if (Array.isArray(o)) {
+        return o.length;
+    } else if (typeof o === 'object') {
+        return Object.keys(o).length;
+    } else if (typeof o === 'string') {
+        return o.length;
+    } else {
+        const typ = typeof o;
+        throw new Error(`Unsupported type ${typ} passed to len() method.`)
+    }
+}
+
+function isDict(o: any): boolean {
+    return typeof o === 'object' && !Array.isArray(o);
+}
+
+function escape_dollar_signs(s: string): string {
+    const pattern = /\$(?![{])/g;
+    const replaced_string = s.replace(pattern, '$$');
+    return replaced_string;
+}
+
+class StringTemplate {
+    val: string;
+    /**
+     * Javascript's in-built template literals is nowhere as good
+     * as Python's Template in the string library. We need to recreate
+     * Python's Template class here for the below to work. 
+     */
+    constructor(str: string) {
+        this.val = str;
+    }
+
+    safe_substitute(sub_dict: { [key: string]: any }): string {
+        // Safely substitutes the template variables 'key' for the passed values,
+        // soft-failing for any keys which were not found.
+        return "Not yet implemented";
+    }
+
+    has_vars(): boolean {
+        // Returns whether or not the template string has variables ${}
+        // TO BE IMPLEMENTED!
+        return false;
+    }
+}
+
+class PromptTemplate {
+    /**
+    Wrapper around string.Template. Use to generate prompts fast.
+
+    Example usage:
+        prompt_temp = PromptTemplate('Can you list all the cities in the country ${country} by the cheapest ${domain} prices?')
+        concrete_prompt = prompt_temp.fill({
+            "country": "France",
+            "domain": "rent"
+        });
+        print(concrete_prompt)
+
+        # Fill can also fill the prompt only partially, which gives us a new prompt template: 
+        partial_prompt = prompt_temp.fill({
+            "domain": "rent"
+        });
+        print(partial_prompt)
+    */
+    template: string; 
+    fill_history: { [key: string]: any };
+    metavars: { [key: string]: any };
+
+    constructor(templateStr: string) {
+        /** 
+            Initialize a PromptTemplate with a string in string.Template format.
+            (See https://docs.python.org/3/library/string.html#template-strings for more details.)
+
+            NOTE: ChainForge only supports placeholders with braces {}
+            We detect any $ without { to the right of them, and insert a '$' before it to escape the $.  
+        */
+        templateStr = escape_dollar_signs(templateStr);
+        try {
+            new StringTemplate(templateStr);
+        } catch (err) {
+            throw new Error(`Invalid template formatting for string: ${templateStr}`);
+        }
+    
+        this.template = templateStr;
+        this.fill_history = {};
+        this.metavars = {};
+    }
+
+    toString(): string {
+        return this.template;
+    }
+    
+    toValue(): string {
+        return this.toString();
+    }
+    
+    has_var(varname: string): boolean {
+        // Returns True if the template has a variable with the given name.
+        let sub_dict = {};
+        sub_dict[varname] = '_';
+        const subbed_str = new StringTemplate(this.template).safe_substitute({varname: '_'});
+        return subbed_str !== this.template; // if the strings differ, a replacement occurred 
+    }
+
+    is_concrete(): boolean {
+        // Returns True if no template variables are left in template string.
+        return new StringTemplate(this.template).has_vars();
+    }
+        
+    fill(paramDict: { [key: string]: any }): PromptTemplate {
+        /** 
+            Formats the template string with the given parameters, returning a new PromptTemplate.
+            Can return a partial completion. 
+
+            NOTE: paramDict values can be in a special form: {text: <str>, fill_history: {varname: <str>}}
+                  in order to bundle in any past fill history that is lost in the current text.
+
+            Example usage:
+                prompt = prompt_template.fill({
+                    "className": className,
+                    "library": "Kivy",
+                    "PL": "Python"
+                });
+        */
+        // Check for special 'past fill history' format:
+        let past_fill_history = {};
+        let past_metavars = {};
+        let some_key = Object.keys(paramDict).pop();
+        let some_val = some_key ? paramDict[some_key] : undefined;
+        if (len(paramDict) > 0 && isDict(some_val)) {
+            // Transfer over the fill history and metavars
+            Object.values(paramDict).forEach(obj => {
+                if ("fill_history" in obj)
+                    past_fill_history = {...obj['fill_history'], ...past_fill_history}
+                if ("metavars" in obj)
+                    past_metavars = {...obj['metavars'], ...past_metavars}
+            });
+
+            // Recreate the param dict from just the 'text' property of the fill object
+            let newParamDict = {};
+            Object.entries(paramDict).forEach(([param, obj]) => {
+                newParamDict[param] = obj['text'];
+            });
+            paramDict = newParamDict;
+        }
+
+        let filled_pt = new PromptTemplate(
+            new StringTemplate(this.template).safe_substitute(paramDict)
+        );
+
+        // Deep copy prior fill history of this PromptTemplate from this version over to new one
+        filled_pt.fill_history = JSON.parse(JSON.stringify(this.fill_history));
+        filled_pt.metavars = JSON.parse(JSON.stringify(this.metavars));
+
+        // Append any past history passed as vars:
+        Object.entries(past_fill_history).forEach(([key, val]) => {
+            if (key in filled_pt.fill_history)
+                console.log(`"Warning: PromptTemplate already has fill history for key ${key}.`);
+            filled_pt.fill_history[key] = val;
+        });
+        
+        // Append any metavars, overwriting existing ones with the same key
+        Object.entries(past_metavars).forEach(([key, val]) => {
+            filled_pt.metavars[key] = val;
+        }); 
+
+        // Add the new fill history using the passed parameters that we just filled in
+        Object.entries(paramDict).forEach(([key, val]) => {
+            if (key in filled_pt.fill_history)
+                console.log(`"Warning: PromptTemplate already has fill history for key ${key}.`);
+            filled_pt.fill_history[key] = val;
+        });
+        
+        return filled_pt;
+    }
+}
+
+class PromptPermutationGenerator {
+    /** 
+    Given a PromptTemplate and a parameter dict that includes arrays of items, 
+    generate all the permutations of the prompt for all permutations of the items.
+
+    NOTE: Items can be in a special form: {text: <str>, fill_history: {varname: <str>}}
+          in order to bundle in any past fill history that is lost in the current text.
+
+    Example usage:
+        prompt_gen = PromptPermutationGenerator('Can you list all the cities in the country ${country} by the cheapest ${domain} prices?')
+        for prompt in prompt_gen({"country":["Canada", "South Africa", "China"], 
+                                  "domain": ["rent", "food", "energy"]}):
+            print(prompt)
+    */
+    template: string | PromptTemplate;
+
+    constructor(template: PromptTemplate | string) {
+        if (typeof template === 'string')
+            template = new PromptTemplate(template);
+        this.template = template;
+    }
+    
+    _gen_perm(template: PromptTemplate, params_to_fill: Array<string>, paramDict: { [key: string]: any }): Array<PromptTemplate> {
+        if (len(params_to_fill) === 0) return [];
+
+        // Extract the first param that occurs in the current template
+        let param: string | undefined = undefined;
+        let params_left: Array<string> = params_to_fill;
+        for (let i = 0; i < params_to_fill.length; i++) {
+            const p = params_to_fill[i];
+            if (template.has_var(p)) {
+                param = p;
+                params_left = params_to_fill.filter(_p => _p !== p);
+                break;
+            }
+        }   
+        
+        if (param === undefined)
+            return [template];
+
+        // Generate new prompts by filling in its value(s) into the PromptTemplate
+        let val = paramDict[param];
+        let new_prompt_temps: Array<PromptTemplate> = [];
+        if (Array.isArray(val)) {
+            val.forEach(v => {
+                if (param === undefined) return;
+
+                let param_fill_dict = {};
+                param_fill_dict[param] = v;
+
+                /* If this var has an "associate_id", then it wants to "carry with"
+                   values of other prompt parameters with the same id. 
+                   We have to find any parameters with values of the same id, 
+                   and fill them in alongside the initial parameter v: */
+                if (isDict(v) && "associate_id" in v) {
+                    let v_associate_id = v["associate_id"];
+                    params_left.forEach(other_param => {
+                        if (template.has_var(other_param) && Array.isArray(paramDict[other_param])) {
+                            for (let i = 0; i < paramDict[other_param].length; i++) {
+                                const ov = paramDict[other_param][i];
+                                if (isDict(ov) && ov["associate_id"] === v_associate_id) {
+                                    // This is a match. We should add the val to our param_fill_dict:
+                                    param_fill_dict[other_param] = ov;
+                                    break;
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Fill the template with the param values and append it to the list
+                new_prompt_temps.push(template.fill(param_fill_dict));
+            });  
+        } 
+        else if (typeof val === 'string') {
+            let sub_dict = {};
+            sub_dict[param] = val;
+            new_prompt_temps = [template.fill(sub_dict)];
+        } 
+        else
+            throw new Error("Value of prompt template parameter is not a list or a string, but of type " + (typeof val).toString());
+        
+        // Recurse
+        if (len(params_left) === 0)
+            return new_prompt_temps;
+        else {
+            let res: Array<PromptTemplate> = [];
+            new_prompt_temps.forEach(p => {
+                res.push(...this._gen_perm(p, params_left, paramDict));
+            }); 
+            return res
+        }
+    }
+
+    // Generator class method to yield permutations
+    *call(paramDict: { [key: string]: any }): Generator<PromptTemplate, boolean, PromptTemplate> {
+        let template = (typeof this.template === 'string') ? new PromptTemplate(this.template) : this.template;
+
+        if (len(paramDict) === 0) {
+            yield template;
+            return true; // done
+        }
+
+        for (let p of this._gen_perm(template, Object.keys(paramDict), paramDict))
+            yield p;
+        return true; // done
+    }
+}
+
+// # Test cases
+// if __name__ == '__main__':
+//     # Dollar sign escape works 
+//     tests = ["What is $2 + $2?", "If I have $4 and I want ${dollars} then how many do I have?", "$4 is equal to ${dollars}?", "${what} is the $400?"]
+//     escaped_tests = [escape_dollar_signs(t) for t in tests]
+//     print(escaped_tests)
+//     assert escaped_tests[0] == "What is $$2 + $$2?"
+//     assert escaped_tests[1] == "If I have $$4 and I want ${dollars} then how many do I have?"
+//     assert escaped_tests[2] == "$$4 is equal to ${dollars}?"
+//     assert escaped_tests[3] == "${what} is the $$400?"
+
+//     # Single template
+//     gen = PromptPermutationGenerator('What is the ${timeframe} when ${person} was born?')
+//     res = [r for r in gen({'timeframe': ['year', 'decade', 'century'], 'person': ['Howard Hughes', 'Toni Morrison', 'Otis Redding']})]
+//     for r in res:
+//         print(r)
+//     assert len(res) == 9
+
+//     # Nested templates
+//     gen = PromptPermutationGenerator('${prefix}... ${suffix}')
+//     res = [r for r in gen({
+//         'prefix': ['Who invented ${tool}?', 'When was ${tool} invented?', 'What can you do with ${tool}?'],
+//         'suffix': ['Phrase your answer in the form of a ${response_type}', 'Respond with a ${response_type}'],
+//         'tool': ['the flashlight', 'CRISPR', 'rubber'],
+//         'response_type': ['question', 'poem', 'nightmare']
+//     })]
+//     for r in res:
+//         print(r)
+//     assert len(res) == (3*3)*(2*3)
+
+//     # 'Carry together' vars with 'metavar' data attached
+//     # NOTE: This feature may be used when passing rows of a table, so that vars that have associated values,
+//     #       like 'inventor' with 'tool', 'carry together' when being filled into the prompt template. 
+//     #       In addition, 'metavars' may be attached which are, commonly, the values of other columns for that row, but
+//     #       columns which weren't used to fill in the prompt template explcitly.
+//     gen = PromptPermutationGenerator('What ${timeframe} did ${inventor} invent the ${tool}?')
+//     res = [r for r in gen({
+//         'inventor': [
+//             {'text': "Thomas Edison", "fill_history": {}, "associate_id": "A", "metavars": { "year": 1879 }},
+//             {'text': "Alexander Fleming", "fill_history": {}, "associate_id": "B", "metavars": { "year": 1928 }},
+//             {'text': "William Shockley", "fill_history": {}, "associate_id": "C",  "metavars": { "year": 1947 }},
+//         ],
+//         'tool': [
+//             {'text': "lightbulb", "fill_history": {}, "associate_id": "A"},
+//             {'text': "penicillin", "fill_history": {}, "associate_id": "B"},
+//             {'text': "transistor", "fill_history": {}, "associate_id": "C"},
+//         ],
+//         'timeframe': [ "year", "decade", "century" ]
+//     })]
+//     for r in res:
+//         r_str = str(r)
+//         print(r_str, r.metavars)
+//         assert "year" in r.metavars
+//         if "Edison" in r_str:
+//             assert "lightbulb" in r_str
+//         elif "Fleming" in r_str:
+//             assert "penicillin" in r_str
+//         elif "Shockley" in r_str:
+//             assert "transistor" in r_str
+//     assert len(res) == 3*3
