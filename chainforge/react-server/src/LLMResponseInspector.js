@@ -4,8 +4,8 @@
  * Separated from ReactFlow node UI so that it can 
  * be deployed in multiple locations.  
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MultiSelect, Badge } from '@mantine/core';
+import React, { useState, useEffect, useRef } from 'react';
+import { MultiSelect } from '@mantine/core';
 import * as XLSX from 'xlsx';
 import useStore from './store';
 

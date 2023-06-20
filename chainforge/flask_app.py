@@ -106,7 +106,7 @@ class ResponseInfo:
     def __str__(self):
         return self.text
     
-    def getMarkdownAST(self):
+    def asMarkdownAST(self):
         import mistune
         md_ast_parser = mistune.create_markdown(renderer='ast')
         return md_ast_parser(self.text)

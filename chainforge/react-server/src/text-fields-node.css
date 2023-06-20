@@ -171,6 +171,15 @@
     padding-top: 2px;
     padding-bottom: 0px;
     max-height: 90px;
+    max-width: 100%;
+  }
+  .eval-inspect-response-footer {
+    margin: 10px -9px -9px -9px;
+    max-height: 100px;
+    overflow-y: auto;
+    background-color: #ceeaf5b1; 
+    /* #cef5dab1; */
+    cursor: zoom-in;
   }
 
   .ace-editor-container {

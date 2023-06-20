@@ -1,9 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
+import { Button } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
-import { IconTerminal } from '@tabler/icons-react'
+import { IconTerminal, IconSearch } from '@tabler/icons-react'
 import {BASE_URL} from './store';
+import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 
 // Ace code editor
 import AceEditor from "react-ace";
@@ -23,9 +25,13 @@ const EvaluatorNode = ({ data, id }) => {
   // For displaying error messages to user
   const alertModal = useRef(null);
 
+  // For a way to inspect responses without having to attach a dedicated node
+  const inspectModal = useRef(null);
+
   const [codeText, setCodeText] = useState(data.code);
   const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
   const [lastRunLogs, setLastRunLogs] = useState("");
+  const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
   const [mapScope, setMapScope] = useState('response');
 
@@ -51,7 +57,6 @@ const EvaluatorNode = ({ data, id }) => {
     }
 
     // Double-check that the code includes an 'evaluate' function:
-    const indiv_resps = mapScope === 'response';
     if (codeText.search(/def\s+evaluate\s*(.*):/) === -1) {
       const err_msg = `Could not find required function 'evaluate'. Make sure you have defined an 'evaluate' function.`;
       setStatus('error');
@@ -61,6 +66,7 @@ const EvaluatorNode = ({ data, id }) => {
 
     setStatus('loading');
     setLastRunLogs("");
+    setLastResponses([]);
 
     const rejected = (err_msg) => {
       setStatus('error');
@@ -113,6 +119,7 @@ const EvaluatorNode = ({ data, id }) => {
             }
         });
 
+        setLastResponses(json.responses);
         setCodeTextOnLastRun(codeTextOnRun);
         setLastRunSuccess(true);
         setStatus('ready');
@@ -127,6 +134,11 @@ const EvaluatorNode = ({ data, id }) => {
     if (status !== 'none') { setStatus('none'); }
   };
 
+  const showResponseInspector = useCallback(() => {
+    if (inspectModal && inspectModal.current && lastResponses)
+        inspectModal.current.trigger();
+  }, [inspectModal, lastResponses]);
+
   return (
     <div className="evaluator-node cfnode">
       <NodeLabel title={data.title || 'Python Evaluator Node'} 
@@ -138,6 +150,7 @@ const EvaluatorNode = ({ data, id }) => {
                   handleRunClick={handleRunClick}
                   runButtonTooltip="Run evaluator over inputs"
                   />
+      <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
       <Handle
           type="target"
           position="left"
@@ -187,6 +200,11 @@ const EvaluatorNode = ({ data, id }) => {
         </div>)
         : (<></>)
       }
+
+      { lastRunSuccess && lastResponses && lastResponses.length > 0 ? 
+        (<div className="eval-inspect-response-footer nodrag" onClick={showResponseInspector} style={{display: 'flex', justifyContent:'center'}}>
+          <Button color='blue' variant='subtle' w='100%' >Inspect results&nbsp;<IconSearch size='12pt'/></Button>
+        </div>) : <></>}
         
     </div>
   );

@@ -2,8 +2,8 @@
  * A fullscreen version of the Inspect node that
  * appears in a Mantine modal pop-up which takes up much of the screen.
  */
-import React, { useState, forwardRef, useImperativeHandle } from 'react';
-import { Modal, Button } from '@mantine/core';
+import React, { forwardRef, useImperativeHandle } from 'react';
+import { Modal } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import LLMResponseInspector, { exportToExcel } from './LLMResponseInspector';
 
@@ -22,7 +22,9 @@ const LLMResponseInspectorModal = forwardRef((props, ref) => {
     <Modal size='80%' opened={opened} onClose={close} closeOnClickOutside={true} style={{position: 'relative', 'left': '-100px'}} title={
       <div><span>Response Inspector</span><button className="custom-button" style={{marginTop: 'auto', marginRight: '14px', float: 'right'}} onClick={() => exportToExcel(props.jsonResponses)}>Export data to Excel</button></div>
     } styles={{ title: {justifyContent: 'space-between', width: '100%'} }} >
-      <p className="inspect-modal-prompt-box"><span className='inspect-modal-prompt-prefix'>Root Prompt:&nbsp;</span> <span className="inspect-modal-prompt-text">{props.prompt}</span></p>
+      { props.prompt !== undefined ? 
+        <p className="inspect-modal-prompt-box"><span className='inspect-modal-prompt-prefix'>Root Prompt:&nbsp;</span> <span className="inspect-modal-prompt-text">{props.prompt}</span></p>
+      : <></>}
       <div class="inspect-modal-response-container" style={{padding: '6px'}}>
         <LLMResponseInspector jsonResponses={props.jsonResponses} />
       </div>
