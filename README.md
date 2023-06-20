@@ -6,7 +6,9 @@
 ChainForge is a data flow prompt engineering environment for analyzing and evaluating LLM responses. It is geared towards early-stage, quick-and-dirty exploration of prompts and response quality that goes beyond ad-hoc chatting with individual LLMs. With ChainForge, you can: 
  - Query multiple LLMs at once to test prompt ideas and variations quickly and effectively. 
  - Compare response quality across prompt permutations, across models, and across model settings to choose the best prompt and model for your use case. 
- - Setup an evaluation metric (scoring function) and immediately visualize results across prompts, prompt parameters, models, and model settings. 
+ - Setup an evaluation metric (scoring function) and immediately visualize results across prompts, prompt parameters, models, and model settings.
+
+ChainForge comes with a number of example evaluation flows so you can get a sense of what's possible, including 188 example flows generated from benchmarks in OpenAI evals.
 
 **This is an open alpha of Chainforge.** Functionality is powerful but limited. We currently support OpenAI models GPT3.5 and GPT4, Anthropic's Claude, Google PaLM2, and [Dalai](https://github.com/cocktailpeanut/dalai)-hosted models Alpaca and Llama. You can change the exact model and individual model settings. Visualization nodes support numeric and boolean evaluation metrics. Try it and let us know what you'd like to see in the future! :)
 
