@@ -187,10 +187,10 @@ class PromptPermutationGenerator {
           in order to bundle in any past fill history that is lost in the current text.
 
     Example usage:
-        prompt_gen = PromptPermutationGenerator('Can you list all the cities in the country ${country} by the cheapest ${domain} prices?')
-        for prompt in prompt_gen({"country":["Canada", "South Africa", "China"], 
-                                  "domain": ["rent", "food", "energy"]}):
-            print(prompt)
+        prompt_gen = new PromptPermutationGenerator('Can you list all the cities in the country ${country} by the cheapest ${domain} prices?')
+        for (let prompt of prompt_gen({"country":["Canada", "South Africa", "China"], 
+                                  "domain": ["rent", "food", "energy"]})):
+            console.log(prompt)
     */
     template: string | PromptTemplate;
 
@@ -268,7 +268,7 @@ class PromptPermutationGenerator {
             new_prompt_temps.forEach(p => {
                 res.push(...this._gen_perm(p, params_left, paramDict));
             }); 
-            return res
+            return res;
         }
     }
 
