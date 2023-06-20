@@ -237,6 +237,7 @@
   }
   .inspect-modal-response-container .small-response {
     font-size: 10pt;
+    margin: 6px 1px;
   }
   .inspect-modal-response-container .num-same-responses {
     font-size: 10pt;
@@ -312,7 +313,7 @@
     border-style: dotted;
     border-color: #fff;
     padding: 2px;
-    margin: 2px 1px;
+    margin: 4px 1px;
     background-color: rgba(255, 255, 255, 0.4);
     white-space: pre-wrap;
   }
