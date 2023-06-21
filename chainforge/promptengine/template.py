@@ -59,7 +59,7 @@ class PromptTemplate:
         try:
             Template(self.template).substitute({})
             return True # no exception raised means there was nothing to substitute...
-        except KeyError:
+        except Exception:
             return False
         
     def fill(self, paramDict: Dict[str, Union[str, Dict[str, str]]]) -> 'PromptTemplate':
