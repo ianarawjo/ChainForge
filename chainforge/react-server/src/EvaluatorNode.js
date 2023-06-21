@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
 import { Button } from '@mantine/core';
 import useStore from './store';
@@ -34,6 +34,26 @@ const EvaluatorNode = ({ data, id }) => {
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
   const [mapScope, setMapScope] = useState('response');
+
+  // On initialization
+  useEffect(() => {
+    // Attempt to grab cache'd responses
+    fetch(BASE_URL + 'app/grabResponses', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+      body: JSON.stringify({
+          responses: [id],
+      }),
+  }).then(function(res) {
+      return res.json();
+  }).then(function(json) {
+      if (json.responses && json.responses.length > 0) {
+          // Store responses and set status to green checkmark
+          setLastResponses(json.responses);
+          setStatus('ready');
+      }
+  });
+  }, []);
 
   const handleCodeChange = (code) => {
     if (codeTextOnLastRun !== false) {

@@ -192,6 +192,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     // :: For instance, for varnames = ['LLM', '$var1', '$var2'] we should get back 
     // :: nested divs first grouped by LLM (first level), then by var1, then var2 (deepest level).
     let leaf_id = 0;
+    let first_opened = false;
     const groupByVars = (resps, varnames, eatenvars, header) => {
         if (resps.length === 0) return [];
         if (varnames.length === 0) {
@@ -234,7 +235,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                 // (e.g., the vars that weren't part of the initial 'varnames' list that form the groupings)
                 const unused_vars = filterDict(res_obj.vars, v => !eatenvars.includes(v));
                 const var_tags = Object.keys(unused_vars).map((varname) => {
-                    const v = truncStr(unused_vars[varname].trim(), 18);
+                    const v = truncStr(unused_vars[varname].trim(), wideFormat ? 72 : 18);
                     return (<div key={varname} className="response-var-inline" >
                       <span className="response-var-name">{varname}&nbsp;=&nbsp;</span><span className="response-var-value">{v}</span>
                     </div>);
@@ -258,7 +259,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             const className = eatenvars.length > 0 ? "response-group" : "";
             const boxesClassName = eatenvars.length > 0 ? "response-boxes-wrapper" : "";
             const flexbox = (wideFormat && fixed_width < 100) ? 'flex' : 'block';
-            const defaultOpened = eatenvars.length === 0 || eatenvars[eatenvars.length-1] === 'LLM';
+            const defaultOpened = !first_opened || eatenvars.length === 0 || eatenvars[eatenvars.length-1] === 'LLM';
+            first_opened = true;
             leaf_id += 1;
             return (
                 <div key={'l'+leaf_id} className={className} style={{ backgroundColor: rgroup_color(eatenvars.length) }}>

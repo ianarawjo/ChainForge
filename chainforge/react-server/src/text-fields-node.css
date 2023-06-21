@@ -212,6 +212,14 @@
     opacity: 0.8;
   }
 
+  .response-var-inline > .response-var-name {
+    font-size: 8pt;
+    font-weight: normal;
+  }
+  .response-var-inline > .response-var-value {
+    font-size: 8pt;
+  }
+
   .inspector-node {
     background-color: #fff;
     padding: 10px;
@@ -237,10 +245,12 @@
     line-height: 1.2;
   }
   .inspect-modal-response-container .response-var-name {
-    font-size: 11pt;
+    font-size: 10pt;
+    font-weight: bold;
   }
   .inspect-modal-response-container .response-var-value {
-    font-size: 11pt;
+    font-size: 10pt;
+    letter-spacing: -0.5px;
   }
   .inspect-modal-response-container .response-llm-header {
     font-size: 10pt;
@@ -294,13 +304,6 @@
     text-rendering: optimizeSpeed;
     /* mix-blend-mode: color-burn; */
     padding: 0px 4px;
-  }
-  .response-var-inline > .response-var-name {
-    font-size: 8pt;
-    font-weight: normal;
-  }
-  .response-var-inline > .response-var-value {
-    font-size: 8pt;
   }
   .response-var-name {
     font-size: 9pt;

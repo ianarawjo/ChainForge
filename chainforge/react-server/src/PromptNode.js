@@ -172,6 +172,23 @@ const PromptNode = ({ data, id }) => {
   // On initialization
   useEffect(() => {
     refreshTemplateHooks(promptText);
+
+    // Attempt to grab cache'd responses
+    fetch(BASE_URL + 'app/grabResponses', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+        body: JSON.stringify({
+            responses: [id],
+        }),
+    }).then(function(res) {
+        return res.json();
+    }).then(function(json) {
+        if (json.responses && json.responses.length > 0) {
+            // Store responses and set status to green checkmark
+            setJSONResponses(json.responses);
+            setStatus('ready');
+        }
+    });
   }, []);
 
   // Pull all inputs needed to request responses.
