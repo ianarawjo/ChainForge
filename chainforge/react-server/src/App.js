@@ -21,6 +21,7 @@ import CsvNode from './CsvNode';
 import TabularDataNode from './TabularDataNode';
 import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
+import AreYouSureModal from './AreYouSureModal';
 import './text-fields-node.css';
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
@@ -68,6 +69,12 @@ const App = () => {
 
   // For modal popup of example flows
   const examplesModal = useRef(null);
+
+  // For confirmation popup
+  const confirmationModal = useRef(null);
+  const [confirmationDialogProps, setConfirmationDialogProps] = useState({
+    title: 'Confirm action', message: 'Are you sure?', onConfirm: () => {}
+  });
 
   // For displaying error messages to user
   const alertModal = useRef(null);
@@ -162,6 +169,18 @@ const App = () => {
     URL.revokeObjectURL(downloadLink.href);
   };
 
+  const resetFlow = useCallback(() => {
+    resetLLMColors();
+
+    const uid = (id) => `${id}-${Date.now()}`;
+    const starting_nodes = [
+      { id: uid('prompt'), type: 'prompt', data: { prompt: 'Why is the sky blue?', n: 1 }, position: { x: 450, y: 200 } },
+      { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 80, y: 270 } },
+    ];
+
+    setNodes(starting_nodes);
+    setEdges([]);
+  }, [setNodes, setEdges, resetLLMColors]);
   const saveFlow = useCallback(() => {
     if (!rfInstance) return;
     const flow = rfInstance.toObject();
@@ -352,12 +371,26 @@ const App = () => {
     }, handleError).catch(handleError);
   };
 
+  // When the user clicks the 'New Flow' button
+  const onClickNewFlow = useCallback(() => {
+    setConfirmationDialogProps({
+      title: 'Create a new flow',
+      message: 'Are you sure? Any unexported changes to your existing flow will be lost.',
+      onConfirm: () => resetFlow(), // Set the callback if user confirms action
+    });
+
+    // Trigger the 'are you sure' modal:
+    if (confirmationModal && confirmationModal.current)
+      confirmationModal.current.trigger();
+  }, [confirmationModal, resetFlow, setConfirmationDialogProps]);
+
   return (
     <div>
       <GlobalSettingsModal ref={settingsModal} />
       <AlertModal ref={alertModal} />
       <LoadingOverlay visible={isLoading} overlayBlur={1} />
       <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
+      <AreYouSureModal ref={confirmationModal} title={confirmationDialogProps.title} message={confirmationDialogProps.message} onConfirm={confirmationDialogProps.onConfirm} />
       <div style={{ height: '100vh', width: '100%', backgroundColor: '#eee' }}>
         <ReactFlow
           onNodesChange={onNodesChange}
@@ -403,8 +436,9 @@ const App = () => {
         <Button onClick={importFlowFromFile} size="sm" variant="outline" compact>Import</Button>
       </div>
       <div style={{position: 'fixed', right: '10px', top: '10px', zIndex: 8}}>
+        <Button onClick={onClickNewFlow} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> New Flow </Button>
         <Button onClick={onClickExamples} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> Example Flows </Button>
-        <Button onClick={onClickSettings} size="sm" variant="outline" compact><IconSettings size={"100%"} /></Button>
+        <Button onClick={onClickSettings} size="sm" variant="filled" compact><IconSettings size={"90%"} /></Button>
       </div>
     </div>
   );

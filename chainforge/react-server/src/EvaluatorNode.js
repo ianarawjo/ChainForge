@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Button } from '@mantine/core';
+import { Button, Code } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import { IconTerminal, IconSearch } from '@tabler/icons-react'
@@ -185,12 +185,12 @@ const EvaluatorNode = ({ data, id }) => {
           style={{ top: '50%', background: '#555' }}
         />
       <div className="core-mirror-field">
-        <div className="code-mirror-field-header">Function to map over each &nbsp;
-        <select name="mapscope" id="mapscope" onChange={handleOnMapScopeSelect}>
+        <div className="code-mirror-field-header">Define an <Code>evaluate</Code> func to map over each response:
+        {/* &nbsp;<select name="mapscope" id="mapscope" onChange={handleOnMapScopeSelect}>
             <option value="response">response</option>
             <option value="batch">batch of responses</option>
-        </select>
-        :</div>
+        </select> */}
+        </div>
         
         {/* <span className="code-style">response</span>: */}
         <div className="ace-editor-container nodrag">

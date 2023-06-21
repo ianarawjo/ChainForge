@@ -60,11 +60,11 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 
         openai.api_key = os.environ.get("OPENAI_API_KEY")
 
     model = model.value
-    if 'stop' in params and not isinstance(params['stop'], list) or len(params['stop']) == 0:
+    if 'stop' in params and (not isinstance(params['stop'], list) or len(params['stop']) == 0):
         del params['stop']  
-    if 'functions' in params and not isinstance(params['functions'], list) or len(params['functions']) == 0:
+    if 'functions' in params and (not isinstance(params['functions'], list) or len(params['functions']) == 0):
         del params['functions']
-    if 'function_call' in params and not isinstance(params['function_call'], str) or len(params['function_call'].strip()) == 0:
+    if 'function_call' in params and (not isinstance(params['function_call'], str) or len(params['function_call'].strip()) == 0):
         del params['function_call']
 
     print(f"Querying OpenAI model '{model}' with prompt '{prompt}'...")
