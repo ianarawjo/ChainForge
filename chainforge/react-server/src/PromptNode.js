@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Badge, Progress } from '@mantine/core';
+import { Menu, Button, Progress } from '@mantine/core';
 import { v4 as uuid } from 'uuid';
+import { IconSearch } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks, { extractBracketedSubstrings, toPyTemplateFormat } from './TemplateHooksComponent'
@@ -22,23 +23,6 @@ const truncStr = (s, maxLen) => {
     else
         return s;
 }
-const vars_to_str = (vars) => {
-    const pairs = Object.keys(vars).map(varname => {
-        const s = truncStr(vars[varname].trim(), 12);
-        return `${varname} = '${s}'`;
-    });
-    return pairs;
-};
-const bucketResponsesByLLM = (responses) => {
-    let responses_by_llm = {};
-    responses.forEach(item => {
-        if (item.llm in responses_by_llm)
-            responses_by_llm[item.llm].push(item);
-        else
-            responses_by_llm[item.llm] = [item];
-    });
-    return responses_by_llm;
-};
 // Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
 const ensureUniqueName = (_name, _prev_names) => {
     // Strip whitespace around names
@@ -76,7 +60,6 @@ const PromptNode = ({ data, id }) => {
   const [promptText, setPromptText] = useState(data.prompt || "");
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
   const [status, setStatus] = useState('none');
-  const [responsePreviews, setResponsePreviews] = useState([]);
   const [numGenerations, setNumGenerations] = useState(data.n || 1);
 
   // For displaying error messages to user
@@ -189,6 +172,23 @@ const PromptNode = ({ data, id }) => {
   // On initialization
   useEffect(() => {
     refreshTemplateHooks(promptText);
+
+    // Attempt to grab cache'd responses
+    fetch(BASE_URL + 'app/grabResponses', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+        body: JSON.stringify({
+            responses: [id],
+        }),
+    }).then(function(res) {
+        return res.json();
+    }).then(function(json) {
+        if (json.responses && json.responses.length > 0) {
+            // Store responses and set status to green checkmark
+            setJSONResponses(json.responses);
+            setStatus('ready');
+        }
+    });
   }, []);
 
   // Pull all inputs needed to request responses.
@@ -373,7 +373,7 @@ const PromptNode = ({ data, id }) => {
 
     // Set status indicator
     setStatus('loading');
-    setResponsePreviews([]);
+    setJSONResponses([]);
     setProgressAnimated(true);
 
     const [py_prompt_template, pulled_data] = pullInputData();
@@ -538,37 +538,6 @@ const PromptNode = ({ data, id }) => {
                         r => ({text: r, fill_history: resp_obj['vars']}))).flat()
                 });
 
-                // Save preview strings of responses, for quick glance
-                // Bucket responses by LLM:
-                const responses_by_llm = bucketResponsesByLLM(json.responses);
-                // const colors = ['#cbf078', '#f1b963', '#e46161', '#f8f398', '#defcf9', '#cadefc', '#c3bef0', '#cca8e9'];
-                // const colors = ['green', 'yellow', 'orange', 'red', 'pink', 'grape', 'violet', 'indigo', 'blue', 'gray', 'cyan', 'lime'];
-                setResponsePreviews(Object.keys(responses_by_llm).map((llm, llm_idx) => {
-                    const resp_boxes = responses_by_llm[llm].map((res_obj, idx) => {
-                        const num_resp = res_obj['responses'].length;
-                        const resp_prevs = res_obj['responses'].map((r, i) => 
-                            (<pre className="small-response" key={i}><i>{truncStr(r, 33)}</i><b>({i+1} of {num_resp})</b></pre>)
-                        );
-                        const vars = vars_to_str(res_obj.vars);
-                        const var_tags = vars.map((v, i) => (
-                            <Badge key={v} color="blue" size="xs">{v}</Badge>
-                        ));
-                        return (
-                            <div key={idx} className="response-box">
-                                {var_tags}
-                                {/* <p className="response-tag">{vars}</p> */}
-                                {resp_prevs}
-                            </div>
-                        );
-                    });
-                    return (
-                        <div key={llm} className="llm-response-container">
-                            <h1>Preview of responses for {llm}:</h1>
-                            {resp_boxes}
-                        </div>
-                    );
-                }));
-
                 // Ping any inspect nodes attached to this node to refresh their contents:
                 const output_nodes = outputEdgesForNode(id).map(e => e.target);
                 output_nodes.forEach(n => {
@@ -676,9 +645,12 @@ const PromptNode = ({ data, id }) => {
                 { value: progress.error, color: 'red', tooltip: 'Error collecting response' }
             ]} />)
         : <></>}
-        <div className="response-preview-container nowheel" onClick={showResponseInspector}>
-            {responsePreviews}
-        </div>
+
+        { jsonResponses && jsonResponses.length > 0 && status !== 'error' && status !== 'loading' ? 
+            (<div className="eval-inspect-response-footer nodrag" onClick={showResponseInspector} style={{display: 'flex', justifyContent:'center'}}>
+                <Button color='blue' variant='subtle' w='100%' >Inspect responses&nbsp;<IconSearch size='12pt'/></Button>
+            </div>) : <></>
+        }
       </div>
     </div>
   );

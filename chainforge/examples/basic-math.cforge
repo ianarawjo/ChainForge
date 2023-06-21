@@ -3,378 +3,382 @@
     "nodes": [
       {
         "width": 312,
-        "height": 501,
-        "id": "prompt-1686496332028",
-        "type": "prompt",
+        "height": 437,
         "data": {
-          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-          "n": 1,
+          "fields": [
+            {
+              "fill_history": {
+                "question": "What is 2 + 2?"
+              },
+              "text": "4."
+            },
+            {
+              "fill_history": {
+                "question": "What is the square root of 9?"
+              },
+              "text": "3"
+            },
+            {
+              "fill_history": {
+                "question": "What year was the 50th anniversary of the invention of the transistor?"
+              },
+              "text": "1997."
+            },
+            {
+              "fill_history": {
+                "question": "What is 5 to the power of 3?"
+              },
+              "text": "125"
+            },
+            {
+              "fill_history": {
+                "question": "What is 2 multiplied by the cubic root of 729?"
+              },
+              "text": "54"
+            },
+            {
+              "fill_history": {
+                "question": "What is 2 + 2?"
+              },
+              "text": "4"
+            },
+            {
+              "fill_history": {
+                "question": "What is the square root of 9?"
+              },
+              "text": "3"
+            },
+            {
+              "fill_history": {
+                "question": "What year was the 50th anniversary of the invention of the transistor?"
+              },
+              "text": "1997"
+            },
+            {
+              "fill_history": {
+                "question": "What is 5 to the power of 3?"
+              },
+              "text": "125"
+            },
+            {
+              "fill_history": {
+                "question": "What is 2 multiplied by the cubic root of 729?"
+              },
+              "text": "12"
+            },
+            {
+              "fill_history": {
+                "question": "What is 2 + 2?"
+              },
+              "text": "2+2=4"
+            },
+            {
+              "fill_history": {
+                "question": "What is the square root of 9?"
+              },
+              "text": "The square root of 9 is 3."
+            },
+            {
+              "fill_history": {
+                "question": "What year was the 50th anniversary of the invention of the transistor?"
+              },
+              "text": "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
+            },
+            {
+              "fill_history": {
+                "question": "What is 5 to the power of 3?"
+              },
+              "text": "5 to the power of 3 is 125."
+            },
+            {
+              "fill_history": {
+                "question": "What is 2 multiplied by the cubic root of 729?"
+              },
+              "text": "2 multiplied by the cubic root of 729 is 27."
+            }
+          ],
           "llms": [
             {
+              "base_model": "gpt-3.5-turbo",
+              "emoji": "🙂",
               "key": "9fbdcc67-7c5f-4cd5-a2e4-6f2d4a190cd0",
+              "model": "gpt-3.5-turbo",
+              "name": "GPT3.5",
               "settings": {
+                "frequency_penalty": 0,
+                "presence_penalty": 0,
+                "stop": [],
                 "system_msg": "You are a helpful assistant.",
                 "temperature": 1,
-                "top_p": 1,
-                "stop": [],
-                "presence_penalty": 0,
-                "frequency_penalty": 0
+                "top_p": 1
               },
-              "name": "GPT3.5",
-              "emoji": "🙂",
-              "model": "gpt-3.5-turbo",
-              "base_model": "gpt-3.5-turbo",
               "temp": 1
             },
             {
-              "key": "667e0d14-527b-4fe7-afdc-219504729e6d",
-              "name": "GPT4",
-              "emoji": "🥵",
-              "model": "gpt-4",
               "base_model": "gpt-4",
-              "temp": 1,
-              "settings": {
-                "system_msg": "You are a helpful assistant.",
-                "temperature": 1,
-                "top_p": 1,
-                "stop": [],
-                "presence_penalty": 0,
-                "frequency_penalty": 0
-              },
+              "emoji": "🥵",
               "formData": {
                 "shortname": "GPT4"
-              }
+              },
+              "key": "667e0d14-527b-4fe7-afdc-219504729e6d",
+              "model": "gpt-4",
+              "name": "GPT4",
+              "settings": {
+                "frequency_penalty": 0,
+                "presence_penalty": 0,
+                "stop": [],
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 1,
+                "top_p": 1
+              },
+              "temp": 1
             },
             {
-              "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-              "name": "PaLM2",
-              "emoji": "🦬",
-              "model": "chat-bison-001",
               "base_model": "palm2-bison",
-              "temp": 0.7,
-              "settings": {
-                "temperature": 0.5,
-                "top_k": -1,
-                "top_p": -1,
-                "max_output_tokens": 512,
-                "stop_sequences": []
-              },
+              "emoji": "🦬",
               "formData": {
                 "shortname": "PaLM2"
-              }
+              },
+              "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
+              "model": "chat-bison-001",
+              "name": "PaLM2",
+              "settings": {
+                "max_output_tokens": 512,
+                "stop_sequences": [],
+                "temperature": 0.5,
+                "top_k": -1,
+                "top_p": -1
+              },
+              "temp": 0.7
             }
           ],
-          "fields": [
-            {
-              "text": "4.",
-              "fill_history": {
-                "question": "What is 2 + 2?"
-              }
-            },
-            {
-              "text": "3",
-              "fill_history": {
-                "question": "What is the square root of 9?"
-              }
-            },
-            {
-              "text": "1997.",
-              "fill_history": {
-                "question": "What year was the 50th anniversary of the invention of the transistor?"
-              }
-            },
-            {
-              "text": "125",
-              "fill_history": {
-                "question": "What is 5 to the power of 3?"
-              }
-            },
-            {
-              "text": "54",
-              "fill_history": {
-                "question": "What is 2 multiplied by the cubic root of 729?"
-              }
-            },
-            {
-              "text": "4",
-              "fill_history": {
-                "question": "What is 2 + 2?"
-              }
-            },
-            {
-              "text": "3",
-              "fill_history": {
-                "question": "What is the square root of 9?"
-              }
-            },
-            {
-              "text": "1997",
-              "fill_history": {
-                "question": "What year was the 50th anniversary of the invention of the transistor?"
-              }
-            },
-            {
-              "text": "125",
-              "fill_history": {
-                "question": "What is 5 to the power of 3?"
-              }
-            },
-            {
-              "text": "12",
-              "fill_history": {
-                "question": "What is 2 multiplied by the cubic root of 729?"
-              }
-            },
-            {
-              "text": "2+2=4",
-              "fill_history": {
-                "question": "What is 2 + 2?"
-              }
-            },
-            {
-              "text": "The square root of 9 is 3.",
-              "fill_history": {
-                "question": "What is the square root of 9?"
-              }
-            },
-            {
-              "text": "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997.",
-              "fill_history": {
-                "question": "What year was the 50th anniversary of the invention of the transistor?"
-              }
-            },
-            {
-              "text": "5 to the power of 3 is 125.",
-              "fill_history": {
-                "question": "What is 5 to the power of 3?"
-              }
-            },
-            {
-              "text": "2 multiplied by the cubic root of 729 is 27.",
-              "fill_history": {
-                "question": "What is 2 multiplied by the cubic root of 729?"
-              }
-            }
-          ]
+          "n": 1,
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}"
         },
+        "dragging": false,
+        "id": "prompt-1686496332028",
         "position": {
           "x": 450,
           "y": 200
         },
-        "selected": false,
-        "dragging": false,
         "positionAbsolute": {
           "x": 450,
           "y": 200
-        }
+        },
+        "selected": false,
+        "type": "prompt"
       },
       {
         "width": 333,
-        "height": 182,
-        "id": "eval-1686496332028",
-        "type": "evaluator",
+        "height": 221,
         "data": {
-          "code": "def evaluate(response):\n  return response.text[:4] == \\\n         response.meta['Expected']",
+          "code": "def evaluate(response):\n  return response.text.startswith(\n    response.meta['Expected'])",
           "title": "Whether expected answer"
         },
+        "dragging": false,
+        "id": "eval-1686496332028",
         "position": {
           "x": 816,
           "y": 176
         },
-        "selected": false,
         "positionAbsolute": {
           "x": 816,
           "y": 176
         },
-        "dragging": false
+        "selected": false,
+        "type": "evaluator"
       },
       {
-        "width": 608,
-        "height": 490,
-        "id": "vis-1686496332028",
-        "type": "vis",
+        "width": 722,
+        "height": 546,
         "data": {
           "input": "eval-1686496332028",
+          "refresh": false,
+          "selected_vars": [],
+          "title": "How correct each LLM was on the math questions",
           "vars": [
             {
               "value": "question",
               "label": "question"
+            },
+            {
+              "value": "__meta_Expected",
+              "label": "Expected (meta)"
             }
-          ],
-          "selected_vars": [],
-          "refresh": false,
-          "title": "How correct each LLM was on the math questions"
+          ]
         },
+        "dragging": false,
+        "id": "vis-1686496332028",
         "position": {
           "x": 1200,
           "y": 176
         },
-        "selected": false,
         "positionAbsolute": {
           "x": 1200,
           "y": 176
         },
-        "dragging": false
+        "selected": false,
+        "type": "vis"
       },
       {
         "width": 302,
         "height": 260,
-        "id": "inspect-1686496332028",
-        "type": "inspect",
         "data": {
           "input": "prompt-1686496332028",
           "refresh": false
         },
+        "dragging": false,
+        "id": "inspect-1686496332028",
         "position": {
           "x": 816,
           "y": 416
         },
-        "selected": false,
         "positionAbsolute": {
           "x": 816,
           "y": 416
         },
-        "dragging": false
+        "selected": false,
+        "type": "inspect"
       },
       {
-        "width": 443,
-        "height": 342,
-        "id": "table-1686496353296",
-        "type": "table",
+        "width": 423,
+        "height": 417,
         "data": {
+          "columns": [
+            {
+              "header": "Question",
+              "key": "question"
+            },
+            {
+              "header": "Expected",
+              "key": "answer"
+            }
+          ],
           "rows": [
             {
               "__uid": "15b96ab6-ac8f-4c66-8bb0-92384e55fb68",
-              "question": "What is 2 + 2?",
-              "answer": "4"
+              "answer": "4",
+              "question": "What is 2 + 2?"
             },
             {
               "__uid": "fc207d76-1f61-47b2-b3fd-c059be2f69ff",
-              "question": "What is the square root of 9?",
-              "answer": "3"
+              "answer": "3",
+              "question": "What is the square root of 9?"
             },
             {
               "__uid": "e3963edf-a0c4-406c-bcc3-f9cc092f8bca",
-              "question": "What year was the 50th anniversary of the invention of the transistor?",
-              "answer": "1997"
+              "answer": "1997",
+              "question": "What year was the 50th anniversary of the invention of the transistor?"
             },
             {
               "__uid": "fb9e2d1c-3023-451a-9570-964579c4390b",
-              "question": "What is 5 to the power of 3?",
-              "answer": "125"
+              "answer": "125",
+              "question": "What is 5 to the power of 3?"
             },
             {
               "__uid": "8d6dbad2-d877-4f87-ba1a-5f0b815cc277",
-              "question": "What is 2 multiplied by the cubic root of 729?",
-              "answer": "18"
-            }
-          ],
-          "columns": [
-            {
-              "key": "question",
-              "header": "Question"
-            },
-            {
-              "key": "answer",
-              "header": "Expected"
+              "answer": "18",
+              "question": "What is 2 multiplied by the cubic root of 729?"
             }
           ]
         },
+        "dragging": false,
+        "id": "table-1686496353296",
         "position": {
           "x": -48,
           "y": 176
         },
-        "selected": false,
         "positionAbsolute": {
           "x": -48,
           "y": 176
         },
-        "dragging": false
+        "selected": false,
+        "type": "table"
       }
     ],
     "edges": [
       {
+        "id": "reactflow__edge-table-1686496353296Question-prompt-1686496332028question",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "height": "22px",
+          "type": "arrow",
+          "width": "22px"
+        },
         "source": "table-1686496353296",
         "sourceHandle": "Question",
         "target": "prompt-1686496332028",
-        "targetHandle": "question",
-        "interactionWidth": 100,
-        "markerEnd": {
-          "type": "arrow",
-          "width": "22px",
-          "height": "22px"
-        },
-        "id": "reactflow__edge-table-1686496353296Question-prompt-1686496332028question"
+        "targetHandle": "question"
       },
       {
+        "id": "reactflow__edge-prompt-1686496332028prompt-inspect-1686496332028input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "height": "22px",
+          "type": "arrow",
+          "width": "22px"
+        },
         "source": "prompt-1686496332028",
         "sourceHandle": "prompt",
         "target": "inspect-1686496332028",
-        "targetHandle": "input",
-        "interactionWidth": 100,
-        "markerEnd": {
-          "type": "arrow",
-          "width": "22px",
-          "height": "22px"
-        },
-        "id": "reactflow__edge-prompt-1686496332028prompt-inspect-1686496332028input"
+        "targetHandle": "input"
       },
       {
+        "id": "reactflow__edge-prompt-1686496332028prompt-eval-1686496332028responseBatch",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "height": "22px",
+          "type": "arrow",
+          "width": "22px"
+        },
         "source": "prompt-1686496332028",
         "sourceHandle": "prompt",
         "target": "eval-1686496332028",
-        "targetHandle": "responseBatch",
-        "interactionWidth": 100,
-        "markerEnd": {
-          "type": "arrow",
-          "width": "22px",
-          "height": "22px"
-        },
-        "id": "reactflow__edge-prompt-1686496332028prompt-eval-1686496332028responseBatch"
+        "targetHandle": "responseBatch"
       },
       {
+        "id": "reactflow__edge-eval-1686496332028output-inspectNode-1686496774695input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "height": "22px",
+          "type": "arrow",
+          "width": "22px"
+        },
         "source": "eval-1686496332028",
         "sourceHandle": "output",
         "target": "inspectNode-1686496774695",
-        "targetHandle": "input",
-        "interactionWidth": 100,
-        "markerEnd": {
-          "type": "arrow",
-          "width": "22px",
-          "height": "22px"
-        },
-        "id": "reactflow__edge-eval-1686496332028output-inspectNode-1686496774695input"
+        "targetHandle": "input"
       },
       {
+        "id": "reactflow__edge-eval-1686496332028output-inspectNode-1686496840189input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "height": "22px",
+          "type": "arrow",
+          "width": "22px"
+        },
         "source": "eval-1686496332028",
         "sourceHandle": "output",
         "target": "inspectNode-1686496840189",
-        "targetHandle": "input",
-        "interactionWidth": 100,
-        "markerEnd": {
-          "type": "arrow",
-          "width": "22px",
-          "height": "22px"
-        },
-        "id": "reactflow__edge-eval-1686496332028output-inspectNode-1686496840189input"
+        "targetHandle": "input"
       },
       {
+        "id": "reactflow__edge-eval-1686496332028output-vis-1686496332028input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "height": "22px",
+          "type": "arrow",
+          "width": "22px"
+        },
         "source": "eval-1686496332028",
         "sourceHandle": "output",
         "target": "vis-1686496332028",
-        "targetHandle": "input",
-        "interactionWidth": 100,
-        "markerEnd": {
-          "type": "arrow",
-          "width": "22px",
-          "height": "22px"
-        },
-        "id": "reactflow__edge-eval-1686496332028output-vis-1686496332028input"
+        "targetHandle": "input"
       }
     ],
     "viewport": {
-      "x": 97,
-      "y": 36,
+      "x": 171,
+      "y": 12,
       "zoom": 1
     }
   },
@@ -384,7 +388,7 @@
         "eval_res": {
           "dtype": "Categorical",
           "items": [
-            false
+            true
           ]
         },
         "llm": "GPT3.5",

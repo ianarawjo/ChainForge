@@ -162,7 +162,9 @@ const VisNode = ({ data, id }) => {
         }
 
         const get_var = (resp_obj, varname, empty_str_if_undefined=false) => {
-            const v = resp_obj.vars[varname];
+            const v = varname.startsWith('__meta_') ? 
+                      resp_obj.metavars[varname.slice('__meta_'.length)] : 
+                      resp_obj.vars[varname];
             if (v === undefined && empty_str_if_undefined)
                 return "";
             return v;
@@ -390,13 +392,13 @@ const VisNode = ({ data, id }) => {
             // For 2 or more metrics, display a parallel coordinates plot.
             // :: For instance, if evaluator produces { height: 32, weight: 120 } plot responses with 2 metrics, 'height' and 'weight'
             if (varnames.length === 1) {
-                let unique_vals = getUniqueKeysInResponses(responses, (resp_obj) => resp_obj.vars[varnames[0]]);
+                let unique_vals = getUniqueKeysInResponses(responses, (resp_obj) => get_var(resp_obj, varnames[0]));
                 // const response_txts = responses.map(res_obj => res_obj.responses).flat();
 
                 let group_colors = varcolors;
                 const unselected_line_color = '#ddd';
                 const spec_colors = responses.map(resp_obj => {
-                    const idx = unique_vals.indexOf(resp_obj.vars[varnames[0]]);
+                    const idx = unique_vals.indexOf(get_var(resp_obj, varnames[0]));
                     return Array(resp_obj.eval_res.items.length).fill(idx);
                 }).flat();
                 
@@ -566,17 +568,24 @@ const VisNode = ({ data, id }) => {
 
                 // Find all vars in responses
                 let varnames = new Set();
-                json.responses.forEach(resp_obj => 
-                    Object.keys(resp_obj.vars).forEach(v => varnames.add(v))
-                );
+                let metavars = new Set();
+                json.responses.forEach(resp_obj => {
+                    Object.keys(resp_obj.vars).forEach(v => varnames.add(v));
+                    if (resp_obj.metavars)
+                        Object.keys(resp_obj.metavars).forEach(v => metavars.add(v));
+                });
                 varnames = Array.from(varnames);
+                metavars = Array.from(metavars);
 
-                const msvars = varnames.map(name => ({value: name, label: name}));
+                const msvars = varnames.map(name => ({value: name, label: name})).concat(
+                    metavars.map(name => ({value: `__meta_${name}`, label: `${name} (meta)`}))
+                );
 
                 // Check for a change in available parameters
-                if (!multiSelectVars || !multiSelectValue || !areSetsEqual(new Set(varnames), new Set(multiSelectVars.map(o => o.value)))) {
+                if (!multiSelectVars || !multiSelectValue || !areSetsEqual(new Set(msvars.map(o => o.value)), new Set(multiSelectVars.map(o => o.value)))) {
                     setMultiSelectValue([]);
                     setMultiSelectVars(msvars);
+                    console.log('here');
                     setDataPropsForNode(id, { vars: msvars, selected_vars: [] });
                 }
                 // From here a React effect will detect the changes to these values and display a new plot
