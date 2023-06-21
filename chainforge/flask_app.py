@@ -533,8 +533,10 @@ async def queryLLM():
     llms = data['llm']
     cache = load_cache_json(cache_filepath_last_run)
     llm_to_cache_filename = {}
+    past_cache_files = {}
     if isinstance(cache, dict) and 'cache_files' in cache:
-        past_cachefiles = list(cache['cache_files'].keys())
+        past_cache_filenames = list(cache['cache_files'].keys())
+        past_cache_files = cache['cache_files']
         for llm_spec in llms:
             found_cache = False
             for filename, cache_llm_spec in cache['cache_files'].items():
@@ -543,10 +545,10 @@ async def queryLLM():
                     found_cache = True
                     break
             if not found_cache:
-                new_filename = gen_unique_cache_filename(data['id'], past_cachefiles)
+                new_filename = gen_unique_cache_filename(data['id'], past_cache_filenames)
                 llm_to_cache_filename[extract_llm_key(llm_spec)] = new_filename
                 cache['cache_files'][new_filename] = llm_spec
-                past_cachefiles.append(new_filename)
+                past_cache_filenames.append(new_filename)
     else:
         cache = { 'cache_files': {}, 'responses_last_run': [] }
         prev_filenames = []
@@ -659,7 +661,7 @@ async def queryLLM():
         os.remove(tempfilepath)
     
     # Save the responses *of this run* to the disk, for further recall:
-    cache_filenames = {}
+    cache_filenames = past_cache_files
     for llm_spec in llms:
         filename = llm_to_cache_filename[extract_llm_key(llm_spec)]
         cache_filenames[filename] = llm_spec
