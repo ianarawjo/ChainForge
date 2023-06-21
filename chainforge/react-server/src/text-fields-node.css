@@ -233,6 +233,7 @@
   }
   .inspect-modal-response-container .response-var-header {
     padding: 10px;
+    margin-top: 8px;
     line-height: 1.2;
   }
   .inspect-modal-response-container .response-var-name {
@@ -246,10 +247,22 @@
   }
   .inspect-modal-response-container .small-response {
     font-size: 10pt;
-    margin: 6px 1px;
+    margin: 6px -1px 8px -1px;
+    padding: 8px;
+  }
+  .inspect-modal-response-container .small-response-metrics {
+    font-size: 12pt;
   }
   .inspect-modal-response-container .num-same-responses {
     font-size: 10pt;
+  }
+  .response-group-component-header:hover {
+    color: #05e;
+    cursor: pointer;
+    text-decoration:underline;
+  }
+  .response-group-component-header:active {
+    color: #00c;
   }
   .response-var-header {
     background-color: #e0f4fa;
@@ -319,23 +332,24 @@
   .small-response {
     font-size: 8pt;
     font-family: monospace;
-    border-style: dotted;
+    border-top-style: dashed;
+    border-bottom-style: dashed;
     border-color: #fff;
     padding: 2px;
-    margin: 4px 1px;
+    margin: 4px 3px;
     background-color: rgba(255, 255, 255, 0.4);
     white-space: pre-wrap;
   }
   .small-response-metrics {
     font-size: 8pt;
     font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-    font-style: italic;
+    font-weight: 500;
     text-align: center;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
     padding: 0px 2px 1px 0px;
-    margin: 0px 20px 8px 20px;
-    background-color: rgba(255, 255, 255, 0.6);
+    margin: 8px 20% -6px 20%;
+    background-color: rgba(255, 255, 255, 0.3);
     color: #333;
   }
   .num-same-responses {
@@ -389,6 +403,13 @@
     border-left-style: solid;
     border-left-color: #bbb;
   }
+  .response-box {
+    padding: 2px 0px 1px 0px;
+    margin: 0px 2px 4px 2px;
+    border-radius: 5px;
+    /* max-width: 30%; */
+  }
+
   .response-item-llm-name-wrapper {
     padding-bottom: 0px;
   }
@@ -398,10 +419,9 @@
     font-style: italic;
     /* mix-blend-mode: color-burn; */
     color: #000000bb;
-    background-color: #ffffff44;
     opacity: 0.7;
     text-align: right;
-    padding-right: 4px;
+    padding-right: 8px;
     margin: 0px;
   }
 
@@ -412,11 +432,7 @@
     background-color: #ceeaf5b1;
     cursor: zoom-in;
   }
-  .response-box {
-    padding: 2px;
-    margin: 0px 2px 4px 2px;
-    border-radius: 5px;
-  }
+  
   .response-tag {
     font-size: 9pt;
     color: #555;

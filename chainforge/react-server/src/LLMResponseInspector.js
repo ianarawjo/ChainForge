@@ -5,7 +5,8 @@
  * be deployed in multiple locations.  
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { MultiSelect } from '@mantine/core';
+import { Collapse, MultiSelect } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import * as XLSX from 'xlsx';
 import useStore from './store';
 
@@ -112,7 +113,22 @@ export const exportToExcel = (jsonResponses, filename) => {
   XLSX.writeFile(wb, filename);
 };
 
-const LLMResponseInspector = ({ jsonResponses }) => {
+const ResponseGroup = ({ header, responseBoxes, responseBoxesWrapperClass, displayStyle, defaultState }) => {
+  const [opened, { toggle }] = useDisclosure(defaultState);
+
+  return (<div>
+    <div className='response-group-component-header' onClick={toggle}>{header}</div>
+    <Collapse in={opened} transitionDuration={500} transitionTimingFunction='ease-in' animateOpacity={true}>
+      <div className={responseBoxesWrapperClass} style={{display: displayStyle, flexWrap: 'wrap'}}>
+          {responseBoxes}
+      </div>
+    </Collapse>
+  </div>)
+};
+
+
+
+const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
 
   const [responses, setResponses] = useState([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
@@ -180,6 +196,11 @@ const LLMResponseInspector = ({ jsonResponses }) => {
         if (resps.length === 0) return [];
         if (varnames.length === 0) {
             // Base case. Display n response(s) to each single prompt, back-to-back:
+            let fixed_width = 100;
+            if (wideFormat && eatenvars.length > 0) {
+              const num_llms = Array.from(new Set(resps.map(res_obj => res_obj.llm))).length;
+              fixed_width = Math.max(20, Math.trunc(100 / num_llms)) - 1; // 20% width is lowest we will go (5 LLM response boxes max)
+            }
             const resp_boxes = resps.map((res_obj, res_idx) => {
 
                 const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
@@ -190,23 +211,17 @@ const LLMResponseInspector = ({ jsonResponses }) => {
                 const same_resp_keys = Object.keys(same_resp_text_counts).sort((key1, key2) => (same_resp_text_counts[key2] - same_resp_text_counts[key1]));
 
                 // Spans for actual individual response texts
-                const ps = eval_res_items ? (
-                  same_resp_keys.map((r, idx) => (
-                        <div key={idx}>
-                            <pre className="small-response">{r}</pre>
-                            <p className="small-response-metrics">{getEvalResultStr(eval_res_items[idx])}</p>
-                        </div>
-                    ))) : (
-                      same_resp_keys.map((r, idx) => (
-                        <div key={idx}>
-                          {same_resp_text_counts[r] > 1 ? 
-                            (<span className="num-same-responses">{same_resp_text_counts[r]} times</span>)
-                          : <></>}
-                          <pre className="small-response">{r}</pre>
-                          
-                        </div>
-                        
-                    )));
+                const ps = same_resp_keys.map((r, idx) => (
+                  <div key={idx}>
+                    {same_resp_text_counts[r] > 1 ? 
+                      (<span className="num-same-responses">{same_resp_text_counts[r]} times</span>)
+                    : <></>}
+                    {eval_res_items ? (
+                      <p className="small-response-metrics">{getEvalResultStr(eval_res_items[idx])}</p>
+                    ) : <></>}
+                    <pre className="small-response">{r}</pre>
+                  </div>
+                ));
 
                 // At the deepest level, there may still be some vars left over. We want to display these
                 // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
@@ -219,15 +234,16 @@ const LLMResponseInspector = ({ jsonResponses }) => {
                     </div>);
                 });
                 return (
-                    <div key={"r"+res_idx} className="response-box" style={{ backgroundColor: color_for_llm(res_obj.llm) }}>
+                    <div key={"r"+res_idx} className="response-box" style={{ backgroundColor: color_for_llm(res_obj.llm), width: `${fixed_width}%` }}>
                         <div className="response-var-inline-container">
                           {var_tags}
                         </div>
                         {eatenvars.includes('LLM') ?
                               ps
                             : (<div className="response-item-llm-name-wrapper">
-                                    {ps}
-                                    <h1>{res_obj.llm}</h1>
+                               <h1>{res_obj.llm}</h1>
+                                {ps}
+                               
                               </div>)
                         }
                     </div>
@@ -235,13 +251,16 @@ const LLMResponseInspector = ({ jsonResponses }) => {
             });
             const className = eatenvars.length > 0 ? "response-group" : "";
             const boxesClassName = eatenvars.length > 0 ? "response-boxes-wrapper" : "";
+            const flexbox = (wideFormat && fixed_width < 100) ? 'flex' : 'block';
+            const defaultOpened = eatenvars.length === 0 || eatenvars[eatenvars.length-1] === 'LLM';
             leaf_id += 1;
             return (
                 <div key={'l'+leaf_id} className={className} style={{ backgroundColor: rgroup_color(eatenvars.length) }}>
-                    {header}
-                    <div className={boxesClassName}>
-                        {resp_boxes}
-                    </div>
+                  <ResponseGroup header={header} 
+                                 responseBoxes={resp_boxes} 
+                                 responseBoxesWrapperClass={boxesClassName} 
+                                 displayStyle={flexbox} 
+                                 defaultState={defaultOpened} />   
                 </div>
             );
         }
@@ -283,7 +302,7 @@ const LLMResponseInspector = ({ jsonResponses }) => {
     const divs = groupByVars(responses, selected_vars, [], null);
     setResponses(divs);
 
-  }, [multiSelectValue, jsonResponses]);
+  }, [multiSelectValue, jsonResponses, wideFormat]);
 
   // When the user clicks an item in the drop-down,
   // we want to autoclose the multiselect drop-down:
@@ -302,7 +321,7 @@ const LLMResponseInspector = ({ jsonResponses }) => {
                  label={<span style={{marginTop: '0px', fontWeight: 'normal'}}>Group responses by (order matters):</span>}
                  data={multiSelectVars}
                  placeholder="Pick vars to group responses, in order of importance"
-                 size='xs'
+                 size={wideFormat ? 'sm' : 'xs'}
                  value={multiSelectValue}
                  clearSearchOnChange={true}
                  clearSearchOnBlur={true} />
