@@ -206,7 +206,13 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                 const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
 
                 // Bucket responses that have the same text, and sort by the 
-                // number of same responses so that the top div is the most prevalent response:
+                // number of same responses so that the top div is the most prevalent response.
+                // We first need to keep track of the original evaluation result per response str:
+                let resp_str_to_eval_res = {};
+                if (eval_res_items)
+                  res_obj.responses.forEach((r, idx) => {
+                    resp_str_to_eval_res[r] = eval_res_items[idx]
+                  });
                 const same_resp_text_counts = countResponsesBy(res_obj.responses, (r) => r)[0];
                 const same_resp_keys = Object.keys(same_resp_text_counts).sort((key1, key2) => (same_resp_text_counts[key2] - same_resp_text_counts[key1]));
 
@@ -217,7 +223,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                       (<span className="num-same-responses">{same_resp_text_counts[r]} times</span>)
                     : <></>}
                     {eval_res_items ? (
-                      <p className="small-response-metrics">{getEvalResultStr(eval_res_items[idx])}</p>
+                      <p className="small-response-metrics">{getEvalResultStr(resp_str_to_eval_res[r])}</p>
                     ) : <></>}
                     <pre className="small-response">{r}</pre>
                   </div>

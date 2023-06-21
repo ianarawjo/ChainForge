@@ -119,6 +119,7 @@ const EvaluatorNode = ({ data, id }) => {
             }
         });
 
+        console.log(json.responses);
         setLastResponses(json.responses);
         setCodeTextOnLastRun(codeTextOnRun);
         setLastRunSuccess(true);
