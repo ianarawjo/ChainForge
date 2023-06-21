@@ -571,7 +571,8 @@ const VisNode = ({ data, id }) => {
                 let metavars = new Set();
                 json.responses.forEach(resp_obj => {
                     Object.keys(resp_obj.vars).forEach(v => varnames.add(v));
-                    Object.keys(resp_obj.metavars).forEach(v => metavars.add(v));
+                    if (resp_obj.metavars)
+                        Object.keys(resp_obj.metavars).forEach(v => metavars.add(v));
                 });
                 varnames = Array.from(varnames);
                 metavars = Array.from(metavars);
