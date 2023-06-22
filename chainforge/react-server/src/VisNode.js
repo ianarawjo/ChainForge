@@ -160,9 +160,12 @@ const VisNode = ({ data, id }) => {
         const varcolors = colorPalettes.var; // ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#cadefc', '#f8f398'];
         let spec = [];
         let layout = {
-            autosize: true, title: '', margin: {
+            autosize: true, 
+            title: '', 
+            margin: {
                 l: 125, r: 0, b: 36, t: 20, pad: 6
-            }
+            },
+            yaxis: {showgrid: true},
         };
 
         // Bucket responses by LLM:
@@ -335,7 +338,8 @@ const VisNode = ({ data, id }) => {
                         orientation: 'h',
                     });
                     layout.barmode = "stack";
-                    layout.yaxis = { showticklabels: true, dtick: 1, type: 'category' };
+                    layout.yaxis = { showticklabels: true, dtick: 1, type: 'category', showgrid: true };
+                    layout.xaxis = { title: { font: {size: 12}, text: "Number of 'true' values" }, ...layout.xaxis};
                 } else {
                     // Plot a boxplot for all other cases.
                     spec.push({
@@ -397,6 +401,7 @@ const VisNode = ({ data, id }) => {
                         orientation: 'h',
                     });
                     layout.barmode = "stack";
+                    layout.xaxis = { title: { font: {size: 12}, text: "Number of 'true' values" }, ...layout.xaxis};
                 } else {
                     // Plot a boxplot for all other cases.
                     spec.push({

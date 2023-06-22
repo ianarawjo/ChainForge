@@ -5,7 +5,7 @@
  * be deployed in multiple locations.  
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { Collapse, MultiSelect } from '@mantine/core';
+import { Collapse, MultiSelect, ScrollArea } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import * as XLSX from 'xlsx';
 import useStore from './store';
@@ -322,7 +322,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     setMultiSelectValue(new_val);
   };
 
-  return (<div>
+  return (<div style={{height: '100%'}}>
     <MultiSelect ref={multiSelectRef}
                  onChange={handleMultiSelectValueChange}
                  className='nodrag nowheel inspect-multiselect'
