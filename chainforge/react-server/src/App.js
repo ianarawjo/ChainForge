@@ -196,7 +196,9 @@ const App = () => {
 
     setNodes(starting_nodes);
     setEdges([]);
-  }, [setNodes, setEdges, resetLLMColors]);
+    if (rfInstance)
+      rfInstance.setViewport({x: 200, y: 80, zoom: 1});
+  }, [setNodes, setEdges, resetLLMColors, rfInstance]);
 
   const loadFlow = async (flow, rf_inst) => {
     if (flow) {
@@ -498,7 +500,7 @@ const App = () => {
       <div style={{position: 'fixed', right: '10px', top: '10px', zIndex: 8}}>
         <Button onClick={onClickNewFlow} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> New Flow </Button>
         <Button onClick={onClickExamples} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> Example Flows </Button>
-        <Button onClick={onClickSettings} size="sm" variant="filled" compact><IconSettings size={"90%"} /></Button>
+        <Button onClick={onClickSettings} size="sm" variant="outline" compact><IconSettings size={"90%"} /></Button>
       </div>
     </div>
   );
