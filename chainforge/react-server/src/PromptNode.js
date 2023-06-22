@@ -42,6 +42,13 @@ const ensureUniqueName = (_name, _prev_names) => {
     }
     return new_name;
 };
+const getUniqueLLMMetavarKey = (responses) => {
+    const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)));
+    let i = 0;
+    while (`LLM_${i}` in metakeys)
+        i += 1;
+    return `LLM_${i}`;
+};
 
 const PromptNode = ({ data, id }) => {
 
@@ -533,9 +540,23 @@ const PromptNode = ({ data, id }) => {
                 setPromptTextOnLastRun(promptText);
 
                 // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
+                // First we need to get a unique key for a unique metavar for the LLM set that produced these responses,
+                // so we can keep track of 'upstream' LLMs (and plot against them) later on:
+                const llm_metavar_key = getUniqueLLMMetavarKey(json.responses);
                 setDataPropsForNode(id, {fields: json.responses.map(
                     resp_obj => resp_obj['responses'].map(
-                        r => ({text: r, fill_history: resp_obj['vars']}))).flat()
+                        r => {
+                            // Carry over the response text and prompt fill history (vars):
+                            let o = {text: r, fill_history: resp_obj['vars']};
+
+                            // Carry over any metavars
+                            o.metavars = resp_obj['metavars'] || {};
+
+                            // Add a meta var to keep track of which LLM produced this response
+                            o.metavars[llm_metavar_key] = resp_obj['llm'];
+                            return o;
+                        }
+                    )).flat()
                 });
 
                 // Ping any inspect nodes attached to this node to refresh their contents:
