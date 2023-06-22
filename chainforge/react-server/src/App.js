@@ -337,9 +337,6 @@ const App = () => {
 
   // Downloads the selected OpenAI eval file (preconverted to a .cforge flow)
   const importFlowFromOpenAIEval = (evalname) => {
-    // Trigger the 'loading' modal
-    setIsLoading(true);
-
     fetch(BASE_URL + 'app/fetchOpenAIEval', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
@@ -368,7 +365,9 @@ const App = () => {
 
   // Load flow from examples modal
   const onSelectExampleFlow = (name, example_category) => {
-    console.log(name, example_category);
+    // Trigger the 'loading' modal
+    setIsLoading(true);
+
     // Detect a special category of the example flow, and use the right loader for it:
     if (example_category === 'openai-eval') {
       importFlowFromOpenAIEval(name);
@@ -385,6 +384,9 @@ const App = () => {
     }, handleError).then(function(res) {
         return res.json();
     }, handleError).then(function(json) {
+        // Close the loading modal
+        setIsLoading(false);
+
         if (!json)
           throw new Error('Request to fetch example flow was sent to backend server, but there was no response.');
         else if (json.error || !json.data)

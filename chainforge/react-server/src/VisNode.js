@@ -50,12 +50,29 @@ const extractEvalResultsForMetric = (metric, responses) => {
 const areSetsEqual = (xs, ys) =>
     xs.size === ys.size &&
     [...xs].every((x) => ys.has(x));
-const genUniqueShortnames = (names) => {
+
+function addLineBreaks(str, max_line_len) {
+    let result = '';
+    const is_alphabetical = (s) => /^[A-Za-z]$/.test(s);
+    for (var i = 0; i < str.length; i++) {
+        result += str[i];
+        if ((i + 1) % max_line_len === 0) {
+            const next_char = i+1 < str.length ? str[i+1] : '';
+            result += (is_alphabetical(str[i]) && is_alphabetical(next_char) ? '-' : '') + '<br>';
+        }
+    }
+    return result;
+} 
+const genUniqueShortnames = (names, max_chars_per_line=32) => {
     // Generate unique 'shortnames' to refer to each name:
     let past_shortnames_counts = {};
     let shortnames = {};
+    const max_lines = 2;
     for (const name of names) {
-        const sn = truncStr(name, 16);
+        // Truncate string up to maximum num of chars
+        let sn = truncStr(name, max_chars_per_line * max_lines - 3);
+        // Add <br> tags to spread across multiple lines, where necessary
+        sn = addLineBreaks(sn, max_chars_per_line);
         if (sn in past_shortnames_counts) {
             past_shortnames_counts[sn] += 1;
             shortnames[name] = sn + `(${past_shortnames_counts[sn]})`;
@@ -66,6 +83,20 @@ const genUniqueShortnames = (names) => {
     }
     return shortnames;
 };
+const calcMaxCharsPerLine = (shortnames) => {
+    let max_chars = 1;
+    for (let i = 0; i < shortnames.length; i++) {
+        const sn = shortnames[i];
+        if (sn.includes('<br>'))
+            return sn.indexOf('<br>');
+        else if (sn.length > max_chars)
+            max_chars = sn.length;
+    }
+    return Math.max(max_chars, 9);
+};
+const calcLeftPaddingForYLabels = (shortnames) => {
+    return calcMaxCharsPerLine(shortnames) * 7;
+}
 
 const VisNode = ({ data, id }) => {
 
@@ -220,8 +251,8 @@ const VisNode = ({ data, id }) => {
                 name_idx += 1;
             }
             
-            // Set the left margin to fit the text
-            layout.margin.l = Math.max(...y_items.map(i => i.length)) * 9;
+            // Set the left margin to fit the yticks labels
+            layout.margin.l = calcLeftPaddingForYLabels(Object.values(shortnames));
 
             spec = [{
                 type: 'bar',
@@ -267,8 +298,7 @@ const VisNode = ({ data, id }) => {
                 names = new Set(responses.map(resp_to_x));
             }
 
-            const shortnames = genUniqueShortnames(names);   
-
+            const shortnames = genUniqueShortnames(names);
             let name_idx = 0;
             for (const name of names) {
                 let x_items = [];
@@ -323,6 +353,9 @@ const VisNode = ({ data, id }) => {
                 name_idx += 1;
             }
             layout.hovermode = 'closest';
+
+            // Set the left margin to fit the yticks labels
+            layout.margin.l = calcLeftPaddingForYLabels(Object.values(shortnames));
 
             if (metric_axes_labels.length > 0)
                 layout.xaxis = { 
@@ -381,6 +414,9 @@ const VisNode = ({ data, id }) => {
             });
             layout.boxmode = 'group';
             layout.bargap = 0.5;
+
+            // Set the left margin to fit the yticks labels
+            layout.margin.l = calcLeftPaddingForYLabels(Object.values(shortnames));
 
             if (metric_axes_labels.length > 0)
                 layout.xaxis = { 
@@ -638,14 +674,39 @@ const VisNode = ({ data, id }) => {
                    nodeId={id}
                    status={status}
                    icon={'📊'} />
-        <MultiSelect ref={multiSelectRef}
-                     onChange={handleMultiSelectValueChange}
-                     className='nodrag nowheel'
-                     data={multiSelectVars}
-                     placeholder="Pick params you wish to plot"
-                     size="sm"
-                     value={multiSelectValue}
-                     searchable />
+        <div style={{display: 'flex', justifyContent: 'center', flexWrap: 'wrap', width: '100%'}}>
+            <div style={{display: 'inline-flex', maxWidth: '50%'}}>
+                <span style={{fontSize: '10pt', margin: '6pt 3pt 0 3pt', fontWeight: 'bold', whiteSpace: 'nowrap'}}>y-axis:</span>
+                <MultiSelect ref={multiSelectRef}
+                            onChange={handleMultiSelectValueChange}
+                            className='nodrag nowheel'
+                            data={multiSelectVars}
+                            placeholder="Pick param to plot"
+                            size="xs"
+                            value={multiSelectValue}
+                            miw='80px'
+                            searchable />
+            </div>
+            <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '40%', marginLeft: '10pt'}}>
+                <span style={{fontSize: '10pt', margin: '6pt 3pt 0 0', fontWeight: 'bold', whiteSpace: 'nowrap'}}>x-axis:</span>
+                <MultiSelect className='nodrag nowheel'
+                            data={['score']}
+                            size="xs"
+                            value={['score']}
+                            miw='80px'
+                            disabled />
+            </div>
+            <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '40%', marginLeft: '10pt'}}>
+                <span style={{fontSize: '10pt', margin: '6pt 3pt 0 0', fontWeight: 'bold', whiteSpace: 'nowrap'}}>group by:</span>
+                <MultiSelect className='nodrag nowheel'
+                            data={['LLM']}
+                            size="xs"
+                            value={['LLM']}
+                            miw='80px'
+                            disabled />
+            </div>
+        </div>
+        <hr />
         <div className="nodrag" ref={setPlotDivRef} style={{minWidth: '150px', minHeight: '100px'}}>
             {plotlySpec && plotlySpec.length > 0 ? <></> : placeholderText}
                 <Plot

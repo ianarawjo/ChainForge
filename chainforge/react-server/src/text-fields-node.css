@@ -181,6 +181,9 @@
     /* #cef5dab1; */
     cursor: zoom-in;
   }
+  .eval-inspect-response-footer button {
+    cursor: zoom-in;
+  }
 
   .ace-editor-container {
     resize:vertical;
@@ -210,6 +213,10 @@
   }
   .plot-legend-item:active {
     opacity: 0.8;
+  }
+
+  g.ytick text {
+    line-height: 2px;
   }
 
   .response-var-inline > .response-var-name {
