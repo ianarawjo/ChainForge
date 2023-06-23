@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { MultiSelect } from '@mantine/core';
+import { MultiSelect, NativeSelect } from '@mantine/core';
 import useStore, { colorPalettes } from './store';
 import Plot from 'react-plotly.js';
 import NodeLabel from './NodeLabelComponent';
@@ -43,7 +43,6 @@ const getUniqueKeysInResponses = (responses, keyFunc) => {
         ukeys.add(keyFunc(res_obj)));
     return Array.from(ukeys);
 };
-const getLLMsInResponses = (responses) => getUniqueKeysInResponses(responses, (resp_obj) => resp_obj.llm);
 const extractEvalResultsForMetric = (metric, responses) => {
     return responses.map(resp_obj => resp_obj.eval_res.items.map(item => item[metric])).flat();
 };
@@ -120,7 +119,17 @@ const VisNode = ({ data, id }) => {
 
     // The MultiSelect so people can dynamically set what vars they care about
     const [multiSelectVars, setMultiSelectVars] = useState(data.vars || []);
-    const [multiSelectValue, setMultiSelectValue] = useState(data.selected_vars || []);
+    const [multiSelectValue, setMultiSelectValue] = useState(data.selected_vars[0] || 'LLM (default)');
+
+    // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
+    // However, when prompts are chained together, the original LLM info is stored in metavars as a key. 
+    // LLM groups allow you to plot against the original LLMs, even though a 'scorer' LLM might come after. 
+    const [availableLLMGroups, setAvailableLLMGroups] = useState(data.llm_groups || ['LLM']);
+    const [selectedLLMGroup, setSelectedLLMGroup] = useState(data.selected_llm_group || 'LLM');
+    const handleChangeLLMGroup = (new_val) => {
+        setSelectedLLMGroup(new_val.target.value);
+        setDataPropsForNode(id, { selected_llm_group: new_val.target.value });
+    };
 
     // When the user clicks an item in the drop-down,
     // we want to autoclose the multiselect drop-down:
@@ -130,8 +139,8 @@ const VisNode = ({ data, id }) => {
             multiSelectRef.current.blur();
         }
         setStatus('loading');
-        setMultiSelectValue(new_val);
-        setDataPropsForNode(id, { selected_vars: new_val });
+        setMultiSelectValue(new_val.target.value);
+        setDataPropsForNode(id, { selected_vars: [new_val.target.value] });
     };
 
     // Re-plot responses when anything changes
@@ -140,6 +149,15 @@ const VisNode = ({ data, id }) => {
 
         setStatus('none');
 
+        const get_llm = (resp_obj) => {
+            if (selectedLLMGroup === 'LLM')
+                return resp_obj.llm;
+            else
+                return resp_obj.metavars[selectedLLMGroup];
+        };
+        const getLLMsInResponses = (responses) => getUniqueKeysInResponses(responses, get_llm);
+
+        // Get all LLMs in responses, by selected LLM group
         const llm_names = getLLMsInResponses(responses);
 
         // If there are variables but no variables are selected and only 1 LLM is present...
@@ -158,7 +176,7 @@ const VisNode = ({ data, id }) => {
         // }
 
         // Create Plotly spec here
-        const varnames = multiSelectValue;
+        const varnames = (multiSelectValue !== 'LLM (default)') ? [multiSelectValue] : [];
         const varcolors = colorPalettes.var; // ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#cadefc', '#f8f398'];
         let spec = [];
         let layout = {
@@ -174,10 +192,11 @@ const VisNode = ({ data, id }) => {
         // Bucket responses by LLM:
         let responses_by_llm = {};
         responses.forEach(item => {
-            if (item.llm in responses_by_llm)
-                responses_by_llm[item.llm].push(item);
+            const llm = get_llm(item);
+            if (llm in responses_by_llm)
+                responses_by_llm[llm].push(item);
             else
-                responses_by_llm[item.llm] = [item];
+                responses_by_llm[llm] = [item];
         });
 
         // Get the type of evaluation results, if present
@@ -233,7 +252,6 @@ const VisNode = ({ data, id }) => {
             // per category of 'resp_to_x', as a horizontal bar chart, with different colors per category.
             let names = new Set(responses.map(resp_to_x));
             const shortnames = genUniqueShortnames(names);   
-            let name_idx = 0;
             let x_items = [];
             let y_items = [];
             let marker_colors = [];
@@ -260,9 +278,8 @@ const VisNode = ({ data, id }) => {
                 // otherwise use the palette for displaying variables.
                 const color = (group_type === 'llm') ? 
                                 getColorForLLMAndSetIfNotFound(name) 
-                            :   getColorForLLMAndSetIfNotFound(responses[0].llm);
+                            :   getColorForLLMAndSetIfNotFound(get_llm(responses[0]));
                 marker_colors.push(color);
-                name_idx += 1;
             }
             
             // Set the left margin to fit the yticks labels
@@ -313,7 +330,6 @@ const VisNode = ({ data, id }) => {
             }
 
             const shortnames = genUniqueShortnames(names);
-            let name_idx = 0;
             for (const name of names) {
                 let x_items = [];
                 let text_items = [];
@@ -337,7 +353,7 @@ const VisNode = ({ data, id }) => {
                 const color = (group_type === 'llm') ? 
                                 getColorForLLMAndSetIfNotFound(name) 
                             //:   varcolors[name_idx % varcolors.length];
-                            :   getColorForLLMAndSetIfNotFound(responses[0].llm);
+                            :   getColorForLLMAndSetIfNotFound(get_llm(responses[0]));
 
                 if (typeof_eval_res === 'Boolean' || typeof_eval_res === 'Categorical')  {
                     // Plot a histogram for categorical data.
@@ -377,8 +393,6 @@ const VisNode = ({ data, id }) => {
                     }
                     spec.push(d);
                 }
-
-                name_idx += 1;
             }
             layout.hovermode = 'closest';
             layout.showlegend = false;
@@ -556,9 +570,9 @@ const VisNode = ({ data, id }) => {
                 // No variables means they used a single prompt (no template) to generate responses
                 // (Users are likely evaluating differences in responses between LLMs)
                 if (typeof_eval_res === 'Boolean')
-                    plot_accuracy((r) => r.llm, 'llm')
+                    plot_accuracy(get_llm, 'llm')
                 else
-                    plot_simple_boxplot((r) => r.llm, 'llm');
+                    plot_simple_boxplot(get_llm, 'llm');
             }
             else if (varnames.length === 1) {
                 // 1 var; numeric eval
@@ -599,7 +613,7 @@ const VisNode = ({ data, id }) => {
                 } else {
                     spec = [];
                     llm_names.forEach(llm => {
-                        const resps = responses.filter((r) => r.llm === llm);
+                        const resps = responses.filter((r) => get_llm(r) === llm);
                         spec.push({
                             type: 'scatter3d',
                             x: resps.map(r => get_var(r, varnames[0], true)).map(s => shortnames_0[s]),
@@ -627,7 +641,7 @@ const VisNode = ({ data, id }) => {
         //     plotDivRef.current.style.width = '300px';
         // }
         
-    }, [multiSelectVars, multiSelectValue, responses, selectedLegendItems, plotDivRef]);
+    }, [multiSelectVars, multiSelectValue, selectedLLMGroup, responses, selectedLegendItems, plotDivRef]);
   
     const handleOnConnect = useCallback(() => {
         // Grab the input node ids
@@ -658,15 +672,25 @@ const VisNode = ({ data, id }) => {
                 varnames = Array.from(varnames);
                 metavars = Array.from(metavars);
 
-                const msvars = varnames.map(name => ({value: name, label: name})).concat(
-                    metavars.map(name => ({value: `__meta_${name}`, label: `${name} (meta)`}))
-                );
+                // Get all vars for the y-axis dropdown, merging metavars and vars into one list, 
+                // and excluding any special 'LLM group' metavars:
+                const msvars = ['LLM (default)'].concat(varnames.map(name => ({value: name, label: name})))
+                                                .concat(metavars.filter(name => !name.startsWith('LLM_'))
+                                                                .map(name => ({value: `__meta_${name}`, label: `${name} (meta)`})));
+
+                // Find all the special 'LLM group' metavars and put them in the 'group by' dropdown:
+                let available_llm_groups = [{value: 'LLM', label: 'LLM'}].concat(
+                                                metavars.filter(name => name.startsWith('LLM_'))
+                                                        .map(name => ({value: name, label: `LLMs #${parseInt(name.slice(4)) + 1}`})));
+                if (available_llm_groups.length > 1)
+                    available_llm_groups[0] = {value: 'LLM', label: 'LLMs (last)'};
+                setAvailableLLMGroups(available_llm_groups);
 
                 // Check for a change in available parameters
                 if (!multiSelectVars || !multiSelectValue || !areSetsEqual(new Set(msvars.map(o => o.value)), new Set(multiSelectVars.map(o => o.value)))) {
-                    setMultiSelectValue([]);
+                    setMultiSelectValue('LLM (default)');
                     setMultiSelectVars(msvars);
-                    setDataPropsForNode(id, { vars: msvars, selected_vars: [] });
+                    setDataPropsForNode(id, { vars: msvars, selected_vars: [], llm_groups: available_llm_groups });
                 }
                 // From here a React effect will detect the changes to these values and display a new plot
             }
@@ -721,7 +745,7 @@ const VisNode = ({ data, id }) => {
         <div style={{display: 'flex', justifyContent: 'center', flexWrap: 'wrap'}}>
             <div style={{display: 'inline-flex', maxWidth: '50%'}}>
                 <span style={{fontSize: '10pt', margin: '6pt 3pt 0 3pt', fontWeight: 'bold', whiteSpace: 'nowrap'}}>y-axis:</span>
-                <MultiSelect ref={multiSelectRef}
+                <NativeSelect ref={multiSelectRef}
                             onChange={handleMultiSelectValueChange}
                             className='nodrag nowheel'
                             data={multiSelectVars}
@@ -733,7 +757,7 @@ const VisNode = ({ data, id }) => {
             </div>
             <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '30%', marginLeft: '10pt'}}>
                 <span style={{fontSize: '10pt', margin: '6pt 3pt 0 0', fontWeight: 'bold', whiteSpace: 'nowrap'}}>x-axis:</span>
-                <MultiSelect className='nodrag nowheel'
+                <NativeSelect className='nodrag nowheel'
                             data={['score']}
                             size="xs"
                             value={['score']}
@@ -742,12 +766,13 @@ const VisNode = ({ data, id }) => {
             </div>
             <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '30%', marginLeft: '10pt'}}>
                 <span style={{fontSize: '10pt', margin: '6pt 3pt 0 0', fontWeight: 'bold', whiteSpace: 'nowrap'}}>group by:</span>
-                <MultiSelect className='nodrag nowheel'
-                            data={['LLM']}
+                <NativeSelect className='nodrag nowheel'
+                            onChange={handleChangeLLMGroup}
+                            data={availableLLMGroups}
                             size="xs"
-                            value={['LLM']}
+                            value={selectedLLMGroup}
                             miw='80px'
-                            disabled />
+                            disabled={availableLLMGroups.length <= 1} />
             </div>
         </div>
         <hr />
