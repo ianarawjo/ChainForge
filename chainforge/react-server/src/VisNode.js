@@ -161,6 +161,7 @@ const VisNode = ({ data, id }) => {
         let spec = [];
         let layout = {
             autosize: true, 
+            dragmode: 'pan',
             title: '', 
             margin: {
                 l: 125, r: 0, b: 36, t: 20, pad: 6
@@ -186,6 +187,14 @@ const VisNode = ({ data, id }) => {
             const is_all_bools = responses.reduce((acc0, res_obj) => acc0 && res_obj.eval_res.items.reduce((acc, cur) => acc && typeof cur === 'boolean', true), true);
             if (is_all_bools) typeof_eval_res = 'Boolean';
         }
+
+        // Check the max length of eval results, as if it's only 1 score per item (num of generations per prompt n=1), 
+        // we might want to plot the result differently:
+       let max_num_results_per_prompt = 1;
+       responses.forEach(res_obj => {
+        if (res_obj.eval_res?.items?.length > max_num_results_per_prompt)
+            max_num_results_per_prompt = res_obj.eval_res.items.length;
+       });
 
         let plot_legend = null;
         let metric_axes_labels = [];
@@ -325,7 +334,8 @@ const VisNode = ({ data, id }) => {
                 // otherwise use the palette for displaying variables.
                 const color = (group_type === 'llm') ? 
                                 getColorForLLMAndSetIfNotFound(name) 
-                            :   varcolors[name_idx % varcolors.length];
+                            //:   varcolors[name_idx % varcolors.length];
+                            :   getColorForLLMAndSetIfNotFound(responses[0].llm);
 
                 if (typeof_eval_res === 'Boolean' || typeof_eval_res === 'Categorical')  {
                     // Plot a histogram for categorical data.
@@ -342,21 +352,34 @@ const VisNode = ({ data, id }) => {
                     layout.xaxis = { title: { font: {size: 12}, text: "Number of 'true' values" }, ...layout.xaxis};
                 } else {
                     // Plot a boxplot for all other cases.
-                    spec.push({
-                        type: 'box', 
+                    // x_items = [x_items.reduce((val, acc) => val + acc, 0)];
+                    let d = {
                         name: shortnames[name], 
-                        boxpoints: 'all', 
                         x: x_items, 
                         text: text_items, 
                         hovertemplate: '%{text}', 
                         orientation: 'h',
                         marker: { color: color }
-                    });
+                    };
+
+                    // If only one result, plot a bar chart:
+                    if (x_items.length === 1) {
+                        d.type = 'bar';
+                        d.textposition = 'none'; // hide the text which appears within each bar
+                        d.y = new Array(x_items.length).fill(shortnames[name]);
+                    } else {
+                        // If multiple eval results per response object (num generations per prompt n > 1),
+                        // plot box-and-whiskers to illustrate the variability:
+                        d.type = 'box';
+                        d.boxpoints = 'all';
+                    }
+                    spec.push(d);
                 }
 
                 name_idx += 1;
             }
             layout.hovermode = 'closest';
+            layout.showlegend = false;
 
             // Set the left margin to fit the yticks labels
             layout.margin.l = calcLeftPaddingForYLabels(Object.values(shortnames));
@@ -403,9 +426,8 @@ const VisNode = ({ data, id }) => {
                     layout.barmode = "stack";
                     layout.xaxis = { title: { font: {size: 12}, text: "Number of 'true' values" }, ...layout.xaxis};
                 } else {
-                    // Plot a boxplot for all other cases.
-                    spec.push({
-                        type: 'box',
+                    // Plot a boxplot or bar chart for other cases.
+                    let d = {
                         name: llm,
                         marker: {color: getColorForLLMAndSetIfNotFound(llm)},
                         x: x_items,
@@ -414,7 +436,23 @@ const VisNode = ({ data, id }) => {
                         text: text_items,
                         hovertemplate: '%{text} <b><i>(%{x})</i></b>',
                         orientation: 'h',
-                    });
+                    };
+
+                    // If only one result, plot a bar chart:
+                    if (max_num_results_per_prompt === 1) {
+                        d.type = 'bar';
+                        d.textposition = 'none'; // hide the text which appears within each bar
+                    } else {
+                        // If multiple eval results per response object (num generations per prompt n > 1),
+                        // plot box-and-whiskers to illustrate the variability:
+                        d.type = 'box';
+                    }
+
+                    spec.push(d);
+                    layout.xaxis = {
+                        title: { font: {size: 12}, text: 'score' },
+                        ...layout.axis
+                    };
                 }
             });
             layout.boxmode = 'group';
@@ -626,7 +664,6 @@ const VisNode = ({ data, id }) => {
                 if (!multiSelectVars || !multiSelectValue || !areSetsEqual(new Set(msvars.map(o => o.value)), new Set(multiSelectVars.map(o => o.value)))) {
                     setMultiSelectValue([]);
                     setMultiSelectVars(msvars);
-                    console.log('here');
                     setDataPropsForNode(id, { vars: msvars, selected_vars: [] });
                 }
                 // From here a React effect will detect the changes to these values and display a new plot
@@ -679,7 +716,7 @@ const VisNode = ({ data, id }) => {
                    nodeId={id}
                    status={status}
                    icon={'📊'} />
-        <div style={{display: 'flex', justifyContent: 'center', flexWrap: 'wrap', width: '100%'}}>
+        <div style={{display: 'flex', justifyContent: 'center', flexWrap: 'wrap'}}>
             <div style={{display: 'inline-flex', maxWidth: '50%'}}>
                 <span style={{fontSize: '10pt', margin: '6pt 3pt 0 3pt', fontWeight: 'bold', whiteSpace: 'nowrap'}}>y-axis:</span>
                 <MultiSelect ref={multiSelectRef}
@@ -692,7 +729,7 @@ const VisNode = ({ data, id }) => {
                             miw='80px'
                             searchable />
             </div>
-            <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '40%', marginLeft: '10pt'}}>
+            <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '30%', marginLeft: '10pt'}}>
                 <span style={{fontSize: '10pt', margin: '6pt 3pt 0 0', fontWeight: 'bold', whiteSpace: 'nowrap'}}>x-axis:</span>
                 <MultiSelect className='nodrag nowheel'
                             data={['score']}
@@ -701,7 +738,7 @@ const VisNode = ({ data, id }) => {
                             miw='80px'
                             disabled />
             </div>
-            <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '40%', marginLeft: '10pt'}}>
+            <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '30%', marginLeft: '10pt'}}>
                 <span style={{fontSize: '10pt', margin: '6pt 3pt 0 0', fontWeight: 'bold', whiteSpace: 'nowrap'}}>group by:</span>
                 <MultiSelect className='nodrag nowheel'
                             data={['LLM']}

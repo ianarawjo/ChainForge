@@ -420,6 +420,8 @@ const PromptNode = ({ data, id }) => {
         // On connect to the server, ask it to give us the current progress 
         // for task 'queryllm' with id 'id', and stop when it reads progress >= 'max'. 
         socket.on("connect", (msg) => {
+            if (FINISHED_QUERY) return;
+            
             // Initialize progress bars to small amounts
             setProgress({ success: 2, error: 0 });
             setLLMItems(llmItemsCurrState.map(item => {
