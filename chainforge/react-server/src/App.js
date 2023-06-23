@@ -1,12 +1,13 @@
 // import logo from './logo.svg';
 // import './App.css';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Controls,
   Background,
   useReactFlow,
-  useViewport
+  useViewport,
+  setViewport,
 } from 'react-flow-renderer';
 import { Button, Menu, LoadingOverlay } from '@mantine/core';
 import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation } from '@tabler/icons-react';
@@ -55,6 +56,7 @@ const nodeTypes = {
 
 // const connectionLineStyle = { stroke: '#ddd' };
 const snapGrid = [16, 16];
+let saveIntervalInitialized = false;
 
 const App = () => {
 
@@ -63,6 +65,7 @@ const App = () => {
 
   // For saving / loading
   const [rfInstance, setRfInstance] = useState(null);
+  const [autosavingInterval, setAutosavingInterval] = useState(null);
 
   // For modal popup to set global settings like API keys
   const settingsModal = useRef(null);
@@ -80,7 +83,7 @@ const App = () => {
   const alertModal = useRef(null);
 
   // For displaying a pending 'loading' status
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Helper 
   const getWindowSize = () => ({width: window.innerWidth, height: window.innerHeight});
@@ -169,6 +172,19 @@ const App = () => {
     URL.revokeObjectURL(downloadLink.href);
   };
 
+  // Save the current flow to localStorage for later recall. Useful to getting
+  // back progress upon leaving the site / browser crash / system restart.
+  const saveFlow = useCallback((rf_inst) => {
+    const rf = rf_inst || rfInstance;
+    if (!rf) return;
+    // NOTE: This currently only saves the front-end state. Cache files
+    // are not pulled or overwritten upon loading from localStorage. 
+    const flow = rf.toObject();
+    localStorage.setItem('chainforge-flow', JSON.stringify(flow));
+    console.log('Flow saved!');
+  }, [rfInstance]);
+
+  // Triggered when user confirms 'New Flow' button
   const resetFlow = useCallback(() => {
     resetLLMColors();
 
@@ -180,24 +196,33 @@ const App = () => {
 
     setNodes(starting_nodes);
     setEdges([]);
-  }, [setNodes, setEdges, resetLLMColors]);
-  const saveFlow = useCallback(() => {
-    if (!rfInstance) return;
-    const flow = rfInstance.toObject();
-    localStorage.setItem('chainforge-flow', JSON.stringify(flow));
-  }, [rfInstance]);
+    if (rfInstance)
+      rfInstance.setViewport({x: 200, y: 80, zoom: 1});
+  }, [setNodes, setEdges, resetLLMColors, rfInstance]);
 
-  const loadFlow = async (flow) => {
+  const loadFlow = async (flow, rf_inst) => {
     if (flow) {
-      const { x = 0, y = 0, zoom = 1 } = flow.viewport;
-      // setViewport({ x, y, zoom });
+      if (rf_inst) {
+        if (flow.viewport)
+          rf_inst.setViewport({x: flow.viewport.x || 0, y: flow.viewport.y || 0, zoom: 1});
+        else
+          rf_inst.setViewport({x:0, y:0, zoom:1});
+      }
       resetLLMColors();
       setNodes(flow.nodes || []);
       setEdges(flow.edges || []); 
+
+      // Save flow that user loaded to autosave cache, in case they refresh the browser
+      localStorage.setItem('chainforge-flow', JSON.stringify(flow));
     }
   };
-  const loadFlowFromCache = async () => {
-    loadFlow(JSON.parse(localStorage.getItem('chainforge-flow')));
+  const autosavedFlowExists = () => {
+    return localStorage.getItem('chainforge-flow') !== null;
+  };
+  const loadFlowFromAutosave = async (rf_inst) => {
+    const saved_flow = localStorage.getItem('chainforge-flow');
+    if (saved_flow)
+      loadFlow(JSON.parse(saved_flow), rf_inst);
   };
 
   // Export / Import (from JSON)
@@ -251,11 +276,11 @@ const App = () => {
     }, handleError).catch(handleError);
   };
 
-  const importFlowFromJSON = (flowJSON) => {
+  const importFlowFromJSON = useCallback((flowJSON) => {
     // Detect if there's no cache data
     if (!flowJSON.cache) {
       // Support for loading old flows w/o cache data:
-      loadFlow(flowJSON);
+      loadFlow(flowJSON, rfInstance);
       return;
     }
 
@@ -267,13 +292,13 @@ const App = () => {
     // before we can load the flow itself...
     importCache(cache).then(() => {
       // We load the ReactFlow instance last
-      loadFlow(flow);
+      loadFlow(flow, rfInstance);
     }).catch(err => {
       // On an error, still try to load the flow itself:
       handleError("Error encountered when importing cache data:" + err.message + "\n\nTrying to load flow regardless...");
-      loadFlow(flow);
+      loadFlow(flow, rfInstance);
     });
-  };
+  }, [rfInstance]);
 
   // Import a ChainForge flow from a file
   const importFlowFromFile = async () => {
@@ -312,9 +337,6 @@ const App = () => {
 
   // Downloads the selected OpenAI eval file (preconverted to a .cforge flow)
   const importFlowFromOpenAIEval = (evalname) => {
-    // Trigger the 'loading' modal
-    setIsLoading(true);
-
     fetch(BASE_URL + 'app/fetchOpenAIEval', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
@@ -343,7 +365,9 @@ const App = () => {
 
   // Load flow from examples modal
   const onSelectExampleFlow = (name, example_category) => {
-    console.log(name, example_category);
+    // Trigger the 'loading' modal
+    setIsLoading(true);
+
     // Detect a special category of the example flow, and use the right loader for it:
     if (example_category === 'openai-eval') {
       importFlowFromOpenAIEval(name);
@@ -360,6 +384,9 @@ const App = () => {
     }, handleError).then(function(res) {
         return res.json();
     }, handleError).then(function(json) {
+        // Close the loading modal
+        setIsLoading(false);
+
         if (!json)
           throw new Error('Request to fetch example flow was sent to backend server, but there was no response.');
         else if (json.error || !json.data)
@@ -384,6 +411,43 @@ const App = () => {
       confirmationModal.current.trigger();
   }, [confirmationModal, resetFlow, setConfirmationDialogProps]);
 
+  // Run once upon ReactFlow initialization
+  const onInit = (rf_inst) => {
+    setRfInstance(rf_inst);
+
+    // Autosave the flow to localStorage every minute:
+    console.log('set autosaving interval');
+    const interv = setInterval(() => saveFlow(rf_inst), 60000); // 60000 milliseconds = 1 minute
+    setAutosavingInterval(interv);
+
+    // Attempt to load an autosaved flow, if one exists:
+    if (autosavedFlowExists())
+      loadFlowFromAutosave(rf_inst);
+    else {
+      // Create a default starting flow for new users
+      // NOTE: We need to create a unique ID using the current date,
+      //       because of the way ReactFlow saves and restores states. 
+      const uid = (id) => `${id}-${Date.now()}`;
+      setNodes([
+        { id: uid('prompt'), type: 'prompt', data: { prompt: 'What is the opening sentence of Pride and Prejudice?', n: 1 }, position: { x: 450, y: 200 } },
+        { id: uid('eval'), type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 820, y: 150 } },
+        { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 80, y: 270 } },
+        { id: uid('vis'), type: 'vis', data: {}, position: { x: 1200, y: 250 } },
+        { id: uid('inspect'), type: 'inspect', data: {}, position: { x:820, y:400 } },
+      ]);
+    }
+
+    // Turn off loading wheel
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    // Cleanup the autosaving interval upon component unmount:
+    return () => {
+      clearInterval(autosavingInterval); // Clear the interval when the component is unmounted
+    };
+  }, []);
+
   return (
     <div>
       <GlobalSettingsModal ref={settingsModal} />
@@ -406,7 +470,7 @@ const App = () => {
           // connectionLineStyle={connectionLineStyle}
           snapToGrid={true}
           snapGrid={snapGrid}
-          onInit={setRfInstance}
+          onInit={onInit}
         >
           <Background color="#999" gap={16} />
           <Controls showZoom={true} />
@@ -438,7 +502,7 @@ const App = () => {
       <div style={{position: 'fixed', right: '10px', top: '10px', zIndex: 8}}>
         <Button onClick={onClickNewFlow} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> New Flow </Button>
         <Button onClick={onClickExamples} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> Example Flows </Button>
-        <Button onClick={onClickSettings} size="sm" variant="filled" compact><IconSettings size={"90%"} /></Button>
+        <Button onClick={onClickSettings} size="sm" variant="outline" compact><IconSettings size={"90%"} /></Button>
       </div>
     </div>
   );

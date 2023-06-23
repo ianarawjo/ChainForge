@@ -9,21 +9,7 @@ import {
 // Where the ChainForge Flask server is being hosted. 
 export const BASE_URL = 'http://localhost:8000/';
 
-// We need to create a unique ID using the current date,
-// because of the way ReactFlow saves and restores states. 
-const uid = (id) => `${id}-${Date.now()}`;
-
 // Initial project settings
-const initprompt = uid('prompt');
-const initeval = uid('eval');
-const initialNodes = [
-  { id: initprompt, type: 'prompt', data: { prompt: 'What is an example of ownership and borrowing in Rust?', n: 1 }, position: { x: 450, y: 200 } },
-  { id: initeval, type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 820, y: 150 } },
-  { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 80, y: 270 } },
-  { id: uid('vis'), type: 'vis', data: {}, position: { x: 1200, y: 250 } },
-  { id: uid('inspect'), type: 'inspect', data: {}, position: { x:820, y:400 } },
-];
-const initialEdges = [];
 const initialAPIKeys = {};
 const initialLLMColors = {};
 
@@ -44,8 +30,8 @@ export const colorPalettes = {
 // A global store of variables, used for maintaining state
 // across ChainForge and ReactFlow components.
 const useStore = create((set, get) => ({
-  nodes: initialNodes,
-  edges: initialEdges,
+  nodes: [],
+  edges: [],
 
   // Keeping track of LLM API keys
   apiKeys: initialAPIKeys,

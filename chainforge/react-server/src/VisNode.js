@@ -50,12 +50,29 @@ const extractEvalResultsForMetric = (metric, responses) => {
 const areSetsEqual = (xs, ys) =>
     xs.size === ys.size &&
     [...xs].every((x) => ys.has(x));
-const genUniqueShortnames = (names) => {
+
+function addLineBreaks(str, max_line_len) {
+    let result = '';
+    const is_alphabetical = (s) => /^[A-Za-z]$/.test(s);
+    for (var i = 0; i < str.length; i++) {
+        result += str[i];
+        if ((i + 1) % max_line_len === 0) {
+            const next_char = i+1 < str.length ? str[i+1] : '';
+            result += (is_alphabetical(str[i]) && is_alphabetical(next_char) ? '-' : '') + '<br>';
+        }
+    }
+    return result;
+} 
+const genUniqueShortnames = (names, max_chars_per_line=32) => {
     // Generate unique 'shortnames' to refer to each name:
     let past_shortnames_counts = {};
     let shortnames = {};
+    const max_lines = 2;
     for (const name of names) {
-        const sn = truncStr(name, 16);
+        // Truncate string up to maximum num of chars
+        let sn = truncStr(name, max_chars_per_line * max_lines - 3);
+        // Add <br> tags to spread across multiple lines, where necessary
+        sn = addLineBreaks(sn, max_chars_per_line);
         if (sn in past_shortnames_counts) {
             past_shortnames_counts[sn] += 1;
             shortnames[name] = sn + `(${past_shortnames_counts[sn]})`;
@@ -66,6 +83,20 @@ const genUniqueShortnames = (names) => {
     }
     return shortnames;
 };
+const calcMaxCharsPerLine = (shortnames) => {
+    let max_chars = 1;
+    for (let i = 0; i < shortnames.length; i++) {
+        const sn = shortnames[i];
+        if (sn.includes('<br>'))
+            return sn.indexOf('<br>');
+        else if (sn.length > max_chars)
+            max_chars = sn.length;
+    }
+    return Math.max(max_chars, 9);
+};
+const calcLeftPaddingForYLabels = (shortnames) => {
+    return calcMaxCharsPerLine(shortnames) * 7;
+}
 
 const VisNode = ({ data, id }) => {
 
@@ -129,9 +160,13 @@ const VisNode = ({ data, id }) => {
         const varcolors = colorPalettes.var; // ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#cadefc', '#f8f398'];
         let spec = [];
         let layout = {
-            autosize: true, title: '', margin: {
+            autosize: true, 
+            dragmode: 'pan',
+            title: '', 
+            margin: {
                 l: 125, r: 0, b: 36, t: 20, pad: 6
-            }
+            },
+            yaxis: {showgrid: true},
         };
 
         // Bucket responses by LLM:
@@ -152,6 +187,14 @@ const VisNode = ({ data, id }) => {
             const is_all_bools = responses.reduce((acc0, res_obj) => acc0 && res_obj.eval_res.items.reduce((acc, cur) => acc && typeof cur === 'boolean', true), true);
             if (is_all_bools) typeof_eval_res = 'Boolean';
         }
+
+        // Check the max length of eval results, as if it's only 1 score per item (num of generations per prompt n=1), 
+        // we might want to plot the result differently:
+       let max_num_results_per_prompt = 1;
+       responses.forEach(res_obj => {
+        if (res_obj.eval_res?.items?.length > max_num_results_per_prompt)
+            max_num_results_per_prompt = res_obj.eval_res.items.length;
+       });
 
         let plot_legend = null;
         let metric_axes_labels = [];
@@ -220,8 +263,8 @@ const VisNode = ({ data, id }) => {
                 name_idx += 1;
             }
             
-            // Set the left margin to fit the text
-            layout.margin.l = Math.max(...y_items.map(i => i.length)) * 9;
+            // Set the left margin to fit the yticks labels
+            layout.margin.l = calcLeftPaddingForYLabels(Object.values(shortnames));
 
             spec = [{
                 type: 'bar',
@@ -267,8 +310,7 @@ const VisNode = ({ data, id }) => {
                 names = new Set(responses.map(resp_to_x));
             }
 
-            const shortnames = genUniqueShortnames(names);   
-
+            const shortnames = genUniqueShortnames(names);
             let name_idx = 0;
             for (const name of names) {
                 let x_items = [];
@@ -292,7 +334,8 @@ const VisNode = ({ data, id }) => {
                 // otherwise use the palette for displaying variables.
                 const color = (group_type === 'llm') ? 
                                 getColorForLLMAndSetIfNotFound(name) 
-                            :   varcolors[name_idx % varcolors.length];
+                            //:   varcolors[name_idx % varcolors.length];
+                            :   getColorForLLMAndSetIfNotFound(responses[0].llm);
 
                 if (typeof_eval_res === 'Boolean' || typeof_eval_res === 'Categorical')  {
                     // Plot a histogram for categorical data.
@@ -305,24 +348,41 @@ const VisNode = ({ data, id }) => {
                         orientation: 'h',
                     });
                     layout.barmode = "stack";
-                    layout.yaxis = { showticklabels: true, dtick: 1, type: 'category' };
+                    layout.yaxis = { showticklabels: true, dtick: 1, type: 'category', showgrid: true };
+                    layout.xaxis = { title: { font: {size: 12}, text: "Number of 'true' values" }, ...layout.xaxis};
                 } else {
                     // Plot a boxplot for all other cases.
-                    spec.push({
-                        type: 'box', 
+                    // x_items = [x_items.reduce((val, acc) => val + acc, 0)];
+                    let d = {
                         name: shortnames[name], 
-                        boxpoints: 'all', 
                         x: x_items, 
                         text: text_items, 
                         hovertemplate: '%{text}', 
                         orientation: 'h',
                         marker: { color: color }
-                    });
+                    };
+
+                    // If only one result, plot a bar chart:
+                    if (x_items.length === 1) {
+                        d.type = 'bar';
+                        d.textposition = 'none'; // hide the text which appears within each bar
+                        d.y = new Array(x_items.length).fill(shortnames[name]);
+                    } else {
+                        // If multiple eval results per response object (num generations per prompt n > 1),
+                        // plot box-and-whiskers to illustrate the variability:
+                        d.type = 'box';
+                        d.boxpoints = 'all';
+                    }
+                    spec.push(d);
                 }
 
                 name_idx += 1;
             }
             layout.hovermode = 'closest';
+            layout.showlegend = false;
+
+            // Set the left margin to fit the yticks labels
+            layout.margin.l = calcLeftPaddingForYLabels(Object.values(shortnames));
 
             if (metric_axes_labels.length > 0)
                 layout.xaxis = { 
@@ -364,10 +424,10 @@ const VisNode = ({ data, id }) => {
                         orientation: 'h',
                     });
                     layout.barmode = "stack";
+                    layout.xaxis = { title: { font: {size: 12}, text: "Number of 'true' values" }, ...layout.xaxis};
                 } else {
-                    // Plot a boxplot for all other cases.
-                    spec.push({
-                        type: 'box',
+                    // Plot a boxplot or bar chart for other cases.
+                    let d = {
                         name: llm,
                         marker: {color: getColorForLLMAndSetIfNotFound(llm)},
                         x: x_items,
@@ -376,11 +436,30 @@ const VisNode = ({ data, id }) => {
                         text: text_items,
                         hovertemplate: '%{text} <b><i>(%{x})</i></b>',
                         orientation: 'h',
-                    });
+                    };
+
+                    // If only one result, plot a bar chart:
+                    if (max_num_results_per_prompt === 1) {
+                        d.type = 'bar';
+                        d.textposition = 'none'; // hide the text which appears within each bar
+                    } else {
+                        // If multiple eval results per response object (num generations per prompt n > 1),
+                        // plot box-and-whiskers to illustrate the variability:
+                        d.type = 'box';
+                    }
+
+                    spec.push(d);
+                    layout.xaxis = {
+                        title: { font: {size: 12}, text: 'score' },
+                        ...layout.axis
+                    };
                 }
             });
             layout.boxmode = 'group';
             layout.bargap = 0.5;
+
+            // Set the left margin to fit the yticks labels
+            layout.margin.l = calcLeftPaddingForYLabels(Object.values(shortnames));
 
             if (metric_axes_labels.length > 0)
                 layout.xaxis = { 
@@ -585,7 +664,6 @@ const VisNode = ({ data, id }) => {
                 if (!multiSelectVars || !multiSelectValue || !areSetsEqual(new Set(msvars.map(o => o.value)), new Set(multiSelectVars.map(o => o.value)))) {
                     setMultiSelectValue([]);
                     setMultiSelectVars(msvars);
-                    console.log('here');
                     setDataPropsForNode(id, { vars: msvars, selected_vars: [] });
                 }
                 // From here a React effect will detect the changes to these values and display a new plot
@@ -638,14 +716,39 @@ const VisNode = ({ data, id }) => {
                    nodeId={id}
                    status={status}
                    icon={'📊'} />
-        <MultiSelect ref={multiSelectRef}
-                     onChange={handleMultiSelectValueChange}
-                     className='nodrag nowheel'
-                     data={multiSelectVars}
-                     placeholder="Pick params you wish to plot"
-                     size="sm"
-                     value={multiSelectValue}
-                     searchable />
+        <div style={{display: 'flex', justifyContent: 'center', flexWrap: 'wrap'}}>
+            <div style={{display: 'inline-flex', maxWidth: '50%'}}>
+                <span style={{fontSize: '10pt', margin: '6pt 3pt 0 3pt', fontWeight: 'bold', whiteSpace: 'nowrap'}}>y-axis:</span>
+                <MultiSelect ref={multiSelectRef}
+                            onChange={handleMultiSelectValueChange}
+                            className='nodrag nowheel'
+                            data={multiSelectVars}
+                            placeholder="Pick param to plot"
+                            size="xs"
+                            value={multiSelectValue}
+                            miw='80px'
+                            searchable />
+            </div>
+            <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '30%', marginLeft: '10pt'}}>
+                <span style={{fontSize: '10pt', margin: '6pt 3pt 0 0', fontWeight: 'bold', whiteSpace: 'nowrap'}}>x-axis:</span>
+                <MultiSelect className='nodrag nowheel'
+                            data={['score']}
+                            size="xs"
+                            value={['score']}
+                            miw='80px'
+                            disabled />
+            </div>
+            <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '30%', marginLeft: '10pt'}}>
+                <span style={{fontSize: '10pt', margin: '6pt 3pt 0 0', fontWeight: 'bold', whiteSpace: 'nowrap'}}>group by:</span>
+                <MultiSelect className='nodrag nowheel'
+                            data={['LLM']}
+                            size="xs"
+                            value={['LLM']}
+                            miw='80px'
+                            disabled />
+            </div>
+        </div>
+        <hr />
         <div className="nodrag" ref={setPlotDivRef} style={{minWidth: '150px', minHeight: '100px'}}>
             {plotlySpec && plotlySpec.length > 0 ? <></> : placeholderText}
                 <Plot
