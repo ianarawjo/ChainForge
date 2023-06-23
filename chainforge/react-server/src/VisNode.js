@@ -52,6 +52,8 @@ const areSetsEqual = (xs, ys) =>
     [...xs].every((x) => ys.has(x));
 
 function addLineBreaks(str, max_line_len) {
+    if (!str || (typeof str !== 'string') || str.length === 0)
+        return '';
     let result = '';
     const is_alphabetical = (s) => /^[A-Za-z]$/.test(s);
     for (var i = 0; i < str.length; i++) {
