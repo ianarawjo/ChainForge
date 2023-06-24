@@ -8,9 +8,9 @@ import NodeLabel from './NodeLabelComponent'
 import TemplateHooks, { extractBracketedSubstrings, toPyTemplateFormat } from './TemplateHooksComponent'
 import LLMList from './LLMListComponent'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
-import {BASE_URL} from './store';
 import io from 'socket.io-client';
 import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas'
+import fetch_from_backend from './fetch_from_backend';
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5).
@@ -181,12 +181,8 @@ const PromptNode = ({ data, id }) => {
     refreshTemplateHooks(promptText);
 
     // Attempt to grab cache'd responses
-    fetch(BASE_URL + 'app/grabResponses', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        body: JSON.stringify({
-            responses: [id],
-        }),
+    fetch_from_backend('grabResponses', {
+        responses: [id],
     }).then(function(res) {
         return res.json();
     }).then(function(json) {
@@ -269,16 +265,13 @@ const PromptNode = ({ data, id }) => {
 
   // Ask the backend how many responses it needs to collect, given the input data:
   const fetchResponseCounts = (prompt, vars, llms, rejected) => {
-    return fetch(BASE_URL + 'app/countQueriesRequired', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        body: JSON.stringify({
-            prompt: prompt,
-            vars: vars,
-            llms: llms,
-            id: id, 
-            n: numGenerations,
-    })}, rejected).then(function(response) {
+    return fetch_from_backend('countQueriesRequired', {
+        prompt: prompt,
+        vars: vars,
+        llms: llms,
+        id: id, 
+        n: numGenerations,
+    }, rejected).then(function(response) {
         return response.json();
     }, rejected).then(function(json) {
         if (!json || !json.counts) {
@@ -394,12 +387,7 @@ const PromptNode = ({ data, id }) => {
 
     // Ask the backend to reset the scratchpad for counting queries:
     const create_progress_scratchpad = () => {
-        return fetch(BASE_URL + 'app/createProgressFile', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            body: JSON.stringify({
-                id: id,
-        })}, rejected);
+        return fetch_from_backend('createProgressFile', {id: id}, rejected);
     };
 
     // Fetch info about the number of queries we'll need to make 
@@ -483,18 +471,14 @@ const PromptNode = ({ data, id }) => {
 
     // Run all prompt permutations through the LLM to generate + cache responses:
     const query_llms = () => {
-        return fetch(BASE_URL + 'app/queryllm', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            body: JSON.stringify({
-                id: id,
-                llm: llmItemsCurrState,
-                prompt: py_prompt_template,
-                vars: pulled_data,
-                n: numGenerations,
-                api_keys: (apiKeys ? apiKeys : {}),
-                no_cache: false,
-            }),
+        return fetch_from_backend('queryllm', {
+            id: id,
+            llm: llmItemsCurrState,
+            prompt: py_prompt_template,
+            vars: pulled_data,
+            n: numGenerations,
+            api_keys: (apiKeys ? apiKeys : {}),
+            no_cache: false,
         }, rejected).then(function(response) {
             return response.json();
         }, rejected).then(function(json) {

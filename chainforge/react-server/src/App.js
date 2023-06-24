@@ -27,7 +27,8 @@ import './text-fields-node.css';
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from 'zustand/shallow';
-import useStore, { BASE_URL } from './store';
+import useStore from './store';
+import fetch_from_backend from './fetch_from_backend';
 
 const selector = (state) => ({
   nodes: state.nodes,
@@ -234,12 +235,8 @@ const App = () => {
 
     // Then we grab all the relevant cache files from the backend
     const all_node_ids = nodes.map(n => n.id);
-    fetch(BASE_URL + 'app/exportCache', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        body: JSON.stringify({
-            'ids': all_node_ids,
-        }),
+    fetch_from_backend('exportCache', {
+      'ids': all_node_ids,
     }).then(function(res) {
         return res.json();
     }).then(function(json) {
@@ -259,12 +256,8 @@ const App = () => {
 
   // Import data to the cache stored on the local filesystem (in backend)
   const importCache = (cache_data) => {
-    return fetch(BASE_URL + 'app/importCache', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        body: JSON.stringify({
-            'files': cache_data,
-        }),
+    return fetch_from_backend('importCache', {
+      'files': cache_data,
     }, handleError).then(function(res) {
         return res.json();
     }, handleError).then(function(json) {
@@ -337,12 +330,8 @@ const App = () => {
 
   // Downloads the selected OpenAI eval file (preconverted to a .cforge flow)
   const importFlowFromOpenAIEval = (evalname) => {
-    fetch(BASE_URL + 'app/fetchOpenAIEval', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-      body: JSON.stringify({
-        name: evalname,
-      }),
+    fetch_from_backend('fetchOpenAIEval', {
+      name: evalname,
     }, handleError).then(function(response) {
       return response.json();
     }, handleError).then(function(json) {
@@ -375,12 +364,8 @@ const App = () => {
     }
     
     // Fetch the example flow data from the backend
-    fetch(BASE_URL + 'app/fetchExampleFlow', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        body: JSON.stringify({
-            'name': name,
-        }),
+    fetch_from_backend('fetchExampleFlow', {
+      'name': name,
     }, handleError).then(function(res) {
         return res.json();
     }, handleError).then(function(json) {

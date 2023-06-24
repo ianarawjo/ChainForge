@@ -12,6 +12,7 @@ import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
+import fetch_from_backend from './fetch_from_backend';
 
 const EvaluatorNode = ({ data, id }) => {
 
@@ -38,21 +39,17 @@ const EvaluatorNode = ({ data, id }) => {
   // On initialization
   useEffect(() => {
     // Attempt to grab cache'd responses
-    fetch(BASE_URL + 'app/grabResponses', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-      body: JSON.stringify({
-          responses: [id],
-      }),
-  }).then(function(res) {
+    fetch_from_backend('grabResponses', {
+      responses: [id],
+    }).then(function(res) {
       return res.json();
-  }).then(function(json) {
+    }).then(function(json) {
       if (json.responses && json.responses.length > 0) {
           // Store responses and set status to green checkmark
           setLastResponses(json.responses);
           setStatus('ready');
       }
-  });
+    });
   }, []);
 
   const handleCodeChange = (code) => {
@@ -99,18 +96,14 @@ const EvaluatorNode = ({ data, id }) => {
 
     // Run evaluator in backend
     const codeTextOnRun = codeText + '';
-    fetch(BASE_URL + 'app/execute', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        body: JSON.stringify({
-            id: id,
-            code: codeTextOnRun,
-            scope: mapScope,
-            responses: input_node_ids,
-            reduce_vars: [], // reduceMethod === 'avg' ? reduceVars : [],
-            script_paths: script_paths,
-            // write an extra part here that takes in reduce func
-        }),
+    fetch_from_backend('execute', {
+      id: id,
+      code: codeTextOnRun,
+      scope: mapScope,
+      responses: input_node_ids,
+      reduce_vars: [],
+      script_paths: script_paths,
+      // write an extra part here that takes in reduce func
     }, rejected).then(function(response) {
         return response.json();
     }, rejected).then(function(json) {
