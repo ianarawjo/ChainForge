@@ -7,18 +7,8 @@
 
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, RATE_LIMITS } from './models';
+import { Dict, LLMResponseError, LLMResponseObject, LLMAPICall } from "./typing";
 
-// Custom types
-interface Dict { [key: string]: any };
-interface LLMResponseType {
-  prompt: string;
-  query: Dict;
-  responses: string[];
-  raw_response: Dict;
-  llm: LLM;
-  info: Dict;
-  metavars: Dict;
-}
 interface _IntermediateLLMResponseType {
   prompt: PromptTemplate | string,
   query?: Dict,
@@ -59,14 +49,6 @@ class StorageCache {
   }
   public static store(key: string, data: any): void {
     StorageCache.getInstance().storeCacheData(key, data);
-  }
-}
-
-/** Raised when there is an error generating a single response from an LLM */
-class LLMResponseError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "LLMResponseError";
   }
 }
 
@@ -137,13 +119,13 @@ class PromptPipeline {
                               llm: LLM,
                                 n: number = 1, 
                       temperature: number = 1.0, 
-                       llm_params: Dict): Generator<LLMResponseType | LLMResponseError, boolean, undefined> {
+                       llm_params: Dict): Generator<LLMResponseObject | LLMResponseError, boolean, undefined> {
     // Double-check that properties is the correct type (JSON dict):
     // Load any cache'd responses
     let responses = this._load_cached_responses();
 
     // Query LLM with each prompt, yield + cache the responses
-    let tasks: Array<Promise<_IntermediateLLMResponseType>> = [];
+    let tasks: Array<Promise<_IntermediateLLMResponseObject>> = [];
     const rate_limit = RATE_LIMITS[llm] || [1, 0];
     let [max_req, wait_secs] = rate_limit ? rate_limit : [1, 0];
     let num_queries_sent = -1;
@@ -206,7 +188,7 @@ class PromptPipeline {
         }
 
         // Create a response obj to represent the response
-        let resp_obj: LLMResponseType = {
+        let resp_obj: LLMResponseObject = {
           "prompt": prompt.toString(), 
           "query": query, 
           "responses": extract_responses(response, llm),
@@ -245,7 +227,7 @@ class PromptPipeline {
       let metavars = prompt.metavars;
 
       // Create a response obj to represent the response
-      let resp_obj: LLMResponseType = {
+      let resp_obj: LLMResponseObject = {
         "prompt": prompt.toString(), 
         "query": query, 
         "responses": extract_responses(response, llm),
@@ -318,7 +300,7 @@ class PromptPipeline {
     }
 
     // Get the correct API call for the given LLM:
-    let call_llm = null;
+    let call_llm: LLMAPICall | undefined;
     const llm_name = getEnumName(LLM, llm.toString());
     if (llm_name?.startsWith('OpenAI'))
       call_llm = call_chatgpt;
