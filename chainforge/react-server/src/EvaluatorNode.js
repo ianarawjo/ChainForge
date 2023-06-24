@@ -4,7 +4,6 @@ import { Button, Code } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import { IconTerminal, IconSearch } from '@tabler/icons-react'
-import {BASE_URL} from './store';
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 
 // Ace code editor

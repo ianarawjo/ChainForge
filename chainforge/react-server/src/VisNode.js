@@ -5,7 +5,7 @@ import useStore, { colorPalettes } from './store';
 import Plot from 'react-plotly.js';
 import NodeLabel from './NodeLabelComponent';
 import PlotLegend from './PlotLegend';
-import {BASE_URL} from './store';
+import fetch_from_backend from './fetch_from_backend';
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -647,13 +647,10 @@ const VisNode = ({ data, id }) => {
         // Grab the input node ids
         const input_node_ids = [data.input];
 
-        fetch(BASE_URL + 'app/grabResponses', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            body: JSON.stringify({
-                responses: input_node_ids,
-            }),
-        }).then(function(res) {
+        fetch_from_backend(
+            'grabResponses',
+            {responses: input_node_ids}
+        ).then(function(res) {
             return res.json();
         }).then(function(json) {
             if (json.responses && json.responses.length > 0) {

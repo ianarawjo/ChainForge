@@ -99,7 +99,7 @@ class StringTemplate {
     }
 }
 
-class PromptTemplate {
+export class PromptTemplate {
     /**
     Wrapper around string.Template. Use to generate prompts fast.
 
@@ -225,7 +225,7 @@ class PromptTemplate {
     }
 }
 
-class PromptPermutationGenerator {
+export class PromptPermutationGenerator {
     /** 
     Given a PromptTemplate and a parameter dict that includes arrays of items, 
     generate all the permutations of the prompt for all permutations of the items.
