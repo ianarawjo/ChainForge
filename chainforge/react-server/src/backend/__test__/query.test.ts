@@ -1,0 +1,74 @@
+/*
+* @jest-environment node
+*/
+import { PromptPipeline } from '../query';
+import { LLM } from '../models';
+import { expect, test } from '@jest/globals';
+import { LLMResponseError, LLMResponseObject } from '../typing';
+
+async function prompt_model(model: LLM): Promise<void> {
+  const pipeline = new PromptPipeline('What is the oldest {thing} in the world? Keep your answer brief.', model.toString());
+  let responses: Array<LLMResponseObject | LLMResponseError> = [];
+  for await (const response of pipeline.gen_responses({thing: ['bar', 'tree', 'book']}, model, 1, 1.0)) {
+    responses.push(response);
+  }
+  expect(responses).toHaveLength(3);
+
+  // Double-check the cache'd results
+  let cache = pipeline._load_cached_responses();
+  Object.entries(cache).forEach(([prompt, response]) => {
+    console.log(`Prompt: ${prompt}\nResponse: ${response.responses[0]}`);
+  });
+  expect(Object.keys(cache)).toHaveLength(3); // expect 3 prompts
+
+  // Now query ChatGPT again, but set n=2 to force it to send off 1 query per prompt.
+  responses = [];
+  for await (const response of pipeline.gen_responses({thing: ['bar', 'tree', 'book']}, model, 2, 1.0)) {
+    responses.push(response);
+  }
+  expect(responses).toHaveLength(3);  // still 3
+  responses.forEach(resp_obj => {
+    if (resp_obj instanceof LLMResponseError) return;
+    expect(resp_obj.responses).toHaveLength(2);  // each response object should have 2 candidates, as n=2
+  });
+
+  // Double-check the cache'd results
+  cache = pipeline._load_cached_responses();
+  Object.entries(cache).forEach(([prompt, resp_obj]) => {
+    console.log(`Prompt: ${prompt}\nResponses: ${JSON.stringify(resp_obj.responses)}`);
+    expect(resp_obj.responses).toHaveLength(2);
+    expect(resp_obj.raw_response).toHaveLength(2); // these should've been merged
+  });
+  expect(Object.keys(cache)).toHaveLength(3); // still expect 3 prompts
+
+  // Now send off the exact same query. It should use only the cache'd results:
+  responses = [];
+  for await (const response of pipeline.gen_responses({thing: ['bar', 'tree', 'book']}, model, 2, 1.0)) {
+    responses.push(response);
+  }
+  expect(responses).toHaveLength(3);  // still 3
+  responses.forEach(resp_obj => {
+    if (resp_obj instanceof LLMResponseError) return;
+    expect(resp_obj.responses).toHaveLength(2);  // each response object should have 2 candidates, as n=2
+  });
+
+  cache = pipeline._load_cached_responses();
+  Object.entries(cache).forEach(([prompt, resp_obj]) => {
+    expect(resp_obj.responses).toHaveLength(2);
+    expect(resp_obj.raw_response).toHaveLength(2); // these should've been merged
+  });
+  expect(Object.keys(cache)).toHaveLength(3); // still expect 3 prompts
+}
+
+test('basic prompt pipeline with chatgpt', async () => {
+  // Setup a simple pipeline with a prompt template, 1 variable and 3 input values
+  await prompt_model(LLM.OpenAI_ChatGPT);
+}, 20000);
+
+test('basic prompt pipeline with anthropic', async () => {
+  await prompt_model(LLM.Claude_v1);
+}, 40000);
+
+test('basic prompt pipeline with google palm2', async () => {
+  await prompt_model(LLM.PaLM2_Chat_Bison);
+}, 40000);

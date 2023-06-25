@@ -8,13 +8,13 @@
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, RATE_LIMITS } from './models';
 import { Dict, LLMResponseError, LLMResponseObject, LLMAPICall } from "./typing";
-import { call_chatgpt, call_anthropic, call_google_palm, call_azure_openai, call_dalai, getEnumName } from "./utils";
+import { call_chatgpt, call_anthropic, call_google_palm, call_azure_openai, call_dalai, getEnumName, extract_responses, merge_response_objs } from "./utils";
 
 interface _IntermediateLLMResponseType {
   prompt: PromptTemplate | string,
   query?: Dict,
   response?: Dict | LLMResponseError,
-  past_resp_obj?: Dict,
+  past_resp_obj?: LLMResponseObject | undefined,
 }
 
 /**
@@ -76,9 +76,9 @@ function sleep(ms: number): Promise<void> {
 /**
  *  Abstract class that captures a generic querying interface to prompt LLMs
  */
-class PromptPipeline {
-  _storageKey: string
-  _template: string
+export class PromptPipeline {
+  private _storageKey: string;
+  private _template: string;
 
   constructor(template: string, storageKey: string) {
     this._template = template;
@@ -110,13 +110,13 @@ class PromptPipeline {
                               llm: LLM,
                                 n: number = 1, 
                       temperature: number = 1.0, 
-                       llm_params: Dict): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
+                       llm_params?: Dict): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
     // Double-check that properties is the correct type (JSON dict):
     // Load any cache'd responses
     let responses = this._load_cached_responses();
 
     // Query LLM with each prompt, yield + cache the responses
-    let tasks: Array<Promise<_IntermediateLLMResponseObject>> = [];
+    let tasks: Array<Promise<_IntermediateLLMResponseType>> = [];
     const rate_limit = RATE_LIMITS[llm] || [1, 0];
     let [max_req, wait_secs] = rate_limit ? rate_limit : [1, 0];
     let num_queries_sent = -1;
@@ -129,7 +129,7 @@ class PromptPipeline {
       let info = prompt.fill_history;
       let metavars = prompt.metavars;
 
-      let cached_resp = prompt_str in responses ? responses[prompt_str] : null;
+      let cached_resp = prompt_str in responses ? responses[prompt_str] : undefined;
       let extracted_resps: Array<any> = cached_resp ? cached_resp["responses"] : [];
       
       // First check if there is already a response for this item under these settings. If so, we can save an LLM call:
@@ -154,23 +154,18 @@ class PromptPipeline {
       if (max_req > 1) {                
         // Call the LLM asynchronously to generate a response, sending off
         // requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
-        tasks.push(this._prompt_llm(llm=llm, 
-                                    prompt=prompt, 
-                                    n=n, 
-                                    temperature=temperature, 
-                                    past_resp_obj=cached_resp, 
-                                    query_number=num_queries_sent, 
-                                    rate_limit_batch_size=max_req, 
-                                    rate_limit_wait_secs=wait_secs, 
-                                    **llm_params));
+        tasks.push(this._prompt_llm(llm, prompt, n, temperature, 
+                                    cached_resp, 
+                                    num_queries_sent, 
+                                    max_req, 
+                                    wait_secs, 
+                                    llm_params));
       } else {
         // Block. Await + yield a single LLM call.
-        let {_, query, response, past_resp_obj} = await this._prompt_llm(llm=llm, 
-                                                                        prompt=prompt, 
-                                                                        n=n, 
-                                                                        temperature=temperature, 
-                                                                        past_resp_obj=cached_resp, 
-                                                                        **llm_params);
+        let result = await this._prompt_llm(llm, prompt, n, temperature, cached_resp, 
+                                            undefined, undefined, undefined, 
+                                            llm_params);
+        let { query, response, past_resp_obj } = result;
 
         // Check for selective failure
         if (!query && response instanceof LLMResponseError) {
@@ -178,20 +173,24 @@ class PromptPipeline {
           continue;
         }
 
+        // We now know there was a response; type it correctly:
+        query = query as Dict;
+        response = response as Dict;
+
         // Create a response obj to represent the response
         let resp_obj: LLMResponseObject = {
-          "prompt": prompt.toString(), 
-          "query": query, 
-          "responses": extract_responses(response, llm),
-          "raw_response": response,
-          "llm": llm,
-          "info": info,
-          "metavars": metavars,
+          prompt: prompt.toString(), 
+          query: query, 
+          responses: extract_responses(response, llm),
+          raw_response: response,
+          llm: llm,
+          info: info,
+          metavars: metavars,
         }
 
         // Merge the response obj with the past one, if necessary
         if (past_resp_obj)
-          resp_obj = merge_response_objs(resp_obj, past_resp_obj);
+          resp_obj = merge_response_objs(resp_obj, past_resp_obj) as LLMResponseObject;
 
         // Save the current state of cache'd responses to a JSON file
         responses[resp_obj["prompt"]] = resp_obj;
@@ -230,7 +229,7 @@ class PromptPipeline {
 
       // Merge the response obj with the past one, if necessary
       if (past_resp_obj)
-        resp_obj = merge_response_objs(resp_obj, past_resp_obj);
+        resp_obj = merge_response_objs(resp_obj, past_resp_obj) as LLMResponseObject;
 
       // Save the current state of cache'd responses to a JSON file
       // NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
@@ -249,7 +248,7 @@ class PromptPipeline {
    * Loads cache'd responses of JSON.
    * Useful for continuing if computation was interrupted halfway through. 
    */
-  _load_cached_responses(): Dict {
+  _load_cached_responses(): {[key: string]: LLMResponseObject} {
     return StorageCache.get(this._storageKey);
   }
 
@@ -265,7 +264,7 @@ class PromptPipeline {
                     prompt: PromptTemplate, 
                     n: number = 1, 
                     temperature: number = 1.0, 
-                    past_resp_obj?: Dict,
+                    past_resp_obj?: LLMResponseObject,
                     query_number?: number,
                     rate_limit_batch_size?: number,
                     rate_limit_wait_secs?: number,
@@ -303,7 +302,6 @@ class PromptPipeline {
       call_llm = call_dalai;
     else if (llm.toString().startsWith('claude'))
       call_llm = call_anthropic;
-    
     if (!call_llm)
       throw new LLMResponseError(`Language model ${llm} is not supported.`);
     
@@ -313,19 +311,17 @@ class PromptPipeline {
     let response: Dict | LLMResponseError;
     try {
       [query, response] = await call_llm(prompt.toString(), llm, n=n, temperature, llm_params);
-    } catch(e: Error) {
+    } catch(err) {
       return { prompt: prompt, 
                query: undefined, 
-               response: new LLMResponseError(e.toString()), 
+               response: new LLMResponseError(err.toString()), 
                past_resp_obj: undefined };
     }
     
-    return {
-      prompt, 
-      query, 
-      response,
-      past_resp_obj
-    };
+    return { prompt, 
+             query, 
+             response,
+             past_resp_obj };
   }
 }
 

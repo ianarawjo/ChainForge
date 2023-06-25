@@ -4,13 +4,16 @@
 
 // from chainforge.promptengine.models import LLM
 import { LLM } from './models';
-import { Dict, StringDict, LLMAPICall } from './typing';
+import { Dict, StringDict, LLMAPICall, LLMResponseObject } from './typing';
 import { env as process_env } from 'process';
 import { StringTemplate } from './template';
 
+/* LLM API SDKs */
 import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
 import { OpenAIClient as AzureOpenAIClient, AzureKeyCredential } from "@azure/openai";
 import { AI_PROMPT, Client as AnthropicClient, HUMAN_PROMPT } from "@anthropic-ai/sdk";
+import { DiscussServiceClient, TextServiceClient } from "@google-ai/generativelanguage";
+import { GoogleAuth } from "google-auth-library";
 
 function get_environ(key: string): string | undefined {
   if (key in process_env)
@@ -48,7 +51,7 @@ export function set_api_keys(api_keys: StringDict): void {
 }
 
 /** Equivalent to a Python enum's .name property */
-function getEnumName(enumObject: any, enumValue: any): string | undefined {
+export function getEnumName(enumObject: any, enumValue: any): string | undefined {
   for (const key in enumObject) {
     if (enumObject[key] === enumValue) {
       return key;
@@ -128,17 +131,6 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
   
   return [query, response];
 }
-
-function _test() {
-  // Call ChatGPT
-  call_chatgpt("Who invented modern playing cards?",
-               LLM.OpenAI_ChatGPT,
-               1, 1.0).then(([query, response]) => {
-    console.log(response.choices[0].message);
-  });
-}
-
-_test();
 
 /**
  * Calls OpenAI models hosted on Microsoft Azure services.
@@ -247,7 +239,7 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
     ...params,
   };
 
-  console.log(`Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`)
+  console.log(`Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
 
   // Repeat call n times, waiting for each response to come in:
   let responses: Array<Dict> = [];
@@ -260,67 +252,94 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
   return [query, responses];
 }
 
-// async def call_google_palm(prompt: str, model: LLM, n: int = 1, temperature: float= 0.7,
-//                            max_output_tokens=800,
-//                            async_mode=False,
-//                            **params) -> Tuple[Dict, Dict]:
-//     """
-//         Calls a Google PaLM model. 
-//         Returns raw query and response JSON dicts.
-//     """
-//     if GOOGLE_PALM_API_KEY is None:
-//         raise Exception("Could not find an API key for Google PaLM models. Double-check that your API key is set in Settings or in your local Python environment.")
+/**
+ * Calls a Google PaLM model. 
+   Returns raw query and response JSON dicts.
+ */
+export async function call_google_palm(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
+  if (!GOOGLE_PALM_API_KEY)
+    throw Error("Could not find an API key for Google PaLM models. Double-check that your API key is set in Settings or in your local environment.");
 
-//     import google.generativeai as palm
-//     palm.configure(api_key=GOOGLE_PALM_API_KEY)
+  const is_chat_model = model.toString().includes('chat');
+  const client = new (is_chat_model ? DiscussServiceClient : TextServiceClient)({
+    authClient: new GoogleAuth().fromAPIKey(GOOGLE_PALM_API_KEY),
+  });
 
-//     is_chat_model = 'chat' in model.value
+  // Required non-standard params 
+  const max_output_tokens = params?.max_output_tokens || 800;
 
-//     query = {
-//         'model': f"models/{model.value}",
-//         'prompt': prompt,
-//         'candidate_count': n,
-//         'temperature': temperature,
-//         'max_output_tokens': max_output_tokens,
-//         **params,
-//     }
+  let query: Dict = {
+      model: `models/${model}`,
+      candidate_count: n,
+      temperature: temperature,
+      max_output_tokens: max_output_tokens,
+      ...params,
+  };
 
-//     # Remove erroneous parameters for text and chat models
-//     if 'top_k' in query and query['top_k'] <= 0:
-//         del query['top_k']
-//     if 'top_p' in query and query['top_p'] <= 0:
-//         del query['top_p']
-//     if is_chat_model and 'max_output_tokens' in query:
-//         del query['max_output_tokens']
-//     if is_chat_model and 'stop_sequences' in query:
-//         del query['stop_sequences']
-    
-//     # Get the correct model's completions call
-//     palm_call = palm.chat if is_chat_model else palm.generate_text
+  // Remove erroneous parameters for text and chat models
+  if (query.top_k !== undefined && query.top_k <= 0)
+    delete query.top_k;
+  if (query.top_p !== undefined && query.top_p <= 0)
+    delete query.top_p;
+  if (is_chat_model && query.max_output_tokens !== undefined)
+    delete query.max_output_tokens;
+  if (is_chat_model && query.stop_sequences !== undefined)
+    delete query.stop_sequences;
 
-//     # Google PaLM's python API does not currently support async calls.
-//     # To make one, we need to wrap it in an asynchronous executor:
-//     completion = await make_sync_call_async(palm_call, **query)
-//     completion_dict = completion.to_dict()
+  // For some reason Google needs to be special and have its API params be different names --camel or snake-case 
+  // --depending on if it's the Python or Node JS API. ChainForge needs a consistent name, so we must convert snake to camel:
+  const casemap = {
+    safety_settings: 'safetySettings',
+    stop_sequences: 'stopSequences',
+    candidate_count: 'candidateCount',
+    max_output_tokens: 'maxOutputTokens',
+    top_p: 'topP',
+    top_k: 'topK',
+  };
+  Object.entries(casemap).forEach(([key, val]) => {
+    if (key in query) {
+      query[val] = query[key];
+      delete query[key];
+    }
+  });
 
-//     # Google PaLM, unlike other chat models, will output empty
-//     # responses for any response it deems unsafe (blocks). Although the text completions
-//     # API has a (relatively undocumented) 'safety_settings' parameter,
-//     # the current chat completions API provides users no control over the blocking.
-//     # We need to detect this and fill the response with the safety reasoning:
-//     if len(completion.filters) > 0:
-//         # Request was blocked. Output why in the response text, 
-//         # repairing the candidate dict to mock up 'n' responses
-//         block_error_msg = f'[[BLOCKED_REQUEST]] Request was blocked because it triggered safety filters: {str(completion.filters)}'
-//         completion_dict['candidates'] = [{'author': 1, 'content':block_error_msg}] * n
+  console.log(`Calling Google PaLM model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
+  
+  // Call the correct model client
+  let completion;
+  if (is_chat_model) {
+    // Chat completions
+    query.prompt = { messages: [{content: prompt}] };
+    completion = await (client as DiscussServiceClient).generateMessage(query);
+  } else {
+    // Text completions
+    query.prompt = { text: prompt };
+    completion = await (client as TextServiceClient).generateText(query);
+  }
 
-//     # Weirdly, google ignores candidate_count if temperature is 0. 
-//     # We have to check for this and manually append the n-1 responses:
-//     if n > 1 and temperature == 0 and len(completion_dict['candidates']) == 1:
-//         copied_candidates = [completion_dict['candidates'][0]] * n
-//         completion_dict['candidates'] = copied_candidates
+  // Google PaLM, unlike other chat models, will output empty
+  // responses for any response it deems unsafe (blocks). Although the text completions
+  // API has a (relatively undocumented) 'safety_settings' parameter,
+  // the current chat completions API provides users no control over the blocking.
+  // We need to detect this and fill the response with the safety reasoning:
+  if (completion[0].filters.length > 0) {
+      // Request was blocked. Output why in the response text, repairing the candidate dict to mock up 'n' responses
+      const block_error_msg = `[[BLOCKED_REQUEST]] Request was blocked because it triggered safety filters: ${JSON.stringify(completion.filters)}`
+      completion[0].candidates = new Array(n).fill({'author': '1', 'content':block_error_msg});
+  }
 
-//     return query, completion_dict
+  // Weirdly, google ignores candidate_count if temperature is 0. 
+  // We have to check for this and manually append the n-1 responses:
+  // if n > 1 and temperature == 0 and len(completion_dict['candidates']) == 1:
+  //     copied_candidates = [completion_dict['candidates'][0]] * n
+  //     completion_dict['candidates'] = copied_candidates
+
+  return [query, completion[0]];
+}
+
+export async function call_dalai(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
+  throw Error("Dalai support in JS backend is not yet implemented.");
+}
 
 // async def call_dalai(prompt: str, model: LLM, server: str="http://localhost:4000", n: int = 1, temperature: float = 0.5,  **params) -> Tuple[Dict, Dict]:
 //     """
@@ -464,10 +483,17 @@ function _extract_palm_responses(completion: Dict): Array<string> {
 }
 
 /**
+ * Extracts the text part of an Anthropic text completion.
+ */
+function _extract_anthropic_responses(response: Array<Dict>): Array<string> {
+  return response.map((r: Dict) => r.completion.trim());
+}
+
+/**
  * Given a LLM and a response object from its API, extract the
  * text response(s) part of the response object.
  */
-function extract_responses(response: Array<string> | Dict, llm: LLM | string): Array<string> {
+export function extract_responses(response: Array<string | Dict> | Dict, llm: LLM | string): Array<string> {
   const llm_name = getEnumName(LLM, llm.toString());
   if (llm_name?.startsWith('OpenAI')) {
     if (llm_name.toLowerCase().includes('davinci'))
@@ -475,42 +501,41 @@ function extract_responses(response: Array<string> | Dict, llm: LLM | string): A
     else
       return _extract_chatgpt_responses(response);
   } else if (llm_name?.startsWith('Azure'))
-    return _extract_openai_responses(response)
+    return _extract_openai_responses(response);
   else if (llm_name?.startsWith('PaLM2'))
-    return _extract_palm_responses(response)
+    return _extract_palm_responses(response);
   else if (llm_name?.startsWith('Dalai'))
     return [response.toString()];
   else if (llm.toString().startsWith('claude'))
-    return response.map((r: Dict) => r.completion);
+    return _extract_anthropic_responses(response as Dict[]);
   else
-    throw new Error(`LLM ${llm_str} is unsupported.`)
+    throw new Error(`No method defined to extract responses for LLM ${llm}.`)
 }
 
-function merge_response_objs(resp_obj_A: Dict | undefined, resp_obj_B: Dict | undefined): Dict {
+export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, resp_obj_B: LLMResponseObject | undefined): LLMResponseObject | undefined {
   if (!resp_obj_A && !resp_obj_B) {
     console.warn('Warning: Merging two undefined response objects.')
-    return {};
+    return undefined;
   } else if (!resp_obj_B && resp_obj_A)
     return resp_obj_A;
   else if (!resp_obj_A && resp_obj_B)
     return resp_obj_B;
-  let raw_resp_A = resp_obj_A?.raw_response;
-  let raw_resp_B = resp_obj_B?.raw_response;
+  resp_obj_A = resp_obj_A as LLMResponseObject;  // required by typescript
+  resp_obj_B = resp_obj_B as LLMResponseObject;
+  let raw_resp_A = resp_obj_A.raw_response;
+  let raw_resp_B = resp_obj_B.raw_response;
   if (!Array.isArray(raw_resp_A))
     raw_resp_A = [ raw_resp_A ];
   if (!Array.isArray(raw_resp_B))
     raw_resp_B = [ raw_resp_B ];
-  const C: Dict = {
-    responses: resp_obj_A?.responses.concat(resp_obj_B?.responses),
-    raw_response: raw_resp_A.concat(raw_resp_B),
-  };
   return {
-    ...C,
-    prompt: resp_obj_B?.prompt,
-    query: resp_obj_B?.query,
-    llm: resp_obj_B?.llm,
-    info: resp_obj_B?.info,
-    metavars: resp_obj_B?.metavars,
+    responses: resp_obj_A.responses.concat(resp_obj_B.responses),
+    raw_response: raw_resp_A.concat(raw_resp_B),
+    prompt: resp_obj_B.prompt,
+    query: resp_obj_B.query,
+    llm: resp_obj_B.llm,
+    info: resp_obj_B.info,
+    metavars: resp_obj_B.metavars,
   };
 }
 
