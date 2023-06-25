@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.4.4",
+    "@azure/openai": "^1.0.0-beta.2",
     "@codemirror/lang-javascript": "^6.1.5",
     "@codemirror/lang-python": "^6.1.2",
     "@emoji-mart/data": "^1.1.2",

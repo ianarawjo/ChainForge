@@ -16,7 +16,7 @@ function isDict(o: any): boolean {
     return typeof o === 'object' && !Array.isArray(o);
 }
 
-class StringTemplate {
+export class StringTemplate {
     val: string;
     /**
      * Javascript's in-built template literals is nowhere as good

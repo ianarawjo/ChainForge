@@ -22,11 +22,11 @@ export interface LLMResponseObject {
   metavars: Dict;
 }
 
-/** A standard function interface for calling an LLM */
+/** A standard async function interface for calling an LLM. */
 export interface LLMAPICall {
   (prompt: string, 
    model: LLM,
    n: number,
    temperature: number,
-   params?: Dict): [Dict, Dict]
+   params?: Dict): Promise<[Dict, Dict]>
 }

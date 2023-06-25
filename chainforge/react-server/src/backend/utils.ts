@@ -6,8 +6,11 @@
 import { LLM } from './models';
 import { Dict, StringDict, LLMAPICall } from './typing';
 import { env as process_env } from 'process';
+import { StringTemplate } from './template';
 
 import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
+import { OpenAIClient as AzureOpenAIClient, AzureKeyCredential } from "@azure/openai";
+import { AI_PROMPT, Client as AnthropicClient, HUMAN_PROMPT } from "@anthropic-ai/sdk";
 
 function get_environ(key: string): string | undefined {
   if (key in process_env)
@@ -42,6 +45,16 @@ export function set_api_keys(api_keys: StringDict): void {
   if (key_is_present('Azure_OpenAI_Endpoint'))
     AZURE_OPENAI_ENDPOINT = api_keys['Azure_OpenAI_Endpoint'];
   // Soft fail for non-present keys
+}
+
+/** Equivalent to a Python enum's .name property */
+function getEnumName(enumObject: any, enumValue: any): string | undefined {
+  for (const key in enumObject) {
+    if (enumObject[key] === enumValue) {
+      return key;
+    }
+  }
+  return undefined;
 }
 
 // async def make_sync_call_async(sync_method, *args, **params):
@@ -105,7 +118,7 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
     response = completion.data;
   } catch (error: any) {
     if (error?.response) {
-      throw new Error("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local Python environment.");
+      throw new Error("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local environment.");
       // throw new Error(error.response.status);
     } else {
       console.log(error?.message || error);
@@ -127,125 +140,125 @@ function _test() {
 
 _test();
 
-// async def call_azure_openai(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0, 
-//                             deployment_name: str = 'gpt-35-turbo', 
-//                             model_type: str = "chat-completion", 
-//                             api_version: str = "2023-05-15", 
-//                             system_msg: Optional[str]=None, 
-//                             **params) -> Tuple[Dict, Dict]:
-//     """
-//         Calls an OpenAI chat model GPT3.5 or GPT4 via Microsoft Azure services.
-//         Returns raw query and response JSON dicts. 
+/**
+ * Calls OpenAI models hosted on Microsoft Azure services.
+ *  Returns raw query and response JSON dicts. 
+ *
+ *  NOTE: It is recommended to set an environment variables AZURE_OPENAI_KEY and AZURE_OPENAI_ENDPOINT
+ */
+export async function call_azure_openai(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+  if (!AZURE_OPENAI_KEY)
+    throw Error("Could not find an Azure OpenAPI Key to use. Double-check that your key is set in Settings or in your local environment.");
+  if (!AZURE_OPENAI_ENDPOINT)
+    throw Error("Could not find an Azure OpenAI Endpoint to use. Double-check that your endpoint is set in Settings or in your local environment.");
+  
+  const deployment_name: string = params?.deployment_name;
+  const model_type: string = params?.model_type;
+  if (!deployment_name)
+    throw Error("Could not find an Azure OpenAPI deployment name. Double-check that your deployment name is set in Settings or in your local environment.");
+  if (!model_type)
+    throw Error("Could not find a model type specified for an Azure OpenAI model. Double-check that your deployment name is set in Settings or in your local environment.");
+  
+  const client = new AzureOpenAIClient(AZURE_OPENAI_ENDPOINT, new AzureKeyCredential(AZURE_OPENAI_KEY));
 
-//         NOTE: It is recommended to set an environment variables AZURE_OPENAI_KEY and AZURE_OPENAI_ENDPOINT
-//     """
-//     global AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT
-//     if AZURE_OPENAI_KEY is None:
-//         raise Exception("Could not find an Azure OpenAPI Key to use. Double-check that your key is set in Settings or in your local Python environment.")
-//     if AZURE_OPENAI_ENDPOINT is None:
-//         raise Exception("Could not find an Azure OpenAI Endpoint to use. Double-check that your endpoint is set in Settings or in your local Python environment.")
+  if (params?.stop && (!Array.isArray(params.stop) || params.stop.length === 0))
+    delete params.stop;
+  if (params?.functions && (!Array.isArray(params.functions) || params.functions.length === 0))
+    delete params?.functions;
+  if (params?.function_call && (!(typeof params.function_call === 'string') || params.function_call.trim().length === 0))
+    delete params.function_call;
 
-//     import openai
-//     openai.api_type = "azure"
-//     openai.api_version = api_version
-//     openai.api_key = AZURE_OPENAI_KEY
-//     openai.api_base = AZURE_OPENAI_ENDPOINT
-
-//     if 'stop' in params and not isinstance(params['stop'], list) or len(params['stop']) == 0:
-//         del params['stop']  
-//     if 'functions' in params and not isinstance(params['functions'], list) or len(params['functions']) == 0:
-//         del params['functions']
-//     if 'function_call' in params and not isinstance(params['function_call'], str) or len(params['function_call'].strip()) == 0:
-//         del params['function_call']
-
-//     print(f"Querying Azure OpenAI deployed model '{deployment_name}' at endpoint '{AZURE_OPENAI_ENDPOINT}' with prompt '{prompt}'...")
-//     system_msg = "You are a helpful assistant." if system_msg is None else system_msg
+  console.log(`Querying Azure OpenAI deployed model '${deployment_name}' at endpoint '${AZURE_OPENAI_ENDPOINT}' with prompt '${prompt}'...`)
+  const system_msg = params?.system_msg || "You are a helpful assistant.";
     
-//     query = {
-//         "engine": deployment_name,  # this differs from a basic OpenAI call
-//         "n": n,
-//         "temperature": temperature,
-//         **params,  # 'the rest' of the settings, passed from a front-end app
-//     }
+  // Setup the args for the query
+  let query: Dict = {
+    n: n,
+    temperature: temperature,
+    ...params,  // 'the rest' of the settings, passed from the front-end settings
+  };
+  let arg2: Array<Dict | string>;
+  let openai_call: any;
+  if (model_type === 'text-completion') {
+    openai_call = client.getCompletions;
+    arg2 = [prompt];
+  } else {
+    openai_call = client.getChatCompletions;
+    arg2 = [
+      {"role": "system", "content": system_msg},
+      {"role": "user", "content": prompt},
+    ];
+  }
 
-//     if model_type == 'text-completion':
-//         openai_call = openai.Completion.acreate
-//         query['prompt'] = prompt
-//     else:
-//         openai_call = openai.ChatCompletion.acreate
-//         query['messages'] = [
-//             {"role": "system", "content": system_msg},
-//             {"role": "user", "content": prompt},
-//         ]
-    
-//     try:
-//         response = await openai_call(**query)
-//     except Exception as e:
-//         if (isinstance(e, openai.error.AuthenticationError)):
-//             raise Exception("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local Python environment.")
-//         raise e
-    
-//     return query, response
+  let response: Dict = {};
+  try {
+    response = await openai_call(deployment_name, arg2, query);
+  } catch (error) {
+    if (error?.response) {
+      throw new Error("Could not authenticate to Azure OpenAI. Double-check that your API key is set in Settings or in your local environment.");
+      // throw new Error(error.response.status);
+    } else {
+      console.log(error?.message || error);
+      throw new Error(error?.message || error);
+    }
+  }
+  
+  return [query, response];
+}
 
-// async def call_anthropic(prompt: str, model: LLM, n: int = 1, temperature: float= 1.0,
-//                         max_tokens_to_sample=1024,
-//                         async_mode=False,
-//                         custom_prompt_wrapper: Optional[str]=None,
-//                         stop_sequences: Optional[List[str]]=["\n\nHuman:"],
-//                         **params) -> Tuple[Dict, Dict]:
-//     """
-//         Calls Anthropic API with the given model, passing in params.
-//         Returns raw query and response JSON dicts.
+/**
+ * Calls Anthropic API with the given model, passing in params.
+   Returns raw query and response JSON dicts.
 
-//         Unique parameters:
-//             - custom_prompt_wrapper: Anthropic models expect prompts in form "\n\nHuman: ${prompt}\n\nAssistant". If you wish to 
-//                                      explore custom prompt wrappers that deviate, write a python Template that maps from 'prompt' to custom wrapper.
-//                                      If set to None, defaults to Anthropic's suggested prompt wrapper.
-//             - max_tokens_to_sample: A maximum number of tokens to generate before stopping.
-//             - stop_sequences: A list of strings upon which to stop generating. Defaults to ["\n\nHuman:"], the cue for the next turn in the dialog agent.
-//             - async_mode: Evaluation access to Claude limits calls to 1 at a time, meaning we can't take advantage of async.
-//                           If you want to send all 'n' requests at once, you can set async_mode to True.
+   Unique parameters:
+      - custom_prompt_wrapper: Anthropic models expect prompts in form "\n\nHuman: ${prompt}\n\nAssistant". If you wish to 
+                               explore custom prompt wrappers that deviate, write a python Template that maps from 'prompt' to custom wrapper.
+                               If set to None, defaults to Anthropic's suggested prompt wrapper.
+      - max_tokens_to_sample: A maximum number of tokens to generate before stopping.
+      - stop_sequences: A list of strings upon which to stop generating. Defaults to ["\n\nHuman:"], the cue for the next turn in the dialog agent.
 
-//         NOTE: It is recommended to set an environment variable ANTHROPIC_API_KEY with your Anthropic API key
-//     """
-//     if ANTHROPIC_API_KEY is None:
-//         raise Exception("Could not find an API key for Anthropic models. Double-check that your API key is set in Settings or in your local Python environment.")
+   NOTE: It is recommended to set an environment variable ANTHROPIC_API_KEY with your Anthropic API key
+ */
+export async function call_anthropic(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+  if (!ANTHROPIC_API_KEY)
+    throw Error("Could not find an API key for Anthropic models. Double-check that your API key is set in Settings or in your local Python environment.");
+  
+  // Initialize Anthropic API client
+  const client = new AnthropicClient(ANTHROPIC_API_KEY);
 
-//     import anthropic
-//     client = anthropic.Client(ANTHROPIC_API_KEY)
+  // Wrap the prompt in the provided template, or use the default Anthropic one
+  const custom_prompt_wrapper: string = params?.custom_prompt_wrapper || (HUMAN_PROMPT + " {prompt}" + AI_PROMPT);
+  if (!custom_prompt_wrapper.includes('{prompt}'))
+    throw Error("Custom prompt wrapper is missing required {prompt} template variable.");
+  const prompt_wrapper_template = new StringTemplate(custom_prompt_wrapper);
+  const wrapped_prompt = prompt_wrapper_template.safe_substitute({prompt: prompt});
 
-//     # Wrap the prompt in the provided template, or use the default Anthropic one
-//     if custom_prompt_wrapper is None or '${prompt}' not in custom_prompt_wrapper:
-//         custom_prompt_wrapper = anthropic.HUMAN_PROMPT + " ${prompt}" + anthropic.AI_PROMPT
-//     prompt_wrapper_template = Template(custom_prompt_wrapper)
-//     wrapped_prompt = prompt_wrapper_template.substitute(prompt=prompt)
+  // Required non-standard params 
+  const max_tokens_to_sample = params?.max_tokens_to_sample || 1024;
+  const stop_sequences = params?.stop_sequences || [HUMAN_PROMPT];
 
-//     # Format query
-//     query = {
-//         'model': model.value,
-//         'prompt': wrapped_prompt,
-//         'max_tokens_to_sample': max_tokens_to_sample,
-//         'stop_sequences': stop_sequences,
-//         'temperature': temperature,
-//         **params
-//     }
+  // Format query
+  let query = {
+    model: model,
+    prompt: wrapped_prompt,
+    max_tokens_to_sample: max_tokens_to_sample,
+    stop_sequences: stop_sequences,
+    temperature: temperature,
+    ...params,
+  };
 
-//     print(f"Calling Anthropic model '{model.value}' with prompt '{prompt}' (n={n}). Please be patient...")
+  console.log(`Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`)
 
-//     # Request responses using the passed async_mode
-//     responses = []
-//     if async_mode:
-//         # Gather n responses by firing off all API requests at once 
-//         tasks = [client.acompletion(**query) for _ in range(n)]
-//         responses = await asyncio.gather(*tasks)
-//     else:
-//         # Repeat call n times, waiting for each response to come in:
-//         while len(responses) < n:
-//             resp = await client.acompletion(**query)
-//             responses.append(resp)
-//             print(f'{model.value} response {len(responses)} of {n}:\n', resp)
+  // Repeat call n times, waiting for each response to come in:
+  let responses: Array<Dict> = [];
+  while (responses.length < n) {
+    const resp = await client.complete(query);
+    responses.push(resp);
+    console.log(`${model} response ${responses.length} of ${n}:\n${resp}`);
+  }
 
-//     return query, responses
+  return [query, responses];
+}
 
 // async def call_google_palm(prompt: str, model: LLM, n: int = 1, temperature: float= 0.7,
 //                            max_output_tokens=800,
@@ -393,113 +406,113 @@ _test();
 
 //     return query, responses
 
-// def _extract_openai_chat_choice_content(choice: dict) -> str:
-//     """
-//         Extracts the relevant portion of a OpenAI chat response.
-        
-//         Note that chat choice objects can now include 'function_call' and a blank 'content' response.
-//         This method detects a 'function_call's presence, prepends [[FUNCTION]] and converts the function call into Python format. 
-//     """
-//     if choice['finish_reason'] == 'function_call' or choice["message"]["content"] is None or \
-//        ('function_call' in choice['message'] and len(choice['message']['function_call']) > 0):
-//         func = choice['message']['function_call']
-//         return '[[FUNCTION]] ' + func['name'] + str(func['arguments'])
-//     else:
-//         return choice["message"]["content"]
+/**
+ * Extracts the relevant portion of a OpenAI chat response.    
+ * Note that chat choice objects can now include 'function_call' and a blank 'content' response.
+ * This method detects a 'function_call's presence, prepends [[FUNCTION]] and converts the function call into JS format. 
+ */
+function _extract_openai_chat_choice_content(choice: Dict): string {
+  if (choice['finish_reason'] === 'function_call' || 
+     !choice["message"]["content"] ||
+     ('function_call' in choice['message'] && choice['message']['function_call'].length > 0)) {
+    const func = choice['message']['function_call'];
+    return '[[FUNCTION]] ' + func['name'] + func['arguments'].toString();
+  } else {
+    return choice["message"]["content"];
+  }
+}
 
-// def _extract_chatgpt_responses(response: dict) -> List[str]:
-//     """
-//         Extracts the text part of a response JSON from ChatGPT. If there is more
-//         than 1 response (e.g., asking the LLM to generate multiple responses), 
-//         this produces a list of all returned responses.
-//     """
-//     choices = response["choices"]
-//     return [
-//         _extract_openai_chat_choice_content(c)
-//         for c in choices
-//     ]
+/**
+ * Extracts the text part of a response JSON from ChatGPT. If there is more
+ * than 1 response (e.g., asking the LLM to generate multiple responses), 
+ * this produces a list of all returned responses.
+ */
+function _extract_chatgpt_responses(response: Dict): Array<string> {
+  return response["choices"].map(_extract_openai_chat_choice_content);
+}
 
-// def _extract_openai_completion_responses(response: dict) -> List[str]:
-//     """
-//         Extracts the text part of a response JSON from OpenAI completions models like Davinci. If there are more
-//         than 1 response (e.g., asking the LLM to generate multiple responses), 
-//         this produces a list of all returned responses.
-//     """
-//     choices = response["choices"]
-//     return [
-//         c["text"].strip()
-//         for c in choices
-//     ]
+/**
+ * Extracts the text part of a response JSON from OpenAI completions models like Davinci. If there are more
+ * than 1 response (e.g., asking the LLM to generate multiple responses), 
+ * this produces a list of all returned responses.
+ */
+function _extract_openai_completion_responses(response: Dict): Array<string> {
+  return response["choices"].map((c: Dict) => c.text.trim());
+}
 
-// def _extract_openai_responses(response: dict) -> List[str]:
-//     """
-//         Deduces the format of an OpenAI model response (completion or chat)
-//         and extracts the response text using the appropriate method.
-//     """
-//     if len(response["choices"]) == 0: return []
-//     first_choice = response["choices"][0]
-//     if "message" in first_choice:
-//         return _extract_chatgpt_responses(response)
-//     else:
-//         return _extract_openai_completion_responses(response)
+/**
+ * Deduces the format of an OpenAI model response (completion or chat)
+ * and extracts the response text using the appropriate method.
+ */
+function _extract_openai_responses(response: Dict): Array<string> {
+  if (response["choices"].length === 0) return [];
+  const first_choice = response["choices"][0];
+  if ("message" in first_choice)
+    return _extract_chatgpt_responses(response);
+  else
+    return _extract_openai_completion_responses(response);
+}
 
-// def _extract_palm_responses(completion) -> List[str]:
-//     """
-//         Extracts the text part of a 'Completion' object from Google PaLM2 `generate_text` or `chat`
+/**
+ * Extracts the text part of a 'Completion' object from Google PaLM2 `generate_text` or `chat`.
+ *
+ * NOTE: The candidate object for `generate_text` has a key 'output' which contains the response,
+ * while the `chat` API uses a key 'content'. This checks for either.
+ */
+function _extract_palm_responses(completion: Dict): Array<string> {
+    return completion['candidates'].map((c: Dict) => c.output || c.content);
+}
 
-//         NOTE: The candidate object for `generate_text` has a key 'output' which contains the response,
-//         while the `chat` API uses a key 'content'. This checks for either.
-//     """
-//     return [
-//         c['output'] if 'output' in c else c['content']
-//         for c in completion['candidates']
-//     ]
+/**
+ * Given a LLM and a response object from its API, extract the
+ * text response(s) part of the response object.
+ */
+function extract_responses(response: Array<string> | Dict, llm: LLM | string): Array<string> {
+  const llm_name = getEnumName(LLM, llm.toString());
+  if (llm_name?.startsWith('OpenAI')) {
+    if (llm_name.toLowerCase().includes('davinci'))
+      return _extract_openai_completion_responses(response);
+    else
+      return _extract_chatgpt_responses(response);
+  } else if (llm_name?.startsWith('Azure'))
+    return _extract_openai_responses(response)
+  else if (llm_name?.startsWith('PaLM2'))
+    return _extract_palm_responses(response)
+  else if (llm_name?.startsWith('Dalai'))
+    return [response.toString()];
+  else if (llm.toString().startsWith('claude'))
+    return response.map((r: Dict) => r.completion);
+  else
+    throw new Error(`LLM ${llm_str} is unsupported.`)
+}
 
-// def extract_responses(response: Union[list, dict], llm: Union[LLM, str]) -> List[str]:
-//     """
-//         Given a LLM and a response object from its API, extract the
-//         text response(s) part of the response object.
-//     """
-//     llm_str = llm.name if isinstance(llm, LLM) else llm
-//     if llm_str[:6] == 'OpenAI':
-//         if 'davinci' in llm_str.lower():
-//             return _extract_openai_completion_responses(response)
-//         else:
-//             return _extract_chatgpt_responses(response)
-//     elif llm_str[:5] == 'Azure':
-//         return _extract_openai_responses(response)
-//     elif llm_str[:5] == 'PaLM2':
-//         return _extract_palm_responses(response)
-//     elif llm_str[:5] == 'Dalai':
-//         return response
-//     elif llm_str[:6] == 'Claude':
-//         return [r["completion"] for r in response]
-//     else:
-//         raise ValueError(f"LLM {llm_str} is unsupported.")
-
-// def merge_response_objs(resp_obj_A: Union[dict, None], resp_obj_B: Union[dict, None]) -> dict:
-//     if resp_obj_B is None: 
-//         return resp_obj_A
-//     elif resp_obj_A is None:
-//         return resp_obj_B
-//     raw_resp_A = resp_obj_A["raw_response"]
-//     raw_resp_B = resp_obj_B["raw_response"]
-//     if not isinstance(raw_resp_A, list):
-//         raw_resp_A = [ raw_resp_A ]
-//     if not isinstance(raw_resp_B, list):
-//         raw_resp_B = [ raw_resp_B ]
-//     C = {
-//         "responses": resp_obj_A["responses"] + resp_obj_B["responses"],
-//         "raw_response": raw_resp_A + raw_resp_B,
-//     }
-//     return {
-//         **C,
-//         "prompt": resp_obj_B['prompt'],
-//         "query": resp_obj_B['query'],
-//         "llm": resp_obj_B['llm'],
-//         "info": resp_obj_B['info'],
-//         "metavars": resp_obj_B['metavars'],
-//     }
+function merge_response_objs(resp_obj_A: Dict | undefined, resp_obj_B: Dict | undefined): Dict {
+  if (!resp_obj_A && !resp_obj_B) {
+    console.warn('Warning: Merging two undefined response objects.')
+    return {};
+  } else if (!resp_obj_B && resp_obj_A)
+    return resp_obj_A;
+  else if (!resp_obj_A && resp_obj_B)
+    return resp_obj_B;
+  let raw_resp_A = resp_obj_A?.raw_response;
+  let raw_resp_B = resp_obj_B?.raw_response;
+  if (!Array.isArray(raw_resp_A))
+    raw_resp_A = [ raw_resp_A ];
+  if (!Array.isArray(raw_resp_B))
+    raw_resp_B = [ raw_resp_B ];
+  const C: Dict = {
+    responses: resp_obj_A?.responses.concat(resp_obj_B?.responses),
+    raw_response: raw_resp_A.concat(raw_resp_B),
+  };
+  return {
+    ...C,
+    prompt: resp_obj_B?.prompt,
+    query: resp_obj_B?.query,
+    llm: resp_obj_B?.llm,
+    info: resp_obj_B?.info,
+    metavars: resp_obj_B?.metavars,
+  };
+}
 
 // def create_dir_if_not_exists(path: str) -> None:
 //     if not os.path.exists(path):

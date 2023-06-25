@@ -8,6 +8,7 @@
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, RATE_LIMITS } from './models';
 import { Dict, LLMResponseError, LLMResponseObject, LLMAPICall } from "./typing";
+import { call_chatgpt, call_anthropic, call_google_palm, call_azure_openai, call_dalai, getEnumName } from "./utils";
 
 interface _IntermediateLLMResponseType {
   prompt: PromptTemplate | string,
@@ -72,16 +73,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/** Equivalent to a Python enum's .name property */
-function getEnumName(enumObject: any, enumValue: any): string | undefined {
-  for (const key in enumObject) {
-    if (enumObject[key] === enumValue) {
-      return key;
-    }
-  }
-  return undefined;
-}
-
 /**
  *  Abstract class that captures a generic querying interface to prompt LLMs
  */
@@ -119,7 +110,7 @@ class PromptPipeline {
                               llm: LLM,
                                 n: number = 1, 
                       temperature: number = 1.0, 
-                       llm_params: Dict): Generator<LLMResponseObject | LLMResponseError, boolean, undefined> {
+                       llm_params: Dict): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
     // Double-check that properties is the correct type (JSON dict):
     // Load any cache'd responses
     let responses = this._load_cached_responses();
@@ -174,7 +165,7 @@ class PromptPipeline {
                                     **llm_params));
       } else {
         // Block. Await + yield a single LLM call.
-        let [_, query, response, past_resp_obj] = await this._prompt_llm(llm=llm, 
+        let {_, query, response, past_resp_obj} = await this._prompt_llm(llm=llm, 
                                                                         prompt=prompt, 
                                                                         n=n, 
                                                                         temperature=temperature, 
@@ -312,7 +303,8 @@ class PromptPipeline {
       call_llm = call_dalai;
     else if (llm.toString().startsWith('claude'))
       call_llm = call_anthropic;
-    else
+    
+    if (!call_llm)
       throw new LLMResponseError(`Language model ${llm} is not supported.`);
     
     // Now try to call the API. If it fails for whatever reason, 'soft fail' by returning
@@ -320,7 +312,7 @@ class PromptPipeline {
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;
     try {
-      [query, response] = await call_llm(prompt=prompt.toString(), model=llm, n=n, temperature=temperature, llm_params)
+      [query, response] = await call_llm(prompt.toString(), llm, n=n, temperature, llm_params);
     } catch(e: Error) {
       return { prompt: prompt, 
                query: undefined, 
