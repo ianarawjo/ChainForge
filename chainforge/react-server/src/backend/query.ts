@@ -9,48 +9,13 @@ import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, RATE_LIMITS } from './models';
 import { Dict, LLMResponseError, LLMResponseObject, LLMAPICall } from "./typing";
 import { call_chatgpt, call_anthropic, call_google_palm, call_azure_openai, call_dalai, getEnumName, extract_responses, merge_response_objs } from "./utils";
+import StorageCache from "./cache";
 
 interface _IntermediateLLMResponseType {
   prompt: PromptTemplate | string,
   query?: Dict,
   response?: Dict | LLMResponseError,
   past_resp_obj?: LLMResponseObject | undefined,
-}
-
-/**
- * Singleton JSON cache that functions like a local filesystem in a Python backend, 
- * but where 'storageKeys' are used in place of filepaths. 
- */
-class StorageCache {
-  private static instance: StorageCache;
-  private data: Dict;
-
-  private constructor() {
-    // Initialize the singleton instance
-    this.data = {};
-  }
-
-  /** Gets the storage cache. Initializes it if the singleton instance does not yet exist. */
-  public static getInstance(): StorageCache {
-    if (!StorageCache.instance) {
-      StorageCache.instance = new StorageCache();
-    }
-    return StorageCache.instance;
-  }
-
-  private getCacheData(key: string): Dict {
-    return this.data[key] || {};
-  }
-  public static get(key: string): Dict {
-    return StorageCache.getInstance().getCacheData(key);
-  }
-  
-  private storeCacheData(key: string, _data: any): void {
-    this.data[key] = _data;
-  }
-  public static store(key: string, data: any): void {
-    StorageCache.getInstance().storeCacheData(key, data);
-  }
 }
 
 // From trincot @ SO: https://stackoverflow.com/a/76477994/1911342
