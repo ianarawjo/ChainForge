@@ -9,7 +9,7 @@
 // from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
 // from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
 
-import { Dict, LLMResponseError, LLMResponseObject } from "./typing";
+import { Dict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse } from "./typing";
 import { LLM } from "./models";
 import { set_api_keys } from "./utils";
 import StorageCache from "./cache";
@@ -116,16 +116,6 @@ Object.entries(LLM).forEach(([key, value]) => {
 //         import mistune
 //         md_ast_parser = mistune.create_markdown(renderer='ast')
 //         return md_ast_parser(self.text)
-
-interface StandardizedLLMResponse {
-  llm: string | Dict,
-  prompt: string,
-  responses: Array<string>,
-  vars: Dict,
-  metavars: Dict,
-  tokens: Dict,
-  eval_res?: Dict,
-}
 
 function to_standard_format(r: LLMResponseObject | Dict): StandardizedLLMResponse {
   let resp_obj = {
@@ -555,6 +545,7 @@ export async function queryLLM(id: string,
                                prompt: string,
                                vars: Dict,
                                api_keys?: Dict,
+                               progress_listener?: (progress: {[key: symbol]: any}) => void,
                                no_cache?: boolean): Promise<Dict> {
   // Verify the integrity of the params
   if (typeof id !== 'string' || id.trim().length === 0)
@@ -582,7 +573,8 @@ export async function queryLLM(id: string,
   
   // Get the storage keys of any cache files for specific models + settings
   const llms = llm;
-  let cache = StorageCache.get(id);  // returns {} if 'id' is not in the storage cache yet
+  let cache: Dict = StorageCache.get(id) || {};  // returns {} if 'id' is not in the storage cache yet
+
   let llm_to_cache_filename = {};
   let past_cache_files = {};
   if (typeof cache === 'object' && cache.cache_files !== undefined) {
@@ -608,7 +600,7 @@ export async function queryLLM(id: string,
     // Create a new cache JSON object
     cache = { cache_files: {}, responses_last_run: [] };
     let prev_filenames: Array<string> = [];
-    llms.forEach(llm_spec => {
+    llms.forEach((llm_spec: string | Dict) => {
       const fname = gen_unique_cache_filename(id, prev_filenames);
       llm_to_cache_filename[extract_llm_key(llm_spec)] = fname;
       cache.cache_files[fname] = llm_spec;
@@ -625,10 +617,13 @@ export async function queryLLM(id: string,
   let progressProxy = new Proxy(progress, {
     set: function (target, key, value) {
       console.log(`${key.toString()} set to ${value.toString()}`);
-      // ...
-      // Call any callbacks here
-      // ...
       target[key] = value;
+
+      // If the caller provided a callback, notify it 
+      // of the changes to the 'progress' object:
+      if (progress_listener)
+        progress_listener(target);
+
       return true;
     }
   });

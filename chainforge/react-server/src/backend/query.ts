@@ -214,7 +214,7 @@ export class PromptPipeline {
    * Useful for continuing if computation was interrupted halfway through. 
    */
   _load_cached_responses(): {[key: string]: LLMResponseObject} {
-    return StorageCache.get(this._storageKey);
+    return StorageCache.get(this._storageKey) || {};
   }
 
   /**

@@ -30,3 +30,14 @@ export interface LLMAPICall {
    temperature: number,
    params?: Dict): Promise<[Dict, Dict]>
 }
+
+/** A standard response format expected by the front-end. */
+export interface StandardizedLLMResponse {
+  llm: string | Dict,
+  prompt: string,
+  responses: Array<string>,
+  vars: Dict,
+  metavars: Dict,
+  tokens: Dict,
+  eval_res?: Dict,
+}

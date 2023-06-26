@@ -1,4 +1,5 @@
 import { Dict } from "./typing";
+import LZString from 'lz-string';
 
 /**
  * Singleton JSON cache that functions like a local filesystem in a Python backend, 
@@ -21,10 +22,10 @@ export default class StorageCache {
     return StorageCache.instance;
   }
 
-  private getCacheData(key: string): Dict {
-    return this.data[key] || {};
+  private getCacheData(key: string): Dict | undefined {
+    return this.data[key] || undefined;
   }
-  public static get(key: string): Dict {
+  public static get(key: string): Dict | undefined {
     return StorageCache.getInstance().getCacheData(key);
   }
   
@@ -33,5 +34,63 @@ export default class StorageCache {
   }
   public static store(key: string, data: any): void {
     StorageCache.getInstance().storeCacheData(key, data);
+  }
+
+  private clearCache(): void {
+    this.data = {};
+  }
+  public static clear(): void {
+    StorageCache.getInstance().clearCache();
+  }
+
+  /**
+   * Attempts to store the entire cache in localStorage. 
+   * Performs lz-string compression (https://pieroxy.net/blog/pages/lz-string/index.html)
+   * before storing a JSON object in UTF encoding.
+   * 
+   * Use loadFromLocalStorage to unpack the localStorage data.
+   * 
+   * @param localStorageKey The key that will be used in localStorage (default='chainforge')
+   * @returns True if succeeded, false if failure (e.g., too big for localStorage).
+   */
+  public static saveToLocalStorage(localStorageKey: string='chainforge'): boolean {
+    const data = StorageCache.getInstance().data;
+    const compressed = LZString.compressToUTF16(JSON.stringify(data));
+    try {
+      localStorage.setItem(localStorageKey, compressed);
+      return true;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "QuotaExceededError") {
+        // Handle the error when storage quota is exceeded
+        console.warn("Storage quota exceeded");
+      } else {
+        // Handle other types of storage-related errors
+        console.error("Error storing data in localStorage:", error.message);
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Attempts to load a previously stored cache JSON from localStorage.
+   * Performs lz-string decompression from UTF16 encoding. 
+   * 
+   * @param localStorageKey The key that will be used in localStorage (default='chainforge')
+   * @returns True if succeeded, false if failure (e.g., key not found). 
+   */
+  public static loadFromLocalStorage(localStorageKey: string='chainforge'): boolean {
+    const compressed = localStorage.getItem(localStorageKey);
+    if (!compressed) {
+      console.error(`Could not find cache data in localStorage with key ${localStorageKey}.`);
+      return false;
+    }
+    try {
+      let data = JSON.parse(LZString.decompressFromUTF16(compressed));
+      StorageCache.getInstance().data = data;
+      return true;
+    } catch (error) {
+      console.error(error.message);
+      return false;
+    }
   }
 }
