@@ -40,8 +40,6 @@ const EvaluatorNode = ({ data, id }) => {
     // Attempt to grab cache'd responses
     fetch_from_backend('grabResponses', {
       responses: [id],
-    }).then(function(res) {
-      return res.json();
     }).then(function(json) {
       if (json.responses && json.responses.length > 0) {
           // Store responses and set status to green checkmark

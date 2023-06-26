@@ -183,8 +183,6 @@ const PromptNode = ({ data, id }) => {
     // Attempt to grab cache'd responses
     fetch_from_backend('grabResponses', {
         responses: [id],
-    }).then(function(res) {
-        return res.json();
     }).then(function(json) {
         if (json.responses && json.responses.length > 0) {
             // Store responses and set status to green checkmark
@@ -271,8 +269,6 @@ const PromptNode = ({ data, id }) => {
         llms: llms,
         id: id, 
         n: numGenerations,
-    }, rejected).then(function(response) {
-        return response.json();
     }, rejected).then(function(json) {
         if (!json || !json.counts) {
             throw new Error('There was no response from the server.');
@@ -479,8 +475,6 @@ const PromptNode = ({ data, id }) => {
             n: numGenerations,
             api_keys: (apiKeys ? apiKeys : {}),
             no_cache: false,
-        }, rejected).then(function(response) {
-            return response.json();
         }, rejected).then(function(json) {
             if (!json) {
                 setStatus('error');

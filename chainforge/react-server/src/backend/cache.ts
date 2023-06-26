@@ -28,6 +28,13 @@ export default class StorageCache {
   public static get(key: string): Dict | undefined {
     return StorageCache.getInstance().getCacheData(key);
   }
+
+  private hasKey(key: string): boolean {
+    return key in this.data;
+  }
+  public static has(key: string): boolean {
+    return StorageCache.getInstance().hasKey(key);
+  }
   
   private storeCacheData(key: string, _data: any): void {
     this.data[key] = _data;

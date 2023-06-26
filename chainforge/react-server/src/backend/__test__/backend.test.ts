@@ -16,7 +16,7 @@ test('call three LLMs with a single prompt', async () => {
   };
 
   // Call all three LLMs with the same prompt, n=1, and listen to progress
-  const {responses, errors} = await queryLLM('testid', llms, n, prompt, {}, undefined, progress_listener);
+  const {responses, errors} = await queryLLM('testid', llms, n, prompt, {}, undefined, undefined, progress_listener);
 
   // Check responses
   expect(responses).toHaveLength(3);

@@ -237,8 +237,6 @@ const App = () => {
     const all_node_ids = nodes.map(n => n.id);
     fetch_from_backend('exportCache', {
       'ids': all_node_ids,
-    }).then(function(res) {
-        return res.json();
     }).then(function(json) {
         if (!json || !json.files)
           throw new Error('Request was sent and received by backend server, but there was no response.');
@@ -258,8 +256,6 @@ const App = () => {
   const importCache = (cache_data) => {
     return fetch_from_backend('importCache', {
       'files': cache_data,
-    }, handleError).then(function(res) {
-        return res.json();
     }, handleError).then(function(json) {
         if (!json || json.result === undefined)
           throw new Error('Request to import cache data was sent and received by backend server, but there was no response.');
@@ -332,8 +328,6 @@ const App = () => {
   const importFlowFromOpenAIEval = (evalname) => {
     fetch_from_backend('fetchOpenAIEval', {
       name: evalname,
-    }, handleError).then(function(response) {
-      return response.json();
     }, handleError).then(function(json) {
       // Close the loading modal
       setIsLoading(false);
@@ -366,8 +360,6 @@ const App = () => {
     // Fetch the example flow data from the backend
     fetch_from_backend('fetchExampleFlow', {
       'name': name,
-    }, handleError).then(function(res) {
-        return res.json();
     }, handleError).then(function(json) {
         // Close the loading modal
         setIsLoading(false);

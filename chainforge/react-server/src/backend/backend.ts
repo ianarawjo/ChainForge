@@ -131,41 +131,37 @@ function to_standard_format(r: LLMResponseObject | Dict): StandardizedLLMRespons
   return resp_obj;
 }
 
-// def get_filenames_for_id(cache_id: str, include_basefile=True) -> List[str]:
-//     # Load the base cache file
-//     base_file = f"{cache_id}.json"
-//     data = load_cache_json(base_file)
-//     if isinstance(data, dict) and 'cache_files' in data:
-//         return list(data['cache_files'].keys()) + ([base_file] if include_basefile else [])
-//     else:
-//         return [base_file]
+function get_cache_keys_related_to_id(cache_id: string, include_basefile: boolean=true): string[] {
+  // Load the base cache 'file' for cache_id
+  const base_file = `${cache_id}.json`;
+  const data = StorageCache.get(base_file);
+  if (data?.cache_files !== undefined)
+    return Object.keys(data.cache_files).concat((include_basefile ? [base_file] : []));
+  else
+    return include_basefile ? [base_file] : [];
+}
 
 // def remove_cached_responses(cache_id: str):
-//     cache_files = get_filenames_for_id(cache_id)
+//     cache_files = get_cache_keys_related_to_id(cache_id)
 //     for filename in cache_files:
 //         os.remove(os.path.join(CACHE_DIR, filename))
 
-// def load_cache_json(filename: str) -> dict:
-//     """
-//         Loads the cache JSON file at filepath. 
-//         'Soft fails' if the file does not exist (returns empty object).
-//     """
-//     filepath = os.path.join(CACHE_DIR, filename)
-//     if os.path.exists(filepath):
-//         with open(filepath, encoding="utf-8") as f:
-//             data = json.load(f)
-//     else:
-//         data = {}
-//     return data
+/**
+ * Loads the cache JSON file at filepath. 
+ * 'Soft fails' if the file does not exist (returns empty object).
+ */
+function load_from_cache(storageKey: string): Dict {
+    return StorageCache.get(storageKey) || {};
+}
 
-// def load_cache_responses(filename: str) -> List[dict]:
-//     data = load_cache_json(filename)
-//     if isinstance(data, dict) and 'responses_last_run' in data:
-//         return data['responses_last_run']
-//     elif isinstance(data, list):
-//         return data
-//     else:
-//         raise Exception(f"Could not find cache file for id {filename}")
+function load_cache_responses(storageKey: string): Array<Dict> {
+  const data = load_from_cache(storageKey);
+  if (Array.isArray(data))
+    return data;
+  else if (typeof data === 'object' && data.responses_last_run !== undefined)
+    return data.responses_last_run;
+  throw new Error(`Could not find cache file for id ${storageKey}`);
+}
 
 function gen_unique_cache_filename(cache_id: string, prev_filenames: Array<string>): string {
   let idx = 0;
@@ -419,7 +415,7 @@ function matching_settings(cache_llm_spec: Dict, llm_spec: Dict) {
 //         return jsonify({'error': str(e)})
     
 //     if 'id' in data:
-//         cache_data = load_cache_json(f"{data['id']}.json")
+//         cache_data = load_from_cache(f"{data['id']}.json")
 //         cache_file_lookup = cache_data['cache_files'] if 'cache_files' in cache_data else {}
 //     else:
 //         cache_file_lookup = {}
@@ -445,7 +441,7 @@ function matching_settings(cache_llm_spec: Dict, llm_spec: Dict) {
 //                 found_cache = True
 
 //                 # Load the cache file
-//                 cache_llm_responses = load_cache_json(cache_filename)
+//                 cache_llm_responses = load_from_cache(cache_filename)
 
 //                 # Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
 //                 for prompt in all_prompt_permutations:
@@ -512,20 +508,6 @@ interface LLMPrompterResults {
 }
 
 /**
- * 
-
-  'data' should be a JSON dict in form: 
-    - 'id': str  # a unique ID to refer to this information. Used when cache'ing responses. 
-    - 'llm': str | list[str] | list[dict]  # a string, list of strings, or list of LLM spec dicts specifying the LLM(s) to query.
-    - 'n': int  # the amount of generations for each prompt. All LLMs will be queried the same number of times 'n' per each prompt.
-    - 'prompt': str  # the prompt template, with any {{}} vars
-    - 'vars': dict  # a dict of the template variables to fill the prompt template with, by name. 
-                    # For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
-      'api_keys': dict  # (optional) a dict of {api_name: api_key} pairs. Supported key names: OpenAI, Anthropic, Google
-      'no_cache': bool (optional)  # delete any cache'd responses for 'id' (always call the LLM fresh)
-*/
-
-/**
  * Queries LLM(s) with root prompt template `prompt` and prompt input variables `vars`, `n` times per prompt.
  * Soft-fails if API calls fail, and collects the errors in `errors` property of the return object.
  * 
@@ -545,8 +527,8 @@ export async function queryLLM(id: string,
                                prompt: string,
                                vars: Dict,
                                api_keys?: Dict,
-                               progress_listener?: (progress: {[key: symbol]: any}) => void,
-                               no_cache?: boolean): Promise<Dict> {
+                               no_cache?: boolean,
+                               progress_listener?: (progress: {[key: symbol]: any}) => void): Promise<Dict> {
   // Verify the integrity of the params
   if (typeof id !== 'string' || id.trim().length === 0)
     return {'error': 'id is improper format (length 0 or not a string)'};
@@ -724,114 +706,75 @@ export async function queryLLM(id: string,
   };
 }
 
-// @app.route('/app/execute', methods=['POST'])
-// def execute():
-//     """
-//         Executes a Python lambda function sent from JavaScript,
-//         over all cache'd responses with given id's.
+/**
+ * Executes a Javascript 'evaluate' function over all cache'd responses with given id's.
+ * (The params are prefixed with __ in order to guard against name collisions.)
+ * 
+ * Similar to Flask backend's Python 'execute' function, except requires code to be in Javascript.
+ * 
+ * > **NOTE**: This should only be run on code you trust. 
+ *             There is no sandboxing; no safety. We assume you are the creator of the code.
+ * 
+ * @param __id a unique ID to refer to this information. Used when cache'ing evaluation results. 
+ * @param __code the code to evaluate. Must include an 'evaluate()' function that takes a 'response' of type ResponseInfo.
+ * @param __response_ids the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
+ * @param __scope the scope of responses to run on --a single response, or all across each batch. (If batch, evaluate() func has access to 'responses'.)
+ */
+export async function execute(__id: string, __code: string, __response_ids: string | string[], __scope: 'response' | 'batch'): Promise<Dict> {
+  // Check format of response_ids
+  if (!Array.isArray(__response_ids))
+    __response_ids = [ __response_ids ];
+  __response_ids = __response_ids as Array<string>;
 
-//         POST'd data should be in the form: 
-//         {
-//             'id': # a unique ID to refer to this information. Used when cache'ing responses. 
-//             'code': str,  # the body of the lambda function to evaluate, in form: lambda responses: <body>
-//             'responses': str | List[str]  # the responses to run on; a unique ID or list of unique IDs of cache'd data,
-//             'scope': 'response' | 'batch'  # the scope of responses to run on --a single response, or all across each batch. 
-//                                            # If batch, evaluator has access to 'responses'. Only matters if n > 1 for each prompt.
-//             'reduce_vars': unspecified | List[str]  # the 'vars' to average over (mean, median, stdev, range)
-//             'script_paths': unspecified | List[str]  # the paths to scripts to be added to the path before the lambda function is evaluated
-//         }
+  // Instantiate the evaluator function by eval'ing the passed code
+  // DANGER DANGER!!
+  try {
+      eval(__code);
 
-//         NOTE: This should only be run on your server on code you trust.
-//               There is no sandboxing; no safety. We assume you are the creator of the code.
-//     """
-//     data = request.get_json()
+      // Double-check that there is an 'evaluate' method in our namespace.
+      // NOTE: We need to tell Typescript to ignore this, since it's a dynamic type check.
+      // @ts-ignore
+      if (evaluate === undefined) {
+        throw new Error('evaluate() function is undefined.');
+      }
+  } catch (err) {
+    return {'error': `Could not compile evaluator code. Error message:\n${err.message}`};
+  }
 
-//     # Check that all required info is here:
-//     if not set(data.keys()).issuperset({'id', 'code', 'responses', 'scope'}):
-//         return jsonify({'error': 'POST data is improper format.'})
-//     if not isinstance(data['id'], str) or len(data['id']) == 0:
-//         return jsonify({'error': 'POST data id is improper format (length 0 or not a string).'})
-//     if data['scope'] not in ('response', 'batch'):
-//         return jsonify({'error': "POST data scope is unknown. Must be either 'response' or 'batch'."})
-    
-//     # Check that the filepath used to cache eval'd responses is valid:
-//     cache_filepath = os.path.join(CACHE_DIR, f"{data['id']}.json")
-//     if not is_valid_filepath(cache_filepath):
-//         return jsonify({'error': f'Invalid filepath: {cache_filepath}'})
-    
-//     # Check format of responses:
-//     if not (isinstance(data['responses'], str) or isinstance(data['responses'], list)):
-//         return jsonify({'error': 'POST data responses is improper format.'})
-//     elif isinstance(data['responses'], str):
-//         data['responses'] = [ data['responses'] ]
-    
-//     # add the path to any scripts to the path:
-//     try:
-//         if 'script_paths' in data:
-//             for script_path in data['script_paths']:
-//                 # get the folder of the script_path:
-//                 script_folder = os.path.dirname(script_path)
-//                 # check that the script_folder is valid, and it contains __init__.py
-//                 if not os.path.exists(script_folder):
-//                     print(script_folder, 'is not a valid script path.')
-//                     continue
+  // Load all responses with the given ID:
+  let __all_evald_responses = []
+  let __all_logs: string[] = [];
+  for (let __i = 0; __i < __response_ids.length; __i++) {
+    const __cache_id = __response_ids[__i];
+    const __fname = `${__cache_id}.json`;
+    if (!StorageCache.has(__fname))
+      return {error: `Did not find cache file for id ${__cache_id}`, logs: __all_logs};
 
-//                 # add it to the path:
-//                 sys.path.append(script_folder)
-//                 print(f'added {script_folder} to sys.path')
-//     except Exception as e:
-//         return jsonify({'error': f'Could not add script path to sys.path. Error message:\n{str(e)}'})
+    // Load the raw responses from the cache
+    const __responses = load_cache_responses(__fname);
+    if (__responses.length === 0)
+      continue;
 
-//     # Create the evaluator function
-//     # DANGER DANGER! 
-//     try:
-//         exec(data['code'], globals())
+    // Run the user-defined 'evaluate' function over the responses: 
+    // NOTE: 'evaluate' here was defined dynamically from 'eval' above. We've already checked that it exists. 
+    try {
+      HIJACK_CONSOLE_LOGGING();
+      // @ts-ignore
+      evald_responses = run_over_responses(evaluate, __responses, __scope);
+      __all_logs = __all_logs.concat(REVERT_CONSOLE_LOGGING());
+    } catch (err) {
+      __all_logs = __all_logs.concat(REVERT_CONSOLE_LOGGING());
+      return {error: `Error encountered while trying to run "evaluate" method:\n${err.message}`, logs: __all_logs};
+    }
 
-//         # Double-check that there is an 'evaluate' method in our namespace. 
-//         # This will throw a NameError if not: 
-//         evaluate  # noqa
-//     except Exception as e:
-//         return jsonify({'error': f'Could not compile evaluator code. Error message:\n{str(e)}'})
+    all_evald_responses = all_evald_responses.concat(evald_responses);
+  }
 
-//     # Load all responses with the given ID:
-//     all_cache_files = get_files_at_dir(CACHE_DIR)
-//     all_evald_responses = []
-//     all_logs = []
-//     for cache_id in data['responses']:
-//         fname = f"{cache_id}.json"
-//         if fname not in all_cache_files:
-//             return jsonify({'error': f'Did not find cache file for id {cache_id}', 'logs': all_logs})
+  // Store the evaluated responses in a new cache json:
+  StorageCache.store(__id, __all_evald_responses);
 
-//         # Load the raw responses from the cache
-//         responses = load_cache_responses(fname)
-//         if len(responses) == 0: continue
-
-//         # Run the evaluator over them: 
-//         # NOTE: 'evaluate' here was defined dynamically from 'exec' above. 
-//         try:
-//             HIJACK_PYTHON_PRINT()
-//             evald_responses = run_over_responses(evaluate, responses, scope=data['scope'])  # noqa
-//             all_logs.extend(REVERT_PYTHON_PRINT())
-//         except Exception as e:
-//             all_logs.extend(REVERT_PYTHON_PRINT())
-//             return jsonify({'error': f'Error encountered while trying to run "evaluate" method:\n{str(e)}', 'logs': all_logs})
-
-//         # Perform any reduction operations:
-//         if 'reduce_vars' in data and len(data['reduce_vars']) > 0:
-//             evald_responses = reduce_responses(
-//                 evald_responses,
-//                 vars=data['reduce_vars']
-//             )
-
-//         all_evald_responses.extend(evald_responses)
-
-//     # Store the evaluated responses in a new cache json:
-//     with open(cache_filepath, "w", encoding='utf-8') as f:
-//         json.dump(all_evald_responses, f)
-
-//     ret = jsonify({'responses': all_evald_responses, 'logs': all_logs})
-//     ret.headers.add('Access-Control-Allow-Origin', '*')
-//     return ret
+  return {responses: __all_evald_responses, logs: __all_logs};
+}
 
 // @app.route('/app/checkEvalFunc', methods=['POST'])
 // def checkEvalFunc():
@@ -902,82 +845,52 @@ export async function queryLLM(id: string,
 //     ret.headers.add('Access-Control-Allow-Origin', '*')
 //     return ret
 
-// @app.route('/app/exportCache', methods=['POST'])
-// def exportCache():
-//     """
-//         Exports the cache'd data relevant to the given node id(s).
-//         Returns a JSON dict in format { filename: <dict|list> }
+/**
+ * Exports the cache'd data relevant to the given node id(s).
+ * 
+ * @param ids the ids of the nodes to export data for
+ * @returns the cache'd data, as a JSON dict in format `{ files: { filename: <Dict|Array> } }`
+ */
+export async function exportCache(ids: string[]) {
+  // For each id, extract relevant cache file data
+  let export_data = {};
+  for (let i = 0; i < ids.length; i++) {
+    const cache_id = ids[i];
+    const cache_keys = get_cache_keys_related_to_id(cache_id);
+    if (cache_keys.length === 0) {
+        console.warn(`Warning: Could not find cache data for id '${cache_id}'. Skipping...`);
+        continue;
+    }
+    cache_keys.forEach((key: string) => {
+      export_data[key] = load_from_cache(key);
+    });
+  }
+  return export_data;
+}
 
-//         POST'd data should be in the form: 
-//         {
-//             'ids': <the ids of the nodes to export data for>
-//         }
-//     """
-//     # Verify post'd data
-//     data = request.get_json()
-//     if 'ids' not in data:
-//         return jsonify({'error': 'Missing ids parameter to exportData.'})
-//     elif not isinstance(data['ids'], list):
-//         return jsonify({'error': 'Ids parameter to exportData must be a list.'})
 
-//     # For each id, extract relevant cache file data
-//     export_data = {}
-//     for cache_id in data['ids']:
-//         cache_files = get_filenames_for_id(cache_id)
-//         if len(cache_files) == 0:
-//             print(f"Warning: Could not find data for id '{cache_id}'. Skipping...")
-//             continue
-
-//         for filename in cache_files:
-//             export_data[filename] = load_cache_json(filename)
-
-//     # Return cache'd file data
-//     ret = jsonify({'files': export_data})
-//     ret.headers.add('Access-Control-Allow-Origin', '*')
-//     return ret
-
-// @app.route('/app/importCache', methods=['POST'])
-// def importCache():
-//     """
-//         Imports the passed data relevant to specific node id(s), and saves on the backend cache.
-//         Used for importing data from an exported flow, so that the flow is self-contained.
-
-//         POST'd data should be in form:
-//         { 
-//             files: {
-//                 filename: <dict|list>  (the name and contents of the cache file)
-//             }
-//         }
-//     """
-//     # Verify post'd data
-//     data = request.get_json()
-//     if 'files' not in data:
-//         return jsonify({'result': False, 'error': 'Missing files parameter to importData.'})
-//     elif not isinstance(data['files'], dict):
-//         typeof_files = data['files']
-//         return jsonify({'result': False, 'error': f'Files parameter in importData should be a dict, but is of type {typeof_files}.'})
-
-//     # Create a cache dir if it doesn't exist:
-//     create_dir_if_not_exists(CACHE_DIR)
-
-//     # Verify filenames, data, and access permissions to write to cache
-//     for filename in data['files']:
-//         # Verify filepath
-//         cache_filepath = os.path.join(CACHE_DIR, filename)
-//         if not is_valid_filepath(cache_filepath):
-//             return jsonify({'result': False, 'error': f'Invalid filepath: {cache_filepath}'})
-        
-//         # Write data to cache file
-//         # NOTE: This will overwrite any existing cache files with the same filename (id).
-//         with open(cache_filepath, "w", encoding='utf-8') as f:
-//             json.dump(data['files'][filename], f)
-    
-//     print("Imported cache data and store to cache.")
-
-//     # Report success
-//     ret = jsonify({'result': True})
-//     ret.headers.add('Access-Control-Allow-Origin', '*')
-//     return ret
+/**
+ * Imports the passed data relevant to specific node id(s), and saves on the backend cache.
+ * Used for importing data from an exported flow, so that the flow is self-contained.
+ * 
+ * @param files the name and contents of the cache file
+ * @returns Whether the import succeeded or not.
+ */
+export async function importCache(files: { [key: string]: Dict | Array<any> }): Promise<boolean> {
+  try {
+    // Write imported files to StorageCache
+    // Verify filenames, data, and access permissions to write to cache
+    Object.entries(files).forEach(([filename, data]) => {
+      StorageCache.store(filename, data);
+    });
+  } catch (err) {
+    console.error('Error importing from cache:', err.message);
+    return false;
+  }
+  
+  console.log("Imported cache data and stored to cache.");
+  return true;
+}
 
 
 // @app.route('/app/fetchExampleFlow', methods=['POST'])

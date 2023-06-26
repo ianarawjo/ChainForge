@@ -650,9 +650,7 @@ const VisNode = ({ data, id }) => {
         fetch_from_backend(
             'grabResponses',
             {responses: input_node_ids}
-        ).then(function(res) {
-            return res.json();
-        }).then(function(json) {
+        ).then(function(json) {
             if (json.responses && json.responses.length > 0) {
 
                 // Store responses and extract + store vars
