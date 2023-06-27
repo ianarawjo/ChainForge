@@ -25,7 +25,7 @@ const LLMResponseInspectorModal = forwardRef((props, ref) => {
       { props.prompt !== undefined ? 
         <p className="inspect-modal-prompt-box"><span className='inspect-modal-prompt-prefix'>Root Prompt:&nbsp;</span> <span className="inspect-modal-prompt-text">{props.prompt}</span></p>
       : <></>}
-      <div class="inspect-modal-response-container" style={{padding: '6px'}}>
+      <div className="inspect-modal-response-container" style={{padding: '6px'}}>
         <LLMResponseInspector jsonResponses={props.jsonResponses} wideFormat={true} />
       </div>
     </Modal>

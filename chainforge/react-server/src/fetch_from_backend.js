@@ -1,4 +1,5 @@
-import { queryLLM } from "./backend/backend";
+// import { queryLLM, execute } from "./backend/backend.ts";
+import { queryLLM, execute } from "./backend/backend";
 
 const BACKEND_TYPES = {
   FLASK: 'flask',
@@ -13,6 +14,8 @@ async function _route_to_js_backend(route, params) {
   switch (route) {
     case 'queryllm':
       return queryLLM(...Object.values(params));
+    case 'executejs':
+      return execute(...Object.values(params));
     default:
       throw new Error(`Could not find backend function for route named ${route}`);
   }

@@ -22,18 +22,6 @@ import { PromptPipeline } from "./query";
 //     =================
 // """
 
-// # Setup Flask app to serve static version of React front-end
-// BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
-// STATIC_DIR = os.path.join(BUILD_DIR, 'static')
-// app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
-
-// # Set up CORS for specific routes
-// cors = CORS(app, resources={r"/*": {"origins": "*"}})
-
-// # The cache and examples files base directories
-// CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
-// EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
-
 let LLM_NAME_MAP = {};
 Object.entries(LLM).forEach(([key, value]) => {
   LLM_NAME_MAP[value] = key;
@@ -110,52 +98,6 @@ function REVERT_CONSOLE_LOGGING(id: string): any[] {
   delete HIJACKED_CONSOLE_LOGS[id];
   return logs;
 }
-
-// HIJACKED_PRINT_LOG_FILE = None
-// ORIGINAL_PRINT_METHOD = None
-// def HIJACK_PYTHON_PRINT() -> None:
-//     # Hijacks Python's print function, so that we can log 
-//     # the outputs when the evaluator is run:
-//     import builtins
-//     import tempfile
-//     global HIJACKED_PRINT_LOG_FILE, ORIGINAL_PRINT_METHOD
-
-//     # Create a temporary file for logging and keep it open
-//     HIJACKED_PRINT_LOG_FILE = tempfile.NamedTemporaryFile(mode='a+', delete=False)
-
-//     # Create a wrapper over the original print method, and save the original print
-//     ORIGINAL_PRINT_METHOD = print
-//     def hijacked_print(*args, **kwargs):
-//         if 'file' in kwargs:
-//             # We don't want to override any library that's using print to a file.
-//             ORIGINAL_PRINT_METHOD(*args, **kwargs)
-//         else:
-//             ORIGINAL_PRINT_METHOD(*args, **kwargs, file=HIJACKED_PRINT_LOG_FILE)
-    
-//     # Replace the original print function with the custom print function
-//     builtins.print = hijacked_print
-
-// def REVERT_PYTHON_PRINT() -> List[str]:
-//     # Reverts back to original Python print method 
-//     # NOTE: Call this after hijack, and make sure you've caught all exceptions!
-//     import builtins
-//     global ORIGINAL_PRINT_METHOD, HIJACKED_PRINT_LOG_FILE
-    
-//     logs = []
-//     if HIJACKED_PRINT_LOG_FILE is not None:
-//         # Read the log file 
-//         HIJACKED_PRINT_LOG_FILE.seek(0)
-//         logs = HIJACKED_PRINT_LOG_FILE.read().split('\n')
-
-//     if ORIGINAL_PRINT_METHOD is not None:
-//         builtins.print = ORIGINAL_PRINT_METHOD
-
-//     HIJACKED_PRINT_LOG_FILE.close()
-//     HIJACKED_PRINT_LOG_FILE = None
-
-//     if len(logs) == 1 and len(logs[0].strip()) == 0:
-//         logs = []
-//     return logs
 
 /** Stores info about a single LLM response. Passed to evaluator functions. */
 export class ResponseInfo {
@@ -392,62 +334,10 @@ function run_over_responses(eval_func: (resp: ResponseInfo) => any, responses: A
   return evald_responses;
 }
 
-// def reduce_responses(responses: list, vars: list) -> list:
-//     if len(responses) == 0: return responses
-    
-//     # Figure out what vars we still care about (the ones we aren't reducing over):
-//     # NOTE: We are assuming all responses have the same 'vars' keys. 
-//     all_vars = set(responses[0]['vars'])
-    
-//     if not all_vars.issuperset(set(vars)):
-//         # There's a var in vars which isn't part of the response.
-//         raise Exception(f"Some vars in {set(vars)} are not in the responses.")
-    
-//     # Get just the vars we want to keep around:
-//     include_vars = list(set(responses[0]['vars']) - set(vars))
-
-//     # Bucket responses by the remaining var values, where tuples of vars are keys to a dict: 
-//     # E.g. {(var1_val, var2_val): [responses] }
-//     bucketed_resp = {}
-//     for r in responses:
-//         tup_key = tuple([r['vars'][v] for v in include_vars])
-//         if tup_key in bucketed_resp:
-//             bucketed_resp[tup_key].append(r)
-//         else:
-//             bucketed_resp[tup_key] = [r]
-
-//     # Perform reduce op across all bucketed responses, collecting them into a single 'meta'-response:
-//     ret = []
-//     for tup_key, resps in bucketed_resp.items():
-//         flat_eval_res = [item for r in resps for item in r['eval_res']['items']]
-//         ret.append({
-//             'vars': {v: r['vars'][v] for r in resps for v in include_vars},
-//             'llm': resps[0]['llm'],
-//             'prompt': [r['prompt'] for r in resps],
-//             'responses': [r['responses'] for r in resps],
-//             'tokens': resps[0]['tokens'],
-//             'eval_res': {
-//                 'mean': mean(flat_eval_res),
-//                 'median': median(flat_eval_res),
-//                 'stdev': stdev(flat_eval_res) if len(flat_eval_res) > 1 else 0,
-//                 'range': (min(flat_eval_res), max(flat_eval_res)),
-//                 'items': flat_eval_res
-//             }
-//         })
-    
-//     return ret
-
-
-
 // """ ===================
-//     FLASK SERVER ROUTES
+//     BACKEND FUNCTIONS
 //     ===================
 // """
-
-// # Serve React app (static; no hot reloading)
-// @app.route("/")
-// def index():
-//     return render_template("index.html")
 
 // @app.route('/app/countQueriesRequired', methods=['POST'])
 // def countQueries():
@@ -530,37 +420,8 @@ function run_over_responses(eval_func: (resp: ResponseInfo) => any, responses: A
 //     ret.headers.add('Access-Control-Allow-Origin', '*')
 //     return ret
 
-// @app.route('/app/createProgressFile', methods=['POST'])
-// def createProgressFile():
-//     """
-//         Creates a temp txt file for storing progress of async LLM queries.
-
-//         POST'd data should be in the form: 
-//         {
-//             'id': str  # a unique ID that will be used when calling 'queryllm'
-//         }
-//     """
-//     data = request.get_json()
-
-//     if 'id' not in data or not isinstance(data['id'], str) or len(data['id']) == 0:
-//         return jsonify({'error': 'POST data id is improper format (length 0 or not a string).'})
-
-//     # Create a scratch file for keeping track of how many responses loaded
-//     try:
-//         with open(os.path.join(CACHE_DIR, f"_temp_{data['id']}.txt"), 'w', encoding='utf-8') as f:
-//             json.dump({}, f)
-//         ret = jsonify({'success': True})
-//     except Exception as e:
-//         ret = jsonify({'success': False, 'error': str(e)})
-    
-//     ret.headers.add('Access-Control-Allow-Origin', '*')
-//     return ret
-
-// # @socketio.on('connect', namespace='/queryllm')
-// @app.route('/app/queryllm', methods=['POST'])
-
-function isSubset(subset: Array<string>, set: Array<string>): boolean {
-  return subset.every(item => set.includes(item));
+export function createProgressFile(id: string): void {
+  // do nothing --this isn't needed for the JS backend, but was for the Python one
 }
 
 interface LLMPrompterResults {
@@ -790,6 +651,8 @@ export async function execute(__id: string,
   if (!Array.isArray(__response_ids))
     __response_ids = [ __response_ids ];
   __response_ids = __response_ids as Array<string>;
+
+  // const iframe = document.createElement('iframe');
 
   // Instantiate the evaluator function by eval'ing the passed code
   // DANGER DANGER!!
