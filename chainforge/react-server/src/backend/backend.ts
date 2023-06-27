@@ -631,39 +631,54 @@ export async function queryLLM(id: string,
 
 /**
  * Executes a Javascript 'evaluate' function over all cache'd responses with given id's.
- * (The params are prefixed with __ in order to guard against name collisions.)
  * 
  * Similar to Flask backend's Python 'execute' function, except requires code to be in Javascript.
  * 
  * > **NOTE**: This should only be run on code you trust. 
  *             There is no sandboxing; no safety. We assume you are the creator of the code.
  * 
- * @param __id a unique ID to refer to this information. Used when cache'ing evaluation results. 
- * @param __code the code to evaluate. Must include an 'evaluate()' function that takes a 'response' of type ResponseInfo. Alternatively, can be the evaluate function itself.
- * @param __response_ids the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
- * @param __scope the scope of responses to run on --a single response, or all across each batch. (If batch, evaluate() func has access to 'responses'.)
+ * @param id a unique ID to refer to this information. Used when cache'ing evaluation results. 
+ * @param code the code to evaluate. Must include an 'evaluate()' function that takes a 'response' of type ResponseInfo. Alternatively, can be the evaluate function itself.
+ * @param response_ids the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
+ * @param scope the scope of responses to run on --a single response, or all across each batch. (If batch, evaluate() func has access to 'responses'.)
  */
-export async function execute(__id: string, 
-                              __code: string | ((rinfo: ResponseInfo) => any), 
-                              __response_ids: string | string[], 
-                              __scope: 'response' | 'batch'): Promise<Dict> {
+export async function execute(id: string, 
+                              code: string | ((rinfo: ResponseInfo) => any), 
+                              response_ids: string | string[], 
+                              scope: 'response' | 'batch'): Promise<Dict> {
   // Check format of response_ids
-  if (!Array.isArray(__response_ids))
-    __response_ids = [ __response_ids ];
-  __response_ids = __response_ids as Array<string>;
+  if (!Array.isArray(response_ids))
+    response_ids = [ response_ids ];
+  response_ids = response_ids as Array<string>;
 
   // const iframe = document.createElement('iframe');
 
   // Instantiate the evaluator function by eval'ing the passed code
   // DANGER DANGER!!
-  if (typeof __code === 'string') {
+  let iframe: HTMLIFrameElement | undefined;
+  if (typeof code === 'string') {
     try {
-        eval(__code);
+        /*
+          To run Javascript code in a psuedo-'sandbox' environment, we
+          can use an iframe and run eval() inside the iframe, instead of the current environment.
+          This is slightly safer than using eval() directly, doesn't clog our namespace, and keeps
+          multiple Evaluate node execution environments separate. 
+          
+          The Evaluate node in the front-end has a hidden iframe with the following id. 
+          We need to get this iframe element. 
+        */
+        let iframe = document.getElementById(`${id}-iframe`);
+        if (!iframe)
+          throw new Error("Could not find iframe sandbox for evaluator node.");
 
-        // Double-check that there is an 'evaluate' method in our namespace.
+        // Now run eval() on the 'window' of the iframe:
+        // @ts-ignore
+        iframe.contentWindow.eval(code);
+
+        // Now check that there is an 'evaluate' method in the iframe's scope.
         // NOTE: We need to tell Typescript to ignore this, since it's a dynamic type check.
         // @ts-ignore
-        if (evaluate === undefined) {
+        if (iframe.contentWindow.evaluate === undefined) {
           throw new Error('evaluate() function is undefined.');
         }
     } catch (err) {
@@ -672,44 +687,44 @@ export async function execute(__id: string,
   }
 
   // Load all responses with the given ID:
-  let __all_evald_responses: StandardizedLLMResponse[] = [];
-  let __all_logs: string[] = [];
-  for (let __i = 0; __i < __response_ids.length; __i++) {
-    const __cache_id = __response_ids[__i];
-    const __fname = `${__cache_id}.json`;
-    if (!StorageCache.has(__fname))
-      return {error: `Did not find cache file for id ${__cache_id}`, logs: __all_logs};
+  let all_evald_responses: StandardizedLLMResponse[] = [];
+  let all_logs: string[] = [];
+  for (let i = 0; i < response_ids.length; i++) {
+    const cache_id = response_ids[i];
+    const fname = `${cache_id}.json`;
+    if (!StorageCache.has(fname))
+      return {error: `Did not find cache file for id ${cache_id}`, logs: all_logs};
 
     // Load the raw responses from the cache
-    const __responses = load_cache_responses(__fname);
-    if (__responses.length === 0)
+    const responses = load_cache_responses(fname);
+    if (responses.length === 0)
       continue;
 
-    let __evald_responses;
+    let evald_responses: StandardizedLLMResponse[];
     try {
       // Intercept any calls to console.log, .warn, or .error, so we can store the calls
       // and print them in the 'output' footer of the Evaluator Node: 
-      HIJACK_CONSOLE_LOGGING(__id);
+      HIJACK_CONSOLE_LOGGING(id);
 
       // Run the user-defined 'evaluate' function over the responses: 
       // NOTE: 'evaluate' here was defined dynamically from 'eval' above. We've already checked that it exists. 
       // @ts-ignore
-      __evald_responses = run_over_responses((typeof __code !== 'string' ? __code : evaluate), __responses, __scope);
+      evald_responses = run_over_responses((iframe ? iframe.contentWindow.evaluate : code), responses, scope);
 
       // Revert the console.log, .warn, .error back to browser default:
-      __all_logs = __all_logs.concat(REVERT_CONSOLE_LOGGING(__id));
+      all_logs = all_logs.concat(REVERT_CONSOLE_LOGGING(id));
     } catch (err) {
-      __all_logs = __all_logs.concat(REVERT_CONSOLE_LOGGING(__id));
-      return { error: `Error encountered while trying to run "evaluate" method:\n${err.message}`, logs: __all_logs };
+      all_logs = all_logs.concat(REVERT_CONSOLE_LOGGING(id));
+      return { error: `Error encountered while trying to run "evaluate" method:\n${err.message}`, logs: all_logs };
     }
 
-    __all_evald_responses = __all_evald_responses.concat(__evald_responses);
+    all_evald_responses = all_evald_responses.concat(evald_responses);
   }
 
   // Store the evaluated responses in a new cache json:
-  StorageCache.store(__id, __all_evald_responses);
+  StorageCache.store(id, all_evald_responses);
 
-  return {responses: __all_evald_responses, logs: __all_logs};
+  return {responses: all_evald_responses, logs: all_logs};
 }
 
 // @app.route('/app/checkEvalFunc', methods=['POST'])

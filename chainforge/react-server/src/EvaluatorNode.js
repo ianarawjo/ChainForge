@@ -37,6 +37,20 @@ const EvaluatorNode = ({ data, id }) => {
 
   // On initialization
   useEffect(() => {
+
+    // Testing out iframe code eval:
+//     let iframe = document.getElementById(`${id}-iframe`);
+//     console.log(iframe);
+
+//     // @ts-ignore
+//     iframe.contentWindow.eval(`
+// let myvar = 0;
+// function evaluate(x) { myvar += 1; console.log("x is of length", x.length, "and x is", x, "and myvar is", myvar); }
+// `);
+
+//     iframe.contentWindow.evaluate("hello there!");
+//     iframe.contentWindow.evaluate("what's up?");
+
     // Attempt to grab cache'd responses
     fetch_from_backend('grabResponses', {
       responses: [id],
@@ -100,9 +114,6 @@ const EvaluatorNode = ({ data, id }) => {
       responses: input_node_ids,
       reduce_vars: [],
       script_paths: script_paths,
-      // write an extra part here that takes in reduce func
-    }, rejected).then(function(response) {
-        return response.json();
     }, rejected).then(function(json) {
         // Store any Python print output
         if (json?.logs) {
@@ -162,6 +173,7 @@ const EvaluatorNode = ({ data, id }) => {
                   runButtonTooltip="Run evaluator over inputs"
                   />
       <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
+      <iframe style={{display: 'none'}} id={`${id}-iframe`}></iframe>
       <Handle
           type="target"
           position="left"
