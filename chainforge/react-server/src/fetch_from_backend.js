@@ -1,5 +1,4 @@
-// import { queryLLM, execute } from "./backend/backend.ts";
-import { queryLLM, execute } from "./backend/backend";
+import { queryLLM, executejs } from "./backend/backend";
 
 const BACKEND_TYPES = {
   FLASK: 'flask',
@@ -15,7 +14,7 @@ async function _route_to_js_backend(route, params) {
     case 'queryllm':
       return queryLLM(...Object.values(params));
     case 'executejs':
-      return execute(...Object.values(params));
+      return executejs(params.id, params.code, params.responses, params.scope);
     default:
       throw new Error(`Could not find backend function for route named ${route}`);
   }
@@ -30,6 +29,11 @@ async function _route_to_js_backend(route, params) {
  */
 export default function fetch_from_backend(route, params, rejected) {
   rejected = rejected || ((err) => {throw new Error(err)});
+
+  if (route === 'executejs') {
+    return _route_to_js_backend(route, params);
+  }
+
   switch (BACKEND_TYPE) {
     case BACKEND_TYPES.FLASK:  // Fetch from Flask (python) backend
       return fetch(`${FLASK_BASE_URL}app/${route}`, {

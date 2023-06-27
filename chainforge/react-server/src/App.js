@@ -106,9 +106,14 @@ const App = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'promptNode-'+Date.now(), type: 'prompt', data: { prompt: '' }, position: {x: x-200, y:y-100} });
   };
-  const addEvalNode = (event) => {
+  const addEvalNode = (progLang) => {
     const { x, y } = getViewportCenter();
-    addNode({ id: 'evalNode-'+Date.now(), type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: {x: x-200, y:y-100} });
+    let code = "";
+    if (progLang === 'python') 
+      code = "def evaluate(response):\n  return len(response.text)";
+    else if (progLang === 'javascript')
+      code = "function evaluate(resp) {\n  return resp.text.length;\n}";
+    addNode({ id: 'evalNode-'+Date.now(), type: 'evaluator', data: { language: progLang, code: code }, position: {x: x-200, y:y-100} });
   };
   const addVisNode = (event) => {
     const { x, y } = getViewportCenter();
@@ -465,7 +470,8 @@ const App = () => {
           <Menu.Dropdown>
               <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields </Menu.Item>
               <Menu.Item onClick={addPromptNode} icon={'💬'}> Prompt Node </Menu.Item>
-              <Menu.Item onClick={addEvalNode} icon={<IconTerminal size="16px" />}> Evaluator Node </Menu.Item>
+              <Menu.Item onClick={() => addEvalNode('javascript')} icon={<IconTerminal size="16px" />}> JavaScript Evaluator Node </Menu.Item>
+              <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator Node </Menu.Item>
               <Menu.Item onClick={addVisNode} icon={'📊'}> Vis Node </Menu.Item>
               <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
               <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>

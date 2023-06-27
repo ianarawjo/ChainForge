@@ -642,20 +642,22 @@ export async function queryLLM(id: string,
  * @param response_ids the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
  * @param scope the scope of responses to run on --a single response, or all across each batch. (If batch, evaluate() func has access to 'responses'.)
  */
-export async function execute(id: string, 
-                              code: string | ((rinfo: ResponseInfo) => any), 
-                              response_ids: string | string[], 
-                              scope: 'response' | 'batch'): Promise<Dict> {
+export async function executejs(id: string, 
+                                code: string | ((rinfo: ResponseInfo) => any), 
+                                response_ids: string | string[], 
+                                scope: 'response' | 'batch'): Promise<Dict> {
   // Check format of response_ids
   if (!Array.isArray(response_ids))
     response_ids = [ response_ids ];
   response_ids = response_ids as Array<string>;
 
+  console.log('executing js');
+
   // const iframe = document.createElement('iframe');
 
   // Instantiate the evaluator function by eval'ing the passed code
   // DANGER DANGER!!
-  let iframe: HTMLIFrameElement | undefined;
+  let iframe: HTMLElement | undefined;
   if (typeof code === 'string') {
     try {
         /*
@@ -667,7 +669,7 @@ export async function execute(id: string,
           The Evaluate node in the front-end has a hidden iframe with the following id. 
           We need to get this iframe element. 
         */
-        let iframe = document.getElementById(`${id}-iframe`);
+        iframe = document.getElementById(`${id}-iframe`);
         if (!iframe)
           throw new Error("Could not find iframe sandbox for evaluator node.");
 

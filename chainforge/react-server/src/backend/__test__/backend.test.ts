@@ -3,7 +3,7 @@
 */
 import { LLM } from '../models';
 import { expect, test } from '@jest/globals';
-import { queryLLM, execute, ResponseInfo } from '../backend';
+import { queryLLM, executejs, ResponseInfo } from '../backend';
 import { StandardizedLLMResponse } from '../typing';
 import StorageCache from '../cache';
 
@@ -48,7 +48,7 @@ test('run evaluate func over responses', async () => {
 // `;
 
   // Execute the code, and map the evaluate function over all responses
-  const {responses, logs, error} = await execute('evalid', code, ['dummy_response_id'], 'response');
+  const {responses, logs, error} = await executejs('evalid', code, ['dummy_response_id'], 'response');
 
   // There should be no errors
   if (error)

@@ -9,6 +9,7 @@ import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 // Ace code editor
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-python";
+import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
 import fetch_from_backend from './fetch_from_backend';
@@ -28,8 +29,14 @@ const EvaluatorNode = ({ data, id }) => {
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
 
+  // The programming language for the editor. Also determines what 'execute'
+  // function will ultimately be called.
+  const [progLang, setProgLang] = useState(data.language || 'python');
+
+  // The text in the code editor. 
   const [codeText, setCodeText] = useState(data.code);
   const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
+
   const [lastRunLogs, setLastRunLogs] = useState("");
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
@@ -85,7 +92,8 @@ const EvaluatorNode = ({ data, id }) => {
     }
 
     // Double-check that the code includes an 'evaluate' function:
-    if (codeText.search(/def\s+evaluate\s*(.*):/) === -1) {
+    const find_evalfunc_regex = progLang === 'python' ? /def\s+evaluate\s*(.*):/ : /function\s+evaluate\s*(.*)/;
+    if (codeText.search(find_evalfunc_regex) === -1) {
       const err_msg = `Could not find required function 'evaluate'. Make sure you have defined an 'evaluate' function.`;
       setStatus('error');
       alertModal.current.trigger(err_msg);
@@ -107,11 +115,12 @@ const EvaluatorNode = ({ data, id }) => {
 
     // Run evaluator in backend
     const codeTextOnRun = codeText + '';
-    fetch_from_backend('execute', {
+    const execute_route = (progLang === 'python') ? 'execute' : 'executejs';
+    fetch_from_backend(execute_route, {
       id: id,
       code: codeTextOnRun,
-      scope: mapScope,
       responses: input_node_ids,
+      scope: mapScope,
       reduce_vars: [],
       script_paths: script_paths,
     }, rejected).then(function(json) {
@@ -163,7 +172,10 @@ const EvaluatorNode = ({ data, id }) => {
 
   return (
     <div className="evaluator-node cfnode">
-      <NodeLabel title={data.title || 'Python Evaluator Node'} 
+      <NodeLabel title={data.title || 
+                        progLang === 'python' ? 
+                          'Python Evaluator Node'
+                          : 'JavaScript Evaluator Node' } 
                   nodeId={id} 
                   onEdit={hideStatusIndicator}
                   icon={<IconTerminal size="16px" />} 
@@ -197,7 +209,7 @@ const EvaluatorNode = ({ data, id }) => {
         {/* <span className="code-style">response</span>: */}
         <div className="ace-editor-container nodrag">
           <AceEditor
-            mode="python"
+            mode={progLang}
             theme="xcode"
             onChange={handleCodeChange}
             value={data.code}
@@ -206,6 +218,7 @@ const EvaluatorNode = ({ data, id }) => {
             width='100%'
             height='100px'
             style={{minWidth:'310px'}}
+            setOptions={{useWorker: false}}
             tabSize={2}
             onLoad={editorInstance => {  // Make Ace Editor div resizeable. 
               editorInstance.container.style.resize = "both";
