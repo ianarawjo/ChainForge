@@ -28,8 +28,6 @@ const InspectorNode = ({ data, id }) => {
     // Grab responses associated with those ids:
     fetch_from_backend('grabResponses', {
       'responses': input_node_ids
-    }).then(function(res) {
-        return res.json();
     }).then(function(json) {
         if (json.responses && json.responses.length > 0) {
             setJSONResponses(json.responses);

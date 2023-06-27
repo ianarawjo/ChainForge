@@ -9,9 +9,11 @@
 // from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
 // from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
 
+import { mean as __mean, std as __std, median as __median } from "mathjs";
+
 import { Dict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse } from "./typing";
 import { LLM } from "./models";
-import { set_api_keys } from "./utils";
+import { getEnumName, set_api_keys } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
 
@@ -37,22 +39,77 @@ Object.entries(LLM).forEach(([key, value]) => {
   LLM_NAME_MAP[value] = key;
 });
 
-// class MetricType(Enum):
-//     KeyValue = 0
-//     KeyValue_Numeric = 1
-//     KeyValue_Categorical = 2
-//     KeyValue_Mixed = 3
-//     Numeric = 4
-//     Categorical = 5
-//     Mixed = 6
-//     Unknown = 7
-//     Empty = 8
-
+enum MetricType {
+  KeyValue = 0,
+  KeyValue_Numeric = 1,
+  KeyValue_Categorical = 2,
+  KeyValue_Mixed = 3,
+  Numeric = 4,
+  Categorical = 5,
+  Mixed = 6,
+  Unknown = 7,
+  Empty = 8,
+}
 
 // """ ==============
 //     UTIL FUNCTIONS
 //     ==============
 // """
+
+// Store the original console log funcs once upon load,
+// to ensure we can always revert to them:
+const ORIGINAL_CONSOLE_LOG_FUNCS: Dict = console.log ? {
+  log: console.log,
+  warn: console.warn,
+  error: console.error,
+} : {};
+let HIJACKED_CONSOLE_LOGS: Dict = {};
+
+function HIJACK_CONSOLE_LOGGING(id: string): void {
+  // This function body is adapted from designbyadrian 
+  // @ GitHub: https://gist.github.com/designbyadrian/2eb329c853516cef618a  
+  HIJACKED_CONSOLE_LOGS[id] = [];
+
+  if (ORIGINAL_CONSOLE_LOG_FUNCS.log) {
+    let cl = ORIGINAL_CONSOLE_LOG_FUNCS.log;
+    console.log = function() {
+      const a = Array.from(arguments).map(s => s.toString());
+      HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
+      cl.apply(this, arguments);
+    }
+  }
+
+  if (ORIGINAL_CONSOLE_LOG_FUNCS.warn) {
+    let cw = ORIGINAL_CONSOLE_LOG_FUNCS.warn;
+    console.warn = function() {
+      const a = Array.from(arguments).map(s => `warn: ${s.toString()}`);
+      HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
+      cw.apply(this, arguments);
+    }
+  }
+
+  if (ORIGINAL_CONSOLE_LOG_FUNCS.error) {
+    let ce = ORIGINAL_CONSOLE_LOG_FUNCS.error;
+    console.error = function() {
+      const a = Array.from(arguments).map(s => `error: ${s.toString()}`);
+      HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
+      ce.apply(this, arguments);
+    }
+  }
+}
+
+function REVERT_CONSOLE_LOGGING(id: string): any[] {
+  if (ORIGINAL_CONSOLE_LOG_FUNCS.log !== undefined)
+    console.log = ORIGINAL_CONSOLE_LOG_FUNCS.log;
+  if (ORIGINAL_CONSOLE_LOG_FUNCS.warn !== undefined)
+    console.warn = ORIGINAL_CONSOLE_LOG_FUNCS.warn;
+  if (ORIGINAL_CONSOLE_LOG_FUNCS.log !== undefined)
+    console.error = ORIGINAL_CONSOLE_LOG_FUNCS.error;
+  
+  const logs = HIJACKED_CONSOLE_LOGS[id];
+  delete HIJACKED_CONSOLE_LOGS[id];
+  return logs;
+}
 
 // HIJACKED_PRINT_LOG_FILE = None
 // ORIGINAL_PRINT_METHOD = None
@@ -100,22 +157,32 @@ Object.entries(LLM).forEach(([key, value]) => {
 //         logs = []
 //     return logs
 
-// @dataclass
-// class ResponseInfo:
-//     """Stores info about a single LLM response. Passed to evaluator functions."""
-//     text: str  # The text of the LLM response
-//     prompt: str  # The text of the prompt using to query the LLM
-//     var: dict  # A dictionary of arguments that filled in the prompt template used to generate the final prompt
-//     meta: dict  # A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
-//     llm: str  # The name of the LLM queried (the nickname in ChainForge)
+/** Stores info about a single LLM response. Passed to evaluator functions. */
+export class ResponseInfo {
+  text: string;  // The text of the LLM response
+  prompt: string  // The text of the prompt using to query the LLM
+  var: Dict  // A dictionary of arguments that filled in the prompt template used to generate the final prompt
+  meta: Dict  // A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
+  llm: string | LLM  // The name of the LLM queried (the nickname in ChainForge)
 
-//     def __str__(self):
-//         return self.text
-    
-//     def asMarkdownAST(self):
-//         import mistune
-//         md_ast_parser = mistune.create_markdown(renderer='ast')
-//         return md_ast_parser(self.text)
+  constructor(text: string, prompt: string, _var: Dict, meta: Dict, llm: string | LLM) {
+    this.text = text;
+    this.prompt = prompt;
+    this.var = _var;
+    this.meta = meta;
+    this.llm = llm;
+  }
+
+  toString(): string {
+    return this.text;
+  }
+
+  // TODO: REIMPLEMENT WITH MARKED.JS
+  // def asMarkdownAST(self):
+  //     import mistune
+  //     md_ast_parser = mistune.create_markdown(renderer='ast')
+  //     return md_ast_parser(self.text)
+}
 
 function to_standard_format(r: LLMResponseObject | Dict): StandardizedLLMResponse {
   let resp_obj = {
@@ -220,115 +287,110 @@ function matching_settings(cache_llm_spec: Dict, llm_spec: Dict) {
   return true;
 }
 
-// def check_typeof_vals(arr: list) -> MetricType:
-//     if len(arr) == 0: return MetricType.Empty
+function areSetsEqual(xs: Set<any>, ys: Set<any>): boolean {
+    return xs.size === ys.size && [...xs].every((x) => ys.has(x));
+}
 
-//     def typeof_set(types: set) -> MetricType:
-//         if len(types) == 0: return MetricType.Empty
-//         if len(types) == 1 and next(iter(types)) == dict:
-//             return MetricType.KeyValue
-//         elif all((t in (int, float) for t in types)):
-//             # Numeric metrics only
-//             return MetricType.Numeric
-//         elif all((t in (str, bool) for t in types)):
-//             # Categorical metrics only ('bool' is True/False, counts as categorical)
-//             return MetricType.Categorical
-//         elif all((t in (int, float, bool, str) for t in types)):
-//             # Mix of numeric and categorical types
-//             return MetricType.Mixed
-//         else:
-//             # Mix of types beyond basic ones
-//             return MetricType.Unknown
-    
-//     def typeof_dict_vals(d):
-//         dict_val_type = typeof_set(set((type(v) for v in d.values())))
-//         if dict_val_type == MetricType.Numeric: 
-//             return MetricType.KeyValue_Numeric
-//         elif dict_val_type == MetricType.Categorical: 
-//             return MetricType.KeyValue_Categorical
-//         else: 
-//             return MetricType.KeyValue_Mixed
+function check_typeof_vals(arr: Array<any>): MetricType {
+  if (arr.length === 0) return MetricType.Empty;
 
-//     # Checks type of all values in 'arr' and returns the type
-//     val_type = typeof_set(set((type(v) for v in arr)))
-//     if val_type == MetricType.KeyValue:
-//         # This is a 'KeyValue' pair type. We need to find the more specific type of the values in the dict.
-//         # First, we check that all dicts have the exact same keys
-//         for i in range(len(arr)-1):
-//             d, e = arr[i], arr[i+1]
-//             if set(d.keys()) != set(e.keys()):
-//                 raise Exception('The keys and size of dicts for evaluation results must be consistent across evaluations.')
-        
-//         # Then, we check the consistency of the type of dict values:
-//         first_dict_val_type = typeof_dict_vals(arr[0])
-//         for d in arr[1:]:
-//             if first_dict_val_type != typeof_dict_vals(d):
-//                 raise Exception('Types of values in dicts for evaluation results must be consistent across responses.')
-//         # If we're here, all checks passed, and we return the more specific KeyValue type:
-//         return first_dict_val_type
-//     else:
-//         return val_type
+  const typeof_set: (types: Set<any>) => MetricType = (types: Set<any>) => {
+    if (types.size === 0) return MetricType.Empty;
+    if (types.size === 1 && typeof types.values()[0] === 'object' && !Array.isArray(types.values()[0]))
+      return MetricType.KeyValue;
+    else if (Array.from(types).every(t => typeof t === 'number'))
+      // Numeric metrics only
+      return MetricType.Numeric;
+    else if (Array.from(types).every(t => ['string', 'boolean'].includes(typeof t)))
+      // Categorical metrics only ('bool' is True/False, counts as categorical)
+      return MetricType.Categorical;
+    else if (Array.from(types).every(t => ['string', 'boolean', 'number'].includes(typeof t)))
+      // Mix of numeric and categorical types
+      return MetricType.Mixed;
+    else
+      //Mix of types beyond basic ones
+      return MetricType.Unknown;
+  };
+  
+  const typeof_dict_vals = (d: Dict) => {
+    const dict_val_type = typeof_set(new Set(d.values()));
+    if (dict_val_type === MetricType.Numeric)
+      return MetricType.KeyValue_Numeric;
+    else if (dict_val_type === MetricType.Categorical)
+      return MetricType.KeyValue_Categorical;
+    else
+      return MetricType.KeyValue_Mixed;
+  };
+      
+  // Checks type of all values in 'arr' and returns the type
+  const val_type = typeof_set(new Set(arr));
+  if (val_type === MetricType.KeyValue) {
+      // This is a 'KeyValue' pair type. We need to find the more specific type of the values in the dict.
+      // First, we check that all dicts have the exact same keys
+      for (let i = 0; i < arr.length-1; i++) {
+        const d = arr[i];
+        const e = arr[i+1];
+        if (!areSetsEqual(d, e))
+          throw new Error('The keys and size of dicts for evaluation results must be consistent across evaluations.');
+      }
+      
+      // Then, we check the consistency of the type of dict values:
+      const first_dict_val_type = typeof_dict_vals(arr[0]);
+      arr.slice(1).forEach((d: Dict) => {
+        if (first_dict_val_type !== typeof_dict_vals(d))
+          throw new Error('Types of values in dicts for evaluation results must be consistent across responses.');
+      });
 
-// def run_over_responses(eval_func, responses: list, scope: str) -> list:
-//     for resp_obj in responses:
-//         res = resp_obj['responses']
-//         if scope == 'response':
-//             # Run evaluator func over every individual response text
-//             evals = [eval_func(
-//                         ResponseInfo(
-//                             text=r,
-//                             prompt=resp_obj['prompt'],
-//                             var=resp_obj['vars'],
-//                             meta=resp_obj['metavars'] if 'metavars' in resp_obj else {},
-//                             llm=resp_obj['llm'])
-//                     ) for r in res]
+      // If we're here, all checks passed, and we return the more specific KeyValue type:
+      return first_dict_val_type;
+  } else
+    return val_type;
+}
 
-//             # Check the type of evaluation results
-//             # NOTE: We assume this is consistent across all evaluations, but it may not be.
-//             eval_res_type = check_typeof_vals(evals)
+function run_over_responses(eval_func: (resp: ResponseInfo) => any, responses: Array<StandardizedLLMResponse>): Array<StandardizedLLMResponse> {
+  const evald_responses = responses.map((_resp_obj: StandardizedLLMResponse) => {
+    // Deep clone the response object
+    const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
 
-//             if eval_res_type == MetricType.Numeric:
-//                 # Store items with summary of mean, median, etc
-//                 resp_obj['eval_res'] = {
-//                     'mean': mean(evals),
-//                     'median': median(evals),
-//                     'stdev': stdev(evals) if len(evals) > 1 else 0,
-//                     'range': (min(evals), max(evals)),
-//                     'items': evals,
-//                     'dtype': eval_res_type.name,
-//                 }
-//             elif eval_res_type in (MetricType.Unknown, MetricType.Empty):
-//                 raise Exception('Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.')
-//             else:
-//                 # Categorical, KeyValue, etc, we just store the items:
-//                 resp_obj['eval_res'] = { 
-//                     'items': evals,
-//                     'dtype': eval_res_type.name,
-//                 }
-//         else:  
-//             # Run evaluator func over the entire response batch
-//             ev = eval_func([
-//                     ResponseInfo(text=r,
-//                                  prompt=resp_obj['prompt'],
-//                                  var=resp_obj['vars'],
-//                                  llm=resp_obj['llm'])
-//                 for r in res])
-//             ev_type = check_typeof_vals([ev])
-//             if ev_type == MetricType.Numeric:
-//                 resp_obj['eval_res'] = {
-//                     'mean': ev,
-//                     'median': ev,
-//                     'stdev': 0,
-//                     'range': (ev, ev),
-//                     'items': [ev],
-//                     'type': ev_type.name,
-//                 }
-//             else:
-//                 resp_obj['eval_res'] = { 
-//                     'items': [ev],
-//                     'type': ev_type.name,
-//                 }
-//     return responses
+    // Map the evaluator func over every individual response text in each response object
+    const res = resp_obj.responses;
+    const evals = res.map(
+      (r: string) => eval_func(new ResponseInfo(r, 
+                                                resp_obj.prompt, 
+                                                resp_obj.vars, 
+                                                resp_obj.metavars || {}, 
+                                                extract_llm_nickname(resp_obj.llm))
+    ));
+
+    // Check the type of evaluation results
+    // NOTE: We assume this is consistent across all evaluations, but it may not be.
+    const eval_res_type = check_typeof_vals(evals);
+
+    if (eval_res_type === MetricType.Numeric) {
+        // Store items with summary of mean, median, etc
+        resp_obj.eval_res = {
+          mean: __mean(evals),
+          median: __median(evals), 
+          stdev: (evals.length > 1 ? __std(evals) : 0),
+          range: [Math.min(...evals), Math.max(...evals)],
+          items: evals,
+          dtype: getEnumName(MetricType, eval_res_type),
+        };
+    } else if ([MetricType.Unknown, MetricType.Empty].includes(eval_res_type))
+      throw new Error('Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.');
+    else {
+      // Categorical, KeyValue, etc, we just store the items:
+      resp_obj.eval_res = { 
+        items: evals,
+        dtype: getEnumName(MetricType, eval_res_type),
+      }
+    }
+
+    return resp_obj;
+  });
+
+  return evald_responses;
+}
 
 // def reduce_responses(responses: list, vars: list) -> list:
 //     if len(responses) == 0: return responses
@@ -716,11 +778,14 @@ export async function queryLLM(id: string,
  *             There is no sandboxing; no safety. We assume you are the creator of the code.
  * 
  * @param __id a unique ID to refer to this information. Used when cache'ing evaluation results. 
- * @param __code the code to evaluate. Must include an 'evaluate()' function that takes a 'response' of type ResponseInfo.
+ * @param __code the code to evaluate. Must include an 'evaluate()' function that takes a 'response' of type ResponseInfo. Alternatively, can be the evaluate function itself.
  * @param __response_ids the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
  * @param __scope the scope of responses to run on --a single response, or all across each batch. (If batch, evaluate() func has access to 'responses'.)
  */
-export async function execute(__id: string, __code: string, __response_ids: string | string[], __scope: 'response' | 'batch'): Promise<Dict> {
+export async function execute(__id: string, 
+                              __code: string | ((rinfo: ResponseInfo) => any), 
+                              __response_ids: string | string[], 
+                              __scope: 'response' | 'batch'): Promise<Dict> {
   // Check format of response_ids
   if (!Array.isArray(__response_ids))
     __response_ids = [ __response_ids ];
@@ -728,21 +793,23 @@ export async function execute(__id: string, __code: string, __response_ids: stri
 
   // Instantiate the evaluator function by eval'ing the passed code
   // DANGER DANGER!!
-  try {
-      eval(__code);
+  if (typeof __code === 'string') {
+    try {
+        eval(__code);
 
-      // Double-check that there is an 'evaluate' method in our namespace.
-      // NOTE: We need to tell Typescript to ignore this, since it's a dynamic type check.
-      // @ts-ignore
-      if (evaluate === undefined) {
-        throw new Error('evaluate() function is undefined.');
-      }
-  } catch (err) {
-    return {'error': `Could not compile evaluator code. Error message:\n${err.message}`};
+        // Double-check that there is an 'evaluate' method in our namespace.
+        // NOTE: We need to tell Typescript to ignore this, since it's a dynamic type check.
+        // @ts-ignore
+        if (evaluate === undefined) {
+          throw new Error('evaluate() function is undefined.');
+        }
+    } catch (err) {
+      return {'error': `Could not compile evaluator code. Error message:\n${err.message}`};
+    }
   }
 
   // Load all responses with the given ID:
-  let __all_evald_responses = []
+  let __all_evald_responses: StandardizedLLMResponse[] = [];
   let __all_logs: string[] = [];
   for (let __i = 0; __i < __response_ids.length; __i++) {
     const __cache_id = __response_ids[__i];
@@ -755,19 +822,25 @@ export async function execute(__id: string, __code: string, __response_ids: stri
     if (__responses.length === 0)
       continue;
 
-    // Run the user-defined 'evaluate' function over the responses: 
-    // NOTE: 'evaluate' here was defined dynamically from 'eval' above. We've already checked that it exists. 
+    let __evald_responses;
     try {
-      HIJACK_CONSOLE_LOGGING();
+      // Intercept any calls to console.log, .warn, or .error, so we can store the calls
+      // and print them in the 'output' footer of the Evaluator Node: 
+      HIJACK_CONSOLE_LOGGING(__id);
+
+      // Run the user-defined 'evaluate' function over the responses: 
+      // NOTE: 'evaluate' here was defined dynamically from 'eval' above. We've already checked that it exists. 
       // @ts-ignore
-      evald_responses = run_over_responses(evaluate, __responses, __scope);
-      __all_logs = __all_logs.concat(REVERT_CONSOLE_LOGGING());
+      __evald_responses = run_over_responses((typeof __code !== 'string' ? __code : evaluate), __responses, __scope);
+
+      // Revert the console.log, .warn, .error back to browser default:
+      __all_logs = __all_logs.concat(REVERT_CONSOLE_LOGGING(__id));
     } catch (err) {
-      __all_logs = __all_logs.concat(REVERT_CONSOLE_LOGGING());
-      return {error: `Error encountered while trying to run "evaluate" method:\n${err.message}`, logs: __all_logs};
+      __all_logs = __all_logs.concat(REVERT_CONSOLE_LOGGING(__id));
+      return { error: `Error encountered while trying to run "evaluate" method:\n${err.message}`, logs: __all_logs };
     }
 
-    all_evald_responses = all_evald_responses.concat(evald_responses);
+    __all_evald_responses = __all_evald_responses.concat(__evald_responses);
   }
 
   // Store the evaluated responses in a new cache json:
