@@ -279,7 +279,7 @@ export class PromptPipeline {
     } catch(err) {
       return { prompt: prompt, 
                query: undefined, 
-               response: new LLMResponseError(err.toString()), 
+               response: new LLMResponseError(err.message), 
                past_resp_obj: undefined };
     }
     

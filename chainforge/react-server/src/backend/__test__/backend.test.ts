@@ -3,9 +3,38 @@
 */
 import { LLM } from '../models';
 import { expect, test } from '@jest/globals';
-import { queryLLM, executejs, ResponseInfo } from '../backend';
-import { StandardizedLLMResponse } from '../typing';
+import { queryLLM, executejs, countQueries, ResponseInfo } from '../backend';
+import { StandardizedLLMResponse, Dict } from '../typing';
 import StorageCache from '../cache';
+
+test('count queries required', async () => {
+  // Setup params to call
+  let prompt = 'What is the {timeframe} when {person} was born?';
+  let vars: {[key: string]: any} = {
+      'timeframe': ['year', 'decade', 'century'], 
+      'person': ['Howard Hughes', 'Toni Morrison', 'Otis Redding']
+  };
+
+  // Double-check the queries required (not loading from cache)
+  const test_count_queries = async (llms: Array<string | Dict>, n: number) => {
+    const { counts, total_num_responses, error } = await countQueries(prompt, vars, llms, n);
+    expect(error).toBeUndefined();
+
+    Object.values(total_num_responses).forEach(v => {
+      expect(v).toBe(n * 3 * 3);
+    });
+    Object.keys(counts).forEach(llm => {
+      expect(Object.keys(counts[llm])).toHaveLength(3 * 3);
+      Object.values(counts[llm]).forEach(num => {
+        expect(num).toBe(n);
+      });
+    });
+  };
+
+  // Try a number of different inputs
+  await test_count_queries([LLM.OpenAI_ChatGPT, LLM.Claude_v1], 3);
+  await test_count_queries([{ name: "Claude", key: 'claude-test', emoji: "📚", model: "claude-v1", base_model: "claude-v1", temp: 0.5 }], 5);
+});
 
 test('call three LLMs with a single prompt', async () => {
   // Setup params to call

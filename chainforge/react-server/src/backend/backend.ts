@@ -13,14 +13,18 @@ import { mean as __mean, std as __std, median as __median } from "mathjs";
 
 import { Dict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse } from "./typing";
 import { LLM } from "./models";
-import { getEnumName, set_api_keys } from "./utils";
+import { APP_IS_RUNNING_LOCALLY, getEnumName, set_api_keys } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
+import { PromptPermutationGenerator, PromptTemplate } from "./template";
 
 // """ =================
 //     SETUP AND GLOBALS
 //     =================
 // """
+
+/** Where the ChainForge Flask server is being hosted. */
+export const FLASK_BASE_URL = 'http://localhost:8000/';
 
 let LLM_NAME_MAP = {};
 Object.entries(LLM).forEach(([key, value]) => {
@@ -190,10 +194,10 @@ function extract_llm_nickname(llm_spec: Dict | string) {
 }
 
 function extract_llm_name(llm_spec: Dict | string): string {
-  if (typeof llm_spec === 'object')
-    return llm_spec.model;
-  else
+  if (typeof llm_spec === 'string')
     return llm_spec;
+  else
+    return llm_spec.model;
 }
 
 function extract_llm_key(llm_spec: Dict | string): string {
@@ -213,18 +217,44 @@ function extract_llm_params(llm_spec: Dict | string): Dict {
 }
 
 /**
+ * Test equality akin to Python's list equality.
+ */
+function isLooselyEqual(value1: any, value2: any): boolean {
+  // If both values are non-array types, compare them directly
+  if (!Array.isArray(value1) && !Array.isArray(value2)) {
+    return value1 === value2;
+  }
+
+  // If either value is not an array or their lengths differ, they are not equal
+  if (!Array.isArray(value1) || !Array.isArray(value2) || value1.length !== value2.length) {
+    return false;
+  }
+
+  // Compare each element in the arrays recursively
+  for (let i = 0; i < value1.length; i++) {
+    if (!isLooselyEqual(value1[i], value2[i])) {
+      return false;
+    }
+  }
+
+  // All elements are equal
+  return true;
+}
+
+/**
  * Given a cache'd response object, and an LLM name and set of parameters (settings to use), 
  * determines whether the response query used the same parameters.
  */
-function matching_settings(cache_llm_spec: Dict, llm_spec: Dict) {
+function matching_settings(cache_llm_spec: Dict | string, llm_spec: Dict | string): boolean {
   if (extract_llm_name(cache_llm_spec) !== extract_llm_name(llm_spec))
     return false;
   if (typeof llm_spec === 'object' && typeof cache_llm_spec === 'object') {
     const llm_params = extract_llm_params(llm_spec);
     const cache_llm_params = extract_llm_params(cache_llm_spec);
     for (const [param, val] of Object.entries(llm_params))
-        if (param in cache_llm_params && cache_llm_params[param] !== val)
-            return false;
+        if (param in cache_llm_params && !isLooselyEqual(cache_llm_params[param], val)) {
+          return false;
+        }
   }
   return true;
 }
@@ -339,86 +369,90 @@ function run_over_responses(eval_func: (resp: ResponseInfo) => any, responses: A
 //     ===================
 // """
 
-// @app.route('/app/countQueriesRequired', methods=['POST'])
-// def countQueries():
-//     """
-//         Returns how many queries we need to make, given the passed prompt and vars.
+/**
+ * Calculates how many queries we need to make, given the passed prompt and vars.
+ * 
+ * @param prompt the prompt template, with any {{}} vars
+ * @param vars a dict of the template variables to fill the prompt template with, by name. 
+ *             For each var value, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
+ * @param llms the list of LLMs you will query
+ * @param n how many responses expected per prompt
+ * @param id (optional) a unique ID of the node with cache'd responses. If missing, assumes no cache will be used.
+ * @returns If success, a dict with { counts: <dict of missing queries per LLM>, total_num_responses: <dict of total num responses per LLM> }
+ *          If there was an error, returns a dict with a single key, 'error'. 
+ */
+export async function countQueries(prompt: string, vars: Dict, llms: Array<Dict | string>, n: number, id?: string): Promise<Dict> {
+  let gen_prompts: PromptPermutationGenerator;
+  let all_prompt_permutations: Array<PromptTemplate>;
+  try {
+    gen_prompts = new PromptPermutationGenerator(prompt);
+    all_prompt_permutations = Array.from(gen_prompts.generate(vars));
+  } catch (err) {
+    return {error: err.message};
+  }
+  
+  let cache_file_lookup: Dict = {};
+  if (id !== undefined) {
+    const cache_data = load_from_cache(`${id}.json`);
+    cache_file_lookup = cache_data?.cache_files || {};
+  }
+  
+  let missing_queries = {};
+  let num_responses_req = {};
+  const add_to_missing_queries = (llm_key: string, prompt: string, num: number) => {
+    if (!(llm_key in missing_queries))
+      missing_queries[llm_key] = {};
+    missing_queries[llm_key][prompt] = num;
+  };
+  const add_to_num_responses_req = (llm_key: string, num: number) => {
+    if (!(llm_key in num_responses_req))
+      num_responses_req[llm_key] = 0;
+    num_responses_req[llm_key] += num;
+  }
+  
+  llms.forEach(llm_spec => {
+    const llm_key = extract_llm_key(llm_spec);
 
-//         POST'd data should be in the form: 
-//         {
-//             'prompt': str  # the prompt template, with any {{}} vars
-//             'vars': dict  # a dict of the template variables to fill the prompt template with, by name. 
-//                           # For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
-//             'llms': list  # the list of LLMs you will query
-//             'n': int  # how many responses expected per prompt
-//             'id': str (optional)  # a unique ID of the node with cache'd responses. If missing, assumes no cache will be used.
-//         }
-//     """
-//     data = request.get_json()
-//     if not set(data.keys()).issuperset({'prompt', 'vars', 'llms', 'n'}):
-//         return jsonify({'error': 'POST data is improper format.'})
-    
-//     n = int(data['n'])
+    // Find the response cache file for the specific LLM, if any
+    let found_cache = false;
+    for (const [cache_filename, cache_llm_spec] of Object.entries(cache_file_lookup)) {
+      if (matching_settings(cache_llm_spec, llm_spec)) {
+        found_cache = true;
 
-//     try:
-//         gen_prompts = PromptPermutationGenerator(PromptTemplate(data['prompt']))
-//         all_prompt_permutations = list(gen_prompts(data['vars']))
-//     except Exception as e:
-//         return jsonify({'error': str(e)})
-    
-//     if 'id' in data:
-//         cache_data = load_from_cache(f"{data['id']}.json")
-//         cache_file_lookup = cache_data['cache_files'] if 'cache_files' in cache_data else {}
-//     else:
-//         cache_file_lookup = {}
-    
-//     missing_queries = {}
-//     num_responses_req = {}
-//     def add_to_missing_queries(llm_key, prompt, num):
-//         if llm_key not in missing_queries:
-//             missing_queries[llm_key] = {}
-//         missing_queries[llm_key][prompt] = num
-//     def add_to_num_responses_req(llm_key, num):
-//         if llm_key not in num_responses_req:
-//             num_responses_req[llm_key] = 0
-//         num_responses_req[llm_key] += num
-    
-//     for llm_spec in data['llms']:
-//         llm_key = extract_llm_key(llm_spec)
+        // Load the cache file
+        const cache_llm_responses = load_from_cache(cache_filename);
 
-//         # Find the response cache file for the specific LLM, if any
-//         found_cache = False
-//         for cache_filename, cache_llm_spec in cache_file_lookup.items():
-//             if matching_settings(cache_llm_spec, llm_spec):
-//                 found_cache = True
+        // Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
+        all_prompt_permutations.forEach(perm => {
+          const prompt_str = perm.toString();
 
-//                 # Load the cache file
-//                 cache_llm_responses = load_from_cache(cache_filename)
+          add_to_num_responses_req(llm_key, n);
 
-//                 # Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
-//                 for prompt in all_prompt_permutations:
-
-//                     prompt = str(prompt)
-//                     add_to_num_responses_req(llm_key, n)
-
-//                     if prompt in cache_llm_responses:
-//                         # Check how many were stored; if not enough, add how many missing queries:
-//                         num_resps = len(cache_llm_responses[prompt]['responses'])
-//                         if n > num_resps:
-//                             add_to_missing_queries(llm_key, prompt, n - num_resps)
-//                     else:
-//                         add_to_missing_queries(llm_key, prompt, n)
-                
-//                 break
+          if (prompt_str in cache_llm_responses) {
+            // Check how many were stored; if not enough, add how many missing queries:
+            const num_resps = cache_llm_responses[prompt]['responses'].length;
+            if (n > num_resps)
+              add_to_missing_queries(llm_key, prompt, n - num_resps);
+          } else {
+            add_to_missing_queries(llm_key, prompt, n);
+          }
+        });
         
-//         if not found_cache:
-//             for prompt in all_prompt_permutations:
-//                 add_to_num_responses_req(llm_key, n)
-//                 add_to_missing_queries(llm_key, str(prompt), n)
-
-//     ret = jsonify({'counts': missing_queries, 'total_num_responses': num_responses_req})
-//     ret.headers.add('Access-Control-Allow-Origin', '*')
-//     return ret
+        break;
+      }
+    }
+    
+    if (!found_cache) {
+      all_prompt_permutations.forEach(perm => {
+        add_to_num_responses_req(llm_key, n);
+        add_to_missing_queries(llm_key, perm.toString(), n);
+      });
+    }
+  });
+  
+  console.log(missing_queries);
+  return {'counts': missing_queries, 'total_num_responses': num_responses_req};
+}
 
 export function createProgressFile(id: string): void {
   // do nothing --this isn't needed for the JS backend, but was for the Python one
@@ -514,14 +548,14 @@ export async function queryLLM(id: string,
   }
 
   // Store the overall cache file for this id:
-  StorageCache.store(id, cache);
+  StorageCache.store(`${id}.json`, cache);
 
   // Create a Proxy object to 'listen' for changes to a variable (see https://stackoverflow.com/a/50862441)
   // and then stream those changes back to a provided callback used to update progress bars.
   let progress = {};
   let progressProxy = new Proxy(progress, {
     set: function (target, key, value) {
-      console.log(`${key.toString()} set to ${value.toString()}`);
+      console.log(`${key.toString()} set to ${JSON.stringify(value)}`);
       target[key] = value;
 
       // If the caller provided a callback, notify it 
@@ -562,7 +596,7 @@ export async function queryLLM(id: string,
       for await (const response of prompter.gen_responses(vars, llm_str as LLM, num_generations, temperature, llm_params)) {
         // Check for selective failure
         if (response instanceof LLMResponseError) {  // The request failed
-          console.error(`error when fetching response from ${llm_str}: ${JSON.stringify(response)}`);
+          console.error(`error when fetching response from ${llm_str}: ${response.message}`);
           num_errors += 1;
           errors.push(JSON.stringify(response));
         } else {  // The request succeeded
@@ -617,7 +651,7 @@ export async function queryLLM(id: string,
     cache_filenames[filename] = llm_spec;
   });
 
-  StorageCache.store(id, {
+  StorageCache.store(`${id}.json`, {
     cache_files: cache_filenames,
     responses_last_run: res,
   });
@@ -724,79 +758,36 @@ export async function executejs(id: string,
   }
 
   // Store the evaluated responses in a new cache json:
-  StorageCache.store(id, all_evald_responses);
+  StorageCache.store(`${id}.json`, all_evald_responses);
 
   return {responses: all_evald_responses, logs: all_logs};
 }
 
-// @app.route('/app/checkEvalFunc', methods=['POST'])
-// def checkEvalFunc():
-//     """
-//         Tries to compile a Python lambda function sent from JavaScript.
-//         Returns a dict with 'result':true if it compiles without raising an exception; 
-//         'result':false (and an 'error' property with a message) if not.
+/**
+ * Returns all responses with the specified id(s).
+ * @param responses the ids to grab
+ * @returns If success, a Dict with a single key, 'responses', with an array of StandardizedLLMResponse objects
+ *          If failure, a Dict with a single key, 'error', with the error message.
+ */
+export async function grabResponses(responses: Array<string>): Promise<Dict> {
+  // Grab all responses with the given ID:
+  let grabbed_resps = [];
+  for (let i = 0; i < responses.length; i++) {
+    const cache_id = responses[i];
+    const storageKey = `${cache_id}.json`;
+    if (!StorageCache.has(storageKey))
+      return {error: `Did not find cache data for id ${cache_id}`};
+    
+    let res: Dict[] = load_cache_responses(storageKey);
+    if (typeof res === 'object' && !Array.isArray(res)) {
+        // Convert to standard response format
+        Object.entries(res).map(([prompt, res_obj]: [string, Dict]) => to_standard_format({prompt: prompt, ...res_obj}));
+    }
+    grabbed_resps = grabbed_resps.concat(res);
+  }
 
-//         POST'd data should be in form:
-//         {
-//             'code': str,  # the body of the lambda function to evaluate, in form: lambda responses: <body>
-//         }
-
-//         NOTE: This should only be run on your server on code you trust.
-//               There is no sandboxing; no safety. We assume you are the creator of the code.
-//     """
-//     data = request.get_json()
-//     if 'code' not in data:
-//         return jsonify({'result': False, 'error': 'Could not find "code" in message from front-end.'})
-
-//     # DANGER DANGER! Running exec on code passed through front-end. Make sure it's trusted!
-//     try:
-//         exec(data['code'], globals())
-
-//         # Double-check that there is an 'evaluate' method in our namespace. 
-//         # This will throw a NameError if not: 
-//         evaluate  # noqa
-//         return jsonify({'result': True})
-//     except Exception as e:
-//         return jsonify({'result': False, 'error': f'Could not compile evaluator code. Error message:\n{str(e)}'})
-
-// @app.route('/app/grabResponses', methods=['POST'])
-// def grabResponses():
-//     """
-//         Returns all responses with the specified id(s)
-
-//         POST'd data should be in the form: 
-//         {
-//             'responses': <the ids to grab>
-//         }
-//     """
-//     data = request.get_json()
-
-//     # Check format of responses:
-//     if not (isinstance(data['responses'], str) or isinstance(data['responses'], list)):
-//         return jsonify({'error': 'POST data responses is improper format.'})
-//     elif isinstance(data['responses'], str):
-//         data['responses'] = [ data['responses'] ]
-
-//     # Load all responses with the given ID:
-//     all_cache_files = get_files_at_dir(CACHE_DIR)
-//     responses = []
-//     for cache_id in data['responses']:
-//         fname = f"{cache_id}.json"
-//         if fname not in all_cache_files:
-//             return jsonify({'error': f'Did not find cache file for id {cache_id}'})
-        
-//         res = load_cache_responses(fname)
-//         if isinstance(res, dict):
-//             # Convert to standard response format
-//             res = [
-//                 to_standard_format({'prompt': prompt, **res_obj})
-//                 for prompt, res_obj in res.items()
-//             ]
-//         responses.extend(res)
-
-//     ret = jsonify({'responses': responses})
-//     ret.headers.add('Access-Control-Allow-Origin', '*')
-//     return ret
+  return {'responses': grabbed_resps};
+}
 
 /**
  * Exports the cache'd data relevant to the given node id(s).
@@ -829,136 +820,74 @@ export async function exportCache(ids: string[]) {
  * @param files the name and contents of the cache file
  * @returns Whether the import succeeded or not.
  */
-export async function importCache(files: { [key: string]: Dict | Array<any> }): Promise<boolean> {
+export async function importCache(files: { [key: string]: Dict | Array<any> }): Promise<Dict> {
   try {
     // Write imported files to StorageCache
     // Verify filenames, data, and access permissions to write to cache
     Object.entries(files).forEach(([filename, data]) => {
+      console.log('storing file', filename);
       StorageCache.store(filename, data);
     });
   } catch (err) {
     console.error('Error importing from cache:', err.message);
-    return false;
+    return { result: false };
   }
   
   console.log("Imported cache data and stored to cache.");
-  return true;
+  return { result: true };
 }
 
 
-// @app.route('/app/fetchExampleFlow', methods=['POST'])
-// def fetchExampleFlow():
-//     """
-//         Fetches the example flow data, given its filename. The filename should be the 
-//         name of a file in the examples/ folder of the package. 
+/**
+ * Fetches the example flow data, given its filename (without extension). 
+ * The filename should be the name of a file in the examples/ folder of the package. 
+ * 
+ * @param _name The filename (without .cforge extension)
+ * @returns a Promise with the JSON of the loaded data
+ */
+export async function fetchExampleFlow(evalname: string): Promise<Dict> {    
+  if (APP_IS_RUNNING_LOCALLY()) {
+    // Attempt to fetch the example flow from the local filesystem
+    // by querying the Flask server: 
+    return fetch(`${FLASK_BASE_URL}app/fetchExampleFlow`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+      body: JSON.stringify({ name: evalname })
+    }).then(function(res) {
+      return res.json();
+    });
+  }
 
-//         Used for loading examples in the Example Flow modal.
+  // App is not running locally, but hosted on a site.
+  // If this is the case, attempt to fetch the example flow from a relative site path:
+  return fetch(`examples/${evalname}.cforge`).then(response => response.json());
+}
 
-//         POST'd data should be in form:
-//         { 
-//             name: <str>  # The filename (without .cforge extension)
-//         }
-//     """
-//     # Verify post'd data
-//     data = request.get_json()
-//     if 'name' not in data:
-//         return jsonify({'error': 'Missing "name" parameter to fetchExampleFlow.'})
 
-//     # Verify 'examples' directory exists:
-//     if not os.path.isdir(EXAMPLES_DIR):
-//         dirpath = os.path.dirname(os.path.realpath(__file__))
-//         return jsonify({'error': f'Could not find an examples/ directory at path {dirpath}'})
+/**
+ * Fetches a preconverted OpenAI eval as a .cforge JSON file.
 
-//     # Check if the file is there:
-//     filepath = os.path.join(EXAMPLES_DIR, data['name'] + '.cforge')
-//     if not os.path.isfile(filepath):
-//         return jsonify({'error': f"Could not find an example flow named {data['name']}"})
+   First checks if it's running locally; if so, defaults to Flask backend for this bunction.
+   Otherwise, tries to fetch the eval from a relative path on the website. 
 
-//     # Load the file and return its data:
-//     try:
-//         with open(filepath, 'r', encoding='utf-8') as f:
-//             filedata = json.load(f)
-//     except Exception as e:
-//         return jsonify({'error': f"Error parsing example flow at {filepath}: {str(e)}"})
-    
-//     ret = jsonify({'data': filedata})
-//     ret.headers.add('Access-Control-Allow-Origin', '*')
-//     return ret
+ * @param _name The name of the eval to grab (without .cforge extension)
+ * @returns a Promise with the JSON of the loaded data
+ */
+export async function fetchOpenAIEval(evalname: string): Promise<Dict> {
+  if (APP_IS_RUNNING_LOCALLY()) {
+    // Attempt to fetch the example flow from the local filesystem
+    // by querying the Flask server: 
+    return fetch(`${FLASK_BASE_URL}app/fetchOpenAIEval`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+      body: JSON.stringify({ name: evalname })
+    }).then(function(res) {
+      return res.json();
+    });
+  }
 
-// @app.route('/app/fetchOpenAIEval', methods=['POST'])
-// def fetchOpenAIEval():
-//     """
-//         Fetches a preconverted OpenAI eval as a .cforge JSON file.
-
-//         First detects if the eval is already in the cache. If the eval is already downloaded, 
-//         it will be stored in examples/ folder of the package under a new oaievals directory. 
-//         If it's not in the cache, it will download it from the ChainForge webserver.
-
-//         POST'd data should be in form:
-//         { 
-//             name: <str>  # The name of the eval to grab (without .cforge extension)
-//         }
-//     """
-//     # Verify post'd data
-//     data = request.get_json()
-//     if 'name' not in data:
-//         return jsonify({'error': 'Missing "name" parameter to fetchOpenAIEval.'})
-//     evalname = data['name']
-
-//     # Verify 'examples' directory exists:
-//     if not os.path.isdir(EXAMPLES_DIR):
-//         dirpath = os.path.dirname(os.path.realpath(__file__))
-//         return jsonify({'error': f'Could not find an examples/ directory at path {dirpath}'})
-
-//     # Check if an oaievals subdirectory exists; if so, check for the file; if not create it:
-//     oaievals_cache_dir = os.path.join(EXAMPLES_DIR, "oaievals")
-//     if os.path.isdir(oaievals_cache_dir):
-//         filepath = os.path.join(oaievals_cache_dir, evalname + '.cforge')
-//         if os.path.isfile(filepath):
-//             # File was already downloaded. Load it from cache:
-//             try:
-//                 with open(filepath, 'r', encoding='utf-8') as f:
-//                     filedata = json.load(f)
-//             except Exception as e:
-//                 return jsonify({'error': f"Error parsing OpenAI evals flow at {filepath}: {str(e)}"})
-//             ret = jsonify({'data': filedata})
-//             ret.headers.add('Access-Control-Allow-Origin', '*')
-//             return ret
-//         # File was not downloaded
-//     else:
-//         # Directory does not exist yet; create it
-//         try:
-//             os.mkdir(oaievals_cache_dir)
-//         except Exception as e:
-//             return jsonify({'error': f"Error creating a new directory 'oaievals' at filepath {oaievals_cache_dir}: {str(e)}"})
-
-//     # Download the preconverted OpenAI eval from the GitHub main branch for ChainForge
-//     import requests
-//     _url = f"https://raw.githubusercontent.com/ianarawjo/ChainForge/main/chainforge/oaievals/{evalname}.cforge"
-//     response = requests.get(_url)
-
-//     # Check if the request was successful (status code 200)
-//     if response.status_code == 200:
-//         # Parse the response as JSON
-//         filedata = response.json()
-
-//         # Store to the cache:
-//         with open(os.path.join(oaievals_cache_dir, evalname + '.cforge'), 'w', encoding='utf8') as f:
-//             json.dump(filedata, f)
-//     else:
-//         print("Error:", response.status_code)
-//         return jsonify({'error': f"Error downloading OpenAI evals flow from {_url}: status code {response.status_code}"})
-
-//     ret = jsonify({'data': filedata})
-//     ret.headers.add('Access-Control-Allow-Origin', '*')
-//     return ret
-
-// def run_server(host="", port=8000, cmd_args=None):
-//     if cmd_args is not None and cmd_args.dummy_responses:
-//         global PromptLLM
-//         PromptLLM = PromptLLMDummy
-    
-//     app.run(host=host, port=port)
-
-// if __name__ == '__main__':
-//     print("Run app.py instead.")
+  // App is not running locally, but hosted on a site.
+  // If this is the case, attempt to fetch the example flow from relative path on the site:
+  //  > ALT: `https://raw.githubusercontent.com/ianarawjo/ChainForge/main/chainforge/oaievals/${_name}.cforge`
+  return fetch(`oaievals/${evalname}.cforge`).then(response => response.json());
+}

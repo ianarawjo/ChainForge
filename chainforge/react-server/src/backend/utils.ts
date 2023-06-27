@@ -78,21 +78,31 @@ export function getEnumName(enumObject: any, enumValue: any): string | undefined
    @returns raw query and response JSON dicts. 
  */
 export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+  if (!OPENAI_API_KEY)
+    throw new Error("Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.");
+
+  console.log('openai api key', OPENAI_API_KEY);
   const configuration = new OpenAIConfig({
     apiKey: OPENAI_API_KEY,
   });
+
+  // Since we are running client-side, we need to remove the user-agent header:
+  delete configuration.baseOptions.headers['User-Agent'];
+
   const openai = new OpenAIApi(configuration);
 
   let modelname: string = model.toString();
-  if (params?.stop && (!Array.isArray(params.stop) || params.stop.length === 0))
+  if (params?.stop !== undefined && (!Array.isArray(params.stop) || params.stop.length === 0))
     delete params.stop;
-  if (params?.functions && (!Array.isArray(params.functions) || params.functions.length === 0))
+  if (params?.functions !== undefined && (!Array.isArray(params.functions) || params.functions.length === 0))
     delete params?.functions;
-  if (params?.function_call && (!(typeof params.function_call === 'string') || params.function_call.trim().length === 0))
+  if (params?.function_call !== undefined && ((!(typeof params.function_call === 'string')) || params.function_call.trim().length === 0)) {
     delete params.function_call;
+  }
 
   console.log(`Querying OpenAI model '${model}' with prompt '${prompt}'...`);
   const system_msg: string = params?.system_msg || "You are a helpful assistant.";
+  delete params?.system_msg;
 
   let query: Dict = {
     model: modelname,
@@ -121,6 +131,7 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
     response = completion.data;
   } catch (error: any) {
     if (error?.response) {
+      console.error(error.response.data?.error?.message);
       throw new Error("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local environment.");
       // throw new Error(error.response.status);
     } else {
@@ -153,15 +164,19 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
   
   const client = new AzureOpenAIClient(AZURE_OPENAI_ENDPOINT, new AzureKeyCredential(AZURE_OPENAI_KEY));
 
-  if (params?.stop && (!Array.isArray(params.stop) || params.stop.length === 0))
+  if (params?.stop !== undefined && (!Array.isArray(params.stop) || params.stop.length === 0))
     delete params.stop;
-  if (params?.functions && (!Array.isArray(params.functions) || params.functions.length === 0))
+  if (params?.functions !== undefined && (!Array.isArray(params.functions) || params.functions.length === 0))
     delete params?.functions;
-  if (params?.function_call && (!(typeof params.function_call === 'string') || params.function_call.trim().length === 0))
+  if (params?.function_call !== undefined && (!(typeof params.function_call === 'string') || params.function_call.trim().length === 0))
     delete params.function_call;
 
   console.log(`Querying Azure OpenAI deployed model '${deployment_name}' at endpoint '${AZURE_OPENAI_ENDPOINT}' with prompt '${prompt}'...`)
   const system_msg = params?.system_msg || "You are a helpful assistant.";
+
+  delete params?.system_msg;
+  delete params?.model_type;
+  delete params?.deployment_name;
     
   // Setup the args for the query
   let query: Dict = {
@@ -213,7 +228,7 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
  */
 export async function call_anthropic(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!ANTHROPIC_API_KEY)
-    throw Error("Could not find an API key for Anthropic models. Double-check that your API key is set in Settings or in your local Python environment.");
+    throw Error("Could not find an API key for Anthropic models. Double-check that your API key is set in Settings or in your local environment.");
   
   // Initialize Anthropic API client
   const client = new AnthropicClient(ANTHROPIC_API_KEY);
@@ -537,6 +552,11 @@ export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, r
     info: resp_obj_B.info,
     metavars: resp_obj_B.metavars,
   };
+}
+
+export function APP_IS_RUNNING_LOCALLY(): boolean {
+  const location = window.location;
+  return location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "";
 }
 
 // def create_dir_if_not_exists(path: str) -> None:
