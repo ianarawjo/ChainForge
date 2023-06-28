@@ -263,11 +263,11 @@ const App = () => {
 
         // Save!
         downloadJSON(flow_and_cache, `flow-${Date.now()}.cforge`);
-    });
-  }, [rfInstance, nodes]);
+    }).catch(handleError);
+  }, [rfInstance, nodes, handleError]);
 
   // Import data to the cache stored on the local filesystem (in backend)
-  const importCache = (cache_data) => {
+  const importCache = useCallback((cache_data) => {
     return fetch_from_backend('importCache', {
       'files': cache_data,
     }, handleError).then(function(json) {
@@ -277,7 +277,7 @@ const App = () => {
           throw new Error('Error importing cache data:' + json.error);
         // Done! 
     }, handleError).catch(handleError);
-  };
+  }, [handleError]);
 
   const importFlowFromJSON = useCallback((flowJSON) => {
     // Detect if there's no cache data

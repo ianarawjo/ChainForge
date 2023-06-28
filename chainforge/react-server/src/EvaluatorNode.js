@@ -109,21 +109,24 @@ const EvaluatorNode = ({ data, id }) => {
       alertModal.current.trigger(err_msg);
     };
 
-    // Get all the script nodes, and get all the folder paths
-    const script_nodes = nodes.filter(n => n.type === 'script');
-    const script_paths = script_nodes.map(n => Object.values(n.data.scriptFiles).filter(f => f !== '')).flat();
+    // Get all the Python script nodes, and get all the folder paths
+    // NOTE: Python only!
+    let script_paths = [];
+    if (progLang === 'python') {
+      const script_nodes = nodes.filter(n => n.type === 'script');
+      script_paths = script_nodes.map(n => Object.values(n.data.scriptFiles).filter(f => f !== '')).flat();
+    }
 
     // Run evaluator in backend
     const codeTextOnRun = codeText + '';
-    const execute_route = (progLang === 'python') ? 'execute' : 'executejs';
+    const execute_route = (progLang === 'python') ? 'executepy' : 'executejs';
     fetch_from_backend(execute_route, {
       id: id,
       code: codeTextOnRun,
       responses: input_node_ids,
       scope: mapScope,
-      reduce_vars: [],
       script_paths: script_paths,
-    }, rejected).then(function(json) {
+    }).then(function(json) {
         // Store any Python print output
         if (json?.logs) {
           let logs = json.logs;
@@ -154,7 +157,7 @@ const EvaluatorNode = ({ data, id }) => {
         setCodeTextOnLastRun(codeTextOnRun);
         setLastRunSuccess(true);
         setStatus('ready');
-    }, rejected);
+    }).catch((err) => rejected(err.message));
   };
 
   const handleOnMapScopeSelect = (event) => {

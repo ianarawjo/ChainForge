@@ -8,7 +8,7 @@ from flask_cors import CORS
 from chainforge.promptengine.query import PromptLLM, PromptLLMDummy, LLMResponseException
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
 from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
-
+import requests as py_requests
 
 """ =================
     SETUP AND GLOBALS
@@ -679,6 +679,82 @@ async def queryLLM():
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
+@app.route('/app/executepy', methods=['POST'])
+def executepy():
+    """
+        Executes a Python function sent from JavaScript,
+        over all the `StandardizedLLMResponse` objects passed in from the front-end. 
+
+        POST'd data should be in the form: 
+        {
+            'id': # a unique ID to refer to this information. Used when cache'ing responses. 
+            'code': str,  # the body of the lambda function to evaluate, in form: lambda responses: <body>
+            'responses': List[StandardizedLLMResponse]  # the responses to run on.
+            'scope': 'response' | 'batch'  # the scope of responses to run on --a single response, or all across each batch. 
+                                           # If batch, evaluator has access to 'responses'. Only matters if n > 1 for each prompt.
+            'script_paths': unspecified | List[str]  # the paths to scripts to be added to the path before the lambda function is evaluated
+        }
+
+        NOTE: This should only be run on your server on code you trust.
+              There is no sandboxing; no safety. We assume you are the creator of the code.
+    """
+    data = request.get_json()
+
+    # Check that all required info is here:
+    if not set(data.keys()).issuperset({'id', 'code', 'responses', 'scope'}):
+        return jsonify({'error': 'POST data is improper format.'})
+    if not isinstance(data['id'], str) or len(data['id']) == 0:
+        return jsonify({'error': 'POST data id is improper format (length 0 or not a string).'})
+    if data['scope'] not in ('response', 'batch'):
+        return jsonify({'error': "POST data scope is unknown. Must be either 'response' or 'batch'."})
+
+    # Check format of responses:
+    responses = data['responses']
+    if (isinstance(responses, str) or not isinstance(responses, list)) or (len(responses) > 0 and any([not isinstance(r, dict) for r in responses])):
+        return jsonify({'error': 'POST data responses is improper format.'})
+
+    # add the path to any scripts to the path:
+    try:
+        if 'script_paths' in data:
+            for script_path in data['script_paths']:
+                # get the folder of the script_path:
+                script_folder = os.path.dirname(script_path)
+                # check that the script_folder is valid, and it contains __init__.py
+                if not os.path.exists(script_folder):
+                    print(script_folder, 'is not a valid script path.')
+                    continue
+
+                # add it to the path:
+                sys.path.append(script_folder)
+                print(f'added {script_folder} to sys.path')
+    except Exception as e:
+        return jsonify({'error': f'Could not add script path to sys.path. Error message:\n{str(e)}'})
+
+    # Create the evaluator function
+    # DANGER DANGER! 
+    try:
+        exec(data['code'], globals())
+
+        # Double-check that there is an 'evaluate' method in our namespace. 
+        # This will throw a NameError if not: 
+        evaluate  # noqa
+    except Exception as e:
+        return jsonify({'error': f'Could not compile evaluator code. Error message:\n{str(e)}'})
+    
+    evald_responses = []
+    logs = []
+    try:
+        HIJACK_PYTHON_PRINT()
+        evald_responses = run_over_responses(evaluate, responses, scope=data['scope'])  # noqa
+        logs = REVERT_PYTHON_PRINT()
+    except Exception as e:
+        logs = REVERT_PYTHON_PRINT()
+        return jsonify({'error': f'Error encountered while trying to run "evaluate" method:\n{str(e)}', 'logs': logs})
+
+    ret = jsonify({'responses': evald_responses, 'logs': logs})
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
+
 @app.route('/app/execute', methods=['POST'])
 def execute():
     """
@@ -1047,7 +1123,7 @@ def fetchEnvironAPIKeys():
     keymap = {
         'OPENAI_API_KEY': 'OpenAI', 
         'ANTHROPIC_API_KEY': 'Anthropic', 
-        'GOOGLE_PALM_API_KEY': 'Google', 
+        'PALM_API_KEY': 'Google', 
         'AZURE_OPENAI_KEY': 'Azure_OpenAI', 
         'AZURE_OPENAI_ENDPOINT': 'Azure_OpenAI_Endpoint'
     }
@@ -1055,6 +1131,39 @@ def fetchEnvironAPIKeys():
     ret = jsonify(d)
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
+
+@app.route('/app/makeFetchCall', methods=['POST'])
+def makeFetchCall():
+    """
+        Use in place of JavaScript's 'fetch' (with POST method), in cases where
+        cross-origin policy blocks responses from client-side fetches. 
+
+        POST'd data should be in form:
+        {
+            url: <str>  # the url to fetch from
+            headers: <dict>  # a JSON object of the headers
+            body: <dict>  # the request payload, as JSON
+        }
+    """
+    # Verify post'd data
+    data = request.get_json()
+    if not set(data.keys()).issuperset({'url', 'headers', 'body'}):
+        return jsonify({'error': 'POST data is improper format.'})
+
+    url = data['url']
+    headers = data['headers']
+    body = data['body']
+
+    print(body)
+
+    response = py_requests.post(url, headers=headers, json=body)
+
+    if response.status_code == 200:
+        ret = jsonify({'response': response.json()})
+        ret.headers.add('Access-Control-Allow-Origin', '*')
+        return ret
+    else:
+        return jsonify({'error': 'API request to Anthropic failed'})
 
 def run_server(host="", port=8000, cmd_args=None):
     if cmd_args is not None and cmd_args.dummy_responses:

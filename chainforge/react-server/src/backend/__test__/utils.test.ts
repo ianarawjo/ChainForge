@@ -40,9 +40,9 @@ test('merge response objects', () => {
   expect(merge_response_objs(undefined, B)).toBe(B);
 })
 
-test('UNCOMMENT BELOW API CALL TESTS WHEN READY', () => {
-  // NOTE: API CALL TESTS ASSUME YOUR ENVIRONMENT VARIABLE IS SET! 
-});
+// test('UNCOMMENT BELOW API CALL TESTS WHEN READY', () => {
+//   // NOTE: API CALL TESTS ASSUME YOUR ENVIRONMENT VARIABLE IS SET! 
+// });
 
 test('openai chat completions', async () => {
   // Call ChatGPT with a basic question, and n=2
@@ -106,11 +106,3 @@ test('google palm2 models', async () => {
   expect(typeof resps[0]).toBe('string');
   console.log(JSON.stringify(resps));
 }, 40000);
-
-// test('call_', async () => {
-//     // Call Anthropic's Claude with a basic question
-//     const [query, response] = await call_anthropic("Who invented modern playing cards? Keep your answer brief.", LLM.Claude_v1, 1, 1.0);
-//     console.log(response);
-//     expect(response).toHaveLength(1);
-//     expect(query).toHaveProperty('max_tokens_to_sample');
-//   }, 20000);

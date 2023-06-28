@@ -577,7 +577,6 @@ const VisNode = ({ data, id }) => {
                     plot_simple_boxplot(get_llm, 'llm');
             }
             else if (varnames.length === 1) {
-                console.log(varnames);
                 // 1 var; numeric eval
                 if (llm_names.length === 1) {
                     if (typeof_eval_res === 'Boolean')

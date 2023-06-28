@@ -11,9 +11,50 @@ import { StringTemplate } from './template';
 /* LLM API SDKs */
 import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
 import { OpenAIClient as AzureOpenAIClient, AzureKeyCredential } from "@azure/openai";
-import { AI_PROMPT, Client as AnthropicClient, HUMAN_PROMPT } from "@anthropic-ai/sdk";
-import { DiscussServiceClient, TextServiceClient } from "@google-ai/generativelanguage";
-import { GoogleAuth } from "google-auth-library";
+import { AI_PROMPT, HUMAN_PROMPT } from "@anthropic-ai/sdk";
+
+const fetch = require('node-fetch');
+
+/** Where the ChainForge Flask server is being hosted. */
+export const FLASK_BASE_URL = 'http://localhost:8000/';
+
+export async function call_flask_backend(route: string, params: Dict | string): Promise<Dict> {
+  return fetch(`${FLASK_BASE_URL}app/${route}`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+    body: JSON.stringify(params)
+  }).then(function(res) {
+    return res.json();
+  });
+}
+
+/**
+ * Equivalent to a 'fetch' call, but routes it to the backend Flask server in 
+ * case we are running a local server and prefer to not deal with CORS issues making API calls client-side.
+ */
+async function route_fetch(url: string, method: string, headers: Dict, body: Dict) {
+  if (APP_IS_RUNNING_LOCALLY()) {
+    return call_flask_backend('makeFetchCall', {
+      url: url,
+      method: method,
+      headers: headers,
+      body: body,
+    }).then(res => {
+      if (!res || res.error)
+        throw new Error(res.error);
+      return res.response;
+    });
+  } else {
+    return fetch(url, {
+      method,
+      headers,
+      body: JSON.stringify(body),
+    }).then(res => res.json());
+  }
+}
+
+// import { DiscussServiceClient, TextServiceClient } from "@google-ai/generativelanguage";
+// import { GoogleAuth } from "google-auth-library";
 
 function get_environ(key: string): string | undefined {
   if (key in process_env)
@@ -35,7 +76,7 @@ let AZURE_OPENAI_ENDPOINT = get_environ("AZURE_OPENAI_ENDPOINT");
  */
 export function set_api_keys(api_keys: StringDict): void {
   function key_is_present(name: string): boolean {
-    return name in api_keys && api_keys[name].trim().length > 0;
+    return name in api_keys && api_keys[name] && api_keys[name].trim().length > 0;
   }
   if (key_is_present('OpenAI'))
     OPENAI_API_KEY= api_keys['OpenAI'];
@@ -228,9 +269,6 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
 export async function call_anthropic(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!ANTHROPIC_API_KEY)
     throw Error("Could not find an API key for Anthropic models. Double-check that your API key is set in Settings or in your local environment.");
-  
-  // Initialize Anthropic API client
-  const client = new AnthropicClient(ANTHROPIC_API_KEY);
 
   // Wrap the prompt in the provided template, or use the default Anthropic one
   const custom_prompt_wrapper: string = params?.custom_prompt_wrapper || (HUMAN_PROMPT + " {prompt}" + AI_PROMPT);
@@ -238,6 +276,9 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
     throw Error("Custom prompt wrapper is missing required {prompt} template variable.");
   const prompt_wrapper_template = new StringTemplate(custom_prompt_wrapper);
   const wrapped_prompt = prompt_wrapper_template.safe_substitute({prompt: prompt});
+
+  if (params?.custom_prompt_wrapper !== undefined)
+    delete params.custom_prompt_wrapper;
 
   // Required non-standard params 
   const max_tokens_to_sample = params?.max_tokens_to_sample || 1024;
@@ -255,10 +296,19 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
 
   console.log(`Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
 
+  // Make a REST call to Anthropic
+  const url = 'https://api.anthropic.com/v1/complete';
+  const headers = {
+    'accept': 'application/json',
+    'anthropic-version': '2023-06-01',
+    'content-type': 'application/json',
+    'x-api-key': ANTHROPIC_API_KEY,
+  };
+
   // Repeat call n times, waiting for each response to come in:
   let responses: Array<Dict> = [];
   while (responses.length < n) {
-    const resp = await client.complete(query);
+    const resp = await route_fetch(url, 'POST', headers, query);
     responses.push(resp);
     console.log(`${model} response ${responses.length} of ${n}:\n${resp}`);
   }
@@ -275,9 +325,6 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
     throw Error("Could not find an API key for Google PaLM models. Double-check that your API key is set in Settings or in your local environment.");
 
   const is_chat_model = model.toString().includes('chat');
-  const client = new (is_chat_model ? DiscussServiceClient : TextServiceClient)({
-    authClient: new GoogleAuth().fromAPIKey(GOOGLE_PALM_API_KEY),
-  });
 
   // Required non-standard params 
   const max_output_tokens = params?.max_output_tokens || 800;
@@ -317,18 +364,30 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
     }
   });
 
-  console.log(`Calling Google PaLM model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
-  
-  // Call the correct model client
-  let completion;
   if (is_chat_model) {
     // Chat completions
     query.prompt = { messages: [{content: prompt}] };
-    completion = await (client as DiscussServiceClient).generateMessage(query);
   } else {
     // Text completions
     query.prompt = { text: prompt };
-    completion = await (client as TextServiceClient).generateText(query);
+  }
+
+  console.log(`Calling Google PaLM model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
+  
+  // Call the correct model client
+  const method = is_chat_model ? 'generateMessage' : 'generateText';
+  const url = `https://generativelanguage.googleapis.com/v1beta2/models/${model}:${method}?key=${GOOGLE_PALM_API_KEY}`;
+  const headers = {'Content-Type': 'application/json'};
+  let res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(query)
+  });
+  let completion: Dict = await res.json();
+
+  // Sometimes the REST call will give us an error; bubble this up the chain:
+  if (completion.error !== undefined) {
+    throw new Error(JSON.stringify(completion.error));
   }
 
   // Google PaLM, unlike other chat models, will output empty
@@ -336,10 +395,10 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
   // API has a (relatively undocumented) 'safety_settings' parameter,
   // the current chat completions API provides users no control over the blocking.
   // We need to detect this and fill the response with the safety reasoning:
-  if (completion[0].filters.length > 0) {
+  if (completion.filters && completion.filters.length > 0) {
       // Request was blocked. Output why in the response text, repairing the candidate dict to mock up 'n' responses
       const block_error_msg = `[[BLOCKED_REQUEST]] Request was blocked because it triggered safety filters: ${JSON.stringify(completion.filters)}`
-      completion[0].candidates = new Array(n).fill({'author': '1', 'content':block_error_msg});
+      completion.candidates = new Array(n).fill({'author': '1', 'content':block_error_msg});
   }
 
   // Weirdly, google ignores candidate_count if temperature is 0. 
@@ -348,7 +407,7 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
   //     copied_candidates = [completion_dict['candidates'][0]] * n
   //     completion_dict['candidates'] = copied_candidates
 
-  return [query, completion[0]];
+  return [query, completion];
 }
 
 export async function call_dalai(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
@@ -580,8 +639,14 @@ export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, r
 }
 
 export function APP_IS_RUNNING_LOCALLY(): boolean {
-  const location = window.location;
-  return location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "";
+  try {
+    const location = window.location;
+    return location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "";
+  } catch (e) {
+    // ReferenceError --window or location does not exist. 
+    // We must not be running client-side in a browser, in this case (e.g., we are running a Node.js server)
+    return false;
+  }
 }
 
 // def create_dir_if_not_exists(path: str) -> None:

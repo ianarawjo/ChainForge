@@ -10,10 +10,9 @@
 // from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
 
 import { mean as __mean, std as __std, median as __median } from "mathjs";
-
 import { Dict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse } from "./typing";
 import { LLM } from "./models";
-import { APP_IS_RUNNING_LOCALLY, getEnumName, set_api_keys } from "./utils";
+import { APP_IS_RUNNING_LOCALLY, getEnumName, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
 import { PromptPermutationGenerator, PromptTemplate } from "./template";
@@ -22,9 +21,6 @@ import { PromptPermutationGenerator, PromptTemplate } from "./template";
 //     SETUP AND GLOBALS
 //     =================
 // """
-
-/** Where the ChainForge Flask server is being hosted. */
-export const FLASK_BASE_URL = 'http://localhost:8000/';
 
 let LLM_NAME_MAP = {};
 Object.entries(LLM).forEach(([key, value]) => {
@@ -704,10 +700,6 @@ export async function executejs(id: string,
     response_ids = [ response_ids ];
   response_ids = response_ids as Array<string>;
 
-  console.log('executing js');
-
-  // const iframe = document.createElement('iframe');
-
   // Instantiate the evaluator function by eval'ing the passed code
   // DANGER DANGER!!
   let iframe: HTMLElement | undefined;
@@ -783,6 +775,64 @@ export async function executejs(id: string,
 }
 
 /**
+ * Executes a Python 'evaluate' function over all cache'd responses with given id's.
+ * Requires user to be running on localhost, with Flask access.
+ * 
+ * > **NOTE**: This should only be run on code you trust. 
+ *             There is no sandboxing; no safety. We assume you are the creator of the code.
+ * 
+ * @param id a unique ID to refer to this information. Used when cache'ing evaluation results. 
+ * @param code the code to evaluate. Must include an 'evaluate()' function that takes a 'response' of type ResponseInfo. Alternatively, can be the evaluate function itself.
+ * @param response_ids the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
+ * @param scope the scope of responses to run on --a single response, or all across each batch. (If batch, evaluate() func has access to 'responses'.)
+ */
+export async function executepy(id: string, 
+                                code: string | ((rinfo: ResponseInfo) => any), 
+                                response_ids: string | string[], 
+                                scope: 'response' | 'batch',
+                                script_paths?: string[]): Promise<Dict> {
+  if (!APP_IS_RUNNING_LOCALLY()) {
+    // We can't execute Python if we're not running the local Flask server. Error out:
+    throw new Error("Cannot evaluate Python code: ChainForge does not appear to be running on localhost.")
+  }
+
+  // Check format of response_ids
+  if (!Array.isArray(response_ids))
+    response_ids = [ response_ids ];
+  response_ids = response_ids as Array<string>;
+
+  // Load cache'd responses for all response_ids:
+  const {responses, error} = await grabResponses(response_ids);
+
+  if (error !== undefined)
+    throw new Error(error);
+  
+  // All responses loaded; call our Python server to execute the evaluation code across all responses:
+  const flask_response = await call_flask_backend('executepy', {
+    id: id,
+    code: code,
+    responses: responses,
+    scope: scope,
+    script_paths: script_paths,
+  }).catch(err => {
+    throw new Error(err.message);
+  });
+
+  if (!flask_response || flask_response.error !== undefined)
+    throw new Error(flask_response?.error || 'Empty response received from Flask server');
+  
+  // Grab the responses and logs from the Flask result object:
+  const all_evald_responses = flask_response.responses;
+  const all_logs = flask_response.logs;
+
+  // Store the evaluated responses in a new cache json:
+  StorageCache.store(`${id}.json`, all_evald_responses);
+
+  return {responses: all_evald_responses, logs: all_logs};
+}
+
+
+/**
  * Returns all responses with the specified id(s).
  * @param responses the ids to grab
  * @returns If success, a Dict with a single key, 'responses', with an array of StandardizedLLMResponse objects
@@ -805,7 +855,7 @@ export async function grabResponses(responses: Array<string>): Promise<Dict> {
     grabbed_resps = grabbed_resps.concat(res);
   }
 
-  return {'responses': grabbed_resps};
+  return {responses: grabbed_resps};
 }
 
 /**
@@ -828,7 +878,7 @@ export async function exportCache(ids: string[]) {
       export_data[key] = load_from_cache(key);
     });
   }
-  return export_data;
+  return {files: export_data};
 }
 
 

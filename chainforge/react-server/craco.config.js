@@ -9,7 +9,7 @@ module.exports = {
       resolve: {
         fallback: {
           "process": require.resolve("process/browser"),
-          "buffer": require.resolve("buffer/"),
+          "buffer": require.resolve("buffer"),
           "https": require.resolve("https-browserify"),
           "querystring": require.resolve("querystring-es3"),
           "url": require.resolve("url/"),
@@ -41,7 +41,13 @@ module.exports = {
       add: [
         new webpack.ProvidePlugin({
             process: 'process/browser.js',
-        })
+        }),
+
+        // Work around for Buffer is undefined:
+        // https://github.com/webpack/changelog-v5/issues/10
+        new webpack.ProvidePlugin({
+          Buffer: ['buffer', 'Buffer'],
+        }),
       ]
     },
 

@@ -25,18 +25,18 @@ test('string template escaped group', () => {
 
 test('single template', () => {
   let prompt_gen = new PromptPermutationGenerator('What is the {timeframe} when {person} was born?');
-    let vars: {[key: string]: any} = {
-        'timeframe': ['year', 'decade', 'century'], 
-        'person': ['Howard Hughes', 'Toni Morrison', 'Otis Redding']
-    };
-    let num_prompts = 0;
-    for (const prompt of prompt_gen.generate(vars)) {
-        // console.log(prompt.toString());
-        expect(prompt.fill_history).toHaveProperty('timeframe');
-        expect(prompt.fill_history).toHaveProperty('person');
-        num_prompts += 1;
-    }
-    expect(num_prompts).toBe(9);
+  let vars: {[key: string]: any} = {
+      'timeframe': ['year', 'decade', 'century'], 
+      'person': ['Howard Hughes', 'Toni Morrison', 'Otis Redding']
+  };
+  let num_prompts = 0;
+  for (const prompt of prompt_gen.generate(vars)) {
+      // console.log(prompt.toString());
+      expect(prompt.fill_history).toHaveProperty('timeframe');
+      expect(prompt.fill_history).toHaveProperty('person');
+      num_prompts += 1;
+  }
+  expect(num_prompts).toBe(9);
 });
 
 test('nested templates', () => {
