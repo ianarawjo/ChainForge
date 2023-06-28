@@ -1042,6 +1042,20 @@ def fetchOpenAIEval():
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
+@app.route('/app/fetchEnvironAPIKeys', methods=['POST'])
+def fetchEnvironAPIKeys():
+    keymap = {
+        'OPENAI_API_KEY': 'OpenAI', 
+        'ANTHROPIC_API_KEY': 'Anthropic', 
+        'GOOGLE_PALM_API_KEY': 'Google', 
+        'AZURE_OPENAI_KEY': 'Azure_OpenAI', 
+        'AZURE_OPENAI_ENDPOINT': 'Azure_OpenAI_Endpoint'
+    }
+    d = { alias: os.environ.get(key) for key, alias in keymap.items() }
+    ret = jsonify(d)
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
+
 def run_server(host="", port=8000, cmd_args=None):
     if cmd_args is not None and cmd_args.dummy_responses:
         global PromptLLM
