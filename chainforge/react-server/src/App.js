@@ -29,6 +29,7 @@ import './text-fields-node.css';
 import { shallow } from 'zustand/shallow';
 import useStore from './store';
 import fetch_from_backend from './fetch_from_backend';
+import StorageCache from './backend/cache';
 
 const selector = (state) => ({
   nodes: state.nodes,
@@ -187,6 +188,11 @@ const App = () => {
     // are not pulled or overwritten upon loading from localStorage. 
     const flow = rf.toObject();
     localStorage.setItem('chainforge-flow', JSON.stringify(flow));
+
+    // Attempt to save the current state of the back-end state,
+    // the StorageCache. (This does LZ compression to save space.)
+    StorageCache.saveToLocalStorage('chainforge-state');
+
     console.log('Flow saved!');
   }, [rfInstance]);
 
@@ -220,6 +226,7 @@ const App = () => {
 
       // Save flow that user loaded to autosave cache, in case they refresh the browser
       localStorage.setItem('chainforge-flow', JSON.stringify(flow));
+      StorageCache.saveToLocalStorage('chainforge-state');
     }
   };
   const autosavedFlowExists = () => {
@@ -227,8 +234,10 @@ const App = () => {
   };
   const loadFlowFromAutosave = async (rf_inst) => {
     const saved_flow = localStorage.getItem('chainforge-flow');
-    if (saved_flow)
+    if (saved_flow) {
+      StorageCache.loadFromLocalStorage('chainforge-state');
       loadFlow(JSON.parse(saved_flow), rf_inst);
+    }
   };
 
   // Export / Import (from JSON)

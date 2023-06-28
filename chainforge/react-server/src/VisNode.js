@@ -120,11 +120,8 @@ const VisNode = ({ data, id }) => {
     // The MultiSelect so people can dynamically set what vars they care about
     const [multiSelectVars, setMultiSelectVars] = useState(data.vars || []);
     const [multiSelectValue, setMultiSelectValue] = useState(
-        data.selected_vars ? 
-            ((Array.isArray(data.selected_vars) && data.selected_vars.length > 0) ? 
-                data.selected_vars[0] 
-              : data.selected_vars) 
-        : 'LLM (default)');
+        Array.isArray(data.selected_vars) && data.selected_vars.length > 0 ? 
+            data.selected_vars[0] : 'LLM (default)');
 
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
     // However, when prompts are chained together, the original LLM info is stored in metavars as a key. 
@@ -181,7 +178,7 @@ const VisNode = ({ data, id }) => {
         // }
 
         // Create Plotly spec here
-        const varnames = (multiSelectValue !== 'LLM (default)') ? [multiSelectValue] : [];
+        const varnames = (multiSelectValue !== 'LLM (default)' && multiSelectValue !== undefined) ? [multiSelectValue] : [];
         const varcolors = colorPalettes.var; // ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#cadefc', '#f8f398'];
         let spec = [];
         let layout = {
@@ -580,6 +577,7 @@ const VisNode = ({ data, id }) => {
                     plot_simple_boxplot(get_llm, 'llm');
             }
             else if (varnames.length === 1) {
+                console.log(varnames);
                 // 1 var; numeric eval
                 if (llm_names.length === 1) {
                     if (typeof_eval_res === 'Boolean')

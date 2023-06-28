@@ -430,11 +430,11 @@ export async function countQueries(prompt: string, vars: Dict, llms: Array<Dict 
 
           if (prompt_str in cache_llm_responses) {
             // Check how many were stored; if not enough, add how many missing queries:
-            const num_resps = cache_llm_responses[prompt]['responses'].length;
+            const num_resps = cache_llm_responses[prompt_str]['responses'].length;
             if (n > num_resps)
-              add_to_missing_queries(llm_key, prompt, n - num_resps);
+              add_to_missing_queries(llm_key, prompt_str, n - num_resps);
           } else {
-            add_to_missing_queries(llm_key, prompt, n);
+            add_to_missing_queries(llm_key, prompt_str, n);
           }
         });
         
@@ -451,6 +451,7 @@ export async function countQueries(prompt: string, vars: Dict, llms: Array<Dict 
   });
   
   console.log(missing_queries);
+
   return {'counts': missing_queries, 'total_num_responses': num_responses_req};
 }
 
@@ -462,6 +463,14 @@ interface LLMPrompterResults {
   llm_key: string,
   responses: Array<LLMResponseObject>,
   errors: Array<string>,
+}
+
+export async function fetchEnvironAPIKeys(): Promise<Dict> {
+  return fetch(`${FLASK_BASE_URL}app/fetchEnvironAPIKeys`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+    body: "",
+  }).then(res => res.json());
 }
 
 /**
@@ -504,6 +513,17 @@ export async function queryLLM(id: string,
       return {'error': `LLM named '${llm_spec}' is not supported.`};
   }
 
+  if (APP_IS_RUNNING_LOCALLY()) {
+    // Try to fetch API keys from os.environ variables in the locally running Flask backend:
+    try {
+      const api_keys = await fetchEnvironAPIKeys();
+      set_api_keys(api_keys);
+    } catch (err) {
+      console.warn('Warning: Could not fetch API key environment variables from Flask server. Error:', err.message);
+      // Soft fail
+    }
+  }
+
   if (api_keys !== undefined)
     set_api_keys(api_keys);
 
@@ -512,7 +532,7 @@ export async function queryLLM(id: string,
   
   // Get the storage keys of any cache files for specific models + settings
   const llms = llm;
-  let cache: Dict = StorageCache.get(id) || {};  // returns {} if 'id' is not in the storage cache yet
+  let cache: Dict = StorageCache.get(`${id}.json`) || {};  // returns {} if 'id' is not in the storage cache yet
 
   let llm_to_cache_filename = {};
   let past_cache_files = {};
@@ -555,7 +575,6 @@ export async function queryLLM(id: string,
   let progress = {};
   let progressProxy = new Proxy(progress, {
     set: function (target, key, value) {
-      console.log(`${key.toString()} set to ${JSON.stringify(value)}`);
       target[key] = value;
 
       // If the caller provided a callback, notify it 
@@ -598,7 +617,7 @@ export async function queryLLM(id: string,
         if (response instanceof LLMResponseError) {  // The request failed
           console.error(`error when fetching response from ${llm_str}: ${response.message}`);
           num_errors += 1;
-          errors.push(JSON.stringify(response));
+          errors.push(response.message);
         } else {  // The request succeeded
           // The response name will be the actual name of the LLM. However,
           // for the front-end it is more informative to pass the user-provided nickname. 
@@ -615,7 +634,7 @@ export async function queryLLM(id: string,
         };
       }
     } catch (e) {
-      console.error(`Error generating responses for ${llm_str}: ${JSON.stringify(e)}`);
+      console.error(`Error generating responses for ${llm_str}: ${e.message}`);
       throw e;
     }
 
@@ -637,8 +656,8 @@ export async function queryLLM(id: string,
         all_errors[result.llm_key] = result.errors;
     });
   } catch (e) {
-    console.error(`Error requesting responses: ${e.toString()}`);
-    return { error: e.toString() };
+    console.error(`Error requesting responses: ${e.message}`);
+    return { error: e.message };
   }
 
   // Convert the responses into a more standardized format with less information

@@ -8,7 +8,7 @@
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, RATE_LIMITS } from './models';
 import { Dict, LLMResponseError, LLMResponseObject, LLMAPICall } from "./typing";
-import { call_chatgpt, call_anthropic, call_google_palm, call_azure_openai, call_dalai, getEnumName, extract_responses, merge_response_objs } from "./utils";
+import { extract_responses, merge_response_objs, call_llm } from "./utils";
 import StorageCache from "./cache";
 
 interface _IntermediateLLMResponseType {
@@ -253,29 +253,13 @@ export class PromptPipeline {
         await sleep(wait_secs);
       }
     }
-
-    // Get the correct API call for the given LLM:
-    let call_llm: LLMAPICall | undefined;
-    const llm_name = getEnumName(LLM, llm.toString());
-    if (llm_name?.startsWith('OpenAI'))
-      call_llm = call_chatgpt;
-    else if (llm_name?.startsWith('Azure'))
-      call_llm = call_azure_openai;
-    else if (llm_name?.startsWith('PaLM2'))
-      call_llm = call_google_palm;
-    else if (llm_name?.startsWith('Dalai'))
-      call_llm = call_dalai;
-    else if (llm.toString().startsWith('claude'))
-      call_llm = call_anthropic;
-    if (!call_llm)
-      throw new LLMResponseError(`Language model ${llm} is not supported.`);
     
     // Now try to call the API. If it fails for whatever reason, 'soft fail' by returning
     // an LLMResponseException object as the 'response'.
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;
     try {
-      [query, response] = await call_llm(prompt.toString(), llm, n=n, temperature, llm_params);
+      [query, response] = await call_llm(llm, prompt.toString(), n, temperature, llm_params);
     } catch(err) {
       return { prompt: prompt, 
                query: undefined, 

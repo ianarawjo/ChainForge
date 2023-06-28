@@ -94,6 +94,7 @@ export default class StorageCache {
     try {
       let data = JSON.parse(LZString.decompressFromUTF16(compressed));
       StorageCache.getInstance().data = data;
+      console.log('loaded', data);
       return true;
     } catch (error) {
       console.error(error.message);

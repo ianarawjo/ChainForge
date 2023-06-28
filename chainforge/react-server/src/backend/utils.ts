@@ -81,7 +81,6 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
   if (!OPENAI_API_KEY)
     throw new Error("Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.");
 
-  console.log('openai api key', OPENAI_API_KEY);
   const configuration = new OpenAIConfig({
     apiKey: OPENAI_API_KEY,
   });
@@ -439,6 +438,32 @@ export async function call_dalai(prompt: string, model: LLM, n: number = 1, temp
 //     DALAI_MODEL.disconnect()
 
 //     return query, responses
+
+
+/**
+ * Switcher that routes the request to the appropriate API call function. If call doesn't exist, throws error.
+ */
+export async function call_llm(llm: LLM, prompt: string, n: number, temperature: number, params?: Dict): Promise<[Dict, Dict]> {
+  // Get the correct API call for the given LLM:
+  let call_api: LLMAPICall | undefined;
+  const llm_name = getEnumName(LLM, llm.toString());
+  if (llm_name?.startsWith('OpenAI'))
+    call_api = call_chatgpt;
+  else if (llm_name?.startsWith('Azure'))
+    call_api = call_azure_openai;
+  else if (llm_name?.startsWith('PaLM2'))
+    call_api = call_google_palm;
+  else if (llm_name?.startsWith('Dalai'))
+    call_api = call_dalai;
+  else if (llm.toString().startsWith('claude'))
+    call_api = call_anthropic;
+  
+  if (!call_api)
+    throw new Error(`Language model ${llm} is not supported.`);
+  
+  return call_api(prompt, llm, n, temperature, params);
+}
+
 
 /**
  * Extracts the relevant portion of a OpenAI chat response.    
