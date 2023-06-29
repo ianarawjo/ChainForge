@@ -2,44 +2,75 @@
  * A list of all model APIs natively supported by ChainForge. 
  */
 export enum LLM {
-    // OpenAI Chat
-    OpenAI_ChatGPT = "gpt-3.5-turbo",
-    OpenAI_ChatGPT_16k = "gpt-3.5-turbo-16k",
-    OpenAI_ChatGPT_16k_0613 = "gpt-3.5-turbo-16k-0613",
-    OpenAI_ChatGPT_0301 = "gpt-3.5-turbo-0301",
-    OpenAI_ChatGPT_0613 = "gpt-3.5-turbo-0613",
-    OpenAI_GPT4 = "gpt-4",
-    OpenAI_GPT4_0314 = "gpt-4-0314",
-    OpenAI_GPT4_0613 = "gpt-4-0613",
-    OpenAI_GPT4_32k = "gpt-4-32k",
-    OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
-    OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
+  // OpenAI Chat
+  OpenAI_ChatGPT = "gpt-3.5-turbo",
+  OpenAI_ChatGPT_16k = "gpt-3.5-turbo-16k",
+  OpenAI_ChatGPT_16k_0613 = "gpt-3.5-turbo-16k-0613",
+  OpenAI_ChatGPT_0301 = "gpt-3.5-turbo-0301",
+  OpenAI_ChatGPT_0613 = "gpt-3.5-turbo-0613",
+  OpenAI_GPT4 = "gpt-4",
+  OpenAI_GPT4_0314 = "gpt-4-0314",
+  OpenAI_GPT4_0613 = "gpt-4-0613",
+  OpenAI_GPT4_32k = "gpt-4-32k",
+  OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
+  OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
 
-    // OpenAI Text Completions
-    OpenAI_Davinci003 = "text-davinci-003",
-    OpenAI_Davinci002 = "text-davinci-002",
+  // OpenAI Text Completions
+  OpenAI_Davinci003 = "text-davinci-003",
+  OpenAI_Davinci002 = "text-davinci-002",
 
-    // Azure OpenAI Endpoints
-    Azure_OpenAI = "azure-openai",
+  // Azure OpenAI Endpoints
+  Azure_OpenAI = "azure-openai",
 
-    // Dalai-served models (Alpaca and Llama)
-    Dalai_Alpaca_7B = "alpaca.7B",
-    Dalai_Alpaca_13B = "alpaca.13B",
-    Dalai_Llama_7B = "llama.7B",
-    Dalai_Llama_13B = "llama.13B",
-    Dalai_Llama_30B = "llama.30B",
-    Dalai_Llama_65B = "llama.65B",
+  // Dalai-served models (Alpaca and Llama)
+  Dalai_Alpaca_7B = "alpaca.7B",
+  Dalai_Alpaca_13B = "alpaca.13B",
+  Dalai_Llama_7B = "llama.7B",
+  Dalai_Llama_13B = "llama.13B",
+  Dalai_Llama_30B = "llama.30B",
+  Dalai_Llama_65B = "llama.65B",
 
-    // Anthropic
-    Claude_v1 = "claude-v1",
-    Claude_v1_0 = "claude-v1.0",
-    Claude_v1_2 = "claude-v1.2",
-    Claude_v1_3 = "claude-v1.3",
-    Claude_v1_instant = "claude-instant-v1",
+  // Anthropic
+  Claude_v1 = "claude-v1",
+  Claude_v1_0 = "claude-v1.0",
+  Claude_v1_2 = "claude-v1.2",
+  Claude_v1_3 = "claude-v1.3",
+  Claude_v1_instant = "claude-instant-v1",
 
-    // Google models
-    PaLM2_Text_Bison = "text-bison-001",  // it's really models/text-bison-001, but that's confusing
-    PaLM2_Chat_Bison = "chat-bison-001",
+  // Google models
+  PaLM2_Text_Bison = "text-bison-001",  // it's really models/text-bison-001, but that's confusing
+  PaLM2_Chat_Bison = "chat-bison-001",
+}
+
+/**
+ * A list of model providers
+ */
+export enum LLMProvider {
+  OpenAI = "openai",
+  Azure_OpenAI = "azure",
+  Dalai = "dalai",
+  Anthropic = "anthropic",
+  Google = "google",
+}
+
+/**
+ * Given an LLM, return what the model provider is.
+ * @param llm the specific large language model
+ * @returns an `LLMProvider` describing what provider hosts the model
+ */
+export function getProvider(llm: LLM): LLMProvider | undefined {
+  const llm_name = getEnumName(LLM, llm.toString());
+  if (llm_name?.startsWith('OpenAI'))
+    return LLMProvider.OpenAI;
+  else if (llm_name?.startsWith('Azure'))
+    return LLMProvider.Azure_OpenAI;
+  else if (llm_name?.startsWith('PaLM2'))
+    return LLMProvider.Google;
+  else if (llm_name?.startsWith('Dalai'))
+    return LLMProvider.Dalai;
+  else if (llm.toString().startsWith('claude'))
+    return LLMProvider.Anthropic;
+  return undefined;
 }
 
 
@@ -52,10 +83,25 @@ export enum LLM {
 export const RATE_LIMITS: { [key in LLM]?: [number, number] } = {
   [LLM.OpenAI_ChatGPT]: [30, 10],  // max 30 requests a batch; wait 10 seconds between
   [LLM.OpenAI_ChatGPT_0301]: [30, 10],
+  [LLM.OpenAI_ChatGPT_0613]: [30, 10],
+  [LLM.OpenAI_ChatGPT_16k]: [30, 10],
+  [LLM.OpenAI_ChatGPT_16k_0613]: [30, 10],
   [LLM.OpenAI_GPT4]: [4, 15],  // max 4 requests a batch; wait 15 seconds between
   [LLM.OpenAI_GPT4_0314]: [4, 15],
+  [LLM.OpenAI_GPT4_0613]: [4, 15],
   [LLM.OpenAI_GPT4_32k]: [4, 15],
   [LLM.OpenAI_GPT4_32k_0314]: [4, 15],
+  [LLM.OpenAI_GPT4_32k_0613]: [4, 15],
+  [LLM.Azure_OpenAI]: [30, 10],
   [LLM.PaLM2_Text_Bison]: [4, 10],  // max 30 requests per minute; so do 4 per batch, 10 seconds between (conservative)
   [LLM.PaLM2_Chat_Bison]: [4, 10],
 };
+
+
+/** Equivalent to a Python enum's .name property */
+export function getEnumName(enumObject: any, enumValue: any): string | undefined {
+  for (const key in enumObject) 
+    if (enumObject[key] === enumValue) 
+      return key;
+  return undefined;
+}

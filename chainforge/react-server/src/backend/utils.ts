@@ -3,7 +3,7 @@
 // from string import Template
 
 // from chainforge.promptengine.models import LLM
-import { LLM } from './models';
+import { LLM, LLMProvider, getProvider } from './models';
 import { Dict, StringDict, LLMAPICall, LLMResponseObject } from './typing';
 import { env as process_env } from 'process';
 import { StringTemplate } from './template';
@@ -28,6 +28,28 @@ export async function call_flask_backend(route: string, params: Dict | string): 
   }).then(function(res) {
     return res.json();
   });
+}
+
+// We only calculate whether the app is running locally once upon load, and store it here:
+let _APP_IS_RUNNING_LOCALLY: boolean | undefined = undefined;
+
+/**
+ * Tries to determine if the ChainForge front-end is running on user's local machine (and hence has access to Flask backend).
+ * @returns `true` if we think the app is running locally (on localhost or equivalent); `false` if not.
+ */
+export function APP_IS_RUNNING_LOCALLY(): boolean {
+  if (_APP_IS_RUNNING_LOCALLY === undefined) {
+    // Calculate whether we're running the app locally or not, and save the result
+    try {
+      const location = window.location;
+      _APP_IS_RUNNING_LOCALLY = location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "";
+    } catch (e) {
+      // ReferenceError --window or location does not exist. 
+      // We must not be running client-side in a browser, in this case (e.g., we are running a Node.js server)
+      _APP_IS_RUNNING_LOCALLY = false;
+    }
+  }
+  return _APP_IS_RUNNING_LOCALLY;
 }
 
 /**
@@ -92,29 +114,6 @@ export function set_api_keys(api_keys: StringDict): void {
     AZURE_OPENAI_ENDPOINT = api_keys['Azure_OpenAI_Endpoint'];
   // Soft fail for non-present keys
 }
-
-/** Equivalent to a Python enum's .name property */
-export function getEnumName(enumObject: any, enumValue: any): string | undefined {
-  for (const key in enumObject) {
-    if (enumObject[key] === enumValue) {
-      return key;
-    }
-  }
-  return undefined;
-}
-
-// async def make_sync_call_async(sync_method, *args, **params):
-//     """
-//         Makes a blocking synchronous call asynchronous, so that it can be awaited.
-//         NOTE: This is necessary for LLM APIs that do not yet support async (e.g. Google PaLM).
-//     """
-//     loop = asyncio.get_running_loop()
-//     method = sync_method
-//     if len(params) > 0:
-//         def partial_sync_meth(*a):
-//             return sync_method(*a, **params)
-//         method = partial_sync_meth
-//     return await loop.run_in_executor(None, method, *args)
 
 /**
  * Calls OpenAI models via OpenAI's API. 
@@ -311,7 +310,6 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
   while (responses.length < n) {
     const resp = await route_fetch(url, 'POST', headers, query);
     responses.push(resp);
-    console.log(`${model} response ${responses.length} of ${n}:\n${resp}`);
   }
 
   return [query, responses];
@@ -506,20 +504,21 @@ export async function call_dalai(prompt: string, model: LLM, n: number = 1, temp
 export async function call_llm(llm: LLM, prompt: string, n: number, temperature: number, params?: Dict): Promise<[Dict, Dict]> {
   // Get the correct API call for the given LLM:
   let call_api: LLMAPICall | undefined;
-  const llm_name = getEnumName(LLM, llm.toString());
-  if (llm_name?.startsWith('OpenAI'))
-    call_api = call_chatgpt;
-  else if (llm_name?.startsWith('Azure'))
-    call_api = call_azure_openai;
-  else if (llm_name?.startsWith('PaLM2'))
-    call_api = call_google_palm;
-  else if (llm_name?.startsWith('Dalai'))
-    call_api = call_dalai;
-  else if (llm.toString().startsWith('claude'))
-    call_api = call_anthropic;
-  
-  if (!call_api)
+  let llm_provider: LLMProvider = getProvider(llm);
+
+  if (llm_provider === undefined)
     throw new Error(`Language model ${llm} is not supported.`);
+
+  if (llm_provider === LLMProvider.OpenAI)
+    call_api = call_chatgpt;
+  else if (llm_provider === LLMProvider.Azure_OpenAI)
+    call_api = call_azure_openai;
+  else if (llm_provider === LLMProvider.Google)
+    call_api = call_google_palm;
+  else if (llm_provider === LLMProvider.Dalai)
+    call_api = call_dalai;
+  else if (llm_provider === LLMProvider.Anthropic)
+    call_api = call_anthropic;
   
   return call_api(prompt, llm, n, temperature, params);
 }
@@ -594,24 +593,33 @@ function _extract_anthropic_responses(response: Array<Dict>): Array<string> {
  * text response(s) part of the response object.
  */
 export function extract_responses(response: Array<string | Dict> | Dict, llm: LLM | string): Array<string> {
-  const llm_name = getEnumName(LLM, llm.toString());
-  if (llm_name?.startsWith('OpenAI')) {
-    if (llm_name.toLowerCase().includes('davinci'))
-      return _extract_openai_completion_responses(response);
-    else
-      return _extract_chatgpt_responses(response);
-  } else if (llm_name?.startsWith('Azure'))
-    return _extract_openai_responses(response);
-  else if (llm_name?.startsWith('PaLM2'))
-    return _extract_palm_responses(response);
-  else if (llm_name?.startsWith('Dalai'))
-    return [response.toString()];
-  else if (llm.toString().startsWith('claude'))
-    return _extract_anthropic_responses(response as Dict[]);
-  else
-    throw new Error(`No method defined to extract responses for LLM ${llm}.`)
+  let llm_provider: LLMProvider = getProvider(llm as LLM);
+
+  switch (llm_provider) {
+    case LLMProvider.OpenAI:
+      if (llm.toString().toLowerCase().includes('davinci'))
+        return _extract_openai_completion_responses(response);
+      else
+        return _extract_chatgpt_responses(response);
+    case LLMProvider.Azure_OpenAI:
+      return _extract_openai_responses(response);
+    case LLMProvider.Google:
+      return _extract_palm_responses(response);
+    case LLMProvider.Dalai:
+      return [response.toString()];
+    case LLMProvider.Anthropic:
+      return _extract_anthropic_responses(response as Dict[]);
+    default:
+      throw new Error(`No method defined to extract responses for LLM ${llm}.`)
+  }    
 }
 
+/**
+ * Marge the 'responses' and 'raw_response' properties of two LLMResponseObjects,
+ * keeping all the other params from the second argument (llm, query, etc). 
+ * 
+ * If one object is undefined or null, returns the object that is defined, unaltered.
+ */
 export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, resp_obj_B: LLMResponseObject | undefined): LLMResponseObject | undefined {
   if (!resp_obj_A && !resp_obj_B) {
     console.warn('Warning: Merging two undefined response objects.')
@@ -638,48 +646,3 @@ export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, r
     metavars: resp_obj_B.metavars,
   };
 }
-
-export function APP_IS_RUNNING_LOCALLY(): boolean {
-  try {
-    const location = window.location;
-    return location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "";
-  } catch (e) {
-    // ReferenceError --window or location does not exist. 
-    // We must not be running client-side in a browser, in this case (e.g., we are running a Node.js server)
-    return false;
-  }
-}
-
-// def create_dir_if_not_exists(path: str) -> None:
-//     if not os.path.exists(path):
-//         os.makedirs(path)
-
-// def is_valid_filepath(filepath: str) -> bool:
-//     try:
-//         with open(filepath, 'r', encoding='utf-8'):
-//             pass
-//     except IOError:
-//         try:
-//             # Create the file if it doesn't exist, and write an empty json string to it
-//             with open(filepath, 'w+', encoding='utf-8') as f:
-//                 f.write("{}")
-//                 pass
-//         except IOError:
-//             return False
-//     return True
-
-// def is_valid_json(json_dict: dict) -> bool:
-//     if isinstance(json_dict, dict):
-//         try:
-//             json.dumps(json_dict)
-//             return True
-//         except Exception:
-//             pass
-//     return False
-
-// def get_files_at_dir(path: str) -> list:
-//     f = []
-//     for (dirpath, dirnames, filenames) in os.walk(path):
-//         f = filenames
-//         break
-//     return f
