@@ -99,7 +99,7 @@ export class PromptPipeline {
       
       // First check if there is already a response for this item under these settings. If so, we can save an LLM call:
       if (cached_resp && extracted_resps.length >= n) {
-        console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
+        // console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
         yield ({
           "prompt": prompt_str,
           "query": cached_resp["query"],
@@ -161,7 +161,7 @@ export class PromptPipeline {
         responses[resp_obj["prompt"]] = resp_obj;
         this._cache_responses(responses);
 
-        console.log(` - collected response from ${llm} for prompt: ${resp_obj['prompt']}`);
+        // console.log(` - collected response from ${llm} for prompt: ${resp_obj['prompt']}`);
 
         // Yield the response
         yield resp_obj;
@@ -201,7 +201,7 @@ export class PromptPipeline {
       responses[resp_obj["prompt"]] = resp_obj;
       this._cache_responses(responses);
 
-      console.log(` - collected response from ${llm} for prompt: ${resp_obj['prompt']}`);
+      // console.log(` - collected response from ${llm} for prompt: ${resp_obj['prompt']}`);
 
       // Yield the response
       yield resp_obj;

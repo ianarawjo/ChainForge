@@ -113,7 +113,7 @@ const App = () => {
     if (progLang === 'python') 
       code = "def evaluate(response):\n  return len(response.text)";
     else if (progLang === 'javascript')
-      code = "function evaluate(resp) {\n  return resp.text.length;\n}";
+      code = "function evaluate(response) {\n  return response.text.length;\n}";
     addNode({ id: 'evalNode-'+Date.now(), type: 'evaluator', data: { language: progLang, code: code }, position: {x: x-200, y:y-100} });
   };
   const addVisNode = (event) => {

@@ -445,8 +445,6 @@ export async function countQueries(prompt: string, vars: Dict, llms: Array<Dict 
       });
     }
   });
-  
-  console.log(missing_queries);
 
   return {'counts': missing_queries, 'total_num_responses': num_responses_req};
 }
@@ -894,7 +892,6 @@ export async function importCache(files: { [key: string]: Dict | Array<any> }): 
     // Write imported files to StorageCache
     // Verify filenames, data, and access permissions to write to cache
     Object.entries(files).forEach(([filename, data]) => {
-      console.log('storing file', filename);
       StorageCache.store(filename, data);
     });
   } catch (err) {

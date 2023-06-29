@@ -1,9 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Button, Code } from '@mantine/core';
+import { Button, Code, Modal, Tooltip, Box, Text } from '@mantine/core';
+import { Prism } from '@mantine/prism';
+import { useDisclosure } from '@mantine/hooks';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
-import { IconTerminal, IconSearch } from '@tabler/icons-react'
+import { IconTerminal, IconSearch, IconInfoCircle } from '@tabler/icons-react'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 
 // Ace code editor
@@ -13,6 +15,60 @@ import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
 import fetch_from_backend from './fetch_from_backend';
+
+const _info_codeblock_js = `
+class ResponseInfo {
+  text: string;  // The text of the LLM response
+  prompt: string  // The text of the prompt using to query the LLM
+  llm: string | LLM  // The name of the LLM queried (the nickname in ChainForge)
+  var: Dict  // A dictionary of arguments that filled in the prompt template used to generate the final prompt
+  meta: Dict  // A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
+
+  toString(): string {
+    return this.text;
+  }
+}`;
+
+const _info_codeblock_py = `
+class ResponseInfo:
+  text: str  # The text of the LLM response
+  prompt: str  # The text of the prompt using to query the LLM
+  llm: str  # The name of the LLM queried (the nickname in ChainForge)
+  var: dict  # A dictionary of arguments that filled in the prompt template used to generate the final prompt
+  meta: dict  # A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
+
+  def __str__(self):
+    return self.text
+  
+  def asMarkdownAST(self):
+    # Returns markdown AST parsed with mistune
+    ...
+`;
+
+const _info_example_py = `
+def evaluate(response):
+  # Returns the length of the response
+  return len(response.text);
+`;
+const _info_example_js = `
+function evaluate(response) {
+  // Returns the length of the response
+  return response.text.length;
+}`;
+const _info_example_var_py = `
+def evaluate(response):
+  country = response.var['country'];
+  # do something with country here, such as lookup whether 
+  # the correct capital is in response.text
+  return ... # True or False
+`;
+const _info_example_var_js = `
+function evaluate(response) {
+  let country = response.var['country'];
+  // do something with country here, such as lookup whether 
+  // the correct capital is in response.text
+  return ... # true or false
+}`;
 
 const EvaluatorNode = ({ data, id }) => {
 
@@ -25,6 +81,9 @@ const EvaluatorNode = ({ data, id }) => {
 
   // For displaying error messages to user
   const alertModal = useRef(null);
+
+  // For an info pop-up that explains the type of ResponseInfo
+  const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] = useDisclosure(false);
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
@@ -173,12 +232,14 @@ const EvaluatorNode = ({ data, id }) => {
         inspectModal.current.trigger();
   }, [inspectModal, lastResponses]);
 
+  const default_header = (progLang === 'python') ? 
+                          'Python Evaluator Node'
+                          : 'JavaScript Evaluator Node';
+  const node_header = data.title || default_header;
+
   return (
     <div className="evaluator-node cfnode">
-      <NodeLabel title={data.title || 
-                        progLang === 'python' ? 
-                          'Python Evaluator Node'
-                          : 'JavaScript Evaluator Node' } 
+      <NodeLabel title={node_header} 
                   nodeId={id} 
                   onEdit={hideStatusIndicator}
                   icon={<IconTerminal size="16px" />} 
@@ -186,8 +247,33 @@ const EvaluatorNode = ({ data, id }) => {
                   alertModal={alertModal}
                   handleRunClick={handleRunClick}
                   runButtonTooltip="Run evaluator over inputs"
+                  customButtons={[
+                    <Tooltip label='Info'>
+                  <button onClick={openInfoModal} className='custom-button' style={{border:'none'}}>
+                    <IconInfoCircle size='12pt' color='gray' style={{marginBottom: '-4px'}} />
+                  </button></Tooltip>]}
                   />
       <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
+      <Modal title={default_header} size='60%' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
+        <Box m='lg' mt='xl'>
+          <Text mb='sm'>To use a {default_header}, write a function <Code>evaluate</Code> that takes a single argument of class <Code>ResponseInfo</Code>.
+          If you just want the text of the response, use <Code>response.text</Code>:</Text>
+          <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+            {progLang === 'python' ? _info_example_py : _info_example_js}
+          </Prism>
+          <Text mt='md' mb='sm'>The full <Code>ResponseInfo</Code> class has the following properties and methods:</Text>
+          <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+            {progLang === 'python' ? _info_codeblock_py : _info_codeblock_js}
+          </Prism>
+          <Text mt='md' mb='sm'>For instance, say you have a prompt template <Code>What is the capital of &#123;country&#125;?</Code> on a Prompt Node. 
+            You want to get the input variable 'country', which filled the prompt that led to the current response. You can use<Code>response.var</Code>:</Text>
+          <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+            {progLang === 'python' ? _info_example_var_py : _info_example_var_js}
+          </Prism>
+          <Text mt='md'>Note that you are allowed to define variables outside of the function, or define more functions, as long as a function called <Code>evaluate</Code> is defined. 
+          For more information on what's possible, see the <a href="https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md#python-evaluator-node" target='_blank'>documentation</a> or load some Example Flows.</Text>
+        </Box>
+      </Modal>
       <iframe style={{display: 'none'}} id={`${id}-iframe`}></iframe>
       <Handle
           type="target"

@@ -11,7 +11,9 @@ import { StringTemplate } from './template';
 /* LLM API SDKs */
 import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
 import { OpenAIClient as AzureOpenAIClient, AzureKeyCredential } from "@azure/openai";
-import { AI_PROMPT, HUMAN_PROMPT } from "@anthropic-ai/sdk";
+
+const HUMAN_PROMPT = "\n\nHuman:";
+const AI_PROMPT = "\n\nAssistant:";
 
 const fetch = require('node-fetch');
 

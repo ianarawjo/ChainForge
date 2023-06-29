@@ -120,7 +120,7 @@ const VisNode = ({ data, id }) => {
     // The MultiSelect so people can dynamically set what vars they care about
     const [multiSelectVars, setMultiSelectVars] = useState(data.vars || []);
     const [multiSelectValue, setMultiSelectValue] = useState(
-        Array.isArray(data.selected_vars) && data.selected_vars.length > 0 ? 
+        (Array.isArray(data.selected_vars) && data.selected_vars.length > 0) ? 
             data.selected_vars[0] : 'LLM (default)');
 
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
