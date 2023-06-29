@@ -9,7 +9,7 @@ import ReactFlow, {
   useViewport,
   setViewport,
 } from 'react-flow-renderer';
-import { Button, Menu, LoadingOverlay } from '@mantine/core';
+import { Button, Menu, LoadingOverlay, Text, Box, List } from '@mantine/core';
 import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation } from '@tabler/icons-react';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
@@ -31,6 +31,10 @@ import useStore from './store';
 import fetch_from_backend from './fetch_from_backend';
 import StorageCache from './backend/cache';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
+
+// Device / Browser detection
+import { isMobile, isChrome, isFirefox } from 'react-device-detect';
+const IS_ACCEPTED_BROWSER = (isChrome || isFirefox) && !isMobile;
 
 const selector = (state) => ({
   nodes: state.nodes,
@@ -444,7 +448,23 @@ const App = () => {
     };
   }, []);
 
-  return (
+  if (!IS_ACCEPTED_BROWSER) {
+    return (
+      <Box maw={600}>
+        <Text m='xl' size={12}>We're sorry, but it seems like {isMobile ? "you are viewing ChainForge on a mobile device" : "your current browser isn't supported by the current version of ChainForge"} 😔. 
+        We want to provide you with the best experience possible, so we recommend {isMobile ? "viewing ChainForge on a desktop browser" : ""} using one of our supported browsers listed below:</Text>
+        <List m='xl' size={12}>
+          <List.Item>Google Chrome</List.Item>
+          <List.Item>Mozilla Firefox</List.Item>
+        </List>
+  
+        <Text m='xl' size={12}>These browsers offer enhanced compatibility with ChainForge's features. Don't worry, though! We're working to expand our browser support to ensure everyone can enjoy our platform. 😊</Text>
+        <Text m='xl' size={12}>If you have any questions or need assistance, please don't hesitate to reach out on our <a href="https://github.com/ianarawjo/ChainForge/issues">GitHub</a> by <a href="https://github.com/ianarawjo/ChainForge/issues">opening an Issue.</a> 
+        &nbsp; (If you're a web developer, consider forking our repository and making a <a href="https://github.com/ianarawjo/ChainForge/pulls">Pull Request</a> to support your particular browser.)</Text>
+      </Box>
+    );
+  }
+  else return (
     <div>
       <GlobalSettingsModal ref={settingsModal} />
       <AlertModal ref={alertModal} />

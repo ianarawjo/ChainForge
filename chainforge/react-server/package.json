@@ -69,6 +69,7 @@
     "react-ace": "^10.1.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-csv": "^2.2.2",
+    "react-device-detect": "^2.2.3",
     "react-dom": "^18.2.0",
     "react-edit-text": "^5.1.0",
     "react-flow-renderer": "^10.3.17",
