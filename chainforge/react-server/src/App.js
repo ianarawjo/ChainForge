@@ -30,6 +30,7 @@ import { shallow } from 'zustand/shallow';
 import useStore from './store';
 import fetch_from_backend from './fetch_from_backend';
 import StorageCache from './backend/cache';
+import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
 
 const selector = (state) => ({
   nodes: state.nodes,
@@ -55,6 +56,10 @@ const nodeTypes = {
   csv: CsvNode,
   table: TabularDataNode,
 };
+
+// Whether we are running on localhost or not, and hence whether
+// we have access to the Flask backend for, e.g., Python code evaluation.
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // const connectionLineStyle = { stroke: '#ddd' };
 const snapGrid = [16, 16];
@@ -480,7 +485,9 @@ const App = () => {
               <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields </Menu.Item>
               <Menu.Item onClick={addPromptNode} icon={'💬'}> Prompt Node </Menu.Item>
               <Menu.Item onClick={() => addEvalNode('javascript')} icon={<IconTerminal size="16px" />}> JavaScript Evaluator Node </Menu.Item>
-              <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator Node </Menu.Item>
+              {IS_RUNNING_LOCALLY ? (
+                <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator Node </Menu.Item>
+              ): <></>}
               <Menu.Item onClick={addVisNode} icon={'📊'}> Vis Node </Menu.Item>
               <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
               <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>

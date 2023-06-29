@@ -15,6 +15,11 @@ import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
 import fetch_from_backend from './fetch_from_backend';
+import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
+
+// Whether we are running on localhost or not, and hence whether
+// we have access to the Flask backend for, e.g., Python code evaluation.
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 const _info_codeblock_js = `
 class ResponseInfo {
@@ -104,18 +109,17 @@ const EvaluatorNode = ({ data, id }) => {
   // On initialization
   useEffect(() => {
 
-    // Testing out iframe code eval:
-//     let iframe = document.getElementById(`${id}-iframe`);
-//     console.log(iframe);
-
-//     // @ts-ignore
-//     iframe.contentWindow.eval(`
-// let myvar = 0;
-// function evaluate(x) { myvar += 1; console.log("x is of length", x.length, "and x is", x, "and myvar is", myvar); }
-// `);
-
-//     iframe.contentWindow.evaluate("hello there!");
-//     iframe.contentWindow.evaluate("what's up?");
+    if (!IS_RUNNING_LOCALLY && progLang === 'python') {
+      // The user has loaded a Python evaluator node 
+      // without access to the Flask backend on localhost. 
+      // Warn them the evaluator won't function:
+      console.warn('Loaded a Python evaluator node without access to Flask backend on localhost.')
+      alertModal.current.trigger(
+        "This flow contains a Python evaluator node, yet ChainForge does not appear to be running locally on your machine. \
+        You will not be able to run Python code in the evaluator. If you want to write an evaluator to score responses, \
+        we recommend that you use a JavaScript evaluator node instead. If you'd like to run the Python evaluator, \
+        consider installing ChainForge locally.");
+    }
 
     // Attempt to grab cache'd responses
     fetch_from_backend('grabResponses', {
@@ -142,6 +146,14 @@ const EvaluatorNode = ({ data, id }) => {
   };
 
   const handleRunClick = (event) => {
+    // Disallow running a Python evaluator node when not on localhost:
+    if (!IS_RUNNING_LOCALLY && progLang === 'python') {
+      alertModal.current.trigger(
+        "Python code can only be evaluated when ChainForge is running locally on your machine (on localhost). \
+        If you want to run an evaluator to score responses, we recommend that you use a JavaScript evaluator node \
+        instead. If you'd like to run the Python evaluator, consider installing ChainForge locally.");
+      return;
+    }
     
     // Get the ids from the connected input nodes:
     const input_node_ids = inputEdgesForNode(id).map(e => e.source);
@@ -217,10 +229,6 @@ const EvaluatorNode = ({ data, id }) => {
         setLastRunSuccess(true);
         setStatus('ready');
     }).catch((err) => rejected(err.message));
-  };
-
-  const handleOnMapScopeSelect = (event) => {
-    setMapScope(event.target.value);
   };
 
   const hideStatusIndicator = () => {
