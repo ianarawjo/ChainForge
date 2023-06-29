@@ -47,12 +47,12 @@ class ResponseInfo:
 
 const _info_example_py = `
 def evaluate(response):
-  # Returns the length of the response
+  # Return the length of the response (num of characters)
   return len(response.text);
 `;
 const _info_example_js = `
 function evaluate(response) {
-  // Returns the length of the response
+  // Return the length of the response (num of characters)
   return response.text.length;
 }`;
 const _info_example_var_py = `
@@ -60,14 +60,14 @@ def evaluate(response):
   country = response.var['country'];
   # do something with country here, such as lookup whether 
   # the correct capital is in response.text
-  return ... # True or False
+  return ... # for instance, True or False
 `;
 const _info_example_var_js = `
 function evaluate(response) {
   let country = response.var['country'];
   // do something with country here, such as lookup whether 
   // the correct capital is in response.text
-  return ... # true or false
+  return ... // for instance, true or false
 }`;
 
 const EvaluatorNode = ({ data, id }) => {
@@ -257,11 +257,13 @@ const EvaluatorNode = ({ data, id }) => {
       <Modal title={default_header} size='60%' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
         <Box m='lg' mt='xl'>
           <Text mb='sm'>To use a {default_header}, write a function <Code>evaluate</Code> that takes a single argument of class <Code>ResponseInfo</Code>.
-          If you just want the text of the response, use <Code>response.text</Code>:</Text>
+          The function should return a 'score' for that response, which usually is a number or a boolean value (strings as categoricals are supported, but experimental).</Text>
+          <Text mt='sm' mb='sm'>
+          For instance, here is an evaluator that returns the length of a response:</Text>
           <Prism language={progLang === 'python' ? 'py' : 'ts'}>
             {progLang === 'python' ? _info_example_py : _info_example_js}
           </Prism>
-          <Text mt='md' mb='sm'>The full <Code>ResponseInfo</Code> class has the following properties and methods:</Text>
+          <Text mt='md' mb='sm'>This function gets the text of the response via <Code>response.text</Code>, then calculates its length in characters. The full <Code>ResponseInfo</Code> class has the following properties and methods:</Text>
           <Prism language={progLang === 'python' ? 'py' : 'ts'}>
             {progLang === 'python' ? _info_codeblock_py : _info_codeblock_js}
           </Prism>
