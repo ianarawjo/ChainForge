@@ -256,7 +256,7 @@ const EvaluatorNode = ({ data, id }) => {
                   handleRunClick={handleRunClick}
                   runButtonTooltip="Run evaluator over inputs"
                   customButtons={[
-                    <Tooltip label='Info'>
+                    <Tooltip label='Info' key="eval-info">
                   <button onClick={openInfoModal} className='custom-button' style={{border:'none'}}>
                     <IconInfoCircle size='12pt' color='gray' style={{marginBottom: '-4px'}} />
                   </button></Tooltip>]}

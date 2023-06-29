@@ -10,6 +10,8 @@
 // from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
 
 import { mean as __mean, std as __std, median as __median } from "mathjs";
+import markdownIt from "markdown-it";
+
 import { Dict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse } from "./typing";
 import { LLM } from "./models";
 import { APP_IS_RUNNING_LOCALLY, getEnumName, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
@@ -119,11 +121,10 @@ export class ResponseInfo {
     return this.text;
   }
 
-  // TODO: REIMPLEMENT WITH MARKED.JS
-  // def asMarkdownAST(self):
-  //     import mistune
-  //     md_ast_parser = mistune.create_markdown(renderer='ast')
-  //     return md_ast_parser(self.text)
+  asMarkdownAST() {
+    const md = new markdownIt();
+    return md.parse(this.text, {});
+  }
 }
 
 function to_standard_format(r: LLMResponseObject | Dict): StandardizedLLMResponse {
@@ -264,9 +265,10 @@ function check_typeof_vals(arr: Array<any>): MetricType {
 
   const typeof_set: (types: Set<any>) => MetricType = (types: Set<any>) => {
     if (types.size === 0) return MetricType.Empty;
-    if (types.size === 1 && typeof types.values()[0] === 'object' && !Array.isArray(types.values()[0]))
+    const [first_val] = types;
+    if (types.size === 1 && typeof first_val === 'object' && !Array.isArray(first_val)) {
       return MetricType.KeyValue;
-    else if (Array.from(types).every(t => typeof t === 'number'))
+    } else if (Array.from(types).every(t => typeof t === 'number'))
       // Numeric metrics only
       return MetricType.Numeric;
     else if (Array.from(types).every(t => ['string', 'boolean'].includes(typeof t)))
@@ -281,7 +283,7 @@ function check_typeof_vals(arr: Array<any>): MetricType {
   };
   
   const typeof_dict_vals = (d: Dict) => {
-    const dict_val_type = typeof_set(new Set(d.values()));
+    const dict_val_type = typeof_set(new Set(Object.values(d)));
     if (dict_val_type === MetricType.Numeric)
       return MetricType.KeyValue_Numeric;
     else if (dict_val_type === MetricType.Categorical)
@@ -500,7 +502,7 @@ export async function queryLLM(id: string,
   if (typeof llm === 'string')
     llm = [ llm ];
   llm = llm as (Array<string> | Array<Dict>); 
-  
+
   for (let i = 0; i < llm.length; i++) {
     const llm_spec = llm[i];
     if (!(extract_llm_name(llm_spec) in LLM_NAME_MAP)) 
@@ -889,6 +891,10 @@ export async function exportCache(ids: string[]) {
  */
 export async function importCache(files: { [key: string]: Dict | Array<any> }): Promise<Dict> {
   try {
+    // First clear the storage cache and any saved state:
+    StorageCache.clear();
+    StorageCache.saveToLocalStorage('chainforge-state');
+
     // Write imported files to StorageCache
     // Verify filenames, data, and access permissions to write to cache
     Object.entries(files).forEach(([filename, data]) => {

@@ -507,13 +507,15 @@ const PromptNode = ({ data, id }) => {
     //     });
     // };
 
+    const clone = (obj) => JSON.parse(JSON.stringify(obj));
+
     // Run all prompt permutations through the LLM to generate + cache responses:
     const query_llms = () => {
         return fetch_from_backend('queryllm', {
             id: id,
-            llm: llmItemsCurrState,
+            llm: clone(llmItemsCurrState),  // deep clone it first
             prompt: py_prompt_template,
-            vars: pulled_data,
+            vars: clone(pulled_data),
             n: numGenerations,
             api_keys: (apiKeys ? apiKeys : {}),
             no_cache: false,

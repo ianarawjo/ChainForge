@@ -11,6 +11,8 @@ import { Dict, LLMResponseError, LLMResponseObject, LLMAPICall } from "./typing"
 import { extract_responses, merge_response_objs, call_llm } from "./utils";
 import StorageCache from "./cache";
 
+const clone = (obj) => JSON.parse(JSON.stringify(obj));
+
 interface _IntermediateLLMResponseType {
   prompt: PromptTemplate | string,
   query?: Dict,
@@ -259,7 +261,7 @@ export class PromptPipeline {
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;
     try {
-      [query, response] = await call_llm(llm, prompt.toString(), n, temperature, llm_params);
+      [query, response] = await call_llm(llm, prompt.toString(), n, temperature, clone(llm_params));
     } catch(err) {
       return { prompt: prompt, 
                query: undefined, 

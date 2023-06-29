@@ -749,15 +749,14 @@ const VisNode = ({ data, id }) => {
                             placeholder="Pick param to plot"
                             size="xs"
                             value={multiSelectValue}
-                            miw='80px'
-                            searchable />
+                            miw='80px' />
             </div>
             <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '30%', marginLeft: '10pt'}}>
                 <span style={{fontSize: '10pt', margin: '6pt 3pt 0 0', fontWeight: 'bold', whiteSpace: 'nowrap'}}>x-axis:</span>
                 <NativeSelect className='nodrag nowheel'
                             data={['score']}
                             size="xs"
-                            value={['score']}
+                            value={'score'}
                             miw='80px'
                             disabled />
             </div>

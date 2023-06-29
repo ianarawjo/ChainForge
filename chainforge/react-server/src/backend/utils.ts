@@ -173,8 +173,7 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
     response = completion.data;
   } catch (error: any) {
     if (error?.response) {
-      console.error(error.response.data?.error?.message);
-      throw new Error("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local environment.");
+      throw new Error(error.response.data?.error?.message);
       // throw new Error(error.response.status);
     } else {
       console.log(error?.message || error);

@@ -14,16 +14,18 @@ function _route_to_flask_backend(route, params, rejected) {
   return call_flask_backend(route, params).catch(rejected);
 }
 
+const clone = (obj) => JSON.parse(JSON.stringify(obj));
+
 async function _route_to_js_backend(route, params) {
   switch (route) {
     case 'grabResponses':
       return grabResponses(params.responses);
     case 'countQueriesRequired':
-      return countQueries(params.prompt, params.vars, params.llms, params.n, params.id);
+      return countQueries(params.prompt, clone(params.vars), clone(params.llms), params.n, params.id);
     case 'createProgressFile':
       return createProgressFile(params.id);
     case 'queryllm':
-      return queryLLM(params.id, params.llm, params.n, params.prompt, params.vars, params.api_keys, params.no_cache, params.progress_listener);
+      return queryLLM(params.id, clone(params.llm), params.n, params.prompt, clone(params.vars), params.api_keys, params.no_cache, params.progress_listener);
     case 'executejs':
       return executejs(params.id, params.code, params.responses, params.scope);
     case 'executepy':
