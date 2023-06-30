@@ -40,6 +40,19 @@ export enum LLM {
   // Google models
   PaLM2_Text_Bison = "text-bison-001",  // it's really models/text-bison-001, but that's confusing
   PaLM2_Chat_Bison = "chat-bison-001",
+
+  // HuggingFace Inference hosted models, suggested to users
+  HF_GPT2 = "gpt2",
+  HF_BLOOM_560M = "bigscience/bloom-560m",
+  HF_FALCON_7B_INSTRUCT = "tiiuae/falcon-7b-instruct",
+  HF_SANTACODER = "bigcode/santacoder",
+  HF_STARCODER = "bigcode/starcoder",
+  // HF_GPTJ_6B = "EleutherAI/gpt-j-6b",
+  // HF_LLAMA_7B = "decapoda-research/llama-7b-hf",
+
+  // A special flag for a user-defined HuggingFace model endpoint.
+  // The actual model name will be passed as a param to the LLM call function.
+  HF_OTHER = "Other (HuggingFace)",
 }
 
 /**
@@ -51,6 +64,7 @@ export enum LLMProvider {
   Dalai = "dalai",
   Anthropic = "anthropic",
   Google = "google",
+  HuggingFace = "hf",
 }
 
 /**
@@ -68,6 +82,8 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
     return LLMProvider.Google;
   else if (llm_name?.startsWith('Dalai'))
     return LLMProvider.Dalai;
+  else if (llm_name?.startsWith('HF_'))
+    return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith('claude'))
     return LLMProvider.Anthropic;
   return undefined;

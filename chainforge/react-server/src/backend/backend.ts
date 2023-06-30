@@ -921,7 +921,9 @@ export async function fetchExampleFlow(evalname: string): Promise<Dict> {
 
   // App is not running locally, but hosted on a site.
   // If this is the case, attempt to fetch the example flow from a relative site path:
-  return fetch(`examples/${evalname}.cforge`).then(response => response.json());
+  return fetch(`examples/${evalname}.cforge`)
+              .then(response => response.json())
+              .then(res => ({data: res}));
 }
 
 
@@ -950,5 +952,7 @@ export async function fetchOpenAIEval(evalname: string): Promise<Dict> {
   // App is not running locally, but hosted on a site.
   // If this is the case, attempt to fetch the example flow from relative path on the site:
   //  > ALT: `https://raw.githubusercontent.com/ianarawjo/ChainForge/main/chainforge/oaievals/${_name}.cforge`
-  return fetch(`oaievals/${evalname}.cforge`).then(response => response.json());
+  return fetch(`oaievals/${evalname}.cforge`)
+              .then(response => response.json())
+              .then(res => ({data: res}));
 }

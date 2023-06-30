@@ -279,13 +279,13 @@ const App = () => {
   const importCache = useCallback((cache_data) => {
     return fetch_from_backend('importCache', {
       'files': cache_data,
-    }, handleError).then(function(json) {
+    }).then(function(json) {
         if (!json || json.result === undefined)
           throw new Error('Request to import cache data was sent and received by backend server, but there was no response.');
         else if (json.error || json.result === false)
           throw new Error('Error importing cache data:' + json.error);
         // Done! 
-    }, handleError).catch(handleError);
+    }).catch(handleError);
   }, [handleError]);
 
   const importFlowFromJSON = useCallback((flowJSON) => {

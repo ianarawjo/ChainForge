@@ -94,6 +94,7 @@ let ANTHROPIC_API_KEY = get_environ("ANTHROPIC_API_KEY");
 let GOOGLE_PALM_API_KEY = get_environ("PALM_API_KEY");
 let AZURE_OPENAI_KEY = get_environ("AZURE_OPENAI_KEY");
 let AZURE_OPENAI_ENDPOINT = get_environ("AZURE_OPENAI_ENDPOINT");
+let HUGGINGFACE_API_KEY = get_environ("HUGGINGFACE_API_KEY");
 
 /**
  * Sets the local API keys for the revelant LLM API(s).
@@ -104,6 +105,8 @@ export function set_api_keys(api_keys: StringDict): void {
   }
   if (key_is_present('OpenAI'))
     OPENAI_API_KEY= api_keys['OpenAI'];
+  if (key_is_present('HuggingFace'))
+    HUGGINGFACE_API_KEY = api_keys['HuggingFace'];
   if (key_is_present('Anthropic'))
     ANTHROPIC_API_KEY = api_keys['Anthropic'];
   if (key_is_present('Google'))
@@ -242,8 +245,7 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
     response = await openai_call(deployment_name, arg2, query);
   } catch (error) {
     if (error?.response) {
-      throw new Error("Could not authenticate to Azure OpenAI. Double-check that your API key is set in Settings or in your local environment.");
-      // throw new Error(error.response.status);
+      throw new Error(error.response.data?.error?.message);
     } else {
       console.log(error?.message || error);
       throw new Error(error?.message || error);
@@ -498,6 +500,68 @@ export async function call_dalai(prompt: string, model: LLM, n: number = 1, temp
 //     return query, responses
 
 
+export async function call_huggingface(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+  // Whether we should notice a given param in 'params'
+  const param_exists = (p: any) => (p !== undefined && !((typeof p === 'number' && p < 0) || (typeof p === 'string' && p.trim().length === 0)));
+  const set_param_if_exists = (name: string, query: Dict) => {
+    if (!params || params.size === 0) return;
+    const p = params[name];
+    const exists = param_exists(p);
+    if (exists) {
+      // Set the param on the query dict
+      query[name] = p;
+    } else return;
+  }
+
+  let query = {
+    temperature: temperature,
+    return_full_text: false,
+  };
+  set_param_if_exists('top_k', query);
+  set_param_if_exists('top_p', query);
+  set_param_if_exists('repetition_penalty', query);
+  set_param_if_exists('max_new_tokens', query);
+  
+
+  let options = {
+    use_cache: false, // we want it generating fresh each time
+  };
+  set_param_if_exists('use_cache', options);
+  set_param_if_exists('do_sample', options);
+
+  const using_custom_model_endpoint: boolean = param_exists(params?.custom_model);
+
+  let headers: StringDict = {'Content-Type': 'application/json'};
+  // For HuggingFace, technically, the API keys are optional. 
+  if (HUGGINGFACE_API_KEY !== undefined)
+    headers.Authorization = `Bearer ${HUGGINGFACE_API_KEY}`;
+
+  let responses: Array<Dict> = [];
+  while (responses.length < n) {
+    const response = await fetch(
+      `https://api-inference.huggingface.co/models/${using_custom_model_endpoint ? params.custom_model.trim() : model}`,
+      {
+          headers: headers,
+          method: "POST",
+          body: JSON.stringify({inputs: prompt, parameters: query, options: options}),
+      }
+    );
+    const result = await response.json();
+
+    // HuggingFace sometimes gives us an error, for instance if a model is loading.
+    // It returns this as an 'error' key in the response:
+    if (result?.error !== undefined)
+      throw new Error(result.error);
+    else if (!Array.isArray(result) || result.length !== 1)
+      throw new Error("Result of HuggingFace API call is in unexpected format:" + JSON.stringify(result));
+    
+    // Continue querying
+    responses.push(result[0]);
+  }
+
+  return [query, responses];
+}
+
 /**
  * Switcher that routes the request to the appropriate API call function. If call doesn't exist, throws error.
  */
@@ -519,6 +583,8 @@ export async function call_llm(llm: LLM, prompt: string, n: number, temperature:
     call_api = call_dalai;
   else if (llm_provider === LLMProvider.Anthropic)
     call_api = call_anthropic;
+  else if (llm_provider === LLMProvider.HuggingFace)
+    call_api = call_huggingface;
   
   return call_api(prompt, llm, n, temperature, params);
 }
@@ -589,6 +655,13 @@ function _extract_anthropic_responses(response: Array<Dict>): Array<string> {
 }
 
 /**
+ * Extracts the text part of a HuggingFace text completion.
+ */
+function _extract_huggingface_responses(response: Array<Dict>): Array<string>{
+  return response.map((r: Dict) => r.generated_text.trim());
+}
+
+/**
  * Given a LLM and a response object from its API, extract the
  * text response(s) part of the response object.
  */
@@ -609,6 +682,8 @@ export function extract_responses(response: Array<string | Dict> | Dict, llm: LL
       return [response.toString()];
     case LLMProvider.Anthropic:
       return _extract_anthropic_responses(response as Dict[]);
+    case LLMProvider.HuggingFace:
+      return _extract_huggingface_responses(response as Dict[]);
     default:
       throw new Error(`No method defined to extract responses for LLM ${llm}.`)
   }    

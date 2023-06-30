@@ -4,6 +4,8 @@ import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import useStore from './store';
 
+const _LINK_STYLE = {color: '#1E90FF', textDecoration: 'none'};
+
 const GlobalSettingsModal = forwardRef((props, ref) => {
   const [opened, { open, close }] = useDisclosure(false);
   const setAPIKeys = useStore((state) => state.setAPIKeys);
@@ -15,6 +17,7 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
       Google: '',
       Azure_OpenAI: '',
       Azure_OpenAI_Endpoint: '',
+      HuggingFace: '',
     },
 
     validate: {
@@ -38,14 +41,24 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
 return (
     <Modal opened={opened} onClose={close} title="ChainForge Settings" closeOnClickOutside={false} style={{position: 'relative', 'left': '-100px'}}>
         <Box maw={380} mx="auto">
+            <Text mb="md" fz="xs" lh={1.15} color='dimmed'>
+                  Note: <b>We do not store your API keys</b> &mdash;not in a cookie, localStorage, or server. 
+                  Because of this, <b>you must set your API keys every time you load ChainForge.</b> If you prefer not to worry about it, 
+                  we recommend <a href="https://github.com/ianarawjo/ChainForge" target="_blank" style={_LINK_STYLE}>installing ChainForge locally</a> and
+                  <a href="https://github.com/ianarawjo/ChainForge/blob/main/INSTALL_GUIDE.md#2-set-api-keys-openai-anthropic-google-palm" target="_blank" style={_LINK_STYLE}> setting your API keys as environment variables.</a>
+            </Text>
             <form onSubmit={form.onSubmit(onSubmit)}>
                 <TextInput
                   label="OpenAI API Key"
-                  description={<span>Note: We do not store your API keys in a cookie or file. 
-                  Because of this, you must set your API keys every time you load ChainForge. 
-                  If you don't want to worry about it, we recommend <a href="https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety" target="_blank" style={{color: '#1E90FF', textDecoration:'none'}}>setting the API key as an environment variable.</a></span>}
                   placeholder="Paste your OpenAI API key here"
                   {...form.getInputProps('OpenAI')}
+                />
+
+                <br />
+                <TextInput
+                  label="HuggingFace API Key"
+                  placeholder="Paste your HuggingFace API key here"
+                  {...form.getInputProps('HuggingFace')}
                 />
 
                 <br />
