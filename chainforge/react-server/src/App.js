@@ -436,7 +436,7 @@ const App = () => {
       const uid = (id) => `${id}-${Date.now()}`;
       setNodes([
         { id: uid('prompt'), type: 'prompt', data: { prompt: 'What is the opening sentence of Pride and Prejudice?', n: 1 }, position: { x: 450, y: 200 } },
-        { id: uid('eval'), type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 820, y: 150 } },
+        { id: uid('eval'), type: 'evaluator', data: { language: "javascript", code: "function evaluate(response) {\n  return response.text.length;\n}" }, position: { x: 820, y: 150 } },
         { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 80, y: 270 } },
         { id: uid('vis'), type: 'vis', data: {}, position: { x: 1200, y: 250 } },
         { id: uid('inspect'), type: 'inspect', data: {}, position: { x:820, y:400 } },

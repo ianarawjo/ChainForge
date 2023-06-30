@@ -2,17 +2,6 @@ import { queryLLM, executejs, executepy, FLASK_BASE_URL,
          fetchExampleFlow, fetchOpenAIEval, importCache, 
          exportCache, countQueries, grabResponses, 
          createProgressFile } from "./backend/backend";
-import { APP_IS_RUNNING_LOCALLY, call_flask_backend } from "./backend/utils";
-
-const BACKEND_TYPES = {
-  FLASK: 'flask',
-  JAVASCRIPT: 'js',
-};
-export let BACKEND_TYPE = BACKEND_TYPES.JAVASCRIPT;
-
-function _route_to_flask_backend(route, params, rejected) {
-  return call_flask_backend(route, params).catch(rejected);
-}
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
@@ -52,18 +41,5 @@ async function _route_to_js_backend(route, params) {
  */
 export default function fetch_from_backend(route, params, rejected) {
   rejected = rejected || ((err) => {throw new Error(err)});
-
-  switch (BACKEND_TYPE) {
-    case BACKEND_TYPES.FLASK:  // Fetch from Flask (python) backend
-      return _route_to_flask_backend(route, params, rejected);
-    case BACKEND_TYPES.JAVASCRIPT:  // Fetch from client-side Javascript 'backend'
-      return _route_to_js_backend(route, params).catch(rejected);
-    default:
-      console.error('Unsupported backend type:', BACKEND_TYPE);
-      break;
-  }
-}
-
-export function set_backend_type(t) {
-  BACKEND_TYPE = t;
+  return _route_to_js_backend(route, params).catch(rejected);
 }

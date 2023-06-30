@@ -1,10 +1,3 @@
-// from abc import abstractmethod
-// from typing import List, Dict, Tuple, Iterator, Union, Optional
-// import json, os, asyncio, random, string
-// from chainforge.promptengine.utils import call_chatgpt, call_dalai, call_anthropic, call_google_palm, call_azure_openai, is_valid_filepath, is_valid_json, extract_responses, merge_response_objs
-// from chainforge.promptengine.models import LLM, RATE_LIMITS
-// from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
-
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, RATE_LIMITS } from './models';
 import { Dict, LLMResponseError, LLMResponseObject, LLMAPICall } from "./typing";
@@ -275,24 +268,3 @@ export class PromptPipeline {
              past_resp_obj };
   }
 }
-
-// """
-//     A dummy class that spoofs LLM responses. Used for testing.
-// """
-// class PromptLLMDummy(PromptLLM):
-//     def __init__(self, template: str, storageFile: str):
-//         # Hijack the 'extract_responses' method so that for whichever 'llm' parameter,
-//         # it will just return the response verbatim (since dummy responses will always be strings)
-//         global extract_responses
-//         extract_responses = lambda response, llm: response
-//         super().__init__(template, storageFile)
-//     async def _prompt_llm(self, llm: LLM, prompt: PromptTemplate, n: int = 1, temperature: float = 1.0, past_resp_obj: Optional[Dict] = None, **params) -> Tuple[Dict, Dict]:
-//         # Wait a random amount of time, to simulate wait times from real queries
-//         await asyncio.sleep(random.uniform(0.1, 3))
-
-//         if random.random() > 0.2:
-//             # Return a random string of characters of random length (within a predefined range)
-//             return prompt, {'prompt': str(prompt)}, [''.join(random.choice(string.ascii_letters) for i in range(random.randint(25, 80))) for _ in range(n)], past_resp_obj
-//         else:
-//             # Return a mock 'error' making the API request
-//             return prompt, None, LLMResponseException('Dummy error'), past_resp_obj

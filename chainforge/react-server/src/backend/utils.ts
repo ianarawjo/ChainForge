@@ -404,9 +404,9 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
 
   // Weirdly, google ignores candidate_count if temperature is 0. 
   // We have to check for this and manually append the n-1 responses:
-  // if n > 1 and temperature == 0 and len(completion_dict['candidates']) == 1:
-  //     copied_candidates = [completion_dict['candidates'][0]] * n
-  //     completion_dict['candidates'] = copied_candidates
+  if (n > 1 && completion.candidates?.length === 1) {
+    completion.candidates = new Array(n).fill(completion.candidates[0]);
+  }
 
   return [query, completion];
 }
