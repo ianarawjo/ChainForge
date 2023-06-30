@@ -654,7 +654,7 @@ const HuggingFaceTextInferenceSettings = {
           "custom_model": {
             "type": "string",
             "title": "Custom HF model endpoint",
-            "description": "(Only used if you select 'Other' above.) Enter the HuggingFace ID of the text generation model you wish to query via the inference API.",
+            "description": "(Only used if you select 'Other' above.) Enter the HuggingFace id of the text generation model you wish to query via the inference API. Alternatively, if you have hosted a model on HF Inference Endpoints, you can enter the full URL of the endpoint here.",
             "default": "",
           },
           "temperature": {
@@ -694,10 +694,18 @@ const HuggingFaceTextInferenceSettings = {
           "max_new_tokens": {
             "type": "integer",
             "title": "max_new_tokens",
-            "description": "The amount of new tokens to be generated, from 0 to 250 tokens. Set to -1 to remain unspecified.",
+            "description": "The amount of new tokens to be generated. Free HF models only support up to 250 tokens. Set to -1 to remain unspecified.",
             "default": -1,
             "minimum": -1,
             "maximum": 250,
+          },
+          "num_continuations": {
+            "type": "integer",
+            "title": "Number of times to continue generation (ChainForge-specific)",
+            "description": "The number of times to feed the model response back into the model, to continue generating text past the 250 token limit per API call. Only useful for text completions models like gpt2. Set to 0 to ignore.",
+            "default": 0,
+            "minimum": 0,
+            "maximum": 6,
           },
           "do_sample": {
             "type": "boolean",
@@ -751,6 +759,9 @@ const HuggingFaceTextInferenceSettings = {
       },
       "max_new_tokens": {
         "ui:help": "Defaults to unspecified (-1)",
+      },
+      "num_continuations": {
+        "ui:widget": "range"
       },
       "do_sample": {
         "ui:widget": "radio"

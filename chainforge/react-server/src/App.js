@@ -450,16 +450,16 @@ const App = () => {
 
   if (!IS_ACCEPTED_BROWSER) {
     return (
-      <Box maw={600}>
-        <Text m='xl' size={12}>We're sorry, but it seems like {isMobile ? "you are viewing ChainForge on a mobile device" : "your current browser isn't supported by the current version of ChainForge"} 😔. 
+      <Box maw={600} mx='auto' mt='40px'>
+        <Text m='xl' size={'11pt'}>We're sorry, but it seems like {isMobile ? "you are viewing ChainForge on a mobile device" : "your current browser isn't supported by the current version of ChainForge"} 😔. 
         We want to provide you with the best experience possible, so we recommend {isMobile ? "viewing ChainForge on a desktop browser" : ""} using one of our supported browsers listed below:</Text>
-        <List m='xl' size={12}>
+        <List m='xl' size={'11pt'}>
           <List.Item>Google Chrome</List.Item>
           <List.Item>Mozilla Firefox</List.Item>
         </List>
   
-        <Text m='xl' size={12}>These browsers offer enhanced compatibility with ChainForge's features. Don't worry, though! We're working to expand our browser support to ensure everyone can enjoy our platform. 😊</Text>
-        <Text m='xl' size={12}>If you have any questions or need assistance, please don't hesitate to reach out on our <a href="https://github.com/ianarawjo/ChainForge/issues">GitHub</a> by <a href="https://github.com/ianarawjo/ChainForge/issues">opening an Issue.</a> 
+        <Text m='xl' size={'11pt'}>These browsers offer enhanced compatibility with ChainForge's features. Don't worry, though! We're working to expand our browser support to ensure everyone can enjoy our platform. 😊</Text>
+        <Text m='xl' size={'11pt'}>If you have any questions or need assistance, please don't hesitate to reach out on our <a href="https://github.com/ianarawjo/ChainForge/issues">GitHub</a> by <a href="https://github.com/ianarawjo/ChainForge/issues">opening an Issue.</a> 
         &nbsp; (If you're a web developer, consider forking our repository and making a <a href="https://github.com/ianarawjo/ChainForge/pulls">Pull Request</a> to support your particular browser.)</Text>
       </Box>
     );

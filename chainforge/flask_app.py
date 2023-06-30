@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from chainforge.promptengine.query import PromptLLM, PromptLLMDummy, LLMResponseException
 from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
-from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys
+from chainforge.promptengine.utils import LLM, is_valid_filepath, get_files_at_dir, create_dir_if_not_exists, set_api_keys, call_dalai
 import requests as py_requests
 
 """ =================
@@ -1154,8 +1154,6 @@ def makeFetchCall():
     headers = data['headers']
     body = data['body']
 
-    print(body)
-
     response = py_requests.post(url, headers=headers, json=body)
 
     if response.status_code == 200:
@@ -1164,6 +1162,30 @@ def makeFetchCall():
         return ret
     else:
         return jsonify({'error': 'API request to Anthropic failed'})
+
+@app.route('/app/callDalai', methods=['POST'])
+async def callDalai():
+    """
+        Fetch response from a Dalai-hosted model (Alpaca or Llama).
+        Requires Python backend since depends on custom library code to extract response.
+
+        POST'd data should be a dict of keyword arguments to provide the call_dalai method.
+    """
+    # Verify post'd data
+    data = request.get_json()
+    if not set(data.keys()).issuperset({'prompt', 'model', 'server', 'n', 'temperature'}):
+        return jsonify({'error': 'POST data is improper format.'})
+
+    data['model'] = LLM_NAME_MAP[data['model']]
+
+    try:
+        query, response = await call_dalai(**data)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+    ret = jsonify({'query': query, 'response': response})
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
 
 def run_server(host="", port=8000, cmd_args=None):
     if cmd_args is not None and cmd_args.dummy_responses:
