@@ -44,14 +44,14 @@ const ORIGINAL_CONSOLE_LOG_FUNCS: Dict = console.log ? {
 } : {};
 let HIJACKED_CONSOLE_LOGS: Dict = {};
 
-function HIJACK_CONSOLE_LOGGING(id: string): void {
+function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
   // This function body is adapted from designbyadrian 
   // @ GitHub: https://gist.github.com/designbyadrian/2eb329c853516cef618a  
   HIJACKED_CONSOLE_LOGS[id] = [];
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.log) {
     let cl = ORIGINAL_CONSOLE_LOG_FUNCS.log;
-    console.log = function() {
+    base_window.console.log = function() {
       const a = Array.from(arguments).map(s => s.toString());
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       cl.apply(this, arguments);
@@ -60,7 +60,7 @@ function HIJACK_CONSOLE_LOGGING(id: string): void {
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.warn) {
     let cw = ORIGINAL_CONSOLE_LOG_FUNCS.warn;
-    console.warn = function() {
+    base_window.console.warn = function() {
       const a = Array.from(arguments).map(s => `warn: ${s.toString()}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       cw.apply(this, arguments);
@@ -69,7 +69,7 @@ function HIJACK_CONSOLE_LOGGING(id: string): void {
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.error) {
     let ce = ORIGINAL_CONSOLE_LOG_FUNCS.error;
-    console.error = function() {
+    base_window.console.error = function() {
       const a = Array.from(arguments).map(s => `error: ${s.toString()}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       ce.apply(this, arguments);
@@ -740,7 +740,8 @@ export async function executejs(id: string,
     try {
       // Intercept any calls to console.log, .warn, or .error, so we can store the calls
       // and print them in the 'output' footer of the Evaluator Node: 
-      HIJACK_CONSOLE_LOGGING(id);
+      // @ts-ignore
+      HIJACK_CONSOLE_LOGGING(id, iframe.contentWindow);
 
       // Run the user-defined 'evaluate' function over the responses: 
       // NOTE: 'evaluate' here was defined dynamically from 'eval' above. We've already checked that it exists. 
@@ -748,9 +749,11 @@ export async function executejs(id: string,
       evald_responses = run_over_responses((iframe ? iframe.contentWindow.evaluate : code), responses, scope);
 
       // Revert the console.log, .warn, .error back to browser default:
-      all_logs = all_logs.concat(REVERT_CONSOLE_LOGGING(id));
+      // @ts-ignore
+      all_logs = all_logs.concat(REVERT_CONSOLE_LOGGING(id, iframe.contentWindow));
     } catch (err) {
-      all_logs = all_logs.concat(REVERT_CONSOLE_LOGGING(id));
+      // @ts-ignore
+      all_logs = all_logs.concat(REVERT_CONSOLE_LOGGING(id, iframe.contentWindow));
       return { error: `Error encountered while trying to run "evaluate" method:\n${err.message}`, logs: all_logs };
     }
 

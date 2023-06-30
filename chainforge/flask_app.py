@@ -1,11 +1,10 @@
 import json, os, asyncio, sys, traceback
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union, List
+from typing import List
 from statistics import mean, median, stdev
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from chainforge.promptengine.template import PromptTemplate, PromptPermutationGenerator
 from chainforge.promptengine.utils import LLM, call_dalai
 import requests as py_requests
 

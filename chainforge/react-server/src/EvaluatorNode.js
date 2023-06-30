@@ -29,9 +29,9 @@ class ResponseInfo {
   var: Dict  // A dictionary of arguments that filled in the prompt template used to generate the final prompt
   meta: Dict  // A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
 
-  toString(): string {
-    return this.text;
-  }
+  // Methods
+  toString(): string // returns this.text
+  asMarkdownAST(): Tokens[]  // runs markdown-it .parse; returns list of markdown nodes
 }`;
 
 const _info_codeblock_py = `
@@ -42,6 +42,7 @@ class ResponseInfo:
   var: dict  # A dictionary of arguments that filled in the prompt template used to generate the final prompt
   meta: dict  # A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
 
+  # Methods
   def __str__(self):
     return self.text
   

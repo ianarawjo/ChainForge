@@ -432,90 +432,13 @@ const PromptNode = ({ data, id }) => {
         };
     };
 
-    // // Open a socket to listen for progress
-    // const open_progress_listener_socket = ([response_counts, total_num_responses]) => {
-    //     // With the counts information we can create progress bars. Now we load a socket connection to 
-    //     // the socketio server that will stream to us the current progress:
-    //     const socket = io('http://localhost:8001/' + 'queryllm', {
-    //         transports: ["websocket"],
-    //         cors: {origin: "http://localhost:8000/"},
-    //     });
-        
-    //     const max_responses = Object.keys(total_num_responses).reduce((acc, llm) => acc + total_num_responses[llm], 0);
-
-    //     // On connect to the server, ask it to give us the current progress 
-    //     // for task 'queryllm' with id 'id', and stop when it reads progress >= 'max'. 
-    //     socket.on("connect", (msg) => {
-    //         if (FINISHED_QUERY) return;
-            
-    //         // Initialize progress bars to small amounts
-    //         setProgress({ success: 2, error: 0 });
-    //         setLLMItems(llmItemsCurrState.map(item => {
-    //             item.progress = { success: 0, error: 0 };
-    //             return item;
-    //         }));
-
-    //         // Request progress bar updates
-    //         socket.emit("queryllm", {'id': id, 'max': max_responses});
-    //     });
-
-    //     // Socket connection could not be established
-    //     socket.on("connect_error", (error) => {
-    //         console.log("Socket connection failed:", error.message);
-    //         socket.disconnect();
-    //     });
-
-    //     // Socket disconnected
-    //     socket.on("disconnect", (msg) => {
-    //         console.log(msg);
-    //     });
-        
-    //     // The current progress, a number specifying how many responses collected so far:
-    //     socket.on("response", (counts) => {
-    //         if (!counts || FINISHED_QUERY) return;
-
-    //         // Update individual progress bars
-    //         const num_llms = llmItemsCurrState.length;
-    //         const num_resp_per_llm = (max_responses / num_llms);
-    //         setLLMItems(llmItemsCurrState.map(item => {
-    //             if (item.key in counts) {
-    //                 item.progress = {
-    //                     success: counts[item.key]['success'] / num_resp_per_llm * 100,
-    //                     error: counts[item.key]['error'] / num_resp_per_llm * 100,
-    //                 }
-    //             }
-    //             return item;
-    //         }));
-            
-    //         // Update total progress bar
-    //         const total_num_success = Object.keys(counts).reduce((acc, llm_key) => {
-    //             return acc + counts[llm_key]['success'];
-    //         }, 0);
-    //         const total_num_error = Object.keys(counts).reduce((acc, llm_key) => {
-    //             return acc + counts[llm_key]['error'];
-    //         }, 0);
-    //         setProgress({
-    //             success: Math.max(5, total_num_success / max_responses * 100),
-    //             error: total_num_error / max_responses * 100 }
-    //         );
-    //     });
-
-    //     // The process has finished; close the connection:
-    //     socket.on("finish", (msg) => {
-    //         console.log("finished:", msg);
-    //         socket.disconnect();
-    //     });
-    // };
-
-    const clone = (obj) => JSON.parse(JSON.stringify(obj));
-
     // Run all prompt permutations through the LLM to generate + cache responses:
     const query_llms = () => {
         return fetch_from_backend('queryllm', {
             id: id,
-            llm: clone(llmItemsCurrState),  // deep clone it first
+            llm: llmItemsCurrState,  // deep clone it first
             prompt: py_prompt_template,
-            vars: clone(pulled_data),
+            vars: pulled_data,
             n: numGenerations,
             api_keys: (apiKeys ? apiKeys : {}),
             no_cache: false,

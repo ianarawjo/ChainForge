@@ -20,6 +20,7 @@ import ScriptNode from './ScriptNode';
 import AlertModal from './AlertModal';
 import CsvNode from './CsvNode';
 import TabularDataNode from './TabularDataNode';
+import CommentNode from './CommentNode';
 import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
 import AreYouSureModal from './AreYouSureModal';
@@ -59,6 +60,7 @@ const nodeTypes = {
   script: ScriptNode,
   csv: CsvNode,
   table: TabularDataNode,
+  comment: CommentNode,
 };
 
 // Whether we are running on localhost or not, and hence whether
@@ -144,6 +146,10 @@ const App = () => {
   const addTabularDataNode = (event) => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'table-'+Date.now(), type: 'table', data: {}, position: {x: x-200, y:y-100} });
+  };
+  const addCommentNode = (event) => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'comment-'+Date.now(), type: 'comment', data: {}, position: {x: x-200, y:y-100} });
   };
 
   const onClickExamples = () => {
@@ -512,7 +518,10 @@ const App = () => {
               <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
               <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>
               <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
-              <Menu.Item onClick={addScriptNode} icon={<IconSettingsAutomation size="16px" />}> Global Scripts </Menu.Item>
+              <Menu.Item onClick={addCommentNode} icon={'✏️'}> Comment Node </Menu.Item>
+              {IS_RUNNING_LOCALLY ? (
+                <Menu.Item onClick={addScriptNode} icon={<IconSettingsAutomation size="16px" />}> Global Python Scripts </Menu.Item>
+              ): <></>}
           </Menu.Dropdown>
         </Menu>
         <Button onClick={exportFlow} size="sm" variant="outline" compact mr='xs'>Export</Button>

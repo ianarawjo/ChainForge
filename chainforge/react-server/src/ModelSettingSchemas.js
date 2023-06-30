@@ -10,16 +10,20 @@
  * Descriptions of OpenAI model parameters copied from OpenAI's official chat completions documentation: https://platform.openai.com/docs/models/model-endpoint-compatibility
  */
 
+import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
+
 // Available LLMs in ChainForge, in the format expected by LLMListItems.
-export const AvailableLLMs = [
+export let AvailableLLMs = [
   { name: "GPT3.5", emoji: "🤖", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
   { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
-  { name: "Alpaca.7B", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 },
   { name: "Claude", emoji: "📚", model: "claude-v1", base_model: "claude-v1", temp: 0.5 },
   { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
   { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
   { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
 ];
+if (APP_IS_RUNNING_LOCALLY()) {
+  AvailableLLMs.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
+}
 
 const filterDict = (dict, keyFilterFunc) => {
   return Object.keys(dict).reduce((acc, key) => {
