@@ -10,15 +10,20 @@
  * Descriptions of OpenAI model parameters copied from OpenAI's official chat completions documentation: https://platform.openai.com/docs/models/model-endpoint-compatibility
  */
 
+import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
+
 // Available LLMs in ChainForge, in the format expected by LLMListItems.
-export const AvailableLLMs = [
-  { name: "GPT3.5", emoji: "🙂", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
+export let AvailableLLMs = [
+  { name: "GPT3.5", emoji: "🤖", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
   { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
-  { name: "Alpaca.7B", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 },
   { name: "Claude", emoji: "📚", model: "claude-v1", base_model: "claude-v1", temp: 0.5 },
   { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
   { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
+  { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
 ];
+if (APP_IS_RUNNING_LOCALLY()) {
+  AvailableLLMs.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
+}
 
 const filterDict = (dict, keyFilterFunc) => {
   return Object.keys(dict).reduce((acc, key) => {
@@ -629,6 +634,151 @@ const AzureOpenAISettings = {
   postprocessors: ChatGPTSettings.postprocessors,
 };
 
+const HuggingFaceTextInferenceSettings = {
+  fullName: "HuggingFace-hosted text generation models",
+  schema: {
+      "type": "object",
+      "required": [
+          "shortname",
+      ],
+      "properties": {
+          "shortname": {
+              "type": "string",
+              "title": "Nickname",
+              "description": "Unique identifier to appear in ChainForge. Keep it short.",
+              "default": "Falcon.7B",
+          },
+          "model": {
+              "type": "string",
+              "title": "Model",
+              "description": "Select a suggested HuggingFace-hosted model to query using the Inference API. For more details, check out https://huggingface.co/inference-api",
+              "enum": ["gpt2", "bigscience/bloom-560m", "tiiuae/falcon-7b-instruct", "bigcode/santacoder", "bigcode/starcoder", "Other (HuggingFace)"],
+              "default": "tiiuae/falcon-7b-instruct",
+          },
+          "custom_model": {
+            "type": "string",
+            "title": "Custom HF model endpoint",
+            "description": "(Only used if you select 'Other' above.) Enter the HuggingFace id of the text generation model you wish to query via the inference API. Alternatively, if you have hosted a model on HF Inference Endpoints, you can enter the full URL of the endpoint here.",
+            "default": "",
+          },
+          "temperature": {
+              "type": "number",
+              "title": "temperature",
+              "description": "Controls the 'creativity' or randomness of the response.",
+              "default": 1.0,
+              "minimum": 0,
+              "maximum": 5.0,
+              "multipleOf": 0.01,
+          },
+          "top_k": {
+            "type": "integer",
+            "title": "top_k",
+            "description": "Sets the maximum number of tokens to sample from on each step. Set to -1 to remain unspecified.",
+            "minimum": -1,
+            "default": -1,
+          },
+          "top_p": {
+              "type": "number",
+              "title": "top_p",
+              "description": "Sets the maximum cumulative probability of tokens to sample from (from 0 to 1.0). Set to -1 to remain unspecified.",
+              "default": -1,
+              "minimum": -1,
+              "maximum": 1,
+              "multipleOf": 0.001,
+          },
+          "repetition_penalty": {
+            "type": "number",
+            "title": "repetition_penalty",
+            "description": "The more a token is used within generation the more it is penalized to not be picked in successive generation passes. Set to -1 to remain unspecified.",
+            "minimum": -1,
+            "default": -1,
+            "maximum": 100,
+            "multipleOf": 0.01,
+          },
+          "max_new_tokens": {
+            "type": "integer",
+            "title": "max_new_tokens",
+            "description": "The amount of new tokens to be generated. Free HF models only support up to 250 tokens. Set to -1 to remain unspecified.",
+            "default": -1,
+            "minimum": -1,
+            "maximum": 250,
+          },
+          "num_continuations": {
+            "type": "integer",
+            "title": "Number of times to continue generation (ChainForge-specific)",
+            "description": "The number of times to feed the model response back into the model, to continue generating text past the 250 token limit per API call. Only useful for text completions models like gpt2. Set to 0 to ignore.",
+            "default": 0,
+            "minimum": 0,
+            "maximum": 6,
+          },
+          "do_sample": {
+            "type": "boolean",
+            "title": "do_sample",
+            "description": "Whether or not to use sampling. Default is True; uses greedy decoding otherwise.",
+            "enum": [true, false],
+            "default": true,
+          },
+          "use_cache": {
+            "type": "boolean",
+            "title": "use_cache",
+            "description": "Whether or not to fetch from HF's cache. There is a cache layer on the inference API to speedup requests HF has already seen. Most models can use those results as is as models are deterministic (meaning the results will be the same anyway). However if you use a non-deterministic model, you can set this parameter to prevent the caching mechanism from being used resulting in a real new query.",
+            "enum": [true, false],
+            "default": false,
+          },
+      }
+  },
+
+  uiSchema: {
+      'ui:submitButtonOptions': {
+          props: {
+            disabled: false,
+            className: 'mantine-UnstyledButton-root mantine-Button-root',
+          },
+          norender: false,
+          submitText: 'Submit',
+      },
+      "shortname": {
+        "ui:autofocus": true
+      },
+      "model": {
+          "ui:help": "Defaults to Falcon.7B."    
+      },
+      "temperature": {
+        "ui:help": "Defaults to 1.0.",
+        "ui:widget": "range"
+      },
+      "max_new_tokens": {
+          "ui:help": "Defaults to unspecified (-1)"
+      },
+      "top_k": {
+          "ui:help": "Defaults to unspecified (-1)"
+      },
+      "top_p": {
+        "ui:help": "Defaults to unspecified (-1)",
+        "ui:widget": "range"
+      },
+      "repetition_penalty": {
+        "ui:help": "Defaults to unspecified (-1)",
+        "ui:widget": "range"
+      },
+      "max_new_tokens": {
+        "ui:help": "Defaults to unspecified (-1)",
+      },
+      "num_continuations": {
+        "ui:widget": "range"
+      },
+      "do_sample": {
+        "ui:widget": "radio"
+      },
+      "use_cache": {
+        "ui:widget": "radio",
+        "ui:help": "Defaults to false in ChainForge. This differs from the HuggingFace docs, as CF's intended use case is evaluation, and for evaluation we want different responses each query."
+      }
+  },
+
+  postprocessors: {}
+};
+
 // A lookup table indexed by base_model. 
 export const ModelSettings = {
   'gpt-3.5-turbo': ChatGPTSettings,
@@ -637,6 +787,7 @@ export const ModelSettings = {
   'palm2-bison': PaLM2Settings,
   'dalai': DalaiModelSettings,
   'azure-openai': AzureOpenAISettings,
+  'hf': HuggingFaceTextInferenceSettings,
 };
 
 export const getTemperatureSpecForModel = (modelName) => {

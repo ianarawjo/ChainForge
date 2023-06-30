@@ -3,67 +3,97 @@
     "nodes": [
       {
         "width": 312,
-        "height": 457,
+        "height": 393,
         "data": {
           "fields": [
             {
-              "text": "[[FUNCTION]] get_current_weather{\n  \"location\": \"Boston\",\n  \"format\": \"celsius\"\n}",
+              "text": "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Boston, MA\"\n}",
               "fill_history": {
                 "prompt": "What's the weather like in Boston?"
+              },
+              "metavars": {
+                "LLM_0": "gpt3.5-turbo-0613"
               }
             },
             {
-              "text": "I'm sorry, but I don't have access to that information.",
+              "text": "The movie \"Twister\" was directed by Jan de Bont.",
               "fill_history": {
-                "prompt": "Who directed the movie Tornado?"
+                "prompt": "Who directed the movie Twister?"
+              },
+              "metavars": {
+                "LLM_0": "gpt3.5-turbo-0613"
               }
             },
             {
-              "text": "Thunderstorms are caused by the rapid upward movement of warm, moist air and the subsequent condensation of water vapor. They typically occur in areas with unstable atmospheric conditions, where there is a significant amount of moisture and atmospheric instability. When warm air rises, it cools and condenses, forming cumulus clouds. As the upward movement continues, the clouds grow taller and larger, eventually reaching levels where ice crystals and water droplets coexist. The collisions between these particles within the cloud create an electrical charge. When the charge imbalance becomes significant, it is discharged in the form of lightning, which is followed by the characteristic sound of thunder. Thunderstorms can also be influenced by other factors such as atmospheric pressure and wind patterns.",
+              "text": "Thunderstorms are caused by the rapid upward movement of warm, moist air, which then cools and condenses, forming cumulonimbus clouds. These clouds contain large amounts of water vapor, ice, and electrically charged particles. As the air continues to rise, the water droplets and ice particles within the clouds collide, leading to the development of strong updrafts and downdrafts. The movement of these particles within the cloud generates electrical charges, resulting in the formation of lightning. The rapid expansion and contraction of the air around the lightning bolt creates a shock wave that we hear as thunder.",
               "fill_history": {
                 "prompt": "What causes thunderstorms?"
+              },
+              "metavars": {
+                "LLM_0": "gpt3.5-turbo-0613"
               }
             },
             {
-              "text": "[[FUNCTION]] get_current_weather{\n  \"location\": \"Nairobi, Kenya\",\n  \"format\": \"celsius\"\n}",
+              "text": "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Kenya\"\n}",
               "fill_history": {
                 "prompt": "What is the typical temperature in Kenya in June?"
+              },
+              "metavars": {
+                "LLM_0": "gpt3.5-turbo-0613"
               }
             },
             {
-              "text": "[[FUNCTION]] get_current_weather{\n  \"location\": \"Hawaii\",\n  \"format\": \"celsius\"\n}",
+              "text": "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Honolulu, HI\"\n}",
               "fill_history": {
                 "prompt": "What is the average temperature in Hawaii in December?"
+              },
+              "metavars": {
+                "LLM_0": "gpt3.5-turbo-0613"
               }
             },
             {
               "text": "I'm sorry, I cannot provide real-time information as I do not have access to live data. However, you can check reliable weather websites or applications for up-to-date information about the weather in Boston.",
               "fill_history": {
                 "prompt": "What's the weather like in Boston?"
-              }
-            },
-            {
-              "text": "The 1996 movie \"Tornado\" was directed by Noel Nosseck.",
-              "fill_history": {
-                "prompt": "Who directed the movie Tornado?"
+              },
+              "metavars": {
+                "LLM_0": "old-gpt3.5"
               }
             },
             {
               "text": "Thunderstorms are caused by the rapid upward movement of warm, moist air, which creates unstable atmospheric conditions. As the warm air rises, it cools and forms cumulonimbus clouds, which are the towering dark clouds that typically come to mind when thinking of a thunderstorm. Within these clouds, a variety of atmospheric conditions exist that can cause the development of lightning, thunder, heavy rain, hail, and tornadoes. The exact cause of a thunderstorm can vary depending on the location, time of year, and other environmental factors.",
               "fill_history": {
                 "prompt": "What causes thunderstorms?"
+              },
+              "metavars": {
+                "LLM_0": "old-gpt3.5"
               }
             },
             {
               "text": "The typical temperature in Kenya in June varies depending on the region, but generally, temperatures range from 19°C (66°F) to 30°C (86°F). In some parts of the country, particularly in areas of higher elevation, temperatures may be cooler, while in areas closer to the equator temperatures can be quite hot.",
               "fill_history": {
                 "prompt": "What is the typical temperature in Kenya in June?"
+              },
+              "metavars": {
+                "LLM_0": "old-gpt3.5"
               }
             },
             {
               "text": "The average temperature in Hawaii in December is around 77°F (25°C) during the day and 66°F (19°C) at night.",
               "fill_history": {
                 "prompt": "What is the average temperature in Hawaii in December?"
+              },
+              "metavars": {
+                "LLM_0": "old-gpt3.5"
+              }
+            },
+            {
+              "text": "The movie \"Twister\" was directed by Jan de Bont.",
+              "fill_history": {
+                "prompt": "Who directed the movie Twister?"
+              },
+              "metavars": {
+                "LLM_0": "old-gpt3.5"
               }
             }
           ],
@@ -117,8 +147,6 @@
                   }
                 ],
                 "presence_penalty": 0,
-                "stop": [],
-                "system_msg": "You are a helpful assistant.",
                 "temperature": 1,
                 "top_p": 1
               },
@@ -128,29 +156,25 @@
               "base_model": "gpt-3.5-turbo",
               "emoji": "🙂",
               "formData": {
-                "shortname": "old-gpt3.5",
+                "frequency_penalty": 0,
+                "function_call": "",
+                "functions": "",
                 "model": "gpt-3.5-turbo",
+                "presence_penalty": 0,
+                "shortname": "old-gpt3.5",
+                "stop": "",
                 "system_msg": "You are a helpful assistant.",
                 "temperature": 1,
-                "functions": "",
-                "function_call": "",
-                "top_p": 1,
-                "stop": "",
-                "presence_penalty": 0,
-                "frequency_penalty": 0
+                "top_p": 1
               },
               "key": "fead74ce-615a-4812-869d-9735d9d985de",
               "model": "gpt-3.5-turbo",
               "name": "old-gpt3.5",
               "settings": {
-                "system_msg": "You are a helpful assistant.",
-                "temperature": 1,
-                "functions": [],
-                "function_call": "",
-                "top_p": 1,
-                "stop": [],
+                "frequency_penalty": 0,
                 "presence_penalty": 0,
-                "frequency_penalty": 0
+                "temperature": 1,
+                "top_p": 1
               },
               "temp": 1
             }
@@ -172,38 +196,26 @@
         "type": "prompt"
       },
       {
-        "width": 333,
-        "height": 184,
+        "width": 644,
+        "height": 520,
         "data": {
-          "code": "def evaluate(response):\n  return response.text.startswith(\"[[FUNCTION]]\")"
-        },
-        "dragging": false,
-        "id": "eval-1686689549227",
-        "position": {
-          "x": 832,
-          "y": 128
-        },
-        "positionAbsolute": {
-          "x": 832,
-          "y": 128
-        },
-        "selected": true,
-        "type": "evaluator"
-      },
-      {
-        "width": 722,
-        "height": 546,
-        "data": {
-          "input": "eval-1686689549227",
+          "input": "evalNode-1688060142717",
           "refresh": false,
           "selected_vars": [
             "prompt"
           ],
           "title": "Whether the prompt triggered the function call 'get_current_weather'",
           "vars": [
+            "LLM (default)",
             {
-              "label": "prompt",
-              "value": "prompt"
+              "value": "prompt",
+              "label": "prompt"
+            }
+          ],
+          "llm_groups": [
+            {
+              "value": "LLM",
+              "label": "LLM"
             }
           ]
         },
@@ -221,8 +233,8 @@
         "type": "vis"
       },
       {
-        "width": 294,
-        "height": 357,
+        "width": 302,
+        "height": 260,
         "data": {
           "input": "prompt-1686689549227",
           "refresh": false
@@ -230,12 +242,12 @@
         "dragging": false,
         "id": "inspectNode-1686689970738",
         "position": {
-          "x": 864,
-          "y": 368
+          "x": 832,
+          "y": 384
         },
         "positionAbsolute": {
-          "x": 864,
-          "y": 368
+          "x": 832,
+          "y": 384
         },
         "selected": false,
         "type": "inspect"
@@ -246,7 +258,7 @@
         "data": {
           "fields": {
             "f1": "What's the weather like in Boston?",
-            "f2": "Who directed the movie Tornado?",
+            "f2": "Who directed the movie Twister?",
             "f3": "What causes thunderstorms?",
             "f4": "What is the typical temperature in Kenya in June?",
             "f5": "What is the average temperature in Hawaii in December?"
@@ -265,6 +277,26 @@
         },
         "selected": false,
         "type": "textfields"
+      },
+      {
+        "width": 359,
+        "height": 221,
+        "id": "evalNode-1688060142717",
+        "type": "evaluator",
+        "data": {
+          "language": "javascript",
+          "code": "function evaluate(response) {\n  return response.text.startsWith(\n    \"[[FUNCTION]]\"\n  );\n}"
+        },
+        "position": {
+          "x": 832,
+          "y": 144
+        },
+        "selected": true,
+        "positionAbsolute": {
+          "x": 832,
+          "y": 144
+        },
+        "dragging": false
       }
     ],
     "edges": [
@@ -319,489 +351,454 @@
         "sourceHandle": "output",
         "target": "vis-1686689549227",
         "targetHandle": "input"
+      },
+      {
+        "source": "prompt-1686689549227",
+        "sourceHandle": "prompt",
+        "target": "evalNode-1688060142717",
+        "targetHandle": "responseBatch",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-prompt-1686689549227prompt-evalNode-1688060142717responseBatch"
+      },
+      {
+        "source": "evalNode-1688060142717",
+        "sourceHandle": "output",
+        "target": "vis-1686689549227",
+        "targetHandle": "input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-evalNode-1688060142717output-vis-1686689549227input"
       }
     ],
     "viewport": {
-      "x": 3,
-      "y": 25,
+      "x": -89,
+      "y": 83,
       "zoom": 1
     }
   },
   "cache": {
-    "eval-1686689549227.json": [
-      {
-        "eval_res": {
-          "dtype": "Categorical",
-          "items": [
-            true
-          ]
-        },
-        "llm": "gpt3.5-turbo-0613",
-        "metavars": {},
+    "prompt-1686689549227_6.json": {
+      "What's the weather like in Boston?": {
         "prompt": "What's the weather like in Boston?",
-        "responses": [
-          "[[FUNCTION]] get_current_weather{\n  \"location\": \"Boston\",\n  \"format\": \"celsius\"\n}"
-        ],
-        "tokens": {
-          "completion_tokens": 24,
-          "prompt_tokens": 98,
-          "total_tokens": 122
+        "query": {
+          "model": "gpt-3.5-turbo-0613",
+          "n": 1,
+          "temperature": 1,
+          "frequency_penalty": 0,
+          "function_call": "auto",
+          "functions": [
+            {
+              "description": "Get the current weather",
+              "name": "get_current_weather",
+              "parameters": {
+                "properties": {
+                  "format": {
+                    "description": "The temperature unit to use. Infer this from the users location.",
+                    "enum": [
+                      "celsius",
+                      "fahrenheit"
+                    ],
+                    "type": "string"
+                  },
+                  "location": {
+                    "description": "The city and state, e.g. San Francisco, CA",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "location",
+                  "format"
+                ],
+                "type": "object"
+              }
+            }
+          ],
+          "presence_penalty": 0,
+          "top_p": 1,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "What's the weather like in Boston?"
+            }
+          ]
         },
-        "vars": {
+        "responses": [
+          "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Boston, MA\"\n}"
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7WprHWqiuPcjBcxrmxg45tolyLbHK",
+          "object": "chat.completion",
+          "created": 1688060195,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                  "name": "get_current_weather",
+                  "arguments": "{\n  \"format\": \"celsius\",\n  \"location\": \"Boston, MA\"\n}"
+                }
+              },
+              "finish_reason": "function_call"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 98,
+            "completion_tokens": 26,
+            "total_tokens": 124
+          }
+        },
+        "llm": "gpt3.5-turbo-0613",
+        "info": {
           "prompt": "What's the weather like in Boston?"
+        },
+        "metavars": {
+          "LLM_0": "gpt3.5-turbo-0613"
         }
       },
-      {
-        "eval_res": {
-          "dtype": "Categorical",
-          "items": [
-            false
+      "Who directed the movie Twister?": {
+        "prompt": "Who directed the movie Twister?",
+        "query": {
+          "model": "gpt-3.5-turbo-0613",
+          "n": 1,
+          "temperature": 1,
+          "frequency_penalty": 0,
+          "function_call": "auto",
+          "functions": [
+            {
+              "description": "Get the current weather",
+              "name": "get_current_weather",
+              "parameters": {
+                "properties": {
+                  "format": {
+                    "description": "The temperature unit to use. Infer this from the users location.",
+                    "enum": [
+                      "celsius",
+                      "fahrenheit"
+                    ],
+                    "type": "string"
+                  },
+                  "location": {
+                    "description": "The city and state, e.g. San Francisco, CA",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "location",
+                  "format"
+                ],
+                "type": "object"
+              }
+            }
+          ],
+          "presence_penalty": 0,
+          "top_p": 1,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "Who directed the movie Twister?"
+            }
           ]
         },
-        "llm": "gpt3.5-turbo-0613",
-        "metavars": {},
-        "prompt": "Who directed the movie Tornado?",
         "responses": [
-          "I'm sorry, but I don't have access to that information."
+          "The movie \"Twister\" was directed by Jan de Bont."
         ],
-        "tokens": {
-          "completion_tokens": 15,
-          "prompt_tokens": 97,
-          "total_tokens": 112
-        },
-        "vars": {
-          "prompt": "Who directed the movie Tornado?"
-        }
-      },
-      {
-        "eval_res": {
-          "dtype": "Categorical",
-          "items": [
-            false
-          ]
+        "raw_response": {
+          "id": "chatcmpl-7WprJS1TxKFYodJryajN6WIP4NA7s",
+          "object": "chat.completion",
+          "created": 1688060197,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The movie \"Twister\" was directed by Jan de Bont."
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 97,
+            "completion_tokens": 15,
+            "total_tokens": 112
+          }
         },
         "llm": "gpt3.5-turbo-0613",
-        "metavars": {},
+        "info": {
+          "prompt": "Who directed the movie Twister?"
+        },
+        "metavars": {
+          "LLM_0": "gpt3.5-turbo-0613"
+        }
+      },
+      "What causes thunderstorms?": {
         "prompt": "What causes thunderstorms?",
-        "responses": [
-          "Thunderstorms are caused by the rapid upward movement of warm, moist air and the subsequent condensation of water vapor. They typically occur in areas with unstable atmospheric conditions, where there is a significant amount of moisture and atmospheric instability. When warm air rises, it cools and condenses, forming cumulus clouds. As the upward movement continues, the clouds grow taller and larger, eventually reaching levels where ice crystals and water droplets coexist. The collisions between these particles within the cloud create an electrical charge. When the charge imbalance becomes significant, it is discharged in the form of lightning, which is followed by the characteristic sound of thunder. Thunderstorms can also be influenced by other factors such as atmospheric pressure and wind patterns."
-        ],
-        "tokens": {
-          "completion_tokens": 145,
-          "prompt_tokens": 95,
-          "total_tokens": 240
-        },
-        "vars": {
-          "prompt": "What causes thunderstorms?"
-        }
-      },
-      {
-        "eval_res": {
-          "dtype": "Categorical",
-          "items": [
-            true
+        "query": {
+          "model": "gpt-3.5-turbo-0613",
+          "n": 1,
+          "temperature": 1,
+          "frequency_penalty": 0,
+          "function_call": "auto",
+          "functions": [
+            {
+              "description": "Get the current weather",
+              "name": "get_current_weather",
+              "parameters": {
+                "properties": {
+                  "format": {
+                    "description": "The temperature unit to use. Infer this from the users location.",
+                    "enum": [
+                      "celsius",
+                      "fahrenheit"
+                    ],
+                    "type": "string"
+                  },
+                  "location": {
+                    "description": "The city and state, e.g. San Francisco, CA",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "location",
+                  "format"
+                ],
+                "type": "object"
+              }
+            }
+          ],
+          "presence_penalty": 0,
+          "top_p": 1,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "What causes thunderstorms?"
+            }
           ]
+        },
+        "responses": [
+          "Thunderstorms are caused by the rapid upward movement of warm, moist air, which then cools and condenses, forming cumulonimbus clouds. These clouds contain large amounts of water vapor, ice, and electrically charged particles. As the air continues to rise, the water droplets and ice particles within the clouds collide, leading to the development of strong updrafts and downdrafts. The movement of these particles within the cloud generates electrical charges, resulting in the formation of lightning. The rapid expansion and contraction of the air around the lightning bolt creates a shock wave that we hear as thunder."
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7WprKCpTroyKv5DTgRFskAovs7pbO",
+          "object": "chat.completion",
+          "created": 1688060198,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "Thunderstorms are caused by the rapid upward movement of warm, moist air, which then cools and condenses, forming cumulonimbus clouds. These clouds contain large amounts of water vapor, ice, and electrically charged particles. As the air continues to rise, the water droplets and ice particles within the clouds collide, leading to the development of strong updrafts and downdrafts. The movement of these particles within the cloud generates electrical charges, resulting in the formation of lightning. The rapid expansion and contraction of the air around the lightning bolt creates a shock wave that we hear as thunder."
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 95,
+            "completion_tokens": 123,
+            "total_tokens": 218
+          }
         },
         "llm": "gpt3.5-turbo-0613",
-        "metavars": {},
-        "prompt": "What is the typical temperature in Kenya in June?",
-        "responses": [
-          "[[FUNCTION]] get_current_weather{\n  \"location\": \"Nairobi, Kenya\",\n  \"format\": \"celsius\"\n}"
-        ],
-        "tokens": {
-          "completion_tokens": 27,
-          "prompt_tokens": 100,
-          "total_tokens": 127
+        "info": {
+          "prompt": "What causes thunderstorms?"
         },
-        "vars": {
-          "prompt": "What is the typical temperature in Kenya in June?"
+        "metavars": {
+          "LLM_0": "gpt3.5-turbo-0613"
         }
       },
-      {
-        "eval_res": {
-          "dtype": "Categorical",
-          "items": [
-            true
+      "What is the typical temperature in Kenya in June?": {
+        "prompt": "What is the typical temperature in Kenya in June?",
+        "query": {
+          "model": "gpt-3.5-turbo-0613",
+          "n": 1,
+          "temperature": 1,
+          "frequency_penalty": 0,
+          "function_call": "auto",
+          "functions": [
+            {
+              "description": "Get the current weather",
+              "name": "get_current_weather",
+              "parameters": {
+                "properties": {
+                  "format": {
+                    "description": "The temperature unit to use. Infer this from the users location.",
+                    "enum": [
+                      "celsius",
+                      "fahrenheit"
+                    ],
+                    "type": "string"
+                  },
+                  "location": {
+                    "description": "The city and state, e.g. San Francisco, CA",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "location",
+                  "format"
+                ],
+                "type": "object"
+              }
+            }
+          ],
+          "presence_penalty": 0,
+          "top_p": 1,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "What is the typical temperature in Kenya in June?"
+            }
           ]
+        },
+        "responses": [
+          "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Kenya\"\n}"
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7WprP14IkWO9tugoobEIllKmtPfvf",
+          "object": "chat.completion",
+          "created": 1688060203,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                  "name": "get_current_weather",
+                  "arguments": "{\n  \"format\": \"celsius\",\n  \"location\": \"Kenya\"\n}"
+                }
+              },
+              "finish_reason": "function_call"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 100,
+            "completion_tokens": 25,
+            "total_tokens": 125
+          }
         },
         "llm": "gpt3.5-turbo-0613",
-        "metavars": {},
-        "prompt": "What is the average temperature in Hawaii in December?",
-        "responses": [
-          "[[FUNCTION]] get_current_weather{\n  \"location\": \"Hawaii\",\n  \"format\": \"celsius\"\n}"
-        ],
-        "tokens": {
-          "completion_tokens": 25,
-          "prompt_tokens": 100,
-          "total_tokens": 125
-        },
-        "vars": {
-          "prompt": "What is the average temperature in Hawaii in December?"
-        }
-      },
-      {
-        "eval_res": {
-          "dtype": "Categorical",
-          "items": [
-            false
-          ]
-        },
-        "llm": "old-gpt3.5",
-        "metavars": {},
-        "prompt": "What's the weather like in Boston?",
-        "responses": [
-          "I'm sorry, I cannot provide real-time information as I do not have access to live data. However, you can check reliable weather websites or applications for up-to-date information about the weather in Boston."
-        ],
-        "tokens": {
-          "completion_tokens": 41,
-          "prompt_tokens": 27,
-          "total_tokens": 68
-        },
-        "vars": {
-          "prompt": "What's the weather like in Boston?"
-        }
-      },
-      {
-        "eval_res": {
-          "dtype": "Categorical",
-          "items": [
-            false
-          ]
-        },
-        "llm": "old-gpt3.5",
-        "metavars": {},
-        "prompt": "Who directed the movie Tornado?",
-        "responses": [
-          "The 1996 movie \"Tornado\" was directed by Noel Nosseck."
-        ],
-        "tokens": {
-          "completion_tokens": 17,
-          "prompt_tokens": 26,
-          "total_tokens": 43
-        },
-        "vars": {
-          "prompt": "Who directed the movie Tornado?"
-        }
-      },
-      {
-        "eval_res": {
-          "dtype": "Categorical",
-          "items": [
-            false
-          ]
-        },
-        "llm": "old-gpt3.5",
-        "metavars": {},
-        "prompt": "What causes thunderstorms?",
-        "responses": [
-          "Thunderstorms are caused by the rapid upward movement of warm, moist air, which creates unstable atmospheric conditions. As the warm air rises, it cools and forms cumulonimbus clouds, which are the towering dark clouds that typically come to mind when thinking of a thunderstorm. Within these clouds, a variety of atmospheric conditions exist that can cause the development of lightning, thunder, heavy rain, hail, and tornadoes. The exact cause of a thunderstorm can vary depending on the location, time of year, and other environmental factors."
-        ],
-        "tokens": {
-          "completion_tokens": 108,
-          "prompt_tokens": 24,
-          "total_tokens": 132
-        },
-        "vars": {
-          "prompt": "What causes thunderstorms?"
-        }
-      },
-      {
-        "eval_res": {
-          "dtype": "Categorical",
-          "items": [
-            false
-          ]
-        },
-        "llm": "old-gpt3.5",
-        "metavars": {},
-        "prompt": "What is the typical temperature in Kenya in June?",
-        "responses": [
-          "The typical temperature in Kenya in June varies depending on the region, but generally, temperatures range from 19°C (66°F) to 30°C (86°F). In some parts of the country, particularly in areas of higher elevation, temperatures may be cooler, while in areas closer to the equator temperatures can be quite hot."
-        ],
-        "tokens": {
-          "completion_tokens": 67,
-          "prompt_tokens": 29,
-          "total_tokens": 96
-        },
-        "vars": {
+        "info": {
           "prompt": "What is the typical temperature in Kenya in June?"
+        },
+        "metavars": {
+          "LLM_0": "gpt3.5-turbo-0613"
         }
       },
-      {
-        "eval_res": {
-          "dtype": "Categorical",
-          "items": [
-            false
+      "What is the average temperature in Hawaii in December?": {
+        "prompt": "What is the average temperature in Hawaii in December?",
+        "query": {
+          "model": "gpt-3.5-turbo-0613",
+          "n": 1,
+          "temperature": 1,
+          "frequency_penalty": 0,
+          "function_call": "auto",
+          "functions": [
+            {
+              "description": "Get the current weather",
+              "name": "get_current_weather",
+              "parameters": {
+                "properties": {
+                  "format": {
+                    "description": "The temperature unit to use. Infer this from the users location.",
+                    "enum": [
+                      "celsius",
+                      "fahrenheit"
+                    ],
+                    "type": "string"
+                  },
+                  "location": {
+                    "description": "The city and state, e.g. San Francisco, CA",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "location",
+                  "format"
+                ],
+                "type": "object"
+              }
+            }
+          ],
+          "presence_penalty": 0,
+          "top_p": 1,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "What is the average temperature in Hawaii in December?"
+            }
           ]
         },
-        "llm": "old-gpt3.5",
-        "metavars": {},
-        "prompt": "What is the average temperature in Hawaii in December?",
         "responses": [
-          "The average temperature in Hawaii in December is around 77°F (25°C) during the day and 66°F (19°C) at night."
+          "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Honolulu, HI\"\n}"
         ],
-        "tokens": {
-          "completion_tokens": 30,
-          "prompt_tokens": 29,
-          "total_tokens": 59
+        "raw_response": {
+          "id": "chatcmpl-7WprR8fKdPbiiKfpGNlzxp5rmGDDg",
+          "object": "chat.completion",
+          "created": 1688060205,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                  "name": "get_current_weather",
+                  "arguments": "{\n  \"format\": \"celsius\",\n  \"location\": \"Honolulu, HI\"\n}"
+                }
+              },
+              "finish_reason": "function_call"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 100,
+            "completion_tokens": 27,
+            "total_tokens": 127
+          }
         },
-        "vars": {
+        "llm": "gpt3.5-turbo-0613",
+        "info": {
           "prompt": "What is the average temperature in Hawaii in December?"
+        },
+        "metavars": {
+          "LLM_0": "gpt3.5-turbo-0613"
         }
       }
-    ],
-    "inspectNode-1686689970738.json": {},
-    "prompt-1686689549227.json": {
-      "cache_files": {
-        "prompt-1686689549227_4.json": {
-          "base_model": "gpt-3.5-turbo",
-          "emoji": "🙂",
-          "formData": {
-            "frequency_penalty": 0,
-            "function_call": "",
-            "functions": "",
-            "model": "gpt-3.5-turbo",
-            "presence_penalty": 0,
-            "shortname": "old-gpt3.5",
-            "stop": "",
-            "system_msg": "You are a helpful assistant.",
-            "temperature": 1,
-            "top_p": 1
-          },
-          "key": "fead74ce-615a-4812-869d-9735d9d985de",
-          "model": "gpt-3.5-turbo",
-          "name": "old-gpt3.5",
-          "settings": {
-            "frequency_penalty": 0,
-            "function_call": "",
-            "functions": [],
-            "presence_penalty": 0,
-            "stop": [],
-            "system_msg": "You are a helpful assistant.",
-            "temperature": 1,
-            "top_p": 1
-          },
-          "temp": 1
-        },
-        "prompt-1686689549227_5.json": {
-          "base_model": "gpt-3.5-turbo",
-          "emoji": "🌦️",
-          "formData": {
-            "frequency_penalty": 0,
-            "function_call": "auto",
-            "functions": "[\n    {\n        \"name\": \"get_current_weather\",\n        \"description\": \"Get the current weather\",\n        \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"location\": {\n                    \"type\": \"string\",\n                    \"description\": \"The city and state, e.g. San Francisco, CA\"\n                },\n                \"format\": {\n                    \"type\": \"string\",\n                    \"enum\": [\"celsius\", \"fahrenheit\"],\n                    \"description\": \"The temperature unit to use. Infer this from the users location.\"\n                }\n            },\n            \"required\": [\"location\", \"format\"]\n        }\n    }\n]",
-            "model": "gpt-3.5-turbo-0613",
-            "presence_penalty": 0,
-            "shortname": "gpt3.5-turbo-0613",
-            "stop": "",
-            "system_msg": "You are a helpful assistant.",
-            "temperature": 1,
-            "top_p": 1
-          },
-          "key": "af7031af-96ae-44b8-bcc4-3538f3174b73",
-          "model": "gpt-3.5-turbo-0613",
-          "name": "gpt3.5-turbo-0613",
-          "settings": {
-            "frequency_penalty": 0,
-            "function_call": "auto",
-            "functions": [
-              {
-                "description": "Get the current weather",
-                "name": "get_current_weather",
-                "parameters": {
-                  "properties": {
-                    "format": {
-                      "description": "The temperature unit to use. Infer this from the users location.",
-                      "enum": [
-                        "celsius",
-                        "fahrenheit"
-                      ],
-                      "type": "string"
-                    },
-                    "location": {
-                      "description": "The city and state, e.g. San Francisco, CA",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "location",
-                    "format"
-                  ],
-                  "type": "object"
-                }
-              }
-            ],
-            "presence_penalty": 0,
-            "stop": [],
-            "system_msg": "You are a helpful assistant.",
-            "temperature": 1,
-            "top_p": 1
-          },
-          "temp": 1
-        }
-      },
-      "responses_last_run": [
-        {
-          "llm": "gpt3.5-turbo-0613",
-          "metavars": {},
-          "prompt": "What's the weather like in Boston?",
-          "responses": [
-            "[[FUNCTION]] get_current_weather{\n  \"location\": \"Boston\",\n  \"format\": \"celsius\"\n}"
-          ],
-          "tokens": {
-            "completion_tokens": 24,
-            "prompt_tokens": 98,
-            "total_tokens": 122
-          },
-          "vars": {
-            "prompt": "What's the weather like in Boston?"
-          }
-        },
-        {
-          "llm": "gpt3.5-turbo-0613",
-          "metavars": {},
-          "prompt": "Who directed the movie Tornado?",
-          "responses": [
-            "I'm sorry, but I don't have access to that information."
-          ],
-          "tokens": {
-            "completion_tokens": 15,
-            "prompt_tokens": 97,
-            "total_tokens": 112
-          },
-          "vars": {
-            "prompt": "Who directed the movie Tornado?"
-          }
-        },
-        {
-          "llm": "gpt3.5-turbo-0613",
-          "metavars": {},
-          "prompt": "What causes thunderstorms?",
-          "responses": [
-            "Thunderstorms are caused by the rapid upward movement of warm, moist air and the subsequent condensation of water vapor. They typically occur in areas with unstable atmospheric conditions, where there is a significant amount of moisture and atmospheric instability. When warm air rises, it cools and condenses, forming cumulus clouds. As the upward movement continues, the clouds grow taller and larger, eventually reaching levels where ice crystals and water droplets coexist. The collisions between these particles within the cloud create an electrical charge. When the charge imbalance becomes significant, it is discharged in the form of lightning, which is followed by the characteristic sound of thunder. Thunderstorms can also be influenced by other factors such as atmospheric pressure and wind patterns."
-          ],
-          "tokens": {
-            "completion_tokens": 145,
-            "prompt_tokens": 95,
-            "total_tokens": 240
-          },
-          "vars": {
-            "prompt": "What causes thunderstorms?"
-          }
-        },
-        {
-          "llm": "gpt3.5-turbo-0613",
-          "metavars": {},
-          "prompt": "What is the typical temperature in Kenya in June?",
-          "responses": [
-            "[[FUNCTION]] get_current_weather{\n  \"location\": \"Nairobi, Kenya\",\n  \"format\": \"celsius\"\n}"
-          ],
-          "tokens": {
-            "completion_tokens": 27,
-            "prompt_tokens": 100,
-            "total_tokens": 127
-          },
-          "vars": {
-            "prompt": "What is the typical temperature in Kenya in June?"
-          }
-        },
-        {
-          "llm": "gpt3.5-turbo-0613",
-          "metavars": {},
-          "prompt": "What is the average temperature in Hawaii in December?",
-          "responses": [
-            "[[FUNCTION]] get_current_weather{\n  \"location\": \"Hawaii\",\n  \"format\": \"celsius\"\n}"
-          ],
-          "tokens": {
-            "completion_tokens": 25,
-            "prompt_tokens": 100,
-            "total_tokens": 125
-          },
-          "vars": {
-            "prompt": "What is the average temperature in Hawaii in December?"
-          }
-        },
-        {
-          "llm": "old-gpt3.5",
-          "metavars": {},
-          "prompt": "What's the weather like in Boston?",
-          "responses": [
-            "I'm sorry, I cannot provide real-time information as I do not have access to live data. However, you can check reliable weather websites or applications for up-to-date information about the weather in Boston."
-          ],
-          "tokens": {
-            "completion_tokens": 41,
-            "prompt_tokens": 27,
-            "total_tokens": 68
-          },
-          "vars": {
-            "prompt": "What's the weather like in Boston?"
-          }
-        },
-        {
-          "llm": "old-gpt3.5",
-          "metavars": {},
-          "prompt": "Who directed the movie Tornado?",
-          "responses": [
-            "The 1996 movie \"Tornado\" was directed by Noel Nosseck."
-          ],
-          "tokens": {
-            "completion_tokens": 17,
-            "prompt_tokens": 26,
-            "total_tokens": 43
-          },
-          "vars": {
-            "prompt": "Who directed the movie Tornado?"
-          }
-        },
-        {
-          "llm": "old-gpt3.5",
-          "metavars": {},
-          "prompt": "What causes thunderstorms?",
-          "responses": [
-            "Thunderstorms are caused by the rapid upward movement of warm, moist air, which creates unstable atmospheric conditions. As the warm air rises, it cools and forms cumulonimbus clouds, which are the towering dark clouds that typically come to mind when thinking of a thunderstorm. Within these clouds, a variety of atmospheric conditions exist that can cause the development of lightning, thunder, heavy rain, hail, and tornadoes. The exact cause of a thunderstorm can vary depending on the location, time of year, and other environmental factors."
-          ],
-          "tokens": {
-            "completion_tokens": 108,
-            "prompt_tokens": 24,
-            "total_tokens": 132
-          },
-          "vars": {
-            "prompt": "What causes thunderstorms?"
-          }
-        },
-        {
-          "llm": "old-gpt3.5",
-          "metavars": {},
-          "prompt": "What is the typical temperature in Kenya in June?",
-          "responses": [
-            "The typical temperature in Kenya in June varies depending on the region, but generally, temperatures range from 19°C (66°F) to 30°C (86°F). In some parts of the country, particularly in areas of higher elevation, temperatures may be cooler, while in areas closer to the equator temperatures can be quite hot."
-          ],
-          "tokens": {
-            "completion_tokens": 67,
-            "prompt_tokens": 29,
-            "total_tokens": 96
-          },
-          "vars": {
-            "prompt": "What is the typical temperature in Kenya in June?"
-          }
-        },
-        {
-          "llm": "old-gpt3.5",
-          "metavars": {},
-          "prompt": "What is the average temperature in Hawaii in December?",
-          "responses": [
-            "The average temperature in Hawaii in December is around 77°F (25°C) during the day and 66°F (19°C) at night."
-          ],
-          "tokens": {
-            "completion_tokens": 30,
-            "prompt_tokens": 29,
-            "total_tokens": 59
-          },
-          "vars": {
-            "prompt": "What is the average temperature in Hawaii in December?"
-          }
-        }
-      ]
     },
     "prompt-1686689549227_4.json": {
       "What causes thunderstorms?": {
@@ -1151,495 +1148,570 @@
         "responses": [
           "The 1996 movie \"Tornado\" was directed by Noel Nosseck."
         ]
+      },
+      "Who directed the movie Twister?": {
+        "prompt": "Who directed the movie Twister?",
+        "query": {
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "temperature": 1,
+          "frequency_penalty": 0,
+          "presence_penalty": 0,
+          "top_p": 1,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "Who directed the movie Twister?"
+            }
+          ]
+        },
+        "responses": [
+          "The movie \"Twister\" was directed by Jan de Bont."
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7WprHzPMNAUbxvRIe6T6HYW36X331",
+          "object": "chat.completion",
+          "created": 1688060195,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The movie \"Twister\" was directed by Jan de Bont."
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 24,
+            "completion_tokens": 14,
+            "total_tokens": 38
+          }
+        },
+        "llm": "old-gpt3.5",
+        "info": {
+          "prompt": "Who directed the movie Twister?"
+        },
+        "metavars": {
+          "LLM_0": "old-gpt3.5"
+        }
       }
     },
-    "prompt-1686689549227_5.json": {
-      "What causes thunderstorms?": {
-        "info": {
-          "prompt": "What causes thunderstorms?"
-        },
-        "llm": "gpt3.5-turbo-0613",
-        "metavars": {},
-        "prompt": "What causes thunderstorms?",
-        "query": {
-          "frequency_penalty": 0,
-          "function_call": "auto",
-          "functions": [
-            {
-              "description": "Get the current weather",
-              "name": "get_current_weather",
-              "parameters": {
-                "properties": {
-                  "format": {
-                    "description": "The temperature unit to use. Infer this from the users location.",
-                    "enum": [
-                      "celsius",
-                      "fahrenheit"
-                    ],
-                    "type": "string"
+    "prompt-1686689549227.json": {
+      "cache_files": {
+        "prompt-1686689549227_6.json": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🌦️",
+          "formData": {
+            "frequency_penalty": 0,
+            "function_call": "auto",
+            "functions": "[\n    {\n        \"name\": \"get_current_weather\",\n        \"description\": \"Get the current weather\",\n        \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"location\": {\n                    \"type\": \"string\",\n                    \"description\": \"The city and state, e.g. San Francisco, CA\"\n                },\n                \"format\": {\n                    \"type\": \"string\",\n                    \"enum\": [\"celsius\", \"fahrenheit\"],\n                    \"description\": \"The temperature unit to use. Infer this from the users location.\"\n                }\n            },\n            \"required\": [\"location\", \"format\"]\n        }\n    }\n]",
+            "model": "gpt-3.5-turbo-0613",
+            "presence_penalty": 0,
+            "shortname": "gpt3.5-turbo-0613",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "key": "af7031af-96ae-44b8-bcc4-3538f3174b73",
+          "model": "gpt-3.5-turbo-0613",
+          "name": "gpt3.5-turbo-0613",
+          "settings": {
+            "frequency_penalty": 0,
+            "function_call": "auto",
+            "functions": [
+              {
+                "description": "Get the current weather",
+                "name": "get_current_weather",
+                "parameters": {
+                  "properties": {
+                    "format": {
+                      "description": "The temperature unit to use. Infer this from the users location.",
+                      "enum": [
+                        "celsius",
+                        "fahrenheit"
+                      ],
+                      "type": "string"
+                    },
+                    "location": {
+                      "description": "The city and state, e.g. San Francisco, CA",
+                      "type": "string"
+                    }
                   },
-                  "location": {
-                    "description": "The city and state, e.g. San Francisco, CA",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "location",
-                  "format"
-                ],
-                "type": "object"
+                  "required": [
+                    "location",
+                    "format"
+                  ],
+                  "type": "object"
+                }
               }
-            }
-          ],
-          "messages": [
-            {
-              "content": "You are a helpful assistant.",
-              "role": "system"
-            },
-            {
-              "content": "What causes thunderstorms?",
-              "role": "user"
-            }
-          ],
-          "model": "gpt-3.5-turbo-0613",
-          "n": 1,
-          "presence_penalty": 0,
-          "temperature": 1,
-          "top_p": 1
+            ],
+            "presence_penalty": 0,
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1
         },
-        "raw_response": {
-          "choices": [
-            {
-              "finish_reason": "stop",
-              "index": 0,
-              "message": {
-                "content": "Thunderstorms are caused by the rapid upward movement of warm, moist air and the subsequent condensation of water vapor. They typically occur in areas with unstable atmospheric conditions, where there is a significant amount of moisture and atmospheric instability. When warm air rises, it cools and condenses, forming cumulus clouds. As the upward movement continues, the clouds grow taller and larger, eventually reaching levels where ice crystals and water droplets coexist. The collisions between these particles within the cloud create an electrical charge. When the charge imbalance becomes significant, it is discharged in the form of lightning, which is followed by the characteristic sound of thunder. Thunderstorms can also be influenced by other factors such as atmospheric pressure and wind patterns.",
-                "role": "assistant"
-              }
-            }
-          ],
-          "created": 1686690692,
-          "id": "chatcmpl-7R5aWVDCeCqLiq5nhSM2vMxtIld93",
-          "model": "gpt-3.5-turbo-0613",
-          "object": "chat.completion",
-          "usage": {
-            "completion_tokens": 145,
-            "prompt_tokens": 95,
-            "total_tokens": 240
-          }
-        },
-        "responses": [
-          "Thunderstorms are caused by the rapid upward movement of warm, moist air and the subsequent condensation of water vapor. They typically occur in areas with unstable atmospheric conditions, where there is a significant amount of moisture and atmospheric instability. When warm air rises, it cools and condenses, forming cumulus clouds. As the upward movement continues, the clouds grow taller and larger, eventually reaching levels where ice crystals and water droplets coexist. The collisions between these particles within the cloud create an electrical charge. When the charge imbalance becomes significant, it is discharged in the form of lightning, which is followed by the characteristic sound of thunder. Thunderstorms can also be influenced by other factors such as atmospheric pressure and wind patterns."
-        ]
+        "prompt-1686689549227_4.json": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "function_call": "",
+            "functions": "",
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "old-gpt3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "key": "fead74ce-615a-4812-869d-9735d9d985de",
+          "model": "gpt-3.5-turbo",
+          "name": "old-gpt3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1
+        }
       },
-      "What is the average temperature in Hawaii in December?": {
-        "info": {
-          "prompt": "What is the average temperature in Hawaii in December?"
-        },
-        "llm": "gpt-3.5-turbo-0613",
-        "metavars": {},
-        "prompt": "What is the average temperature in Hawaii in December?",
-        "query": {
-          "frequency_penalty": 0,
-          "function_call": "auto",
-          "functions": [
-            {
-              "description": "Get the current weather",
-              "name": "get_current_weather",
-              "parameters": {
-                "properties": {
-                  "format": {
-                    "description": "The temperature unit to use. Infer this from the users location.",
-                    "enum": [
-                      "celsius",
-                      "fahrenheit"
-                    ],
-                    "type": "string"
-                  },
-                  "location": {
-                    "description": "The city and state, e.g. San Francisco, CA",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "location",
-                  "format"
-                ],
-                "type": "object"
-              }
-            }
+      "responses_last_run": [
+        {
+          "vars": {
+            "prompt": "What's the weather like in Boston?"
+          },
+          "metavars": {
+            "LLM_0": "gpt3.5-turbo-0613"
+          },
+          "llm": "gpt3.5-turbo-0613",
+          "prompt": "What's the weather like in Boston?",
+          "responses": [
+            "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Boston, MA\"\n}"
           ],
-          "messages": [
-            {
-              "content": "You are a helpful assistant.",
-              "role": "system"
-            },
-            {
-              "content": "What is the average temperature in Hawaii in December?",
-              "role": "user"
-            }
-          ],
-          "model": "gpt-3.5-turbo-0613",
-          "n": 1,
-          "presence_penalty": 0,
-          "temperature": 1,
-          "top_p": 1
-        },
-        "raw_response": {
-          "choices": [
-            {
-              "finish_reason": "function_call",
-              "index": 0,
-              "message": {
-                "content": null,
-                "function_call": {
-                  "arguments": "{\n  \"location\": \"Hawaii\",\n  \"format\": \"celsius\"\n}",
-                  "name": "get_current_weather"
-                },
-                "role": "assistant"
-              }
-            }
-          ],
-          "created": 1686690979,
-          "id": "chatcmpl-7R5f9oi5YtOwpqqE0qBgs6gFklNMm",
-          "model": "gpt-3.5-turbo-0613",
-          "object": "chat.completion",
-          "usage": {
-            "completion_tokens": 25,
-            "prompt_tokens": 100,
-            "total_tokens": 125
-          }
-        },
-        "responses": [
-          "[[FUNCTION]] get_current_weather{\n  \"location\": \"Hawaii\",\n  \"format\": \"celsius\"\n}"
-        ]
-      },
-      "What is the typical temperature in Hawaii in December?": {
-        "info": {
-          "prompt": "What is the typical temperature in Hawaii in December?"
-        },
-        "llm": "gpt-3.5-turbo-0613",
-        "metavars": {},
-        "prompt": "What is the typical temperature in Hawaii in December?",
-        "query": {
-          "frequency_penalty": 0,
-          "function_call": "auto",
-          "functions": [
-            {
-              "description": "Get the current weather",
-              "name": "get_current_weather",
-              "parameters": {
-                "properties": {
-                  "format": {
-                    "description": "The temperature unit to use. Infer this from the users location.",
-                    "enum": [
-                      "celsius",
-                      "fahrenheit"
-                    ],
-                    "type": "string"
-                  },
-                  "location": {
-                    "description": "The city and state, e.g. San Francisco, CA",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "location",
-                  "format"
-                ],
-                "type": "object"
-              }
-            }
-          ],
-          "messages": [
-            {
-              "content": "You are a helpful assistant.",
-              "role": "system"
-            },
-            {
-              "content": "What is the typical temperature in Hawaii in December?",
-              "role": "user"
-            }
-          ],
-          "model": "gpt-3.5-turbo-0613",
-          "n": 1,
-          "presence_penalty": 0,
-          "temperature": 1,
-          "top_p": 1
-        },
-        "raw_response": {
-          "choices": [
-            {
-              "finish_reason": "function_call",
-              "index": 0,
-              "message": {
-                "content": null,
-                "function_call": {
-                  "arguments": "{\n  \"location\": \"Hawaii\",\n  \"format\": \"celsius\"\n}",
-                  "name": "get_current_weather"
-                },
-                "role": "assistant"
-              }
-            }
-          ],
-          "created": 1686690881,
-          "id": "chatcmpl-7R5dZ2EZgRMufviicrIm9yWH6GOp9",
-          "model": "gpt-3.5-turbo-0613",
-          "object": "chat.completion",
-          "usage": {
-            "completion_tokens": 25,
-            "prompt_tokens": 100,
-            "total_tokens": 125
-          }
-        },
-        "responses": [
-          "[[FUNCTION]] get_current_weather{\n  \"location\": \"Hawaii\",\n  \"format\": \"celsius\"\n}"
-        ]
-      },
-      "What is the typical temperature in Kenya in June?": {
-        "info": {
-          "prompt": "What is the typical temperature in Kenya in June?"
-        },
-        "llm": "gpt-3.5-turbo-0613",
-        "metavars": {},
-        "prompt": "What is the typical temperature in Kenya in June?",
-        "query": {
-          "frequency_penalty": 0,
-          "function_call": "auto",
-          "functions": [
-            {
-              "description": "Get the current weather",
-              "name": "get_current_weather",
-              "parameters": {
-                "properties": {
-                  "format": {
-                    "description": "The temperature unit to use. Infer this from the users location.",
-                    "enum": [
-                      "celsius",
-                      "fahrenheit"
-                    ],
-                    "type": "string"
-                  },
-                  "location": {
-                    "description": "The city and state, e.g. San Francisco, CA",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "location",
-                  "format"
-                ],
-                "type": "object"
-              }
-            }
-          ],
-          "messages": [
-            {
-              "content": "You are a helpful assistant.",
-              "role": "system"
-            },
-            {
-              "content": "What is the typical temperature in Kenya in June?",
-              "role": "user"
-            }
-          ],
-          "model": "gpt-3.5-turbo-0613",
-          "n": 1,
-          "presence_penalty": 0,
-          "temperature": 1,
-          "top_p": 1
-        },
-        "raw_response": {
-          "choices": [
-            {
-              "finish_reason": "function_call",
-              "index": 0,
-              "message": {
-                "content": null,
-                "function_call": {
-                  "arguments": "{\n  \"location\": \"Nairobi, Kenya\",\n  \"format\": \"celsius\"\n}",
-                  "name": "get_current_weather"
-                },
-                "role": "assistant"
-              }
-            }
-          ],
-          "created": 1686690694,
-          "id": "chatcmpl-7R5aY2BBGJu9E7GLbca28SDSGEWUT",
-          "model": "gpt-3.5-turbo-0613",
-          "object": "chat.completion",
-          "usage": {
-            "completion_tokens": 27,
-            "prompt_tokens": 100,
-            "total_tokens": 127
-          }
-        },
-        "responses": [
-          "[[FUNCTION]] get_current_weather{\n  \"location\": \"Nairobi, Kenya\",\n  \"format\": \"celsius\"\n}"
-        ]
-      },
-      "What's the weather like in Boston?": {
-        "info": {
-          "prompt": "What's the weather like in Boston?"
-        },
-        "llm": "gpt3.5-turbo-0613",
-        "metavars": {},
-        "prompt": "What's the weather like in Boston?",
-        "query": {
-          "frequency_penalty": 0,
-          "function_call": "auto",
-          "functions": [
-            {
-              "description": "Get the current weather",
-              "name": "get_current_weather",
-              "parameters": {
-                "properties": {
-                  "format": {
-                    "description": "The temperature unit to use. Infer this from the users location.",
-                    "enum": [
-                      "celsius",
-                      "fahrenheit"
-                    ],
-                    "type": "string"
-                  },
-                  "location": {
-                    "description": "The city and state, e.g. San Francisco, CA",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "location",
-                  "format"
-                ],
-                "type": "object"
-              }
-            }
-          ],
-          "messages": [
-            {
-              "content": "You are a helpful assistant.",
-              "role": "system"
-            },
-            {
-              "content": "What's the weather like in Boston?",
-              "role": "user"
-            }
-          ],
-          "model": "gpt-3.5-turbo-0613",
-          "n": 1,
-          "presence_penalty": 0,
-          "temperature": 1,
-          "top_p": 1
-        },
-        "raw_response": {
-          "choices": [
-            {
-              "finish_reason": "function_call",
-              "index": 0,
-              "message": {
-                "content": null,
-                "function_call": {
-                  "arguments": "{\n  \"location\": \"Boston\",\n  \"format\": \"celsius\"\n}",
-                  "name": "get_current_weather"
-                },
-                "role": "assistant"
-              }
-            }
-          ],
-          "created": 1686690691,
-          "id": "chatcmpl-7R5aVbDQZoyzzrX0AbGSryXSdHk7a",
-          "model": "gpt-3.5-turbo-0613",
-          "object": "chat.completion",
-          "usage": {
-            "completion_tokens": 24,
+          "tokens": {
             "prompt_tokens": 98,
-            "total_tokens": 122
+            "completion_tokens": 26,
+            "total_tokens": 124
           }
         },
-        "responses": [
-          "[[FUNCTION]] get_current_weather{\n  \"location\": \"Boston\",\n  \"format\": \"celsius\"\n}"
-        ]
-      },
-      "Who directed the movie Tornado?": {
-        "info": {
-          "prompt": "Who directed the movie Tornado?"
-        },
-        "llm": "gpt3.5-turbo-0613",
-        "metavars": {},
-        "prompt": "Who directed the movie Tornado?",
-        "query": {
-          "frequency_penalty": 0,
-          "function_call": "auto",
-          "functions": [
-            {
-              "description": "Get the current weather",
-              "name": "get_current_weather",
-              "parameters": {
-                "properties": {
-                  "format": {
-                    "description": "The temperature unit to use. Infer this from the users location.",
-                    "enum": [
-                      "celsius",
-                      "fahrenheit"
-                    ],
-                    "type": "string"
-                  },
-                  "location": {
-                    "description": "The city and state, e.g. San Francisco, CA",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "location",
-                  "format"
-                ],
-                "type": "object"
-              }
-            }
+        {
+          "vars": {
+            "prompt": "Who directed the movie Twister?"
+          },
+          "metavars": {
+            "LLM_0": "gpt3.5-turbo-0613"
+          },
+          "llm": "gpt3.5-turbo-0613",
+          "prompt": "Who directed the movie Twister?",
+          "responses": [
+            "The movie \"Twister\" was directed by Jan de Bont."
           ],
-          "messages": [
-            {
-              "content": "You are a helpful assistant.",
-              "role": "system"
-            },
-            {
-              "content": "Who directed the movie Tornado?",
-              "role": "user"
-            }
-          ],
-          "model": "gpt-3.5-turbo-0613",
-          "n": 1,
-          "presence_penalty": 0,
-          "temperature": 1,
-          "top_p": 1
-        },
-        "raw_response": {
-          "choices": [
-            {
-              "finish_reason": "stop",
-              "index": 0,
-              "message": {
-                "content": "I'm sorry, but I don't have access to that information.",
-                "role": "assistant"
-              }
-            }
-          ],
-          "created": 1686690692,
-          "id": "chatcmpl-7R5aWk0UUySuw1unsAD4fNzxz2UNe",
-          "model": "gpt-3.5-turbo-0613",
-          "object": "chat.completion",
-          "usage": {
-            "completion_tokens": 15,
+          "tokens": {
             "prompt_tokens": 97,
+            "completion_tokens": 15,
             "total_tokens": 112
           }
         },
-        "responses": [
-          "I'm sorry, but I don't have access to that information."
-        ]
-      }
+        {
+          "vars": {
+            "prompt": "What causes thunderstorms?"
+          },
+          "metavars": {
+            "LLM_0": "gpt3.5-turbo-0613"
+          },
+          "llm": "gpt3.5-turbo-0613",
+          "prompt": "What causes thunderstorms?",
+          "responses": [
+            "Thunderstorms are caused by the rapid upward movement of warm, moist air, which then cools and condenses, forming cumulonimbus clouds. These clouds contain large amounts of water vapor, ice, and electrically charged particles. As the air continues to rise, the water droplets and ice particles within the clouds collide, leading to the development of strong updrafts and downdrafts. The movement of these particles within the cloud generates electrical charges, resulting in the formation of lightning. The rapid expansion and contraction of the air around the lightning bolt creates a shock wave that we hear as thunder."
+          ],
+          "tokens": {
+            "prompt_tokens": 95,
+            "completion_tokens": 123,
+            "total_tokens": 218
+          }
+        },
+        {
+          "vars": {
+            "prompt": "What is the typical temperature in Kenya in June?"
+          },
+          "metavars": {
+            "LLM_0": "gpt3.5-turbo-0613"
+          },
+          "llm": "gpt3.5-turbo-0613",
+          "prompt": "What is the typical temperature in Kenya in June?",
+          "responses": [
+            "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Kenya\"\n}"
+          ],
+          "tokens": {
+            "prompt_tokens": 100,
+            "completion_tokens": 25,
+            "total_tokens": 125
+          }
+        },
+        {
+          "vars": {
+            "prompt": "What is the average temperature in Hawaii in December?"
+          },
+          "metavars": {
+            "LLM_0": "gpt3.5-turbo-0613"
+          },
+          "llm": "gpt3.5-turbo-0613",
+          "prompt": "What is the average temperature in Hawaii in December?",
+          "responses": [
+            "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Honolulu, HI\"\n}"
+          ],
+          "tokens": {
+            "prompt_tokens": 100,
+            "completion_tokens": 27,
+            "total_tokens": 127
+          }
+        },
+        {
+          "vars": {
+            "prompt": "What's the weather like in Boston?"
+          },
+          "metavars": {
+            "LLM_0": "old-gpt3.5"
+          },
+          "llm": "old-gpt3.5",
+          "prompt": "What's the weather like in Boston?",
+          "responses": [
+            "I'm sorry, I cannot provide real-time information as I do not have access to live data. However, you can check reliable weather websites or applications for up-to-date information about the weather in Boston."
+          ],
+          "tokens": {
+            "completion_tokens": 41,
+            "prompt_tokens": 27,
+            "total_tokens": 68
+          }
+        },
+        {
+          "vars": {
+            "prompt": "What causes thunderstorms?"
+          },
+          "metavars": {
+            "LLM_0": "old-gpt3.5"
+          },
+          "llm": "old-gpt3.5",
+          "prompt": "What causes thunderstorms?",
+          "responses": [
+            "Thunderstorms are caused by the rapid upward movement of warm, moist air, which creates unstable atmospheric conditions. As the warm air rises, it cools and forms cumulonimbus clouds, which are the towering dark clouds that typically come to mind when thinking of a thunderstorm. Within these clouds, a variety of atmospheric conditions exist that can cause the development of lightning, thunder, heavy rain, hail, and tornadoes. The exact cause of a thunderstorm can vary depending on the location, time of year, and other environmental factors."
+          ],
+          "tokens": {
+            "completion_tokens": 108,
+            "prompt_tokens": 24,
+            "total_tokens": 132
+          }
+        },
+        {
+          "vars": {
+            "prompt": "What is the typical temperature in Kenya in June?"
+          },
+          "metavars": {
+            "LLM_0": "old-gpt3.5"
+          },
+          "llm": "old-gpt3.5",
+          "prompt": "What is the typical temperature in Kenya in June?",
+          "responses": [
+            "The typical temperature in Kenya in June varies depending on the region, but generally, temperatures range from 19°C (66°F) to 30°C (86°F). In some parts of the country, particularly in areas of higher elevation, temperatures may be cooler, while in areas closer to the equator temperatures can be quite hot."
+          ],
+          "tokens": {
+            "completion_tokens": 67,
+            "prompt_tokens": 29,
+            "total_tokens": 96
+          }
+        },
+        {
+          "vars": {
+            "prompt": "What is the average temperature in Hawaii in December?"
+          },
+          "metavars": {
+            "LLM_0": "old-gpt3.5"
+          },
+          "llm": "old-gpt3.5",
+          "prompt": "What is the average temperature in Hawaii in December?",
+          "responses": [
+            "The average temperature in Hawaii in December is around 77°F (25°C) during the day and 66°F (19°C) at night."
+          ],
+          "tokens": {
+            "completion_tokens": 30,
+            "prompt_tokens": 29,
+            "total_tokens": 59
+          }
+        },
+        {
+          "vars": {
+            "prompt": "Who directed the movie Twister?"
+          },
+          "metavars": {
+            "LLM_0": "old-gpt3.5"
+          },
+          "llm": "old-gpt3.5",
+          "prompt": "Who directed the movie Twister?",
+          "responses": [
+            "The movie \"Twister\" was directed by Jan de Bont."
+          ],
+          "tokens": {
+            "prompt_tokens": 24,
+            "completion_tokens": 14,
+            "total_tokens": 38
+          }
+        }
+      ]
     },
+    "vis-1686689549227.json": {},
+    "inspectNode-1686689970738.json": {},
     "textFieldsNode-1686690525665.json": {},
-    "vis-1686689549227.json": {}
+    "evalNode-1688060142717.json": [
+      {
+        "vars": {
+          "prompt": "What's the weather like in Boston?"
+        },
+        "metavars": {
+          "LLM_0": "gpt3.5-turbo-0613"
+        },
+        "llm": "gpt3.5-turbo-0613",
+        "prompt": "What's the weather like in Boston?",
+        "responses": [
+          "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Boston, MA\"\n}"
+        ],
+        "tokens": {
+          "prompt_tokens": 98,
+          "completion_tokens": 26,
+          "total_tokens": 124
+        },
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "prompt": "Who directed the movie Twister?"
+        },
+        "metavars": {
+          "LLM_0": "gpt3.5-turbo-0613"
+        },
+        "llm": "gpt3.5-turbo-0613",
+        "prompt": "Who directed the movie Twister?",
+        "responses": [
+          "The movie \"Twister\" was directed by Jan de Bont."
+        ],
+        "tokens": {
+          "prompt_tokens": 97,
+          "completion_tokens": 15,
+          "total_tokens": 112
+        },
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "prompt": "What causes thunderstorms?"
+        },
+        "metavars": {
+          "LLM_0": "gpt3.5-turbo-0613"
+        },
+        "llm": "gpt3.5-turbo-0613",
+        "prompt": "What causes thunderstorms?",
+        "responses": [
+          "Thunderstorms are caused by the rapid upward movement of warm, moist air, which then cools and condenses, forming cumulonimbus clouds. These clouds contain large amounts of water vapor, ice, and electrically charged particles. As the air continues to rise, the water droplets and ice particles within the clouds collide, leading to the development of strong updrafts and downdrafts. The movement of these particles within the cloud generates electrical charges, resulting in the formation of lightning. The rapid expansion and contraction of the air around the lightning bolt creates a shock wave that we hear as thunder."
+        ],
+        "tokens": {
+          "prompt_tokens": 95,
+          "completion_tokens": 123,
+          "total_tokens": 218
+        },
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "prompt": "What is the typical temperature in Kenya in June?"
+        },
+        "metavars": {
+          "LLM_0": "gpt3.5-turbo-0613"
+        },
+        "llm": "gpt3.5-turbo-0613",
+        "prompt": "What is the typical temperature in Kenya in June?",
+        "responses": [
+          "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Kenya\"\n}"
+        ],
+        "tokens": {
+          "prompt_tokens": 100,
+          "completion_tokens": 25,
+          "total_tokens": 125
+        },
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "prompt": "What is the average temperature in Hawaii in December?"
+        },
+        "metavars": {
+          "LLM_0": "gpt3.5-turbo-0613"
+        },
+        "llm": "gpt3.5-turbo-0613",
+        "prompt": "What is the average temperature in Hawaii in December?",
+        "responses": [
+          "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Honolulu, HI\"\n}"
+        ],
+        "tokens": {
+          "prompt_tokens": 100,
+          "completion_tokens": 27,
+          "total_tokens": 127
+        },
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "prompt": "What's the weather like in Boston?"
+        },
+        "metavars": {
+          "LLM_0": "old-gpt3.5"
+        },
+        "llm": "old-gpt3.5",
+        "prompt": "What's the weather like in Boston?",
+        "responses": [
+          "I'm sorry, I cannot provide real-time information as I do not have access to live data. However, you can check reliable weather websites or applications for up-to-date information about the weather in Boston."
+        ],
+        "tokens": {
+          "completion_tokens": 41,
+          "prompt_tokens": 27,
+          "total_tokens": 68
+        },
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "prompt": "What causes thunderstorms?"
+        },
+        "metavars": {
+          "LLM_0": "old-gpt3.5"
+        },
+        "llm": "old-gpt3.5",
+        "prompt": "What causes thunderstorms?",
+        "responses": [
+          "Thunderstorms are caused by the rapid upward movement of warm, moist air, which creates unstable atmospheric conditions. As the warm air rises, it cools and forms cumulonimbus clouds, which are the towering dark clouds that typically come to mind when thinking of a thunderstorm. Within these clouds, a variety of atmospheric conditions exist that can cause the development of lightning, thunder, heavy rain, hail, and tornadoes. The exact cause of a thunderstorm can vary depending on the location, time of year, and other environmental factors."
+        ],
+        "tokens": {
+          "completion_tokens": 108,
+          "prompt_tokens": 24,
+          "total_tokens": 132
+        },
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "prompt": "What is the typical temperature in Kenya in June?"
+        },
+        "metavars": {
+          "LLM_0": "old-gpt3.5"
+        },
+        "llm": "old-gpt3.5",
+        "prompt": "What is the typical temperature in Kenya in June?",
+        "responses": [
+          "The typical temperature in Kenya in June varies depending on the region, but generally, temperatures range from 19°C (66°F) to 30°C (86°F). In some parts of the country, particularly in areas of higher elevation, temperatures may be cooler, while in areas closer to the equator temperatures can be quite hot."
+        ],
+        "tokens": {
+          "completion_tokens": 67,
+          "prompt_tokens": 29,
+          "total_tokens": 96
+        },
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "prompt": "What is the average temperature in Hawaii in December?"
+        },
+        "metavars": {
+          "LLM_0": "old-gpt3.5"
+        },
+        "llm": "old-gpt3.5",
+        "prompt": "What is the average temperature in Hawaii in December?",
+        "responses": [
+          "The average temperature in Hawaii in December is around 77°F (25°C) during the day and 66°F (19°C) at night."
+        ],
+        "tokens": {
+          "completion_tokens": 30,
+          "prompt_tokens": 29,
+          "total_tokens": 59
+        },
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "prompt": "Who directed the movie Twister?"
+        },
+        "metavars": {
+          "LLM_0": "old-gpt3.5"
+        },
+        "llm": "old-gpt3.5",
+        "prompt": "Who directed the movie Twister?",
+        "responses": [
+          "The movie \"Twister\" was directed by Jan de Bont."
+        ],
+        "tokens": {
+          "prompt_tokens": 24,
+          "completion_tokens": 14,
+          "total_tokens": 38
+        },
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      }
+    ]
   }
 }

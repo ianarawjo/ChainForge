@@ -6,9 +6,6 @@ import {
   useViewport,
 } from 'react-flow-renderer';
 
-// Where the ChainForge Flask server is being hosted. 
-export const BASE_URL = 'http://localhost:8000/';
-
 // Initial project settings
 const initialAPIKeys = {};
 const initialLLMColors = {};

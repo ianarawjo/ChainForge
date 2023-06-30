@@ -303,6 +303,7 @@ const ExampleFlowsModal = forwardRef((props, ref) => {
                             description={OAIEVALS[evalname] || 'No description was provided.'}
                             filename={evalname}
                             onSelect={(name) => onSelect(name, 'openai-eval')}
+                            key={evalname}
               /> 
             ))
           }

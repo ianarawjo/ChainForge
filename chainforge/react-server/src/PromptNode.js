@@ -8,9 +8,9 @@ import NodeLabel from './NodeLabelComponent'
 import TemplateHooks, { extractBracketedSubstrings, toPyTemplateFormat } from './TemplateHooksComponent'
 import LLMList from './LLMListComponent'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
-import {BASE_URL} from './store';
 import io from 'socket.io-client';
 import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas'
+import fetch_from_backend from './fetch_from_backend';
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5).
@@ -181,14 +181,8 @@ const PromptNode = ({ data, id }) => {
     refreshTemplateHooks(promptText);
 
     // Attempt to grab cache'd responses
-    fetch(BASE_URL + 'app/grabResponses', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        body: JSON.stringify({
-            responses: [id],
-        }),
-    }).then(function(res) {
-        return res.json();
+    fetch_from_backend('grabResponses', {
+        responses: [id],
     }).then(function(json) {
         if (json.responses && json.responses.length > 0) {
             // Store responses and set status to green checkmark
@@ -238,48 +232,43 @@ const PromptNode = ({ data, id }) => {
     get_outputs(templateVars, id);
 
     // Get Pythonic version of the prompt, by adding a $ before any template variables in braces:
-    const str_to_py_template_format = toPyTemplateFormat; // (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
-    const to_py_template_format = (str_or_obj) => {
-        if (typeof str_or_obj === 'object') {
-            let new_obj = { text: str_to_py_template_format(str_or_obj.text), fill_history: {}};
-            // Convert fill history vars to py template format
-            if (str_or_obj.fill_history) {
-                Object.keys(str_or_obj.fill_history).forEach(v => {
-                    new_obj.fill_history[v] = str_to_py_template_format(str_or_obj.fill_history[v]);
-                });
-            }
-            // Carry all other properties of the object over:
-            Object.keys(str_or_obj).forEach(key => {
-                if (key !== 'text' && key !== 'fill_history')
-                    new_obj[key] = str_or_obj[key];
-            });
-            return new_obj;
-        } else
-            return str_to_py_template_format(str_or_obj);
-    };
-    const py_prompt_template = to_py_template_format(promptText);
+    // const str_to_py_template_format = toPyTemplateFormat; // (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
+    // const to_py_template_format = (str_or_obj) => {
+    //     if (typeof str_or_obj === 'object') {
+    //         let new_obj = { text: str_to_py_template_format(str_or_obj.text), fill_history: {}};
+    //         // Convert fill history vars to py template format
+    //         if (str_or_obj.fill_history) {
+    //             Object.keys(str_or_obj.fill_history).forEach(v => {
+    //                 new_obj.fill_history[v] = str_to_py_template_format(str_or_obj.fill_history[v]);
+    //             });
+    //         }
+    //         // Carry all other properties of the object over:
+    //         Object.keys(str_or_obj).forEach(key => {
+    //             if (key !== 'text' && key !== 'fill_history')
+    //                 new_obj[key] = str_or_obj[key];
+    //         });
+    //         return new_obj;
+    //     } else
+    //         return str_to_py_template_format(str_or_obj);
+    // };
+    // const py_prompt_template = to_py_template_format(promptText);
 
     // Do the same for the vars, since vars can themselves be prompt templates:
-    Object.keys(pulled_data).forEach(varname => {
-        pulled_data[varname] = pulled_data[varname].map(val => to_py_template_format(val));
-    });
+    // Object.keys(pulled_data).forEach(varname => {
+    //     pulled_data[varname] = pulled_data[varname].map(val => to_py_template_format(val));
+    // });
 
-    return [py_prompt_template, pulled_data];
+    return [promptText, pulled_data];
   };
 
   // Ask the backend how many responses it needs to collect, given the input data:
   const fetchResponseCounts = (prompt, vars, llms, rejected) => {
-    return fetch(BASE_URL + 'app/countQueriesRequired', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        body: JSON.stringify({
-            prompt: prompt,
-            vars: vars,
-            llms: llms,
-            id: id, 
-            n: numGenerations,
-    })}, rejected).then(function(response) {
-        return response.json();
+    return fetch_from_backend('countQueriesRequired', {
+        prompt: prompt,
+        vars: vars,
+        llms: llms,
+        id: id, 
+        n: numGenerations,
     }, rejected).then(function(json) {
         if (!json || !json.counts) {
             throw new Error('There was no response from the server.');
@@ -394,109 +383,66 @@ const PromptNode = ({ data, id }) => {
 
     // Ask the backend to reset the scratchpad for counting queries:
     const create_progress_scratchpad = () => {
-        return fetch(BASE_URL + 'app/createProgressFile', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            body: JSON.stringify({
-                id: id,
-        })}, rejected);
+        return fetch_from_backend('createProgressFile', {id: id}, rejected);
     };
 
     // Fetch info about the number of queries we'll need to make 
     const fetch_resp_count = () => fetchResponseCounts(
         py_prompt_template, pulled_data, llmItemsCurrState, rejected);
+    
+    // Initialize progress bars to small amounts
+    setProgress({ success: 2, error: 0 });
+    setLLMItems(llmItemsCurrState.map(item => {
+        item.progress = { success: 0, error: 0 };
+        return item;
+    }));
 
-    // Open a socket to listen for progress
-    const open_progress_listener_socket = ([response_counts, total_num_responses]) => {
-        // With the counts information we can create progress bars. Now we load a socket connection to 
-        // the socketio server that will stream to us the current progress:
-        const socket = io('http://localhost:8001/' + 'queryllm', {
-            transports: ["websocket"],
-            cors: {origin: "http://localhost:8000/"},
-        });
-        
+    // Create a callback to listen for progress
+    let onProgressChange = () => {};
+    const open_progress_listener = ([response_counts, total_num_responses]) => {
         const max_responses = Object.keys(total_num_responses).reduce((acc, llm) => acc + total_num_responses[llm], 0);
 
-        // On connect to the server, ask it to give us the current progress 
-        // for task 'queryllm' with id 'id', and stop when it reads progress >= 'max'. 
-        socket.on("connect", (msg) => {
-            if (FINISHED_QUERY) return;
-            
-            // Initialize progress bars to small amounts
-            setProgress({ success: 2, error: 0 });
-            setLLMItems(llmItemsCurrState.map(item => {
-                item.progress = { success: 0, error: 0 };
-                return item;
-            }));
-
-            // Request progress bar updates
-            socket.emit("queryllm", {'id': id, 'max': max_responses});
-        });
-
-        // Socket connection could not be established
-        socket.on("connect_error", (error) => {
-            console.log("Socket connection failed:", error.message);
-            socket.disconnect();
-        });
-
-        // Socket disconnected
-        socket.on("disconnect", (msg) => {
-            console.log(msg);
-        });
+        onProgressChange = (progress_by_llm_key) => {
+            if (!progress_by_llm_key) return;
         
-        // The current progress, a number specifying how many responses collected so far:
-        socket.on("response", (counts) => {
-            if (!counts || FINISHED_QUERY) return;
-
             // Update individual progress bars
             const num_llms = llmItemsCurrState.length;
             const num_resp_per_llm = (max_responses / num_llms);
             setLLMItems(llmItemsCurrState.map(item => {
-                if (item.key in counts) {
+                if (item.key in progress_by_llm_key) {
                     item.progress = {
-                        success: counts[item.key]['success'] / num_resp_per_llm * 100,
-                        error: counts[item.key]['error'] / num_resp_per_llm * 100,
+                        success: progress_by_llm_key[item.key]['success'] / num_resp_per_llm * 100,
+                        error: progress_by_llm_key[item.key]['error'] / num_resp_per_llm * 100,
                     }
                 }
                 return item;
             }));
             
             // Update total progress bar
-            const total_num_success = Object.keys(counts).reduce((acc, llm_key) => {
-                return acc + counts[llm_key]['success'];
+            const total_num_success = Object.keys(progress_by_llm_key).reduce((acc, llm_key) => {
+                return acc + progress_by_llm_key[llm_key]['success'];
             }, 0);
-            const total_num_error = Object.keys(counts).reduce((acc, llm_key) => {
-                return acc + counts[llm_key]['error'];
+            const total_num_error = Object.keys(progress_by_llm_key).reduce((acc, llm_key) => {
+                return acc + progress_by_llm_key[llm_key]['error'];
             }, 0);
             setProgress({
                 success: Math.max(5, total_num_success / max_responses * 100),
                 error: total_num_error / max_responses * 100 }
             );
-        });
-
-        // The process has finished; close the connection:
-        socket.on("finish", (msg) => {
-            console.log("finished:", msg);
-            socket.disconnect();
-        });
+        };
     };
 
     // Run all prompt permutations through the LLM to generate + cache responses:
     const query_llms = () => {
-        return fetch(BASE_URL + 'app/queryllm', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            body: JSON.stringify({
-                id: id,
-                llm: llmItemsCurrState,
-                prompt: py_prompt_template,
-                vars: pulled_data,
-                n: numGenerations,
-                api_keys: (apiKeys ? apiKeys : {}),
-                no_cache: false,
-            }),
-        }, rejected).then(function(response) {
-            return response.json();
+        return fetch_from_backend('queryllm', {
+            id: id,
+            llm: llmItemsCurrState,  // deep clone it first
+            prompt: py_prompt_template,
+            vars: pulled_data,
+            n: numGenerations,
+            api_keys: (apiKeys ? apiKeys : {}),
+            no_cache: false,
+            progress_listener: onProgressChange,
         }, rejected).then(function(json) {
             if (!json) {
                 setStatus('error');
@@ -585,7 +531,7 @@ const PromptNode = ({ data, id }) => {
     // Now put it all together!
     create_progress_scratchpad()
         .then(fetch_resp_count)
-        .then(open_progress_listener_socket)
+        .then(open_progress_listener)
         .then(query_llms)
         .catch(rejected);
   };

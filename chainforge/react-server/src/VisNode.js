@@ -5,7 +5,7 @@ import useStore, { colorPalettes } from './store';
 import Plot from 'react-plotly.js';
 import NodeLabel from './NodeLabelComponent';
 import PlotLegend from './PlotLegend';
-import {BASE_URL} from './store';
+import fetch_from_backend from './fetch_from_backend';
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -119,7 +119,9 @@ const VisNode = ({ data, id }) => {
 
     // The MultiSelect so people can dynamically set what vars they care about
     const [multiSelectVars, setMultiSelectVars] = useState(data.vars || []);
-    const [multiSelectValue, setMultiSelectValue] = useState(data.selected_vars[0] || 'LLM (default)');
+    const [multiSelectValue, setMultiSelectValue] = useState(
+        (Array.isArray(data.selected_vars) && data.selected_vars.length > 0) ? 
+            data.selected_vars[0] : 'LLM (default)');
 
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
     // However, when prompts are chained together, the original LLM info is stored in metavars as a key. 
@@ -176,7 +178,7 @@ const VisNode = ({ data, id }) => {
         // }
 
         // Create Plotly spec here
-        const varnames = (multiSelectValue !== 'LLM (default)') ? [multiSelectValue] : [];
+        const varnames = (multiSelectValue !== 'LLM (default)' && multiSelectValue !== undefined) ? [multiSelectValue] : [];
         const varcolors = colorPalettes.var; // ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#cadefc', '#f8f398'];
         let spec = [];
         let layout = {
@@ -647,15 +649,10 @@ const VisNode = ({ data, id }) => {
         // Grab the input node ids
         const input_node_ids = [data.input];
 
-        fetch(BASE_URL + 'app/grabResponses', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-            body: JSON.stringify({
-                responses: input_node_ids,
-            }),
-        }).then(function(res) {
-            return res.json();
-        }).then(function(json) {
+        fetch_from_backend(
+            'grabResponses',
+            {responses: input_node_ids}
+        ).then(function(json) {
             if (json.responses && json.responses.length > 0) {
 
                 // Store responses and extract + store vars
@@ -752,15 +749,14 @@ const VisNode = ({ data, id }) => {
                             placeholder="Pick param to plot"
                             size="xs"
                             value={multiSelectValue}
-                            miw='80px'
-                            searchable />
+                            miw='80px' />
             </div>
             <div style={{display: 'inline-flex', justifyContent: 'space-evenly', maxWidth: '30%', marginLeft: '10pt'}}>
                 <span style={{fontSize: '10pt', margin: '6pt 3pt 0 0', fontWeight: 'bold', whiteSpace: 'nowrap'}}>x-axis:</span>
                 <NativeSelect className='nodrag nowheel'
                             data={['score']}
                             size="xs"
-                            value={['score']}
+                            value={'score'}
                             miw='80px'
                             disabled />
             </div>

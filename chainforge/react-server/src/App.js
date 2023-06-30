@@ -9,7 +9,7 @@ import ReactFlow, {
   useViewport,
   setViewport,
 } from 'react-flow-renderer';
-import { Button, Menu, LoadingOverlay } from '@mantine/core';
+import { Button, Menu, LoadingOverlay, Text, Box, List } from '@mantine/core';
 import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation } from '@tabler/icons-react';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
@@ -20,6 +20,7 @@ import ScriptNode from './ScriptNode';
 import AlertModal from './AlertModal';
 import CsvNode from './CsvNode';
 import TabularDataNode from './TabularDataNode';
+import CommentNode from './CommentNode';
 import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
 import AreYouSureModal from './AreYouSureModal';
@@ -27,7 +28,14 @@ import './text-fields-node.css';
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from 'zustand/shallow';
-import useStore, { BASE_URL } from './store';
+import useStore from './store';
+import fetch_from_backend from './fetch_from_backend';
+import StorageCache from './backend/cache';
+import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
+
+// Device / Browser detection
+import { isMobile, isChrome, isFirefox } from 'react-device-detect';
+const IS_ACCEPTED_BROWSER = (isChrome || isFirefox) && !isMobile;
 
 const selector = (state) => ({
   nodes: state.nodes,
@@ -52,7 +60,12 @@ const nodeTypes = {
   script: ScriptNode,
   csv: CsvNode,
   table: TabularDataNode,
+  comment: CommentNode,
 };
+
+// Whether we are running on localhost or not, and hence whether
+// we have access to the Flask backend for, e.g., Python code evaluation.
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // const connectionLineStyle = { stroke: '#ddd' };
 const snapGrid = [16, 16];
@@ -105,9 +118,14 @@ const App = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'promptNode-'+Date.now(), type: 'prompt', data: { prompt: '' }, position: {x: x-200, y:y-100} });
   };
-  const addEvalNode = (event) => {
+  const addEvalNode = (progLang) => {
     const { x, y } = getViewportCenter();
-    addNode({ id: 'evalNode-'+Date.now(), type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: {x: x-200, y:y-100} });
+    let code = "";
+    if (progLang === 'python') 
+      code = "def evaluate(response):\n  return len(response.text)";
+    else if (progLang === 'javascript')
+      code = "function evaluate(response) {\n  return response.text.length;\n}";
+    addNode({ id: 'evalNode-'+Date.now(), type: 'evaluator', data: { language: progLang, code: code }, position: {x: x-200, y:y-100} });
   };
   const addVisNode = (event) => {
     const { x, y } = getViewportCenter();
@@ -128,6 +146,10 @@ const App = () => {
   const addTabularDataNode = (event) => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'table-'+Date.now(), type: 'table', data: {}, position: {x: x-200, y:y-100} });
+  };
+  const addCommentNode = (event) => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'comment-'+Date.now(), type: 'comment', data: {}, position: {x: x-200, y:y-100} });
   };
 
   const onClickExamples = () => {
@@ -181,6 +203,11 @@ const App = () => {
     // are not pulled or overwritten upon loading from localStorage. 
     const flow = rf.toObject();
     localStorage.setItem('chainforge-flow', JSON.stringify(flow));
+
+    // Attempt to save the current state of the back-end state,
+    // the StorageCache. (This does LZ compression to save space.)
+    StorageCache.saveToLocalStorage('chainforge-state');
+
     console.log('Flow saved!');
   }, [rfInstance]);
 
@@ -214,6 +241,7 @@ const App = () => {
 
       // Save flow that user loaded to autosave cache, in case they refresh the browser
       localStorage.setItem('chainforge-flow', JSON.stringify(flow));
+      StorageCache.saveToLocalStorage('chainforge-state');
     }
   };
   const autosavedFlowExists = () => {
@@ -221,8 +249,10 @@ const App = () => {
   };
   const loadFlowFromAutosave = async (rf_inst) => {
     const saved_flow = localStorage.getItem('chainforge-flow');
-    if (saved_flow)
+    if (saved_flow) {
+      StorageCache.loadFromLocalStorage('chainforge-state');
       loadFlow(JSON.parse(saved_flow), rf_inst);
+    }
   };
 
   // Export / Import (from JSON)
@@ -234,14 +264,8 @@ const App = () => {
 
     // Then we grab all the relevant cache files from the backend
     const all_node_ids = nodes.map(n => n.id);
-    fetch(BASE_URL + 'app/exportCache', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        body: JSON.stringify({
-            'ids': all_node_ids,
-        }),
-    }).then(function(res) {
-        return res.json();
+    fetch_from_backend('exportCache', {
+      'ids': all_node_ids,
     }).then(function(json) {
         if (!json || !json.files)
           throw new Error('Request was sent and received by backend server, but there was no response.');
@@ -254,27 +278,21 @@ const App = () => {
 
         // Save!
         downloadJSON(flow_and_cache, `flow-${Date.now()}.cforge`);
-    });
-  }, [rfInstance, nodes]);
+    }).catch(handleError);
+  }, [rfInstance, nodes, handleError]);
 
   // Import data to the cache stored on the local filesystem (in backend)
-  const importCache = (cache_data) => {
-    return fetch(BASE_URL + 'app/importCache', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        body: JSON.stringify({
-            'files': cache_data,
-        }),
-    }, handleError).then(function(res) {
-        return res.json();
-    }, handleError).then(function(json) {
+  const importCache = useCallback((cache_data) => {
+    return fetch_from_backend('importCache', {
+      'files': cache_data,
+    }).then(function(json) {
         if (!json || json.result === undefined)
           throw new Error('Request to import cache data was sent and received by backend server, but there was no response.');
         else if (json.error || json.result === false)
           throw new Error('Error importing cache data:' + json.error);
         // Done! 
-    }, handleError).catch(handleError);
-  };
+    }).catch(handleError);
+  }, [handleError]);
 
   const importFlowFromJSON = useCallback((flowJSON) => {
     // Detect if there's no cache data
@@ -337,14 +355,8 @@ const App = () => {
 
   // Downloads the selected OpenAI eval file (preconverted to a .cforge flow)
   const importFlowFromOpenAIEval = (evalname) => {
-    fetch(BASE_URL + 'app/fetchOpenAIEval', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-      body: JSON.stringify({
-        name: evalname,
-      }),
-    }, handleError).then(function(response) {
-      return response.json();
+    fetch_from_backend('fetchOpenAIEval', {
+      name: evalname,
     }, handleError).then(function(json) {
       // Close the loading modal
       setIsLoading(false);
@@ -375,14 +387,8 @@ const App = () => {
     }
     
     // Fetch the example flow data from the backend
-    fetch(BASE_URL + 'app/fetchExampleFlow', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-        body: JSON.stringify({
-            'name': name,
-        }),
-    }, handleError).then(function(res) {
-        return res.json();
+    fetch_from_backend('fetchExampleFlow', {
+      'name': name,
     }, handleError).then(function(json) {
         // Close the loading modal
         setIsLoading(false);
@@ -430,7 +436,7 @@ const App = () => {
       const uid = (id) => `${id}-${Date.now()}`;
       setNodes([
         { id: uid('prompt'), type: 'prompt', data: { prompt: 'What is the opening sentence of Pride and Prejudice?', n: 1 }, position: { x: 450, y: 200 } },
-        { id: uid('eval'), type: 'evaluator', data: { code: "def evaluate(response):\n  return len(response.text)" }, position: { x: 820, y: 150 } },
+        { id: uid('eval'), type: 'evaluator', data: { language: "javascript", code: "function evaluate(response) {\n  return response.text.length;\n}" }, position: { x: 820, y: 150 } },
         { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 80, y: 270 } },
         { id: uid('vis'), type: 'vis', data: {}, position: { x: 1200, y: 250 } },
         { id: uid('inspect'), type: 'inspect', data: {}, position: { x:820, y:400 } },
@@ -448,7 +454,23 @@ const App = () => {
     };
   }, []);
 
-  return (
+  if (!IS_ACCEPTED_BROWSER) {
+    return (
+      <Box maw={600} mx='auto' mt='40px'>
+        <Text m='xl' size={'11pt'}>We're sorry, but it seems like {isMobile ? "you are viewing ChainForge on a mobile device" : "your current browser isn't supported by the current version of ChainForge"} 😔. 
+        We want to provide you with the best experience possible, so we recommend {isMobile ? "viewing ChainForge on a desktop browser" : ""} using one of our supported browsers listed below:</Text>
+        <List m='xl' size={'11pt'}>
+          <List.Item>Google Chrome</List.Item>
+          <List.Item>Mozilla Firefox</List.Item>
+        </List>
+  
+        <Text m='xl' size={'11pt'}>These browsers offer enhanced compatibility with ChainForge's features. Don't worry, though! We're working to expand our browser support to ensure everyone can enjoy our platform. 😊</Text>
+        <Text m='xl' size={'11pt'}>If you have any questions or need assistance, please don't hesitate to reach out on our <a href="https://github.com/ianarawjo/ChainForge/issues">GitHub</a> by <a href="https://github.com/ianarawjo/ChainForge/issues">opening an Issue.</a> 
+        &nbsp; (If you're a web developer, consider forking our repository and making a <a href="https://github.com/ianarawjo/ChainForge/pulls">Pull Request</a> to support your particular browser.)</Text>
+      </Box>
+    );
+  }
+  else return (
     <div>
       <GlobalSettingsModal ref={settingsModal} />
       <AlertModal ref={alertModal} />
@@ -488,12 +510,18 @@ const App = () => {
           <Menu.Dropdown>
               <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields </Menu.Item>
               <Menu.Item onClick={addPromptNode} icon={'💬'}> Prompt Node </Menu.Item>
-              <Menu.Item onClick={addEvalNode} icon={<IconTerminal size="16px" />}> Evaluator Node </Menu.Item>
+              <Menu.Item onClick={() => addEvalNode('javascript')} icon={<IconTerminal size="16px" />}> JavaScript Evaluator Node </Menu.Item>
+              {IS_RUNNING_LOCALLY ? (
+                <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator Node </Menu.Item>
+              ): <></>}
               <Menu.Item onClick={addVisNode} icon={'📊'}> Vis Node </Menu.Item>
               <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
               <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>
               <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
-              <Menu.Item onClick={addScriptNode} icon={<IconSettingsAutomation size="16px" />}> Global Scripts </Menu.Item>
+              <Menu.Item onClick={addCommentNode} icon={'✏️'}> Comment Node </Menu.Item>
+              {IS_RUNNING_LOCALLY ? (
+                <Menu.Item onClick={addScriptNode} icon={<IconSettingsAutomation size="16px" />}> Global Python Scripts </Menu.Item>
+              ): <></>}
           </Menu.Dropdown>
         </Menu>
         <Button onClick={exportFlow} size="sm" variant="outline" compact mr='xs'>Export</Button>
