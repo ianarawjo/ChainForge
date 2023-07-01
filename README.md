@@ -72,6 +72,7 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 ## Future Planned Features
 
 Highest priority:
+- **Hosting on chainforge.ai**: Host a version that works entirely in the browser, no install or login necessary
 - **Improved vis and inspect nodes**: Better UX and more features, such as collapsing variable groups in response inspectors and more control over visualizations displayed in vis nodes beyond the default
 
 Medium-to-low priority:
