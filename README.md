@@ -8,9 +8,9 @@ ChainForge is a data flow prompt engineering environment for analyzing and evalu
  - Compare response quality across prompt permutations, across models, and across model settings to choose the best prompt and model for your use case. 
  - Setup an evaluation metric (scoring function) and immediately visualize results across prompts, prompt parameters, models, and model settings.
 
-ChainForge comes with a number of example evaluation flows so you can get a sense of what's possible, including 188 example flows generated from benchmarks in OpenAI evals.
+ChainForge comes with a number of example evaluation flows to give you a sense of what's possible, including 188 example flows generated from benchmarks in OpenAI evals.
 
-**This is an open alpha of Chainforge.** Functionality is powerful but limited. We currently support OpenAI models GPT3.5 and GPT4, Anthropic's Claude, Google PaLM2, and [Dalai](https://github.com/cocktailpeanut/dalai)-hosted models Alpaca and Llama. You can change the exact model and individual model settings. Visualization nodes support numeric and boolean evaluation metrics. Try it and let us know what you'd like to see in the future! :)
+**This is an open alpha of Chainforge.** Functionality is powerful but limited. We currently support OpenAI models GPT3.5 and GPT4, HuggingFace models on the Inference API, Anthropic's Claude, Google PaLM2, and [Dalai](https://github.com/cocktailpeanut/dalai)-hosted models Alpaca and Llama. You can change the exact model and individual model settings. Visualization nodes support numeric and boolean evaluation metrics. Try it and let us know what you'd like to see in the future! :)
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://flask.palletsprojects.com/en/2.3.x/).
 
@@ -73,7 +73,6 @@ We provide ongoing releases of this tool in the hopes that others find it useful
 
 Highest priority:
 - **Improved vis and inspect nodes**: Better UX and more features, such as collapsing variable groups in response inspectors and more control over visualizations displayed in vis nodes beyond the default
-- **LLM annotator nodes**: Select an LLM to evaluate and "tag" responses (for instance, named-entity recognition). Currently, one can chain prompt nodes into prompt nodes, but the final output loses information on which LLM generated the input response.
 
 Medium-to-low priority:
 - **LMQL and Microsoft guidance nodes**: Support for prompt pipelines that involve LMQL and {{guidance}} code, esp. inspecting masked response variables. 
