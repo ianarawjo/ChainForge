@@ -670,6 +670,14 @@ const HuggingFaceTextInferenceSettings = {
               "maximum": 5.0,
               "multipleOf": 0.01,
           },
+          "num_continuations": {
+            "type": "integer",
+            "title": "Number of times to continue generation (ChainForge-specific)",
+            "description": "The number of times to feed the model response back into the model, to continue generating text past the 250 token limit per API call. Only useful for text completions models like gpt2. Set to 0 to ignore.",
+            "default": 0,
+            "minimum": 0,
+            "maximum": 6,
+          },
           "top_k": {
             "type": "integer",
             "title": "top_k",
@@ -699,17 +707,9 @@ const HuggingFaceTextInferenceSettings = {
             "type": "integer",
             "title": "max_new_tokens",
             "description": "The amount of new tokens to be generated. Free HF models only support up to 250 tokens. Set to -1 to remain unspecified.",
-            "default": -1,
+            "default": 250,
             "minimum": -1,
             "maximum": 250,
-          },
-          "num_continuations": {
-            "type": "integer",
-            "title": "Number of times to continue generation (ChainForge-specific)",
-            "description": "The number of times to feed the model response back into the model, to continue generating text past the 250 token limit per API call. Only useful for text completions models like gpt2. Set to 0 to ignore.",
-            "default": 0,
-            "minimum": 0,
-            "maximum": 6,
           },
           "do_sample": {
             "type": "boolean",
@@ -762,7 +762,7 @@ const HuggingFaceTextInferenceSettings = {
         "ui:widget": "range"
       },
       "max_new_tokens": {
-        "ui:help": "Defaults to unspecified (-1)",
+        "ui:help": "Defaults to 250 (max)",
       },
       "num_continuations": {
         "ui:widget": "range"
@@ -819,6 +819,8 @@ export const postProcessFormData = (settingsSpec, formData) => {
 };
 
 export const getDefaultModelFormData = (settingsSpec) => {
+  if (typeof settingsSpec === 'string')
+    settingsSpec = ModelSettings[settingsSpec];
   let default_formdata = {};
   const schema = settingsSpec.schema;
   Object.keys(schema.properties).forEach(key => {

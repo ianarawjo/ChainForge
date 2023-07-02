@@ -5,10 +5,9 @@ import { v4 as uuid } from 'uuid';
 import { IconSearch } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
-import TemplateHooks, { extractBracketedSubstrings, toPyTemplateFormat } from './TemplateHooksComponent'
+import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent'
 import LLMList from './LLMListComponent'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
-import io from 'socket.io-client';
 import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas'
 import fetch_from_backend from './fetch_from_backend';
 
@@ -17,12 +16,6 @@ import fetch_from_backend from './fetch_from_backend';
 const initLLMs = [AvailableLLMs[0]];
 
 // Helper funcs
-const truncStr = (s, maxLen) => {
-    if (s.length > maxLen) // Cut the name short if it's long
-        return s.substring(0, maxLen) + '...'
-    else
-        return s;
-}
 // Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
 const ensureUniqueName = (_name, _prev_names) => {
     // Strip whitespace around names

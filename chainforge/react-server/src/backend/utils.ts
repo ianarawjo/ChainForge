@@ -497,11 +497,17 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
 
       // Merge responses
       const resp_text: string = result[0].generated_text;
+
+      console.log(curr_cont, 'curr_text', curr_text);
+      console.log(curr_cont, 'resp_text', resp_text);
+
       continued_response.generated_text += resp_text;
       curr_text += resp_text;
 
       curr_cont += 1;
     }
+
+    console.log(continued_response);
 
     // Continue querying
     responses.push(continued_response);

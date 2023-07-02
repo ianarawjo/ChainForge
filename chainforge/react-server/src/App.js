@@ -24,6 +24,9 @@ import CommentNode from './CommentNode';
 import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
 import AreYouSureModal from './AreYouSureModal';
+import { getDefaultModelFormData, getDefaultModelSettings } from './ModelSettingSchemas';
+import { v4 as uuid } from 'uuid';
+import { EXAMPLEFLOW_1 } from './example_flows';
 import './text-fields-node.css';
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
@@ -48,6 +51,23 @@ const selector = (state) => ({
   setEdges: state.setEdges,
   resetLLMColors: state.resetLLMColors,
 });
+
+// The initial LLM to use when new flows are created, or upon first load
+const INITIAL_LLM = () => {
+  let falcon7b = { 
+    key: uuid(), 
+    name: "Falcon.7B.Instruct", 
+    emoji: "🤗", 
+    model: "tiiuae/falcon-7b-instruct", 
+    base_model: "hf", 
+    temp: 1.0, 
+    settings: getDefaultModelSettings('hf'),
+    formData: getDefaultModelFormData('hf'), 
+  }; 
+  falcon7b.formData.shortname = falcon7b.name;
+  falcon7b.formData.model = falcon7b.model;
+  return falcon7b;
+};
 
 // import AnimatedConnectionLine from './AnimatedConnectionLine';
 
@@ -85,6 +105,9 @@ const App = () => {
 
   // For modal popup of example flows
   const examplesModal = useRef(null);
+
+  // For an info pop-up that welcomes new users
+  // const [welcomeModalOpened, { open: openWelcomeModal, close: closeWelcomeModal }] = useDisclosure(false);
 
   // For confirmation popup
   const confirmationModal = useRef(null);
@@ -217,7 +240,11 @@ const App = () => {
 
     const uid = (id) => `${id}-${Date.now()}`;
     const starting_nodes = [
-      { id: uid('prompt'), type: 'prompt', data: { prompt: 'Why is the sky blue?', n: 1 }, position: { x: 450, y: 200 } },
+      { id: uid('prompt'), type: 'prompt', data: { 
+          prompt: 'Why is the sky blue?',
+          n: 1, 
+          llms: [INITIAL_LLM()] },
+        position: { x: 450, y: 200 } },
       { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 80, y: 270 } },
     ];
 
@@ -419,6 +446,9 @@ const App = () => {
 
   // Run once upon ReactFlow initialization
   const onInit = (rf_inst) => {
+    localStorage.removeItem('chainforge-flow');
+    localStorage.removeItem('chainforge-state');
+
     setRfInstance(rf_inst);
 
     // Autosave the flow to localStorage every minute:
@@ -430,17 +460,26 @@ const App = () => {
     if (autosavedFlowExists())
       loadFlowFromAutosave(rf_inst);
     else {
-      // Create a default starting flow for new users
+      // Load an interesting default starting flow for new users
+      importFlowFromJSON(EXAMPLEFLOW_1);
+      rf_inst.setViewport(EXAMPLEFLOW_1.flow.viewport);
+
+      // Open a welcome pop-up
+      // openWelcomeModal();
+
       // NOTE: We need to create a unique ID using the current date,
       //       because of the way ReactFlow saves and restores states. 
-      const uid = (id) => `${id}-${Date.now()}`;
-      setNodes([
-        { id: uid('prompt'), type: 'prompt', data: { prompt: 'What is the opening sentence of Pride and Prejudice?', n: 1 }, position: { x: 450, y: 200 } },
-        { id: uid('eval'), type: 'evaluator', data: { language: "javascript", code: "function evaluate(response) {\n  return response.text.length;\n}" }, position: { x: 820, y: 150 } },
-        { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 80, y: 270 } },
-        { id: uid('vis'), type: 'vis', data: {}, position: { x: 1200, y: 250 } },
-        { id: uid('inspect'), type: 'inspect', data: {}, position: { x:820, y:400 } },
-      ]);
+      // const uid = (id) => `${id}-${Date.now()}`;
+      // setNodes([
+      //   { id: uid('prompt'), type: 'prompt', data: { 
+      //     llms: [ INITIAL_LLM() ],
+      //     prompt: 'What is the opening sentence of Pride and Prejudice?', 
+      //     n: 1 }, position: { x: 450, y: 200 } },
+      //   { id: uid('eval'), type: 'evaluator', data: { language: "javascript", code: "function evaluate(response) {\n  return response.text.length;\n}" }, position: { x: 820, y: 150 } },
+      //   { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 80, y: 270 } },
+      //   { id: uid('vis'), type: 'vis', data: {}, position: { x: 1200, y: 250 } },
+      //   { id: uid('inspect'), type: 'inspect', data: {}, position: { x:820, y:400 } },
+      // ]);
     }
 
     // Turn off loading wheel
@@ -477,6 +516,13 @@ const App = () => {
       <LoadingOverlay visible={isLoading} overlayBlur={1} />
       <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
       <AreYouSureModal ref={confirmationModal} title={confirmationDialogProps.title} message={confirmationDialogProps.message} onConfirm={confirmationDialogProps.onConfirm} />
+      
+      {/* <Modal title={'Welcome to ChainForge'} size='400px' opened={welcomeModalOpened} onClose={closeWelcomeModal} yOffset={'6vh'} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
+        <Box m='lg' mt='xl'>
+          <Text>To get started, click the Settings icon in the top-right corner.</Text>
+        </Box>
+      </Modal> */}
+      
       <div style={{ height: '100vh', width: '100%', backgroundColor: '#eee' }}>
         <ReactFlow
           onNodesChange={onNodesChange}
@@ -529,8 +575,8 @@ const App = () => {
       </div>
       <div style={{position: 'fixed', right: '10px', top: '10px', zIndex: 8}}>
         <Button onClick={onClickNewFlow} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> New Flow </Button>
-        <Button onClick={onClickExamples} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> Example Flows </Button>
-        <Button onClick={onClickSettings} size="sm" variant="outline" compact><IconSettings size={"90%"} /></Button>
+        <Button onClick={onClickExamples} size="sm" variant="filled" compact mr='xs' style={{float: 'left'}}> Example Flows </Button>
+        <Button onClick={onClickSettings} size="sm" variant="gradient" compact><IconSettings size={"90%"} /></Button>
       </div>
     </div>
   );
