@@ -230,10 +230,10 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
   let arg2: Array<Dict | string>;
   let openai_call: any;
   if (model_type === 'text-completion') {
-    openai_call = client.getCompletions;
+    openai_call = client.getCompletions.bind(client);
     arg2 = [prompt];
   } else {
-    openai_call = client.getChatCompletions;
+    openai_call = client.getChatCompletions.bind(client);
     arg2 = [
       {"role": "system", "content": system_msg},
       {"role": "user", "content": prompt},
