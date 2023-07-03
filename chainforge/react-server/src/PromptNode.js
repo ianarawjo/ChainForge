@@ -461,7 +461,7 @@ const PromptNode = ({ data, id }) => {
                     let combined_err_msg = "";
                     llms_w_errors.forEach(llm_key => {
                         const item = getLLMListItemForKey(llm_key);                        
-                        combined_err_msg += item.name + ': ' + json.errors[llm_key][0] + '\n';
+                        combined_err_msg += item.name + ': ' + JSON.stringify(json.errors[llm_key][0]) + '\n';
                     });
                     // We trigger the alert directly (don't use triggerAlert) here because we want to keep the progress bar:
                     alertModal.current.trigger('Errors collecting responses. Re-run prompt node to retry.\n\n'+combined_err_msg);
