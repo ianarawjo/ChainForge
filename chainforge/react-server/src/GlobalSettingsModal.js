@@ -1,5 +1,5 @@
 import React, { useState, forwardRef, useImperativeHandle } from 'react';
-import { TextInput, Checkbox, Button, Group, Box, Modal, Divider, Text } from '@mantine/core';
+import { TextInput, Button, Group, Box, Modal, Divider, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import useStore from './store';

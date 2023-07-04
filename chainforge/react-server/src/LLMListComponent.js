@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import LLMListItem, { DragItem, LLMListItemClone } from "./LLMListItem";
+import { DragDropContext, Draggable } from "react-beautiful-dnd";
+import LLMListItem, { LLMListItemClone } from "./LLMListItem";
 import { StrictModeDroppable } from './StrictModeDroppable'
 import ModelSettingsModal from "./ModelSettingsModal"
 

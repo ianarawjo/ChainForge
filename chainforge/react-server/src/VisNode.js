@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { MultiSelect, NativeSelect } from '@mantine/core';
+import { NativeSelect } from '@mantine/core';
 import useStore, { colorPalettes } from './store';
 import Plot from 'react-plotly.js';
 import NodeLabel from './NodeLabelComponent';

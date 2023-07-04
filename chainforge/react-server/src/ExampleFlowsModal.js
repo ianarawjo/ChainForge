@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { SimpleGrid, Card, Modal, Image, Group, Text, Button, Badge, Tabs, Alert, Code } from '@mantine/core';
+import React, { forwardRef, useImperativeHandle } from 'react';
+import { SimpleGrid, Card, Modal, Text, Button, Tabs } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconChartDots3, IconAlertCircle } from '@tabler/icons-react';
-import { BASE_URL } from './store';
+import { IconChartDots3 } from '@tabler/icons-react';
 
 /** The preconverted OpenAI evals we can load from,
  * along with their descriptions, extracted from the evals registry. */

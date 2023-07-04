@@ -5,9 +5,6 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Controls,
   Background,
-  useReactFlow,
-  useViewport,
-  setViewport,
 } from 'react-flow-renderer';
 import { Button, Menu, LoadingOverlay, Text, Box, List, Loader } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
@@ -124,7 +121,7 @@ const App = () => {
   const [autosavingInterval, setAutosavingInterval] = useState(null);
 
   // For 'share' button
-  const clipboard = useClipboard({ timeout: 1000 });
+  const clipboard = useClipboard({ timeout: 1500 });
   const [waitingForShare, setWaitingForShare] = useState(false);
 
   // For modal popup to set global settings like API keys
@@ -479,6 +476,9 @@ const App = () => {
     if (IS_RUNNING_LOCALLY) {
       handleError(new Error('Cannot upload flow to server database when running locally: Feature only exists on hosted version of ChainForge.'));
       return;
+    } else if (waitingForShare === true) {
+      handleError(new Error('A share request is already in progress. Wait until the current share finishes before clicking again.'));
+      return;
     }
 
     // Helper function
@@ -554,7 +554,7 @@ const App = () => {
       handleError(err);
     });
 
-  }, [rfInstance, nodes, IS_RUNNING_LOCALLY, handleError, clipboard]);
+  }, [rfInstance, nodes, IS_RUNNING_LOCALLY, handleError, clipboard, waitingForShare]);
 
   // Run once upon ReactFlow initialization
   const onInit = (rf_inst) => {
@@ -566,6 +566,7 @@ const App = () => {
     setAutosavingInterval(interv);
 
     if (!IS_RUNNING_LOCALLY) {
+
       // Check if there's a shared flow UID in the URL as a GET param
       // If so, we need to look it up in the database and attempt to load it:
       const shared_flow_uid = getSharedFlowURLParam();
@@ -589,7 +590,7 @@ const App = () => {
             // Attempt to parse the response as a compressed flow + import it:
             try {
               const cforge_json = JSON.parse(LZString.decompressFromUTF16(response));
-              importFlowFromJSON(cforge_json);
+              importFlowFromJSON(cforge_json, rf_inst);
               setIsLoading(false);
             } catch (err) {
               handleError(err);

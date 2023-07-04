@@ -3,7 +3,6 @@ import {
   addEdge,
   applyNodeChanges,
   applyEdgeChanges,
-  useViewport,
 } from 'react-flow-renderer';
 
 // Initial project settings
