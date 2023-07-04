@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
 import { IconSettingsAutomation } from '@tabler/icons-react';

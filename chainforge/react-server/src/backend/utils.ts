@@ -247,7 +247,6 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
     if (error?.response) {
       throw new Error(error.response.data?.error?.message);
     } else {
-      console.log(error?.message || error);
       throw new Error(error?.message || error);
     }
   }
@@ -299,19 +298,43 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
   console.log(`Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
 
   // Make a REST call to Anthropic
-  const url = 'https://api.anthropic.com/v1/complete';
-  const headers = {
-    'accept': 'application/json',
-    'anthropic-version': '2023-06-01',
-    'content-type': 'application/json',
-    'x-api-key': ANTHROPIC_API_KEY,
-  };
-
   // Repeat call n times, waiting for each response to come in:
   let responses: Array<Dict> = [];
   while (responses.length < n) {
-    const resp = await route_fetch(url, 'POST', headers, query);
-    responses.push(resp);
+
+    if (APP_IS_RUNNING_LOCALLY()) {
+      // If we're running locally, route the request through the Flask backend,
+      // where we can use the Anthropic Python API to make the API call:
+      const url = 'https://api.anthropic.com/v1/complete';
+      const headers = {
+        'Accept': 'application/json',
+        "anthropic-version": "2023-06-01",
+        'Content-Type': 'application/json',
+        'User-Agent': "Anthropic/JS 0.5.0",
+        'X-Api-Key': ANTHROPIC_API_KEY,
+      };
+      const resp = await route_fetch(url, 'POST', headers, query);
+      responses.push(resp);
+
+    } else {
+      // We're on the server; route API call through a proxy on the server, since Anthropic has CORS policy on their API:
+      const resp = await fetch('/db/call_anthropic.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Api-Key': ANTHROPIC_API_KEY,
+        },
+        body: JSON.stringify(query)
+      }).then(r => r.json());
+
+      // Check for error from server
+      if (resp?.error !== undefined) {
+        throw new Error(`${resp.error.type}: ${resp.error.message}`);
+      }
+
+      // console.log('Received Anthropic response from server proxy:', resp);
+      responses.push(resp);
+    }
   }
 
   return [query, responses];
@@ -498,16 +521,10 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
       // Merge responses
       const resp_text: string = result[0].generated_text;
 
-      console.log(curr_cont, 'curr_text', curr_text);
-      console.log(curr_cont, 'resp_text', resp_text);
-
       continued_response.generated_text += resp_text;
       curr_text += resp_text;
-
       curr_cont += 1;
     }
-
-    console.log(continued_response);
 
     // Continue querying
     responses.push(continued_response);

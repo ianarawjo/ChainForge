@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback, forwardRef } from 'react';
-import { Table, Textarea, Menu, Button, TextInput } from '@mantine/core';
+import React, { useState, useEffect } from 'react';
+import { Table, Textarea, Menu } from '@mantine/core';
 import { IconDots, IconPencil, IconArrowLeft, IconArrowRight, IconX } from '@tabler/icons-react';
 
 const cellTextareaStyle = {

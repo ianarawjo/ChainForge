@@ -5,12 +5,10 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Controls,
   Background,
-  useReactFlow,
-  useViewport,
-  setViewport,
 } from 'react-flow-renderer';
-import { Button, Menu, LoadingOverlay, Text, Box, List } from '@mantine/core';
-import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation } from '@tabler/icons-react';
+import { Button, Menu, LoadingOverlay, Text, Box, List, Loader } from '@mantine/core';
+import { useClipboard } from '@mantine/hooks';
+import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink } from '@tabler/icons-react';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
 import EvaluatorNode from './EvaluatorNode';
@@ -26,6 +24,7 @@ import ExampleFlowsModal from './ExampleFlowsModal';
 import AreYouSureModal from './AreYouSureModal';
 import { getDefaultModelFormData, getDefaultModelSettings } from './ModelSettingSchemas';
 import { v4 as uuid } from 'uuid';
+import LZString from 'lz-string';
 import { EXAMPLEFLOW_1 } from './example_flows';
 import './text-fields-node.css';
 
@@ -87,6 +86,27 @@ const nodeTypes = {
 // we have access to the Flask backend for, e.g., Python code evaluation.
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
+// Try to get a GET param in the URL, representing the shared flow. 
+// Returns undefined if not found.  
+const getSharedFlowURLParam = () => {
+  // Get the current URL
+  const curr_url = new URL(window.location.href);
+
+  // Get the search parameters from the URL
+  const params = new URLSearchParams(curr_url.search);
+
+  // Try to retrieve an 'f' parameter (short for flow)
+  const shared_flow_uid = params.get('f');
+
+  if (shared_flow_uid) {
+    // Check if it's a base36 string:
+    const is_base36 = /^[0-9a-z]+$/i;
+    if (shared_flow_uid.length > 1 && is_base36.test(shared_flow_uid)) 
+      return shared_flow_uid;
+  } 
+  return undefined;
+};
+
 // const connectionLineStyle = { stroke: '#ddd' };
 const snapGrid = [16, 16];
 let saveIntervalInitialized = false;
@@ -99,6 +119,10 @@ const App = () => {
   // For saving / loading
   const [rfInstance, setRfInstance] = useState(null);
   const [autosavingInterval, setAutosavingInterval] = useState(null);
+
+  // For 'share' button
+  const clipboard = useClipboard({ timeout: 1500 });
+  const [waitingForShare, setWaitingForShare] = useState(false);
 
   // For modal popup to set global settings like API keys
   const settingsModal = useRef(null);
@@ -186,6 +210,7 @@ const App = () => {
 
   const handleError = (err) => {
     setIsLoading(false);
+    setWaitingForShare(false);
     if (alertModal.current)
       alertModal.current.trigger(err.message);
     console.error(err.message);
@@ -321,11 +346,13 @@ const App = () => {
     }).catch(handleError);
   }, [handleError]);
 
-  const importFlowFromJSON = useCallback((flowJSON) => {
+  const importFlowFromJSON = useCallback((flowJSON, rf_inst) => {
+    const rf = rf_inst || rfInstance;
+
     // Detect if there's no cache data
     if (!flowJSON.cache) {
       // Support for loading old flows w/o cache data:
-      loadFlow(flowJSON, rfInstance);
+      loadFlow(flowJSON, rf);
       return;
     }
 
@@ -337,11 +364,11 @@ const App = () => {
     // before we can load the flow itself...
     importCache(cache).then(() => {
       // We load the ReactFlow instance last
-      loadFlow(flow, rfInstance);
+      loadFlow(flow, rf);
     }).catch(err => {
       // On an error, still try to load the flow itself:
       handleError("Error encountered when importing cache data:" + err.message + "\n\nTrying to load flow regardless...");
-      loadFlow(flow, rfInstance);
+      loadFlow(flow, rf);
     });
   }, [rfInstance]);
 
@@ -444,11 +471,93 @@ const App = () => {
       confirmationModal.current.trigger();
   }, [confirmationModal, resetFlow, setConfirmationDialogProps]);
 
+  // When the user clicks the 'Share Flow' button
+  const onClickShareFlow = useCallback(async () => {
+    if (IS_RUNNING_LOCALLY) {
+      handleError(new Error('Cannot upload flow to server database when running locally: Feature only exists on hosted version of ChainForge.'));
+      return;
+    } else if (waitingForShare === true) {
+      handleError(new Error('A share request is already in progress. Wait until the current share finishes before clicking again.'));
+      return;
+    }
+
+    // Helper function
+    function isFileSizeLessThan5MB(str) {
+      const encoder = new TextEncoder();
+      const encodedString = encoder.encode(str);
+      const fileSizeInBytes = encodedString.length;
+      const fileSizeInMB = fileSizeInBytes / (1024 * 1024); // Convert bytes to megabytes
+      return fileSizeInMB < 5;
+    }
+
+    setWaitingForShare(true);
+
+    // Package up the current flow:
+    const flow = rfInstance.toObject();
+    const all_node_ids = nodes.map(n => n.id);
+    const cforge_data = await fetch_from_backend('exportCache', {
+      'ids': all_node_ids,
+    }).then(function(json) {
+      if (!json || !json.files)
+        throw new Error('There was no response from the backend.');
+      
+      // Now we append the cache file data to the flow
+      return {
+        flow: flow, 
+        cache: json.files,
+      };
+    }).catch(handleError);
+
+    if (!cforge_data) return;
+
+    // Compress the data and check it's compressed size < 5MB:
+    const compressed = LZString.compressToUTF16(JSON.stringify(cforge_data));
+    if (!isFileSizeLessThan5MB(compressed)) {
+      handleError(new Error("Flow filesize exceeds 5MB. You can only share flows up to 5MB or less. But, don't despair! You can still use 'Export Flow' to share your flow manually as a .cforge file."))
+      return;
+    }
+
+    // Try to upload the compressed cforge data to the server:
+    fetch('/db/shareflow.php', {
+      method: 'POST',
+      body: compressed
+    })
+    .then(r => r.text())
+    .then(uid => {
+      if (!uid) {
+        throw new Error("Received no response from server.");
+      } else if (uid.startsWith('Error')) {
+        // Error encountered during the query; alert the user
+        // with the error message:
+        throw new Error(uid);
+      }
+
+      // Share completed!
+      setWaitingForShare(false);
+
+      // The response should be a uid we can put in a GET request.
+      // Generate the link:
+      let base_url = new URL(window.location.origin + window.location.pathname); // the current address e.g., https://chainforge.ai/play
+      let get_params = new URLSearchParams(base_url.search);
+      // Add the 'f' parameter
+      get_params.set('f', uid); // set f=uid
+      // Update the URL with the modified search parameters
+      base_url.search = get_params.toString();
+      // Get the modified URL
+      const get_url = base_url.toString();
+
+      // Copies the GET URL to user's clipboard
+      // and updates the 'Share This' button state:
+      clipboard.copy(get_url);
+    })
+    .catch(err => {
+      handleError(err);
+    });
+
+  }, [rfInstance, nodes, IS_RUNNING_LOCALLY, handleError, clipboard, waitingForShare]);
+
   // Run once upon ReactFlow initialization
   const onInit = (rf_inst) => {
-    localStorage.removeItem('chainforge-flow');
-    localStorage.removeItem('chainforge-state');
-
     setRfInstance(rf_inst);
 
     // Autosave the flow to localStorage every minute:
@@ -456,30 +565,60 @@ const App = () => {
     const interv = setInterval(() => saveFlow(rf_inst), 60000); // 60000 milliseconds = 1 minute
     setAutosavingInterval(interv);
 
+    if (!IS_RUNNING_LOCALLY) {
+
+      // Check if there's a shared flow UID in the URL as a GET param
+      // If so, we need to look it up in the database and attempt to load it:
+      const shared_flow_uid = getSharedFlowURLParam();
+      if (shared_flow_uid !== undefined) {
+        try {
+          // The format passed a basic smell test;
+          // now let's query the server for a flow with that UID:
+          fetch('/db/get_sharedflow.php', {
+            method: 'POST',
+            body: shared_flow_uid,
+          })
+          .then(r => r.text())
+          .then(response => {
+            if (!response || response.startsWith('Error')) {
+              // Error encountered during the query; alert the user
+              // with the error message:
+              handleError(new Error(response || 'Unknown error'));
+              return;
+            }
+
+            // Attempt to parse the response as a compressed flow + import it:
+            try {
+              const cforge_json = JSON.parse(LZString.decompressFromUTF16(response));
+              importFlowFromJSON(cforge_json, rf_inst);
+              setIsLoading(false);
+            } catch (err) {
+              handleError(err);
+            }
+          })
+          .catch(err => {
+            handleError(err);
+          });
+        } catch(err) {
+          // Soft fail
+          setIsLoading(false);
+          console.error(err);
+        }
+
+        // Since we tried to load from the shared flow ID, don't try to load from autosave
+        return;
+      }
+    }
+
     // Attempt to load an autosaved flow, if one exists:
     if (autosavedFlowExists())
       loadFlowFromAutosave(rf_inst);
     else {
       // Load an interesting default starting flow for new users
-      importFlowFromJSON(EXAMPLEFLOW_1);
-      rf_inst.setViewport(EXAMPLEFLOW_1.flow.viewport);
+      importFlowFromJSON(EXAMPLEFLOW_1, rf_inst);
 
       // Open a welcome pop-up
       // openWelcomeModal();
-
-      // NOTE: We need to create a unique ID using the current date,
-      //       because of the way ReactFlow saves and restores states. 
-      // const uid = (id) => `${id}-${Date.now()}`;
-      // setNodes([
-      //   { id: uid('prompt'), type: 'prompt', data: { 
-      //     llms: [ INITIAL_LLM() ],
-      //     prompt: 'What is the opening sentence of Pride and Prejudice?', 
-      //     n: 1 }, position: { x: 450, y: 200 } },
-      //   { id: uid('eval'), type: 'evaluator', data: { language: "javascript", code: "function evaluate(response) {\n  return response.text.length;\n}" }, position: { x: 820, y: 150 } },
-      //   { id: uid('textfields'), type: 'textfields', data: {}, position: { x: 80, y: 270 } },
-      //   { id: uid('vis'), type: 'vis', data: {}, position: { x: 1200, y: 250 } },
-      //   { id: uid('inspect'), type: 'inspect', data: {}, position: { x:820, y:400 } },
-      // ]);
     }
 
     // Turn off loading wheel
@@ -574,9 +713,21 @@ const App = () => {
         <Button onClick={importFlowFromFile} size="sm" variant="outline" compact>Import</Button>
       </div>
       <div style={{position: 'fixed', right: '10px', top: '10px', zIndex: 8}}>
+        {IS_RUNNING_LOCALLY ? (<></>) : (
+          <Button onClick={onClickShareFlow} 
+                  size="sm" variant="outline" compact 
+                  color={clipboard.copied ? 'teal' : 'blue'}
+                  mr='xs' style={{float: 'left'}}>
+            {waitingForShare ? <Loader size='xs' mr='4px' /> : <IconFileSymlink size="16px"/>}
+            {clipboard.copied ? 'Link copied!' : (waitingForShare ? 'Sharing...' : 'Share')}
+          </Button>
+        )}
         <Button onClick={onClickNewFlow} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> New Flow </Button>
         <Button onClick={onClickExamples} size="sm" variant="filled" compact mr='xs' style={{float: 'left'}}> Example Flows </Button>
         <Button onClick={onClickSettings} size="sm" variant="gradient" compact><IconSettings size={"90%"} /></Button>
+      </div>
+      <div style={{position: 'fixed', right: '10px', bottom: '20px', zIndex: 8}}>
+        <a href='https://forms.gle/AA82Rbn1X8zztcbj8' target="_blank" style={{color: '#666', fontSize:'11pt'}}>Send us feedback</a>
       </div>
     </div>
   );

@@ -313,7 +313,7 @@ export const EXAMPLEFLOW_1 = {
       }
     ],
     "viewport": {
-      "x": 450,
+      "x": 474,
       "y": 63,
       "zoom": 1
     }
