@@ -233,7 +233,7 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
     openai_call = client.getCompletions.bind(client);
     arg2 = [prompt];
   } else {
-    openai_call = client.getChatCompletions.bind;
+    openai_call = client.getChatCompletions.bind(client);
     arg2 = [
       {"role": "system", "content": system_msg},
       {"role": "user", "content": prompt},
@@ -247,7 +247,6 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
     if (error?.response) {
       throw new Error(error.response.data?.error?.message);
     } else {
-      console.log(error?.message || error);
       throw new Error(error?.message || error);
     }
   }
