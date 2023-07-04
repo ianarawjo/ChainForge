@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState } from 'react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import { Textarea } from '@mantine/core';

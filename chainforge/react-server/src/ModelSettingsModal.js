@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback, forwardRef, useImperativeHandle, useEffect } from 'react';
-import { TextInput, Checkbox, Button, Group, Box, Modal, Popover } from '@mantine/core';
+import React, { useState, useCallback, forwardRef, useImperativeHandle, useEffect } from 'react';
+import { Button, Modal, Popover } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 
 import emojidata from '@emoji-mart/data';

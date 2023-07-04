@@ -1,11 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback, forwardRef, useId } from 'react';
-import { Handle } from 'react-flow-renderer';
-import { Menu, Modal, TextInput, Button, Tooltip, Textarea, Table } from '@mantine/core';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Menu, Tooltip } from '@mantine/core';
 import EditableTable from './EditableTable';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { v4 as uuidv4 } from 'uuid';
-import { IconPencil, IconArrowLeft, IconArrowRight, IconX, IconArrowBarToUp, IconArrowBarToDown } from '@tabler/icons-react';
+import { IconX, IconArrowBarToUp, IconArrowBarToDown } from '@tabler/icons-react';
 import TemplateHooks from './TemplateHooksComponent';
 import NodeLabel from './NodeLabelComponent';
 import AlertModal from './AlertModal';
