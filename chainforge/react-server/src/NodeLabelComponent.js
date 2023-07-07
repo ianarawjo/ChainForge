@@ -1,9 +1,11 @@
+import { useRef } from 'react';
 import useStore from './store';
 import { EditText } from 'react-edit-text';
 import 'react-edit-text/dist/index.css';
 import StatusIndicator from './StatusIndicatorComponent';
 import AlertModal from './AlertModal';
-import { useState, useEffect} from 'react';
+import AreYouSureModal from './AreYouSureModal';
+import { useState, useEffect, useCallback} from 'react';
 import { Tooltip } from '@mantine/core';
 
 export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, customButtons, handleRunClick, handleRunHover, runButtonTooltip }) {
@@ -11,6 +13,12 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
     const [statusIndicator, setStatusIndicator] = useState('none');
     const [runButton, setRunButton] = useState('none');
     const removeNode = useStore((state) => state.removeNode);
+
+    // For 'delete node' confirmation popup
+    const deleteConfirmModal = useRef(null);
+    const [deleteConfirmProps, setDeleteConfirmProps] = useState({
+        title: 'Delete node', message: 'Are you sure?', onConfirm: () => {}
+    });
 
     const handleNodeLabelChange = (evt) => {
         const { value } = evt;
@@ -48,13 +56,22 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
         }
     }, [handleRunClick, runButtonTooltip]);
 
-    const handleCloseButtonClick = () => {
-        removeNode(nodeId);
-    }
+    const handleCloseButtonClick = useCallback(() => {
+        setDeleteConfirmProps({
+            title: 'Delete node',
+            message: 'Are you sure you want to delete this node? This action is irreversible.',
+            onConfirm: () => removeNode(nodeId), 
+        });
+      
+        // Open the 'are you sure' modal:
+        if (deleteConfirmModal && deleteConfirmModal.current)
+            deleteConfirmModal.current.trigger();
+    }, [deleteConfirmModal]);
 
     return (<>
         <div className="node-header drag-handle">
             {icon ? (<>{icon}&nbsp;</>) : <></>}
+            <AreYouSureModal ref={deleteConfirmModal} title={deleteConfirmProps.title} message={deleteConfirmProps.message} onConfirm={deleteConfirmProps.onConfirm} />
             <EditText className="nodrag" name={nodeId ? nodeId + "-label" : "node-label"}
                 defaultValue={title || 'Node'}
                 style={{ width: '60%', margin: '0px', padding: '0px', minHeight: '18px' }}

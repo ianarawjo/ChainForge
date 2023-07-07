@@ -33,7 +33,7 @@ const AreYouSureModal = forwardRef(({title, message, onConfirm}, ref) => {
               wrap="wrap"
             >
           <Button variant='light' color='red' type="submit" w='40%' onClick={close}>Cancel</Button>
-          <Button variant='filled' color='green' type="submit" w='40%' onClick={confirmAndClose}>Confirm</Button>
+          <Button variant='filled' color='blue' type="submit" w='40%' onClick={confirmAndClose}>Confirm</Button>
         </Flex>
     </Modal>
   );
