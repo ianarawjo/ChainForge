@@ -327,8 +327,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   };
 
   return (<div style={{height: '100%'}}>
-    <Flex>
-      <NativeSelect label='View as' data={['Hierarchy', 'Table']} mr='8px' w='15%' />
+    {/* <Flex> */}
+      {/* <NativeSelect label='View as' data={['Hierarchy', 'Table']} mr='8px' w='15%' /> */}
       <MultiSelect ref={multiSelectRef}
                   onChange={handleMultiSelectValueChange}
                   className='nodrag nowheel inspect-multiselect'
@@ -340,7 +340,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                   clearSearchOnChange={true}
                   clearSearchOnBlur={true}
                   w='100%' />
-    </Flex>
+    {/* </Flex> */}
     <div className="nowheel nodrag">
       {responses}
     </div>
