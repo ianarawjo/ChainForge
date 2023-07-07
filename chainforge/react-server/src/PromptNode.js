@@ -146,7 +146,8 @@ const PromptNode = ({ data, id }) => {
 
   const refreshTemplateHooks = (text) => {
     // Update template var fields + handles
-    const found_template_vars = extractBracketedSubstrings(text);  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
+    const found_template_vars = Array.from(
+        new Set(extractBracketedSubstrings(text)));  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
     setTemplateVars(found_template_vars);
   };
 
