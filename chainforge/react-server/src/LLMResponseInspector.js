@@ -127,7 +127,6 @@ const ResponseGroup = ({ header, responseBoxes, responseBoxesWrapperClass, displ
 };
 
 
-
 const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
 
   const [responses, setResponses] = useState([]);
@@ -286,16 +285,20 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         // Now produce nested divs corresponding to the groups
         const remaining_vars = varnames.slice(1);
         const updated_eatenvars = eatenvars.concat([group_name]);
+        const defaultOpened = !first_opened || eatenvars.length === 0 || eatenvars[eatenvars.length-1] === 'LLM';
         const grouped_resps_divs = Object.keys(grouped_resps).map(g => groupByVars(grouped_resps[g], remaining_vars, updated_eatenvars, get_header(group_name, g)));
         const leftover_resps_divs = leftover_resps.length > 0 ? groupByVars(leftover_resps, remaining_vars, updated_eatenvars, get_header(group_name, undefined)) : [];
 
-        return (<>
+        leaf_id += 1;
+        
+        return (<div key={'h'+ group_name + '_' + leaf_id}>
             {header ? 
                 (<div key={group_name} className="response-group" style={{ backgroundColor: rgroup_color(eatenvars.length) }}>
-                    {header}
-                    <div className="response-boxes-wrapper">
-                        {grouped_resps_divs}
-                    </div>
+                  <ResponseGroup header={header} 
+                                 responseBoxes={grouped_resps_divs} 
+                                 responseBoxesWrapperClass="response-boxes-wrapper"
+                                 displayStyle="block"
+                                 defaultState={defaultOpened} />
                 </div>)
                 : <div key={group_name}>{grouped_resps_divs}</div>}
             {leftover_resps_divs.length === 0 ? (<></>) : (
@@ -303,7 +306,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                     {leftover_resps_divs}
                 </div>
             )}
-        </>);
+        </div>);
     };
 
     // Produce DIV elements grouped by selected vars
