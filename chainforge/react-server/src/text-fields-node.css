@@ -328,6 +328,7 @@
     border-bottom-color: #aaa;
     box-shadow: 1px 1px 8px #ccc;
     max-height: 200px;
+    overflow-y: auto;
   }
   .inspect-modal-prompt-text {
     font-family: monospace;
