@@ -5,7 +5,7 @@
  * be deployed in multiple locations.  
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { Collapse, MultiSelect } from '@mantine/core';
+import { Collapse, Flex, MultiSelect, NativeSelect } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import * as XLSX from 'xlsx';
 import useStore from './store';
@@ -171,13 +171,14 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
 
     // Functions to associate a color to each LLM in responses
     const color_for_llm = (llm) => (getColorForLLMAndSetIfNotFound(llm) + '99');
+    const header_bg_colors = ['#e0f4fa', '#c0def9', '#a9c0f9', '#a6b2ea'];
     const response_box_colors = ['#eee', '#fff', '#eee', '#ddd', '#eee', '#ddd', '#eee'];
     const rgroup_color = (depth) => response_box_colors[depth % response_box_colors.length];
 
-    const getHeaderBadge = (key, val) => {
+    const getHeaderBadge = (key, val, depth) => {
       if (val) {
         const s = truncStr(val.trim(), 1024);
-        return (<div className="response-var-header">
+        return (<div className="response-var-header" style={{backgroundColor: header_bg_colors[depth % header_bg_colors.length]}}>
           <span className="response-var-name">{key}&nbsp;=&nbsp;</span><span className="response-var-value">"{s}"</span>
         </div>);
       } else {
@@ -280,7 +281,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                                                 : groupResponsesBy(resps, (r => ((group_name in r.vars) ? r.vars[group_name] : null)));
         const get_header = (group_name === 'LLM') 
                             ? ((key, val) => (<div key={val} style={{backgroundColor: color_for_llm(val)}} className='response-llm-header'>{val}</div>))
-                            : ((key, val) => getHeaderBadge(key, val));
+                            : ((key, val) => getHeaderBadge(key, val, eatenvars.length));
         
         // Now produce nested divs corresponding to the groups
         const remaining_vars = varnames.slice(1);
@@ -290,7 +291,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         const leftover_resps_divs = leftover_resps.length > 0 ? groupByVars(leftover_resps, remaining_vars, updated_eatenvars, get_header(group_name, undefined)) : [];
 
         leaf_id += 1;
-        
+
         return (<div key={'h'+ group_name + '_' + leaf_id}>
             {header ? 
                 (<div key={group_name} className="response-group" style={{ backgroundColor: rgroup_color(eatenvars.length) }}>
@@ -326,16 +327,20 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   };
 
   return (<div style={{height: '100%'}}>
-    <MultiSelect ref={multiSelectRef}
-                 onChange={handleMultiSelectValueChange}
-                 className='nodrag nowheel inspect-multiselect'
-                 label={<span style={{marginTop: '0px', fontWeight: 'normal'}}>Group responses by (order matters):</span>}
-                 data={multiSelectVars}
-                 placeholder="Pick vars to group responses, in order of importance"
-                 size={wideFormat ? 'sm' : 'xs'}
-                 value={multiSelectValue}
-                 clearSearchOnChange={true}
-                 clearSearchOnBlur={true} />
+    <Flex>
+      <NativeSelect label='View as' data={['Hierarchy', 'Table']} mr='8px' w='15%' />
+      <MultiSelect ref={multiSelectRef}
+                  onChange={handleMultiSelectValueChange}
+                  className='nodrag nowheel inspect-multiselect'
+                  label={<span style={{marginTop: '0px', fontWeight: 'normal'}}>Group responses by (order matters):</span>}
+                  data={multiSelectVars}
+                  placeholder="Pick vars to group responses, in order of importance"
+                  size={wideFormat ? 'sm' : 'xs'}
+                  value={multiSelectValue}
+                  clearSearchOnChange={true}
+                  clearSearchOnBlur={true}
+                  w='100%' />
+    </Flex>
     <div className="nowheel nodrag">
       {responses}
     </div>
