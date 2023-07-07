@@ -422,6 +422,7 @@ def fetchEnvironAPIKeys():
         'OPENAI_API_KEY': 'OpenAI', 
         'ANTHROPIC_API_KEY': 'Anthropic', 
         'PALM_API_KEY': 'Google', 
+        'HUGGINGFACE_API_KEY': 'HuggingFace',
         'AZURE_OPENAI_KEY': 'Azure_OpenAI', 
         'AZURE_OPENAI_ENDPOINT': 'Azure_OpenAI_Endpoint'
     }
