@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Button, Progress } from '@mantine/core';
+import { Menu, Button, Progress, Textarea } from '@mantine/core';
 import { v4 as uuid } from 'uuid';
 import { IconSearch } from '@tabler/icons-react';
 import useStore from './store';
@@ -444,6 +444,14 @@ const PromptNode = ({ data, id }) => {
             else if (json.responses && json.errors) {
                 FINISHED_QUERY = true;
 
+                // Store and log responses (if any)
+                if (json.responses) {
+                    setJSONResponses(json.responses);
+
+                    // Log responses for debugging:
+                    console.log(json.responses);
+                }
+
                 // If there was at least one error collecting a response...
                 const llms_w_errors = Object.keys(json.errors);
                 if (llms_w_errors.length > 0) {
@@ -508,12 +516,6 @@ const PromptNode = ({ data, id }) => {
                         setDataPropsForNode(node.id, { refresh: true });
                     }
                 });
-
-                // Store responses
-                setJSONResponses(json.responses);
-
-                // Log responses for debugging:
-                console.log(json.responses);
             } else {
                 setStatus('error');
                 triggerAlert(json.error || 'Unknown error when querying LLM');
@@ -543,6 +545,29 @@ const PromptNode = ({ data, id }) => {
     if (status !== 'none') { setStatus('none'); }
   };
 
+  // Dynamically update the textareas and position of the template hooks
+  const textAreaRef = useRef(null);
+  const [hooksY, setHooksY] = useState(138);
+  const setRef = useCallback((elem) => {
+    // To listen for resize events of the textarea, we need to use a ResizeObserver.
+    // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div wrapping textfields.
+    // NOTE: This won't work on older browsers, but there's no alternative solution.
+    if (!textAreaRef.current && elem && window.ResizeObserver) {
+      let past_hooks_y = 138;
+      const observer = new ResizeObserver(() => {
+        if (!textAreaRef || !textAreaRef.current) return;
+        const new_hooks_y = textAreaRef.current.clientHeight + 68;
+        if (past_hooks_y !== new_hooks_y) {
+          setHooksY(new_hooks_y);
+          past_hooks_y = new_hooks_y;
+        }
+      });
+
+      observer.observe(elem);
+      textAreaRef.current = elem;
+    }
+  }, [textAreaRef]);
+
   return (
     <div className="prompt-node cfnode">
     <NodeLabel title={data.title || 'Prompt Node'} 
@@ -556,22 +581,18 @@ const PromptNode = ({ data, id }) => {
                 runButtonTooltip={runTooltip}
                 />
     <LLMResponseInspectorModal ref={inspectModal} jsonResponses={jsonResponses} prompt={promptText} />
-      <div className="input-field">
-        <textarea
-          rows="4"
-          cols="40"
-          defaultValue={data.prompt}
-          onChange={handleInputChange}
-          className="nodrag nowheel"
-        />
-        <Handle
-          type="source"
-          position="right"
-          id="prompt"
-          style={{ top: '50%', background: '#555' }}
-        />
-      </div>
-      <TemplateHooks vars={templateVars} nodeId={id} startY={138} />
+    <Textarea ref={setRef}
+                className="prompt-field-fixed nodrag nowheel" 
+                minRows="4"
+                defaultValue={data.prompt}  
+                onChange={handleInputChange} />
+    <Handle
+        type="source"
+        position="right"
+        id="prompt"
+        style={{ top: '50%', background: '#555' }}
+    />
+    <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} />
       <hr />
       <div>
         <div style={{marginBottom: '10px', padding: '4px'}}>
@@ -608,7 +629,7 @@ const PromptNode = ({ data, id }) => {
             ]} />)
         : <></>}
 
-        { jsonResponses && jsonResponses.length > 0 && status !== 'error' && status !== 'loading' ? 
+        { jsonResponses && jsonResponses.length > 0 && status !== 'loading' ? 
             (<div className="eval-inspect-response-footer nodrag" onClick={showResponseInspector} style={{display: 'flex', justifyContent:'center'}}>
                 <Button color='blue' variant='subtle' w='100%' >Inspect responses&nbsp;<IconSearch size='12pt'/></Button>
             </div>) : <></>

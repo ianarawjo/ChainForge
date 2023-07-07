@@ -587,6 +587,15 @@
     line-height: 1.2;
     border-color: #999;
   }
+  .prompt-field-fixed .mantine-Textarea-wrapper textarea {
+    resize: vertical;
+    overflow-y: auto;
+    padding: calc(0.5rem / 3);
+    font-size: 10pt;
+    font-family: monospace;
+    line-height: 1.2;
+    border-color: #999;
+  }
 
   .add-text-field-btn {
     display: flex;
