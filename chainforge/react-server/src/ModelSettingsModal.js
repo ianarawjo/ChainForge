@@ -59,13 +59,25 @@ const ModelSettingsModal = forwardRef((props, ref) => {
   }, [props.model]);
 
   const saveFormState = useCallback((fdata) => {
-    setFormData(fdata);
+
+    // For some reason react-json-form-schema returns 'undefined' on empty strings.
+    // We need to (1) detect undefined values for keys in formData and (2) if they are of type string, replace with "",
+    // if that property is marked with a special "allow_empty_str" property.
+    let patched_fdata = {};
+    Object.entries(fdata).forEach(([key, val]) => {
+      if (val === undefined && key in schema.properties && schema.properties[key].allow_empty_str === true)
+        patched_fdata[key] = "";
+      else
+        patched_fdata[key] = val;
+    });
+
+    setFormData(patched_fdata);
 
     if (onSettingsSubmit) {
         props.model.emoji = modelEmoji;
-        onSettingsSubmit(props.model, fdata, postprocess(fdata));
+        onSettingsSubmit(props.model, patched_fdata, postprocess(patched_fdata));
     }
-  }, [props, modelEmoji, setFormData, onSettingsSubmit, postprocess]);
+  }, [props, modelEmoji, schema, setFormData, onSettingsSubmit, postprocess]);
 
   const onSubmit = useCallback((submitInfo) => {
     saveFormState(submitInfo.formData);

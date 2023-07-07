@@ -58,7 +58,8 @@ const ChatGPTSettings = {
                 "type": "string",
                 "title": "System Message (chat models only)",
                 "description": "Many conversations begin with a system message to gently instruct the assistant. By default, ChainForge includes the suggested 'You are a helpful assistant.'",
-                "default": "You are a helpful assistant."
+                "default": "You are a helpful assistant.",
+                "allow_empty_str": true,
             },
             "temperature": {
                 "type": "number",

@@ -145,7 +145,7 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
   }
 
   console.log(`Querying OpenAI model '${model}' with prompt '${prompt}'...`);
-  const system_msg: string = params?.system_msg || "You are a helpful assistant.";
+  const system_msg: string = params?.system_msg !== undefined ? params.system_msg : "You are a helpful assistant.";
   delete params?.system_msg;
 
   let query: Dict = {
@@ -204,7 +204,7 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
     throw Error("Could not find an Azure OpenAPI deployment name. Double-check that your deployment name is set in Settings or in your local environment.");
   if (!model_type)
     throw Error("Could not find a model type specified for an Azure OpenAI model. Double-check that your deployment name is set in Settings or in your local environment.");
-  
+
   const client = new AzureOpenAIClient(AZURE_OPENAI_ENDPOINT, new AzureKeyCredential(AZURE_OPENAI_KEY));
 
   if (params?.stop !== undefined && (!Array.isArray(params.stop) || params.stop.length === 0))
@@ -215,7 +215,7 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
     delete params.function_call;
 
   console.log(`Querying Azure OpenAI deployed model '${deployment_name}' at endpoint '${AZURE_OPENAI_ENDPOINT}' with prompt '${prompt}'...`)
-  const system_msg = params?.system_msg || "You are a helpful assistant.";
+  const system_msg = params?.system_msg !== undefined ? params.system_msg : "You are a helpful assistant.";
 
   delete params?.system_msg;
   delete params?.model_type;
