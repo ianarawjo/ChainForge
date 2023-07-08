@@ -340,6 +340,17 @@
     font-weight: bold;
   }
 
+  .prompt-preview {
+    font-size: 10pt;
+    font-family: monospace;
+    border-radius: 6px;
+    padding: 8px;
+    margin: 10px 0px;
+    background-color: #ddd;
+    color: #444;
+    white-space: pre-wrap;
+  }
+
   .small-response {
     font-size: 8pt;
     font-family: monospace;

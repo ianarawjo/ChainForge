@@ -1,7 +1,7 @@
 import { queryLLM, executejs, executepy, 
          fetchExampleFlow, fetchOpenAIEval, importCache, 
          exportCache, countQueries, grabResponses, 
-         createProgressFile } from "./backend/backend";
+         createProgressFile, generatePrompts} from "./backend/backend";
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
@@ -11,6 +11,8 @@ async function _route_to_js_backend(route, params) {
       return grabResponses(params.responses);
     case 'countQueriesRequired':
       return countQueries(params.prompt, clone(params.vars), clone(params.llms), params.n, params.id);
+    case 'generatePrompts':
+      return generatePrompts(params.prompt, clone(params.vars));
     case 'createProgressFile':
       return createProgressFile(params.id);
     case 'queryllm':
