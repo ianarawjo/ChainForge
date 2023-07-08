@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Button, Progress, Textarea } from '@mantine/core';
+import { Menu, Button, Progress, Textarea, Text, Popover, Center, Modal, Box } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { v4 as uuid } from 'uuid';
-import { IconSearch } from '@tabler/icons-react';
+import { IconSearch, IconList } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent'
@@ -43,6 +44,46 @@ const getUniqueLLMMetavarKey = (responses) => {
     return `LLM_${i}`;
 };
 
+
+class PromptInfo {
+    prompt; // string
+
+    constructor(prompt) {
+        this.prompt = prompt;
+    }
+}
+
+const displayPromptInfos = (promptInfos) => 
+    promptInfos.map((info, idx) => (
+        <div key={idx}>
+            <pre className='prompt-preview'>{info.prompt}</pre>
+        </div>
+    ));
+
+const PromptListPopover = ({ promptInfos, onHover, onClick }) => {
+    const [opened, { close, open }] = useDisclosure(false);
+
+    const _onHover = useCallback(() => {
+        onHover();
+        open();
+    }, [onHover, open]);
+
+    return (
+        <Popover width={400} position="right-start" withArrow withinPortal shadow="rgb(38, 57, 77) 0px 10px 30px -14px" key="query-info" opened={opened} styles={{dropdown: {maxHeight: '500px', overflowY: 'auto', backgroundColor: '#fff'}}}>
+            <Popover.Target>
+                <button className='custom-button' onMouseEnter={_onHover} onMouseLeave={close} onClick={onClick} style={{border:'none'}}>
+                    <IconList size='12pt' color='gray' style={{marginBottom: '-4px'}} />
+                </button>
+            </Popover.Target>
+            <Popover.Dropdown sx={{ pointerEvents: 'none' }}>
+                <Center><Text size='xs' fw={500} color='#666'>Preview of generated prompts ({promptInfos.length} total)</Text></Center>
+                {displayPromptInfos(promptInfos)}
+            </Popover.Dropdown>
+        </Popover>
+    );
+};
+
+
 const PromptNode = ({ data, id }) => {
 
   // Get state from the Zustand store:
@@ -67,6 +108,10 @@ const PromptNode = ({ data, id }) => {
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
+
+  // For an info pop-up that shows all the prompts that will be sent off
+  // NOTE: This is the 'full' version of the PromptListPopover that activates on hover.
+  const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] = useDisclosure(false);
 
   // Selecting LLM models to prompt
   const [llmItems, setLLMItems] = useState(data.llms || initLLMs.map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i})));
@@ -225,33 +270,6 @@ const PromptNode = ({ data, id }) => {
     };
     get_outputs(templateVars, id);
 
-    // Get Pythonic version of the prompt, by adding a $ before any template variables in braces:
-    // const str_to_py_template_format = toPyTemplateFormat; // (str) => str.replace(/(?<!\\){(.*?)(?<!\\)}/g, "${$1}")
-    // const to_py_template_format = (str_or_obj) => {
-    //     if (typeof str_or_obj === 'object') {
-    //         let new_obj = { text: str_to_py_template_format(str_or_obj.text), fill_history: {}};
-    //         // Convert fill history vars to py template format
-    //         if (str_or_obj.fill_history) {
-    //             Object.keys(str_or_obj.fill_history).forEach(v => {
-    //                 new_obj.fill_history[v] = str_to_py_template_format(str_or_obj.fill_history[v]);
-    //             });
-    //         }
-    //         // Carry all other properties of the object over:
-    //         Object.keys(str_or_obj).forEach(key => {
-    //             if (key !== 'text' && key !== 'fill_history')
-    //                 new_obj[key] = str_or_obj[key];
-    //         });
-    //         return new_obj;
-    //     } else
-    //         return str_to_py_template_format(str_or_obj);
-    // };
-    // const py_prompt_template = to_py_template_format(promptText);
-
-    // Do the same for the vars, since vars can themselves be prompt templates:
-    // Object.keys(pulled_data).forEach(varname => {
-    //     pulled_data[varname] = pulled_data[varname].map(val => to_py_template_format(val));
-    // });
-
     return [promptText, pulled_data];
   };
 
@@ -271,6 +289,19 @@ const PromptNode = ({ data, id }) => {
     }, rejected);
   };
 
+  // On hover over the 'info' button, to preview the prompts that will be sent out
+  const [promptPreviews, setPromptPreviews] = useState([]);
+  const handlePreviewHover = () => {
+    // Pull input data and prompt
+    const [root_prompt, pulled_vars] = pullInputData();
+    fetch_from_backend('generatePrompts', {
+        prompt: root_prompt,
+        vars: pulled_vars,
+    }).then(prompts => {
+        setPromptPreviews(prompts.map(p => (new PromptInfo(p))));
+    });
+  };
+
   // On hover over the 'Run' button, request how many responses are required and update the tooltip. Soft fails.
   const handleRunHover = () => {
     // Check if there's at least one model in the list; if not, nothing to run on.
@@ -286,12 +317,12 @@ const PromptNode = ({ data, id }) => {
     }
 
     // Get input data and prompt
-    const [py_prompt, pulled_vars] = pullInputData();
+    const [root_prompt, pulled_vars] = pullInputData();
     const llms = llmItemsCurrState.map(item => item.model);
     const num_llms = llms.length;
 
     // Fetch response counts from backend
-    fetchResponseCounts(py_prompt, pulled_vars, llmItemsCurrState, (err) => {
+    fetchResponseCounts(root_prompt, pulled_vars, llmItemsCurrState, (err) => {
         console.warn(err.message);  // soft fail
     }).then(([counts, total_num_responses]) => {
         // Check for empty counts (means no requests will be sent!)
@@ -366,7 +397,7 @@ const PromptNode = ({ data, id }) => {
     setJSONResponses([]);
     setProgressAnimated(true);
 
-    const [py_prompt_template, pulled_data] = pullInputData();
+    const [prompt_template, pulled_data] = pullInputData();
 
     let FINISHED_QUERY = false;
     const rejected = (err) => {
@@ -382,7 +413,7 @@ const PromptNode = ({ data, id }) => {
 
     // Fetch info about the number of queries we'll need to make 
     const fetch_resp_count = () => fetchResponseCounts(
-        py_prompt_template, pulled_data, llmItemsCurrState, rejected);
+        prompt_template, pulled_data, llmItemsCurrState, rejected);
     
     // Initialize progress bars to small amounts
     setProgress({ success: 2, error: 0 });
@@ -431,7 +462,7 @@ const PromptNode = ({ data, id }) => {
         return fetch_from_backend('queryllm', {
             id: id,
             llm: llmItemsCurrState,  // deep clone it first
-            prompt: py_prompt_template,
+            prompt: prompt_template,
             vars: pulled_data,
             n: numGenerations,
             api_keys: (apiKeys ? apiKeys : {}),
@@ -580,8 +611,15 @@ const PromptNode = ({ data, id }) => {
                 handleRunClick={handleRunClick}
                 handleRunHover={handleRunHover}
                 runButtonTooltip={runTooltip}
-                />
+                customButtons={[
+                    <PromptListPopover promptInfos={promptPreviews} onHover={handlePreviewHover} onClick={openInfoModal} />
+                ]} />
     <LLMResponseInspectorModal ref={inspectModal} jsonResponses={jsonResponses} prompt={promptText} />
+    <Modal title={'List of prompts that will be sent to LLMs (' + promptPreviews.length + ' total)'} size='xl' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
+        <Box size={600} m='lg' mt='xl'>
+            {displayPromptInfos(promptPreviews)}
+        </Box>
+    </Modal>
     <Textarea ref={setRef}
                 className="prompt-field-fixed nodrag nowheel" 
                 minRows="4"

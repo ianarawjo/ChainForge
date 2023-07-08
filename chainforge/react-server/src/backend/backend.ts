@@ -357,6 +357,18 @@ function run_over_responses(eval_func: (resp: ResponseInfo) => any, responses: A
 // """
 
 /**
+ * 
+ * @param root_prompt The prompt template to start from 
+ * @param vars a dict of the template variables to fill the prompt template with, by name. (See countQueries docstring for more info).
+ * @returns An array of strings representing the prompts that will be sent out. Note that this could include unfilled template vars.
+ */
+export async function generatePrompts(root_prompt: string, vars: Dict): Promise<string[]> {  
+  const gen_prompts = new PromptPermutationGenerator(root_prompt);
+  const all_prompt_permutations = Array.from(gen_prompts.generate(vars)).map(p => p.toString());
+  return all_prompt_permutations;
+}
+
+/**
  * Calculates how many queries we need to make, given the passed prompt and vars.
  * 
  * @param prompt the prompt template, with any {{}} vars
