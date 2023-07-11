@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Button, Progress, Textarea, Text, Popover, Center, Modal, Box } from '@mantine/core';
+import { Menu, Button, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { v4 as uuid } from 'uuid';
 import { IconSearch, IconList } from '@tabler/icons-react';
@@ -71,9 +71,11 @@ const PromptListPopover = ({ promptInfos, onHover, onClick }) => {
     return (
         <Popover width={400} position="right-start" withArrow withinPortal shadow="rgb(38, 57, 77) 0px 10px 30px -14px" key="query-info" opened={opened} styles={{dropdown: {maxHeight: '500px', overflowY: 'auto', backgroundColor: '#fff'}}}>
             <Popover.Target>
-                <button className='custom-button' onMouseEnter={_onHover} onMouseLeave={close} onClick={onClick} style={{border:'none'}}>
-                    <IconList size='12pt' color='gray' style={{marginBottom: '-4px'}} />
-                </button>
+                <Tooltip label='Click to view all prompts' withArrow>
+                    <button className='custom-button' onMouseEnter={_onHover} onMouseLeave={close} onClick={onClick} style={{border:'none'}}>
+                        <IconList size='12pt' color='gray' style={{marginBottom: '-4px'}} />
+                    </button>
+                </Tooltip>
             </Popover.Target>
             <Popover.Dropdown sx={{ pointerEvents: 'none' }}>
                 <Center><Text size='xs' fw={500} color='#666'>Preview of generated prompts ({promptInfos.length} total)</Text></Center>
