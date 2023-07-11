@@ -51,15 +51,18 @@ const TextFieldsNode = ({ data, id }) => {
   const handleDelete = useCallback((event) => {
     // Update the data for this text field's id.
     let new_fields = { ...textfieldsValues };
+    let new_vis = { ...fieldVisibility };
     var item_id = event.target.id.substring(delButtonId.length);
     delete new_fields[item_id];
+    delete new_vis[item_id];
     // if the new_data is empty, initialize it with one empty field
     if (Object.keys(new_fields).length === 0) {
       new_fields[getUID()] = "";
     }
     setTextfieldsValues(new_fields);
-    setDataPropsForNode(id, {fields: new_fields});
-  }, [textfieldsValues, id, delButtonId, setDataPropsForNode]);
+    setFieldVisibility(new_vis);
+    setDataPropsForNode(id, {fields: new_fields, fields_visibility: new_vis});
+  }, [textfieldsValues, fieldVisibility, id, delButtonId, setDataPropsForNode]);
 
   // Initialize fields (run once at init)
   useEffect(() => {
