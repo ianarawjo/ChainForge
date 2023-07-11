@@ -143,8 +143,9 @@ export class PromptTemplate {
         this.metavars = {};
     }
 
+    /** Returns the value of this.template, with any escaped braces \{ and \} with the escape \ char removed. */
     toString(): string {
-        return this.template;
+        return this.template.replaceAll('\\{', '{').replaceAll('\\}', '}');
     }
     
     toValue(): string {

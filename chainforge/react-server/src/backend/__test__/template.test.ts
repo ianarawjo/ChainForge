@@ -94,3 +94,12 @@ test('carry together vars', () => {
   }
   expect(num_prompts).toBe(3*3);
 });
+
+test('escaped braces', () => {
+  // Escaped braces \{ and \} should not be treated as real variables, one, and two, should be 
+  // removed when calling the 'toString' method on a PromptTemplate:
+  let promptTemplate = new PromptTemplate('For what show did \\{person\\} get a Netflix deal?');
+  let filledTemplate = promptTemplate.fill({'person': 'Meghan Markle'});
+  expect(promptTemplate.toString()).toBe('For what show did {person} get a Netflix deal?');
+  expect(promptTemplate.toString()).toEqual(filledTemplate.toString());
+});
