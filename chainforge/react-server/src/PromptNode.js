@@ -69,7 +69,7 @@ const PromptListPopover = ({ promptInfos, onHover, onClick }) => {
     }, [onHover, open]);
 
     return (
-        <Popover width={400} position="right-start" withArrow withinPortal shadow="rgb(38, 57, 77) 0px 10px 30px -14px" key="query-info" opened={opened} styles={{dropdown: {maxHeight: '500px', overflowY: 'auto', backgroundColor: '#fff'}}}>
+        <Popover position="right-start" withArrow withinPortal shadow="rgb(38, 57, 77) 0px 10px 30px -14px" key="query-info" opened={opened} styles={{dropdown: {maxHeight: '500px', maxWidth: '400px', overflowY: 'auto', backgroundColor: '#fff'}}}>
             <Popover.Target>
                 <Tooltip label='Click to view all prompts' withArrow>
                     <button className='custom-button' onMouseEnter={_onHover} onMouseLeave={close} onClick={onClick} style={{border:'none'}}>

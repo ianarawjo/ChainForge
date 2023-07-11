@@ -1,4 +1,4 @@
-import { StringTemplate, PromptTemplate, PromptPermutationGenerator } from '../template';
+import { StringTemplate, PromptTemplate, PromptPermutationGenerator, escapeBraces } from '../template';
 import { expect, test } from '@jest/globals';
 
 test('string template', () => {
@@ -102,4 +102,5 @@ test('escaped braces', () => {
   let filledTemplate = promptTemplate.fill({'person': 'Meghan Markle'});
   expect(promptTemplate.toString()).toBe('For what show did {person} get a Netflix deal?');
   expect(promptTemplate.toString()).toEqual(filledTemplate.toString());
+  expect(escapeBraces('Why is the set {0, 1, 2} of size 3?')).toEqual('Why is the set \\{0, 1, 2\\} of size 3?');
 });
