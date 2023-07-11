@@ -11,6 +11,7 @@
  */
 
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
+import { filterDict } from './backend/utils';
 
 // Available LLMs in ChainForge, in the format expected by LLMListItems.
 export let AvailableLLMs = [
@@ -24,14 +25,6 @@ export let AvailableLLMs = [
 if (APP_IS_RUNNING_LOCALLY()) {
   AvailableLLMs.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
 }
-
-const filterDict = (dict, keyFilterFunc) => {
-  return Object.keys(dict).reduce((acc, key) => {
-      if (keyFilterFunc(key) === true)
-          acc[key] = dict[key];
-      return acc;
-  }, {});
-};
 
 const ChatGPTSettings = {
     fullName: "GPT-3.5+ (OpenAI)",

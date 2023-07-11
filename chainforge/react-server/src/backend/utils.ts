@@ -692,3 +692,11 @@ export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, r
     metavars: resp_obj_B.metavars,
   };
 }
+
+export const filterDict = (dict: Dict, keyFilterFunc: (key: string) => boolean) => {
+  return Object.keys(dict).reduce((acc, key) => {
+      if (keyFilterFunc(key) === true)
+          acc[key] = dict[key];
+      return acc;
+  }, {});
+};

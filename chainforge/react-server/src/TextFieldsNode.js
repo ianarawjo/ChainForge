@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Textarea } from '@mantine/core';
-import { IconTextPlus } from '@tabler/icons-react';
+import { Textarea, Tooltip } from '@mantine/core';
+import { IconTextPlus, IconEye, IconEyeOff } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
@@ -26,13 +26,16 @@ const setsAreEqual = (setA, setB) => {
   return equal;
 }
 
+const delButtonId = 'del-';
+const visibleButtonId = 'eye-';
+
 const TextFieldsNode = ({ data, id }) => {
 
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
-  const delButtonId = 'del-';
 
   const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
+  const [fieldVisibility, setFieldVisibility] = useState(data.fields_visibility || {});
 
   const getUID = useCallback(() => {
     if (textfieldsValues) {
@@ -75,6 +78,14 @@ const TextFieldsNode = ({ data, id }) => {
     setTextfieldsValues(new_fields);
     setDataPropsForNode(id, { fields: new_fields });
   }, [textfieldsValues, id, setDataPropsForNode]);
+
+  // Disable/hide a text field temporarily
+  const handleDisableField = useCallback((field_id) => {
+    let vis = {...fieldVisibility};
+    vis[field_id] = fieldVisibility[field_id] === false; // toggles it
+    setFieldVisibility(vis);
+    setDataPropsForNode(id, { fields_visibility: vis });
+  }, [fieldVisibility, setDataPropsForNode]);
 
   // Save the state of a textfield when it changes and update hooks
   const handleTextFieldChange = useCallback((field_id, val) => {
@@ -148,8 +159,23 @@ const TextFieldsNode = ({ data, id }) => {
                       className="text-field-fixed nodrag nowheel" 
                       minRows="2"
                       value={textfieldsValues[i]}  
+                      disabled={fieldVisibility[i] === false}
                       onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)} />
-            {Object.keys(textfieldsValues).length > 1 ? (<button id={delButtonId + i} className="remove-text-field-btn nodrag" onClick={handleDelete}>X</button>) : <></>}
+            {Object.keys(textfieldsValues).length > 1 ? (
+              <div style={{display: 'flex', flexDirection: 'column'}}>
+                <Tooltip label='remove field' position='right' withArrow arrowSize={10}>
+                  <button id={delButtonId + i} className="remove-text-field-btn nodrag" onClick={handleDelete} style={{flex: 1}}>X</button>
+                </Tooltip>
+                <Tooltip label={(fieldVisibility[i] === false ? 'enable' : 'disable') + ' field'} position='right' withArrow arrowSize={10}>
+                  <button id={visibleButtonId + i} className="remove-text-field-btn nodrag" onClick={() => handleDisableField(i)} style={{flex: 1}}>
+                    {fieldVisibility[i] === false ? 
+                        <IconEyeOff size='14pt' pointerEvents='none' />
+                      : <IconEye size='14pt' pointerEvents='none' />
+                    }
+                  </button>
+                </Tooltip>
+              </div>
+            ) : <></>}
           </div>))}
       </div>
       <Handle

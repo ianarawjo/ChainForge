@@ -9,6 +9,7 @@ import { Collapse, Flex, MultiSelect, NativeSelect } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import * as XLSX from 'xlsx';
 import useStore from './store';
+import { filterDict } from './backend/utils';
 
 // Helper funcs
 const truncStr = (s, maxLen) => {
@@ -16,13 +17,6 @@ const truncStr = (s, maxLen) => {
       return s.substring(0, maxLen) + '...'
   else
       return s;
-};
-const filterDict = (dict, keyFilterFunc) => {
-  return Object.keys(dict).reduce((acc, key) => {
-      if (keyFilterFunc(key) === true)
-          acc[key] = dict[key];
-      return acc;
-  }, {});
 };
 const groupResponsesBy = (responses, keyFunc) => {
   let responses_by_key = {};

@@ -5,6 +5,7 @@ import {
   applyEdgeChanges,
 } from 'react-flow-renderer';
 import { escapeBraces } from './backend/template';
+import { filterDict } from './backend/utils';
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -154,8 +155,15 @@ const useStore = create((set, get) => ({
         if ("fields" in src_node.data) {
           if (Array.isArray(src_node.data["fields"]))
             return src_node.data["fields"];
-          else
-            return Object.values(src_node.data["fields"]);
+          else {
+            // We have to filter over a special 'fields_visibility' prop, which 
+            // can select what fields get output:
+            if ("fields_visibility" in src_node.data)
+              return Object.values(filterDict(src_node.data["fields"], 
+                                              fid => src_node.data["fields_visibility"][fid] !== false));
+            else  // return all field values
+              return Object.values(src_node.data["fields"]);
+          }
         }
         // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:
         else return src_node.data[sourceHandleKey];
