@@ -145,7 +145,7 @@ const TextFieldsNode = ({ data, id }) => {
         {Object.keys(textfieldsValues).map(i => (
           <div className="input-field" key={i}>
             <Textarea id={i} name={i} 
-                      className="text-field-fixed nodrag" 
+                      className="text-field-fixed nodrag nowheel" 
                       minRows="2"
                       value={textfieldsValues[i]}  
                       onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)} />
