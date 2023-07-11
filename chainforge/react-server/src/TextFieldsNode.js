@@ -166,10 +166,10 @@ const TextFieldsNode = ({ data, id }) => {
                       onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)} />
             {Object.keys(textfieldsValues).length > 1 ? (
               <div style={{display: 'flex', flexDirection: 'column'}}>
-                <Tooltip label='remove field' position='right' withArrow arrowSize={10}>
+                <Tooltip label='remove field' position='right' withArrow arrowSize={10} withinPortal>
                   <button id={delButtonId + i} className="remove-text-field-btn nodrag" onClick={handleDelete} style={{flex: 1}}>X</button>
                 </Tooltip>
-                <Tooltip label={(fieldVisibility[i] === false ? 'enable' : 'disable') + ' field'} position='right' withArrow arrowSize={10}>
+                <Tooltip label={(fieldVisibility[i] === false ? 'enable' : 'disable') + ' field'} position='right' withArrow arrowSize={10} withinPortal>
                   <button id={visibleButtonId + i} className="remove-text-field-btn nodrag" onClick={() => handleDisableField(i)} style={{flex: 1}}>
                     {fieldVisibility[i] === false ? 
                         <IconEyeOff size='14pt' pointerEvents='none' />
