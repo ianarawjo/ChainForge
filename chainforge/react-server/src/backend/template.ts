@@ -16,6 +16,14 @@ function isDict(o: any): boolean {
     return typeof o === 'object' && !Array.isArray(o);
 }
 
+/**
+ * Given a string, returns the same string with braces { and } escaped, \{ and \}. Does nothing else.
+ * @param str The string to transform
+ */
+export function escapeBraces(str: string): string {
+    return str.replace(/[{}]/g, '\\$&');
+}
+
 export class StringTemplate {
     val: string;
     /**
@@ -143,8 +151,9 @@ export class PromptTemplate {
         this.metavars = {};
     }
 
+    /** Returns the value of this.template, with any escaped braces \{ and \} with the escape \ char removed. */
     toString(): string {
-        return this.template;
+        return this.template.replaceAll('\\{', '{').replaceAll('\\}', '}');
     }
     
     toValue(): string {

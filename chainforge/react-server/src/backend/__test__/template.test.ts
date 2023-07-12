@@ -1,4 +1,4 @@
-import { StringTemplate, PromptTemplate, PromptPermutationGenerator } from '../template';
+import { StringTemplate, PromptTemplate, PromptPermutationGenerator, escapeBraces } from '../template';
 import { expect, test } from '@jest/globals';
 
 test('string template', () => {
@@ -93,4 +93,14 @@ test('carry together vars', () => {
       num_prompts += 1;
   }
   expect(num_prompts).toBe(3*3);
+});
+
+test('escaped braces', () => {
+  // Escaped braces \{ and \} should not be treated as real variables, one, and two, should be 
+  // removed when calling the 'toString' method on a PromptTemplate:
+  let promptTemplate = new PromptTemplate('For what show did \\{person\\} get a Netflix deal?');
+  let filledTemplate = promptTemplate.fill({'person': 'Meghan Markle'});
+  expect(promptTemplate.toString()).toBe('For what show did {person} get a Netflix deal?');
+  expect(promptTemplate.toString()).toEqual(filledTemplate.toString());
+  expect(escapeBraces('Why is the set {0, 1, 2} of size 3?')).toEqual('Why is the set \\{0, 1, 2\\} of size 3?');
 });

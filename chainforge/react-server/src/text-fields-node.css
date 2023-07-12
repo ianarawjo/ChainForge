@@ -32,6 +32,7 @@
     text-align: left;
     border-radius: 6px;
     padding: 5px;
+    pointer-events: none;
 
     /* Position the tooltip */
     position: absolute;
