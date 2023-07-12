@@ -258,9 +258,10 @@ const EvaluatorNode = ({ data, id }) => {
                   runButtonTooltip="Run evaluator over inputs"
                   customButtons={[
                     <Tooltip label='Info' key="eval-info">
-                  <button onClick={openInfoModal} className='custom-button' style={{border:'none'}}>
-                    <IconInfoCircle size='12pt' color='gray' style={{marginBottom: '-4px'}} />
-                  </button></Tooltip>]}
+                      <button onClick={openInfoModal} className='custom-button' style={{border:'none'}}>
+                        <IconInfoCircle size='12pt' color='gray' style={{marginBottom: '-4px'}} />
+                      </button>
+                    </Tooltip>]}
                   />
       <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
       <Modal title={default_header} size='60%' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>

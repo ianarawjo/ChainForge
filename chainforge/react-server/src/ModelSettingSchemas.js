@@ -17,7 +17,7 @@ import { filterDict } from './backend/utils';
 export let AvailableLLMs = [
   { name: "GPT3.5", emoji: "🤖", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
   { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
-  { name: "Claude", emoji: "📚", model: "claude-v1", base_model: "claude-v1", temp: 0.5 },
+  { name: "Claude", emoji: "📚", model: "claude-2", base_model: "claude-v1", temp: 0.5 },
   { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
   { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
   { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
@@ -242,9 +242,9 @@ const ClaudeSettings = {
                 "type": "string",
                 "title": "Model Version",
                 "description": "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
-                "enum": ["claude-v1", "claude-v1-100k", "claude-instant-v1", "claude-instant-v1-100k", "claude-v1.3", 
+                "enum": ["claude-2", "claude-2.0", "claude-instant-1", "claude-instant-1.1", "claude-v1", "claude-v1-100k", "claude-instant-v1", "claude-instant-v1-100k", "claude-v1.3", 
                          "claude-v1.3-100k", "claude-v1.2", "claude-v1.0", "claude-instant-v1.1", "claude-instant-v1.1-100k", "claude-instant-v1.0"],
-                "default": "claude-v1"
+                "default": "claude-2"
             },
             "temperature": {
                 "type": "number",
@@ -307,7 +307,7 @@ const ClaudeSettings = {
           "ui:autofocus": true
         },
         "model": {
-            "ui:help": "Defaults to claude-v1."
+            "ui:help": "Defaults to claude-2. Note that Anthropic models in particular are subject to change. Model names prior to Claude 2, including 100k context window, are no longer listed on the Anthropic site, so they may or may not work."
         },
         "temperature": {
           "ui:help": "Defaults to 1.0.",
