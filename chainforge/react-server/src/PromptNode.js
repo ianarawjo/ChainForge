@@ -11,6 +11,7 @@ import LLMList from './LLMListComponent'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas'
 import fetch_from_backend from './fetch_from_backend';
+import { escapeBraces } from './backend/template';
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5).
@@ -530,7 +531,7 @@ const PromptNode = ({ data, id }) => {
                     resp_obj => resp_obj['responses'].map(
                         r => {
                             // Carry over the response text and prompt fill history (vars):
-                            let o = {text: r, fill_history: resp_obj['vars']};
+                            let o = {text: escapeBraces(r), fill_history: resp_obj['vars']};
 
                             // Carry over any metavars
                             o.metavars = resp_obj['metavars'] || {};

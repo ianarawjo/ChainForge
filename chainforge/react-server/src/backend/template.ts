@@ -24,6 +24,15 @@ export function escapeBraces(str: string): string {
     return str.replace(/[{}]/g, '\\$&');
 }
 
+/**
+ * Given a string, returns the same string with the \ before any braces \{ and \} removed. Does nothing else.
+ * @param str The string to transform
+ */
+export function cleanEscapedBraces(str: string): string {
+    return str.replaceAll('\\{', '{').replaceAll('\\}', '}');
+}
+
+
 export class StringTemplate {
     val: string;
     /**
@@ -153,7 +162,7 @@ export class PromptTemplate {
 
     /** Returns the value of this.template, with any escaped braces \{ and \} with the escape \ char removed. */
     toString(): string {
-        return this.template.replaceAll('\\{', '{').replaceAll('\\}', '}');
+        return cleanEscapedBraces(this.template);
     }
     
     toValue(): string {
