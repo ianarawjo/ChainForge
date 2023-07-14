@@ -27,6 +27,18 @@ export interface ChatMessage {
 }
 export type ChatHistory = ChatMessage[];
 
+export function isEqualChatHistory(A: ChatHistory | undefined, B: ChatHistory | undefined): boolean {
+  if (A === undefined && B === undefined) return true;
+  if (A === undefined || B === undefined) return false;
+  if (A.length !== B.length) return false;
+  if (A.length === 0) return true;  // both empty
+  return A.every((a, i) => {
+    const b = B[i];
+    return (a.role === b.role && a.content === b.content && 
+            a.name === b.name && a.function_call === b.function_call);
+  });
+}
+
 /** A JSON object describing an LLM response for the same prompt, with n responses (n>=1) */
 export interface LLMResponseObject {
   prompt: string;

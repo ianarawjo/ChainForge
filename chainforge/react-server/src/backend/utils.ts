@@ -4,7 +4,7 @@
 
 // from chainforge.promptengine.models import LLM
 import { LLM, LLMProvider, getProvider } from './models';
-import { Dict, StringDict, LLMAPICall, LLMResponseObject } from './typing';
+import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory } from './typing';
 import { env as process_env } from 'process';
 import { StringTemplate } from './template';
 
@@ -142,13 +142,16 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
     delete params.stop;
   if (params?.functions !== undefined && (!Array.isArray(params.functions) || params.functions.length === 0))
     delete params?.functions;
-  if (params?.function_call !== undefined && ((!(typeof params.function_call === 'string')) || params.function_call.trim().length === 0)) {
+  if (params?.function_call !== undefined && ((!(typeof params.function_call === 'string')) || params.function_call.trim().length === 0))
     delete params.function_call;
-  }
 
   console.log(`Querying OpenAI model '${model}' with prompt '${prompt}'...`);
+
+  // Determine the system message and whether there's chat history to continue:
+  const chat_history: ChatHistory | undefined = params?.chat_history;
   const system_msg: string = params?.system_msg !== undefined ? params.system_msg : "You are a helpful assistant.";
   delete params?.system_msg;
+  delete params?.chat_history;
 
   let query: Dict = {
     model: modelname,
@@ -159,15 +162,30 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
 
   // Get the correct function to call
   let openai_call: any;
-  if (modelname.includes('davinci')) {  // text completions model
+  if (modelname.includes('davinci')) {
+    // Create call to text completions model
     openai_call = openai.createCompletion.bind(openai);
     query['prompt'] = prompt;
-  } else {  // chat model
+  } else { 
+    // Create call to chat model
     openai_call = openai.createChatCompletion.bind(openai);
-    query['messages'] = [
+
+    // Carry over chat history, if present:
+    if (chat_history !== undefined && chat_history.length > 0) {
+      if (chat_history[0].role === 'system') {
+        // In this case, the system_msg is ignored because the prior history already contains one. 
+        query['messages'] = chat_history;
+      } else {
+        // In this case, there's no system message that starts the prior history, so inject one:
+        // NOTE: We might reach this scenario if we chain a non-OpenAI chat model into an OpenAI model. 
+        query['messages'] = [{"role": "system", "content": system_msg}].concat(chat_history);
+      }
+    } else {
+      query['messages'] = [
         {"role": "system", "content": system_msg},
         {"role": "user", "content": prompt},
-    ]
+      ];
+    }
   }
 
   // Try to call OpenAI
@@ -684,7 +702,7 @@ export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, r
     raw_resp_A = [ raw_resp_A ];
   if (!Array.isArray(raw_resp_B))
     raw_resp_B = [ raw_resp_B ];
-  return {
+  let res: LLMResponseObject = {
     responses: resp_obj_A.responses.concat(resp_obj_B.responses),
     raw_response: raw_resp_A.concat(raw_resp_B),
     prompt: resp_obj_B.prompt,
@@ -693,6 +711,9 @@ export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, r
     info: resp_obj_B.info,
     metavars: resp_obj_B.metavars,
   };
+  if (resp_obj_B.chat_history !== undefined)
+    res.chat_history = resp_obj_B.chat_history;
+  return res;
 }
 
 export const filterDict = (dict: Dict, keyFilterFunc: (key: string) => boolean) => {

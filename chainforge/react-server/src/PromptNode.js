@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Handle } from 'react-flow-renderer';
 import { Menu, Button, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -12,6 +12,7 @@ import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas'
 import fetch_from_backend from './fetch_from_backend';
 import { escapeBraces } from './backend/template';
+import ChatHistoryView from './ChatHistoryView';
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5).
@@ -87,7 +88,9 @@ const PromptListPopover = ({ promptInfos, onHover, onClick }) => {
 };
 
 
-const PromptNode = ({ data, id }) => {
+const PromptNode = ({ data, id, type: node_type }) => {
+  const node_icon = useMemo(() => (node_type === 'chat' ? '🗣' : '💬'), [node_type]);
+  const node_default_title = useMemo(() => (node_type === 'chat' ? 'Chat Turn' : 'Prompt Node'), [node_type]);
 
   // Get state from the Zustand store:
   const edges = useStore((state) => state.edges);
@@ -605,9 +608,10 @@ const PromptNode = ({ data, id }) => {
     // NOTE: This won't work on older browsers, but there's no alternative solution.
     if (!textAreaRef.current && elem && window.ResizeObserver) {
       let past_hooks_y = 138;
+      const incr = 68 + (node_type === 'chat' ? -6 : 0);
       const observer = new ResizeObserver(() => {
         if (!textAreaRef || !textAreaRef.current) return;
-        const new_hooks_y = textAreaRef.current.clientHeight + 68;
+        const new_hooks_y = textAreaRef.current.clientHeight + incr;
         if (past_hooks_y !== new_hooks_y) {
           setHooksY(new_hooks_y);
           past_hooks_y = new_hooks_y;
@@ -621,10 +625,10 @@ const PromptNode = ({ data, id }) => {
 
   return (
     <div className="prompt-node cfnode">
-    <NodeLabel title={data.title || 'Prompt Node'} 
+    <NodeLabel title={data.title || node_default_title} 
                 nodeId={id} 
                 onEdit={hideStatusIndicator}
-                icon={'💬'} 
+                icon={node_icon} 
                 status={status}
                 alertModal={alertModal}
                 handleRunClick={handleRunClick}
@@ -639,13 +643,38 @@ const PromptNode = ({ data, id }) => {
             {displayPromptInfos(promptPreviews)}
         </Box>
     </Modal>
+<<<<<<< HEAD
     <Textarea ref={setRef}
                 autosize
+=======
+
+    { node_type === 'chat' ? (<div ref={setRef}>
+        <ChatHistoryView bgColors={['#ccc', '#ceeaf5b1']} messages={[
+            "(Past conversation)",
+            <Textarea 
+                className="prompt-field-fixed nodrag nowheel" 
+                minRows="4"
+                defaultValue={data.prompt}  
+                onChange={handleInputChange}
+                miw={230}
+                styles={{input: {background: 'transparent', borderWidth: '0px'}}} />
+        ]} />
+        <Handle
+            type="target"
+            position="left"
+            id="__past_convo"
+            style={{ top: '82px', background: '#555' }}
+        />
+      </div>) : (
+        <Textarea ref={setRef}
+>>>>>>> fbf179e (wip chat turn node)
                 className="prompt-field-fixed nodrag nowheel" 
                 minRows="4"
                 maxRows="12"
                 defaultValue={data.prompt}  
-                onChange={handleInputChange} />
+                onChange={handleInputChange} />)
+    }
+    
     <Handle
         type="source"
         position="right"
@@ -653,9 +682,9 @@ const PromptNode = ({ data, id }) => {
         className="grouped-handle"
         style={{ top: '50%' }}
     />
-    <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} />
-      <hr />
-      <div>
+    <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} ignoreHandles={['__past_convo']} />
+    <hr />
+    <div>
         <div style={{marginBottom: '10px', padding: '4px'}}>
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
             <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
@@ -695,9 +724,9 @@ const PromptNode = ({ data, id }) => {
                 <Button color='blue' variant='subtle' w='100%' >Inspect responses&nbsp;<IconSearch size='12pt'/></Button>
             </div>) : <></>
         }
-      </div>
+        </div>
     </div>
-  );
+   );
 };
 
 export default PromptNode;

@@ -861,10 +861,10 @@
 
 /* Chat history bubbles */
 .chat-bubble {
-  --r: 25px; /* the radius */
-  --t: 30px; /* the size of the tail */
+  --r: 15px; /* the radius */
+  --t: 25px; /* the size of the tail */
   
-  max-width: 300px;
+  max-width: 80%;
   padding: calc(2*var(--r)/3);
   mask: 
     radial-gradient(var(--t) at var(--_d) 0,#0000 98%,#000 102%) 
@@ -890,12 +890,13 @@
 }
 .chat-history {
   margin: 0;
-  min-height: 100vh;
+  min-height: 10vh;
   display: grid;
-  place-content: center;
+  place-content: left;
+  width: 100%;
   gap: 10px;
   font-family: system-ui, sans-serif;
-  font-size: 20px;
+  font-size: 14px;
 }
 
 /* Model settings form styling */

@@ -17,7 +17,8 @@ async function prompt_model(model: LLM): Promise<void> {
   // Double-check the cache'd results
   let cache = pipeline._load_cached_responses();
   Object.entries(cache).forEach(([prompt, response]) => {
-    console.log(`Prompt: ${prompt}\nResponse: ${response.responses[0]}`);
+    const r = Array.isArray(response) ? response[0] : response;
+    console.log(`Prompt: ${prompt}\nResponse: ${r.responses[0]}`);
   });
   expect(Object.keys(cache)).toHaveLength(3); // expect 3 prompts
 
@@ -34,7 +35,8 @@ async function prompt_model(model: LLM): Promise<void> {
 
   // Double-check the cache'd results
   cache = pipeline._load_cached_responses();
-  Object.entries(cache).forEach(([prompt, resp_obj]) => {
+  Object.entries(cache).forEach(([prompt, response]) => {
+    const resp_obj = Array.isArray(response) ? response[0] : response;
     console.log(`Prompt: ${prompt}\nResponses: ${JSON.stringify(resp_obj.responses)}`);
     expect(resp_obj.responses).toHaveLength(2);
     expect(resp_obj.raw_response).toHaveLength(2); // these should've been merged
@@ -53,7 +55,8 @@ async function prompt_model(model: LLM): Promise<void> {
   });
 
   cache = pipeline._load_cached_responses();
-  Object.entries(cache).forEach(([prompt, resp_obj]) => {
+  Object.entries(cache).forEach(([prompt, response]) => {
+    const resp_obj = Array.isArray(response) ? response[0] : response;
     expect(resp_obj.responses).toHaveLength(2);
     expect(resp_obj.raw_response).toHaveLength(2); // these should've been merged
   });

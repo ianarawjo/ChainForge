@@ -1,6 +1,6 @@
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, RATE_LIMITS } from './models';
-import { Dict, LLMResponseError, LLMResponseObject, ChatHistory } from "./typing";
+import { Dict, LLMResponseError, LLMResponseObject, ChatHistory, isEqualChatHistory } from "./typing";
 import { extract_responses, merge_response_objs, call_llm } from "./utils";
 import StorageCache from "./cache";
 
@@ -12,6 +12,7 @@ interface _IntermediateLLMResponseType {
   query?: Dict,
   response?: Dict | LLMResponseError,
   past_resp_obj?: LLMResponseObject,
+  past_resp_obj_cache_idx?: number,
 }
 
 // From trincot @ SO: https://stackoverflow.com/a/76477994/1911342
@@ -53,7 +54,7 @@ export class PromptPipeline {
   }
 
   private collect_LLM_response(result: _IntermediateLLMResponseType, llm: LLM, cached_responses: Dict): LLMResponseObject | LLMResponseError {
-    let {prompt, chat_history, query, response, past_resp_obj} = result;
+    let {prompt, chat_history, query, response, past_resp_obj, past_resp_obj_cache_idx} = result;
 
     // Check for selective failure
     if (!query && response instanceof LLMResponseError)
@@ -85,7 +86,10 @@ export class PromptPipeline {
 
     // Save the current state of cache'd responses to a JSON file
     // NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
-    cached_responses[resp_obj["prompt"]] = resp_obj;
+    if (past_resp_obj_cache_idx > 0)
+      cached_responses[resp_obj["prompt"]][past_resp_obj_cache_idx] = resp_obj;
+    else
+      cached_responses[resp_obj["prompt"]] = [ resp_obj ];
     this._cache_responses(cached_responses);
 
     // console.log(` - collected response from ${llm} for prompt: ${resp_obj['prompt']}`);
@@ -129,12 +133,16 @@ export class PromptPipeline {
     // Load any cache'd responses
     let responses = this._load_cached_responses();
 
+    // Normalize the chat history var such that there's always at least one element. 
+    const _chat_histories = (chat_histories !== undefined && chat_histories.length > 0) ? chat_histories : [ undefined ];
+
     // Query LLM with each prompt, yield + cache the responses
     let tasks: Array<Promise<_IntermediateLLMResponseType>> = [];
     const rate_limit = RATE_LIMITS[llm] || [1, 0];
     let [max_req, wait_secs] = rate_limit ? rate_limit : [1, 0];
     let num_queries_sent = -1;
 
+    // Generate concrete prompts one by one. Yield response from the cache or make async call to LLM.
     for (const prompt of this.gen_prompts(vars)) {
       if (!prompt.is_concrete())
         throw Error(`Cannot send a prompt '${prompt}' to LLM: Prompt is a template.`)
@@ -143,43 +151,65 @@ export class PromptPipeline {
       const info = prompt.fill_history;
       const metavars = prompt.metavars;
 
-      let cached_resp = prompt_str in responses ? responses[prompt_str] : undefined;
-      let extracted_resps: Array<any> = cached_resp ? cached_resp["responses"] : [];
-      
-      // First check if there is already a response for this item under these settings. If so, we can save an LLM call:
-      if (cached_resp && extracted_resps.length >= n) {
-        // console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
-        yield ({
-          "prompt": prompt_str,
-          "query": cached_resp["query"],
-          "responses": extracted_resps.slice(0, n),
-          "raw_response": cached_resp["raw_response"],
-          "llm": cached_resp["llm"] || LLM.OpenAI_ChatGPT,
-          // We want to use the new info, since 'vars' could have changed even though 
-          // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
-          "info": info,
-          "metavars": metavars,
-        });
-        continue;
-      }
+      // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
+      const cache_bucket = responses[prompt_str];
+      let cached_resps: LLMResponseObject[] = Array.isArray(cache_bucket) ? cache_bucket : (cache_bucket === undefined ? [] : [ cache_bucket ]);
 
-      num_queries_sent += 1;
+      // Loop over any present chat histories. (If none, will have a single pass with 'undefined' as chat_history value.)
+      for (const chat_history of _chat_histories) {
 
-      if (max_req > 1) {                
-        // Call the LLM asynchronously to generate a response, sending off
-        // requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
-        tasks.push(this._prompt_llm(llm, prompt, n, temperature, 
-                                    cached_resp, 
-                                    num_queries_sent, 
-                                    max_req, 
-                                    wait_secs, 
-                                    llm_params));
-      } else {
-        // Block. Await + yield a single LLM call.
-        let result = await this._prompt_llm(llm, prompt, n, temperature, cached_resp, 
-                                            undefined, undefined, undefined, 
-                                            llm_params);
-        yield this.collect_LLM_response(result, llm, responses);
+        // Check if there's a cached response with the same prompt + (if present) chat history:
+        let cached_resp: LLMResponseObject | undefined = undefined;
+        let cached_resp_idx: number = -1; 
+        // Find an indivdual response obj that matches the chat history:
+        for (let i = 0; i < cached_resps.length; i++) {
+          if (isEqualChatHistory(cached_resps[i].chat_history, chat_history)) {
+            cached_resp = cached_resps[i];
+            cached_resp_idx = i;
+            break;
+          }
+        }
+        let extracted_resps: Array<any> = cached_resp ? cached_resp["responses"] : [];
+        
+        // First check if there is already a response for this item under these settings. If so, we can save an LLM call:
+        if (cached_resp && extracted_resps.length >= n) {
+          // console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
+          yield ({
+            "prompt": prompt_str,
+            "query": cached_resp["query"],
+            "responses": extracted_resps.slice(0, n),
+            "raw_response": cached_resp["raw_response"],
+            "llm": cached_resp["llm"] || LLM.OpenAI_ChatGPT,
+            // We want to use the new info, since 'vars' could have changed even though 
+            // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
+            "info": info,
+            "metavars": metavars,
+            "chat_history": chat_history,
+          });
+          continue;
+        }
+
+        num_queries_sent += 1;
+
+        if (max_req > 1) {                
+          // Call the LLM asynchronously to generate a response, sending off
+          // requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
+          tasks.push(this._prompt_llm(llm, prompt, n, temperature, 
+                                      cached_resp, 
+                                      cached_resp_idx,
+                                      num_queries_sent, 
+                                      max_req, 
+                                      wait_secs, 
+                                      llm_params,
+                                      chat_history));
+        } else {
+          // Block. Await + yield a single LLM call.
+          let result = await this._prompt_llm(llm, prompt, n, temperature, 
+                                              cached_resp, cached_resp_idx, 
+                                              undefined, undefined, undefined, 
+                                              llm_params, chat_history);
+          yield this.collect_LLM_response(result, llm, responses);
+        }
       }
     }
 
@@ -195,7 +225,7 @@ export class PromptPipeline {
    * Loads cache'd responses of JSON.
    * Useful for continuing if computation was interrupted halfway through. 
    */
-  _load_cached_responses(): {[key: string]: LLMResponseObject} {
+  _load_cached_responses(): {[key: string]: (LLMResponseObject | LLMResponseObject[])} {
     return StorageCache.get(this._storageKey) || {};
   }
 
@@ -212,6 +242,7 @@ export class PromptPipeline {
                     n: number = 1, 
                     temperature: number = 1.0, 
                     past_resp_obj?: LLMResponseObject,
+                    past_resp_obj_cache_idx?: number,
                     query_number?: number,
                     rate_limit_batch_size?: number,
                     rate_limit_wait_secs?: number,
@@ -249,13 +280,15 @@ export class PromptPipeline {
       return { prompt: prompt, 
                query: undefined, 
                response: new LLMResponseError(err.message), 
-               past_resp_obj: undefined };
+               past_resp_obj: undefined,
+               past_resp_obj_cache_idx: -1 };
     }
     
     return { prompt, 
              chat_history,
              query, 
              response,
-             past_resp_obj };
+             past_resp_obj,
+             past_resp_obj_cache_idx };
   }
 }
