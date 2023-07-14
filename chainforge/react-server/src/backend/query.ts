@@ -1,16 +1,17 @@
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, RATE_LIMITS } from './models';
-import { Dict, LLMResponseError, LLMResponseObject, LLMAPICall } from "./typing";
+import { Dict, LLMResponseError, LLMResponseObject, ChatHistory } from "./typing";
 import { extract_responses, merge_response_objs, call_llm } from "./utils";
 import StorageCache from "./cache";
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
 interface _IntermediateLLMResponseType {
-  prompt: PromptTemplate | string,
+  prompt: PromptTemplate,
+  chat_history?: ChatHistory,
   query?: Dict,
   response?: Dict | LLMResponseError,
-  past_resp_obj?: LLMResponseObject | undefined,
+  past_resp_obj?: LLMResponseObject,
 }
 
 // From trincot @ SO: https://stackoverflow.com/a/76477994/1911342
@@ -45,10 +46,52 @@ export class PromptPipeline {
     this._storageKey = storageKey;
   }
 
-  *gen_prompts(properties: {[key: string]: any}): Generator<PromptTemplate, boolean, undefined> {
+  *gen_prompts(vars: Dict): Generator<PromptTemplate, boolean, undefined> {
     const prompt_perm_gen = new PromptPermutationGenerator(this._template);
-    yield* prompt_perm_gen.generate(properties);
+    yield* prompt_perm_gen.generate(vars);
     return true;
+  }
+
+  private collect_LLM_response(result: _IntermediateLLMResponseType, llm: LLM, cached_responses: Dict): LLMResponseObject | LLMResponseError {
+    let {prompt, chat_history, query, response, past_resp_obj} = result;
+
+    // Check for selective failure
+    if (!query && response instanceof LLMResponseError)
+      return response;  // yield the LLMResponseException
+
+    // Each prompt has a history of what was filled in from its base template.
+    // This data --like, "class", "language", "library" etc --can be useful when parsing responses.
+    let info = prompt.fill_history;
+    let metavars = prompt.metavars;
+
+    // Create a response obj to represent the response
+    let resp_obj: LLMResponseObject = {
+      "prompt": prompt.toString(), 
+      "query": query, 
+      "responses": extract_responses(response, llm),
+      "raw_response": response,
+      "llm": llm,
+      "info": info,
+      "metavars": metavars,
+    };
+
+    // Carry over the chat history if present:
+    if (chat_history !== undefined)
+      resp_obj.chat_history = chat_history;
+
+    // Merge the response obj with the past one, if necessary
+    if (past_resp_obj)
+      resp_obj = merge_response_objs(resp_obj, past_resp_obj) as LLMResponseObject;
+
+    // Save the current state of cache'd responses to a JSON file
+    // NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
+    cached_responses[resp_obj["prompt"]] = resp_obj;
+    this._cache_responses(cached_responses);
+
+    // console.log(` - collected response from ${llm} for prompt: ${resp_obj['prompt']}`);
+
+    // Yield the response
+    return resp_obj;
   }
 
   /**
@@ -65,13 +108,24 @@ export class PromptPipeline {
     NOTE: The reason we collect, rather than raise, LLMResponseExceptions is because some API calls 
           may still succeed, even if some fail. We don't want to stop listening to pending API calls, 
           because we may lose money. Instead, we fail selectively. 
+
+   * @param vars The 'vars' dict to fill variables in the root prompt template. For instance, for 'Who is {person}?', vars might = { person: ['TJ', 'MJ', 'AD'] }.
+   * @param llm The specific LLM model to call. See the LLM enum for supported models.
+   * @param n How many generations per prompt sent to the LLM.
+   * @param temperature The temperature to use when querying the LLM.
+   * @param llm_params Optional. The model-specific settings to pass into the LLM API call. Varies by LLM. 
+   * @param chat_histories Optional. A list of chat histories, with messages in OpenAI format. When present, calculates the cross product:
+   *                                    queries = (prompts) X (chat_histories)
+   *                                 to generate individual queries to LLMs. For instance, wish the prompt 'Who is {person}?', 3 values for person,
+   *                                 and 3 different prior chat histories, it will send off 9 queries. 
+   * @yields Yields `LLMResponseObject` if API call succeeds, or `LLMResponseError` if API call fails, for all requests. 
    */
-  async *gen_responses(properties: {[key: string]: any}, 
-                              llm: LLM,
-                                n: number = 1, 
-                      temperature: number = 1.0, 
-                       llm_params?: Dict): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
-    // Double-check that properties is the correct type (JSON dict):
+  async *gen_responses(vars: Dict, 
+                        llm: LLM,
+                          n: number = 1, 
+                temperature: number = 1.0, 
+                llm_params?: Dict,
+            chat_histories?: ChatHistory[]): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
     // Load any cache'd responses
     let responses = this._load_cached_responses();
 
@@ -81,13 +135,13 @@ export class PromptPipeline {
     let [max_req, wait_secs] = rate_limit ? rate_limit : [1, 0];
     let num_queries_sent = -1;
 
-    for (const prompt of this.gen_prompts(properties)) {
+    for (const prompt of this.gen_prompts(vars)) {
       if (!prompt.is_concrete())
         throw Error(`Cannot send a prompt '${prompt}' to LLM: Prompt is a template.`)
 
       const prompt_str = prompt.toString();
-      let info = prompt.fill_history;
-      let metavars = prompt.metavars;
+      const info = prompt.fill_history;
+      const metavars = prompt.metavars;
 
       let cached_resp = prompt_str in responses ? responses[prompt_str] : undefined;
       let extracted_resps: Array<any> = cached_resp ? cached_resp["responses"] : [];
@@ -125,82 +179,15 @@ export class PromptPipeline {
         let result = await this._prompt_llm(llm, prompt, n, temperature, cached_resp, 
                                             undefined, undefined, undefined, 
                                             llm_params);
-        let { query, response, past_resp_obj } = result;
-
-        // Check for selective failure
-        if (!query && response instanceof LLMResponseError) {
-          yield response;  // yield the LLMResponseError
-          continue;
-        }
-
-        // We now know there was a response; type it correctly:
-        query = query as Dict;
-        response = response as Dict;
-
-        // Create a response obj to represent the response
-        let resp_obj: LLMResponseObject = {
-          prompt: prompt.toString(), 
-          query: query, 
-          responses: extract_responses(response, llm),
-          raw_response: response,
-          llm: llm,
-          info: info,
-          metavars: metavars,
-        }
-
-        // Merge the response obj with the past one, if necessary
-        if (past_resp_obj)
-          resp_obj = merge_response_objs(resp_obj, past_resp_obj) as LLMResponseObject;
-
-        // Save the current state of cache'd responses to a JSON file
-        responses[resp_obj["prompt"]] = resp_obj;
-        this._cache_responses(responses);
-
-        // console.log(` - collected response from ${llm} for prompt: ${resp_obj['prompt']}`);
-
-        // Yield the response
-        yield resp_obj;
+        yield this.collect_LLM_response(result, llm, responses);
       }
     }
 
     // Yield responses as they come in
-    for await (const {prompt, query, response, past_resp_obj} of yield_as_completed(tasks)) {
-      // Check for selective failure
-      if (!query && response instanceof LLMResponseError) {
-        yield response;  // yield the LLMResponseException
-        continue;
-      }
-
-      // Each prompt has a history of what was filled in from its base template.
-      // This data --like, "class", "language", "library" etc --can be useful when parsing responses.
-      let info = prompt.fill_history;
-      let metavars = prompt.metavars;
-
-      // Create a response obj to represent the response
-      let resp_obj: LLMResponseObject = {
-        "prompt": prompt.toString(), 
-        "query": query, 
-        "responses": extract_responses(response, llm),
-        "raw_response": response,
-        "llm": llm,
-        "info": info,
-        "metavars": metavars,
-      };
-
-      // Merge the response obj with the past one, if necessary
-      if (past_resp_obj)
-        resp_obj = merge_response_objs(resp_obj, past_resp_obj) as LLMResponseObject;
-
-      // Save the current state of cache'd responses to a JSON file
-      // NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
-      responses[resp_obj["prompt"]] = resp_obj;
-      this._cache_responses(responses);
-
-      // console.log(` - collected response from ${llm} for prompt: ${resp_obj['prompt']}`);
-
-      // Yield the response
-      yield resp_obj;
+    for await (const result of yield_as_completed(tasks)) {
+      yield this.collect_LLM_response(result, llm, responses);
     }
+      
     return true;
   }
 
@@ -228,7 +215,8 @@ export class PromptPipeline {
                     query_number?: number,
                     rate_limit_batch_size?: number,
                     rate_limit_wait_secs?: number,
-                    llm_params?: Dict): Promise<_IntermediateLLMResponseType> {
+                    llm_params?: Dict,
+                    chat_history?: ChatHistory): Promise<_IntermediateLLMResponseType> {
     // Detect how many responses we have already (from cache obj past_resp_obj)
     if (past_resp_obj) {
       // How many *new* queries we need to send: 
@@ -251,10 +239,12 @@ export class PromptPipeline {
     
     // Now try to call the API. If it fails for whatever reason, 'soft fail' by returning
     // an LLMResponseException object as the 'response'.
+    let params = clone(llm_params);
+    if (chat_history !== undefined) params.chat_history = chat_history;
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;
     try {
-      [query, response] = await call_llm(llm, prompt.toString(), n, temperature, clone(llm_params));
+      [query, response] = await call_llm(llm, prompt.toString(), n, temperature, params);
     } catch(err) {
       return { prompt: prompt, 
                query: undefined, 
@@ -263,6 +253,7 @@ export class PromptPipeline {
     }
     
     return { prompt, 
+             chat_history,
              query, 
              response,
              past_resp_obj };

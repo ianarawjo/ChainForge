@@ -11,6 +11,22 @@ export class LLMResponseError extends Error {
 export interface Dict { [key: string]: any };
 export interface StringDict { [key: string]: string };
 
+/** OpenAI function call format */
+export interface OpenAIFunctionCall {
+  name: string,
+  parameters: Dict,
+  description?: string,
+}
+
+/** OpenAI chat message format */
+export interface ChatMessage {
+  role: string,
+  content: string,
+  name?: string,
+  function_call?: OpenAIFunctionCall,
+}
+export type ChatHistory = ChatMessage[];
+
 /** A JSON object describing an LLM response for the same prompt, with n responses (n>=1) */
 export interface LLMResponseObject {
   prompt: string;
@@ -20,6 +36,7 @@ export interface LLMResponseObject {
   llm: LLM;
   info: Dict;
   metavars: Dict;
+  chat_history?: ChatHistory;
 }
 
 /** A standard async function interface for calling an LLM. */

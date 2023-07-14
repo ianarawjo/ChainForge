@@ -424,11 +424,9 @@ const PromptNode = ({ data, id }) => {
 
     const [prompt_template, pulled_data] = pullInputData();
 
-    let FINISHED_QUERY = false;
     const rejected = (err) => {
         setStatus('error');
         triggerAlert(err.message);
-        FINISHED_QUERY = true;
     };
 
     // Ask the backend to reset the scratchpad for counting queries:
@@ -499,7 +497,6 @@ const PromptNode = ({ data, id }) => {
                 triggerAlert('Request was sent and received by backend server, but there was no response.');
             }
             else if (json.responses && json.errors) {
-                FINISHED_QUERY = true;
 
                 // Store and log responses (if any)
                 if (json.responses) {
@@ -547,7 +544,7 @@ const PromptNode = ({ data, id }) => {
                 setNumGenerationsLastRun(numGenerations);
 
                 // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
-                // First we need to get a unique key for a unique metavar for the LLM set that produced these responses,
+                // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
                 // so we can keep track of 'upstream' LLMs (and plot against them) later on:
                 const llm_metavar_key = getUniqueLLMMetavarKey(json.responses);
                 setDataPropsForNode(id, {fields: json.responses.map(
