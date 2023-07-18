@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Button, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
+import { Menu, Button, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip, Switch } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { v4 as uuid } from 'uuid';
 import { IconSearch, IconList } from '@tabler/icons-react';
@@ -115,6 +115,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
+
+  // Chat node specific
+  const [contConvoChecked, setContConvoChecked] = useState(true);
 
   // For an info pop-up that shows all the prompts that will be sent off
   // NOTE: This is the 'full' version of the PromptListPopover that activates on hover.
@@ -643,10 +646,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
             {displayPromptInfos(promptPreviews)}
         </Box>
     </Modal>
-<<<<<<< HEAD
-    <Textarea ref={setRef}
-                autosize
-=======
 
     { node_type === 'chat' ? (<div ref={setRef}>
         <ChatHistoryView bgColors={['#ccc', '#ceeaf5b1']} messages={[
@@ -667,7 +666,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         />
       </div>) : (
         <Textarea ref={setRef}
->>>>>>> fbf179e (wip chat turn node)
+                autosize
                 className="prompt-field-fixed nodrag nowheel" 
                 minRows="4"
                 maxRows="12"
@@ -689,6 +688,22 @@ const PromptNode = ({ data, id, type: node_type }) => {
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
             <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
+
+        {node_type === 'chat' ? (
+            <div>
+                <Switch
+                    label={contConvoChecked ? "Continue chat with prior LLM(s)" : "Continue chat with new LLMs:"}
+                    defaultChecked={true}
+                    checked={contConvoChecked} 
+                    onChange={(event) => setContConvoChecked(event.currentTarget.checked)}
+                    color='cyan'
+                    size='xs'
+                    mb={contConvoChecked ? '0px' : '10px'}
+                />
+            </div>
+        ) : <></>} 
+        
+        {node_type !== 'chat' || !contConvoChecked ? (
         <div id="llms-list" className="nowheel" style={{backgroundColor: '#eee', borderRadius: '4px', padding: '8px', overflowY: 'auto', maxHeight: '175px'}}>
             <div style={{marginTop: '6px', marginBottom: '6px', marginLeft: '6px', paddingBottom: '4px', textAlign: 'left', fontSize: '10pt', color: '#777'}}>
                 Models to query:
@@ -711,7 +726,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             <div className="nodrag">
                 <LLMList llms={llmItems} onItemsChange={onLLMListItemsChange} />
             </div>
-        </div>
+        </div>) : <></>}
         {progress !== undefined ? 
             (<Progress animate={progressAnimated} sections={[
                 { value: progress.success, color: 'blue', tooltip: 'API call succeeded' },
