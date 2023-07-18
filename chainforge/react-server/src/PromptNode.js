@@ -105,6 +105,7 @@ const PromptNode = ({ data, id }) => {
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
   const [status, setStatus] = useState('none');
   const [numGenerations, setNumGenerations] = useState(data.n || 1);
+  const [numGenerationsLastRun, setNumGenerationsLastRun] = useState(data.n || 1);
 
   // For displaying error messages to user
   const alertModal = useRef(null);
@@ -522,6 +523,7 @@ const PromptNode = ({ data, id }) => {
                 
                 // Save prompt text so we remember what prompt we have responses cache'd for:
                 setPromptTextOnLastRun(promptText);
+                setNumGenerationsLastRun(numGenerations);
 
                 // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
                 // First we need to get a unique key for a unique metavar for the LLM set that produced these responses,
@@ -547,7 +549,7 @@ const PromptNode = ({ data, id }) => {
                 const output_nodes = outputEdgesForNode(id).map(e => e.target);
                 output_nodes.forEach(n => {
                     const node = getNode(n);
-                    if (node && node.type === 'inspect') {
+                    if (node && (node.type === 'inspect' || node.type === 'evaluator')) {
                         setDataPropsForNode(node.id, { refresh: true });
                     }
                 });
@@ -566,15 +568,17 @@ const PromptNode = ({ data, id }) => {
         .catch(rejected);
   };
 
-  const handleNumGenChange = (event) => {
+  const handleNumGenChange = useCallback((event) => {
     let n = event.target.value;
     if (!isNaN(n) && n.length > 0 && /^\d+$/.test(n)) {
         // n is an integer; save it
         n = parseInt(n);
+        if (n !== numGenerationsLastRun && status === 'ready')
+            setStatus('warning');
         setNumGenerations(n);
         setDataPropsForNode(id, {n: n});
     }
-  };
+  }, [numGenerationsLastRun, setDataPropsForNode, status]);
 
   const hideStatusIndicator = () => {
     if (status !== 'none') { setStatus('none'); }

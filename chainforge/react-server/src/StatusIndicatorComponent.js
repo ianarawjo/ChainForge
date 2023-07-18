@@ -2,7 +2,7 @@ export default function StatusIndicator({ status }) {
   switch (status) {
     case 'warning':  // Display mustard 'warning' icon
         return (
-            <div className="status-icon warning-status">&#9888;<span className='status-tooltip'>Contents changed. Downstream results might be invalidated. Press Play to rerun.</span></div>
+            <div className="status-icon warning-status">&#9888;<span className='status-tooltip'>Something changed. Downstream results might be invalidated. Press Play to rerun.</span></div>
         );
     case 'ready':  // Display green checkmark 'ready' icon
         return (

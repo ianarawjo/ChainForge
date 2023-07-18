@@ -127,12 +127,20 @@ const EvaluatorNode = ({ data, id }) => {
       responses: [id],
     }).then(function(json) {
       if (json.responses && json.responses.length > 0) {
-          // Store responses and set status to green checkmark
-          setLastResponses(json.responses);
-          setStatus('ready');
+        // Store responses and set status to green checkmark
+        setLastResponses(json.responses);
+        setStatus('ready');
       }
     });
   }, []);
+
+  // On upstream changes
+  useEffect(() => {
+    if (data.refresh && data.refresh === true) {
+      setDataPropsForNode(id, { refresh: false });
+      setStatus('warning');
+    }
+  }, [data]);
 
   const handleCodeChange = (code) => {
     if (codeTextOnLastRun !== false) {
