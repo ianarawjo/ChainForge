@@ -388,8 +388,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         onChange={setViewFormat}
       >
         <Group mt="0px" mb='xs'>
-          <Radio value="table" label={<span><IconTable size='10pt' style={{marginBottom: '-1px'}}/> Table</span>} />
           <Radio value="hierarchy" label={<span><IconSitemap size='10pt' style={{marginBottom: '-1px'}}/> Hierarchy</span>} />
+          <Radio value="table" label={<span><IconTable size='10pt' style={{marginBottom: '-1px'}}/> Table</span>} />
         </Group>
       </Radio.Group>
     : <></>}
