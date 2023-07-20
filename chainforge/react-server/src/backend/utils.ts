@@ -42,7 +42,7 @@ export function APP_IS_RUNNING_LOCALLY(): boolean {
     // Calculate whether we're running the app locally or not, and save the result
     try {
       const location = window.location;
-      _APP_IS_RUNNING_LOCALLY = location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "";
+      _APP_IS_RUNNING_LOCALLY = location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "0.0.0.0" || location.hostname === "";
     } catch (e) {
       // ReferenceError --window or location does not exist. 
       // We must not be running client-side in a browser, in this case (e.g., we are running a Node.js server)
