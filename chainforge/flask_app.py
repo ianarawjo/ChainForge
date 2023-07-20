@@ -14,6 +14,8 @@ import requests as py_requests
 """
 
 # Setup Flask app to serve static version of React front-end
+HOSTNAME = "localhost"
+PORT = 8000
 BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
 STATIC_DIR = os.path.join(BUILD_DIR, 'static')
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
@@ -228,7 +230,14 @@ def run_over_responses(eval_func, responses: list, scope: str) -> list:
 # Serve React app (static; no hot reloading)
 @app.route("/")
 def index():
-    return render_template("index.html")
+    # Get the index.html HTML code
+    html_str = render_template("index.html")
+    
+    # Inject global JS variables __CF_HOSTNAME and __CF_PORT at the top so that the application knows 
+    # that it's running from a Flask server, and what the hostname and port of that server is:
+    html_str = html_str[:60] + f'<script>window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT};</script>' + html_str[60:]
+
+    return html_str
 
 @app.route('/app/executepy', methods=['POST'])
 def executepy():
@@ -489,7 +498,10 @@ async def callDalai():
     return ret
 
 
-def run_server(host="", port=8000, cmd_args=None):    
+def run_server(host="", port=8000, cmd_args=None):
+    global HOSTNAME, PORT
+    HOSTNAME = host
+    PORT = port    
     app.run(host=host, port=port)
 
 if __name__ == '__main__':

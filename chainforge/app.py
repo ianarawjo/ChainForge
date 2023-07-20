@@ -19,7 +19,10 @@ def main():
     #     action='store_true')
     
     # TODO: Reimplement this where the React server is given the backend's port before loading.
-    # serve_parser.add_argument('--port', help='The port to run the server on. Defaults to 8000.', type=int, default=8000, nargs='?')
+    serve_parser.add_argument('--port', help='The port to run the server on. Defaults to 8000.', type=int, default=8000, nargs='?')
+    serve_parser.add_argument('--host', 
+                              help="The host to run the server on. Defaults to 'localhost'.", 
+                              type=str, default="localhost", nargs='?')
     
     args = parser.parse_args()
 
@@ -28,10 +31,11 @@ def main():
         parser.print_help()
         exit(0)
     
-    port = 8000 # args.port if args.port else 8000
+    port = args.port if args.port else 8000
+    host = args.host if args.host else "localhost" 
 
-    print(f"Serving Flask server on port {port}...")
-    run_server(host="localhost", port=port, cmd_args=args)
+    print(f"Serving Flask server on {host} on port {port}...")
+    run_server(host=host, port=port, cmd_args=args)
 
 if __name__ == "__main__":
     main()

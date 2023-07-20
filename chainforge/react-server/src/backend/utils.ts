@@ -17,8 +17,9 @@ const AI_PROMPT = "\n\nAssistant:";
 
 const fetch = require('node-fetch');
 
-/** Where the ChainForge Flask server is being hosted. */
-export const FLASK_BASE_URL = 'http://localhost:8000/';
+/** Where the ChainForge Flask server is being hosted, if any. */
+// @ts-ignore
+export const FLASK_BASE_URL = (window.__CF_HOSTNAME !== undefined && window.__CF_PORT !== undefined) ? `http://${window.__CF_HOSTNAME}:${window.__CF_PORT}/` : 'http://localhost:8000/';
 
 export async function call_flask_backend(route: string, params: Dict | string): Promise<Dict> {
   return fetch(`${FLASK_BASE_URL}app/${route}`, {
@@ -42,7 +43,8 @@ export function APP_IS_RUNNING_LOCALLY(): boolean {
     // Calculate whether we're running the app locally or not, and save the result
     try {
       const location = window.location;
-      _APP_IS_RUNNING_LOCALLY = location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "0.0.0.0" || location.hostname === "";
+      // @ts-ignore
+      _APP_IS_RUNNING_LOCALLY = location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "0.0.0.0" || location.hostname === "" || window.__CF_HOSTNAME !== undefined;
     } catch (e) {
       // ReferenceError --window or location does not exist. 
       // We must not be running client-side in a browser, in this case (e.g., we are running a Node.js server)
