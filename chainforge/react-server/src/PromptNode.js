@@ -38,9 +38,9 @@ const ensureUniqueName = (_name, _prev_names) => {
     return new_name;
 };
 const getUniqueLLMMetavarKey = (responses) => {
-    const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)));
+    const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
     let i = 0;
-    while (`LLM_${i}` in metakeys)
+    while (metakeys.has(`LLM_${i}`))
         i += 1;
     return `LLM_${i}`;
 };

@@ -6,7 +6,7 @@ def readme():
 
 setup(
     name='chainforge',
-    version='0.2.1.3',
+    version='0.2.1.4',
     packages=find_packages(),
     author="Ian Arawjo",
     description="A Visual Programming Environment for Prompt Engineering",
@@ -20,10 +20,7 @@ setup(
         "flask>=2.2.3",
         "flask[async]",
         "flask_cors",
-        "flask_socketio",
         "requests",
-        "python-socketio",
-        "gevent-websocket",
         "urllib3==1.26.6",
         "openai",
         "anthropic",
