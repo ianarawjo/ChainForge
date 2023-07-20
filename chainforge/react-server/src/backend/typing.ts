@@ -18,6 +18,14 @@ export interface OpenAIFunctionCall {
   description?: string,
 }
 
+/** The outputs of prompt nodes, text fields or other data passed internally in the front-end. 
+ * Used to populate prompt templates and carry variables/metavariables along the chain. */
+ export interface TemplateVarInfo {
+  text: string,
+  fill_history: Dict,
+  metavars?: Dict,
+}
+
 /** OpenAI chat message format */
 export interface ChatMessage {
   role: string,
@@ -26,6 +34,13 @@ export interface ChatMessage {
   function_call?: OpenAIFunctionCall,
 }
 export type ChatHistory = ChatMessage[];
+
+// Chat history with 'carried' variable metadata
+export interface ChatHistoryInfo {
+  messages: ChatHistory,
+  fill_history: Dict,
+  metavars?: Dict,
+}
 
 export function isEqualChatHistory(A: ChatHistory | undefined, B: ChatHistory | undefined): boolean {
   if (A === undefined && B === undefined) return true;

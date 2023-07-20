@@ -1,14 +1,14 @@
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, RATE_LIMITS } from './models';
-import { Dict, LLMResponseError, LLMResponseObject, ChatHistory, isEqualChatHistory } from "./typing";
-import { extract_responses, merge_response_objs, call_llm } from "./utils";
+import { Dict, LLMResponseError, LLMResponseObject, ChatHistory, isEqualChatHistory, ChatHistoryInfo } from "./typing";
+import { extract_responses, merge_response_objs, call_llm, mergeDicts } from "./utils";
 import StorageCache from "./cache";
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
 interface _IntermediateLLMResponseType {
   prompt: PromptTemplate,
-  chat_history?: ChatHistory,
+  chat_history?: ChatHistoryInfo,
   query?: Dict,
   response?: Dict | LLMResponseError,
   past_resp_obj?: LLMResponseObject,
@@ -65,6 +65,12 @@ export class PromptPipeline {
     let info = prompt.fill_history;
     let metavars = prompt.metavars;
 
+    // Carry over any fill history and metavars attached to the chat_history as well, if present:
+    if (chat_history !== undefined) {
+      info = mergeDicts(chat_history.fill_history);
+      metavars = mergeDicts(chat_history.metavars);
+    }
+
     // Create a response obj to represent the response
     let resp_obj: LLMResponseObject = {
       "prompt": prompt.toString(), 
@@ -78,7 +84,7 @@ export class PromptPipeline {
 
     // Carry over the chat history if present:
     if (chat_history !== undefined)
-      resp_obj.chat_history = chat_history;
+      resp_obj.chat_history = chat_history.messages;
 
     // Merge the response obj with the past one, if necessary
     if (past_resp_obj)
@@ -129,7 +135,7 @@ export class PromptPipeline {
                           n: number = 1, 
                 temperature: number = 1.0, 
                 llm_params?: Dict,
-            chat_histories?: ChatHistory[]): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
+            chat_histories?: ChatHistoryInfo[]): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
     // Load any cache'd responses
     let responses = this._load_cached_responses();
 
@@ -163,7 +169,7 @@ export class PromptPipeline {
         let cached_resp_idx: number = -1; 
         // Find an indivdual response obj that matches the chat history:
         for (let i = 0; i < cached_resps.length; i++) {
-          if (isEqualChatHistory(cached_resps[i].chat_history, chat_history)) {
+          if (isEqualChatHistory(cached_resps[i].chat_history, chat_history.messages)) {
             cached_resp = cached_resps[i];
             cached_resp_idx = i;
             break;
@@ -184,7 +190,7 @@ export class PromptPipeline {
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
             "info": info,
             "metavars": metavars,
-            "chat_history": chat_history,
+            "chat_history": chat_history.messages,
           });
           continue;
         }
@@ -247,7 +253,7 @@ export class PromptPipeline {
                     rate_limit_batch_size?: number,
                     rate_limit_wait_secs?: number,
                     llm_params?: Dict,
-                    chat_history?: ChatHistory): Promise<_IntermediateLLMResponseType> {
+                    chat_history?: ChatHistoryInfo): Promise<_IntermediateLLMResponseType> {
     // Detect how many responses we have already (from cache obj past_resp_obj)
     if (past_resp_obj) {
       // How many *new* queries we need to send: 

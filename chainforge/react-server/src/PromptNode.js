@@ -11,7 +11,7 @@ import LLMList from './LLMListComponent'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas'
 import fetch_from_backend from './fetch_from_backend';
-import { escapeBraces } from './backend/template';
+import { PromptTemplate, escapeBraces } from './backend/template';
 import ChatHistoryView from './ChatHistoryView';
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
@@ -117,7 +117,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const inspectModal = useRef(null);
 
   // Chat node specific
-  const [contConvoChecked, setContConvoChecked] = useState(true);
+  const [contChatWithPriorLLMs, setContChatWithPriorLLMs] = useState(true);
 
   // For an info pop-up that shows all the prompts that will be sent off
   // NOTE: This is the 'full' version of the PromptListPopover that activates on hover.
@@ -264,7 +264,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   // Pull all inputs needed to request responses.
   // Returns [prompt, vars dict]
-  const pullInputData = () => {
+  const pullInputData = (_targetHandles) => {
     // Pull data from each source recursively:
     const pulled_data = {};
     const store_data = (_texts, _varname, _data) => {
@@ -299,9 +299,44 @@ const PromptNode = ({ data, id, type: node_type }) => {
             });
         });
     };
-    get_outputs(templateVars, id);
+    get_outputs(_targetHandles, id);
 
-    return [promptText, pulled_data];
+    return pulled_data;
+  };
+
+  // Chat nodes only. Pulls input data attached to the 'past conversations' handle.
+  // Returns a tuple (past_chat_llms, __past_chats), where both are undefined if nothing is connected.
+  const pullInputChats = () => {
+    const pulled_data = pullInputData(['__past_chats']);
+    if (!('__past_chats' in pulled_data)) return [undefined, undefined];
+
+    // For storing the unique LLMs in past_chats:
+    let llm_names = new Set();
+    let past_chat_llms = [];
+
+    // Now we could've pulled from a Prompt Node, in which 
+    // case there won't be 'chat_history'. HOWEVER, the 'chat history' 
+    // is implicit in the TemplateVarInfo object: 'text' is the response, and 
+    // 'prompt' was the string of the prompt that generate the response. 
+    // We need to convert that to OpenAI chat message format:
+    const past_chats = pulled_data['__past_chats'].map(info => {
+        // Add to unique LLMs list, if necessary
+        const llm_name = obj?.llm?.name;
+        if (llm_name !== undefined && !llm_names.has(llm_name)) {
+            llm_names.add(llm_name);
+            past_chat_llms.push(obj.llm);
+        }
+        // Create revised chat_history on the TemplateVarInfo object,
+        // with the prompt and text of the pulled data as the 2nd-to-last, and last, messages:
+        const last_messages = [
+            { role: 'user', content: info.prompt },
+            { role: 'assistant', content: info.text }
+        ];
+        const updated_chat_hist = info.chat_history !== undefined ? info.chat_history.concat(last_messages) : last_messages;
+        return {...info, chat_history: updated_chat_hist};
+    });
+
+    return [past_chat_llms, past_chats];
   };
 
   // Ask the backend how many responses it needs to collect, given the input data:
@@ -324,13 +359,15 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [promptPreviews, setPromptPreviews] = useState([]);
   const handlePreviewHover = () => {
     // Pull input data and prompt
-    const [root_prompt, pulled_vars] = pullInputData();
+    const pulled_vars = pullInputData(templateVars);
     fetch_from_backend('generatePrompts', {
-        prompt: root_prompt,
+        prompt: promptText,
         vars: pulled_vars,
     }).then(prompts => {
         setPromptPreviews(prompts.map(p => (new PromptInfo(p))));
     });
+
+    pullInputChats();
   };
 
   // On hover over the 'Run' button, request how many responses are required and update the tooltip. Soft fails.
@@ -348,12 +385,12 @@ const PromptNode = ({ data, id, type: node_type }) => {
     }
 
     // Get input data and prompt
-    const [root_prompt, pulled_vars] = pullInputData();
+    const pulled_vars = pullInputData(templateVars);
     const llms = llmItemsCurrState.map(item => item.model);
     const num_llms = llms.length;
 
     // Fetch response counts from backend
-    fetchResponseCounts(root_prompt, pulled_vars, llmItemsCurrState, (err) => {
+    fetchResponseCounts(promptText, pulled_vars, llmItemsCurrState, (err) => {
         console.warn(err.message);  // soft fail
     }).then(([counts, total_num_responses]) => {
         // Check for empty counts (means no requests will be sent!)
@@ -417,6 +454,20 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
     console.log('Connected!');
 
+    // If this is a chat node, we need to pull chat histories: 
+    const [past_chat_llms, pulled_chats] = node_type === 'chat' ? pullInputChats() : [undefined, undefined];
+
+    // If this is a chat node and 'continuing chat with prior LLMs' is checked,
+    // there's no customizable model list (llmItemsCurrState). Instead, we need to get the unique
+    // LLMs present by finding the set of 'llm' key with unique 'name' properties
+    // in the input variables (if any). If there's keys present w/o LLMs (for instance a text node),
+    // we need to pop-up an error message.
+    if (node_type === 'chat' && contChatWithPriorLLMs) {
+        // Override LLM list with the past llm info (unique LLMs in prior responses)
+        llmItemsCurrState = past_chat_llms;
+        setLLMItemsCurrState(past_chat_llms);
+    }
+
     // Check that there is at least one LLM selected:
     if (llmItemsCurrState.length === 0) {
         alert('Please select at least one LLM to prompt.')
@@ -428,7 +479,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
     setJSONResponses([]);
     setProgressAnimated(true);
 
-    const [prompt_template, pulled_data] = pullInputData();
+    // Pull the data to fill in template input variables, if any
+    const pulled_data = pullInputData(templateVars);
+    const prompt_template = promptText;
 
     const rejected = (err) => {
         setStatus('error');
@@ -493,6 +546,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             llm: llmItemsCurrState,  // deep clone it first
             prompt: prompt_template,
             vars: pulled_data,
+            chat_histories: pulled_chats,
             n: numGenerations,
             api_keys: (apiKeys ? apiKeys : {}),
             no_cache: false,
@@ -556,11 +610,18 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 setDataPropsForNode(id, {fields: json.responses.map(
                     resp_obj => resp_obj['responses'].map(
                         r => {
-                            // Carry over the response text and prompt fill history (vars):
-                            let o = {text: escapeBraces(r), fill_history: resp_obj['vars']};
+                            // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
+                            let o = { text: escapeBraces(r), 
+                                      prompt: resp_obj['prompt'],
+                                      fill_history: resp_obj['vars'],
+                                      llm: llmItemsCurrState.find((item) => item.name === resp_obj.llm) };
 
                             // Carry over any metavars
                             o.metavars = resp_obj['metavars'] || {};
+
+                            // Carry over any chat history
+                            if (resp_obj['chat_history']) 
+                                o.chat_history = resp_obj['chat_history'];
 
                             // Add a meta var to keep track of which LLM produced this response
                             o.metavars[llm_metavar_key] = resp_obj['llm'];
@@ -661,7 +722,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         <Handle
             type="target"
             position="left"
-            id="__past_convo"
+            id="__past_chats"
             style={{ top: '82px', background: '#555' }}
         />
       </div>) : (
@@ -681,7 +742,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         className="grouped-handle"
         style={{ top: '50%' }}
     />
-    <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} ignoreHandles={['__past_convo']} />
+    <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} ignoreHandles={['__past_chats']} />
     <hr />
     <div>
         <div style={{marginBottom: '10px', padding: '4px'}}>
@@ -692,18 +753,18 @@ const PromptNode = ({ data, id, type: node_type }) => {
         {node_type === 'chat' ? (
             <div>
                 <Switch
-                    label={contConvoChecked ? "Continue chat with prior LLM(s)" : "Continue chat with new LLMs:"}
+                    label={contChatWithPriorLLMs ? "Continue chat with prior LLM(s)" : "Continue chat with new LLMs:"}
                     defaultChecked={true}
-                    checked={contConvoChecked} 
-                    onChange={(event) => setContConvoChecked(event.currentTarget.checked)}
+                    checked={contChatWithPriorLLMs} 
+                    onChange={(event) => setContChatWithPriorLLMs(event.currentTarget.checked)}
                     color='cyan'
                     size='xs'
-                    mb={contConvoChecked ? '0px' : '10px'}
+                    mb={contChatWithPriorLLMs ? '0px' : '10px'}
                 />
             </div>
         ) : <></>} 
         
-        {node_type !== 'chat' || !contConvoChecked ? (
+        {node_type !== 'chat' || !contChatWithPriorLLMs ? (
         <div id="llms-list" className="nowheel" style={{backgroundColor: '#eee', borderRadius: '4px', padding: '8px', overflowY: 'auto', maxHeight: '175px'}}>
             <div style={{marginTop: '6px', marginBottom: '6px', marginLeft: '6px', paddingBottom: '4px', textAlign: 'left', fontSize: '10pt', color: '#777'}}>
                 Models to query:

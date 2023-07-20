@@ -1,7 +1,7 @@
 import { mean as __mean, std as __std, median as __median } from "mathjs";
 import markdownIt from "markdown-it";
 
-import { Dict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse } from "./typing";
+import { ChatHistory, Dict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse } from "./typing";
 import { LLM, getEnumName } from "./models";
 import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
 import StorageCache from "./cache";
@@ -480,6 +480,7 @@ export async function fetchEnvironAPIKeys(): Promise<Dict> {
  * @param prompt the prompt template, with any {{}} vars
  * @param vars a dict of the template variables to fill the prompt template with, by name. 
                For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
+ * @param chat_histories Either an array of `ChatHistory` (to use across all LLMs), or a dict indexed by LLM nicknames of `ChatHistory` arrays to use per LLM. 
  * @param api_keys (optional) a dict of {api_name: api_key} pairs. Supported key names: OpenAI, Anthropic, Google
  * @param no_cache (optional) if true, deletes any cache'd responses for 'id' (always calls the LLMs fresh)
  * @returns a dictionary in format `{responses: StandardizedLLMResponse[], errors: string[]}`
@@ -489,6 +490,7 @@ export async function queryLLM(id: string,
                                n: number, 
                                prompt: string,
                                vars: Dict,
+                               chat_histories?: ChatHistory[] | {[key: string]: ChatHistory[]},
                                api_keys?: Dict,
                                no_cache?: boolean,
                                progress_listener?: (progress: {[key: symbol]: any}) => void): Promise<Dict> {
@@ -595,6 +597,10 @@ export async function queryLLM(id: string,
     let llm_key = extract_llm_key(llm_spec);
     let temperature: number = llm_params?.temperature !== undefined ? llm_params.temperature : 1.0;
 
+    let chat_hists = ((chat_histories !== undefined && !Array.isArray(chat_histories)) 
+                      ? chat_histories[llm_nickname]
+                      : chat_histories) as ChatHistory[];
+
     // Create an object to query the LLM, passing a storage key for cache'ing responses
     const cache_filepath = llm_to_cache_filename[llm_key];
     const prompter = new PromptPipeline(prompt, cache_filepath);
@@ -609,7 +615,7 @@ export async function queryLLM(id: string,
       console.log(`Querying ${llm_str}...`)
 
       // Yield responses for 'llm' for each prompt generated from the root template 'prompt' and template variables in 'properties':
-      for await (const response of prompter.gen_responses(vars, llm_str as LLM, num_generations, temperature, llm_params)) {
+      for await (const response of prompter.gen_responses(vars, llm_str as LLM, num_generations, temperature, llm_params, chat_hists)) {
         // Check for selective failure
         if (response instanceof LLMResponseError) {  // The request failed
           console.error(`error when fetching response from ${llm_str}: ${response.message}`);

@@ -716,6 +716,13 @@ export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, r
   return res;
 }
 
+export function mergeDicts(A?: Dict, B?: Dict): Dict | undefined {
+  if (A === undefined && B === undefined) return undefined;
+  else if (A === undefined) return B;
+  else if (B === undefined) return A;
+  return {...A, ...B}; // gives priority to B
+}
+
 export const filterDict = (dict: Dict, keyFilterFunc: (key: string) => boolean) => {
   return Object.keys(dict).reduce((acc, key) => {
       if (keyFilterFunc(key) === true)
