@@ -333,7 +333,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             { role: 'assistant', content: info.text }
         ];
         const updated_chat_hist = info.chat_history !== undefined ? info.chat_history.concat(last_messages) : last_messages;
-        return {...info, chat_history: updated_chat_hist};
+        return {...info, text: updated_chat_hist};
     });
 
     return [past_chat_llms, past_chats];
