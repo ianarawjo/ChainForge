@@ -22,6 +22,8 @@ The simplest and safest way to install the latest public build of ChainForge is 
     ```bash
     chainforge serve
     ```
+    > **Note**
+    > If you'd like to run ChainForge on a different hostname and port, specify `--host` and `--port`. For instance, ```chainforge serve --host 0.0.0.0 --port 3400```
  5. Open [localhost:8000](http://localhost:8000/) on a recent version of Google Chrome or Mozilla Firefox.
 
 > **Note**
