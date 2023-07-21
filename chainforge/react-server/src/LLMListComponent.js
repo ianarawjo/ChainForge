@@ -79,8 +79,6 @@ export default function LLMList({llms, onItemsChange}) {
       }
     ));
 
-    // Replace the item in the list and re-save: 
-
   }, [items, updateItems]);
 
   const onDragEnd = (result) => {

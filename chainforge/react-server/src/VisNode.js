@@ -692,13 +692,7 @@ const VisNode = ({ data, id }) => {
                 // From here a React effect will detect the changes to these values and display a new plot
             }
         });
-        // Analyze its structure --how many 'vars'?
 
-
-        // Based on its structure, construct a Plotly data visualization
-        // :: For 1 var and 1 eval_res that's a number, plot {x: var, y: eval_res}
-        // :: For 2 vars and 1 eval_res that's a number, plot {x: var1, y: var2, z: eval_res}
-        // :: For all else, don't plot anything (at the moment)
     }, [data]);
     
     if (data.input) {
@@ -788,7 +782,8 @@ const VisNode = ({ data, id }) => {
             type="target"
             position="left"
             id="input"
-            style={{ top: '50%', background: '#555' }}
+            className="grouped-handle"
+            style={{ top: '50%' }}
             onConnect={handleOnConnect}
         />
       </div>

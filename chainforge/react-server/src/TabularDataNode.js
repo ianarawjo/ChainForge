@@ -42,6 +42,7 @@ const TabularDataNode = ({ data, id }) => {
     return {...col};
   }));
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const pingOutputNodes = useStore((state) => state.pingOutputNodes);
 
   const [contextMenuPos, setContextMenuPos] = useState({left: -100, top:0});
   const [contextMenuOpened, setContextMenuOpened] = useState(false);
@@ -61,6 +62,7 @@ const TabularDataNode = ({ data, id }) => {
   const [renameColumnInitialVal, setRenameColumnInitialVal] = useState("");
 
   const handleSaveCell = useCallback((rowIdx, columnKey, value) => {
+    pingOutputNodes(id);
     if (rowIdx === -1) {
       // Saving the column header
       setTableColumns(tableColumns.map(col => {
@@ -73,7 +75,7 @@ const TabularDataNode = ({ data, id }) => {
     console.log('handleSaveCell', rowIdx, columnKey, value);
     tableData[rowIdx][columnKey] = value;
     setTableData([...tableData]);
-  }, [tableData, tableColumns]);
+  }, [tableData, tableColumns, pingOutputNodes]);
 
   // Adds a new row to the table
   const handleAddRow = useCallback(() => {
@@ -138,7 +140,8 @@ const TabularDataNode = ({ data, id }) => {
 
     setTableColumns([...tableColumns]);
     setTableData([...tableData]);
-  }, [tableColumns, tableData]);
+    pingOutputNodes(id);
+  }, [tableColumns, tableData, pingOutputNodes]);
 
   // Opens a modal popup to let user rename a column
   const openRenameColumnModal = useCallback((col) => {
@@ -146,6 +149,7 @@ const TabularDataNode = ({ data, id }) => {
     if (renameColumnModal && renameColumnModal.current)
       renameColumnModal.current.trigger();
   }, [renameColumnModal]);
+
   const handleRenameColumn = useCallback((new_header) => {
     if (typeof renameColumnInitialVal !== 'object') {
       console.error('Initial column value was not set.');
@@ -157,7 +161,8 @@ const TabularDataNode = ({ data, id }) => {
       return c;
     });
     setTableColumns([...new_cols]);
-  }, [tableColumns, renameColumnInitialVal]);
+    pingOutputNodes(id);
+  }, [tableColumns, renameColumnInitialVal, pingOutputNodes]);
 
   // Removes a row of the table, at <table> index 'selectedRow'
   const handleRemoveRow = useCallback(() => {
@@ -257,6 +262,7 @@ const TabularDataNode = ({ data, id }) => {
     // Save the new columns and rows
     setTableColumns(cols);
     setTableData(rows);
+    pingOutputNodes(id);
   };
 
   // Import tabular data from a file

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Badge, Text } from '@mantine/core';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Text } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import { IconCsv } from '@tabler/icons-react';
@@ -7,6 +7,7 @@ import { Handle } from 'react-flow-renderer';
 
 const CsvNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+    const pingOutputNodes = useStore((state) => state.pingOutputNodes);
     const [contentDiv, setContentDiv] = useState(null);
     const [isEditing, setIsEditing] = useState(true);
     const [csvInput, setCsvInput] = useState(null);
@@ -29,21 +30,13 @@ const CsvNode = ({ data, id }) => {
         return matches.map(e => e.trim()).filter(e => e.length > 0);
     }
 
-    // const processCsv = (csv) => {
-    //     if (!csv) return [];
-    //     // Split the input string by rows, and merge
-    //     var res = csv.split('\n').join(',');
-
-    //     // remove all the empty or whitespace-only elements
-    //     return res.split(',').map(e => e.trim()).filter(e => e.length > 0);
-    // }
-
     // Handle a change in a text fields' input.
     const handleInputChange = useCallback((event) => {
         // Update the data for this text fields' id.
         let new_data = { 'text': event.target.value, 'fields': processCsv(event.target.value) };
         setDataPropsForNode(id, new_data);
-    }, [id]);
+        pingOutputNodes(id);
+    }, [id, pingOutputNodes, setDataPropsForNode]);
 
     const handKeyDown = useCallback((event) => {
         if (event.key === 'Enter' && data.text && data.text.trim().length > 0) {
@@ -124,7 +117,8 @@ const CsvNode = ({ data, id }) => {
                 type="source"
                 position="right"
                 id="output"
-                style={{ top: "50%", background: '#555' }}
+                className="grouped-handle"
+                style={{ top: "50%" }}
             />
         </div>
     );

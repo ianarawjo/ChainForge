@@ -6,10 +6,20 @@
     min-width: 200px;
   }
 
+  path.react-flow__edge-path:hover {
+    stroke: #222;
+    stroke-width: 2px;
+  }
+
   hr {
     border: none;
     background-color: #bbb;
     height: 1px;
+  }
+
+  .grouped-handle {
+    background: #555; 
+    height: 15px;
   }
 
   .small-standard-font {
@@ -520,9 +530,10 @@
     white-space: pre-wrap; 
     overflow-y: scroll;
     max-height: 150px;
+    margin: 6px 0px;
     font-family: monospace;
     font-size: 10pt;
-    line-height: 1.2; 
+    line-height: 1.0; 
     cursor: text;
   }
   th .content-editable-div {
