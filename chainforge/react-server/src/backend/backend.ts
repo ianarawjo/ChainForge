@@ -1,7 +1,7 @@
 import { mean as __mean, std as __std, median as __median } from "mathjs";
 import markdownIt from "markdown-it";
 
-import { ChatHistory, Dict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse } from "./typing";
+import { ChatHistory, ChatHistoryInfo, Dict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse, isEqualChatHistory } from "./typing";
 import { LLM, getEnumName } from "./models";
 import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
 import StorageCache from "./cache";
@@ -117,7 +117,7 @@ export class ResponseInfo {
 }
 
 function to_standard_format(r: LLMResponseObject | Dict): StandardizedLLMResponse {
-  let resp_obj = {
+  let resp_obj: StandardizedLLMResponse = {
     vars: r['info'],
     metavars: r['metavars'] || {},
     llm: r['llm'],
@@ -126,7 +126,9 @@ function to_standard_format(r: LLMResponseObject | Dict): StandardizedLLMRespons
     tokens: r.raw_response?.usage || {},
   };
   if ('eval_res' in r)
-    resp_obj['eval_res'] = r['eval_res'];
+    resp_obj.eval_res = r.eval_res;
+  if ('chat_history' in r)
+    resp_obj.chat_history = r.chat_history;
   return resp_obj;
 }
 
@@ -376,11 +378,19 @@ export async function generatePrompts(root_prompt: string, vars: Dict): Promise<
  *             For each var value, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
  * @param llms the list of LLMs you will query
  * @param n how many responses expected per prompt
+ * @param chat_histories (optional) Either an array of `ChatHistory` (to use across all LLMs), or a dict indexed by LLM nicknames of `ChatHistory` arrays to use per LLM. 
  * @param id (optional) a unique ID of the node with cache'd responses. If missing, assumes no cache will be used.
  * @returns If success, a dict with { counts: <dict of missing queries per LLM>, total_num_responses: <dict of total num responses per LLM> }
  *          If there was an error, returns a dict with a single key, 'error'. 
  */
-export async function countQueries(prompt: string, vars: Dict, llms: Array<Dict | string>, n: number, id?: string): Promise<Dict> {
+export async function countQueries(prompt: string, 
+                                   vars: Dict, 
+                                   llms: Array<Dict | string>, 
+                                   n: number, 
+                                   chat_histories?: ChatHistoryInfo[] | {[key: string]: ChatHistoryInfo[]}, 
+                                   id?: string): Promise<Dict> {
+  if (chat_histories === undefined) chat_histories = [ undefined ];
+
   let gen_prompts: PromptPermutationGenerator;
   let all_prompt_permutations: Array<PromptTemplate>;
   try {
@@ -401,7 +411,10 @@ export async function countQueries(prompt: string, vars: Dict, llms: Array<Dict 
   const add_to_missing_queries = (llm_key: string, prompt: string, num: number) => {
     if (!(llm_key in missing_queries))
       missing_queries[llm_key] = {};
-    missing_queries[llm_key][prompt] = num;
+    if (prompt in missing_queries[llm_key])
+      missing_queries[llm_key][prompt] += num;
+    else 
+      missing_queries[llm_key][prompt] = num;
   };
   const add_to_num_responses_req = (llm_key: string, num: number) => {
     if (!(llm_key in num_responses_req))
@@ -411,6 +424,11 @@ export async function countQueries(prompt: string, vars: Dict, llms: Array<Dict 
   
   llms.forEach(llm_spec => {
     const llm_key = extract_llm_key(llm_spec);
+
+    // Get the relevant chat histories for this LLM:
+    const chat_hists = (!Array.isArray(chat_histories)
+                        ? chat_histories[extract_llm_nickname(llm_spec)] 
+                        : chat_histories) as ChatHistoryInfo[];
 
     // Find the response cache file for the specific LLM, if any
     let found_cache = false;
@@ -425,15 +443,35 @@ export async function countQueries(prompt: string, vars: Dict, llms: Array<Dict 
         all_prompt_permutations.forEach(perm => {
           const prompt_str = perm.toString();
 
-          add_to_num_responses_req(llm_key, n);
+          add_to_num_responses_req(llm_key, n * chat_hists.length);
 
           if (prompt_str in cache_llm_responses) {
-            // Check how many were stored; if not enough, add how many missing queries:
-            const num_resps = cache_llm_responses[prompt_str]['responses'].length;
-            if (n > num_resps)
-              add_to_missing_queries(llm_key, prompt_str, n - num_resps);
+
+            // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
+            const cache_bucket = cache_llm_responses[prompt_str];
+            let cached_resps: LLMResponseObject[] = Array.isArray(cache_bucket) ? cache_bucket : (cache_bucket === undefined ? [] : [ cache_bucket ]);
+
+            // Check if one cache item has a matching chat_history:
+            let found_resp = false;
+
+            // For each chat history, find an indivdual response obj that matches it 
+            // (chat_hist be undefined, in which case the cache'd response obj must similarly have an undefined chat history in order to match):
+            for (const chat_hist of chat_hists) {
+              for (const cached_resp of cached_resps) {
+                if (isEqualChatHistory(cached_resp.chat_history, chat_hist.messages)) {
+                  // Match found. Note it and count response length: 
+                  found_resp = true;
+                  const num_resps = cached_resp['responses'].length;
+                  if (n > num_resps)
+                    add_to_missing_queries(llm_key, prompt_str, n - num_resps);
+                  break;
+                }
+              }
+            }
+
           } else {
-            add_to_missing_queries(llm_key, prompt_str, n);
+            // There was no cache'd item for this query; add it as missing: 
+            add_to_missing_queries(llm_key, prompt_str, n * chat_hists.length);
           }
         });
         
@@ -490,7 +528,7 @@ export async function queryLLM(id: string,
                                n: number, 
                                prompt: string,
                                vars: Dict,
-                               chat_histories?: ChatHistory[] | {[key: string]: ChatHistory[]},
+                               chat_histories?: ChatHistoryInfo[] | {[key: string]: ChatHistoryInfo[]},
                                api_keys?: Dict,
                                no_cache?: boolean,
                                progress_listener?: (progress: {[key: symbol]: any}) => void): Promise<Dict> {
@@ -599,7 +637,7 @@ export async function queryLLM(id: string,
 
     let chat_hists = ((chat_histories !== undefined && !Array.isArray(chat_histories)) 
                       ? chat_histories[llm_nickname]
-                      : chat_histories) as ChatHistory[];
+                      : chat_histories) as ChatHistoryInfo[];
 
     // Create an object to query the LLM, passing a storage key for cache'ing responses
     const cache_filepath = llm_to_cache_filename[llm_key];

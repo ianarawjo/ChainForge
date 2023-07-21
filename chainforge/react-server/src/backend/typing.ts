@@ -40,6 +40,7 @@ export interface ChatHistoryInfo {
   messages: ChatHistory,
   fill_history: Dict,
   metavars?: Dict,
+  llm?: string,
 }
 
 export function isEqualChatHistory(A: ChatHistory | undefined, B: ChatHistory | undefined): boolean {
@@ -84,4 +85,5 @@ export interface StandardizedLLMResponse {
   metavars: Dict,
   tokens: Dict,
   eval_res?: Dict,
+  chat_history?: ChatHistory,
 }

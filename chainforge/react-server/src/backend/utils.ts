@@ -171,19 +171,20 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
     openai_call = openai.createChatCompletion.bind(openai);
 
     // Carry over chat history, if present:
+    const prompt_msg = { role: 'user', content: prompt };
     if (chat_history !== undefined && chat_history.length > 0) {
       if (chat_history[0].role === 'system') {
         // In this case, the system_msg is ignored because the prior history already contains one. 
-        query['messages'] = chat_history;
+        query['messages'] = chat_history.concat([prompt_msg]);
       } else {
         // In this case, there's no system message that starts the prior history, so inject one:
-        // NOTE: We might reach this scenario if we chain a non-OpenAI chat model into an OpenAI model. 
-        query['messages'] = [{"role": "system", "content": system_msg}].concat(chat_history);
+        // NOTE: We might reach this scenario if we chain output of a non-OpenAI chat model into an OpenAI model. 
+        query['messages'] = [{"role": "system", "content": system_msg}].concat(chat_history).concat([prompt_msg]);
       }
     } else {
       query['messages'] = [
         {"role": "system", "content": system_msg},
-        {"role": "user", "content": prompt},
+        prompt_msg,
       ];
     }
   }

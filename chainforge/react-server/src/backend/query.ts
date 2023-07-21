@@ -169,7 +169,7 @@ export class PromptPipeline {
         let cached_resp_idx: number = -1; 
         // Find an indivdual response obj that matches the chat history:
         for (let i = 0; i < cached_resps.length; i++) {
-          if (isEqualChatHistory(cached_resps[i].chat_history, chat_history.messages)) {
+          if (isEqualChatHistory(cached_resps[i].chat_history, chat_history?.messages)) {
             cached_resp = cached_resps[i];
             cached_resp_idx = i;
             break;
@@ -180,7 +180,7 @@ export class PromptPipeline {
         // First check if there is already a response for this item under these settings. If so, we can save an LLM call:
         if (cached_resp && extracted_resps.length >= n) {
           // console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
-          yield ({
+          let resp: LLMResponseObject = {
             "prompt": prompt_str,
             "query": cached_resp["query"],
             "responses": extracted_resps.slice(0, n),
@@ -190,8 +190,11 @@ export class PromptPipeline {
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
             "info": info,
             "metavars": metavars,
-            "chat_history": chat_history.messages,
-          });
+          };
+          if (chat_history !== undefined) 
+            resp.chat_history = chat_history.messages;
+          console.warn(resp);
+          yield resp;
           continue;
         }
 
@@ -277,7 +280,7 @@ export class PromptPipeline {
     // Now try to call the API. If it fails for whatever reason, 'soft fail' by returning
     // an LLMResponseException object as the 'response'.
     let params = clone(llm_params);
-    if (chat_history !== undefined) params.chat_history = chat_history;
+    if (chat_history !== undefined) params.chat_history = chat_history.messages;
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;
     try {
