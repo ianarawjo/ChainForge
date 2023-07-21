@@ -36,7 +36,7 @@ Open [localhost:8000](http://localhost:8000/) in a Google Chrome or Firefox brow
 
 You can set your API keys by clicking the Settings icon in the top-right corner. If you prefer to not worry about this everytime you open ChainForge, we recommend that save your OpenAI, Anthropic, and/or Google PaLM API keys to your local environment. For more details, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/INSTALL_GUIDE.md).
 
-# Example evaluation flows
+# Example experiments
 
 We've prepared a couple example flows to give you a sense of what's possible with Chainforge.
 Click the "Example Flows" button on the top-right corner and select one. Here is a basic comparison example, plotting the length of responses across different models and arguments for the prompt parameter `{game}`:
@@ -47,7 +47,28 @@ You can also conduct **ground truth evaluations** using Tabular Data nodes. For 
 
 <img width="1775" alt="Screen Shot 2023-07-04 at 9 21 50 AM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/6d842f7a-f747-44f9-b317-95bec73653c5">
 
-For finer details about the features of available nodes, check out the [Node Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
+# Compare responses across models and prompts
+
+Compare across models and prompt variables with an interactive response inspector, including a formatted table and exportable data: 
+
+<img width="1460" alt="Screen Shot 2023-07-19 at 5 03 55 PM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/6aca2bd7-7820-4256-9e8b-3a87795f3e50">
+
+# Share with others
+
+The web version of ChainForge (https://chainforge.ai/play/) includes a Share button. 
+
+Simply click Share to generate a unique link for your flow and copy it to your clipboard:
+
+![ezgif-2-a4d8048bba](https://github.com/ianarawjo/ChainForge/assets/5251713/1c69900b-5a0f-4055-bbd3-ea191e93ecde)
+
+For instance, here's a experiment I made that tries to get an LLM to reveal a secret key: https://chainforge.ai/play/?f=28puvwc788bog
+
+> **Note**
+> To prevent abuse, you can only share up to 10 flows at a time, and each flow must be <5MB after compression.
+> If you share more than 10 flows, the oldest link will break, so make sure to always Export important flows to `cforge` files,
+> and use Share to only pass data ephemerally.
+
+For finer details about the features of specific nodes, check out the [Node Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
 # Features
 
@@ -65,21 +86,6 @@ We've also found that some users simply want to use ChainForge to make tons of p
 
 For more specific details, see the [User Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
-# Share with others
-
-The web version of ChainForge (https://chainforge.ai/play/) includes a Share button. 
-
-Simply click Share to generate a unique link for your flow and copy it to your clipboard:
-
-![ezgif-2-a4d8048bba](https://github.com/ianarawjo/ChainForge/assets/5251713/1c69900b-5a0f-4055-bbd3-ea191e93ecde)
-
-For instance, here's a experiment I made that tries to get an LLM to reveal a secret key: https://chainforge.ai/play/?f=28puvwc788bog
-
-> **Note**
-> To prevent abuse, you can only share up to 10 flows at a time, and each flow must be <5MB after compression.
-> If you share more than 10 flows, the oldest link will break, so make sure to always Export important flows to `cforge` files,
-> and use Share to only pass data ephemerally.
-
 ----------------------------------
 
 # Development
@@ -90,22 +96,6 @@ This work was partially funded by the NSF grant IIS-2107391. Any opinions, findi
 
 We provide ongoing releases of this tool in the hopes that others find it useful for their projects.
 
-## Future Planned Features
-
-Highest priority:
-- **Improved vis and inspect nodes**: Better UX and more features, such as collapsing variable groups in response inspectors and more control over visualizations displayed in vis nodes beyond the default
-
-Medium-to-low priority:
-- **LMQL and Microsoft guidance nodes**: Support for prompt pipelines that involve LMQL and {{guidance}} code, esp. inspecting masked response variables. 
-- **AI assistance for prompt engineering**: Spur creative ideas and quickly iterate on variations of prompts through interaction with GPT4.
-- **Compare fine-tuned to base models**: Beyond comparing between different models like Alpaca and ChatGPT, support comparison between versions of the same model (e.g., a base model and a fine-tuned one). Helper users detect where fine-tuning resulted in any 'breaking changes' elsewhere. 
-- **Export to code**: In the future, export prompt and (potentially) chains using a programming API like LangChain.
-- **Compare across response batches**: Run an evaluator over all N responses generated for each prompt, to measure factors like variability or parseability (e.g., how many code outputs pass a basic smell test?)
-- **Collapse nodes**: Nodes should be collapseable, to save screen space.
-- **Dark mode**: A dark mode theme
-
-See a feature you'd like that isn't here? Open an [Issue](https://github.com/ianarawjo/ChainForge/issues).
-
 ## Inspiration and Links
 
 ChainForge is meant to be general-purpose, and is not developed for a specific API or LLM back-end. Our ultimate goal is integration into other tools for the systematic evaluation and auditing of LLMs. We hope to help others who are developing prompt-analysis flows in LLMs, or otherwise auditing LLM outputs. This project was inspired by own our use case, but also shares some comraderie with two related (closed-source) research projects, both led by [Sherry Wu](https://www.cs.cmu.edu/~sherryw/):
@@ -114,9 +104,9 @@ ChainForge is meant to be general-purpose, and is not developed for a specific A
 
 Unlike these projects, we are focusing on supporting evaluation across prompts, prompt parameters, and models.
 
-## How to collaborate?
+# How to collaborate?
 
-We are looking for open-source collaborators. The best way to collaborate, at the moment, is simply to implement the requested feature / bug fix and submit a Pull Request. If you want to report a bug or request a feature, open an [Issue](https://github.com/ianarawjo/ChainForge/issues). 
+We welcome open-source collaborators. If you want to report a bug or request a feature, open an [Issue](https://github.com/ianarawjo/ChainForge/issues). We also encourage users to implement the requested feature / bug fix and submit a Pull Request. 
 
 _(If you are an investor or funder, send us a message via email.)_
 
