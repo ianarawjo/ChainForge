@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Badge, Text } from '@mantine/core';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Text } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import { IconCsv } from '@tabler/icons-react';
@@ -29,15 +29,6 @@ const CsvNode = ({ data, id }) => {
         }
         return matches.map(e => e.trim()).filter(e => e.length > 0);
     }
-
-    // const processCsv = (csv) => {
-    //     if (!csv) return [];
-    //     // Split the input string by rows, and merge
-    //     var res = csv.split('\n').join(',');
-
-    //     // remove all the empty or whitespace-only elements
-    //     return res.split(',').map(e => e.trim()).filter(e => e.length > 0);
-    // }
 
     // Handle a change in a text fields' input.
     const handleInputChange = useCallback((event) => {
@@ -126,7 +117,8 @@ const CsvNode = ({ data, id }) => {
                 type="source"
                 position="right"
                 id="output"
-                style={{ top: "50%", background: '#555' }}
+                className="grouped-handle"
+                style={{ top: "50%" }}
             />
         </div>
     );

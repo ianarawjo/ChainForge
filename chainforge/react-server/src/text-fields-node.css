@@ -17,6 +17,11 @@
     height: 1px;
   }
 
+  .grouped-handle {
+    background: #555; 
+    height: 15px;
+  }
+
   .small-standard-font {
     font-size: 10pt;
     font-family: -apple-system, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
@@ -668,7 +673,7 @@
   border-radius: 5px;
   border: 1px solid #999;
   font-size: 12px;
-  background: rgba(26, 200, 69, 0.1);
+  background: transparent;
   color: #333;
   overflow: hidden;
   box-shadow: 0 0 0 0 transparent;

@@ -69,7 +69,8 @@ const InspectorNode = ({ data, id }) => {
         type="target"
         position="left"
         id="input"
-        style={{ top: "50%", background: '#555' }}
+        className="grouped-handle"
+        style={{ top: "50%" }}
         onConnect={handleOnConnect}
       />
     </div>

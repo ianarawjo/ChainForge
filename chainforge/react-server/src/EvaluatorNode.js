@@ -292,13 +292,15 @@ const EvaluatorNode = ({ data, id }) => {
           type="target"
           position="left"
           id="responseBatch"
-          style={{ top: '50%', background: '#555' }}
+          className="grouped-handle"
+          style={{ top: '50%' }}
         />
       <Handle
           type="source"
           position="right"
           id="output"
-          style={{ top: '50%', background: '#555' }}
+          className="grouped-handle"
+          style={{ top: '50%' }}
         />
       <div className="core-mirror-field">
         <div className="code-mirror-field-header">Define an <Code>evaluate</Code> func to map over each response:

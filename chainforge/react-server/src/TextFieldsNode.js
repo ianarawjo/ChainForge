@@ -198,7 +198,8 @@ const TextFieldsNode = ({ data, id }) => {
         type="source"
         position="right"
         id="output"
-        style={{ top: "50%", background: '#555' }}
+        className="grouped-handle"
+        style={{ top: "50%" }}
       />
       <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} />
       <div className="add-text-field-btn">

@@ -653,7 +653,8 @@ const PromptNode = ({ data, id }) => {
         type="source"
         position="right"
         id="prompt"
-        style={{ top: '50%', background: '#555' }}
+        className="grouped-handle"
+        style={{ top: '50%' }}
     />
     <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} />
       <hr />
