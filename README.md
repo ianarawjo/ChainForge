@@ -104,11 +104,27 @@ ChainForge is meant to be general-purpose, and is not developed for a specific A
 
 Unlike these projects, we are focusing on supporting evaluation across prompts, prompt parameters, and models.
 
-# How to collaborate?
+## How to collaborate?
 
 We welcome open-source collaborators. If you want to report a bug or request a feature, open an [Issue](https://github.com/ianarawjo/ChainForge/issues). We also encourage users to implement the requested feature / bug fix and submit a Pull Request. 
 
 _(If you are an investor or funder, send us a message via email.)_
+
+------------------
+# Cite Us
+
+If you use ChainForge for research purposes, or build upon the source code, we ask that you cite this project in any related publications.
+The BibTeX you can use for now is:
+
+```bibtex
+@misc{Arawjo_2023,
+  author = {Arawjo, Ian and Vaithilingam, Priyan and Wattenberg, Martin and Glassman, Elena},
+  title = {ChainForge},
+  year = {2023},
+  howpublished = {\url{https://www.chainforge.ai/}},
+  note = {Accessed: 2023-07-21}
+}
+```
 
 # License
 
