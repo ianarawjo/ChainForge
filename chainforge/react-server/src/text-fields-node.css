@@ -6,6 +6,11 @@
     min-width: 200px;
   }
 
+  path.react-flow__edge-path:hover {
+    stroke: #222;
+    stroke-width: 2px;
+  }
+
   hr {
     border: none;
     background-color: #bbb;
@@ -520,9 +525,10 @@
     white-space: pre-wrap; 
     overflow-y: scroll;
     max-height: 150px;
+    margin: 6px 0px;
     font-family: monospace;
     font-size: 10pt;
-    line-height: 1.2; 
+    line-height: 1.0; 
     cursor: text;
   }
   th .content-editable-div {
@@ -662,7 +668,7 @@
   border-radius: 5px;
   border: 1px solid #999;
   font-size: 12px;
-  background: transparent;
+  background: rgba(26, 200, 69, 0.1);
   color: #333;
   overflow: hidden;
   box-shadow: 0 0 0 0 transparent;

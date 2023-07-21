@@ -7,6 +7,7 @@ import { Handle } from 'react-flow-renderer';
 
 const CsvNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+    const pingOutputNodes = useStore((state) => state.pingOutputNodes);
     const [contentDiv, setContentDiv] = useState(null);
     const [isEditing, setIsEditing] = useState(true);
     const [csvInput, setCsvInput] = useState(null);
@@ -43,7 +44,8 @@ const CsvNode = ({ data, id }) => {
         // Update the data for this text fields' id.
         let new_data = { 'text': event.target.value, 'fields': processCsv(event.target.value) };
         setDataPropsForNode(id, new_data);
-    }, [id]);
+        pingOutputNodes(id);
+    }, [id, pingOutputNodes, setDataPropsForNode]);
 
     const handKeyDown = useCallback((event) => {
         if (event.key === 'Enter' && data.text && data.text.trim().length > 0) {

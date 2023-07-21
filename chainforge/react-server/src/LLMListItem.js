@@ -57,7 +57,7 @@ const TemperatureStatus = styled.span`
 `;
 
 export const DragItem = styled.div`
-  padding: 8px;
+  padding: 6px;
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
   background: white;

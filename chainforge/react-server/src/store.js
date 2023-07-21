@@ -25,6 +25,8 @@ export const colorPalettes = {
   var: varColorPalette,
 }
 
+const refreshableOutputNodeTypes = new Set(['evaluator', 'prompt', 'inspect', 'vis', 'textfields']);
+
 // A global store of variables, used for maintaining state
 // across ChainForge and ReactFlow components.
 const useStore = create((set, get) => ({
@@ -101,6 +103,15 @@ const useStore = create((set, get) => ({
   },
   outputEdgesForNode: (sourceNodeId) => {
     return get().edges.filter(e => e.source == sourceNodeId);
+  },
+  pingOutputNodes: (sourceNodeId) => {
+    const out_nodes = get().outputEdgesForNode(sourceNodeId).map(e => e.target);
+    out_nodes.forEach(n => {
+        const node = get().getNode(n);
+        if (node && refreshableOutputNodeTypes.has(node.type)) {
+            get().setDataPropsForNode(node.id, { refresh: true });
+        }
+    });
   },
   output: (sourceNodeId, sourceHandleKey) => {
     // Get the source node
@@ -225,6 +236,11 @@ const useStore = create((set, get) => ({
     
     if (target.type === 'vis' || target.type === 'inspect') {
       get().setDataPropsForNode(target.id, { input: connection.source });
+    }
+
+    // Ping target node to fresh if necessary
+    if (target && refreshableOutputNodeTypes.has(target.type)) {
+      get().setDataPropsForNode(target.id, { refresh: true });
     }
 
     connection.interactionWidth = 100;

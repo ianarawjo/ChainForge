@@ -79,8 +79,7 @@ function evaluate(response) {
 const EvaluatorNode = ({ data, id }) => {
 
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
-  const outputEdgesForNode = useStore((state) => state.outputEdgesForNode);
-  const getNode = useStore((state) => state.getNode);
+  const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const [status, setStatus] = useState('none');
   const nodes = useStore((state) => state.nodes);
@@ -224,13 +223,7 @@ const EvaluatorNode = ({ data, id }) => {
         }
         
         // Ping any vis + inspect nodes attached to this node to refresh their contents:
-        const output_nodes = outputEdgesForNode(id).map(e => e.target);
-        output_nodes.forEach(n => {
-            const node = getNode(n);
-            if (node && (node.type === 'vis' || node.type === 'inspect')) {
-                setDataPropsForNode(node.id, { refresh: true });
-            }
-        });
+        pingOutputNodes(id);
 
         console.log(json.responses);
         setLastResponses(json.responses);

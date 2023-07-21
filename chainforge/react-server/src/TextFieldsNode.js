@@ -33,6 +33,7 @@ const TextFieldsNode = ({ data, id }) => {
 
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const pingOutputNodes = useStore((state) => state.pingOutputNodes);
 
   const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
   const [fieldVisibility, setFieldVisibility] = useState(data.fields_visibility || {});
@@ -62,7 +63,8 @@ const TextFieldsNode = ({ data, id }) => {
     setTextfieldsValues(new_fields);
     setFieldVisibility(new_vis);
     setDataPropsForNode(id, {fields: new_fields, fields_visibility: new_vis});
-  }, [textfieldsValues, fieldVisibility, id, delButtonId, setDataPropsForNode]);
+    pingOutputNodes(id);
+  }, [textfieldsValues, fieldVisibility, id, delButtonId, setDataPropsForNode, pingOutputNodes]);
 
   // Initialize fields (run once at init)
   useEffect(() => {
@@ -80,7 +82,8 @@ const TextFieldsNode = ({ data, id }) => {
     new_fields[getUID()] = "";
     setTextfieldsValues(new_fields);
     setDataPropsForNode(id, { fields: new_fields });
-  }, [textfieldsValues, id, setDataPropsForNode]);
+    pingOutputNodes(id);
+  }, [textfieldsValues, id, setDataPropsForNode, pingOutputNodes]);
 
   // Disable/hide a text field temporarily
   const handleDisableField = useCallback((field_id) => {
@@ -88,7 +91,8 @@ const TextFieldsNode = ({ data, id }) => {
     vis[field_id] = fieldVisibility[field_id] === false; // toggles it
     setFieldVisibility(vis);
     setDataPropsForNode(id, { fields_visibility: vis });
-  }, [fieldVisibility, setDataPropsForNode]);
+    pingOutputNodes(id);
+  }, [fieldVisibility, setDataPropsForNode, pingOutputNodes]);
 
   // Save the state of a textfield when it changes and update hooks
   const handleTextFieldChange = useCallback((field_id, val) => {
@@ -114,13 +118,13 @@ const TextFieldsNode = ({ data, id }) => {
     // Update template var fields + handles, if there's a change in sets
     const past_vars = new Set(templateVars);
     if (!setsAreEqual(all_found_vars, past_vars)) {
-      console.log('set vars');
       const new_vars_arr = Array.from(all_found_vars);
       new_data.vars = new_vars_arr;
       setTemplateVars(new_vars_arr);
     }
 
     setDataPropsForNode(id, new_data);
+    pingOutputNodes(id);
 
   }, [textfieldsValues, templateVars, id]);
 
@@ -152,6 +156,13 @@ const TextFieldsNode = ({ data, id }) => {
     }
   }, [ref]);
 
+  // Pass upstream changes down to later nodes in the chain
+  useEffect(() => {
+    if (data.refresh && data.refresh === true) {
+      pingOutputNodes(id);
+    }
+  }, [data, id, pingOutputNodes]);
+
   return (
     <div className="text-fields-node cfnode">
       <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} />
@@ -160,7 +171,9 @@ const TextFieldsNode = ({ data, id }) => {
           <div className="input-field" key={i}>
             <Textarea id={i} name={i} 
                       className="text-field-fixed nodrag nowheel" 
+                      autosize
                       minRows="2"
+                      maxRows="8"
                       value={textfieldsValues[i]}  
                       disabled={fieldVisibility[i] === false}
                       onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)} />

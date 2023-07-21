@@ -93,7 +93,7 @@ const PromptNode = ({ data, id }) => {
   const edges = useStore((state) => state.edges);
   const output = useStore((state) => state.output);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
-  const outputEdgesForNode = useStore((state) => state.outputEdgesForNode);
+  const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const getNode = useStore((state) => state.getNode);
 
   // API Keys (set by user in popup GlobalSettingsModal)
@@ -164,6 +164,12 @@ const PromptNode = ({ data, id }) => {
         inspectModal.current.trigger();
   }, [inspectModal, jsonResponses]);
 
+  // Signal that prompt node state is dirty; user should re-run:
+  const signalDirty = useCallback(() => {
+    if (promptTextOnLastRun !== null && status === 'ready')
+        setStatus('warning');
+  }, [promptTextOnLastRun, status])
+
   const addModel = useCallback((model) => {
     // Get the item for that model
     let item = AvailableLLMs.find(llm => llm.base_model === model);
@@ -186,12 +192,23 @@ const PromptNode = ({ data, id }) => {
 
     // Add model to LLM list (regardless of it's present already or not). 
     setLLMItems(llmItemsCurrState.concat([item]))
-  }, [llmItemsCurrState]);
+    signalDirty();    
+  }, [llmItemsCurrState, signalDirty]);
 
   const onLLMListItemsChange = useCallback((new_items) => {
     setLLMItemsCurrState(new_items);
     setDataPropsForNode(id, { llms: new_items });
-  }, [setLLMItemsCurrState]);
+    
+    // If there's been any change to the item list, signal dirty: 
+    if (new_items.length !== llmItemsCurrState.length || !new_items.every(i => llmItemsCurrState.some(s => s.key === i.key))) {
+        signalDirty();
+    } else if (!new_items.every(itemA => {
+        const itemB = llmItemsCurrState.find(b => b.key === itemA.key);
+        return JSON.stringify(itemA.settings) === JSON.stringify(itemB.settings);
+    })) {
+        signalDirty();
+    }
+  }, [setLLMItemsCurrState, signalDirty]);
 
   const refreshTemplateHooks = (text) => {
     // Update template var fields + handles
@@ -208,12 +225,8 @@ const PromptNode = ({ data, id }) => {
     data['prompt'] = value;
 
     // Update status icon, if need be:
-    if (promptTextOnLastRun !== null) {
-        if (status !== 'warning' && value !== promptTextOnLastRun) {
-            setStatus('warning');
-        } else if (status === 'warning' && value === promptTextOnLastRun) {
-            setStatus('ready');
-        }
+    if (promptTextOnLastRun !== null && status !== 'warning' && value !== promptTextOnLastRun) {
+        setStatus('warning');
     }
 
     refreshTemplateHooks(value);
@@ -234,6 +247,14 @@ const PromptNode = ({ data, id }) => {
         }
     });
   }, []);
+
+  // On upstream changes
+  useEffect(() => {
+    if (data.refresh && data.refresh === true) {
+      setDataPropsForNode(id, { refresh: false });
+      setStatus('warning');
+    }
+  }, [data]);
 
   // Pull all inputs needed to request responses.
   // Returns [prompt, vars dict]
@@ -546,13 +567,7 @@ const PromptNode = ({ data, id }) => {
                 });
 
                 // Ping any inspect nodes attached to this node to refresh their contents:
-                const output_nodes = outputEdgesForNode(id).map(e => e.target);
-                output_nodes.forEach(n => {
-                    const node = getNode(n);
-                    if (node && (node.type === 'inspect' || node.type === 'evaluator')) {
-                        setDataPropsForNode(node.id, { refresh: true });
-                    }
-                });
+                pingOutputNodes(id);
             } else {
                 setStatus('error');
                 triggerAlert(json.error || 'Unknown error when querying LLM');
@@ -628,8 +643,10 @@ const PromptNode = ({ data, id }) => {
         </Box>
     </Modal>
     <Textarea ref={setRef}
+                autosize
                 className="prompt-field-fixed nodrag nowheel" 
                 minRows="4"
+                maxRows="12"
                 defaultValue={data.prompt}  
                 onChange={handleInputChange} />
     <Handle

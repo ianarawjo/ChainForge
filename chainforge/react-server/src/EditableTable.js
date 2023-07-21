@@ -118,7 +118,7 @@ const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, hand
                  suppressContentEditableWarning={true}>{c.header}</p>
               <Menu closeOnClickOutside styles={{dropdown: {boxShadow: '1px 1px 4px #ccc'}}}>
                 <Menu.Target>
-                  <IconDots size='12pt' style={{padding: '0px', marginTop: '8pt', marginLeft: '2pt'}} className='table-col-edit-btn' />
+                  <IconDots size='12pt' style={{padding: '0px', marginTop: '3pt', marginLeft: '2pt'}} className='table-col-edit-btn' />
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item key='rename_col' onClick={() => handleRenameColumn(c)}><IconPencil size='10pt' />&nbsp;Rename column</Menu.Item>
