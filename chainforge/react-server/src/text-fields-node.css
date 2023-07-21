@@ -19,7 +19,7 @@
 
   .grouped-handle {
     background: #555; 
-    height: 15px;
+    height: 15px !important;
   }
 
   .small-standard-font {
