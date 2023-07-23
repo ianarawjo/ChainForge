@@ -19,13 +19,13 @@ const LLMResponseInspectorModal = forwardRef((props, ref) => {
   }));
 
   return (
-    <Modal size='80%' keepMounted opened={opened} onClose={close} closeOnClickOutside={true} style={{position: 'relative', 'left': '-100px'}} title={
+    <Modal size='90%' keepMounted opened={opened} onClose={close} closeOnClickOutside={true} style={{position: 'relative', 'left': '-100px'}} title={
       <div><span>Response Inspector</span><button className="custom-button" style={{marginTop: 'auto', marginRight: '14px', float: 'right'}} onClick={() => exportToExcel(props.jsonResponses)}>Export data to Excel</button></div>
     } styles={{ title: {justifyContent: 'space-between', width: '100%'} }} >
       { props.prompt !== undefined ? 
         <p className="inspect-modal-prompt-box"><span className='inspect-modal-prompt-prefix'>Root Prompt:&nbsp;</span> <span className="inspect-modal-prompt-text">{props.prompt}</span></p>
       : <></>}
-      <div className="inspect-modal-response-container" style={{padding: '6px'}}>
+      <div className="inspect-modal-response-container" style={{padding: '6px', overflow: 'scroll'}}>
         <LLMResponseInspector jsonResponses={props.jsonResponses} wideFormat={true} />
       </div>
     </Modal>
