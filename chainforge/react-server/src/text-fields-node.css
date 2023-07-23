@@ -284,6 +284,18 @@
   .inspect-modal-response-container .num-same-responses {
     font-size: 10pt;
   }
+  .inspect-table-var {
+    background-color: rgb(224, 244, 250);
+    padding-top: 10px;
+    border-right: 1px solid #cde; 
+    font-weight: 500;
+    white-space: pre-wrap;
+  }
+  .inspect-table-llm-resp {
+    padding-top: 8px;
+    padding-bottom: 20px;
+    border-right: 1px solid #eee;
+  }
   .response-group-component-header:hover {
     color: #05e;
     cursor: pointer;

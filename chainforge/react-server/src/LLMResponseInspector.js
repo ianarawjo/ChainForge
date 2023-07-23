@@ -275,8 +275,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
 
         return (
           <tr key={idx} style={{borderBottom: '8px solid #eee'}}>
-            {vars_cols.map(c => (<td style={{backgroundColor: 'rgb(224, 244, 250)', paddingTop: '10px', borderRight: '1px solid #cde', fontWeight: '500'}}>{c}</td>))}
-            {llm_cols.map((c, i) => (<td style={{paddingTop: '8px', paddingBottom: '20px', borderRight: '1px solid #eee'}}>{c}</td>))}
+            {vars_cols.map(c => (<td className='inspect-table-var'>{c}</td>))}
+            {llm_cols.map((c, i) => (<td className='inspect-table-llm-resp'>{c}</td>))}
           </tr>
         );
       });
