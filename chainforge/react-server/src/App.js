@@ -8,7 +8,7 @@ import ReactFlow, {
 } from 'react-flow-renderer';
 import { Button, Menu, LoadingOverlay, Text, Box, List, Loader } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
-import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink } from '@tabler/icons-react';
+import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink, IconRobot } from '@tabler/icons-react';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
 import EvaluatorNode from './EvaluatorNode';
@@ -22,6 +22,7 @@ import CommentNode from './CommentNode';
 import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
 import AreYouSureModal from './AreYouSureModal';
+import LLMEvaluatorNode from './LLMEvalNode';
 import { getDefaultModelFormData, getDefaultModelSettings } from './ModelSettingSchemas';
 import { v4 as uuid } from 'uuid';
 import LZString from 'lz-string';
@@ -74,6 +75,7 @@ const nodeTypes = {
   textfields: TextFieldsNode, // Register the custom node
   prompt: PromptNode,
   evaluator: EvaluatorNode,
+  llmeval: LLMEvaluatorNode,
   vis: VisNode,
   inspect: InspectNode,
   script: ScriptNode,
@@ -197,6 +199,10 @@ const App = () => {
   const addCommentNode = (event) => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'comment-'+Date.now(), type: 'comment', data: {}, position: {x: x-200, y:y-100} });
+  };
+  const addLLMEvalNode = () => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'llmeval-'+Date.now(), type: 'llmeval', data: {}, position: {x: x-200, y:y-100} });
   };
 
   const onClickExamples = () => {
@@ -694,15 +700,16 @@ const App = () => {
           </Menu.Target>
           <Menu.Dropdown>
               <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields </Menu.Item>
+              <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
               <Menu.Item onClick={addPromptNode} icon={'💬'}> Prompt Node </Menu.Item>
               <Menu.Item onClick={() => addEvalNode('javascript')} icon={<IconTerminal size="16px" />}> JavaScript Evaluator Node </Menu.Item>
               {IS_RUNNING_LOCALLY ? (
                 <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator Node </Menu.Item>
               ): <></>}
+              <Menu.Item onClick={addLLMEvalNode} icon={<IconRobot size="16px" />}> LLM Evaluator Node</Menu.Item>
               <Menu.Item onClick={addVisNode} icon={'📊'}> Vis Node </Menu.Item>
               <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
               <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>
-              <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
               <Menu.Item onClick={addCommentNode} icon={'✏️'}> Comment Node </Menu.Item>
               {IS_RUNNING_LOCALLY ? (
                 <Menu.Item onClick={addScriptNode} icon={<IconSettingsAutomation size="16px" />}> Global Python Scripts </Menu.Item>

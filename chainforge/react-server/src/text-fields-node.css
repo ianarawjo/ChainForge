@@ -107,6 +107,21 @@
       transform: rotate(360deg);
     }
   }
+
+  .llm-list-container {
+    background-color: #eee; 
+    border-radius: 4px;
+    padding: 8px;
+    overflow-y: auto;
+    max-height: 175px;
+  }
+  .llm-list-backdrop {
+    margin: 6px 0px 6px 6px;
+    padding-bottom: 4px;
+    text-align: left; 
+    font-size: 10pt;
+    color: #777;
+  }
   
   .input-field {
     display: flex;
