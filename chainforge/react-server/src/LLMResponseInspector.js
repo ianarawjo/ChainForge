@@ -5,7 +5,7 @@
  * be deployed in multiple locations.  
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { Collapse, Radio, MultiSelect, Group, Table } from '@mantine/core';
+import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconTable, IconSitemap } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
@@ -134,6 +134,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   const [multiSelectVars, setMultiSelectVars] = useState([]);
   const [multiSelectValue, setMultiSelectValue] = useState([]);
 
+  // The var name to use for columns in the table view
+  const [tableColVar, setTableColVar] = useState("LLM");
+  const [userSelectedTableCol, setUserSelectedTableCol] = useState(false);
+
   // Global lookup for what color to use per LLM
   const getColorForLLMAndSetIfNotFound = useStore((state) => state.getColorForLLMAndSetIfNotFound);
 
@@ -161,6 +165,13 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       {value: `${name}`, label: name} 
     )).concat({value: 'LLM', label: 'LLM'});
     setMultiSelectVars(msvars);
+
+    // If only one LLM is present, and user hasn't manually selected one to plot,
+    // default to plotting the first found prompt variable as columns instead:
+    if (!userSelectedTableCol && tableColVar === 'LLM' && found_llms.length === 1 && found_vars.length > 0) {
+      setTableColVar(found_vars[0]);
+      return; // useEffect will replot with the new values
+    }
     
     // If this is the first time receiving responses, set the multiSelectValue to whatever is the first:
     if (!receivedResponsesOnce) {
@@ -244,39 +255,60 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       });
     };
 
-
     // Generate a view of the responses based on the view format set by the user
     if (viewFormat === "table") {
 
       // Generate a table, with default columns for: input vars, LLMs queried
       // First get column names as input vars + LLMs:
-      const colnames = found_vars.concat(found_llms);
+      let var_cols, colnames, getColVal, found_sel_var_vals; 
+      if (tableColVar === 'LLM') {
+        var_cols = found_vars;
+        getColVal = (r => r.llm);
+        found_sel_var_vals = found_llms;
+        colnames = var_cols.concat(found_llms);
+      } else {
+        var_cols = found_vars.filter(v => v !== tableColVar)
+                             .concat(found_llms.length > 1 ? ['LLM'] : []); // only add LLM column if num LLMs > 1
+        getColVal = (r => r.vars[tableColVar]);
+
+        // Get the unique values for the selected variable
+        found_sel_var_vals = Array.from(responses.reduce((acc, res_obj) => {
+          acc.add(tableColVar in res_obj.vars ? res_obj.vars[tableColVar] : '(unspecified)');
+          return acc;
+        }, new Set()));
+        colnames = var_cols.concat(found_sel_var_vals);
+      }
+
+      const getVar = (r, v) => v === 'LLM' ? r.llm : r.vars[v];
 
       // Then group responses by prompts. Each prompt will become a separate row of the table (will be treated as unique)
-      const responses_by_prompt = groupResponsesBy(responses, (r => r.prompt))[0]; 
+      let responses_by_prompt = groupResponsesBy(responses, (r => var_cols.map(v => getVar(r, v)).join('|')))[0]; 
 
       const rows = Object.entries(responses_by_prompt).map(([prompt, resp_objs], idx) => {
         // We assume here that prompt input vars will be the same across all responses in this bundle,
         // so we just take the value of the first one per each varname:
-        const vars_cols = found_vars.map(v => v in resp_objs[0].vars ? resp_objs[0].vars[v] : '(unspecified)');
-        const resp_objs_by_llm = groupResponsesBy(resp_objs, r => r.llm)[0];
-        const llm_cols = found_llms.map(llm => {
-          if (llm in resp_objs_by_llm) {
-            const rs = resp_objs_by_llm[llm];
+        const var_cols_vals = var_cols.map(v => {
+          const val = (v === 'LLM') ? resp_objs[0].llm : resp_objs[0].vars[v];
+          return (val !== undefined) ? val : '(unspecified)';
+        });
+        const resp_objs_by_col_var = groupResponsesBy(resp_objs, getColVal)[0];
+        const sel_var_cols = found_sel_var_vals.map(val => {
+          if (val in resp_objs_by_col_var) {
+            const rs = resp_objs_by_col_var[val];
             if (rs.length > 1) 
-              console.warn(`Found more than one response object for LLM ${llm} for the same prompt. Only displaying first...`);
+              console.warn(`Found more than one response object for LLM ${val} for the same prompt. Only displaying first...`);
             // Return response divs as response box here:
-            return generateResponseBoxes(rs, found_vars, 100)[0];
+            return generateResponseBoxes(rs, var_cols, 100)[0];
           } else {
-            console.warn(`Could not find response object for LLM: ${llm}`);
-            return (<span>(not queried)</span>);
+            console.warn(`Could not find response object for column variable ${tableColVar} with value ${val}`);
+            return (<i>(no data)</i>);
           }
         });
 
         return (
           <tr key={idx} style={{borderBottom: '8px solid #eee'}}>
-            {vars_cols.map(c => (<td className='inspect-table-var'>{c}</td>))}
-            {llm_cols.map((c, i) => (<td className='inspect-table-llm-resp'>{c}</td>))}
+            {var_cols_vals.map(c => (<td className='inspect-table-var'>{c}</td>))}
+            {sel_var_cols.map((c, i) => (<td className='inspect-table-llm-resp'>{c}</td>))}
           </tr>
         );
       });
@@ -366,7 +398,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       setResponses(divs);
     }
 
-  }, [multiSelectValue, jsonResponses, wideFormat, viewFormat]);
+  }, [multiSelectValue, jsonResponses, wideFormat, viewFormat, tableColVar]);
 
   // When the user clicks an item in the drop-down,
   // we want to autoclose the multiselect drop-down:
@@ -392,6 +424,19 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           <Radio value="table" label={<span><IconTable size='10pt' style={{marginBottom: '-1px'}}/> Table</span>} />
         </Group>
       </Radio.Group>
+    : <></>}
+
+    {viewFormat === "table" ? 
+      <NativeSelect 
+        value={tableColVar}
+        onChange={(event) => {
+          setTableColVar(event.currentTarget.value);
+          setUserSelectedTableCol(true);
+        }}
+        data={multiSelectVars}
+        label="Select the main variable to use for columns:"
+        mb="sm"
+      />
     : <></>}
 
     {wideFormat === false || viewFormat === "hierarchy" ?
