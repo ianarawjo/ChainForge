@@ -167,8 +167,9 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     setMultiSelectVars(msvars);
 
     // If only one LLM is present, and user hasn't manually selected one to plot,
-    // default to plotting the first found prompt variable as columns instead:
-    if (!userSelectedTableCol && tableColVar === 'LLM' && found_llms.length === 1 && found_vars.length > 0) {
+    // and there's more than one prompt variable as input, default to plotting the 
+    // first found prompt variable as columns instead:
+    if (!userSelectedTableCol && tableColVar === 'LLM' && found_llms.length === 1 && found_vars.length > 1) {
       setTableColVar(found_vars[0]);
       return; // useEffect will replot with the new values
     }
