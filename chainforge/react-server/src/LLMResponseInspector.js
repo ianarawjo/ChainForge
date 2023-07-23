@@ -128,7 +128,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
   // The type of view to use to display responses. Can be either hierarchy or table. 
-  const [viewFormat, setViewFormat] = useState("hierarchy");
+  const [viewFormat, setViewFormat] = useState(wideFormat ? "table" : "hierarchy");
 
   // The MultiSelect so people can dynamically set what vars they care about
   const [multiSelectVars, setMultiSelectVars] = useState([]);
@@ -416,13 +416,12 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     {wideFormat ? 
       <Radio.Group
         name="viewFormat"
-        defaultValue="hierarchy"
         value={viewFormat}
         onChange={setViewFormat}
       >
         <Group mt="0px" mb='xs'>
-          <Radio value="hierarchy" label={<span><IconSitemap size='10pt' style={{marginBottom: '-1px'}}/> Hierarchy</span>} />
           <Radio value="table" label={<span><IconTable size='10pt' style={{marginBottom: '-1px'}}/> Table</span>} />
+          <Radio value="hierarchy" label={<span><IconSitemap size='10pt' style={{marginBottom: '-1px'}}/> Hierarchy</span>} />
         </Group>
       </Radio.Group>
     : <></>}
