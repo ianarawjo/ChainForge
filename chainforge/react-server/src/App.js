@@ -6,7 +6,7 @@ import ReactFlow, {
   Controls,
   Background,
 } from 'react-flow-renderer';
-import { Button, Menu, LoadingOverlay, Text, Box, List, Loader } from '@mantine/core';
+import { Button, Menu, LoadingOverlay, Text, Box, List, Loader, Header, Chip, Badge, Card, Accordion, Tooltip } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
 import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink, IconRobot } from '@tabler/icons-react';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
@@ -668,27 +668,30 @@ const App = () => {
         </Box>
       </Modal> */}
       
-      <div style={{ height: '100vh', width: '100%', backgroundColor: '#eee' }}>
-        <ReactFlow
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          zoomOnPinch={false}
-          zoomOnScroll={false}
-          panOnScroll={true}
-          // connectionLineComponent={AnimatedConnectionLine}
-          // connectionLineStyle={connectionLineStyle}
-          snapToGrid={true}
-          snapGrid={snapGrid}
-          onInit={onInit}
-        >
-          <Background color="#999" gap={16} />
-          <Controls showZoom={true} />
-        </ReactFlow>
+      <div id='cf-root-container' style={{display: 'flex', height: '100vh'}}>
+        <div style={{ height: '100%', backgroundColor: '#eee', flexGrow: '1' }}>
+          <ReactFlow
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            zoomOnPinch={false}
+            zoomOnScroll={false}
+            panOnScroll={true}
+            // connectionLineComponent={AnimatedConnectionLine}
+            // connectionLineStyle={connectionLineStyle}
+            snapToGrid={true}
+            snapGrid={snapGrid}
+            onInit={onInit}
+          >
+            <Background color="#999" gap={16} />
+            <Controls showZoom={true} />
+          </ReactFlow>
+        </div>
       </div>
+
       <div id="custom-controls" style={{position: 'fixed', left: '10px', top: '10px', zIndex:8}}>
         <Menu transitionProps={{ transition: 'pop-top-left' }}
                           position="top-start"
