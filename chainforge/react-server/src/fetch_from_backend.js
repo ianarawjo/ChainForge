@@ -1,7 +1,8 @@
 import { queryLLM, executejs, executepy, 
          fetchExampleFlow, fetchOpenAIEval, importCache, 
          exportCache, countQueries, grabResponses, 
-         createProgressFile, generatePrompts} from "./backend/backend";
+         generatePrompts,
+         evalWithLLM} from "./backend/backend";
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
@@ -13,14 +14,14 @@ async function _route_to_js_backend(route, params) {
       return countQueries(params.prompt, clone(params.vars), clone(params.llms), params.n, params.id);
     case 'generatePrompts':
       return generatePrompts(params.prompt, clone(params.vars));
-    case 'createProgressFile':
-      return createProgressFile(params.id);
     case 'queryllm':
       return queryLLM(params.id, clone(params.llm), params.n, params.prompt, clone(params.vars), params.api_keys, params.no_cache, params.progress_listener);
     case 'executejs':
       return executejs(params.id, params.code, params.responses, params.scope);
     case 'executepy':
       return executepy(params.id, params.code, params.responses, params.scope, params.script_paths);
+    case 'evalWithLLM':
+      return evalWithLLM(params.id, params.llm, params.root_prompt, params.responses, params.api_keys);
     case 'importCache':
       return importCache(params.files);
     case 'exportCache':

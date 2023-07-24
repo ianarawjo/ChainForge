@@ -232,7 +232,6 @@ export const LLMListContainer = forwardRef(({description, modelSelectButtonText,
   }, [llmItemsCurrState, onSelectModel, selectModelAction]);
 
   const onLLMListItemsChange = useCallback((new_items) => {
-    console.warn('here', new_items);
     setLLMItemsCurrState(new_items);
     if (onItemsChange) onItemsChange(new_items, llmItemsCurrState);
   }, [setLLMItemsCurrState, onItemsChange]);

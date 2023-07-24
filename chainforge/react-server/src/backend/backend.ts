@@ -1,7 +1,6 @@
-import { mean as __mean, std as __std, median as __median } from "mathjs";
 import markdownIt from "markdown-it";
 
-import { Dict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse } from "./typing";
+import { Dict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse, StringDict } from "./typing";
 import { LLM, getEnumName } from "./models";
 import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
 import StorageCache from "./cache";
@@ -138,6 +137,22 @@ function get_cache_keys_related_to_id(cache_id: string, include_basefile: boolea
     return Object.keys(data.cache_files).concat((include_basefile ? [base_file] : []));
   else
     return include_basefile ? [base_file] : [];
+}
+
+async function setAPIKeys(api_keys: StringDict): Promise<void> {
+  if (APP_IS_RUNNING_LOCALLY()) {
+    // Try to fetch API keys from os.environ variables in the locally running Flask backend:
+    try {
+      const api_keys = await fetchEnvironAPIKeys();
+      set_api_keys(api_keys);
+    } catch (err) {
+      console.warn('Warning: Could not fetch API key environment variables from Flask server. Error:', err.message);
+      // Soft fail
+    }
+  }
+
+  if (api_keys !== undefined)
+    set_api_keys(api_keys);
 }
 
 // def remove_cached_responses(cache_id: str):
@@ -307,7 +322,7 @@ function check_typeof_vals(arr: Array<any>): MetricType {
 }
 
 function run_over_responses(eval_func: (resp: ResponseInfo) => any, responses: Array<StandardizedLLMResponse>): Array<StandardizedLLMResponse> {
-  const evald_responses = responses.map((_resp_obj: StandardizedLLMResponse) => {
+  return responses.map((_resp_obj: StandardizedLLMResponse) => {
     // Deep clone the response object
     const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
 
@@ -328,16 +343,12 @@ function run_over_responses(eval_func: (resp: ResponseInfo) => any, responses: A
     if (eval_res_type === MetricType.Numeric) {
         // Store items with summary of mean, median, etc
         resp_obj.eval_res = {
-          mean: __mean(evals),
-          median: __median(evals), 
-          stdev: (evals.length > 1 ? __std(evals) : 0),
-          range: [Math.min(...evals), Math.max(...evals)],
           items: evals,
           dtype: getEnumName(MetricType, eval_res_type),
         };
-    } else if ([MetricType.Unknown, MetricType.Empty].includes(eval_res_type))
+    } else if ([MetricType.Unknown, MetricType.Empty].includes(eval_res_type)) {
       throw new Error('Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.');
-    else {
+    } else {
       // Categorical, KeyValue, etc, we just store the items:
       resp_obj.eval_res = { 
         items: evals,
@@ -347,8 +358,6 @@ function run_over_responses(eval_func: (resp: ResponseInfo) => any, responses: A
 
     return resp_obj;
   });
-
-  return evald_responses;
 }
 
 // """ ===================
@@ -452,10 +461,6 @@ export async function countQueries(prompt: string, vars: Dict, llms: Array<Dict 
   return {'counts': missing_queries, 'total_num_responses': num_responses_req};
 }
 
-export function createProgressFile(id: string): void {
-  // do nothing --this isn't needed for the JS backend, but was for the Python one
-}
-
 interface LLMPrompterResults {
   llm_key: string,
   responses: Array<LLMResponseObject>,
@@ -510,19 +515,7 @@ export async function queryLLM(id: string,
       return {'error': `LLM named '${llm_spec}' is not supported.`};
   }
 
-  if (APP_IS_RUNNING_LOCALLY()) {
-    // Try to fetch API keys from os.environ variables in the locally running Flask backend:
-    try {
-      const api_keys = await fetchEnvironAPIKeys();
-      set_api_keys(api_keys);
-    } catch (err) {
-      console.warn('Warning: Could not fetch API key environment variables from Flask server. Error:', err.message);
-      // Soft fail
-    }
-  }
-
-  if (api_keys !== undefined)
-    set_api_keys(api_keys);
+  await setAPIKeys(api_keys);
 
   // if 'no_cache' in data and data['no_cache'] is True:
   //     remove_cached_responses(data['id'])
@@ -833,6 +826,99 @@ export async function executepy(id: string,
   StorageCache.store(`${id}.json`, all_evald_responses);
 
   return {responses: all_evald_responses, logs: all_logs};
+}
+
+
+/**
+ * Runs an LLM over responses as a grader/evaluator. 
+ * 
+ * @param id a unique ID to refer to this information. Used when cache'ing evaluation results. 
+ * @param llm the LLM to query (as an LLM specification dict)
+ * @param root_prompt the prompt template to use as the scoring function. Should include exactly one template var, {input}, where input responses will be put.
+ * @param response_ids the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
+ * @param api_keys optional. any api keys to set before running the LLM
+ */
+export async function evalWithLLM(id: string, 
+                                  llm: Dict, 
+                                  root_prompt: string,
+                                  response_ids: string | string[],
+                                  api_keys?: Dict,
+                                  progress_listener?: (progress: {[key: symbol]: any}) => void): Promise<Dict> {
+  // Check format of response_ids
+  if (!Array.isArray(response_ids))
+    response_ids = [ response_ids ];
+  response_ids = response_ids as Array<string>;
+
+  if (api_keys) setAPIKeys(api_keys);
+
+  // Load all responses with the given ID:
+  let all_evald_responses: StandardizedLLMResponse[] = [];
+  let all_errors: string[] = [];
+  for (let i = 0; i < response_ids.length; i++) {
+    const cache_id = response_ids[i];
+    const fname = `${cache_id}.json`;
+    if (!StorageCache.has(fname))
+      return {error: `Did not find cache file for id ${cache_id}`};
+
+    // Load the raw responses from the cache + clone them all:
+    const resp_objs = load_cache_responses(fname).map(r => JSON.parse(JSON.stringify(r))) as StandardizedLLMResponse[];
+    if (resp_objs.length === 0)
+      continue;
+    
+    // We need to keep track of the index of each response in the response object.
+    // We can generate var dicts with metadata to store the indices:
+    let inputs = resp_objs.map((obj, i) => obj.responses.map((r: string, j: number) => ({text: r, fill_history: {}, metavars: { i, j }}))).flat();
+
+    // Now run all inputs through the LLM grader!: 
+    const {responses, errors} = await queryLLM(`eval-${id}-${cache_id}`, [llm], 1, root_prompt, { input: inputs }, undefined, undefined, progress_listener);
+
+    if (errors.size > 0)
+      all_errors = all_errors.concat(errors);
+    
+    // Now we need to apply each response as an eval_res (a score) back to each response object,
+    // using the aforementioned mapping metadata:
+    responses.forEach((r: StandardizedLLMResponse) => {
+      let resp_obj = resp_objs[r.metavars.i];
+      if (resp_obj.eval_res !== undefined)
+        resp_obj.eval_res.items[r.metavars.j] = r.responses[0];
+      else {
+        resp_obj.eval_res = {
+          items: [],
+          dtype: 'string',
+        };
+        resp_obj.eval_res.items[r.metavars.j] = r.responses[0];
+      }
+    });
+
+    all_evald_responses = all_evald_responses.concat(resp_objs);
+  }
+
+  // Do additional processing to check if all evaluations are boolean-ish (e.g., 'true' and 'false')
+  let all_eval_res = new Set();
+  for (const resp_obj of all_evald_responses) {
+    if (!resp_obj.eval_res) continue;
+    for (const score of resp_obj.eval_res.items) {
+      all_eval_res.add(score.trim().toLowerCase());
+    }
+    if (all_eval_res.size > 2) 
+      break;  // it's categorical if size is over 2
+  }
+  if (all_eval_res.size === 2) {
+    // Check if the results are boolean-ish:
+    if ((all_eval_res.has('true') && all_eval_res.has('false')) || 
+        (all_eval_res.has('yes') && all_eval_res.has('no'))) {
+      // Convert all eval results to boolean datatypes:
+      all_evald_responses.forEach(resp_obj => {
+        resp_obj.eval_res.items = resp_obj.eval_res.items.map(i => (i === 'true' || i === 'yes'));
+        resp_obj.eval_res.dtype = 'Categorical';
+      });
+    }
+  }
+
+  // Store the evaluated responses in a new cache json:
+  StorageCache.store(`${id}.json`, all_evald_responses);
+
+  return {responses: all_evald_responses, errors: all_errors};
 }
 
 

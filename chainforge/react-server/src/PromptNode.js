@@ -358,11 +358,6 @@ const PromptNode = ({ data, id }) => {
         FINISHED_QUERY = true;
     };
 
-    // Ask the backend to reset the scratchpad for counting queries:
-    const create_progress_scratchpad = () => {
-        return fetch_from_backend('createProgressFile', {id: id}, rejected);
-    };
-
     // Fetch info about the number of queries we'll need to make 
     const fetch_resp_count = () => fetchResponseCounts(
         prompt_template, pulled_data, llmItemsCurrState, rejected);
@@ -500,8 +495,7 @@ const PromptNode = ({ data, id }) => {
     };
 
     // Now put it all together!
-    create_progress_scratchpad()
-        .then(fetch_resp_count)
+    fetch_resp_count()
         .then(open_progress_listener)
         .then(query_llms)
         .catch(rejected);
