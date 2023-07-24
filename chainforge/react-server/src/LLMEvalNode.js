@@ -9,9 +9,16 @@ import fetch_from_backend from './fetch_from_backend';
 import { AvailableLLMs, getDefaultModelSettings } from './ModelSettingSchemas';
 import { LLMListContainer } from './LLMListComponent';
 
-const DEFAULT_PROMPT = "Classify the sentiment of the text into one of three categories: positive, neutral, or negative. Do not reply with anything else.";
-const DEFAULT_LLM_ITEM = [AvailableLLMs.find(i => i.base_model === 'gpt-4')]
-                                       .map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i}))[0];
+// The default prompt to use when someone creates a new node. 
+const DEFAULT_PROMPT = "Respond with 'true' if the text below has a positive sentiment, and 'false' if not. Do not reply with anything else.";
+
+// The default LLM annotator is GPT-4 at temperature 0.
+const DEFAULT_LLM_ITEM = (() => {
+  let item = [AvailableLLMs.find(i => i.base_model === 'gpt-4')]
+                           .map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i}))[0];
+  item.settings.temperature = 0.0;
+  return item;
+})();
 
 const LLMEvaluatorNode = ({ data, id }) => {
 
@@ -24,7 +31,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const apiKeys = useStore((state) => state.apiKeys);
 
-  const [llmScorers, setLLMScorers] = useState([data.scorer || DEFAULT_LLM_ITEM]);
+  const [llmScorers, setLLMScorers] = useState([data.grader || DEFAULT_LLM_ITEM]);
 
   // Progress when querying responses
   const [progress, setProgress] = useState(undefined);
@@ -56,10 +63,11 @@ const LLMEvaluatorNode = ({ data, id }) => {
       }
 
       // Create progress listener
+      const num_resps_required = json.responses.reduce((acc, resp_obj) => acc + resp_obj.responses.length, 0);
       const progress_listener = (progress_by_llm => {
         setProgress({
-          success: 100 * progress_by_llm[llm_key].success / json.responses.length,
-          error: 100 * progress_by_llm[llm_key].error / json.responses.length,
+          success: 100 * progress_by_llm[llm_key].success / num_resps_required,
+          error: 100 * progress_by_llm[llm_key].error / num_resps_required,
         })
       });
 
@@ -94,10 +102,14 @@ const LLMEvaluatorNode = ({ data, id }) => {
   const handlePromptChange = useCallback((event) => {
     // Store prompt text
     setPromptText(event.target.value);
+    setDataPropsForNode(id, { prompt: event.target.value });
   }, []);
 
   const onLLMListItemsChange = useCallback((new_items) => {
     setLLMScorers(new_items);
+
+    if (new_items.length > 0)
+      setDataPropsForNode(id, { grader: new_items[0] });
   }, []);
 
   useEffect(() => {
@@ -118,6 +130,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
                   runButtonTooltip="Run evaluator over inputs" />
       <Textarea autosize
                 label="Describe how to 'grade' a single response."
+                placeholder={DEFAULT_PROMPT}
                 description="The text of the response will be pasted directly below your rubric."
                 className="prompt-field-fixed nodrag nowheel" 
                 minRows="4"
@@ -128,19 +141,23 @@ const LLMEvaluatorNode = ({ data, id }) => {
                 onChange={handlePromptChange} />
       
       <LLMListContainer 
-                llmItems={llmScorers} 
+                initLLMItems={llmScorers} 
                 description="Model to use as grader:"
                 modelSelectButtonText="Change"
                 selectModelAction="replace"
                 onAddModel={() => {}} 
                 onItemsChange={onLLMListItemsChange} />
-    
+  
       {progress !== undefined ? 
           (<Progress animate={true} sections={[
               { value: progress.success, color: 'blue', tooltip: 'API call succeeded' },
               { value: progress.error, color: 'red', tooltip: 'Error collecting response' }
           ]} />)
       : <></>}
+
+      <Alert icon={<IconAlertTriangle size="1rem" />} p='10px' radius='xs' title="Caution" color="yellow" maw='270px' mt='xs' styles={{title: {margin: '0px'}, icon: {marginRight: '4px'}, message: {fontSize: '10pt'}}}>
+        AI evaluations are not 100% accurate.
+      </Alert> 
 
       <Handle
           type="target"
@@ -162,6 +179,3 @@ const LLMEvaluatorNode = ({ data, id }) => {
 
 export default LLMEvaluatorNode;
 
-/* <Alert icon={<IconAlertTriangle size="1rem" />} title="Caution" color="yellow" maw='260px' mt='lg' styles={{title: {margin: '0px'}, icon: {marginRight: '4px'}}}>
-AI is not always accurate. Always double-check responses.
-</Alert> */

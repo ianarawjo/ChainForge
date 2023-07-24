@@ -21,7 +21,7 @@ async function _route_to_js_backend(route, params) {
     case 'executepy':
       return executepy(params.id, params.code, params.responses, params.scope, params.script_paths);
     case 'evalWithLLM':
-      return evalWithLLM(params.id, params.llm, params.root_prompt, params.responses, params.api_keys);
+      return evalWithLLM(params.id, params.llm, params.root_prompt, params.responses, params.api_keys, params.progress_listener);
     case 'importCache':
       return importCache(params.files);
     case 'exportCache':

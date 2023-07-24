@@ -898,7 +898,8 @@ export async function evalWithLLM(id: string,
   for (const resp_obj of all_evald_responses) {
     if (!resp_obj.eval_res) continue;
     for (const score of resp_obj.eval_res.items) {
-      all_eval_res.add(score.trim().toLowerCase());
+      if (score !== undefined)
+        all_eval_res.add(score.trim().toLowerCase());
     }
     if (all_eval_res.size > 2) 
       break;  // it's categorical if size is over 2
@@ -909,7 +910,10 @@ export async function evalWithLLM(id: string,
         (all_eval_res.has('yes') && all_eval_res.has('no'))) {
       // Convert all eval results to boolean datatypes:
       all_evald_responses.forEach(resp_obj => {
-        resp_obj.eval_res.items = resp_obj.eval_res.items.map(i => (i === 'true' || i === 'yes'));
+        resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) => {
+          const li = i.toLowerCase();
+          return li === 'true' || li === 'yes';
+        });
         resp_obj.eval_res.dtype = 'Categorical';
       });
     }

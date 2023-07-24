@@ -8,7 +8,7 @@ import ModelSettingsModal from "./ModelSettingsModal";
 import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas';
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
-// Defaults to ChatGPT (GPT3.5).
+// Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
 const DEFAULT_INIT_LLMS = [AvailableLLMs[0]];
 
 // Helper funcs
@@ -226,7 +226,6 @@ export const LLMListContainer = forwardRef(({description, modelSelectButtonText,
       new_items = [item];
     }
     
-    console.warn('handleSelectModel', new_items);
     setLLMItems(new_items);
     if (onSelectModel) onSelectModel(item, new_items);
   }, [llmItemsCurrState, onSelectModel, selectModelAction]);
