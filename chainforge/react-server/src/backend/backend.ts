@@ -872,8 +872,9 @@ export async function evalWithLLM(id: string,
     // Now run all inputs through the LLM grader!: 
     const {responses, errors} = await queryLLM(`eval-${id}-${cache_id}`, [llm], 1, root_prompt, { input: inputs }, undefined, undefined, progress_listener);
 
-    if (errors.size > 0)
-      all_errors = all_errors.concat(errors);
+    const err_vals: string[] = Array.from(Object.values(errors)) as string[];
+    if (err_vals.length > 0)
+      all_errors = all_errors.concat(err_vals);
     
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
@@ -884,7 +885,7 @@ export async function evalWithLLM(id: string,
       else {
         resp_obj.eval_res = {
           items: [],
-          dtype: 'string',
+          dtype: 'Categorical',
         };
         resp_obj.eval_res.items[r.metavars.j] = r.responses[0];
       }

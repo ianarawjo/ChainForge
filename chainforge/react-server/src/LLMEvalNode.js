@@ -54,6 +54,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
     const llm_key = llmScorers[0].key;
     const handleError = (err) => {
       setStatus('error');
+      setProgress(undefined);
       alertModal.current.trigger(err);
     };
 
