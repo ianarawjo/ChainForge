@@ -914,7 +914,7 @@ export async function evalWithLLM(id: string,
     let inputs = resp_objs.map((obj, i) => obj.responses.map((r: string, j: number) => ({text: r, fill_history: {}, metavars: { i, j }}))).flat();
 
     // Now run all inputs through the LLM grader!: 
-    const {responses, errors} = await queryLLM(`eval-${id}-${cache_id}`, [llm], 1, root_prompt, { input: inputs }, undefined, undefined, progress_listener);
+    const {responses, errors} = await queryLLM(`eval-${id}-${cache_id}`, [llm], 1, root_prompt, { input: inputs }, undefined, undefined, undefined, progress_listener);
 
     const err_vals: string[] = Array.from(Object.values(errors)) as string[];
     if (err_vals.length > 0)

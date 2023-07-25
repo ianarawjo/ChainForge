@@ -328,6 +328,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
     // If this is a chat node, we also need to pull chat histories: 
     let [past_chat_llms, pulled_chats] = node_type === 'chat' ? pullInputChats() : [undefined, undefined];
     if (node_type === 'chat' && contChatWithPriorLLMs) {
+        if (past_chat_llms === undefined) {
+            setRunTooltip('Attach an input to past conversations first.');
+            return;
+        }
         _llmItemsCurrState = past_chat_llms;
         pulled_chats = bucketChatHistoryInfosByLLM(pulled_chats);
     }
@@ -402,12 +406,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
     });
 
     if (!is_fully_connected) {
-        console.log('Not connected! :(', templateVars, edges);
         triggerAlert('Missing inputs to one or more template variables.');
         return;
     }
-
-    console.log('Connected!');
 
     // If this is a chat node, we need to pull chat histories: 
     let [past_chat_llms, pulled_chats] = node_type === 'chat' ? pullInputChats() : [undefined, undefined];
@@ -419,6 +420,14 @@ const PromptNode = ({ data, id, type: node_type }) => {
     // we need to pop-up an error message.
     let _llmItemsCurrState = llmItemsCurrState;
     if (node_type === 'chat' && contChatWithPriorLLMs) {
+        // If there's nothing attached to past conversations, we can't continue the chat:
+        if (past_chat_llms === undefined) {
+            triggerAlert('You need to attach an input to the Past Conversation message first. For instance, you might query \
+                          multiple chat LLMs with a prompt node, and then attach the Prompt Node output to the \
+                          Past Conversation input of this Chat Turn node in order to continue the chat.');
+            return;
+        }
+
         // Override LLM list with the past llm info (unique LLMs in prior responses)
         _llmItemsCurrState = past_chat_llms;
 
