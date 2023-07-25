@@ -4,7 +4,7 @@
 
 // from chainforge.promptengine.models import LLM
 import { LLM, LLMProvider, getProvider } from './models';
-import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory } from './typing';
+import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory, ChatMessage } from './typing';
 import { env as process_env } from 'process';
 import { StringTemplate } from './template';
 
@@ -12,8 +12,8 @@ import { StringTemplate } from './template';
 import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
 import { OpenAIClient as AzureOpenAIClient, AzureKeyCredential } from "@azure/openai";
 
-const HUMAN_PROMPT = "\n\nHuman:";
-const AI_PROMPT = "\n\nAssistant:";
+const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
+const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
 
 const fetch = require('node-fetch');
 
@@ -121,6 +121,29 @@ export function set_api_keys(api_keys: StringDict): void {
 }
 
 /**
+ * Construct an OpenAI format chat history for sending off to an OpenAI API call.
+ * @param prompt The next prompt (user message) to append.
+ * @param chat_history The prior turns of the chat, ending with the AI assistants' turn. 
+ * @param system_msg Optional; the system message to use if none is present in chat_history. (Ignored if chat_history already has a sys message.)
+ */
+function construct_openai_chat_history(prompt: string, chat_history: ChatHistory | undefined, system_msg: string): ChatHistory {
+  const prompt_msg: ChatMessage = { role: 'user', content: prompt };
+  if (chat_history !== undefined && chat_history.length > 0) {
+    if (chat_history[0].role === 'system') {
+      // In this case, the system_msg is ignored because the prior history already contains one. 
+      return chat_history.concat([prompt_msg]);
+    } else {
+      // In this case, there's no system message that starts the prior history, so inject one:
+      // NOTE: We might reach this scenario if we chain output of a non-OpenAI chat model into an OpenAI model. 
+      return [{"role": "system", "content": system_msg}].concat(chat_history).concat([prompt_msg]);
+    }
+  } else return [
+    {"role": "system", "content": system_msg},
+    prompt_msg,
+  ];
+}
+
+/**
  * Calls OpenAI models via OpenAI's API. 
    @returns raw query and response JSON dicts. 
  */
@@ -171,22 +194,7 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
     openai_call = openai.createChatCompletion.bind(openai);
 
     // Carry over chat history, if present:
-    const prompt_msg = { role: 'user', content: prompt };
-    if (chat_history !== undefined && chat_history.length > 0) {
-      if (chat_history[0].role === 'system') {
-        // In this case, the system_msg is ignored because the prior history already contains one. 
-        query['messages'] = chat_history.concat([prompt_msg]);
-      } else {
-        // In this case, there's no system message that starts the prior history, so inject one:
-        // NOTE: We might reach this scenario if we chain output of a non-OpenAI chat model into an OpenAI model. 
-        query['messages'] = [{"role": "system", "content": system_msg}].concat(chat_history).concat([prompt_msg]);
-      }
-    } else {
-      query['messages'] = [
-        {"role": "system", "content": system_msg},
-        prompt_msg,
-      ];
-    }
+    query['messages'] = construct_openai_chat_history(prompt, chat_history, system_msg);
   }
 
   // Try to call OpenAI
@@ -236,8 +244,9 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
     delete params.function_call;
 
   console.log(`Querying Azure OpenAI deployed model '${deployment_name}' at endpoint '${AZURE_OPENAI_ENDPOINT}' with prompt '${prompt}'...`)
+  const chat_history: ChatHistory | undefined = params?.chat_history;
   const system_msg = params?.system_msg !== undefined ? params.system_msg : "You are a helpful assistant.";
-
+  delete params?.chat_history;
   delete params?.system_msg;
   delete params?.model_type;
   delete params?.deployment_name;
@@ -255,10 +264,7 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
     arg2 = [prompt];
   } else {
     openai_call = client.getChatCompletions.bind(client);
-    arg2 = [
-      {"role": "system", "content": system_msg},
-      {"role": "user", "content": prompt},
-    ];
+    arg2 = construct_openai_chat_history(prompt, chat_history, system_msg);
   }
 
   let response: Dict = {};
@@ -293,18 +299,34 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
     throw Error("Could not find an API key for Anthropic models. Double-check that your API key is set in Settings or in your local environment.");
 
   // Wrap the prompt in the provided template, or use the default Anthropic one
-  const custom_prompt_wrapper: string = params?.custom_prompt_wrapper || (HUMAN_PROMPT + " {prompt}" + AI_PROMPT);
+  const custom_prompt_wrapper: string = params?.custom_prompt_wrapper || (ANTHROPIC_HUMAN_PROMPT + " {prompt}" + ANTHROPIC_AI_PROMPT);
   if (!custom_prompt_wrapper.includes('{prompt}'))
     throw Error("Custom prompt wrapper is missing required {prompt} template variable.");
   const prompt_wrapper_template = new StringTemplate(custom_prompt_wrapper);
-  const wrapped_prompt = prompt_wrapper_template.safe_substitute({prompt: prompt});
+  let wrapped_prompt = prompt_wrapper_template.safe_substitute({prompt: prompt});
 
   if (params?.custom_prompt_wrapper !== undefined)
     delete params.custom_prompt_wrapper;
 
   // Required non-standard params 
   const max_tokens_to_sample = params?.max_tokens_to_sample || 1024;
-  const stop_sequences = params?.stop_sequences || [HUMAN_PROMPT];
+  const stop_sequences = params?.stop_sequences || [ANTHROPIC_HUMAN_PROMPT];
+
+  // Carry chat history by prepending it to the prompt
+  // :: See https://docs.anthropic.com/claude/docs/human-and-assistant-formatting#use-human-and-assistant-to-put-words-in-claudes-mouth
+  if (params?.chat_history !== undefined) {
+    const chat_history: ChatHistory = params.chat_history as ChatHistory;
+    let anthr_chat_context: string = "";
+    for (const chat_msg of chat_history) {
+      if (chat_msg.role === 'user')
+        anthr_chat_context += ANTHROPIC_HUMAN_PROMPT;
+      else if (chat_msg.role === 'assistant')
+        anthr_chat_context += ANTHROPIC_AI_PROMPT;
+      else continue;  // ignore system messages and other roles
+      anthr_chat_context += ' ' + chat_msg.content;
+    }
+    wrapped_prompt = anthr_chat_context + wrapped_prompt;  // prepend the chat context
+  }
 
   // Format query
   let query = {
@@ -721,7 +743,10 @@ export function mergeDicts(A?: Dict, B?: Dict): Dict | undefined {
   if (A === undefined && B === undefined) return undefined;
   else if (A === undefined) return B;
   else if (B === undefined) return A;
-  return {...A, ...B}; // gives priority to B
+  let d: Dict = {};
+  Object.entries(A).forEach(([key, val]) => { d[key] = val; });
+  Object.entries(B).forEach(([key, val]) => { d[key] = val; });
+  return d; // gives priority to B
 }
 
 export const filterDict = (dict: Dict, keyFilterFunc: (key: string) => boolean) => {

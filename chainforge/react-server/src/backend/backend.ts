@@ -654,6 +654,7 @@ export async function queryLLM(id: string,
 
       // Yield responses for 'llm' for each prompt generated from the root template 'prompt' and template variables in 'properties':
       for await (const response of prompter.gen_responses(vars, llm_str as LLM, num_generations, temperature, llm_params, chat_hists)) {
+        
         // Check for selective failure
         if (response instanceof LLMResponseError) {  // The request failed
           console.error(`error when fetching response from ${llm_str}: ${response.message}`);

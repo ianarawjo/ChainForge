@@ -31,7 +31,7 @@ export default function LLMList({llms, onItemsChange}) {
 
   const updateItems = useCallback((new_items) => {
     setItems(new_items);
-    onItemsChange(new_items);
+    setTimeout(() => onItemsChange(new_items), 1); // wait one frame to ping update
   }, [onItemsChange]);
 
   const onClickSettings = useCallback((item) => {

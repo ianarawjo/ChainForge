@@ -65,12 +65,6 @@ export class PromptPipeline {
     let info = prompt.fill_history;
     let metavars = prompt.metavars;
 
-    // Carry over any fill history and metavars attached to the chat_history as well, if present:
-    if (chat_history !== undefined) {
-      info = mergeDicts(chat_history.fill_history);
-      metavars = mergeDicts(chat_history.metavars);
-    }
-
     // Create a response obj to represent the response
     let resp_obj: LLMResponseObject = {
       "prompt": prompt.toString(), 
@@ -78,8 +72,8 @@ export class PromptPipeline {
       "responses": extract_responses(response, llm),
       "raw_response": response,
       "llm": llm,
-      "info": info,
-      "metavars": metavars,
+      "info": mergeDicts(info, chat_history?.fill_history),
+      "metavars": mergeDicts(metavars, chat_history?.metavars),
     };
 
     // Carry over the chat history if present:
@@ -188,12 +182,11 @@ export class PromptPipeline {
             "llm": cached_resp["llm"] || LLM.OpenAI_ChatGPT,
             // We want to use the new info, since 'vars' could have changed even though 
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
-            "info": info,
-            "metavars": metavars,
+            "info": mergeDicts(info, chat_history?.fill_history),
+            "metavars": mergeDicts(metavars, chat_history?.metavars),
           };
           if (chat_history !== undefined) 
             resp.chat_history = chat_history.messages;
-          console.warn(resp);
           yield resp;
           continue;
         }
