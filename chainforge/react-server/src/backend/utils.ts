@@ -591,13 +591,11 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
                     : curr_text;
 
       // Call HuggingFace inference API
-      console.log(inputs, query, options);
       const response = await fetch(url, {
         headers: headers,
         method: "POST",
         body: JSON.stringify({inputs: inputs, parameters: query, options: options}),
       });
-      console.warn(response);
       const result = await response.json();
   
       // HuggingFace sometimes gives us an error, for instance if a model is loading.
