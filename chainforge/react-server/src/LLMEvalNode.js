@@ -189,7 +189,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
       
       { lastResponses && lastResponses.length > 0 ? 
         (<div className="eval-inspect-response-footer nodrag" onClick={showResponseInspector} style={{display: 'flex', justifyContent:'center'}}>
-          <Button color='blue' variant='subtle' w='100%' >Inspect results&nbsp;<IconSearch size='12pt'/></Button>
+          <Button color='blue' variant='subtle' w='100%' >Inspect scores&nbsp;<IconSearch size='12pt'/></Button>
         </div>) : <></>}
     </div>
   );

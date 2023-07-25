@@ -104,7 +104,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const inspectModal = useRef(null);
 
   // Chat node specific
-  const [contChatWithPriorLLMs, setContChatWithPriorLLMs] = useState(true);
+  const [contChatWithPriorLLMs, setContChatWithPriorLLMs] = useState(data.contChat !== undefined ? data.contChat : true);
   const [contChatToggleDisabled, setContChatToggleDisabled] = useState(false);
 
   // For an info pop-up that shows all the prompts that will be sent off
@@ -719,7 +719,11 @@ const PromptNode = ({ data, id, type: node_type }) => {
                     defaultChecked={true}
                     checked={contChatWithPriorLLMs} 
                     disabled={contChatToggleDisabled}
-                    onChange={(event) => setContChatWithPriorLLMs(event.currentTarget.checked)}
+                    onChange={(event) => {
+                        setStatus('warning');
+                        setContChatWithPriorLLMs(event.currentTarget.checked);
+                        setDataPropsForNode(id, { contChat: event.currentTarget.checked });
+                    }}
                     color='cyan'
                     size='xs'
                     mb={contChatWithPriorLLMs ? '4px' : '10px'}

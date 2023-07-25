@@ -25,7 +25,7 @@ export const colorPalettes = {
   var: varColorPalette,
 }
 
-const refreshableOutputNodeTypes = new Set(['evaluator', 'prompt', 'inspect', 'vis', 'llmeval', 'textfields']);
+const refreshableOutputNodeTypes = new Set(['evaluator', 'prompt', 'inspect', 'vis', 'llmeval', 'textfields', 'chat']);
 
 // A global store of variables, used for maintaining state
 // across ChainForge and ReactFlow components.

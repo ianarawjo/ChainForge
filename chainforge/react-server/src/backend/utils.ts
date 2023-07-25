@@ -437,17 +437,19 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
     // Chat completions
     if (chat_history !== undefined && chat_history.length > 0) {
       // Carry over any chat history, converting OpenAI formatted chat history to Google PaLM:
-      let palm_chat_context: PaLMChatContext = { messages: [] }
+      let palm_chat_context: PaLMChatContext = { messages: [] };
+      let palm_messages: PaLMChatMessage[] = [];
       for (const chat_msg of chat_history) {
         if (chat_msg.role === 'system') {
           // Carry the system message over as PaLM's chat 'context':
           palm_chat_context.context = chat_msg.content;
         } else if (chat_msg.role === 'user') {
-          palm_chat_context.messages.push({ author: '0', content: chat_msg.content });
+          palm_messages.push({ author: '0', content: chat_msg.content });
         } else
-          palm_chat_context.messages.push({ author: '1', content: chat_msg.content });
+          palm_messages.push({ author: '1', content: chat_msg.content });
       }
-      palm_chat_context.messages.push({ author: '0', content: prompt });
+      palm_messages.push({ author: '0', content: prompt });
+      palm_chat_context.messages = palm_messages;
       query.prompt = palm_chat_context;
     } else {
       query.prompt = { messages: [{content: prompt}] };
