@@ -105,6 +105,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   // Chat node specific
   const [contChatWithPriorLLMs, setContChatWithPriorLLMs] = useState(true);
+  const [contChatToggleDisabled, setContChatToggleDisabled] = useState(false);
 
   // For an info pop-up that shows all the prompts that will be sent off
   // NOTE: This is the 'full' version of the PromptListPopover that activates on hover.
@@ -433,7 +434,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
         // Now we need transform the 'pulled_chats' to be a dict indexed by LLM nicknames:
         pulled_chats = bucketChatHistoryInfosByLLM(pulled_chats);
-        console.log(pulled_chats);
     }
 
     // Check that there is at least one LLM selected:
@@ -444,6 +444,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
     // Set status indicator
     setStatus('loading');
+    setContChatToggleDisabled(true);
     setJSONResponses([]);
     setProgressAnimated(true);
 
@@ -453,12 +454,13 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
     const rejected = (err) => {
         setStatus('error');
+        setContChatToggleDisabled(false);
         triggerAlert(err.message);
     };
 
     // Fetch info about the number of queries we'll need to make 
     const fetch_resp_count = () => fetchResponseCounts(
-        prompt_template, pulled_data, _llmItemsCurrState, undefined, rejected);
+        prompt_template, pulled_data, _llmItemsCurrState, pulled_chats, rejected);
     
     // Initialize progress bars to small amounts
     setProgress({ success: 2, error: 0 });
@@ -492,6 +494,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             const total_num_error = Object.keys(progress_by_llm_key).reduce((acc, llm_key) => {
                 return acc + progress_by_llm_key[llm_key]['error'];
             }, 0);
+
             setProgress({
                 success: Math.max(5, total_num_success / max_responses * 100),
                 error: total_num_error / max_responses * 100 }
@@ -513,8 +516,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             progress_listener: onProgressChange,
         }, rejected).then(function(json) {
             if (!json) {
-                setStatus('error');
-                triggerAlert('Request was sent and received by backend server, but there was no response.');
+                rejected('Request was sent and received by backend server, but there was no response.');
             }
             else if (json.responses && json.errors) {
 
@@ -538,6 +540,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
                     // Set error status
                     setStatus('error');
+                    setContChatToggleDisabled(false);
 
                     // Trigger alert and display one error message per LLM of all collected errors:
                     let combined_err_msg = "";
@@ -553,6 +556,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
                 // All responses collected! Change status to 'ready':
                 setStatus('ready');
+                setContChatToggleDisabled(false);
 
                 // Remove progress bars
                 setProgress(undefined);
@@ -593,8 +597,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 // Ping any inspect nodes attached to this node to refresh their contents:
                 pingOutputNodes(id);
             } else {
-                setStatus('error');
-                triggerAlert(json.error || 'Unknown error when querying LLM');
+                rejected(json.error || 'Unknown error when querying LLM');
             }
         }, rejected);
     };
@@ -715,6 +718,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                     label={contChatWithPriorLLMs ? "Continue chat with prior LLM(s)" : "Continue chat with new LLMs:"}
                     defaultChecked={true}
                     checked={contChatWithPriorLLMs} 
+                    disabled={contChatToggleDisabled}
                     onChange={(event) => setContChatWithPriorLLMs(event.currentTarget.checked)}
                     color='cyan'
                     size='xs'
