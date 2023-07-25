@@ -109,7 +109,8 @@ const LLMEvaluatorNode = ({ data, id }) => {
     // Store prompt text
     setPromptText(event.target.value);
     setDataPropsForNode(id, { prompt: event.target.value });
-  }, []);
+    setStatus('warning');
+  }, [setPromptText, setDataPropsForNode, setStatus, id]);
 
   const onLLMListItemsChange = useCallback((new_items) => {
     setLLMScorers(new_items);
