@@ -86,10 +86,15 @@ export class PromptPipeline {
 
     // Save the current state of cache'd responses to a JSON file
     // NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
-    if (past_resp_obj_cache_idx > 0)
-      cached_responses[resp_obj["prompt"]][past_resp_obj_cache_idx] = resp_obj;
+    if (!(resp_obj.prompt in cached_responses))
+      cached_responses[resp_obj.prompt] = [];
+    else if (!Array.isArray(cached_responses[resp_obj.prompt]))
+      cached_responses[resp_obj.prompt] = [ cached_responses[resp_obj.prompt] ];
+
+    if (past_resp_obj_cache_idx > -1)
+      cached_responses[resp_obj.prompt][past_resp_obj_cache_idx] = resp_obj;
     else
-      cached_responses[resp_obj["prompt"]] = [ resp_obj ];
+      cached_responses[resp_obj.prompt].push(resp_obj);
     this._cache_responses(cached_responses);
 
     // console.log(` - collected response from ${llm} for prompt: ${resp_obj['prompt']}`);

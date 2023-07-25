@@ -451,24 +451,23 @@ export async function countQueries(prompt: string,
             const cache_bucket = cache_llm_responses[prompt_str];
             let cached_resps: LLMResponseObject[] = Array.isArray(cache_bucket) ? cache_bucket : (cache_bucket === undefined ? [] : [ cache_bucket ]);
 
-            // Check if one cache item has a matching chat_history:
-            let found_resp = false;
-
             // For each chat history, find an indivdual response obj that matches it 
             // (chat_hist be undefined, in which case the cache'd response obj must similarly have an undefined chat history in order to match):
             for (const chat_hist of chat_hists) {
+              let found_resp = false;
               for (const cached_resp of cached_resps) {
-                if (isEqualChatHistory(cached_resp.chat_history, chat_hist.messages)) {
+                if (isEqualChatHistory(cached_resp.chat_history, chat_hist?.messages)) {
                   // Match found. Note it and count response length: 
                   found_resp = true;
-                  const num_resps = cached_resp['responses'].length;
+                  const num_resps = cached_resp.responses.length;
                   if (n > num_resps)
                     add_to_missing_queries(llm_key, prompt_str, n - num_resps);
                   break;
                 }
               }
+              if (!found_resp)
+                add_to_missing_queries(llm_key, prompt_str, n);
             }
-
           } else {
             // There was no cache'd item for this query; add it as missing: 
             add_to_missing_queries(llm_key, prompt_str, n * chat_hists.length);

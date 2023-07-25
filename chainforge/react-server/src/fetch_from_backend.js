@@ -10,7 +10,7 @@ async function _route_to_js_backend(route, params) {
     case 'grabResponses':
       return grabResponses(params.responses);
     case 'countQueriesRequired':
-      return countQueries(params.prompt, clone(params.vars), clone(params.llms), params.n, params.id);
+      return countQueries(params.prompt, clone(params.vars), clone(params.llms), params.n, params.chat_histories, params.id);
     case 'generatePrompts':
       return generatePrompts(params.prompt, clone(params.vars));
     case 'createProgressFile':

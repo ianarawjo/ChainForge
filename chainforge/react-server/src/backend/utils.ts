@@ -4,7 +4,7 @@
 
 // from chainforge.promptengine.models import LLM
 import { LLM, LLMProvider, getProvider } from './models';
-import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory, ChatMessage } from './typing';
+import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory, ChatMessage, PaLMChatMessage, PaLMChatContext } from './typing';
 import { env as process_env } from 'process';
 import { StringTemplate } from './template';
 
@@ -395,6 +395,8 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
 
   // Required non-standard params 
   const max_output_tokens = params?.max_output_tokens || 800;
+  const chat_history = params?.chat_history;
+  delete params?.chat_history;
 
   let query: Dict = {
       model: `models/${model}`,
@@ -433,7 +435,23 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
 
   if (is_chat_model) {
     // Chat completions
-    query.prompt = { messages: [{content: prompt}] };
+    if (chat_history !== undefined && chat_history.length > 0) {
+      // Carry over any chat history, converting OpenAI formatted chat history to Google PaLM:
+      let palm_chat_context: PaLMChatContext = { messages: [] }
+      for (const chat_msg of chat_history) {
+        if (chat_msg.role === 'system') {
+          // Carry the system message over as PaLM's chat 'context':
+          palm_chat_context.context = chat_msg.content;
+        } else if (chat_msg.role === 'user') {
+          palm_chat_context.messages.push({ author: '0', content: chat_msg.content });
+        } else
+          palm_chat_context.messages.push({ author: '1', content: chat_msg.content });
+      }
+      palm_chat_context.messages.push({ author: '0', content: prompt });
+      query.prompt = palm_chat_context;
+    } else {
+      query.prompt = { messages: [{content: prompt}] };
+    }  
   } else {
     // Text completions
     query.prompt = { text: prompt };

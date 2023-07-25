@@ -357,12 +357,13 @@ const PromptNode = ({ data, id, type: node_type }) => {
   };
 
   // Ask the backend how many responses it needs to collect, given the input data:
-  const fetchResponseCounts = (prompt, vars, llms, rejected) => {
+  const fetchResponseCounts = (prompt, vars, llms, chat_histories, rejected) => {
     return fetch_from_backend('countQueriesRequired', {
         prompt: prompt,
         vars: vars,
         llms: llms,
         id: id, 
+        chat_histories: chat_histories,
         n: numGenerations,
     }, rejected).then(function(json) {
         if (!json || !json.counts) {
@@ -389,35 +390,35 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   // On hover over the 'Run' button, request how many responses are required and update the tooltip. Soft fails.
   const handleRunHover = () => {
-    // Check if there's at least one model in the list; if not, nothing to run on.
-    if (!llmItemsCurrState || llmItemsCurrState.length == 0) {
-        setRunTooltip('No LLMs to query.');
-        return;
-    }
-
     // Check if the PromptNode is not already waiting for a response...
     if (status === 'loading') {
         setRunTooltip('Fetching responses...');
         return;
     }
 
-    // Pull the input data
-    const pulled_vars = pullInputData(templateVars);
     let _llmItemsCurrState = llmItemsCurrState;
 
     // If this is a chat node, we also need to pull chat histories: 
-    const [past_chat_llms, pulled_chats] = node_type === 'chat' ? pullInputChats() : [undefined, undefined];
-    
+    let [past_chat_llms, pulled_chats] = node_type === 'chat' ? pullInputChats() : [undefined, undefined];
     if (node_type === 'chat' && contChatWithPriorLLMs) {
         _llmItemsCurrState = past_chat_llms;
         pulled_chats = bucketChatHistoryInfosByLLM(pulled_chats);
     }
 
+    // Check if there's at least one model in the list; if not, nothing to run on.
+    if (!_llmItemsCurrState || _llmItemsCurrState.length == 0) {
+        setRunTooltip('No LLMs to query.');
+        return;
+    }
+
+    // Pull the input data
+    const pulled_vars = pullInputData(templateVars);
+    
     const llms = _llmItemsCurrState.map(item => item.model);
     const num_llms = llms.length;
 
     // Fetch response counts from backend
-    fetchResponseCounts(promptText, pulled_vars, _llmItemsCurrState, (err) => {
+    fetchResponseCounts(promptText, pulled_vars, _llmItemsCurrState, pulled_chats, (err) => {
         console.warn(err.message);  // soft fail
     }).then(([counts, total_num_responses]) => {
         // Check for empty counts (means no requests will be sent!)
@@ -526,7 +527,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
     // Fetch info about the number of queries we'll need to make 
     const fetch_resp_count = () => fetchResponseCounts(
-        prompt_template, pulled_data, _llmItemsCurrState, rejected);
+        prompt_template, pulled_data, _llmItemsCurrState, undefined, rejected);
     
     // Initialize progress bars to small amounts
     setProgress({ success: 2, error: 0 });
@@ -790,7 +791,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                     onChange={(event) => setContChatWithPriorLLMs(event.currentTarget.checked)}
                     color='cyan'
                     size='xs'
-                    mb={contChatWithPriorLLMs ? '0px' : '10px'}
+                    mb={contChatWithPriorLLMs ? '4px' : '10px'}
                 />
             </div>
         ) : <></>} 

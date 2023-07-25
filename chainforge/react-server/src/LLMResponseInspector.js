@@ -420,8 +420,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         onChange={setViewFormat}
       >
         <Group mt="0px" mb='xs'>
+          <Radio value="hierarchy" label={<span><IconSitemap size='10pt' style={{marginBottom: '-1px'}}/> Grouped List</span>} />
           <Radio value="table" label={<span><IconTable size='10pt' style={{marginBottom: '-1px'}}/> Table</span>} />
-          <Radio value="hierarchy" label={<span><IconSitemap size='10pt' style={{marginBottom: '-1px'}}/> Hierarchy</span>} />
         </Group>
       </Radio.Group>
     : <></>}
@@ -444,7 +444,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         <MultiSelect ref={multiSelectRef}
                     onChange={handleMultiSelectValueChange}
                     className='nodrag nowheel inspect-multiselect'
-                    label={<span style={{marginTop: '0px', fontWeight: 'normal'}}>Group responses by (order matters):</span>}
+                    label={<span style={{marginTop: '0px'}}>Group responses by (order matters):</span>}
                     data={multiSelectVars}
                     placeholder="Pick vars to group responses, in order of importance"
                     size={wideFormat ? 'sm' : 'xs'}
