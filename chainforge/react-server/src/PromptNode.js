@@ -277,7 +277,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             updated_chat_hist = [{ role: 'system', content: info.llm.settings.system_msg }].concat(updated_chat_hist);
 
         // ChatHistoryInfo format (see typing.ts)
-        return {messages: updated_chat_hist, fill_history: info.fill_history, metavars: info.metavars, llm: info.llm.name};
+        return {messages: updated_chat_hist, fill_history: info.fill_history, metavars: info.metavars, llm: llm_name};
     });
 
     // Returns [list of LLM specs, list of ChatHistoryInfo]
