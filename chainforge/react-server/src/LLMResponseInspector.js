@@ -305,10 +305,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         const sel_var_cols = found_sel_var_vals.map(val => {
           if (val in resp_objs_by_col_var) {
             const rs = resp_objs_by_col_var[val];
-            if (rs.length > 1) 
-              console.warn(`Found more than one response object for LLM ${val} for the same prompt. Only displaying first...`);
             // Return response divs as response box here:
-            return generateResponseBoxes(rs, var_cols, 100)[0];
+            return (<div>{generateResponseBoxes(rs, var_cols, 100)}</div>);
           } else {
             console.warn(`Could not find response object for column variable ${tableColVar} with value ${val}`);
             return (<i>(no data)</i>);
