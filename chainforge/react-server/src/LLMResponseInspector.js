@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconTable, IconSitemap } from '@tabler/icons-react';
+import { IconTable, IconLayoutList } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 import useStore from './store';
 import { filterDict } from './backend/utils';
@@ -128,7 +128,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
   // The type of view to use to display responses. Can be either hierarchy or table. 
-  const [viewFormat, setViewFormat] = useState(wideFormat ? "table" : "hierarchy");
+  const [viewFormat, setViewFormat] = useState("hierarchy");
 
   // The MultiSelect so people can dynamically set what vars they care about
   const [multiSelectVars, setMultiSelectVars] = useState([]);
@@ -307,16 +307,16 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         });
 
         return (
-          <tr key={idx} style={{borderBottom: '8px solid #eee'}}>
-            {var_cols_vals.map(c => (<td className='inspect-table-var'>{c}</td>))}
-            {sel_var_cols.map((c, i) => (<td className='inspect-table-llm-resp'>{c}</td>))}
+          <tr key={`r${idx}`} style={{borderBottom: '8px solid #eee'}}>
+            {var_cols_vals.map((c, i) => (<td key={`v${i}`} className='inspect-table-var'>{c}</td>))}
+            {sel_var_cols.map((c, i) => (<td key={`c${i}`} className='inspect-table-llm-resp'>{c}</td>))}
           </tr>
         );
       });
 
-      setResponses([(<Table>
+      setResponses([(<Table key='table'>
         <thead>
-          <tr>{colnames.map(c => (<th>{c}</th>))}</tr>
+          <tr>{colnames.map(c => (<th key={c}>{c}</th>))}</tr>
         </thead>
         <tbody style={{verticalAlign: 'top'}}>{rows}</tbody>
       </Table>)]);
@@ -420,8 +420,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         onChange={setViewFormat}
       >
         <Group mt="0px" mb='xs'>
-          <Radio value="hierarchy" label={<span><IconSitemap size='10pt' style={{marginBottom: '-1px'}}/> Grouped List</span>} />
-          <Radio value="table" label={<span><IconTable size='10pt' style={{marginBottom: '-1px'}}/> Table</span>} />
+        <Radio value="hierarchy" label={<span><IconLayoutList size='10pt' style={{marginBottom: '-1px'}}/> Grouped List</span>} />
+        <Radio value="table" label={<span><IconTable size='10pt' style={{marginBottom: '-1px'}}/> Table</span>} />
         </Group>
       </Radio.Group>
     : <></>}
@@ -451,7 +451,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                     value={multiSelectValue}
                     clearSearchOnChange={true}
                     clearSearchOnBlur={true}
-                      w='100%' />
+                    w='100%' />
       </div>
     : <></>}
 

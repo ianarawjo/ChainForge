@@ -107,6 +107,21 @@
       transform: rotate(360deg);
     }
   }
+
+  .llm-list-container {
+    background-color: #eee; 
+    border-radius: 4px;
+    padding: 8px;
+    overflow-y: auto;
+    max-height: 175px;
+  }
+  .llm-list-backdrop {
+    margin: 6px 0px 6px 6px;
+    padding-bottom: 4px;
+    text-align: left; 
+    font-size: 10pt;
+    color: #777;
+  }
   
   .input-field {
     display: flex;
@@ -294,6 +309,7 @@
   .inspect-table-llm-resp {
     padding-top: 8px;
     padding-bottom: 20px;
+    min-width: 320px;
     border-right: 1px solid #eee;
   }
   .response-group-component-header:hover {
@@ -685,7 +701,7 @@
   border-radius: 5px;
   border: 1px solid #999;
   font-size: 12px;
-  background: transparent;
+  background: rgb(63, 204, 106, 0.2);
   color: #333;
   overflow: hidden;
   box-shadow: 0 0 0 0 transparent;
