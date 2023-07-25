@@ -132,17 +132,17 @@ const LLMEvaluatorNode = ({ data, id }) => {
 
   return (
     <div className="evaluator-node cfnode">
-      <NodeLabel title={data.title || 'LLM Evaluator'} 
+      <NodeLabel title={data.title || 'LLM Scorer'} 
                   nodeId={id} 
                   icon={<IconRobot size="16px" />} 
                   status={status}
                   alertModal={alertModal}
                   handleRunClick={handleRunClick}
-                  runButtonTooltip="Run evaluator over inputs" />
+                  runButtonTooltip="Run scorer over inputs" />
       <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
 
       <Textarea autosize
-                label="Describe how to 'grade' a single response."
+                label="Describe how to 'score' a single response."
                 placeholder={PLACEHOLDER_PROMPT}
                 description="The text of the response will be pasted directly below your rubric."
                 className="prompt-field-fixed nodrag nowheel" 
@@ -155,7 +155,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
       
       <LLMListContainer 
                 initLLMItems={llmScorers} 
-                description="Model to use as grader:"
+                description="Model to use as scorer:"
                 modelSelectButtonText="Change"
                 selectModelAction="replace"
                 onAddModel={() => {}} 
@@ -169,7 +169,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
       : <></>}
 
       <Alert icon={<IconAlertTriangle size="1rem" />} p='10px' radius='xs' title="Caution" color="yellow" maw='270px' mt='xs' styles={{title: {margin: '0px'}, icon: {marginRight: '4px'}, message: {fontSize: '10pt'}}}>
-        AI evaluations are not 100% accurate.
+        AI scores are not 100% accurate.
       </Alert> 
 
       <Handle

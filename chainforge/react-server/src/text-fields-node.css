@@ -700,7 +700,7 @@
   border-radius: 5px;
   border: 1px solid #999;
   font-size: 12px;
-  background: transparent;
+  background: rgb(63, 204, 106, 0.2);
   color: #333;
   overflow: hidden;
   box-shadow: 0 0 0 0 transparent;

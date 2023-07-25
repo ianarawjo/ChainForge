@@ -709,7 +709,7 @@ const App = () => {
               {IS_RUNNING_LOCALLY ? (
                 <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator Node </Menu.Item>
               ): <></>}
-              <Menu.Item onClick={addLLMEvalNode} icon={<IconRobot size="16px" />}> LLM Evaluator Node</Menu.Item>
+              <Menu.Item onClick={addLLMEvalNode} icon={<IconRobot size="16px" />}> LLM Scorer Node</Menu.Item>
               <Menu.Item onClick={addVisNode} icon={'📊'}> Vis Node </Menu.Item>
               <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
               <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>
