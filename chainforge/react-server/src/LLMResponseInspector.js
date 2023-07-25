@@ -36,30 +36,39 @@ const countResponsesBy = (responses, keyFunc) => {
   let responses_by_key = {};
   let unspecified_group = [];
   responses.forEach(item => {
-      const key = keyFunc(item);
-      const d = key !== null ? responses_by_key : unspecified_group;
-      if (key in d)
-          d[key] += 1;
-      else
-          d[key] = 1;
+    const key = keyFunc(item);
+    const d = key !== null ? responses_by_key : unspecified_group;
+    if (key in d)
+        d[key] += 1;
+    else
+        d[key] = 1;
   });
   return [responses_by_key, unspecified_group];
 };
+
+const SUCCESS_EVAL_SCORES = new Set(['true', 'yes']);
+const FAILURE_EVAL_SCORES = new Set(['false', 'no']);
 const getEvalResultStr = (eval_item) => {
   if (Array.isArray(eval_item)) {
-      return 'scores: ' + eval_item.join(', ');
+    return 'scores: ' + eval_item.join(', ');
   }
   else if (typeof eval_item === 'object') {
-      const strs = Object.keys(eval_item).map(key => {
-          let val = eval_item[key];
-          if (typeof val === 'number' && val.toString().indexOf('.') > -1)
-              val = val.toFixed(4);  // truncate floats to 4 decimal places
-          return `${key}: ${val}`;
-      });
-      return strs.join(', ');
+    const strs = Object.keys(eval_item).map(key => {
+      let val = eval_item[key];
+      if (typeof val === 'number' && val.toString().indexOf('.') > -1)
+        val = val.toFixed(4);  // truncate floats to 4 decimal places
+      return `${key}: ${val}`;
+    });
+    return strs.join(', ');
   }
-  else 
-      return `score: ${eval_item}`;
+  else {
+    const eval_str = eval_item.toString().trim().toLowerCase();
+    const color = SUCCESS_EVAL_SCORES.has(eval_str) ? 'black' : (FAILURE_EVAL_SCORES.has(eval_str) ? 'red' : 'black'); 
+    return (<>
+      <span style={{color: 'gray'}}>{"score: "}</span>
+      <span style={{color: color}}>{eval_str}</span>
+    </>);
+  }
 };
 
 // Export the JSON responses to an excel file (downloads the file):

@@ -309,7 +309,7 @@
   .inspect-table-llm-resp {
     padding-top: 8px;
     padding-bottom: 20px;
-    min-width: 320px;
+    min-width: 160px;
     border-right: 1px solid #eee;
   }
   .response-group-component-header:hover {
