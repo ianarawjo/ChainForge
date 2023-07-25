@@ -46,6 +46,12 @@ export interface PaLMChatContext {
   examples?: Dict[],
 }
 
+/** HuggingFace conversation models format */
+export interface HuggingFaceChatHistory {
+  past_user_inputs: string[],
+  generated_responses: string[]
+}
+
 // Chat history with 'carried' variable metadata
 export interface ChatHistoryInfo {
   messages: ChatHistory,

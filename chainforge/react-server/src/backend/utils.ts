@@ -4,7 +4,7 @@
 
 // from chainforge.promptengine.models import LLM
 import { LLM, LLMProvider, getProvider } from './models';
-import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory, ChatMessage, PaLMChatMessage, PaLMChatContext } from './typing';
+import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory, ChatMessage, PaLMChatMessage, PaLMChatContext, HuggingFaceChatHistory } from './typing';
 import { env as process_env } from 'process';
 import { StringTemplate } from './template';
 
@@ -531,20 +531,38 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
   if (params?.num_continuations !== undefined && typeof params.num_continuations === 'number')
     num_continuations = params.num_continuations;
 
-  let query = {
+  let query: Dict = {
     temperature: temperature,
-    return_full_text: false, // we never want it to include the prompt in the response
   };
   set_param_if_exists('top_k', query);
   set_param_if_exists('top_p', query);
   set_param_if_exists('repetition_penalty', query);
-  set_param_if_exists('max_new_tokens', query);
 
   let options = {
     use_cache: false, // we want it generating fresh each time
   };
   set_param_if_exists('use_cache', options);
-  set_param_if_exists('do_sample', options);
+
+  // Carry over chat history if (a) we're using a chat model and (b) if it exists, converting to HF format.
+  // :: See https://huggingface.co/docs/api-inference/detailed_parameters#conversational-task
+  const model_type: string = params?.model_type;
+  let hf_chat_hist: HuggingFaceChatHistory = { past_user_inputs: [], generated_responses: [] };
+  if (model_type === 'chat') {
+    if (params?.chat_history !== undefined) {
+      for (const chat_msg of params.chat_history as ChatHistory) {
+        if (chat_msg.role === 'user')
+          hf_chat_hist.past_user_inputs = hf_chat_hist.past_user_inputs.concat( chat_msg.content );
+        else if (chat_msg.role === 'assistant')
+          hf_chat_hist.generated_responses = hf_chat_hist.generated_responses.concat( chat_msg.content );
+        // ignore system messages
+      }
+    }
+  } else {
+    // Text generation-only parameters:
+    set_param_if_exists('max_new_tokens', query);
+    set_param_if_exists('do_sample', options);
+    query.return_full_text = false; // we never want it to include the prompt in the response
+  }
 
   const using_custom_model_endpoint: boolean = param_exists(params?.custom_model);
 
@@ -566,23 +584,32 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
     let curr_cont = 0;
     let curr_text = prompt;
     while (curr_cont <= num_continuations) {
+      const inputs = (model_type === 'chat')
+                    ? ({ text: curr_text, 
+                        past_user_inputs: hf_chat_hist.past_user_inputs, 
+                        generated_responses: hf_chat_hist.generated_responses })
+                    : curr_text;
+
       // Call HuggingFace inference API
+      console.log(inputs, query, options);
       const response = await fetch(url, {
         headers: headers,
         method: "POST",
-        body: JSON.stringify({inputs: curr_text, parameters: query, options: options}),
+        body: JSON.stringify({inputs: inputs, parameters: query, options: options}),
       });
+      console.warn(response);
       const result = await response.json();
   
       // HuggingFace sometimes gives us an error, for instance if a model is loading.
       // It returns this as an 'error' key in the response:
       if (result?.error !== undefined)
         throw new Error(result.error);
-      else if (!Array.isArray(result) || result.length !== 1)
+      else if ((model_type !== 'chat' && (!Array.isArray(result) || result.length !== 1)) || 
+               (model_type === 'chat' && (Array.isArray(result) || !result || result?.generated_text === undefined)))
         throw new Error("Result of HuggingFace API call is in unexpected format:" + JSON.stringify(result));
 
       // Merge responses
-      const resp_text: string = result[0].generated_text;
+      const resp_text: string = model_type === 'chat' ? result.generated_text : result[0].generated_text;
 
       continued_response.generated_text += resp_text;
       curr_text += resp_text;

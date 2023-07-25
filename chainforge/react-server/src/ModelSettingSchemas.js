@@ -646,7 +646,7 @@ const HuggingFaceTextInferenceSettings = {
               "type": "string",
               "title": "Model",
               "description": "Select a suggested HuggingFace-hosted model to query using the Inference API. For more details, check out https://huggingface.co/inference-api",
-              "enum": ["gpt2", "bigscience/bloom-560m", "tiiuae/falcon-7b-instruct", "bigcode/santacoder", "bigcode/starcoder", "Other (HuggingFace)"],
+              "enum": ["tiiuae/falcon-7b-instruct", "microsoft/DialoGPT-large", "bigscience/bloom-560m", "gpt2", "bigcode/santacoder", "bigcode/starcoder", "Other (HuggingFace)"],
               "default": "tiiuae/falcon-7b-instruct",
           },
           "custom_model": {
@@ -654,6 +654,13 @@ const HuggingFaceTextInferenceSettings = {
             "title": "Custom HF model endpoint",
             "description": "(Only used if you select 'Other' above.) Enter the HuggingFace id of the text generation model you wish to query via the inference API. Alternatively, if you have hosted a model on HF Inference Endpoints, you can enter the full URL of the endpoint here.",
             "default": "",
+          },
+          "model_type": {
+            "type": "string",
+            "title": "Model Type (Text or Chat)",
+            "description": "Select the type of model you are querying. You must selected 'chat' if you want to pass conversation history in Chat Turn nodes.",
+            "enum": ["text", "chat"],
+            "default": "text"
           },
           "temperature": {
               "type": "number",
