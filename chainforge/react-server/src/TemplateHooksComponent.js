@@ -31,35 +31,8 @@ export const extractBracketedSubstrings = (text) => {
     return capture_groups;
 };
 
-export const toPyTemplateFormat = (text) => {
-    /** Given some text in template format:
-     *      This is a {test}
-     *  adds a $ before each valid {. 
-     * 
-     *  NOTE: We don't use Regex here for compatibility of browsers
-     *  that don't support negative lookbehinds/aheads (e.g., Safari).
-     */
-    let str = text.slice(0);
-    let prev_c = '';
-    let group_start_idx = -1;
-    for (let i = 0; i < str.length; i += 1) {
-        let c = str[i];
-        if (prev_c !== '\\') { // Skipped escaped chars
-            if (group_start_idx === -1 && c === '{') {
-                // Insert a $ before the {:
-                str = str.slice(0, i) + '$' + str.slice(i);
-                group_start_idx = i + 1;
-                i += 1;
-            } else if (group_start_idx > -1 && c === '}') {
-                group_start_idx = -1;
-            }
-        }
-        prev_c = c;
-    }
-    return str;
-};
 
-export default function TemplateHooks({ vars, nodeId, startY, position }) {
+export default function TemplateHooks({ vars, nodeId, startY, position, ignoreHandles }) {
 
     const edges = useStore((state) => state.edges);
     const onEdgesChange = useStore((state) => state.onEdgesChange);
@@ -102,7 +75,8 @@ export default function TemplateHooks({ vars, nodeId, startY, position }) {
         if (templateHooks.length > 0) {
             let deleted_edges = [];
             edges.forEach(e => {
-                if (e.target !== nodeId || vars.includes(e.targetHandle))
+                if (e.target !== nodeId || vars.includes(e.targetHandle) || 
+                   (Array.isArray(ignoreHandles) && ignoreHandles.includes(e.targetHandle)))
                     return;
                 else {
                     deleted_edges.push(e);
@@ -116,7 +90,7 @@ export default function TemplateHooks({ vars, nodeId, startY, position }) {
         setTemplateHooks(genTemplateHooks(vars, []));
 
         // setDataPropsForNode(nodeId, {vars: vars});
-    }, [vars, startY, genTemplateHooks, nodeId]);
+    }, [vars, startY, genTemplateHooks, nodeId, ignoreHandles]);
 
     // Because of the way React flow internally stores Handles, 
     // we need to notify it to update its backend representation of the 'node'

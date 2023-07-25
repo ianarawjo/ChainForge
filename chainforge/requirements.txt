@@ -1,12 +1,9 @@
 flask>=2.2.3
 flask[async]
 flask_cors
-flask_socketio
 requests
 openai
-python-socketio
 dalaipy==2.0.2
-gevent-websocket
 urllib3==1.26.6
 anthropic
 google-generativeai

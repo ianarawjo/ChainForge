@@ -11,11 +11,11 @@ async function _route_to_js_backend(route, params) {
     case 'grabResponses':
       return grabResponses(params.responses);
     case 'countQueriesRequired':
-      return countQueries(params.prompt, clone(params.vars), clone(params.llms), params.n, params.id);
+      return countQueries(params.prompt, clone(params.vars), clone(params.llms), params.n, params.chat_histories, params.id);
     case 'generatePrompts':
       return generatePrompts(params.prompt, clone(params.vars));
     case 'queryllm':
-      return queryLLM(params.id, clone(params.llm), params.n, params.prompt, clone(params.vars), params.api_keys, params.no_cache, params.progress_listener);
+      return queryLLM(params.id, clone(params.llm), params.n, params.prompt, clone(params.vars), params.chat_histories, params.api_keys, params.no_cache, params.progress_listener);
     case 'executejs':
       return executejs(params.id, params.code, params.responses, params.scope);
     case 'executepy':

@@ -74,6 +74,7 @@ const INITIAL_LLM = () => {
 const nodeTypes = {
   textfields: TextFieldsNode, // Register the custom node
   prompt: PromptNode,
+  chat: PromptNode,
   evaluator: EvaluatorNode,
   llmeval: LLMEvaluatorNode,
   vis: VisNode,
@@ -159,13 +160,17 @@ const App = () => {
     return ({x: -x+centerX, y:-y+centerY});
   }
 
-  const addTextFieldsNode = (event) => {
+  const addTextFieldsNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'textFieldsNode-'+Date.now(), type: 'textfields', data: {}, position: {x: x-200, y:y-100} });
   };
-  const addPromptNode = (event) => {
+  const addPromptNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'promptNode-'+Date.now(), type: 'prompt', data: { prompt: '' }, position: {x: x-200, y:y-100} });
+  };
+  const addChatTurnNode = () => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'chatTurn-'+Date.now(), type: 'chat', data: { prompt: '' }, position: {x: x-200, y:y-100} });
   };
   const addEvalNode = (progLang) => {
     const { x, y } = getViewportCenter();
@@ -705,6 +710,7 @@ const App = () => {
               <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields </Menu.Item>
               <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
               <Menu.Item onClick={addPromptNode} icon={'💬'}> Prompt Node </Menu.Item>
+              <Menu.Item onClick={addChatTurnNode} icon={'🗣'}> Chat Turn Node </Menu.Item>
               <Menu.Item onClick={() => addEvalNode('javascript')} icon={<IconTerminal size="16px" />}> JavaScript Evaluator Node </Menu.Item>
               {IS_RUNNING_LOCALLY ? (
                 <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator Node </Menu.Item>
