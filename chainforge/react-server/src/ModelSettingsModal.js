@@ -121,7 +121,7 @@ return (
                 </Popover.Dropdown>
             </Popover><span>{`Model Settings: ${modelName}`}</span>
         </div>
-    } closeOnClickOutside={false} style={{position: 'relative', 'left': '-100px'}}>
+    } closeOnClickOutside={false} style={{position: 'relative', 'left': '-5%'}}>
         
         <Form schema={schema} uiSchema={uiSchema} formData={formData} validator={validator} onChange={onFormDataChange} onSubmit={onSubmit} style={{width: '100%'}}>
             <Button title='Submit' onClick={onClickSubmit} style={{float: 'right', marginRight: '30px'}}>Submit</Button>

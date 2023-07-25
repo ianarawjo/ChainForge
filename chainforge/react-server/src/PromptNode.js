@@ -1,42 +1,16 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Button, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
+import { Button, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { v4 as uuid } from 'uuid';
 import { IconSearch, IconList } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent'
-import LLMList from './LLMListComponent'
+import { LLMListContainer } from './LLMListComponent'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
-import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas'
 import fetch_from_backend from './fetch_from_backend';
 import { escapeBraces } from './backend/template';
 
-// The LLM(s) to include by default on a PromptNode whenever one is created.
-// Defaults to ChatGPT (GPT3.5).
-const initLLMs = [AvailableLLMs[0]];
-
-// Helper funcs
-// Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
-const ensureUniqueName = (_name, _prev_names) => {
-    // Strip whitespace around names
-    const prev_names = _prev_names.map(n => n.trim());
-    const name = _name.trim();
-  
-    // Check if name is unique
-    if (!prev_names.includes(name))
-      return name;
-    
-    // Name isn't unique; find a unique one:
-    let i = 2;
-    let new_name = `${name} (${i})`;
-    while (prev_names.includes(new_name)) {
-      i += 1;
-      new_name = `${name} (${i})`;
-    }
-    return new_name;
-};
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
     let i = 0;
@@ -44,7 +18,6 @@ const getUniqueLLMMetavarKey = (responses) => {
         i += 1;
     return `LLM_${i}`;
 };
-
 
 class PromptInfo {
     prompt; // string
@@ -107,6 +80,10 @@ const PromptNode = ({ data, id }) => {
   const [numGenerations, setNumGenerations] = useState(data.n || 1);
   const [numGenerationsLastRun, setNumGenerationsLastRun] = useState(data.n || 1);
 
+  // The LLM items container
+  const llmListContainer = useRef(null);
+  const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
+
   // For displaying error messages to user
   const alertModal = useRef(null);
 
@@ -117,37 +94,6 @@ const PromptNode = ({ data, id }) => {
   // NOTE: This is the 'full' version of the PromptListPopover that activates on hover.
   const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] = useDisclosure(false);
 
-  // Selecting LLM models to prompt
-  const [llmItems, setLLMItems] = useState(data.llms || initLLMs.map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i})));
-  const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
-  const resetLLMItemsProgress = useCallback(() => {
-    setLLMItems(llmItemsCurrState.map(item => {
-        item.progress = undefined;
-        return item;
-    }));
-  }, [llmItemsCurrState]);
-  const ensureLLMItemsErrorProgress = useCallback((llm_keys_w_errors) => {
-    setLLMItems(llmItemsCurrState.map(item => {
-        if (llm_keys_w_errors.includes(item.key)) {
-            if (!item.progress)
-                item.progress = { success: 0, error: 100 };
-            else {
-                const succ_perc = item.progress.success;
-                item.progress = { success: succ_perc, error: 100 - succ_perc };
-            }
-        } else {
-            if (item.progress && item.progress.success === 0)
-                item.progress = undefined;
-        }
-
-        return item;
-    }));
-  }, [llmItemsCurrState]);
-  
-  const getLLMListItemForKey = useCallback((key) => {
-    return llmItemsCurrState.find((item) => item.key === key);
-  }, [llmItemsCurrState]);
-
   // Progress when querying responses
   const [progress, setProgress] = useState(undefined);
   const [progressAnimated, setProgressAnimated] = useState(true);
@@ -155,9 +101,9 @@ const PromptNode = ({ data, id }) => {
 
   const triggerAlert = useCallback((msg) => {
     setProgress(undefined);
-    resetLLMItemsProgress();
+    llmListContainer?.current?.resetLLMItemsProgress();
     alertModal.current.trigger(msg);
-  }, [resetLLMItemsProgress, alertModal]);
+  }, [llmListContainer, alertModal]);
 
   const showResponseInspector = useCallback(() => {
     if (inspectModal && inspectModal.current && jsonResponses)
@@ -170,45 +116,26 @@ const PromptNode = ({ data, id }) => {
         setStatus('warning');
   }, [promptTextOnLastRun, status])
 
-  const addModel = useCallback((model) => {
-    // Get the item for that model
-    let item = AvailableLLMs.find(llm => llm.base_model === model);
+  const addModel = useCallback((new_model, all_items) => {
+    setLLMItemsCurrState(all_items);
+    setDataPropsForNode(id, { llms: all_items });
+    signalDirty(); 
+  }, [signalDirty]);
 
-    if (!item) {  // This should never trigger, but in case it does:
-        triggerAlert(`Could not find model named '${model}' in list of available LLMs.`);
-        return;
-    }
-
-    // Give it a uid as a unique key (this is needed for the draggable list to support multiple same-model items; keys must be unique)
-    item = {key: uuid(), ...item};
-
-    // Generate the default settings for this model
-    item.settings = getDefaultModelSettings(model);
-
-    // Repair names to ensure they are unique
-    const unique_name = ensureUniqueName(item.name, llmItemsCurrState.map(i => i.name));
-    item.name = unique_name;
-    item.formData = { 'shortname': unique_name };
-
-    // Add model to LLM list (regardless of it's present already or not). 
-    setLLMItems(llmItemsCurrState.concat([item]))
-    signalDirty();    
-  }, [llmItemsCurrState, signalDirty]);
-
-  const onLLMListItemsChange = useCallback((new_items) => {
+  const onLLMListItemsChange = useCallback((new_items, old_items) => {
     setLLMItemsCurrState(new_items);
     setDataPropsForNode(id, { llms: new_items });
     
     // If there's been any change to the item list, signal dirty: 
-    if (new_items.length !== llmItemsCurrState.length || !new_items.every(i => llmItemsCurrState.some(s => s.key === i.key))) {
+    if (new_items.length !== old_items.length || !new_items.every(i => old_items.some(s => s.key === i.key))) {
         signalDirty();
     } else if (!new_items.every(itemA => {
-        const itemB = llmItemsCurrState.find(b => b.key === itemA.key);
+        const itemB = old_items.find(b => b.key === itemA.key);
         return JSON.stringify(itemA.settings) === JSON.stringify(itemB.settings);
     })) {
         signalDirty();
     }
-  }, [setLLMItemsCurrState, signalDirty]);
+  }, [setDataPropsForNode, signalDirty]);
 
   const refreshTemplateHooks = (text) => {
     // Update template var fields + handles
@@ -383,7 +310,7 @@ const PromptNode = ({ data, id }) => {
             }
         } else {
             const llm_key = Object.keys(queries_per_llm)[0];
-            const llm_name = getLLMListItemForKey(llm_key)?.name;
+            const llm_name = llmListContainer?.current?.getLLMListItemForKey(llm_key)?.name;
             const llm_count = queries_per_llm[llm_key];
             const req = llm_count > 1 ? 'queries' : 'query';
             if (num_llms > num_llms_missing)
@@ -431,21 +358,13 @@ const PromptNode = ({ data, id }) => {
         FINISHED_QUERY = true;
     };
 
-    // Ask the backend to reset the scratchpad for counting queries:
-    const create_progress_scratchpad = () => {
-        return fetch_from_backend('createProgressFile', {id: id}, rejected);
-    };
-
     // Fetch info about the number of queries we'll need to make 
     const fetch_resp_count = () => fetchResponseCounts(
         prompt_template, pulled_data, llmItemsCurrState, rejected);
     
     // Initialize progress bars to small amounts
     setProgress({ success: 2, error: 0 });
-    setLLMItems(llmItemsCurrState.map(item => {
-        item.progress = { success: 0, error: 0 };
-        return item;
-    }));
+    llmListContainer?.current?.setZeroPercProgress();
 
     // Create a callback to listen for progress
     let onProgressChange = () => {};
@@ -458,7 +377,7 @@ const PromptNode = ({ data, id }) => {
             // Update individual progress bars
             const num_llms = llmItemsCurrState.length;
             const num_resp_per_llm = (max_responses / num_llms);
-            setLLMItems(llmItemsCurrState.map(item => {
+            llmListContainer?.current?.updateProgress(item => {
                 if (item.key in progress_by_llm_key) {
                     item.progress = {
                         success: progress_by_llm_key[item.key]['success'] / num_resp_per_llm * 100,
@@ -466,7 +385,7 @@ const PromptNode = ({ data, id }) => {
                     }
                 }
                 return item;
-            }));
+            });
             
             // Update total progress bar
             const total_num_success = Object.keys(progress_by_llm_key).reduce((acc, llm_key) => {
@@ -517,7 +436,7 @@ const PromptNode = ({ data, id }) => {
 
                     // Ensure there's a sliver of error displayed in the progress bar
                     // of every LLM item that has an error:
-                    ensureLLMItemsErrorProgress(llms_w_errors);
+                    llmListContainer?.current?.ensureLLMItemsErrorProgress(llms_w_errors);
 
                     // Set error status
                     setStatus('error');
@@ -525,7 +444,7 @@ const PromptNode = ({ data, id }) => {
                     // Trigger alert and display one error message per LLM of all collected errors:
                     let combined_err_msg = "";
                     llms_w_errors.forEach(llm_key => {
-                        const item = getLLMListItemForKey(llm_key);                        
+                        const item = llmListContainer?.current?.getLLMListItemForKey(llm_key);                        
                         combined_err_msg += item.name + ': ' + JSON.stringify(json.errors[llm_key][0]) + '\n';
                     });
                     // We trigger the alert directly (don't use triggerAlert) here because we want to keep the progress bar:
@@ -540,7 +459,7 @@ const PromptNode = ({ data, id }) => {
                 // Remove progress bars
                 setProgress(undefined);
                 setProgressAnimated(true);
-                resetLLMItemsProgress();
+                llmListContainer?.current?.resetLLMItemsProgress();
                 
                 // Save prompt text so we remember what prompt we have responses cache'd for:
                 setPromptTextOnLastRun(promptText);
@@ -576,8 +495,7 @@ const PromptNode = ({ data, id }) => {
     };
 
     // Now put it all together!
-    create_progress_scratchpad()
-        .then(fetch_resp_count)
+    fetch_resp_count()
         .then(open_progress_listener)
         .then(query_llms)
         .catch(rejected);
@@ -634,10 +552,10 @@ const PromptNode = ({ data, id }) => {
                 handleRunHover={handleRunHover}
                 runButtonTooltip={runTooltip}
                 customButtons={[
-                    <PromptListPopover promptInfos={promptPreviews} onHover={handlePreviewHover} onClick={openInfoModal} />
+                    <PromptListPopover key='prompt-previews' promptInfos={promptPreviews} onHover={handlePreviewHover} onClick={openInfoModal} />
                 ]} />
     <LLMResponseInspectorModal ref={inspectModal} jsonResponses={jsonResponses} prompt={promptText} />
-    <Modal title={'List of prompts that will be sent to LLMs (' + promptPreviews.length + ' total)'} size='xl' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
+    <Modal title={'List of prompts that will be sent to LLMs (' + promptPreviews.length + ' total)'} size='xl' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-5%'}}}>
         <Box size={600} m='lg' mt='xl'>
             {displayPromptInfos(promptPreviews)}
         </Box>
@@ -663,29 +581,13 @@ const PromptNode = ({ data, id }) => {
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
             <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
-        <div id="llms-list" className="nowheel" style={{backgroundColor: '#eee', borderRadius: '4px', padding: '8px', overflowY: 'auto', maxHeight: '175px'}}>
-            <div style={{marginTop: '6px', marginBottom: '6px', marginLeft: '6px', paddingBottom: '4px', textAlign: 'left', fontSize: '10pt', color: '#777'}}>
-                Models to query:
-                <div className="add-llm-model-btn nodrag">
-                    <Menu transitionProps={{ transition: 'pop-top-left' }}
-                        position="bottom-start"
-                        width={220}
-                        withinPortal={true}
-                    >
-                        <Menu.Target>
-                            <button>Add +</button>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                            {AvailableLLMs.map(item => (<Menu.Item key={item.model} onClick={() => addModel(item.base_model)} icon={item.emoji}>{item.name}</Menu.Item>))}
-                        </Menu.Dropdown>
-                    </Menu>
-                </div>
-            </div>
-            
-            <div className="nodrag">
-                <LLMList llms={llmItems} onItemsChange={onLLMListItemsChange} />
-            </div>
-        </div>
+
+        <LLMListContainer 
+            ref={llmListContainer}
+            initLLMItems={data.llms} 
+            onAddModel={addModel} 
+            onItemsChange={onLLMListItemsChange} />
+
         {progress !== undefined ? 
             (<Progress animate={progressAnimated} sections={[
                 { value: progress.success, color: 'blue', tooltip: 'API call succeeded' },

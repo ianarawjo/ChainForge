@@ -19,7 +19,7 @@ const LLMResponseInspectorModal = forwardRef((props, ref) => {
   }));
 
   return (
-    <Modal size='90%' keepMounted opened={opened} onClose={close} closeOnClickOutside={true} style={{position: 'relative', 'left': '-100px'}} title={
+    <Modal size='90%' keepMounted opened={opened} onClose={close} closeOnClickOutside={true} style={{position: 'relative', 'left': '-5%'}} title={
       <div><span>Response Inspector</span><button className="custom-button" style={{marginTop: 'auto', marginRight: '14px', float: 'right'}} onClick={() => exportToExcel(props.jsonResponses)}>Export data to Excel</button></div>
     } styles={{ title: {justifyContent: 'space-between', width: '100%'} }} >
       { props.prompt !== undefined ? 
