@@ -1,16 +1,17 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Alert, NativeSelect, Progress, Textarea } from '@mantine/core';
-import { IconAlertTriangle, IconRobot } from "@tabler/icons-react";
+import { Button, Alert, Progress, Textarea } from '@mantine/core';
+import { IconAlertTriangle, IconRobot, IconSearch } from "@tabler/icons-react";
 import { v4 as uuid } from 'uuid';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
 import fetch_from_backend from './fetch_from_backend';
 import { AvailableLLMs, getDefaultModelSettings } from './ModelSettingSchemas';
 import { LLMListContainer } from './LLMListComponent';
+import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 
-// The default prompt to use when someone creates a new node. 
-const DEFAULT_PROMPT = "Respond with 'true' if the text below has a positive sentiment, and 'false' if not. Do not reply with anything else.";
+// The default prompt shown in gray highlights to give people a good example of an evaluation prompt. 
+const PLACEHOLDER_PROMPT = "Respond with 'true' if the text below has a positive sentiment, and 'false' if not. Do not reply with anything else.";
 
 // The default LLM annotator is GPT-4 at temperature 0.
 const DEFAULT_LLM_ITEM = (() => {
@@ -22,14 +23,17 @@ const DEFAULT_LLM_ITEM = (() => {
 
 const LLMEvaluatorNode = ({ data, id }) => {
 
-  const [promptText, setPromptText] = useState(data.prompt || DEFAULT_PROMPT);
+  const [promptText, setPromptText] = useState(data.prompt || "");
   const [status, setStatus] = useState('none');
   const alertModal = useRef(null);
+  const inspectModal = useRef(null);
 
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const apiKeys = useStore((state) => state.apiKeys);
+
+  const [lastResponses, setLastResponses] = useState([]);
 
   const [llmScorers, setLLMScorers] = useState([data.grader || DEFAULT_LLM_ITEM]);
 
@@ -93,6 +97,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
         pingOutputNodes(id);
   
         console.log(json.responses);
+        setLastResponses(json.responses);
         setStatus('ready');
         setProgress(undefined);
       }).catch(handleError);
@@ -112,6 +117,11 @@ const LLMEvaluatorNode = ({ data, id }) => {
       setDataPropsForNode(id, { grader: new_items[0] });
   }, []);
 
+  const showResponseInspector = useCallback(() => {
+    if (inspectModal && inspectModal.current && lastResponses)
+      inspectModal.current.trigger();
+  }, [inspectModal, lastResponses]);
+
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
       setDataPropsForNode(id, { refresh: false });
@@ -128,9 +138,11 @@ const LLMEvaluatorNode = ({ data, id }) => {
                   alertModal={alertModal}
                   handleRunClick={handleRunClick}
                   runButtonTooltip="Run evaluator over inputs" />
+      <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
+
       <Textarea autosize
                 label="Describe how to 'grade' a single response."
-                placeholder={DEFAULT_PROMPT}
+                placeholder={PLACEHOLDER_PROMPT}
                 description="The text of the response will be pasted directly below your rubric."
                 className="prompt-field-fixed nodrag nowheel" 
                 minRows="4"
@@ -173,6 +185,11 @@ const LLMEvaluatorNode = ({ data, id }) => {
           className="grouped-handle"
           style={{ top: '50%' }}
         />
+      
+      { lastResponses && lastResponses.length > 0 ? 
+        (<div className="eval-inspect-response-footer nodrag" onClick={showResponseInspector} style={{display: 'flex', justifyContent:'center'}}>
+          <Button color='blue' variant='subtle' w='100%' >Inspect results&nbsp;<IconSearch size='12pt'/></Button>
+        </div>) : <></>}
     </div>
   );
 };
