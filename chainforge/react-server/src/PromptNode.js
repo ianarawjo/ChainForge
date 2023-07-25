@@ -389,7 +389,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
             const llm_name = llmListContainer?.current?.getLLMListItemForKey(llm_key)?.name;
             const llm_count = queries_per_llm[llm_key];
             const req = llm_count > 1 ? 'queries' : 'query';
-            if (num_llms > num_llms_missing)
+            if (llm_name === undefined)
+                setRunTooltip(`Will send ${llm_count} ${req} per LLM`);
+            else if (num_llms > num_llms_missing)
                 setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name} and load others`);
             else
                 setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name}`);
