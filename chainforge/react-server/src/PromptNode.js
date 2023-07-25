@@ -552,7 +552,7 @@ const PromptNode = ({ data, id }) => {
                 handleRunHover={handleRunHover}
                 runButtonTooltip={runTooltip}
                 customButtons={[
-                    <PromptListPopover promptInfos={promptPreviews} onHover={handlePreviewHover} onClick={openInfoModal} />
+                    <PromptListPopover key='prompt-previews' promptInfos={promptPreviews} onHover={handlePreviewHover} onClick={openInfoModal} />
                 ]} />
     <LLMResponseInspectorModal ref={inspectModal} jsonResponses={jsonResponses} prompt={promptText} />
     <Modal title={'List of prompts that will be sent to LLMs (' + promptPreviews.length + ' total)'} size='xl' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-5%'}}}>
