@@ -90,7 +90,7 @@ For more specific details, see the [User Guide](https://github.com/ianarawjo/Cha
 
 # Development
 
-ChainForge was created by [Ian Arawjo](http://ianarawjo.com/index.html), a postdoctoral scholar in Harvard HCI's [Glassman Lab](http://glassmanlab.seas.harvard.edu/) with support from the Harvard HCI community, especially PhD student [Priyan Vaithilingam](https://priyan.info).
+ChainForge was created by [Ian Arawjo](http://ianarawjo.com/index.html), a postdoctoral scholar in Harvard HCI's [Glassman Lab](http://glassmanlab.seas.harvard.edu/) with support from the Harvard HCI community. Collaborators include PhD students [Priyan Vaithilingam](https://priyan.info) and [Chelse Swoopes](https://seas.harvard.edu/person/chelse-swoopes) and faculty members [Elena Glassman](http://glassmanlab.seas.harvard.edu/glassman.html) and [Martin Wattenberg](https://www.bewitched.com/about.html).
 
 This work was partially funded by the NSF grant IIS-2107391. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.
 
@@ -118,7 +118,7 @@ The BibTeX you can use for now is:
 
 ```bibtex
 @misc{Arawjo_2023,
-  author = {Arawjo, Ian and Vaithilingam, Priyan and Wattenberg, Martin and Glassman, Elena},
+  author = {Arawjo, Ian and Vaithilingam, Priyan and Swoopes, Chelse and Wattenberg, Martin and Glassman, Elena},
   title = {ChainForge},
   year = {2023},
   howpublished = {\url{https://www.chainforge.ai/}},
