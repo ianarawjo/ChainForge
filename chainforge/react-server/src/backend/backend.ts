@@ -442,7 +442,7 @@ export async function countQueries(prompt: string,
     const chat_hists = (!Array.isArray(chat_histories)
                         ? chat_histories[extract_llm_nickname(llm_spec)] 
                         : chat_histories) as ChatHistoryInfo[];
-
+    
     // Find the response cache file for the specific LLM, if any
     let found_cache = false;
     for (const [cache_filename, cache_llm_spec] of Object.entries(cache_file_lookup)) {
@@ -494,8 +494,8 @@ export async function countQueries(prompt: string,
     
     if (!found_cache) {
       all_prompt_permutations.forEach(perm => {
-        add_to_num_responses_req(llm_key, n);
-        add_to_missing_queries(llm_key, perm.toString(), n);
+        add_to_num_responses_req(llm_key, n * chat_hists.length);
+        add_to_missing_queries(llm_key, perm.toString(), n * chat_hists.length);
       });
     }
   });
