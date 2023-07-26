@@ -225,7 +225,10 @@ function extract_llm_params(llm_spec: Dict | string): Dict {
 function isLooselyEqual(value1: any, value2: any): boolean {
   // If both values are non-array types, compare them directly
   if (!Array.isArray(value1) && !Array.isArray(value2)) {
-    return value1 === value2;
+    if (typeof value1 === 'object' && typeof value2 === 'object')
+      return JSON.stringify(value1) === JSON.stringify(value2);
+    else 
+      return value1 === value2;
   }
 
   // If either value is not an array or their lengths differ, they are not equal
@@ -254,10 +257,11 @@ function matching_settings(cache_llm_spec: Dict | string, llm_spec: Dict | strin
   if (typeof llm_spec === 'object' && typeof cache_llm_spec === 'object') {
     const llm_params = extract_llm_params(llm_spec);
     const cache_llm_params = extract_llm_params(cache_llm_spec);
-    for (const [param, val] of Object.entries(llm_params))
-        if (param in cache_llm_params && !isLooselyEqual(cache_llm_params[param], val)) {
-          return false;
-        }
+    for (const [param, val] of Object.entries(llm_params)) {
+      if (param in cache_llm_params && !isLooselyEqual(cache_llm_params[param], val)) {
+        return false;
+      }
+    }
   }
   return true;
 }
@@ -442,6 +446,7 @@ export async function countQueries(prompt: string,
     // Find the response cache file for the specific LLM, if any
     let found_cache = false;
     for (const [cache_filename, cache_llm_spec] of Object.entries(cache_file_lookup)) {
+
       if (matching_settings(cache_llm_spec, llm_spec)) {
         found_cache = true;
 

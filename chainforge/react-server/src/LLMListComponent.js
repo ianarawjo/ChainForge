@@ -124,8 +124,6 @@ export function LLMList({llms, onItemsChange}) {
         new_items.push(item);
     });
 
-    console.log(items, llms, new_items);
-
     updateItems(new_items);
   }, [llms]);
 
