@@ -241,7 +241,7 @@ const ExampleFlowsModal = forwardRef((props, ref) => {
   }));
 
   return (
-    <Modal size='xl' opened={opened} onClose={close} title={<div><IconChartDots3 size={24} style={{position:'relative', marginRight: '8px', top: '4px'}} /><span style={{fontSize: '14pt'}}>Example Flows</span></div>} closeOnClickOutside={true} style={{position: 'relative', 'left': '-100px'}}>      
+    <Modal size='xl' opened={opened} onClose={close} title={<div><IconChartDots3 size={24} style={{position:'relative', marginRight: '8px', top: '4px'}} /><span style={{fontSize: '14pt'}}>Example Flows</span></div>} closeOnClickOutside={true} style={{position: 'relative', 'left': '-5%'}}>      
       <Tabs defaultValue="examples">
         <Tabs.List>
           <Tabs.Tab value="examples" >Basic Examples</Tabs.Tab>
@@ -260,7 +260,7 @@ const ExampleFlowsModal = forwardRef((props, ref) => {
                             filename="prompt-injection-test"
                             onSelect={onSelect}
             />
-            <ExampleFlowCard title="Use an LLM as an evaluator"
+            <ExampleFlowCard title="Chain prompts together"
                             description="Chain one prompt into another to extract entities from a text response. Plots number of entities." 
                             filename="chaining-prompts"
                             onSelect={onSelect}

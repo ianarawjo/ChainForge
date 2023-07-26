@@ -6,9 +6,9 @@ import ReactFlow, {
   Controls,
   Background,
 } from 'react-flow-renderer';
-import { Button, Menu, LoadingOverlay, Text, Box, List, Loader } from '@mantine/core';
+import { Button, Menu, LoadingOverlay, Text, Box, List, Loader, Header, Chip, Badge, Card, Accordion, Tooltip } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
-import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink } from '@tabler/icons-react';
+import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink, IconRobot } from '@tabler/icons-react';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
 import EvaluatorNode from './EvaluatorNode';
@@ -22,6 +22,7 @@ import CommentNode from './CommentNode';
 import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
 import AreYouSureModal from './AreYouSureModal';
+import LLMEvaluatorNode from './LLMEvalNode';
 import { getDefaultModelFormData, getDefaultModelSettings } from './ModelSettingSchemas';
 import { v4 as uuid } from 'uuid';
 import LZString from 'lz-string';
@@ -73,7 +74,9 @@ const INITIAL_LLM = () => {
 const nodeTypes = {
   textfields: TextFieldsNode, // Register the custom node
   prompt: PromptNode,
+  chat: PromptNode,
   evaluator: EvaluatorNode,
+  llmeval: LLMEvaluatorNode,
   vis: VisNode,
   inspect: InspectNode,
   script: ScriptNode,
@@ -157,13 +160,17 @@ const App = () => {
     return ({x: -x+centerX, y:-y+centerY});
   }
 
-  const addTextFieldsNode = (event) => {
+  const addTextFieldsNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'textFieldsNode-'+Date.now(), type: 'textfields', data: {}, position: {x: x-200, y:y-100} });
   };
-  const addPromptNode = (event) => {
+  const addPromptNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'promptNode-'+Date.now(), type: 'prompt', data: { prompt: '' }, position: {x: x-200, y:y-100} });
+  };
+  const addChatTurnNode = () => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'chatTurn-'+Date.now(), type: 'chat', data: { prompt: '' }, position: {x: x-200, y:y-100} });
   };
   const addEvalNode = (progLang) => {
     const { x, y } = getViewportCenter();
@@ -197,6 +204,10 @@ const App = () => {
   const addCommentNode = (event) => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'comment-'+Date.now(), type: 'comment', data: {}, position: {x: x-200, y:y-100} });
+  };
+  const addLLMEvalNode = () => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'llmeval-'+Date.now(), type: 'llmeval', data: {}, position: {x: x-200, y:y-100} });
   };
 
   const onClickExamples = () => {
@@ -662,27 +673,30 @@ const App = () => {
         </Box>
       </Modal> */}
       
-      <div style={{ height: '100vh', width: '100%', backgroundColor: '#eee' }}>
-        <ReactFlow
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          zoomOnPinch={false}
-          zoomOnScroll={false}
-          panOnScroll={true}
-          // connectionLineComponent={AnimatedConnectionLine}
-          // connectionLineStyle={connectionLineStyle}
-          snapToGrid={true}
-          snapGrid={snapGrid}
-          onInit={onInit}
-        >
-          <Background color="#999" gap={16} />
-          <Controls showZoom={true} />
-        </ReactFlow>
+      <div id='cf-root-container' style={{display: 'flex', height: '100vh'}}>
+        <div style={{ height: '100%', backgroundColor: '#eee', flexGrow: '1' }}>
+          <ReactFlow
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            zoomOnPinch={false}
+            zoomOnScroll={false}
+            panOnScroll={true}
+            // connectionLineComponent={AnimatedConnectionLine}
+            // connectionLineStyle={connectionLineStyle}
+            snapToGrid={true}
+            snapGrid={snapGrid}
+            onInit={onInit}
+          >
+            <Background color="#999" gap={16} />
+            <Controls showZoom={true} />
+          </ReactFlow>
+        </div>
       </div>
+
       <div id="custom-controls" style={{position: 'fixed', left: '10px', top: '10px', zIndex:8}}>
         <Menu transitionProps={{ transition: 'pop-top-left' }}
                           position="top-start"
@@ -694,15 +708,17 @@ const App = () => {
           </Menu.Target>
           <Menu.Dropdown>
               <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields </Menu.Item>
+              <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
               <Menu.Item onClick={addPromptNode} icon={'💬'}> Prompt Node </Menu.Item>
+              <Menu.Item onClick={addChatTurnNode} icon={'🗣'}> Chat Turn Node </Menu.Item>
               <Menu.Item onClick={() => addEvalNode('javascript')} icon={<IconTerminal size="16px" />}> JavaScript Evaluator Node </Menu.Item>
               {IS_RUNNING_LOCALLY ? (
                 <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator Node </Menu.Item>
               ): <></>}
+              <Menu.Item onClick={addLLMEvalNode} icon={<IconRobot size="16px" />}> LLM Scorer Node</Menu.Item>
               <Menu.Item onClick={addVisNode} icon={'📊'}> Vis Node </Menu.Item>
               <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
               <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>
-              <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
               <Menu.Item onClick={addCommentNode} icon={'✏️'}> Comment Node </Menu.Item>
               {IS_RUNNING_LOCALLY ? (
                 <Menu.Item onClick={addScriptNode} icon={<IconSettingsAutomation size="16px" />}> Global Python Scripts </Menu.Item>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
 import useStore from './store';
-import NodeLabel from './NodeLabelComponent'
+import NodeLabel from './NodeLabelComponent';
 import LLMResponseInspector, { exportToExcel } from './LLMResponseInspector';
 import fetch_from_backend from './fetch_from_backend';
 

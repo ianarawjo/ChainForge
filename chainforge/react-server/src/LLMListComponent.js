@@ -1,9 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
 import { DragDropContext, Draggable } from "react-beautiful-dnd";
+import { Menu } from "@mantine/core";
+import { v4 as uuid } from 'uuid';
 import LLMListItem, { LLMListItemClone } from "./LLMListItem";
-import { StrictModeDroppable } from './StrictModeDroppable'
-import ModelSettingsModal from "./ModelSettingsModal"
+import { StrictModeDroppable } from './StrictModeDroppable';
+import ModelSettingsModal from "./ModelSettingsModal";
+import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas';
 
+// The LLM(s) to include by default on a PromptNode whenever one is created.
+// Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
+const DEFAULT_INIT_LLMS = [AvailableLLMs[0]];
+
+// Helper funcs
 // Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
 const ensureUniqueName = (_name, _prev_names) => {
   // Strip whitespace around names
@@ -24,7 +32,7 @@ const ensureUniqueName = (_name, _prev_names) => {
   return new_name;
 };
 
-export default function LLMList({llms, onItemsChange}) {
+export function LLMList({llms, onItemsChange}) {
   const [items, setItems] = useState(llms);
   const settingsModal = useRef(null);
   const [selectedModel, setSelectedModel] = useState(undefined);
@@ -110,14 +118,14 @@ export default function LLMList({llms, onItemsChange}) {
     // When LLMs list changes, we need to add new items 
     // while preserving the current order of 'items'. 
     // Check for new items and for each, add to end:
-    let new_items = Array.from(items);
+    let new_items = Array.from(items.filter(i => llms.some(v => v.key === i.key)));
     llms.forEach(item => {
       if (!items.find(i => i.key === item.key))
         new_items.push(item);
     });
 
     updateItems(new_items);
-  }, [llms, updateItems]);
+  }, [llms]);
 
   return (
     <div className="list nowheel nodrag">
@@ -146,3 +154,119 @@ export default function LLMList({llms, onItemsChange}) {
     </div>
   );
 }
+
+
+export const LLMListContainer = forwardRef(({description, modelSelectButtonText, initLLMItems, onSelectModel, selectModelAction, onItemsChange}, ref) => {
+
+  // Selecting LLM models to prompt
+  const [llmItems, setLLMItems] = useState(initLLMItems || DEFAULT_INIT_LLMS.map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i})));
+  const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
+  const resetLLMItemsProgress = useCallback(() => {
+    setLLMItems(llmItemsCurrState.map(item => {
+      item.progress = undefined;
+      return item;
+    }));
+  }, [llmItemsCurrState]);
+  const setZeroPercProgress = useCallback(() => {
+    setLLMItems(llmItemsCurrState.map(item => {
+      item.progress = { success: 0, error: 0 };
+      return item;
+    }));
+  }, [llmItemsCurrState]);
+  const updateProgress = useCallback((itemProcessorFunc) => {
+    setLLMItems(llmItemsCurrState.map(itemProcessorFunc));
+  }, [llmItemsCurrState]);
+  const ensureLLMItemsErrorProgress = useCallback((llm_keys_w_errors) => {
+    setLLMItems(llmItemsCurrState.map(item => {
+      if (llm_keys_w_errors.includes(item.key)) {
+        if (!item.progress)
+          item.progress = { success: 0, error: 100 };
+        else {
+          const succ_perc = item.progress.success;
+          item.progress = { success: succ_perc, error: 100 - succ_perc };
+        }
+      } else {
+        if (item.progress && item.progress.success === 0)
+            item.progress = undefined;
+      }
+
+      return item;
+    }));
+  }, [llmItemsCurrState]);
+  
+  const getLLMListItemForKey = useCallback((key) => {
+    return llmItemsCurrState.find((item) => item.key === key);
+  }, [llmItemsCurrState]);
+
+  const handleSelectModel = useCallback((model) => {
+    // Get the item for that model
+    let item = AvailableLLMs.find(llm => llm.base_model === model);
+    if (!item) {  // This should never trigger, but in case it does:
+      console.error(`Could not find model named '${model}' in list of available LLMs.`);
+      return;
+    }
+
+    // Give it a uid as a unique key (this is needed for the draggable list to support multiple same-model items; keys must be unique)
+    item = {key: uuid(), ...item};
+
+    // Generate the default settings for this model
+    item.settings = getDefaultModelSettings(model);
+
+    // Repair names to ensure they are unique
+    const unique_name = ensureUniqueName(item.name, llmItemsCurrState.map(i => i.name));
+    item.name = unique_name;
+    item.formData = { 'shortname': unique_name };
+
+    let new_items;
+    if (selectModelAction === "add" || selectModelAction === undefined) {
+      // Add model to the LLM list (regardless of it's present already or not). 
+      new_items = llmItemsCurrState.concat([item]);
+    } else if (selectModelAction === "replace") {
+      // Remove existing model from LLM list and replace with new one:
+      new_items = [item];
+    }
+    
+    setLLMItems(new_items);
+    if (onSelectModel) onSelectModel(item, new_items);
+  }, [llmItemsCurrState, onSelectModel, selectModelAction]);
+
+  const onLLMListItemsChange = useCallback((new_items) => {
+    setLLMItemsCurrState(new_items);
+    if (onItemsChange) onItemsChange(new_items, llmItemsCurrState);
+  }, [setLLMItemsCurrState, onItemsChange]);
+
+  // This gives the parent access to triggering methods on this object
+  useImperativeHandle(ref, () => ({
+    resetLLMItemsProgress,
+    setZeroPercProgress,
+    updateProgress,
+    ensureLLMItemsErrorProgress,
+    getLLMListItemForKey,
+  }));
+
+  return (<div className="llm-list-container nowheel">
+    <div className="llm-list-backdrop">
+      {description || "Models to query:"}
+      <div className="add-llm-model-btn nodrag">
+        <Menu transitionProps={{ transition: 'pop-top-left' }}
+            position="bottom-start"
+            width={220}
+            withinPortal={true}
+        >
+          <Menu.Target>
+            <button>{modelSelectButtonText || "Add +"}</button>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {AvailableLLMs.map(item => (
+                <Menu.Item key={item.model} onClick={() => handleSelectModel(item.base_model)} icon={item.emoji}>{item.name}</Menu.Item>))
+            }
+          </Menu.Dropdown>
+        </Menu>
+      </div>
+    </div>
+    
+    <div className="nodrag">
+      <LLMList llms={llmItems} onItemsChange={onLLMListItemsChange} />
+    </div>
+  </div>);
+});

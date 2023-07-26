@@ -1,42 +1,17 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Button, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
+import { Menu, Switch, Button, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { v4 as uuid } from 'uuid';
 import { IconSearch, IconList } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent'
-import LLMList from './LLMListComponent'
+import { LLMListContainer } from './LLMListComponent'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
-import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas'
 import fetch_from_backend from './fetch_from_backend';
-import { escapeBraces } from './backend/template';
+import { PromptTemplate, escapeBraces } from './backend/template';
+import ChatHistoryView from './ChatHistoryView';
 
-// The LLM(s) to include by default on a PromptNode whenever one is created.
-// Defaults to ChatGPT (GPT3.5).
-const initLLMs = [AvailableLLMs[0]];
-
-// Helper funcs
-// Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
-const ensureUniqueName = (_name, _prev_names) => {
-    // Strip whitespace around names
-    const prev_names = _prev_names.map(n => n.trim());
-    const name = _name.trim();
-  
-    // Check if name is unique
-    if (!prev_names.includes(name))
-      return name;
-    
-    // Name isn't unique; find a unique one:
-    let i = 2;
-    let new_name = `${name} (${i})`;
-    while (prev_names.includes(new_name)) {
-      i += 1;
-      new_name = `${name} (${i})`;
-    }
-    return new_name;
-};
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
     let i = 0;
@@ -44,7 +19,16 @@ const getUniqueLLMMetavarKey = (responses) => {
         i += 1;
     return `LLM_${i}`;
 };
-
+const bucketChatHistoryInfosByLLM = (chat_hist_infos) => {
+    let chats_by_llm = {};
+    chat_hist_infos.forEach(chat_hist_info => {
+        if (chat_hist_info.llm in chats_by_llm) 
+            chats_by_llm[chat_hist_info.llm].push(chat_hist_info);
+        else
+            chats_by_llm[chat_hist_info.llm] = [ chat_hist_info ];
+    });
+    return chats_by_llm;
+}
 
 class PromptInfo {
     prompt; // string
@@ -87,7 +71,9 @@ const PromptListPopover = ({ promptInfos, onHover, onClick }) => {
 };
 
 
-const PromptNode = ({ data, id }) => {
+const PromptNode = ({ data, id, type: node_type }) => {
+  const node_icon = useMemo(() => (node_type === 'chat' ? '🗣' : '💬'), [node_type]);
+  const node_default_title = useMemo(() => (node_type === 'chat' ? 'Chat Turn' : 'Prompt Node'), [node_type]);
 
   // Get state from the Zustand store:
   const edges = useStore((state) => state.edges);
@@ -107,46 +93,23 @@ const PromptNode = ({ data, id }) => {
   const [numGenerations, setNumGenerations] = useState(data.n || 1);
   const [numGenerationsLastRun, setNumGenerationsLastRun] = useState(data.n || 1);
 
+  // The LLM items container
+  const llmListContainer = useRef(null);
+  const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
+
   // For displaying error messages to user
   const alertModal = useRef(null);
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
 
+  // Chat node specific
+  const [contChatWithPriorLLMs, setContChatWithPriorLLMs] = useState(data.contChat !== undefined ? data.contChat : true);
+  const [contChatToggleDisabled, setContChatToggleDisabled] = useState(false);
+
   // For an info pop-up that shows all the prompts that will be sent off
   // NOTE: This is the 'full' version of the PromptListPopover that activates on hover.
   const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] = useDisclosure(false);
-
-  // Selecting LLM models to prompt
-  const [llmItems, setLLMItems] = useState(data.llms || initLLMs.map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i})));
-  const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
-  const resetLLMItemsProgress = useCallback(() => {
-    setLLMItems(llmItemsCurrState.map(item => {
-        item.progress = undefined;
-        return item;
-    }));
-  }, [llmItemsCurrState]);
-  const ensureLLMItemsErrorProgress = useCallback((llm_keys_w_errors) => {
-    setLLMItems(llmItemsCurrState.map(item => {
-        if (llm_keys_w_errors.includes(item.key)) {
-            if (!item.progress)
-                item.progress = { success: 0, error: 100 };
-            else {
-                const succ_perc = item.progress.success;
-                item.progress = { success: succ_perc, error: 100 - succ_perc };
-            }
-        } else {
-            if (item.progress && item.progress.success === 0)
-                item.progress = undefined;
-        }
-
-        return item;
-    }));
-  }, [llmItemsCurrState]);
-  
-  const getLLMListItemForKey = useCallback((key) => {
-    return llmItemsCurrState.find((item) => item.key === key);
-  }, [llmItemsCurrState]);
 
   // Progress when querying responses
   const [progress, setProgress] = useState(undefined);
@@ -155,9 +118,9 @@ const PromptNode = ({ data, id }) => {
 
   const triggerAlert = useCallback((msg) => {
     setProgress(undefined);
-    resetLLMItemsProgress();
+    llmListContainer?.current?.resetLLMItemsProgress();
     alertModal.current.trigger(msg);
-  }, [resetLLMItemsProgress, alertModal]);
+  }, [llmListContainer, alertModal]);
 
   const showResponseInspector = useCallback(() => {
     if (inspectModal && inspectModal.current && jsonResponses)
@@ -170,45 +133,26 @@ const PromptNode = ({ data, id }) => {
         setStatus('warning');
   }, [promptTextOnLastRun, status])
 
-  const addModel = useCallback((model) => {
-    // Get the item for that model
-    let item = AvailableLLMs.find(llm => llm.base_model === model);
+  const addModel = useCallback((new_model, all_items) => {
+    setLLMItemsCurrState(all_items);
+    setDataPropsForNode(id, { llms: all_items });
+    signalDirty(); 
+  }, [signalDirty]);
 
-    if (!item) {  // This should never trigger, but in case it does:
-        triggerAlert(`Could not find model named '${model}' in list of available LLMs.`);
-        return;
-    }
-
-    // Give it a uid as a unique key (this is needed for the draggable list to support multiple same-model items; keys must be unique)
-    item = {key: uuid(), ...item};
-
-    // Generate the default settings for this model
-    item.settings = getDefaultModelSettings(model);
-
-    // Repair names to ensure they are unique
-    const unique_name = ensureUniqueName(item.name, llmItemsCurrState.map(i => i.name));
-    item.name = unique_name;
-    item.formData = { 'shortname': unique_name };
-
-    // Add model to LLM list (regardless of it's present already or not). 
-    setLLMItems(llmItemsCurrState.concat([item]))
-    signalDirty();    
-  }, [llmItemsCurrState, signalDirty]);
-
-  const onLLMListItemsChange = useCallback((new_items) => {
+  const onLLMListItemsChange = useCallback((new_items, old_items) => {
     setLLMItemsCurrState(new_items);
     setDataPropsForNode(id, { llms: new_items });
     
     // If there's been any change to the item list, signal dirty: 
-    if (new_items.length !== llmItemsCurrState.length || !new_items.every(i => llmItemsCurrState.some(s => s.key === i.key))) {
+    if (new_items.length !== old_items.length || !new_items.every(i => old_items.some(s => s.key === i.key))) {
         signalDirty();
     } else if (!new_items.every(itemA => {
-        const itemB = llmItemsCurrState.find(b => b.key === itemA.key);
+        const itemB = old_items.find(b => b.key === itemA.key);
         return JSON.stringify(itemA.settings) === JSON.stringify(itemB.settings);
     })) {
         signalDirty();
     }
-  }, [setLLMItemsCurrState, signalDirty]);
+  }, [setDataPropsForNode, signalDirty]);
 
   const refreshTemplateHooks = (text) => {
     // Update template var fields + handles
@@ -258,7 +202,7 @@ const PromptNode = ({ data, id }) => {
 
   // Pull all inputs needed to request responses.
   // Returns [prompt, vars dict]
-  const pullInputData = () => {
+  const pullInputData = (_targetHandles) => {
     // Pull data from each source recursively:
     const pulled_data = {};
     const store_data = (_texts, _varname, _data) => {
@@ -293,18 +237,61 @@ const PromptNode = ({ data, id }) => {
             });
         });
     };
-    get_outputs(templateVars, id);
+    get_outputs(_targetHandles, id);
 
-    return [promptText, pulled_data];
+    return pulled_data;
+  };
+
+  // Chat nodes only. Pulls input data attached to the 'past conversations' handle.
+  // Returns a tuple (past_chat_llms, __past_chats), where both are undefined if nothing is connected.
+  const pullInputChats = () => {
+    const pulled_data = pullInputData(['__past_chats']);
+    if (!('__past_chats' in pulled_data)) return [undefined, undefined];
+
+    // For storing the unique LLMs in past_chats:
+    let llm_names = new Set();
+    let past_chat_llms = [];
+
+    // We need to calculate the conversation history from the pulled responses.
+    // Note that TemplateVarInfo might have a 'chat_history' component, but this does not 
+    // include the most recent prompt and response --for that, we need to use the 'prompt' and 'text' items.
+    // We need to create a revised chat history that concatenates the past history with the last AI + human turns:
+    const past_chats = pulled_data['__past_chats'].map(info => {
+        // Add to unique LLMs list, if necessary
+        const llm_name = info?.llm?.name;
+        if (llm_name !== undefined && !llm_names.has(llm_name)) {
+            llm_names.add(llm_name);
+            past_chat_llms.push(info.llm);
+        }
+        
+        // Create revised chat_history on the TemplateVarInfo object,
+        // with the prompt and text of the pulled data as the 2nd-to-last, and last, messages:
+        let last_messages = [
+            { role: 'user', content: info.prompt },
+            { role: 'assistant', content: info.text }
+        ];
+        let updated_chat_hist = info.chat_history !== undefined ? info.chat_history.concat(last_messages) : last_messages;
+
+        // Append any present system message retroactively as the first message in the chat history:
+        if (info?.llm?.settings?.system_msg !== undefined && updated_chat_hist[0].role !== 'system')
+            updated_chat_hist = [{ role: 'system', content: info.llm.settings.system_msg }].concat(updated_chat_hist);
+
+        // ChatHistoryInfo format (see typing.ts)
+        return {messages: updated_chat_hist, fill_history: info.fill_history, metavars: info.metavars, llm: llm_name};
+    });
+
+    // Returns [list of LLM specs, list of ChatHistoryInfo]
+    return [past_chat_llms, past_chats];
   };
 
   // Ask the backend how many responses it needs to collect, given the input data:
-  const fetchResponseCounts = (prompt, vars, llms, rejected) => {
+  const fetchResponseCounts = (prompt, vars, llms, chat_histories, rejected) => {
     return fetch_from_backend('countQueriesRequired', {
         prompt: prompt,
         vars: vars,
         llms: llms,
         id: id, 
+        chat_histories: chat_histories,
         n: numGenerations,
     }, rejected).then(function(json) {
         if (!json || !json.counts) {
@@ -318,36 +305,52 @@ const PromptNode = ({ data, id }) => {
   const [promptPreviews, setPromptPreviews] = useState([]);
   const handlePreviewHover = () => {
     // Pull input data and prompt
-    const [root_prompt, pulled_vars] = pullInputData();
+    const pulled_vars = pullInputData(templateVars);
     fetch_from_backend('generatePrompts', {
-        prompt: root_prompt,
+        prompt: promptText,
         vars: pulled_vars,
     }).then(prompts => {
         setPromptPreviews(prompts.map(p => (new PromptInfo(p))));
     });
+
+    pullInputChats();
   };
 
   // On hover over the 'Run' button, request how many responses are required and update the tooltip. Soft fails.
   const handleRunHover = () => {
-    // Check if there's at least one model in the list; if not, nothing to run on.
-    if (!llmItemsCurrState || llmItemsCurrState.length == 0) {
-        setRunTooltip('No LLMs to query.');
-        return;
-    }
-
     // Check if the PromptNode is not already waiting for a response...
     if (status === 'loading') {
         setRunTooltip('Fetching responses...');
         return;
     }
 
-    // Get input data and prompt
-    const [root_prompt, pulled_vars] = pullInputData();
-    const llms = llmItemsCurrState.map(item => item.model);
+    let _llmItemsCurrState = llmItemsCurrState;
+
+    // If this is a chat node, we also need to pull chat histories: 
+    let [past_chat_llms, pulled_chats] = node_type === 'chat' ? pullInputChats() : [undefined, undefined];
+    if (node_type === 'chat' && contChatWithPriorLLMs) {
+        if (past_chat_llms === undefined) {
+            setRunTooltip('Attach an input to past conversations first.');
+            return;
+        }
+        _llmItemsCurrState = past_chat_llms;
+        pulled_chats = bucketChatHistoryInfosByLLM(pulled_chats);
+    }
+
+    // Check if there's at least one model in the list; if not, nothing to run on.
+    if (!_llmItemsCurrState || _llmItemsCurrState.length == 0) {
+        setRunTooltip('No LLMs to query.');
+        return;
+    }
+
+    // Pull the input data
+    const pulled_vars = pullInputData(templateVars);
+    
+    const llms = _llmItemsCurrState.map(item => item.model);
     const num_llms = llms.length;
 
     // Fetch response counts from backend
-    fetchResponseCounts(root_prompt, pulled_vars, llmItemsCurrState, (err) => {
+    fetchResponseCounts(promptText, pulled_vars, _llmItemsCurrState, pulled_chats, (err) => {
         console.warn(err.message);  // soft fail
     }).then(([counts, total_num_responses]) => {
         // Check for empty counts (means no requests will be sent!)
@@ -383,10 +386,12 @@ const PromptNode = ({ data, id }) => {
             }
         } else {
             const llm_key = Object.keys(queries_per_llm)[0];
-            const llm_name = getLLMListItemForKey(llm_key)?.name;
+            const llm_name = llmListContainer?.current?.getLLMListItemForKey(llm_key)?.name;
             const llm_count = queries_per_llm[llm_key];
             const req = llm_count > 1 ? 'queries' : 'query';
-            if (num_llms > num_llms_missing)
+            if (llm_name === undefined)
+                setRunTooltip(`Will send ${llm_count} ${req} per LLM`);
+            else if (num_llms > num_llms_missing)
                 setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name} and load others`);
             else
                 setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name}`);
@@ -404,48 +409,64 @@ const PromptNode = ({ data, id }) => {
     });
 
     if (!is_fully_connected) {
-        console.log('Not connected! :(', templateVars, edges);
         triggerAlert('Missing inputs to one or more template variables.');
         return;
     }
 
-    console.log('Connected!');
+    // If this is a chat node, we need to pull chat histories: 
+    let [past_chat_llms, pulled_chats] = node_type === 'chat' ? pullInputChats() : [undefined, undefined];
+
+    // If this is a chat node and 'continuing chat with prior LLMs' is checked,
+    // there's no customizable model list (llmItemsCurrState). Instead, we need to get the unique
+    // LLMs present by finding the set of 'llm' key with unique 'name' properties
+    // in the input variables (if any). If there's keys present w/o LLMs (for instance a text node),
+    // we need to pop-up an error message.
+    let _llmItemsCurrState = llmItemsCurrState;
+    if (node_type === 'chat' && contChatWithPriorLLMs) {
+        // If there's nothing attached to past conversations, we can't continue the chat:
+        if (past_chat_llms === undefined) {
+            triggerAlert('You need to attach an input to the Past Conversation message first. For instance, you might query \
+                          multiple chat LLMs with a prompt node, and then attach the Prompt Node output to the \
+                          Past Conversation input of this Chat Turn node in order to continue the chat.');
+            return;
+        }
+
+        // Override LLM list with the past llm info (unique LLMs in prior responses)
+        _llmItemsCurrState = past_chat_llms;
+
+        // Now we need transform the 'pulled_chats' to be a dict indexed by LLM nicknames:
+        pulled_chats = bucketChatHistoryInfosByLLM(pulled_chats);
+    }
 
     // Check that there is at least one LLM selected:
-    if (llmItemsCurrState.length === 0) {
+    if (_llmItemsCurrState.length === 0) {
         alert('Please select at least one LLM to prompt.')
         return;
     }
 
     // Set status indicator
     setStatus('loading');
+    setContChatToggleDisabled(true);
     setJSONResponses([]);
     setProgressAnimated(true);
 
-    const [prompt_template, pulled_data] = pullInputData();
+    // Pull the data to fill in template input variables, if any
+    const pulled_data = pullInputData(templateVars);
+    const prompt_template = promptText;
 
-    let FINISHED_QUERY = false;
     const rejected = (err) => {
         setStatus('error');
+        setContChatToggleDisabled(false);
         triggerAlert(err.message);
-        FINISHED_QUERY = true;
-    };
-
-    // Ask the backend to reset the scratchpad for counting queries:
-    const create_progress_scratchpad = () => {
-        return fetch_from_backend('createProgressFile', {id: id}, rejected);
     };
 
     // Fetch info about the number of queries we'll need to make 
     const fetch_resp_count = () => fetchResponseCounts(
-        prompt_template, pulled_data, llmItemsCurrState, rejected);
+        prompt_template, pulled_data, _llmItemsCurrState, pulled_chats, rejected);
     
     // Initialize progress bars to small amounts
     setProgress({ success: 2, error: 0 });
-    setLLMItems(llmItemsCurrState.map(item => {
-        item.progress = { success: 0, error: 0 };
-        return item;
-    }));
+    llmListContainer?.current?.setZeroPercProgress();
 
     // Create a callback to listen for progress
     let onProgressChange = () => {};
@@ -456,9 +477,9 @@ const PromptNode = ({ data, id }) => {
             if (!progress_by_llm_key) return;
         
             // Update individual progress bars
-            const num_llms = llmItemsCurrState.length;
+            const num_llms = _llmItemsCurrState.length;
             const num_resp_per_llm = (max_responses / num_llms);
-            setLLMItems(llmItemsCurrState.map(item => {
+            llmListContainer?.current?.updateProgress(item => {
                 if (item.key in progress_by_llm_key) {
                     item.progress = {
                         success: progress_by_llm_key[item.key]['success'] / num_resp_per_llm * 100,
@@ -466,7 +487,7 @@ const PromptNode = ({ data, id }) => {
                     }
                 }
                 return item;
-            }));
+            });
             
             // Update total progress bar
             const total_num_success = Object.keys(progress_by_llm_key).reduce((acc, llm_key) => {
@@ -475,6 +496,7 @@ const PromptNode = ({ data, id }) => {
             const total_num_error = Object.keys(progress_by_llm_key).reduce((acc, llm_key) => {
                 return acc + progress_by_llm_key[llm_key]['error'];
             }, 0);
+
             setProgress({
                 success: Math.max(5, total_num_success / max_responses * 100),
                 error: total_num_error / max_responses * 100 }
@@ -486,20 +508,19 @@ const PromptNode = ({ data, id }) => {
     const query_llms = () => {
         return fetch_from_backend('queryllm', {
             id: id,
-            llm: llmItemsCurrState,  // deep clone it first
+            llm: _llmItemsCurrState,  // deep clone it first
             prompt: prompt_template,
             vars: pulled_data,
+            chat_histories: pulled_chats,
             n: numGenerations,
             api_keys: (apiKeys ? apiKeys : {}),
             no_cache: false,
             progress_listener: onProgressChange,
         }, rejected).then(function(json) {
             if (!json) {
-                setStatus('error');
-                triggerAlert('Request was sent and received by backend server, but there was no response.');
+                rejected('Request was sent and received by backend server, but there was no response.');
             }
             else if (json.responses && json.errors) {
-                FINISHED_QUERY = true;
 
                 // Store and log responses (if any)
                 if (json.responses) {
@@ -517,16 +538,17 @@ const PromptNode = ({ data, id }) => {
 
                     // Ensure there's a sliver of error displayed in the progress bar
                     // of every LLM item that has an error:
-                    ensureLLMItemsErrorProgress(llms_w_errors);
+                    llmListContainer?.current?.ensureLLMItemsErrorProgress(llms_w_errors);
 
                     // Set error status
                     setStatus('error');
+                    setContChatToggleDisabled(false);
 
                     // Trigger alert and display one error message per LLM of all collected errors:
                     let combined_err_msg = "";
                     llms_w_errors.forEach(llm_key => {
-                        const item = getLLMListItemForKey(llm_key);                        
-                        combined_err_msg += item.name + ': ' + JSON.stringify(json.errors[llm_key][0]) + '\n';
+                        const item = _llmItemsCurrState.find((item) => item.key === llm_key);                       
+                        combined_err_msg += item?.name + ': ' + JSON.stringify(json.errors[llm_key][0]) + '\n';
                     });
                     // We trigger the alert directly (don't use triggerAlert) here because we want to keep the progress bar:
                     alertModal.current.trigger('Errors collecting responses. Re-run prompt node to retry.\n\n'+combined_err_msg);
@@ -536,28 +558,36 @@ const PromptNode = ({ data, id }) => {
 
                 // All responses collected! Change status to 'ready':
                 setStatus('ready');
+                setContChatToggleDisabled(false);
 
                 // Remove progress bars
                 setProgress(undefined);
                 setProgressAnimated(true);
-                resetLLMItemsProgress();
+                llmListContainer?.current?.resetLLMItemsProgress();
                 
                 // Save prompt text so we remember what prompt we have responses cache'd for:
                 setPromptTextOnLastRun(promptText);
                 setNumGenerationsLastRun(numGenerations);
 
                 // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
-                // First we need to get a unique key for a unique metavar for the LLM set that produced these responses,
+                // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
                 // so we can keep track of 'upstream' LLMs (and plot against them) later on:
                 const llm_metavar_key = getUniqueLLMMetavarKey(json.responses);
                 setDataPropsForNode(id, {fields: json.responses.map(
                     resp_obj => resp_obj['responses'].map(
                         r => {
-                            // Carry over the response text and prompt fill history (vars):
-                            let o = {text: escapeBraces(r), fill_history: resp_obj['vars']};
+                            // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
+                            let o = { text: escapeBraces(r), 
+                                      prompt: resp_obj['prompt'],
+                                      fill_history: resp_obj['vars'],
+                                      llm: _llmItemsCurrState.find((item) => item.name === resp_obj.llm) };
 
                             // Carry over any metavars
                             o.metavars = resp_obj['metavars'] || {};
+
+                            // Carry over any chat history
+                            if (resp_obj['chat_history']) 
+                                o.chat_history = resp_obj['chat_history'];
 
                             // Add a meta var to keep track of which LLM produced this response
                             o.metavars[llm_metavar_key] = resp_obj['llm'];
@@ -569,15 +599,13 @@ const PromptNode = ({ data, id }) => {
                 // Ping any inspect nodes attached to this node to refresh their contents:
                 pingOutputNodes(id);
             } else {
-                setStatus('error');
-                triggerAlert(json.error || 'Unknown error when querying LLM');
+                rejected(json.error || 'Unknown error when querying LLM');
             }
         }, rejected);
     };
 
     // Now put it all together!
-    create_progress_scratchpad()
-        .then(fetch_resp_count)
+    fetch_resp_count()
         .then(open_progress_listener)
         .then(query_llms)
         .catch(rejected);
@@ -608,9 +636,10 @@ const PromptNode = ({ data, id }) => {
     // NOTE: This won't work on older browsers, but there's no alternative solution.
     if (!textAreaRef.current && elem && window.ResizeObserver) {
       let past_hooks_y = 138;
+      const incr = 68 + (node_type === 'chat' ? -6 : 0);
       const observer = new ResizeObserver(() => {
         if (!textAreaRef || !textAreaRef.current) return;
-        const new_hooks_y = textAreaRef.current.clientHeight + 68;
+        const new_hooks_y = textAreaRef.current.clientHeight + incr;
         if (past_hooks_y !== new_hooks_y) {
           setHooksY(new_hooks_y);
           past_hooks_y = new_hooks_y;
@@ -624,31 +653,52 @@ const PromptNode = ({ data, id }) => {
 
   return (
     <div className="prompt-node cfnode">
-    <NodeLabel title={data.title || 'Prompt Node'} 
+    <NodeLabel title={data.title || node_default_title} 
                 nodeId={id} 
                 onEdit={hideStatusIndicator}
-                icon={'💬'} 
+                icon={node_icon} 
                 status={status}
                 alertModal={alertModal}
                 handleRunClick={handleRunClick}
                 handleRunHover={handleRunHover}
                 runButtonTooltip={runTooltip}
                 customButtons={[
-                    <PromptListPopover promptInfos={promptPreviews} onHover={handlePreviewHover} onClick={openInfoModal} />
+                    <PromptListPopover key='prompt-previews' promptInfos={promptPreviews} onHover={handlePreviewHover} onClick={openInfoModal} />
                 ]} />
     <LLMResponseInspectorModal ref={inspectModal} jsonResponses={jsonResponses} prompt={promptText} />
-    <Modal title={'List of prompts that will be sent to LLMs (' + promptPreviews.length + ' total)'} size='xl' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
+    <Modal title={'List of prompts that will be sent to LLMs (' + promptPreviews.length + ' total)'} size='xl' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-5%'}}}>
         <Box size={600} m='lg' mt='xl'>
             {displayPromptInfos(promptPreviews)}
         </Box>
     </Modal>
-    <Textarea ref={setRef}
+
+    { node_type === 'chat' ? (<div ref={setRef}>
+        <ChatHistoryView bgColors={['#ccc', '#ceeaf5b1']} messages={[
+            "(Past conversation)",
+            <Textarea 
+                className="prompt-field-fixed nodrag nowheel" 
+                minRows="4"
+                defaultValue={data.prompt}  
+                onChange={handleInputChange}
+                miw={230}
+                styles={{input: {background: 'transparent', borderWidth: '0px'}}} />
+        ]} />
+        <Handle
+            type="target"
+            position="left"
+            id="__past_chats"
+            style={{ top: '82px', background: '#555' }}
+        />
+      </div>) : (
+        <Textarea ref={setRef}
                 autosize
                 className="prompt-field-fixed nodrag nowheel" 
                 minRows="4"
                 maxRows="12"
                 defaultValue={data.prompt}  
-                onChange={handleInputChange} />
+                onChange={handleInputChange} />)
+    }
+    
     <Handle
         type="source"
         position="right"
@@ -656,36 +706,41 @@ const PromptNode = ({ data, id }) => {
         className="grouped-handle"
         style={{ top: '50%' }}
     />
-    <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} />
-      <hr />
-      <div>
+    <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} ignoreHandles={['__past_chats']} />
+    <hr />
+    <div>
         <div style={{marginBottom: '10px', padding: '4px'}}>
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
             <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
-        <div id="llms-list" className="nowheel" style={{backgroundColor: '#eee', borderRadius: '4px', padding: '8px', overflowY: 'auto', maxHeight: '175px'}}>
-            <div style={{marginTop: '6px', marginBottom: '6px', marginLeft: '6px', paddingBottom: '4px', textAlign: 'left', fontSize: '10pt', color: '#777'}}>
-                Models to query:
-                <div className="add-llm-model-btn nodrag">
-                    <Menu transitionProps={{ transition: 'pop-top-left' }}
-                        position="bottom-start"
-                        width={220}
-                        withinPortal={true}
-                    >
-                        <Menu.Target>
-                            <button>Add +</button>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                            {AvailableLLMs.map(item => (<Menu.Item key={item.model} onClick={() => addModel(item.base_model)} icon={item.emoji}>{item.name}</Menu.Item>))}
-                        </Menu.Dropdown>
-                    </Menu>
-                </div>
+
+        {node_type === 'chat' ? (
+            <div>
+                <Switch
+                    label={contChatWithPriorLLMs ? "Continue chat with prior LLM(s)" : "Continue chat with new LLMs:"}
+                    defaultChecked={true}
+                    checked={contChatWithPriorLLMs} 
+                    disabled={contChatToggleDisabled}
+                    onChange={(event) => {
+                        setStatus('warning');
+                        setContChatWithPriorLLMs(event.currentTarget.checked);
+                        setDataPropsForNode(id, { contChat: event.currentTarget.checked });
+                    }}
+                    color='cyan'
+                    size='xs'
+                    mb={contChatWithPriorLLMs ? '4px' : '10px'}
+                />
             </div>
-            
-            <div className="nodrag">
-                <LLMList llms={llmItems} onItemsChange={onLLMListItemsChange} />
-            </div>
-        </div>
+        ) : <></>} 
+        
+        {node_type !== 'chat' || !contChatWithPriorLLMs ? (
+         <LLMListContainer 
+            ref={llmListContainer}
+            initLLMItems={data.llms} 
+            onAddModel={addModel} 
+            onItemsChange={onLLMListItemsChange} />
+         ) : <></>}
+
         {progress !== undefined ? 
             (<Progress animate={progressAnimated} sections={[
                 { value: progress.success, color: 'blue', tooltip: 'API call succeeded' },
@@ -698,9 +753,9 @@ const PromptNode = ({ data, id }) => {
                 <Button color='blue' variant='subtle' w='100%' >Inspect responses&nbsp;<IconSearch size='12pt'/></Button>
             </div>) : <></>
         }
-      </div>
+        </div>
     </div>
-  );
+   );
 };
 
 export default PromptNode;

@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconTable, IconSitemap } from '@tabler/icons-react';
+import { IconTable, IconLayoutList } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 import useStore from './store';
 import { filterDict } from './backend/utils';
@@ -36,30 +36,39 @@ const countResponsesBy = (responses, keyFunc) => {
   let responses_by_key = {};
   let unspecified_group = [];
   responses.forEach(item => {
-      const key = keyFunc(item);
-      const d = key !== null ? responses_by_key : unspecified_group;
-      if (key in d)
-          d[key] += 1;
-      else
-          d[key] = 1;
+    const key = keyFunc(item);
+    const d = key !== null ? responses_by_key : unspecified_group;
+    if (key in d)
+        d[key] += 1;
+    else
+        d[key] = 1;
   });
   return [responses_by_key, unspecified_group];
 };
+
+const SUCCESS_EVAL_SCORES = new Set(['true', 'yes']);
+const FAILURE_EVAL_SCORES = new Set(['false', 'no']);
 const getEvalResultStr = (eval_item) => {
   if (Array.isArray(eval_item)) {
-      return 'scores: ' + eval_item.join(', ');
+    return 'scores: ' + eval_item.join(', ');
   }
   else if (typeof eval_item === 'object') {
-      const strs = Object.keys(eval_item).map(key => {
-          let val = eval_item[key];
-          if (typeof val === 'number' && val.toString().indexOf('.') > -1)
-              val = val.toFixed(4);  // truncate floats to 4 decimal places
-          return `${key}: ${val}`;
-      });
-      return strs.join(', ');
+    const strs = Object.keys(eval_item).map(key => {
+      let val = eval_item[key];
+      if (typeof val === 'number' && val.toString().indexOf('.') > -1)
+        val = val.toFixed(4);  // truncate floats to 4 decimal places
+      return `${key}: ${val}`;
+    });
+    return strs.join(', ');
   }
-  else 
-      return `score: ${eval_item}`;
+  else {
+    const eval_str = eval_item.toString().trim().toLowerCase();
+    const color = SUCCESS_EVAL_SCORES.has(eval_str) ? 'black' : (FAILURE_EVAL_SCORES.has(eval_str) ? 'red' : 'black'); 
+    return (<>
+      <span style={{color: 'gray'}}>{"score: "}</span>
+      <span style={{color: color}}>{eval_str}</span>
+    </>);
+  }
 };
 
 // Export the JSON responses to an excel file (downloads the file):
@@ -128,7 +137,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
   // The type of view to use to display responses. Can be either hierarchy or table. 
-  const [viewFormat, setViewFormat] = useState(wideFormat ? "table" : "hierarchy");
+  const [viewFormat, setViewFormat] = useState("hierarchy");
 
   // The MultiSelect so people can dynamically set what vars they care about
   const [multiSelectVars, setMultiSelectVars] = useState([]);
@@ -296,10 +305,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         const sel_var_cols = found_sel_var_vals.map(val => {
           if (val in resp_objs_by_col_var) {
             const rs = resp_objs_by_col_var[val];
-            if (rs.length > 1) 
-              console.warn(`Found more than one response object for LLM ${val} for the same prompt. Only displaying first...`);
             // Return response divs as response box here:
-            return generateResponseBoxes(rs, var_cols, 100)[0];
+            return (<div>{generateResponseBoxes(rs, var_cols, 100)}</div>);
           } else {
             console.warn(`Could not find response object for column variable ${tableColVar} with value ${val}`);
             return (<i>(no data)</i>);
@@ -307,16 +314,16 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         });
 
         return (
-          <tr key={idx} style={{borderBottom: '8px solid #eee'}}>
-            {var_cols_vals.map(c => (<td className='inspect-table-var'>{c}</td>))}
-            {sel_var_cols.map((c, i) => (<td className='inspect-table-llm-resp'>{c}</td>))}
+          <tr key={`r${idx}`} style={{borderBottom: '8px solid #eee'}}>
+            {var_cols_vals.map((c, i) => (<td key={`v${i}`} className='inspect-table-var'>{c}</td>))}
+            {sel_var_cols.map((c, i) => (<td key={`c${i}`} className='inspect-table-llm-resp'>{c}</td>))}
           </tr>
         );
       });
 
-      setResponses([(<Table>
+      setResponses([(<Table key='table'>
         <thead>
-          <tr>{colnames.map(c => (<th>{c}</th>))}</tr>
+          <tr>{colnames.map(c => (<th key={c}>{c}</th>))}</tr>
         </thead>
         <tbody style={{verticalAlign: 'top'}}>{rows}</tbody>
       </Table>)]);
@@ -420,8 +427,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         onChange={setViewFormat}
       >
         <Group mt="0px" mb='xs'>
-          <Radio value="table" label={<span><IconTable size='10pt' style={{marginBottom: '-1px'}}/> Table</span>} />
-          <Radio value="hierarchy" label={<span><IconSitemap size='10pt' style={{marginBottom: '-1px'}}/> Hierarchy</span>} />
+        <Radio value="hierarchy" label={<span><IconLayoutList size='10pt' style={{marginBottom: '-1px'}}/> Grouped List</span>} />
+        <Radio value="table" label={<span><IconTable size='10pt' style={{marginBottom: '-1px'}}/> Table</span>} />
         </Group>
       </Radio.Group>
     : <></>}
@@ -444,14 +451,14 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         <MultiSelect ref={multiSelectRef}
                     onChange={handleMultiSelectValueChange}
                     className='nodrag nowheel inspect-multiselect'
-                    label={<span style={{marginTop: '0px', fontWeight: 'normal'}}>Group responses by (order matters):</span>}
+                    label={<span style={{marginTop: '0px'}}>Group responses by (order matters):</span>}
                     data={multiSelectVars}
                     placeholder="Pick vars to group responses, in order of importance"
                     size={wideFormat ? 'sm' : 'xs'}
                     value={multiSelectValue}
                     clearSearchOnChange={true}
                     clearSearchOnBlur={true}
-                      w='100%' />
+                    w='100%' />
       </div>
     : <></>}
 

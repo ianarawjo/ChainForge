@@ -3,13 +3,30 @@
     "nodes": [
       {
         "width": 312,
-        "height": 435,
+        "height": 423,
         "data": {
           "fields": [
             {
               "text": "4.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
               "fill_history": {
                 "question": "What is 2 + 2?"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "key": "9fbdcc67-7c5f-4cd5-a2e4-6f2d4a190cd0",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1
               },
               "metavars": {
                 "Expected": "4",
@@ -18,8 +35,25 @@
             },
             {
               "text": "3",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
               "fill_history": {
                 "question": "What is the square root of 9?"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "key": "9fbdcc67-7c5f-4cd5-a2e4-6f2d4a190cd0",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1
               },
               "metavars": {
                 "Expected": "3",
@@ -28,8 +62,25 @@
             },
             {
               "text": "1997.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
               "fill_history": {
                 "question": "What year was the 50th anniversary of the invention of the transistor?"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "key": "9fbdcc67-7c5f-4cd5-a2e4-6f2d4a190cd0",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1
               },
               "metavars": {
                 "Expected": "1997",
@@ -38,8 +89,25 @@
             },
             {
               "text": "125",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
               "fill_history": {
                 "question": "What is 5 to the power of 3?"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "key": "9fbdcc67-7c5f-4cd5-a2e4-6f2d4a190cd0",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1
               },
               "metavars": {
                 "Expected": "125",
@@ -48,8 +116,25 @@
             },
             {
               "text": "54",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
               "fill_history": {
                 "question": "What is 2 multiplied by the cubic root of 729?"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "key": "9fbdcc67-7c5f-4cd5-a2e4-6f2d4a190cd0",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1
               },
               "metavars": {
                 "Expected": "18",
@@ -58,8 +143,28 @@
             },
             {
               "text": "4",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
               "fill_history": {
                 "question": "What is 2 + 2?"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "667e0d14-527b-4fe7-afdc-219504729e6d",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1
               },
               "metavars": {
                 "Expected": "4",
@@ -68,8 +173,28 @@
             },
             {
               "text": "3",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
               "fill_history": {
                 "question": "What is the square root of 9?"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "667e0d14-527b-4fe7-afdc-219504729e6d",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1
               },
               "metavars": {
                 "Expected": "3",
@@ -78,8 +203,28 @@
             },
             {
               "text": "1997",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
               "fill_history": {
                 "question": "What year was the 50th anniversary of the invention of the transistor?"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "667e0d14-527b-4fe7-afdc-219504729e6d",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1
               },
               "metavars": {
                 "Expected": "1997",
@@ -88,8 +233,28 @@
             },
             {
               "text": "125",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
               "fill_history": {
                 "question": "What is 5 to the power of 3?"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "667e0d14-527b-4fe7-afdc-219504729e6d",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1
               },
               "metavars": {
                 "Expected": "125",
@@ -98,8 +263,28 @@
             },
             {
               "text": "12",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
               "fill_history": {
                 "question": "What is 2 multiplied by the cubic root of 729?"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "667e0d14-527b-4fe7-afdc-219504729e6d",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1
               },
               "metavars": {
                 "Expected": "18",
@@ -108,8 +293,27 @@
             },
             {
               "text": "2+2=4",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
               "fill_history": {
                 "question": "What is 2 + 2?"
+              },
+              "llm": {
+                "base_model": "palm2-bison",
+                "emoji": "🦬",
+                "formData": {
+                  "shortname": "PaLM2"
+                },
+                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
+                "model": "chat-bison-001",
+                "name": "PaLM2",
+                "settings": {
+                  "max_output_tokens": 512,
+                  "stop_sequences": [],
+                  "temperature": 0.5,
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "temp": 0.7
               },
               "metavars": {
                 "Expected": "4",
@@ -118,8 +322,27 @@
             },
             {
               "text": "The square root of 9 is 3.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
               "fill_history": {
                 "question": "What is the square root of 9?"
+              },
+              "llm": {
+                "base_model": "palm2-bison",
+                "emoji": "🦬",
+                "formData": {
+                  "shortname": "PaLM2"
+                },
+                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
+                "model": "chat-bison-001",
+                "name": "PaLM2",
+                "settings": {
+                  "max_output_tokens": 512,
+                  "stop_sequences": [],
+                  "temperature": 0.5,
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "temp": 0.7
               },
               "metavars": {
                 "Expected": "3",
@@ -128,8 +351,27 @@
             },
             {
               "text": "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
               "fill_history": {
                 "question": "What year was the 50th anniversary of the invention of the transistor?"
+              },
+              "llm": {
+                "base_model": "palm2-bison",
+                "emoji": "🦬",
+                "formData": {
+                  "shortname": "PaLM2"
+                },
+                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
+                "model": "chat-bison-001",
+                "name": "PaLM2",
+                "settings": {
+                  "max_output_tokens": 512,
+                  "stop_sequences": [],
+                  "temperature": 0.5,
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "temp": 0.7
               },
               "metavars": {
                 "Expected": "1997",
@@ -138,8 +380,27 @@
             },
             {
               "text": "5 to the power of 3 is 125.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
               "fill_history": {
                 "question": "What is 5 to the power of 3?"
+              },
+              "llm": {
+                "base_model": "palm2-bison",
+                "emoji": "🦬",
+                "formData": {
+                  "shortname": "PaLM2"
+                },
+                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
+                "model": "chat-bison-001",
+                "name": "PaLM2",
+                "settings": {
+                  "max_output_tokens": 512,
+                  "stop_sequences": [],
+                  "temperature": 0.5,
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "temp": 0.7
               },
               "metavars": {
                 "Expected": "125",
@@ -148,8 +409,27 @@
             },
             {
               "text": "2 multiplied by the cubic root of 729 is 27.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
               "fill_history": {
                 "question": "What is 2 multiplied by the cubic root of 729?"
+              },
+              "llm": {
+                "base_model": "palm2-bison",
+                "emoji": "🦬",
+                "formData": {
+                  "shortname": "PaLM2"
+                },
+                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
+                "model": "chat-bison-001",
+                "name": "PaLM2",
+                "settings": {
+                  "max_output_tokens": 512,
+                  "stop_sequences": [],
+                  "temperature": 0.5,
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "temp": 0.7
               },
               "metavars": {
                 "Expected": "18",
@@ -350,7 +630,8 @@
         "data": {
           "code": "function evaluate(response) {\n  return response.text.startsWith(\n    response.meta['Expected']);\n}",
           "language": "javascript",
-          "title": "Whether expected answer"
+          "title": "Whether expected answer",
+          "refresh": false
         },
         "dragging": false,
         "id": "evalNode-1688056068815",

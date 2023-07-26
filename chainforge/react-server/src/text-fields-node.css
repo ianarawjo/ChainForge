@@ -107,6 +107,21 @@
       transform: rotate(360deg);
     }
   }
+
+  .llm-list-container {
+    background-color: #eee; 
+    border-radius: 4px;
+    padding: 8px;
+    overflow-y: auto;
+    max-height: 205px;
+  }
+  .llm-list-backdrop {
+    margin: 6px 0px 6px 6px;
+    padding-bottom: 4px;
+    text-align: left; 
+    font-size: 10pt;
+    color: #777;
+  }
   
   .input-field {
     display: flex;
@@ -294,6 +309,7 @@
   .inspect-table-llm-resp {
     padding-top: 8px;
     padding-bottom: 20px;
+    min-width: 160px;
     border-right: 1px solid #eee;
   }
   .response-group-component-header:hover {
@@ -685,7 +701,7 @@
   border-radius: 5px;
   border: 1px solid #999;
   font-size: 12px;
-  background: transparent;
+  background: rgb(63, 204, 106, 0.2);
   color: #333;
   overflow: hidden;
   box-shadow: 0 0 0 0 transparent;
@@ -857,6 +873,46 @@
     50% {
         opacity: 0;
     }
+}
+
+/* Chat history bubbles */
+.chat-bubble {
+  --r: 15px; /* the radius */
+  --t: 25px; /* the size of the tail */
+  
+  max-width: 80%;
+  padding: calc(2*var(--r)/3);
+  mask: 
+    radial-gradient(var(--t) at var(--_d) 0,#0000 98%,#000 102%) 
+      var(--_d) 100%/calc(100% - var(--r)) var(--t) no-repeat,
+    conic-gradient(at var(--r) var(--r),#000 75%,#0000 0) 
+      calc(var(--r)/-2) calc(var(--r)/-2) padding-box, 
+    radial-gradient(50% 50%,#000 98%,#0000 101%) 
+      0 0/var(--r) var(--r) space padding-box;
+  background: #333 border-box;
+  color: #fff;
+}
+.chat-msg-left {
+  --_d: 0%;
+  border-left: var(--t) solid #0000;
+  margin-right: var(--t);
+  place-self: start;
+}
+.chat-msg-right {
+  --_d: 100%;
+  border-right: var(--t) solid #0000;
+  margin-left: var(--t);
+  place-self: end;
+}
+.chat-history {
+  margin: 0;
+  min-height: 10vh;
+  display: grid;
+  place-content: left;
+  width: 100%;
+  gap: 10px;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
 }
 
 /* Model settings form styling */

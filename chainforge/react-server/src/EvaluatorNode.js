@@ -265,7 +265,7 @@ const EvaluatorNode = ({ data, id }) => {
                     </Tooltip>]}
                   />
       <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
-      <Modal title={default_header} size='60%' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
+      <Modal title={default_header} size='60%' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-5%'}}}>
         <Box m='lg' mt='xl'>
           <Text mb='sm'>To use a {default_header}, write a function <Code>evaluate</Code> that takes a single argument of class <Code>ResponseInfo</Code>.
           The function should return a 'score' for that response, which usually is a number or a boolean value (strings as categoricals are supported, but experimental).</Text>
