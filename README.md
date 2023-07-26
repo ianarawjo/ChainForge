@@ -3,16 +3,17 @@
 
 <img width="1517" alt="banner" src="https://github.com/ianarawjo/ChainForge/assets/5251713/570879ef-ef8a-4e00-b37c-b49bc3c1a370">
 
-ChainForge is a data flow prompt engineering environment for analyzing and evaluating LLM responses. It is geared towards early-stage, quick-and-dirty exploration of prompts and response quality that goes beyond ad-hoc chatting with individual LLMs. With ChainForge, you can: 
- - Query multiple LLMs at once to test prompt ideas and variations quickly and effectively. 
- - Compare response quality across prompt permutations, across models, and across model settings to choose the best prompt and model for your use case. 
- - Setup an evaluation metric (scoring function) and immediately visualize results across prompts, prompt parameters, models, and model settings.
-
+ChainForge is a data flow prompt engineering environment for analyzing and evaluating LLM responses. It is geared towards early-stage, quick-and-dirty exploration of prompts, chat responses, and response quality that goes beyond ad-hoc chatting with individual LLMs. With ChainForge, you can: 
+ - **Query multiple LLMs at once** to test prompt ideas and variations quickly and effectively.
+ - **Compare response quality across prompt permutations, across models, and across model settings** to choose the best prompt and model for your use case. 
+ - **Setup evaluation metrics** (scoring function) and immediately visualize results across prompts, prompt parameters, models, and model settings.
+ - **Hold multiple conversations at once across template parameters and chat models.** Template not just prompts, but follow-up chat messages, and inspect and evaluate outputs at each turn of a chat conversation.
+ 
 ChainForge comes with a number of example evaluation flows to give you a sense of what's possible, including 188 example flows generated from benchmarks in OpenAI evals.
 
 # Try it @ https://chainforge.ai/play/ 
 
-**This is an open beta of Chainforge.** Functionality is powerful but limited. We currently support OpenAI models GPT3.5 and GPT4, HuggingFace models on the Inference API, Anthropic's Claude, Google PaLM2, Azure OpenAI endpoints, and [Dalai](https://github.com/cocktailpeanut/dalai)-hosted models Alpaca and Llama. You can change the exact model and individual model settings. Visualization nodes support numeric and boolean evaluation metrics. Try it and let us know what you think! :)
+**This is an open beta of Chainforge.** We support OpenAI models GPT3.5 and GPT4, HuggingFace models on the Inference API, Anthropic's Claude, Google PaLM2, Azure OpenAI endpoints, and [Dalai](https://github.com/cocktailpeanut/dalai)-hosted models Alpaca and Llama. You can change the exact model and individual model settings. Visualization nodes support numeric and boolean evaluation metrics. Try it and let us know what you think! :)
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://flask.palletsprojects.com/en/2.3.x/).
 
@@ -74,6 +75,7 @@ For finer details about the features of specific nodes, check out the [Node Guid
 
 A key goal of ChainForge is facilitating **comparison** and **evaluation** of prompts and models. Basic features are:
 - **Prompt permutations**: Setup a prompt template and feed it variations of input variables. ChainForge will prompt all selected LLMs with all possible permutations of the input prompt, so that you can get a better sense of prompt quality. You can also chain prompt templates at arbitrary depth (e.g., to compare templates).
+- **Chat turns**: Go beyond prompts and template follow-up chat messages, just like prompts. You can test how the wording of the user's query might change an LLM's output, or compare quality of later responses across multiple chat models (or the same chat model with different settings!).
 - **Model settings**: Change the settings of supported models, and compare across settings. For instance, you can measure the impact of a system message on ChatGPT by adding several ChatGPT models, changing individual settings, and nicknaming each one. ChainForge will send out queries to each version of the model.
 - **Evaluation nodes**: Probe LLM responses in a chain and test them (classically) for some desired behavior. At a basic level, this is Python script based. We plan to add preset evaluator nodes for common use cases in the near future (e.g., name-entity recognition). Note that you can also chain LLM responses into prompt templates to help evaluate outputs cheaply before more extensive evaluation methods.
 - **Visualization nodes**: Visualize evaluation results on plots like grouped box-and-whisker (for numeric metrics) and histograms (for boolean metrics). Currently we only support numeric and boolean metrics. We aim to provide users more control and options for plotting in the future.
@@ -84,7 +86,7 @@ Taken together, these features let you easily:
 
 We've also found that some users simply want to use ChainForge to make tons of parametrized queries to LLMs (e.g., chaining prompt templates into prompt templates), possibly score them, and then output the results to a spreadsheet (Excel `xlsx`). To do this, attach an Inspect node to the output of a Prompt node and click `Export Data`.
 
-For more specific details, see the [User Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
+For more specific details, see the [Node Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
 
 ----------------------------------
 
