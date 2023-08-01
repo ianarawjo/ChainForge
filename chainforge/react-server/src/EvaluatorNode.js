@@ -239,7 +239,7 @@ const EvaluatorNode = ({ data, id }) => {
 
   const showResponseInspector = useCallback(() => {
     if (inspectModal && inspectModal.current && lastResponses)
-        inspectModal.current.trigger();
+      inspectModal.current.trigger();
   }, [inspectModal, lastResponses]);
 
   const default_header = (progLang === 'python') ? 

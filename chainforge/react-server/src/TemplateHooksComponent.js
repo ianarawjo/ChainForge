@@ -28,6 +28,10 @@ export const extractBracketedSubstrings = (text) => {
         }
         prev_c = c;
     }
+
+    // Ignore any varnames that begin with the special character #:
+    capture_groups = capture_groups.filter(s => (s.length === 0 || s[0] !== '#'))
+    
     return capture_groups;
 };
 

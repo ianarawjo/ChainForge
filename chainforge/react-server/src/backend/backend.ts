@@ -916,7 +916,9 @@ export async function evalWithLLM(id: string,
     
     // We need to keep track of the index of each response in the response object.
     // We can generate var dicts with metadata to store the indices:
-    let inputs = resp_objs.map((obj, i) => obj.responses.map((r: string, j: number) => ({text: r, fill_history: {}, metavars: { i, j }}))).flat();
+    let inputs = resp_objs.map((obj, __i) => obj.responses.map(
+      (r: string, __j: number) => ({text: r, fill_history: obj.vars, metavars: { ...obj.metavars, __i, __j }})
+    )).flat();
 
     // Now run all inputs through the LLM grader!: 
     const {responses, errors} = await queryLLM(`eval-${id}-${cache_id}`, [llm], 1, root_prompt, { input: inputs }, undefined, undefined, undefined, progress_listener);
@@ -928,15 +930,15 @@ export async function evalWithLLM(id: string,
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
     responses.forEach((r: StandardizedLLMResponse) => {
-      let resp_obj = resp_objs[r.metavars.i];
+      let resp_obj = resp_objs[r.metavars.__i];
       if (resp_obj.eval_res !== undefined)
-        resp_obj.eval_res.items[r.metavars.j] = r.responses[0];
+        resp_obj.eval_res.items[r.metavars.__j] = r.responses[0];
       else {
         resp_obj.eval_res = {
           items: [],
           dtype: 'Categorical',
         };
-        resp_obj.eval_res.items[r.metavars.j] = r.responses[0];
+        resp_obj.eval_res.items[r.metavars.__j] = r.responses[0];
       }
     });
 

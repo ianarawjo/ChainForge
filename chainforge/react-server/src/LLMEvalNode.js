@@ -55,7 +55,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
     const handleError = (err) => {
       setStatus('error');
       setProgress(undefined);
-      alertModal.current.trigger(err);
+      alertModal.current.trigger(err?.error || err);
     };
 
     // Fetch info about the number of queries we'll need to make 

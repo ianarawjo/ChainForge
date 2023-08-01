@@ -29,7 +29,7 @@ const defaultColumns = [
     },
     {
       key: 'answer',
-      header: 'Expected Answer',
+      header: 'Expected',
     },
 ];
 
