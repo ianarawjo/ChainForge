@@ -2,28 +2,59 @@
 
 An explanation of all nodes and features currently available in the alpha version of ChainForge. 
 
-## Prompt Node
+## Prompt Nodes and Prompt Templating
 
-**Set a prompt and number of responses requested**: 
-Write your prompt in the text field at the top.
-Use `{}` template hooks to declare input variables, which you can attach to other nodes. For example, here is a prompt with one input parameter:
+### Set a prompt and number of responses requested 
+Below is a Prompt Node (right) with a TextFields node as input data. You can write your prompt in the text field at the top. Use `{}` template hooks to declare input variables, which you can attach to other nodes. For example, here is a prompt node with one input parameter:
 
 <img width="702" alt="Screen Shot 2023-05-22 at 12 40 12 PM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/520206b7-6ed5-43fa-947e-bb89b889be9a">
 
-Increase `Num responses per prompt` to sample `n` responses for every query to every LLM.
+You can increase `Num responses per prompt` to sample more than 1 response for every prompt to every LLM.
 
-Note that if you have multiple template variables, ChainForge will calculate the _cross product_ of all inputs: all combinations of all input variables. 
+### Set LLMs to query
+
+With ChainForge, you can query one or multiple LLMs simulatenously with the same prompts. Click `Add +` in the drop-down list to add an LLM, or click the Trash icon to remove one. GPT3.5 (ChatGPT) is added by default. 
+
+See the `INSTALL_GUIDE.md` for currently supported LLMs.
+
+### Prompt Templating in ChainForge 
+
+ChainForge uses single braces `{var}` for variables. You can escape braces with `\`; for instance, `function foo() \{ return true; \}` in a TextFields
+node will generate a prompt `function foo() { return true; }`. 
+
+> **Warning**
+> All of your prompt variables should have unique names across an entire flow. If you use duplicate names, behavior is not guaranteed. 
+
+ChainForge includes power features for generating tons of permutations of prompts via template variables. 
+If you have multiple template variables input to a prompt node, ChainForge will calculate the _cross product_ of all inputs: all combinations of all input variables. 
 For instance, for the prompt `What {time} did {game} come out in the US?` where `time` could be `year` or `month`, and `game` could be one of 3 games `Pokemon Blue`, `Kirby's Dream Land`, and `Ocarina of Time`, we have `2 x 3 = 6` combinations:
 
  - `What year did Pokemon Blue come out in the US?`
  - `What month did Pokemon Blue come out in the US?`
  - `What year did Kirby's Dream Land come out in the US?`
  - `What month did Kirby's Dream Land come out in the US?`
- - `What year did`... etc etc
+ - `What year did`... etc
 
-**Add / change LLMs to query**: Click `Add +` in the drop-down list to add an LLM, or click the Trash icon to remove one. GPT3.5 (ChatGPT) is added by default. (See the `INSTALL_GUIDE.md` for currently supported LLMs.) 
+There is an exception: if multiple inputs are the columns of Tabular Data nodes, then those variables will _carry together_. 
+This lets you pass associated information, such as a city and a country, defined in rows of a table. 
+For more information, see the Tabular Data section below. 
 
-**Prompt the selected LLMs with the provided query**:
+Finally, you may use a special hashtag `#` before a template variable name 
+to denote _implicit_ template variables that should be filled
+_using prior variable and metavariable history associated with the input to that node_. 
+This is best explained with a practical example:
+
+<img width="1439" alt="Screen Shot 2023-08-01 at 11 30 01 AM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/107936a3-9dde-4927-9411-f899ca7fb28f">
+
+Here, I have a Prompt Node with an _explicit_ template `{question}`. Each input (value in a table row) 
+has an associated metavariable, the value of the column `Expected`. I can use this value in any later prompt templates via `{#Expected}`,
+even if they are further down a prompt chain. Note that we could've also used `{#question}` in the LLM Scorer here
+to use the original value of `{question}` associated with each response into our LLM Scorer prompt.
+
+See the Code Evaluator section below for more details on what `vars` and `metavars` are. 
+
+### Query the selected LLMs with all prompts
+
 When you are ready, hover over the Run button:
 
 <img width="415" alt="Screen Shot 2023-05-22 at 1 45 43 PM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/309a7bb6-609b-4947-a32c-4f96f474b914">
@@ -110,10 +141,11 @@ will produce:
 If you've scored responses with an evaluator node, this exports the scores as well.
 
 ------------------
-## Python Evaluator Node
+## Code Evaluator Node
 
-Score responses by writing an evaluate function in Python. 
-You must declare a `def evaluate(response)` function which will be called by ChainForge for every response in the input.
+Score responses by writing an evaluate function in Python or JavaScript. This section will refer to Python evaluator, but the JavaScript one is similar. 
+
+To use a code evaluator, you must declare a `def evaluate(response)` function which will be called by ChainForge for every response in the input.
 You can add other helper functions or `import` statements as well.
 
 For instance, here is a basic evaluator to check the length of the response:
@@ -177,6 +209,23 @@ If you return a dictionary with more than one key, metrics will be plotted in a 
 You can also use a single-key dictionary to label the metric axis of a Vis Node:
 
 <img width="982" alt="Screen Shot 2023-05-22 at 12 57 02 PM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/31581d14-1cf2-4e3d-8755-fcb812937e89">
+
+------------------
+## LLM Scorer Node
+
+An LLM Scorer uses a single model to score responses (by default GPT-4 at temperature 0). You must
+write a scoring prompt that includes the expected format of output (e.g., "Reply true or false."). The
+text of the input will be pasted directly below your prompt, in triple-` tags. 
+
+For instance, here is GPT-4 scoring whether Falcon-7b's responses to math problems are true:
+
+<img width="1439" alt="Screen Shot 2023-08-01 at 11 30 01 AM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/2fc1e428-3ac0-4c7b-9454-8edaaa3381f0">
+
+We've used an implicit template variable, `{#Expected}`, to use the metavariable "Expected" associate with each response (from the table to the left). 
+
+> **Note**
+> You can also use LLMs to score responses through prompt chaining. However, this requires running outputs through a code evaluator node. 
+> The LLM Scorer simplifies the process by attaching LLM scores directly as evaluation results, without modifying what LLM generated the response. 
 
 ------------------
 ## Vis Node
