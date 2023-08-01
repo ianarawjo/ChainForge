@@ -454,37 +454,40 @@ export async function countQueries(prompt: string,
         const cache_llm_responses = load_from_cache(cache_filename);
 
         // Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
-        all_prompt_permutations.forEach(perm => {
-          const prompt_str = perm.toString();
+        all_prompt_permutations.forEach(prompt => {
+          let prompt_str = prompt.toString();
 
           add_to_num_responses_req(llm_key, n * chat_hists.length);
 
-          if (prompt_str in cache_llm_responses) {
+          // For each chat history, find an indivdual response obj that matches it 
+          // (chat_hist be undefined, in which case the cache'd response obj must similarly have an undefined chat history in order to match):
+          for (const chat_hist of chat_hists) {
+
+            // If there's chat history, we need to fill any special (#) vars from the carried chat_history vars and metavars:
+            if (chat_hist !== undefined) {
+              prompt.fill_special_vars({...chat_hist?.fill_history, ...chat_hist?.metavars});
+              prompt_str = prompt.toString();
+            }
 
             // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
             const cache_bucket = cache_llm_responses[prompt_str];
             let cached_resps: LLMResponseObject[] = Array.isArray(cache_bucket) ? cache_bucket : (cache_bucket === undefined ? [] : [ cache_bucket ]);
 
-            // For each chat history, find an indivdual response obj that matches it 
-            // (chat_hist be undefined, in which case the cache'd response obj must similarly have an undefined chat history in order to match):
-            for (const chat_hist of chat_hists) {
-              let found_resp = false;
-              for (const cached_resp of cached_resps) {
-                if (isEqualChatHistory(cached_resp.chat_history, chat_hist?.messages)) {
-                  // Match found. Note it and count response length: 
-                  found_resp = true;
-                  const num_resps = cached_resp.responses.length;
-                  if (n > num_resps)
-                    add_to_missing_queries(llm_key, prompt_str, n - num_resps);
-                  break;
-                }
+            let found_resp = false;
+            for (const cached_resp of cached_resps) {
+              if (isEqualChatHistory(cached_resp.chat_history, chat_hist?.messages)) {
+                // Match found. Note it and count response length: 
+                found_resp = true;
+                const num_resps = cached_resp.responses.length;
+                if (n > num_resps)
+                  add_to_missing_queries(llm_key, prompt_str, n - num_resps);
+                break;
               }
-              if (!found_resp)
-                add_to_missing_queries(llm_key, prompt_str, n);
             }
-          } else {
-            // There was no cache'd item for this query; add it as missing: 
-            add_to_missing_queries(llm_key, prompt_str, n * chat_hists.length);
+
+            // If a cache'd response wasn't found, add n required: 
+            if (!found_resp)
+              add_to_missing_queries(llm_key, prompt_str, n);
           }
         });
         

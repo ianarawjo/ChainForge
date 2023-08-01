@@ -148,20 +148,27 @@ export class PromptPipeline {
     let num_queries_sent = -1;
 
     // Generate concrete prompts one by one. Yield response from the cache or make async call to LLM.
-    for (const prompt of this.gen_prompts(vars)) {
-      if (!prompt.is_concrete())
-        throw Error(`Cannot send a prompt '${prompt}' to LLM: Prompt is a template.`)
+    for (let prompt of this.gen_prompts(vars)) {
 
-      const prompt_str = prompt.toString();
+      let prompt_str = prompt.toString();
       const info = prompt.fill_history;
       const metavars = prompt.metavars;
 
-      // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
-      const cache_bucket = responses[prompt_str];
-      let cached_resps: LLMResponseObject[] = Array.isArray(cache_bucket) ? cache_bucket : (cache_bucket === undefined ? [] : [ cache_bucket ]);
-
       // Loop over any present chat histories. (If none, will have a single pass with 'undefined' as chat_history value.)
       for (const chat_history of _chat_histories) {
+
+        // If there's chat history, we need to fill any special (#) vars from the carried chat_history vars and metavars:
+        if (chat_history !== undefined) {
+          prompt.fill_special_vars({...chat_history?.fill_history, ...chat_history?.metavars});
+          prompt_str = prompt.toString();
+        }
+
+        if (!prompt.is_concrete())
+          throw Error(`Cannot send a prompt '${prompt}' to LLM: Prompt is a template.`)
+        
+        // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
+        const cache_bucket = responses[prompt_str];
+        let cached_resps: LLMResponseObject[] = Array.isArray(cache_bucket) ? cache_bucket : (cache_bucket === undefined ? [] : [ cache_bucket ]);
 
         // Check if there's a cached response with the same prompt + (if present) chat history:
         let cached_resp: LLMResponseObject | undefined = undefined;

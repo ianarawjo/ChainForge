@@ -272,6 +272,30 @@ export class PromptTemplate {
         
         return filled_pt;
     }
+
+    /**
+     * Fills in any 'special' variables with # before them, by using the passed fill_history dict. 
+     * Modifies the prompt template in place.
+     * @param fill_history A fill history dict. 
+     */
+    fill_special_vars(fill_history: {[key: string]: any}): void {
+        // Special variables {#...} denotes filling a variable from a matching var in fill_history or metavars.
+        // Find any special variables:
+        const unfilled_vars = (new StringTemplate(this.template)).get_vars();
+        let special_vars_to_fill: {[key: string]: string} = {};
+        for (const v of unfilled_vars) {
+            if (v.length > 0 && v[0] === '#') { // special template variables must begin with #
+                const svar = v.substring(1);
+                if (svar in fill_history)
+                    special_vars_to_fill[v] = fill_history[svar];
+                else
+                    console.warn(`Could not find a value to fill special var ${v} in prompt template.`);
+            }
+        }
+        // Fill any special variables, using the fill history of the template in question:
+        if (Object.keys(special_vars_to_fill).length > 0)
+            this.template = new StringTemplate(this.template).safe_substitute(special_vars_to_fill);
+    }
 }
 
 export class PromptPermutationGenerator {
@@ -380,24 +404,7 @@ export class PromptPermutationGenerator {
         }
 
         for (let p of this._gen_perm(template, Object.keys(paramDict), paramDict)) {
-            // Special variables {#...} denotes filling a variable from a matching var in fill_history or metavars.
-            // Find any special variables:
-            const unfilled_vars = (new StringTemplate(p.template)).get_vars();
-            let special_vars_to_fill: {[key: string]: string} = {};
-            for (const v of unfilled_vars) {
-                if (v.length > 0 && v[0] === '#') { // special template variables must begin with #
-                    const svar = v.substring(1);
-                    if (svar in p.fill_history)
-                        special_vars_to_fill[v] = p.fill_history[svar];
-                    else if (svar in p.metavars)
-                        special_vars_to_fill[v] = p.metavars[svar];
-                    else
-                        console.warn(`Could not find a value to fill special var ${v} in prompt template.`);
-                }
-            }
-            // Fill any special variables, using the fill history of the template in question:
-            if (Object.keys(special_vars_to_fill).length > 0)
-                p.template = new StringTemplate(p.template).safe_substitute(special_vars_to_fill);
+            p.fill_special_vars({...p.fill_history, ...p.metavars});
 
             // Yield the final prompt template
             yield p;
