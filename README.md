@@ -33,7 +33,7 @@ Once installed, do
 chainforge serve
 ```
 
-Open [localhost:8000](http://localhost:8000/) in a Google Chrome or Firefox browser.
+Open [localhost:8000](http://localhost:8000/) in a Google Chrome, Firefox, Microsoft Edge, or Brave browser.
 
 You can set your API keys by clicking the Settings icon in the top-right corner. If you prefer to not worry about this everytime you open ChainForge, we recommend that save your OpenAI, Anthropic, and/or Google PaLM API keys to your local environment. For more details, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/INSTALL_GUIDE.md).
 

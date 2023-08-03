@@ -37,8 +37,8 @@ import StorageCache from './backend/cache';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
 
 // Device / Browser detection
-import { isMobile, isChrome, isFirefox } from 'react-device-detect';
-const IS_ACCEPTED_BROWSER = (isChrome || isFirefox) && !isMobile;
+import { isMobile, isChrome, isFirefox, isEdgeChromium, isChromium } from 'react-device-detect';
+const IS_ACCEPTED_BROWSER = (isChrome || isChromium || isEdgeChromium || isFirefox || navigator?.brave !== undefined) && !isMobile;
 
 const selector = (state) => ({
   nodes: state.nodes,
@@ -651,6 +651,8 @@ const App = () => {
         <List m='xl' size={'11pt'}>
           <List.Item>Google Chrome</List.Item>
           <List.Item>Mozilla Firefox</List.Item>
+          <List.Item>Microsoft Edge (Chromium)</List.Item>
+          <List.Item>Brave</List.Item>
         </List>
   
         <Text m='xl' size={'11pt'}>These browsers offer enhanced compatibility with ChainForge's features. Don't worry, though! We're working to expand our browser support to ensure everyone can enjoy our platform. 😊</Text>

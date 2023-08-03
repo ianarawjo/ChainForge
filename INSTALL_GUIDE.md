@@ -24,10 +24,10 @@ The simplest and safest way to install the latest public build of ChainForge is 
     ```
     > **Note**
     > If you'd like to run ChainForge on a different hostname and port, specify `--host` and `--port`. For instance, ```chainforge serve --host 0.0.0.0 --port 3400```
- 5. Open [localhost:8000](http://localhost:8000/) on a recent version of Google Chrome or Mozilla Firefox.
+ 5. Open [localhost:8000](http://localhost:8000/) on a recent version of Google Chrome, Mozilla Firefox, Microsoft Edge (Chromium), or Brave browser.
 
 > **Note**
-> ChainForge beta version currently does not support other browsers, but if you want support, please open an Issue or make a Pull Request. The main barrier at the moment is that CSS formatting is slightly different for Safari, Edge etc.; to fix this, we'd need to correct said formatting problems.
+> ChainForge beta version currently does not support other browsers, but if you want support, please open an Issue or make a Pull Request. The main barrier at the moment is that CSS formatting is slightly different for Safari and other browsers; to fix this, we'd need to correct said formatting problems.
 
 ## Step 2. Get and set API keys for certain model providers
 
