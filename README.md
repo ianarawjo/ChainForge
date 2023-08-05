@@ -9,17 +9,23 @@ ChainForge is a data flow prompt engineering environment for analyzing and evalu
  - **Setup evaluation metrics** (scoring function) and immediately visualize results across prompts, prompt parameters, models, and model settings.
  - **Hold multiple conversations at once across template parameters and chat models.** Template not just prompts, but follow-up chat messages, and inspect and evaluate outputs at each turn of a chat conversation.
  
-ChainForge comes with a number of example evaluation flows to give you a sense of what's possible, including 188 example flows generated from benchmarks in OpenAI evals.
+[Read the docs to learn more.](https://chainforge.ai/docs/) ChainForge comes with a number of example evaluation flows to give you a sense of what's possible, including 188 example flows generated from benchmarks in OpenAI evals.
 
-# Try it @ https://chainforge.ai/play/ 
-
-**This is an open beta of Chainforge.** We support OpenAI models GPT3.5 and GPT4, HuggingFace models on the Inference API, Anthropic's Claude, Google PaLM2, Azure OpenAI endpoints, and [Dalai](https://github.com/cocktailpeanut/dalai)-hosted models Alpaca and Llama. You can change the exact model and individual model settings. Visualization nodes support numeric and boolean evaluation metrics. Try it and let us know what you think! :)
+**This is an open beta of Chainforge.** We support model providers OpenAI, HuggingFace, Anthropic, Google PaLM2, Azure OpenAI endpoints, and [Dalai](https://github.com/cocktailpeanut/dalai)-hosted models Alpaca and Llama. You can change the exact model and individual model settings. Visualization nodes support numeric and boolean evaluation metrics. Try it and let us know what you think! :)
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://flask.palletsprojects.com/en/2.3.x/).
 
-# Installation (local machine)
+# Table of Contents
+ - [Documentation](https://chainforge.ai/docs/)
+ - [Installation](#installation)
+ - [Example Experiments](#example-experiments)
+ - [Share with Others](#share-with-others)
+ - [Features](#features) (see the [docs](https://chainforge.ai/docs/nodes/) for more comprehensive info)
+ - [Development and How to Cite](#development)
 
-The web version of ChainForge (https://chainforge.ai/play/) has a limited feature set. In a locally installed version you can load API keys automatically from environment variables, write Python code to evaluate LLM responses, or query locally-run Alpaca/Llama models hosted via Dalai.
+# Installation
+
+You can install ChainForge locally, or try it out on the web at **https://chainforge.ai/play/**. The web version of ChainForge has a limited feature set. In a locally installed version you can load API keys automatically from environment variables, write Python code to evaluate LLM responses, or query locally-run Alpaca/Llama models hosted via Dalai.
 
 To install Chainforge on your machine, make sure you have Python 3.8 or higher, then run
 
