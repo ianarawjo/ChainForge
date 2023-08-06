@@ -6,5 +6,6 @@ openai
 dalaipy==2.0.2
 urllib3==1.26.6
 anthropic
+litellm
 google-generativeai
 mistune>=2.0

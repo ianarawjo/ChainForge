@@ -56,6 +56,7 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 
         NOTE: It is recommended to set an environment variable OPENAI_API_KEY with your OpenAI API key
     """
     import openai
+    from litellm import acompletion
     if not openai.api_key:
         openai.api_key = os.environ.get("OPENAI_API_KEY")
 
@@ -77,18 +78,13 @@ async def call_chatgpt(prompt: str, model: LLM, n: int = 1, temperature: float= 
         **params,  # 'the rest' of the settings, passed from a front-end app
     }
 
-    if 'davinci' in model:  # text completions model
-        openai_call = openai.Completion.acreate
-        query['prompt'] = prompt
-    else:  # chat model
-        openai_call = openai.ChatCompletion.acreate
-        query['messages'] = [
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": prompt},
-        ]
-    
+    query['messages'] = [
+        {"role": "system", "content": system_msg},
+        {"role": "user", "content": prompt},
+    ]
+
     try:
-        response = await openai_call(**query)
+        response = await acompletion(**query)
     except Exception as e:
         if (isinstance(e, openai.error.AuthenticationError)):
             raise Exception("Could not authenticate to OpenAI. Double-check that your API key is set in Settings or in your local Python environment.")
