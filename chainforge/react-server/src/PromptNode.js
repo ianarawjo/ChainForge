@@ -102,6 +102,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
+  const [uninspectedResponses, setUninspectedResponses] = useState(false);
+  const [responsesWillChange, setResponsesWillChange] = useState(false);
 
   // Chat node specific
   const [contChatWithPriorLLMs, setContChatWithPriorLLMs] = useState(data.contChat !== undefined ? data.contChat : true);
@@ -123,8 +125,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
   }, [llmListContainer, alertModal]);
 
   const showResponseInspector = useCallback(() => {
-    if (inspectModal && inspectModal.current && jsonResponses)
+    if (inspectModal && inspectModal.current && jsonResponses) {
         inspectModal.current.trigger();
+        setUninspectedResponses(false);
+    }
   }, [inspectModal, jsonResponses]);
 
   // Signal that prompt node state is dirty; user should re-run:
@@ -357,8 +361,11 @@ const PromptNode = ({ data, id, type: node_type }) => {
         const num_llms_missing = Object.keys(counts).length;
         if (num_llms_missing === 0) {
             setRunTooltip('Will load responses from cache');
+            setResponsesWillChange(false);
             return;
         }
+
+        setResponsesWillChange(true);
 
         // Tally how many queries per LLM:
         let queries_per_llm = {};
@@ -471,6 +478,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
     // Create a callback to listen for progress
     let onProgressChange = () => {};
     const open_progress_listener = ([response_counts, total_num_responses]) => {
+        setResponsesWillChange(!response_counts || Object.keys(response_counts).length === 0);
+
         const max_responses = Object.keys(total_num_responses).reduce((acc, llm) => acc + total_num_responses[llm], 0);
 
         onProgressChange = (progress_by_llm_key) => {
@@ -568,6 +577,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 // Save prompt text so we remember what prompt we have responses cache'd for:
                 setPromptTextOnLastRun(promptText);
                 setNumGenerationsLastRun(numGenerations);
+
+                if (responsesWillChange)
+                    setUninspectedResponses(true);
+                setResponsesWillChange(false);
 
                 // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
                 // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
@@ -750,7 +763,11 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
         { jsonResponses && jsonResponses.length > 0 && status !== 'loading' ? 
             (<div className="eval-inspect-response-footer nodrag" onClick={showResponseInspector} style={{display: 'flex', justifyContent:'center'}}>
-                <Button color='blue' variant='subtle' w='100%' >Inspect responses&nbsp;<IconSearch size='12pt'/></Button>
+                <Button color='blue' variant='subtle' w='100%' >
+                    Inspect responses&nbsp;
+                    <IconSearch size='12pt'/>
+                    { uninspectedResponses ? <div className="something-changed-circle"></div> : <></>}
+                </Button>
             </div>) : <></>
         }
         </div>
