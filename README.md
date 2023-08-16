@@ -1,6 +1,8 @@
 # ⛓️🛠️ ChainForge
 **An open-source visual programming environment for battle-testing prompts to LLMs.**
 
+**_(Have you used ChainForge for an actual task? We'd like to interview you! Contact Ian on [Twitter](https://twitter.com/IanArawjo) on via [email](http://ianarawjo.therottingcartridge.com/docs/ian-arawjo-cv.pdf). Interviews help us support the continued development of the project. :)_**
+
 <img width="1517" alt="banner" src="https://github.com/ianarawjo/ChainForge/assets/5251713/570879ef-ef8a-4e00-b37c-b49bc3c1a370">
 
 ChainForge is a data flow prompt engineering environment for analyzing and evaluating LLM responses. It is geared towards early-stage, quick-and-dirty exploration of prompts, chat responses, and response quality that goes beyond ad-hoc chatting with individual LLMs. With ChainForge, you can: 
