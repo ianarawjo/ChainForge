@@ -164,6 +164,7 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
       Azure_OpenAI: '',
       Azure_OpenAI_Endpoint: '',
       HuggingFace: '',
+      AlephAlpha: '',
     },
 
     validate: {
@@ -196,6 +197,7 @@ return (
             </Tabs.List>
 
 
+<<<<<<< HEAD
             <Tabs.Panel value="api-keys" pt="xs">
               <Text mb="md" fz="xs" lh={1.15} color='dimmed'>
                     Note: <b>We do not store your API keys</b> &mdash;not in a cookie, localStorage, or server. 
@@ -209,6 +211,21 @@ return (
                     placeholder="Paste your OpenAI API key here"
                     {...form.getInputProps('OpenAI')}
                   />
+=======
+                <br />
+                <TextInput
+                  label="Google PaLM API Key"
+                  placeholder="Paste your Google PaLM API key here"
+                  {...form.getInputProps('Google')}
+                />
+                <br />
+                <TextInput
+                  label="Aleph Alpha API Key"
+                  placeholder="Paste your Aleph Alpha API key here"
+                  {...form.getInputProps('AlephAlpha')}
+                />
+                <br />
+>>>>>>> f537e33 (add aleph alpha to settings to add key)
 
                   <br />
                   <TextInput
