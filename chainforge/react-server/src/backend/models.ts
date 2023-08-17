@@ -46,6 +46,14 @@ export enum NativeLLM {
   PaLM2_Text_Bison = "text-bison-001",  // it's really models/text-bison-001, but that's confusing
   PaLM2_Chat_Bison = "chat-bison-001",
 
+ // Aleph Alpha
+  Aleph_Alpha_Luminous_Extended = "luminous-extended",
+  Aleph_Alpha_Luminous_ExtendedControl = "luminous-extended-control",
+  Aleph_Alpha_Luminous_BaseControl = "luminous-base-control",
+  Aleph_Alpha_Luminous_Base = "luminous-base",
+  Aleph_Alpha_Luminous_Supreme = "luminous-supreme",
+  Aleph_Alpha_Luminous_SupremeControl = "luminous-supreme-control",
+
   // HuggingFace Inference hosted models, suggested to users
   HF_GPT2 = "gpt2",
   HF_BLOOM_560M = "bigscience/bloom-560m",
@@ -71,6 +79,7 @@ export enum LLMProvider {
   Anthropic = "anthropic",
   Google = "google",
   HuggingFace = "hf",
+  Aleph_Alpha = "alephalpha",
   Custom = "__custom",
 }
 
@@ -93,8 +102,11 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
     return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith('claude'))
     return LLMProvider.Anthropic;
+  else if (llm_name?.startsWith('Aleph_Alpha'))
+    return LLMProvider.Aleph_Alpha;
   else if (llm.toString().startsWith('__custom/'))
     return LLMProvider.Custom;
+  
   return undefined;
 }
 
