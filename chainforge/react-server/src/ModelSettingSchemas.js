@@ -1,12 +1,12 @@
 /**
- * A place to put all models supported by ChainForge and their 
+ * A place to put all models supported by ChainForge and their
  * settings as react-jsonschema-form JSON schemas.
- * The schemas describe the structure of HTML settings forms for that specific model. 
- * 
- * By convention, the key used for a 'property' should be the exact same 
+ * The schemas describe the structure of HTML settings forms for that specific model.
+ *
+ * By convention, the key used for a 'property' should be the exact same
  * parameter name in the back-end for that API call (e.g., 'top_k' for OpenAI chat completions)
  * All properties that refer to temperature must use the key 'temperature'.
- * 
+ *
  * Descriptions of OpenAI model parameters copied from OpenAI's official chat completions documentation: https://platform.openai.com/docs/models/model-endpoint-compatibility
  */
 
@@ -22,11 +22,30 @@ const UI_SUBMIT_BUTTON_SPEC = {
   norender: false,
   submitText: 'Submit',
 };
+// Available LLMs in ChainForge, in the format expected by LLMListItems.
+export let AvailableLLMs = [
+  { name: "GPT3.5", emoji: "🤖", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
+  { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
+  { name: "Claude", emoji: "📚", model: "claude-2", base_model: "claude-v1", temp: 0.5 },
+  { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
+  { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
+  { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
+  { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 1.0 }
+];
+if (APP_IS_RUNNING_LOCALLY()) {
+  AvailableLLMs.push({
+    name: "Dalai (Alpaca.7B)",
+    emoji: "🦙",
+    model: "alpaca.7B",
+    base_model: "dalai",
+    temp: 0.5,
+  });
+}
 
 const ChatGPTSettings = {
-    fullName: "GPT-3.5+ (OpenAI)",
-    schema: {
-        "type": "object",
+  fullName: "GPT-3.5+ (OpenAI)",
+  schema: {
+    "type": "object",
         "required": [
             "shortname"
         ],
@@ -36,22 +55,22 @@ const ChatGPTSettings = {
                 "title": "Nickname",
                 "description": "Unique identifier to appear in ChainForge. Keep it short.",
                 "default": "GPT3.5"
-            },
-            "model": {
+      },
+      "model": {
                 "type": "string",
                 "title": "Model Version",
                 "description": "Select an OpenAI model to query. For more details on the differences, see the OpenAI API documentation.",
                 "enum": ["gpt-3.5-turbo", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-0301", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613", "gpt-4", "gpt-4-0613", "gpt-4-0314", "gpt-4-32k", "gpt-4-32k-0613", "gpt-4-32k-0314", "text-davinci-003", "text-davinci-002", "code-davinci-002"],
                 "default": "gpt-3.5-turbo"
-            },
-            "system_msg": {
+      },
+      "system_msg": {
                 "type": "string",
                 "title": "System Message (chat models only)",
                 "description": "Many conversations begin with a system message to gently instruct the assistant. By default, ChainForge includes the suggested 'You are a helpful assistant.'",
                 "default": "You are a helpful assistant.",
                 "allow_empty_str": true,
-            },
-            "temperature": {
+      },
+      "temperature": {
                 "type": "number",
                 "title": "temperature",
                 "description": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
@@ -59,20 +78,20 @@ const ChatGPTSettings = {
                 "minimum": 0,
                 "maximum": 2,
                 "multipleOf": 0.01
-            },
-            "functions": {
+      },
+      "functions": {
               "type": "string",
               "title": "functions",
               "description": "A list of JSON schema objects, each with 'name', 'description', and 'parameters' keys, which describe functions the model may generate JSON inputs for. For more info, see https://github.com/openai/openai-cookbook/blob/main/examples/How_to_call_functions_with_chat_models.ipynb",
               "default": "",
-            },
-            "function_call": {
-              "type": "string",
+      },
+      "function_call": {
+        "type": "string",
               "title": "function_call",
               "description": "Controls how the model responds to function calls. 'none' means the model does not call a function, and responds to the end-user. 'auto' means the model can pick between an end-user or calling a function. Specifying a particular function name forces the model to call only that function. Leave blank for default behavior.",
               "default": "",
-            },
-            "top_p": {
+      },
+      "top_p": {
                 "type": "number",
                 "title": "top_p",
                 "description": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
@@ -80,28 +99,28 @@ const ChatGPTSettings = {
                 "minimum": 0,
                 "maximum": 1,
                 "multipleOf": 0.005
-            },
-            "stop": {
+      },
+      "stop": {
                 "type": "string",
                 "title": "stop sequences",
                 "description": "Up to 4 sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes \"\" and use whitespace to separate them.",
                 "default": ""
-            },
-            "max_tokens": {
+      },
+      "max_tokens": {
                 "type": "integer",
                 "title": "max_tokens",
                 "description": "The maximum number of tokens to generate in the chat completion. (The total length of input tokens and generated tokens is limited by the model's context length.)"
-            },
-            "presence_penalty": {
-                "type": "number",
-                "title": "presence_penalty",
-                "description": "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
-                "default": 0,
-                "minimum": -2,
-                "maximum": 2,
-                "multipleOf": 0.005
-            },
-            "frequency_penalty": {
+      },
+      "presence_penalty": {
+        "type": "number",
+        "title": "presence_penalty",
+        "description": "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+        "default": 0,
+        "minimum": -2,
+        "maximum": 2,
+        "multipleOf": 0.005
+      },
+      "frequency_penalty": {
                 "type": "number",
                 "title": "frequency_penalty",
                 "description": "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
@@ -109,14 +128,14 @@ const ChatGPTSettings = {
                 "minimum": -2,
                 "maximum": 2,
                 "multipleOf": 0.005
-            },
-            "logit_bias": {
+      },
+    "logit_bias": {
                 "type": "string",
                 "title": "logit_bias",
                 "description": "Modify the likelihood of specified tokens appearing in the completion. Accepts a json object that maps tokens (specified by their token ID in the tokenizer) to an associated bias value from -100 to 100. Mathematically, the bias is added to the logits generated by the model prior to sampling. The exact effect will vary per model, but values between -1 and 1 should decrease or increase likelihood of selection; values like -100 or 100 should result in a ban or exclusive selection of the relevant token."
             }
         }
-    },
+  },
 
     uiSchema: {
         'ui:submitButtonOptions': UI_SUBMIT_BUTTON_SPEC,
@@ -164,60 +183,60 @@ const ChatGPTSettings = {
           "ui:widget": "textarea",
           "ui:help": "Defaults to none."
         }
-    },
+  },
 
-    postprocessors: {
-      'functions': (str) => {
-        if (str.trim().length === 0) return [];
-        return JSON.parse(str);  // parse the JSON schema 
-      },
-      'function_call': (str) => {
-        const s = str.trim();
-        if (s.length === 0) return '';
-        if (s === 'auto' || s === 'none') return s;
-        else return { 'name': s };
-      },
-      'stop': (str) => {
-        if (str.trim().length === 0) return [];
-        return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
-      }
+  postprocessors: {
+    'functions': (str) => {
+      if (str.trim().length === 0) return [];
+      return JSON.parse(str);  // parse the JSON schema
+    },
+    'function_call': (str) => {
+      const s = str.trim();
+      if (s.length === 0) return '';
+      if (s === 'auto' || s === 'none') return s;
+      else return { 'name': s };
+    },
+    'stop': (str) => {
+      if (str.trim().length === 0) return [];
+      return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    }
     }
 };
 
 const GPT4Settings = {
-    fullName: ChatGPTSettings.fullName,
-    schema: {
-      "type": "object",
-        "required": [
+  fullName: ChatGPTSettings.fullName,
+  schema: {
+    "type": "object",
+    "required": [
             "shortname"
         ],
-        "properties": {
-            ...ChatGPTSettings.schema.properties,
-            "shortname": {
-              "type": "string",
-              "title": "Nickname",
-              "description": "Unique identifier to appear in ChainForge. Keep it short.",
-              "default": "GPT-4"
-            },
-            "model": {
-              ...ChatGPTSettings.schema.properties.model,
-              "default": "gpt-4"
+    "properties": {
+      ...ChatGPTSettings.schema.properties,
+      "shortname": {
+        "type": "string",
+        "title": "Nickname",
+        "description": "Unique identifier to appear in ChainForge. Keep it short.",
+        "default": "GPT-4"
+      },
+      "model": {
+        ...ChatGPTSettings.schema.properties.model,
+        "default": "gpt-4"
             }
         }
+  },
+  uiSchema: {
+    ...ChatGPTSettings.uiSchema,
+    "model": {
+      "ui:help": "Defaults to gpt-4.",
     },
-    uiSchema: {
-      ...ChatGPTSettings.uiSchema,
-      "model": {
-        "ui:help": "Defaults to gpt-4.",
-      },
-    },
-    postprocessors: ChatGPTSettings.postprocessors,
+  },
+  postprocessors: ChatGPTSettings.postprocessors,
 };
 
 const ClaudeSettings = {
-    fullName: "Claude (Anthropic)",
-    schema: {
-        "type": "object",
+  fullName: "Claude (Anthropic)",
+  schema: {
+    "type": "object",
         "required": [
             "shortname"
         ],
@@ -227,16 +246,16 @@ const ClaudeSettings = {
                 "title": "Nickname",
                 "description": "Unique identifier to appear in ChainForge. Keep it short.",
                 "default": "Claude"
-            },
-            "model": {
+      },
+      "model": {
                 "type": "string",
                 "title": "Model Version",
                 "description": "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
                 "enum": ["claude-2", "claude-2.0", "claude-instant-1", "claude-instant-1.1", "claude-v1", "claude-v1-100k", "claude-instant-v1", "claude-instant-v1-100k", "claude-v1.3", 
                          "claude-v1.3-100k", "claude-v1.2", "claude-v1.0", "claude-instant-v1.1", "claude-instant-v1.1-100k", "claude-instant-v1.0"],
                 "default": "claude-2"
-            },
-            "temperature": {
+      },
+      "temperature": {
                 "type": "number",
                 "title": "temperature",
                 "description": "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
@@ -244,35 +263,35 @@ const ClaudeSettings = {
                 "minimum": 0,
                 "maximum": 1,
                 "multipleOf": 0.01
-            },
-            "max_tokens_to_sample": {
+      },
+      "max_tokens_to_sample": {
                 "type": "integer",
                 "title": "max_tokens_to_sample",
                 "description": "A maximum number of tokens to generate before stopping. Lower this if you want shorter responses. By default, ChainForge uses the value 1024, although the Anthropic API does not specify a default value.",
                 "default": 1024,
                 "minimum": 1
-            },
-            "custom_prompt_wrapper": {
+      },
+      "custom_prompt_wrapper": {
                 "type": "string",
                 "title": "Prompt Wrapper (ChainForge)",
                 "description": "Anthropic models expect prompts in the form \"\\n\\nHuman: ${prompt}\\n\\nAssistant:\". ChainForge wraps all prompts in this template by default. If you wish to \
                 explore custom prompt wrappers that deviate, write a Python template here with a single variable, ${prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)",
                 "default": ""
-            },
-            "stop_sequences": {
+      },
+      "stop_sequences": {
                 "type": "string",
                 "title": "stop_sequences",
                 "description": "Anthropic models stop on \"\\n\\nHuman:\", and may include additional built-in stop sequences in the future. By providing the stop_sequences parameter, you may include additional strings that will cause the model to stop generating.\nEnclose stop sequences in double-quotes \"\" and use whitespace to separate them.",
                 "default": "\"\n\nHuman:\""
-            },
-            "top_k": {
-                "type": "integer",
-                "title": "top_k",
-                "description": "Only sample from the top K options for each subsequent token. Used to remove \"long tail\" low probability responses. Defaults to -1, which disables it.",
-                "minimum": -1,
-                "default": -1
-            },
-            "top_p": {
+      },
+      "top_k": {
+        "type": "integer",
+        "title": "top_k",
+        "description": "Only sample from the top K options for each subsequent token. Used to remove \"long tail\" low probability responses. Defaults to -1, which disables it.",
+        "minimum": -1,
+        "default": -1
+      },
+"top_p": {
                 "type": "number",
                 "title": "top_p",
                 "description": "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
@@ -280,9 +299,9 @@ const ClaudeSettings = {
                 "minimum": -1,
                 "maximum": 1,
                 "multipleOf": 0.001,
-            },
-        }
     },
+}
+  },
 
     uiSchema: {
         'ui:submitButtonOptions': UI_SUBMIT_BUTTON_SPEC,
@@ -315,74 +334,74 @@ const ClaudeSettings = {
         }
     },
 
-    postprocessors: {
-      'stop_sequences': (str) => {
-        if (str.trim().length === 0) return ["\n\nHuman:"];
-        return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
-      }
+  postprocessors: {
+    'stop_sequences': (str) => {
+      if (str.trim().length === 0) return ["\n\nHuman:"];
+      return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    }
     }
 };
 
 const PaLM2Settings = {
   fullName: "PaLM (Google)",
   schema: {
-      "type": "object",
-      "required": [
+    "type": "object",
+    "required": [
           "shortname"
       ],
-      "properties": {
-          "shortname": {
-              "type": "string",
-              "title": "Nickname",
-              "description": "Unique identifier to appear in ChainForge. Keep it short.",
-              "default": "chat-bison"
-          },
-          "model": {
-              "type": "string",
-              "title": "Model",
-              "description": "Select a PaLM model to query. For more details on the differences, see the Google PaLM API documentation.",
-              "enum": ["text-bison-001", "chat-bison-001"],
-              "default": "chat-bison-001"
-          },
-          "temperature": {
-              "type": "number",
-              "title": "temperature",
-              "description": "Controls the randomness of the output. Must be positive. Typical values are in the range: [0.0, 1.0]. Higher values produce a more random and varied response. A temperature of zero will be deterministic. (ChainForge only allows a max 1.0 temperature for PaLM).",
-              "default": 0.5,
-              "minimum": 0,
-              "maximum": 1,
-              "multipleOf": 0.01
-          },
-          "top_k": {
-            "type": "integer",
-            "title": "top_k",
-            "description": "Sets the maximum number of tokens to sample from on each step. (The PaLM API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
-            "minimum": -1,
-            "default": -1
-          },
-          "top_p": {
-              "type": "number",
-              "title": "top_p",
-              "description": "Sets the maximum cumulative probability of tokens to sample from. (The PaLM API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
-              "default": -1,
-              "minimum": -1,
-              "maximum": 1,
-              "multipleOf": 0.001,
-          },
-          "max_output_tokens": {
-              "type": "integer",
-              "title": "max_output_tokens (ignored for chat models)",
-              "description": "Maximum number of tokens to include in each response of a text-bison model. Must be greater than zero. If unset, will default to 512. Ignored for chat models.",
-              "default": 512,
-              "minimum": 1
-          },
-          "stop_sequences": {
-              "type": "string",
-              "title": "stop_sequences (ignored for chat models)",
-              "description": "A set of up to 5 character sequences that will stop output generation. If specified, the API will stop at the first appearance of a stop sequence. The stop sequence will not be included as part of the response.\nEnclose stop sequences in double-quotes \"\" and use whitespace to separate them. Ignored for chat models.",
+    "properties": {
+      "shortname": {
+        "type": "string",
+        "title": "Nickname",
+        "description": "Unique identifier to appear in ChainForge. Keep it short.",
+        "default": "chat-bison"
+      },
+      "model": {
+        "type": "string",
+        "title": "Model",
+        "description": "Select a PaLM model to query. For more details on the differences, see the Google PaLM API documentation.",
+        "enum": ["text-bison-001", "chat-bison-001"],
+        "default": "chat-bison-001"
+      },
+      "temperature": {
+        "type": "number",
+        "title": "temperature",
+        "description": "Controls the randomness of the output. Must be positive. Typical values are in the range: [0.0, 1.0]. Higher values produce a more random and varied response. A temperature of zero will be deterministic. (ChainForge only allows a max 1.0 temperature for PaLM).",
+        "default": 0.5,
+        "minimum": 0,
+        "maximum": 1,
+        "multipleOf": 0.01
+      },
+      "top_k": {
+        "type": "integer",
+        "title": "top_k",
+        "description": "Sets the maximum number of tokens to sample from on each step. (The PaLM API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
+        "minimum": -1,
+        "default": -1
+      },
+      "top_p": {
+        "type": "number",
+        "title": "top_p",
+        "description": "Sets the maximum cumulative probability of tokens to sample from. (The PaLM API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
+        "default": -1,
+        "minimum": -1,
+        "maximum": 1,
+        "multipleOf": 0.001,
+      },
+      "max_output_tokens": {
+        "type": "integer",
+        "title": "max_output_tokens (ignored for chat models)",
+        "description": "Maximum number of tokens to include in each response of a text-bison model. Must be greater than zero. If unset, will default to 512. Ignored for chat models.",
+        "default": 512,
+        "minimum": 1
+      },
+      "stop_sequences": {
+        "type": "string",
+        "title": "stop_sequences (ignored for chat models)",
+        "description": "A set of up to 5 character sequences that will stop output generation. If specified, the API will stop at the first appearance of a stop sequence. The stop sequence will not be included as part of the response.\nEnclose stop sequences in double-quotes \"\" and use whitespace to separate them. Ignored for chat models.",
               "default": ""
-          },
-      }
+      },
+    }
   },
 
   uiSchema: {
@@ -423,92 +442,92 @@ const PaLM2Settings = {
 const DalaiModelSettings = {
   fullName: "Dalai-hosted local model (Alpaca, Llama)",
   schema: {
-      "type": "object",
+    "type": "object",
       "required": [
           "shortname",
-      ],
-      "properties": {
+        ],
+        "properties": {
           "shortname": {
               "type": "string",
               "title": "Nickname",
               "description": "Unique identifier to appear in ChainForge. Keep it short.",
               "default": "Alpaca.7B",
-          },
-          "model": {
+      },
+      "model": {
               "type": "string",
               "title": "Model",
               "description": "Select a Dalai-hosted model to query. For details on installing locally-run models via Dalai, check out https://cocktailpeanut.github.io/dalai/#/?id=_3-disk-space-requirements.",
               "enum": ["alpaca.7B", "alpaca.13B", "llama.7B", "llama.13B", "llama.30B", "llama.65B"],
               "default": "alpaca.7B",
-          },
-          "server": {
-            "type": "string",
-            "title": "URL of Dalai server",
-            "description": "Enter the URL where the Dalai server is running (usually localhost).",
-            "default": "http://localhost:4000",
-          },
-          "temperature": {
-              "type": "number",
-              "title": "temperature",
-              "description": "Controls the 'creativity' or randomness of the response.",
-              "default": 0.5,
+      },
+      "server": {
+        "type": "string",
+        "title": "URL of Dalai server",
+        "description": "Enter the URL where the Dalai server is running (usually localhost).",
+        "default": "http://localhost:4000",
+      },
+      "temperature": {
+        "type": "number",
+        "title": "temperature",
+        "description": "Controls the 'creativity' or randomness of the response.",
+        "default": 0.5,
               "minimum": 0,
               "maximum": 1,
-              "multipleOf": 0.01,
-          },
-          "n_predict": {
+"multipleOf": 0.01,
+      },
+      "n_predict": {
             "type": "integer",
             "title": "n_predict",
             "description": "Maximum number of tokens to include in the response. Must be greater than zero. Defaults to 128.",
             "default": 128,
             "minimum": 1,
-          },
-          "threads": {
-            "type": "integer",
-            "title": "threads",
-            "description": "The number of threads to use on the local machine. Defaults to 4 in ChainForge, to support lower-end laptops. Set to higher the more powerful your machine.",
-            "minimum": 1,
-            "default": 4,
-          },
-          "top_k": {
-            "type": "integer",
-            "title": "top_k",
-            "description": "Sets the maximum number of tokens to sample from on each step.",
-            "minimum": 1,
-            "default": 40,
-          },
-          "top_p": {
-              "type": "number",
-              "title": "top_p",
-              "description": "Sets the maximum cumulative probability of tokens to sample from.",
-              "default": 0.9,
+      },
+      "threads": {
+        "type": "integer",
+        "title": "threads",
+        "description": "The number of threads to use on the local machine. Defaults to 4 in ChainForge, to support lower-end laptops. Set to higher the more powerful your machine.",
+        "minimum": 1,
+        "default": 4,
+      },
+      "top_k": {
+        "type": "integer",
+        "title": "top_k",
+        "description": "Sets the maximum number of tokens to sample from on each step.",
+        "minimum": 1,
+        "default": 40,
+      },
+      "top_p": {
+        "type": "number",
+        "title": "top_p",
+        "description": "Sets the maximum cumulative probability of tokens to sample from.",
+        "default": 0.9,
               "minimum": 0,
-              "maximum": 1,
+        "maximum": 1,
               "multipleOf": 0.001,
-          },
-          "repeat_last_n": {
-            "type": "integer",
-            "title": "repeat_last_n",
-            "description": "Use to control repetitions. When picking a new token, the model will avoid any of the tokens (~words) in the last n tokens, in a sliding window.",
-            "minimum": 0,
-            "default": 64,
-          },
-          "repeat_penalty": {
-            "type": "number",
-            "title": "repeat_penalty",
-            "description": "Use to control repetitions. Penalizes words that have already appeared in the output, making them less likely to be generated again.",
-            "minimum": 0,
+      },
+      "repeat_last_n": {
+        "type": "integer",
+        "title": "repeat_last_n",
+        "description": "Use to control repetitions. When picking a new token, the model will avoid any of the tokens (~words) in the last n tokens, in a sliding window.",
+        "minimum": 0,
+        "default": 64,
+      },
+      "repeat_penalty": {
+        "type": "number",
+        "title": "repeat_penalty",
+        "description": "Use to control repetitions. Penalizes words that have already appeared in the output, making them less likely to be generated again.",
+        "minimum": 0,
             "default": 1.3,
             "multipleOf": 0.001,
-          },
-          "seed": {
+      },
+"seed": {
             "type": "integer",
             "title": "seed",
             "description": "The seed to use when generating new responses. The default is -1 (random). Change to fixed value for deterministic outputs across different runs.",
             "minimum": -1,
             "default": -1,
-          },
-      }
+    },
+}
   },
 
   uiSchema: {
@@ -558,38 +577,38 @@ const AzureOpenAISettings = {
   fullName: "Azure OpenAI Model",
   schema: {
     "type": "object",
-      "required": [
+    "required": [
         "shortname",
         "deployment_name",
       ],
-      "properties": {
-        "shortname": {
-          "type": "string",
-          "title": "Nickname",
-          "description": "Unique identifier to appear in ChainForge. Keep it short.",
-          "default": "Azure-OpenAI"
-        },
-        "deployment_name": {
-          "type": "string",
-          "title": "Deployment name",
-          "description": "The deployment name you chose when you deployed the model in Azure services (also known as the 'deployment_id' or 'engine'). This must exactly match the name of the deployed resource, or the request will fail.",
-          "default": "gpt-35-turbo",
-        },
-        "model_type": {
-          "type": "string",
-          "title": "Model Type (Chat or Completions)",
-          "description": "Select the type of model you are querying. For instance, if you host GPT3.5, select chat-completion; if you host davinci, use text-completion.",
-          "enum": ["chat-completion", "text-completion"],
-          "default": "chat-completion"
-        },
-        "api_version": {
-          "type": "string",
-          "title": "API Version (date)",
-          "description": "Used when calling the OpenAI API through Azure services. Normally you don't need to change this setting.",
-          "default": "2023-05-15"
-        },
-        ...filterDict(ChatGPTSettings.schema.properties, (key) => key !== 'model'),
-      }
+    "properties": {
+      "shortname": {
+        "type": "string",
+        "title": "Nickname",
+        "description": "Unique identifier to appear in ChainForge. Keep it short.",
+        "default": "Azure-OpenAI"
+      },
+      "deployment_name": {
+        "type": "string",
+        "title": "Deployment name",
+        "description": "The deployment name you chose when you deployed the model in Azure services (also known as the 'deployment_id' or 'engine'). This must exactly match the name of the deployed resource, or the request will fail.",
+        "default": "gpt-35-turbo",
+      },
+      "model_type": {
+        "type": "string",
+        "title": "Model Type (Chat or Completions)",
+        "description": "Select the type of model you are querying. For instance, if you host GPT3.5, select chat-completion; if you host davinci, use text-completion.",
+        "enum": ["chat-completion", "text-completion"],
+        "default": "chat-completion"
+      },
+      "api_version": {
+        "type": "string",
+        "title": "API Version (date)",
+        "description": "Used when calling the OpenAI API through Azure services. Normally you don't need to change this setting.",
+        "default": "2023-05-15"
+      },
+      ...filterDict(ChatGPTSettings.schema.properties, (key) => key !== 'model'),
+    }
   },
   uiSchema: {
     ...ChatGPTSettings.uiSchema,
@@ -600,38 +619,38 @@ const AzureOpenAISettings = {
 const HuggingFaceTextInferenceSettings = {
   fullName: "HuggingFace-hosted text generation models",
   schema: {
-      "type": "object",
+    "type": "object",
       "required": [
           "shortname",
-      ],
-      "properties": {
+        ],
+        "properties": {
           "shortname": {
               "type": "string",
               "title": "Nickname",
               "description": "Unique identifier to appear in ChainForge. Keep it short.",
               "default": "Falcon.7B",
-          },
-          "model": {
-              "type": "string",
-              "title": "Model",
+      },
+      "model": {
+        "type": "string",
+        "title": "Model",
               "description": "Select a suggested HuggingFace-hosted model to query using the Inference API. For more details, check out https://huggingface.co/inference-api",
               "enum": ["tiiuae/falcon-7b-instruct", "microsoft/DialoGPT-large", "bigscience/bloom-560m", "gpt2", "bigcode/santacoder", "bigcode/starcoder", "Other (HuggingFace)"],
               "default": "tiiuae/falcon-7b-instruct",
-          },
-          "custom_model": {
-            "type": "string",
-            "title": "Custom HF model endpoint",
+      },
+      "custom_model": {
+        "type": "string",
+        "title": "Custom HF model endpoint",
             "description": "(Only used if you select 'Other' above.) Enter the HuggingFace id of the text generation model you wish to query via the inference API. Alternatively, if you have hosted a model on HF Inference Endpoints, you can enter the full URL of the endpoint here.",
             "default": "",
-          },
-          "model_type": {
-            "type": "string",
-            "title": "Model Type (Text or Chat)",
-            "description": "Select the type of model you are querying. You must selected 'chat' if you want to pass conversation history in Chat Turn nodes.",
-            "enum": ["text", "chat"],
+      },
+      "model_type": {
+        "type": "string",
+        "title": "Model Type (Text or Chat)",
+        "description": "Select the type of model you are querying. You must selected 'chat' if you want to pass conversation history in Chat Turn nodes.",
+        "enum": ["text", "chat"],
             "default": "text"
-          },
-          "temperature": {
+      },
+      "temperature": {
               "type": "number",
               "title": "temperature",
               "description": "Controls the 'creativity' or randomness of the response.",
@@ -639,63 +658,63 @@ const HuggingFaceTextInferenceSettings = {
               "minimum": 0,
               "maximum": 5.0,
               "multipleOf": 0.01,
-          },
-          "num_continuations": {
-            "type": "integer",
-            "title": "Number of times to continue generation (ChainForge-specific)",
-            "description": "The number of times to feed the model response back into the model, to continue generating text past the 250 token limit per API call. Only useful for text completions models like gpt2. Set to 0 to ignore.",
-            "default": 0,
+      },
+      "num_continuations": {
+        "type": "integer",
+        "title": "Number of times to continue generation (ChainForge-specific)",
+        "description": "The number of times to feed the model response back into the model, to continue generating text past the 250 token limit per API call. Only useful for text completions models like gpt2. Set to 0 to ignore.",
+        "default": 0,
             "minimum": 0,
             "maximum": 6,
-          },
-          "top_k": {
-            "type": "integer",
-            "title": "top_k",
-            "description": "Sets the maximum number of tokens to sample from on each step. Set to -1 to remain unspecified.",
-            "minimum": -1,
-            "default": -1,
-          },
-          "top_p": {
+      },
+      "top_k": {
+        "type": "integer",
+        "title": "top_k",
+        "description": "Sets the maximum number of tokens to sample from on each step. Set to -1 to remain unspecified.",
+        "minimum": -1,
+        "default": -1,
+      },
+      "top_p": {
               "type": "number",
               "title": "top_p",
               "description": "Sets the maximum cumulative probability of tokens to sample from (from 0 to 1.0). Set to -1 to remain unspecified.",
-              "default": -1,
-              "minimum": -1,
-              "maximum": 1,
+        "default": -1,
+        "minimum": -1,
+        "maximum": 1,
               "multipleOf": 0.001,
-          },
-          "repetition_penalty": {
-            "type": "number",
-            "title": "repetition_penalty",
-            "description": "The more a token is used within generation the more it is penalized to not be picked in successive generation passes. Set to -1 to remain unspecified.",
-            "minimum": -1,
+      },
+      "repetition_penalty": {
+        "type": "number",
+        "title": "repetition_penalty",
+        "description": "The more a token is used within generation the more it is penalized to not be picked in successive generation passes. Set to -1 to remain unspecified.",
+        "minimum": -1,
             "default": -1,
             "maximum": 100,
             "multipleOf": 0.01,
-          },
-          "max_new_tokens": {
-            "type": "integer",
-            "title": "max_new_tokens",
-            "description": "The amount of new tokens to be generated. Free HF models only support up to 250 tokens. Set to -1 to remain unspecified.",
-            "default": 250,
+      },
+      "max_new_tokens": {
+        "type": "integer",
+        "title": "max_new_tokens",
+        "description": "The amount of new tokens to be generated. Free HF models only support up to 250 tokens. Set to -1 to remain unspecified.",
+        "default": 250,
             "minimum": -1,
             "maximum": 250,
-          },
-          "do_sample": {
+      },
+      "do_sample": {
             "type": "boolean",
             "title": "do_sample",
             "description": "Whether or not to use sampling. Default is True; uses greedy decoding otherwise.",
             "enum": [true, false],
             "default": true,
-          },
-          "use_cache": {
+      },
+"use_cache": {
             "type": "boolean",
             "title": "use_cache",
             "description": "Whether or not to fetch from HF's cache. There is a cache layer on the inference API to speedup requests HF has already seen. Most models can use those results as is as models are deterministic (meaning the results will be the same anyway). However if you use a non-deterministic model, you can set this parameter to prevent the caching mechanism from being used resulting in a real new query.",
             "enum": [true, false],
             "default": false,
-          },
-      }
+    },
+}
   },
 
   uiSchema: {
@@ -742,7 +761,174 @@ const HuggingFaceTextInferenceSettings = {
   postprocessors: {}
 };
 
-// A lookup table indexed by base_model. 
+const AlephAlphaLuminousSettings = {
+  fullName: "Aleph Alpha Luminous",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "AA-Luminous",
+      },
+      model: {
+        type: "string",
+        title: "Model",
+        description:
+          "Select a suggested Aleph Alpha model to query using the Inference API. For more details, check out https://huggingface.co/inference-api",
+        enum: [
+          "luminous-extended",
+          "luminous-extended-control",
+          "luminous-base-control",
+          "luminous-base",
+          "luminous-supreme",
+          "luminous-supreme-control"
+        ],
+        default: "luminous-base",
+      },
+      custom_model: {
+        type: "string",
+        title: "Custom HF model endpoint",
+        description:
+          "(Only used if you select 'Other' above.) Enter the HuggingFace id of the text generation model you wish to query via the inference API. Alternatively, if you have hosted a model on HF Inference Endpoints, you can enter the full URL of the endpoint here.",
+        default: "",
+      },
+      model_type: {
+        type: "string",
+        title: "Model Type (Text or Chat)",
+        description:
+          "Select the type of model you are querying. You must selected 'chat' if you want to pass conversation history in Chat Turn nodes.",
+        enum: ["text", "chat"],
+        default: "text",
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description: "Controls the 'creativity' or randomness of the response.",
+        default: 1.0,
+        minimum: 0,
+        maximum: 5.0,
+        multipleOf: 0.01,
+      },
+      num_continuations: {
+        type: "integer",
+        title: "Number of times to continue generation (ChainForge-specific)",
+        description:
+          "The number of times to feed the model response back into the model, to continue generating text past the 250 token limit per API call. Only useful for text completions models like gpt2. Set to 0 to ignore.",
+        default: 0,
+        minimum: 0,
+        maximum: 6,
+      },
+      top_k: {
+        type: "integer",
+        title: "top_k",
+        description:
+          "Sets the maximum number of tokens to sample from on each step. Set to -1 to remain unspecified.",
+        minimum: -1,
+        default: -1,
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description:
+          "Sets the maximum cumulative probability of tokens to sample from (from 0 to 1.0). Set to -1 to remain unspecified.",
+        default: -1,
+        minimum: -1,
+        maximum: 1,
+        multipleOf: 0.001,
+      },
+      repetition_penalty: {
+        type: "number",
+        title: "repetition_penalty",
+        description:
+          "The more a token is used within generation the more it is penalized to not be picked in successive generation passes. Set to -1 to remain unspecified.",
+        minimum: -1,
+        default: -1,
+        maximum: 100,
+        multipleOf: 0.01,
+      },
+      max_new_tokens: {
+        type: "integer",
+        title: "max_new_tokens",
+        description:
+          "The amount of new tokens to be generated. Free HF models only support up to 250 tokens. Set to -1 to remain unspecified.",
+        default: 250,
+        minimum: -1,
+        maximum: 250,
+      },
+      do_sample: {
+        type: "boolean",
+        title: "do_sample",
+        description:
+          "Whether or not to use sampling. Default is True; uses greedy decoding otherwise.",
+        enum: [true, false],
+        default: true,
+      },
+      use_cache: {
+        type: "boolean",
+        title: "use_cache",
+        description:
+          "Whether or not to fetch from HF's cache. There is a cache layer on the inference API to speedup requests HF has already seen. Most models can use those results as is as models are deterministic (meaning the results will be the same anyway). However if you use a non-deterministic model, you can set this parameter to prevent the caching mechanism from being used resulting in a real new query.",
+        enum: [true, false],
+        default: false,
+      },
+    },
+  },
+  uiSchema: {
+    "ui:submitButtonOptions": {
+      props: {
+        disabled: false,
+        className: "mantine-UnstyledButton-root mantine-Button-root",
+      },
+      norender: false,
+      submitText: "Submit",
+    },
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:help": "Defaults to Falcon.7B.",
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    max_new_tokens: {
+      "ui:help": "Defaults to unspecified (-1)",
+    },
+    top_k: {
+      "ui:help": "Defaults to unspecified (-1)",
+    },
+    top_p: {
+      "ui:help": "Defaults to unspecified (-1)",
+      "ui:widget": "range",
+    },
+    repetition_penalty: {
+      "ui:help": "Defaults to unspecified (-1)",
+      "ui:widget": "range",
+    },
+    max_new_tokens: {
+      "ui:help": "Defaults to 250 (max)",
+    },
+    num_continuations: {
+      "ui:widget": "range",
+    },
+    do_sample: {
+      "ui:widget": "radio",
+    },
+    use_cache: {
+      "ui:widget": "radio",
+      "ui:help":
+        "Defaults to false in ChainForge. This differs from the HuggingFace docs, as CF's intended use case is evaluation, and for evaluation we want different responses each query.",
+    },
+  },
+  postprocessors: {},
+};
+
+// A lookup table indexed by base_model.
 export let ModelSettings = {
   'gpt-3.5-turbo': ChatGPTSettings,
   'gpt-4': GPT4Settings,
@@ -751,7 +937,8 @@ export let ModelSettings = {
   'dalai': DalaiModelSettings,
   'azure-openai': AzureOpenAISettings,
   'hf': HuggingFaceTextInferenceSettings,
-};
+  "luminous-base": AlephAlphaLuminousSettings
+  };
 
 /**
  * Add new model provider to the AvailableLLMs list. Also adds the respective ModelSettings schema and rate limit.
