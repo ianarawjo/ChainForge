@@ -4,6 +4,7 @@ import styled from "styled-components";
 import LLMItemButtonGroup from "./LLMItemButtonGroup"
 import { IconTemperature } from '@tabler/icons-react';
 import { getTemperatureSpecForModel } from "./ModelSettingSchemas";
+import { Tooltip } from "@mantine/core";
 
 // == The below function perc2color modified from: ==
 // License: MIT - https://opensource.org/licenses/MIT
@@ -87,8 +88,10 @@ const LLMListItem = ({ item, provided, snapshot, removeCallback, onClickSettings
       <div>
         <CardHeader>{item.emoji}&nbsp;{item.name}{
             temperature !== undefined ?
-              (<TemperatureStatus style={{color: tempColor}}>&nbsp;<IconTemperature size={14} stroke={2} style={{position: 'relative', top: '2px', marginRight: '-3px'}} />:{temperature !== undefined ? temperature : ""}</TemperatureStatus>)
-              : (<></>)}
+              (<Tooltip label={"temp = " + (temperature || "0")} withArrow>
+                <TemperatureStatus style={{color: tempColor}}>&nbsp;<IconTemperature size={14} stroke={2} style={{position: 'relative', top: '2px', marginRight: '-3px'}} />:{temperature !== undefined ? temperature : ""}</TemperatureStatus>
+              </Tooltip>
+              ): (<></>)}
         </CardHeader>
         <LLMItemButtonGroup onClickTrash={() => removeCallback(item.key)} ringProgress={progress} onClickSettings={onClickSettings} />
       </div>
