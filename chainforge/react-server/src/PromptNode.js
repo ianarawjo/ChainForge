@@ -1,16 +1,17 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Switch, Button, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
+import { Switch, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconSearch, IconList } from '@tabler/icons-react';
+import { IconList } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent'
 import { LLMListContainer } from './LLMListComponent'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 import fetch_from_backend from './fetch_from_backend';
-import { PromptTemplate, escapeBraces } from './backend/template';
+import { escapeBraces } from './backend/template';
 import ChatHistoryView from './ChatHistoryView';
+import InspectFooter from './InspectFooter';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -565,6 +566,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
                     return;
                 }
 
+                if (responsesWillChange)
+                    setUninspectedResponses(true);
+                setResponsesWillChange(false);
+
                 // All responses collected! Change status to 'ready':
                 setStatus('ready');
                 setContChatToggleDisabled(false);
@@ -577,10 +582,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 // Save prompt text so we remember what prompt we have responses cache'd for:
                 setPromptTextOnLastRun(promptText);
                 setNumGenerationsLastRun(numGenerations);
-
-                if (responsesWillChange)
-                    setUninspectedResponses(true);
-                setResponsesWillChange(false);
 
                 // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
                 // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
@@ -762,13 +763,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
         : <></>}
 
         { jsonResponses && jsonResponses.length > 0 && status !== 'loading' ? 
-            (<div className="eval-inspect-response-footer nodrag" onClick={showResponseInspector} style={{display: 'flex', justifyContent:'center'}}>
-                <Button color='blue' variant='subtle' w='100%' >
-                    Inspect responses&nbsp;
-                    <IconSearch size='12pt'/>
-                    { uninspectedResponses ? <div className="something-changed-circle"></div> : <></>}
-                </Button>
-            </div>) : <></>
+            (<InspectFooter onClick={showResponseInspector} showNotificationDot={uninspectedResponses} />
+            ) : <></>
         }
         </div>
     </div>
