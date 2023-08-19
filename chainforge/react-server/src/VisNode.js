@@ -656,7 +656,7 @@ const VisNode = ({ data, id }) => {
             if (json.responses && json.responses.length > 0) {
 
                 // Store responses and extract + store vars
-                setResponses(json.responses);
+                setResponses(json.responses.toReversed());
 
                 // Find all vars in responses
                 let varnames = new Set();

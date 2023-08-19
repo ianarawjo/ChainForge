@@ -769,8 +769,8 @@ const App = () => {
             </MenuTooltip>): <></>}
           </Menu.Dropdown>
         </Menu>
-        <Button onClick={exportFlow} size="sm" variant="outline" compact mr='xs'>Export</Button>
-        <Button onClick={importFlowFromFile} size="sm" variant="outline" compact>Import</Button>
+        <Button onClick={exportFlow} size="sm" variant="outline" bg="#eee" compact mr='xs'>Export</Button>
+        <Button onClick={importFlowFromFile} size="sm" variant="outline" bg="#eee" compact>Import</Button>
       </div>
       <div style={{position: 'fixed', right: '10px', top: '10px', zIndex: 8}}>
         {IS_RUNNING_LOCALLY ? (<></>) : (
@@ -782,7 +782,7 @@ const App = () => {
             {clipboard.copied ? 'Link copied!' : (waitingForShare ? 'Sharing...' : 'Share')}
           </Button>
         )}
-        <Button onClick={onClickNewFlow} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> New Flow </Button>
+        <Button onClick={onClickNewFlow} size="sm" variant="outline" bg="#eee" compact mr='xs' style={{float: 'left'}}> New Flow </Button>
         <Button onClick={onClickExamples} size="sm" variant="filled" compact mr='xs' style={{float: 'left'}}> Example Flows </Button>
         <Button onClick={onClickSettings} size="sm" variant="gradient" compact><IconSettings size={"90%"} /></Button>
       </div>

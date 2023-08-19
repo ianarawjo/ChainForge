@@ -27,10 +27,10 @@ const createJSEvalCodeFor = (responseFormat, operation, value, valueType) => {
       returnBody = `${responseObj}.includes(${valueObj})`;
       break;
     case 'starts with':
-      returnBody = `${responseObj}.startsWith(${valueObj})`;
+      returnBody = `${responseObj}.trim().startsWith(${valueObj})`;
       break;
     case 'ends with':
-      returnBody = `${responseObj}.endsWith(${valueObj})`;
+      returnBody = `${responseObj}.trim().endsWith(${valueObj})`;
       break;
     case 'equals':
       returnBody = `${responseObj} === ${valueObj}`;
@@ -71,8 +71,8 @@ const SimpleEvalNode = ({data, id}) => {
   const [valueFieldDisabled, setValueFieldDisabled] = useState(data.varSelected || false);
   const [lastTextValue, setLastTextValue] = useState("");
 
-  const [availableVars, setAvailableVars] = useState([]);
-  const [availableMetavars, setAvailableMetavars] = useState([]);
+  const [availableVars, setAvailableVars] = useState(data.availableVars || []);
+  const [availableMetavars, setAvailableMetavars] = useState(data.availableMetavars || []);
 
   const dirtyStatus = useCallback(() => {
     if (status === 'ready') 
@@ -80,18 +80,19 @@ const SimpleEvalNode = ({data, id}) => {
   }, [status]);
 
   const handleSetVarAsValue = useCallback((e, valueType) => {
+    const txt = `of ${e.target.innerText} (${valueType})`;
     setLastTextValue(textValue);
-    setTextValue(`of ${e.target.innerText} (${valueType})`);
+    setTextValue(txt);
     setVarValue(e.target.innerText);
     setVarValueType(valueType);
     setValueFieldDisabled(true);
-    setDataPropsForNode(id, { varValue: e.target.innerText, varValueType: valueType, varSelected: true });
+    setDataPropsForNode(id, { varValue: e.target.innerText, varValueType: valueType, varSelected: true, textValue: txt });
     dirtyStatus();
   }, [textValue, dirtyStatus]);
   const handleClearValueField = useCallback(() => {
     setTextValue(lastTextValue);
     setValueFieldDisabled(false);
-    setDataPropsForNode(id, { varSelected: false });
+    setDataPropsForNode(id, { varSelected: false, textValue: lastTextValue });
     dirtyStatus();
   }, [lastTextValue, dirtyStatus]);
 
@@ -169,11 +170,14 @@ const SimpleEvalNode = ({data, id}) => {
             if (resp_obj.metavars)
                 Object.keys(resp_obj.metavars).forEach(v => metavars.add(v));
         });
-        setAvailableVars(Array.from(varnames));
-        setAvailableMetavars(Array.from(metavars).filter(v => !(v.startsWith('LLM_'))));
+        const avs = Array.from(varnames);
+        const amvs = Array.from(metavars).filter(v => !(v.startsWith('LLM_')));
+        setAvailableVars(avs);
+        setAvailableMetavars(amvs);
+        setDataPropsForNode(id, { availableVars: avs, availableMetavars: amvs });
       }
     });
-  }, [data, id, inputEdgesForNode]);
+  }, [data, id, inputEdgesForNode, setDataPropsForNode]);
 
   if (data.input) {
     // If there's a change in inputs...
@@ -234,8 +238,7 @@ const SimpleEvalNode = ({data, id}) => {
                    onBlur={(e) => setDataPropsForNode(id, {textValue: e.target.value})}
                    onKeyDown={dirtyStatus}
                    disabled={valueFieldDisabled}
-                   className="nodrag"
-                   variant={valueFieldDisabled ? "filled" : "default"} />
+                   className="nodrag" />
         { valueFieldDisabled ? (
           <Tooltip label='Clear variable' withArrow position="right" withinPortal>
             <ActionIcon variant="light" size='lg' onClick={handleClearValueField}>
