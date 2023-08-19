@@ -106,7 +106,6 @@ const EvaluatorNode = ({ data, id }) => {
   const [lastRunLogs, setLastRunLogs] = useState("");
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
-  const [mapScope, setMapScope] = useState('response');
 
   // On initialization
   useEffect(() => {
@@ -155,7 +154,7 @@ const EvaluatorNode = ({ data, id }) => {
     setDataPropsForNode(id, {code: code});
   };
 
-  const handleRunClick = (event) => {
+  const handleRunClick = () => {
     // Disallow running a Python evaluator node when not on localhost:
     if (!IS_RUNNING_LOCALLY && progLang === 'python') {
       alertModal.current.trigger(
@@ -205,7 +204,7 @@ const EvaluatorNode = ({ data, id }) => {
       id: id,
       code: codeTextOnRun,
       responses: input_node_ids,
-      scope: mapScope,
+      scope: 'response',
       script_paths: script_paths,
     }).then(function(json) {
         // Store any Python print output

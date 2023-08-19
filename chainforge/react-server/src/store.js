@@ -25,7 +25,7 @@ export const colorPalettes = {
   var: varColorPalette,
 }
 
-const refreshableOutputNodeTypes = new Set(['evaluator', 'prompt', 'inspect', 'vis', 'llmeval', 'textfields', 'chat']);
+const refreshableOutputNodeTypes = new Set(['evaluator', 'prompt', 'inspect', 'vis', 'llmeval', 'textfields', 'chat', 'simpleval']);
 
 // A global store of variables, used for maintaining state
 // across ChainForge and ReactFlow components.
@@ -234,7 +234,7 @@ const useStore = create((set, get) => ({
     // Get the target node information
     const target = get().getNode(connection.target);
     
-    if (target.type === 'vis' || target.type === 'inspect') {
+    if (target.type === 'vis' || target.type === 'inspect' || target.type === 'simpleval') {
       get().setDataPropsForNode(target.id, { input: connection.source });
     }
 
