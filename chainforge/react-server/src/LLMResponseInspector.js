@@ -5,7 +5,7 @@
  * be deployed in multiple locations.  
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect } from '@mantine/core';
+import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect, Checkbox, Flex } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconTable, IconLayoutList } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
@@ -147,6 +147,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   const [tableColVar, setTableColVar] = useState("LLM");
   const [userSelectedTableCol, setUserSelectedTableCol] = useState(false);
 
+  // State of the 'only show scores' toggle when eval results are present
+  const [showEvalScoreOptions, setShowEvalScoreOptions] = useState(false);
+  const [onlyShowScores, setOnlyShowScores] = useState(false);
+
   // Global lookup for what color to use per LLM
   const getColorForLLMAndSetIfNotFound = useStore((state) => state.getColorForLLMAndSetIfNotFound);
 
@@ -166,6 +170,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     });
     found_vars = Array.from(found_vars);
     found_llms = Array.from(found_llms);
+
+    // Whether there's some evaluation scores in the responses
+    const contains_eval_res = jsonResponses.some(res_obj => res_obj.eval_res !== undefined);
+    setShowEvalScoreOptions(contains_eval_res);
 
     // Set the variables accessible in the MultiSelect for 'group by'
     let msvars = found_vars.map(name => (
@@ -234,7 +242,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             {eval_res_items ? (
               <p className="small-response-metrics">{getEvalResultStr(resp_str_to_eval_res[r])}</p>
             ) : <></>}
-            <pre className="small-response">{r}</pre>
+            {(contains_eval_res && onlyShowScores) ? <pre>{}</pre> : 
+              <pre className="small-response">{r}</pre>}
           </div>
         ));
 
@@ -406,7 +415,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       setResponses(divs);
     }
 
-  }, [multiSelectValue, jsonResponses, wideFormat, viewFormat, tableColVar]);
+  }, [multiSelectValue, jsonResponses, wideFormat, viewFormat, tableColVar, onlyShowScores]);
 
   // When the user clicks an item in the drop-down,
   // we want to autoclose the multiselect drop-down:
@@ -434,32 +443,45 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     : <></>}
 
     {viewFormat === "table" ? 
-      <NativeSelect 
-        value={tableColVar}
-        onChange={(event) => {
-          setTableColVar(event.currentTarget.value);
-          setUserSelectedTableCol(true);
-        }}
-        data={multiSelectVars}
-        label="Select the main variable to use for columns:"
-        mb="sm"
-      />
+      <Flex gap='xl' align='end'>
+        <NativeSelect 
+          value={tableColVar}
+          onChange={(event) => {
+            setTableColVar(event.currentTarget.value);
+            setUserSelectedTableCol(true);
+          }}
+          data={multiSelectVars}
+          label="Select the main variable to use for columns:"
+          mb="sm"
+          w="80%"
+        />
+        <Checkbox checked={onlyShowScores} 
+                  label="Only show scores" 
+                  onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
+                  mb='md'
+                  display={showEvalScoreOptions ? 'inherit' : 'none'} />
+      </Flex>
     : <></>}
 
     {wideFormat === false || viewFormat === "hierarchy" ?
-      <div>
+      <Flex gap='xl' align='end'>
         <MultiSelect ref={multiSelectRef}
                     onChange={handleMultiSelectValueChange}
                     className='nodrag nowheel inspect-multiselect'
-                    label={<span style={{marginTop: '0px'}}>Group responses by (order matters):</span>}
+                    label="Group responses by (order matters):"
                     data={multiSelectVars}
                     placeholder="Pick vars to group responses, in order of importance"
                     size={wideFormat ? 'sm' : 'xs'}
                     value={multiSelectValue}
                     clearSearchOnChange={true}
                     clearSearchOnBlur={true}
-                    w='100%' />
-      </div>
+                    w='80%' />
+        <Checkbox checked={onlyShowScores} 
+                  label="Only show scores" 
+                  onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
+                  mb='xs'
+                  display={showEvalScoreOptions ? 'inherit' : 'none'} />
+      </Flex>
     : <></>}
 
     <div className="nowheel nodrag">

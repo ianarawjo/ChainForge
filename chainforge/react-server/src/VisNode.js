@@ -68,7 +68,7 @@ const genUniqueShortnames = (names, max_chars_per_line=32) => {
     // Generate unique 'shortnames' to refer to each name:
     let past_shortnames_counts = {};
     let shortnames = {};
-    const max_lines = 2;
+    const max_lines = 8;
     for (const name of names) {
         // Truncate string up to maximum num of chars
         let sn = truncStr(name, max_chars_per_line * max_lines - 3);

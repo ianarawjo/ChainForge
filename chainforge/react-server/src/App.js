@@ -720,8 +720,8 @@ const App = () => {
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Label>Input Data</Menu.Label>
-            <MenuTooltip label="Specify input text to prompt or chat nodes." >
-              <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields </Menu.Item>
+            <MenuTooltip label="Specify input text to prompt or chat nodes. You can also declare variables in brackets {} to chain TextFields together." >
+              <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields Node </Menu.Item>
             </MenuTooltip>
             <MenuTooltip label="Specify input text as comma-separated values. Good for specifying lots of short text values. An alternative to TextFields node.">
               <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>
