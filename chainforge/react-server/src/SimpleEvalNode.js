@@ -63,13 +63,12 @@ const SimpleEvalNode = ({data, id}) => {
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
 
-  const [responseFormat, setResponseFormat] = useState("response");
-  const [operation, setOperation] = useState("contains");
-
-  const [textValue, setTextValue] = useState("");
-  const [varValue, setVarValue] = useState("");
-  const [varValueType, setVarValueType] = useState("var");
-  const [valueFieldDisabled, setValueFieldDisabled] = useState(false);
+  const [responseFormat, setResponseFormat] = useState(data.responseFormat || "response");
+  const [operation, setOperation] = useState(data.operation || "contains");
+  const [textValue, setTextValue] = useState(data.textValue || "");
+  const [varValue, setVarValue] = useState(data.varValue || "");
+  const [varValueType, setVarValueType] = useState(data.varValueType || "var");
+  const [valueFieldDisabled, setValueFieldDisabled] = useState(data.varSelected || false);
   const [lastTextValue, setLastTextValue] = useState("");
 
   const [availableVars, setAvailableVars] = useState([]);
@@ -86,11 +85,13 @@ const SimpleEvalNode = ({data, id}) => {
     setVarValue(e.target.innerText);
     setVarValueType(valueType);
     setValueFieldDisabled(true);
+    setDataPropsForNode(id, { varValue: e.target.innerText, varValueType: valueType, varSelected: true });
     dirtyStatus();
   }, [textValue, dirtyStatus]);
   const handleClearValueField = useCallback(() => {
     setTextValue(lastTextValue);
     setValueFieldDisabled(false);
+    setDataPropsForNode(id, { varSelected: false });
     dirtyStatus();
   }, [lastTextValue, dirtyStatus]);
 
@@ -209,6 +210,7 @@ const SimpleEvalNode = ({data, id}) => {
                       defaultValue={responseFormat}
                       onChange={(e) => {
                         setResponseFormat(e.target.value);
+                        setDataPropsForNode(id, { responseFormat: e.target.value });
                         dirtyStatus();
                       }} />
       </Flex>
@@ -220,6 +222,7 @@ const SimpleEvalNode = ({data, id}) => {
                       defaultValue={operation}
                       onChange={(e) => {
                         setOperation(e.target.value);
+                        setDataPropsForNode(id, { operation: e.target.value });
                         dirtyStatus();
                       }} />
       </Flex>
@@ -228,6 +231,7 @@ const SimpleEvalNode = ({data, id}) => {
         <Text mt='6px' fz='sm'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the value</Text>
         <TextInput value={textValue} 
                    onChange={(e) => setTextValue(e.target.value)} 
+                   onBlur={(e) => setDataPropsForNode(id, {textValue: e.target.value})}
                    onKeyDown={dirtyStatus}
                    disabled={valueFieldDisabled}
                    className="nodrag"
