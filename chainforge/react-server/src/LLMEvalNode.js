@@ -9,6 +9,7 @@ import fetch_from_backend from './fetch_from_backend';
 import { AvailableLLMs, getDefaultModelSettings } from './ModelSettingSchemas';
 import { LLMListContainer } from './LLMListComponent';
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
+import InspectFooter from './InspectFooter';
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt. 
 const PLACEHOLDER_PROMPT = "Respond with 'true' if the text below has a positive sentiment, and 'false' if not. Do not reply with anything else.";
@@ -26,7 +27,9 @@ const LLMEvaluatorNode = ({ data, id }) => {
   const [promptText, setPromptText] = useState(data.prompt || "");
   const [status, setStatus] = useState('none');
   const alertModal = useRef(null);
+
   const inspectModal = useRef(null);
+  const [uninspectedResponses, setUninspectedResponses] = useState(false);
 
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
@@ -99,6 +102,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
   
         console.log(json.responses);
         setLastResponses(json.responses);
+        setUninspectedResponses(true);
         setStatus('ready');
         setProgress(undefined);
       }).catch(handleError);
@@ -120,8 +124,10 @@ const LLMEvaluatorNode = ({ data, id }) => {
   }, []);
 
   const showResponseInspector = useCallback(() => {
-    if (inspectModal && inspectModal.current && lastResponses)
+    if (inspectModal && inspectModal.current && lastResponses) {
+      setUninspectedResponses(false);
       inspectModal.current.trigger();
+    }
   }, [inspectModal, lastResponses]);
 
   useEffect(() => {
@@ -189,9 +195,10 @@ const LLMEvaluatorNode = ({ data, id }) => {
         />
       
       { lastResponses && lastResponses.length > 0 ? 
-        (<div className="eval-inspect-response-footer nodrag" onClick={showResponseInspector} style={{display: 'flex', justifyContent:'center'}}>
-          <Button color='blue' variant='subtle' w='100%' >Inspect scores&nbsp;<IconSearch size='12pt'/></Button>
-        </div>) : <></>}
+        (<InspectFooter label={<>Inspect scores&nbsp;<IconSearch size='12pt'/></>}
+                        onClick={showResponseInspector}
+                        showNotificationDot={uninspectedResponses} 
+         />) : <></>}
     </div>
   );
 };

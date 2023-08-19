@@ -8,7 +8,7 @@ import ReactFlow, {
 } from 'react-flow-renderer';
 import { Button, Menu, LoadingOverlay, Text, Box, List, Loader, Header, Chip, Badge, Card, Accordion, Tooltip } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
-import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink, IconRobot } from '@tabler/icons-react';
+import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink, IconRobot, IconRuler2 } from '@tabler/icons-react';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
 import EvaluatorNode from './EvaluatorNode';
@@ -38,6 +38,7 @@ import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
 
 // Device / Browser detection
 import { isMobile, isChrome, isFirefox, isEdgeChromium, isChromium } from 'react-device-detect';
+import SimpleEvalNode from './SimpleEvalNode';
 const IS_ACCEPTED_BROWSER = (isChrome || isChromium || isEdgeChromium || isFirefox || navigator?.brave !== undefined) && !isMobile;
 
 const selector = (state) => ({
@@ -75,6 +76,7 @@ const nodeTypes = {
   textfields: TextFieldsNode, // Register the custom node
   prompt: PromptNode,
   chat: PromptNode,
+  simpleval: SimpleEvalNode,
   evaluator: EvaluatorNode,
   llmeval: LLMEvaluatorNode,
   vis: VisNode,
@@ -110,9 +112,12 @@ const getSharedFlowURLParam = () => {
   return undefined;
 };
 
+const MenuTooltip = ({ label, children }) => {
+  return (<Tooltip label={label} position="right" width={200} multiline withArrow arrowSize={10}>{children}</Tooltip>);
+};
+
 // const connectionLineStyle = { stroke: '#ddd' };
 const snapGrid = [16, 16];
-let saveIntervalInitialized = false;
 
 const App = () => {
 
@@ -171,6 +176,10 @@ const App = () => {
   const addChatTurnNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'chatTurn-'+Date.now(), type: 'chat', data: { prompt: '' }, position: {x: x-200, y:y-100} });
+  };
+  const addSimpleEvalNode = () => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'simpleEval-'+Date.now(), type: 'simpleval', data: {}, position: {x: x-200, y:y-100} });
   };
   const addEvalNode = (progLang) => {
     const { x, y } = getViewportCenter();
@@ -704,31 +713,64 @@ const App = () => {
                           position="top-start"
                           width={220}
                           closeOnClickOutside={true}
+                          closeOnEscape
                       >
           <Menu.Target>
-              <Button size="sm" variant="gradient" compact mr='sm'>Add Node +</Button>
+            <Button size="sm" variant="gradient" compact mr='sm'>Add Node +</Button>
           </Menu.Target>
           <Menu.Dropdown>
-              <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields </Menu.Item>
-              <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
-              <Menu.Item onClick={addPromptNode} icon={'💬'}> Prompt Node </Menu.Item>
-              <Menu.Item onClick={addChatTurnNode} icon={'🗣'}> Chat Turn Node </Menu.Item>
-              <Menu.Item onClick={() => addEvalNode('javascript')} icon={<IconTerminal size="16px" />}> JavaScript Evaluator Node </Menu.Item>
-              {IS_RUNNING_LOCALLY ? (
-                <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator Node </Menu.Item>
-              ): <></>}
-              <Menu.Item onClick={addLLMEvalNode} icon={<IconRobot size="16px" />}> LLM Scorer Node</Menu.Item>
-              <Menu.Item onClick={addVisNode} icon={'📊'}> Vis Node </Menu.Item>
-              <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
+            <Menu.Label>Input Data</Menu.Label>
+            <MenuTooltip label="Specify input text to prompt or chat nodes. You can also declare variables in brackets {} to chain TextFields together." >
+              <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields Node </Menu.Item>
+            </MenuTooltip>
+            <MenuTooltip label="Specify input text as comma-separated values. Good for specifying lots of short text values. An alternative to TextFields node.">
               <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>
+            </MenuTooltip>
+            <MenuTooltip label="Import or create a spreadhseet of data to use as input to prompt or chat nodes.">
+              <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
+            </MenuTooltip>
+            <Menu.Divider />
+            <Menu.Label>Prompters</Menu.Label>
+            <MenuTooltip label="Prompt one or multiple LLMs. Specify prompt variables in brackets {}.">
+              <Menu.Item onClick={addPromptNode} icon={'💬'}> Prompt Node </Menu.Item>
+            </MenuTooltip>
+            <MenuTooltip label="Start or continue a conversation with chat models. Attach Prompt Node output as past context to continue chatting past the first turn.">
+              <Menu.Item onClick={addChatTurnNode} icon={'🗣'}> Chat Turn Node </Menu.Item>
+            </MenuTooltip>
+            <Menu.Divider />
+            <Menu.Label>Evaluators</Menu.Label>
+            <MenuTooltip label="Evaluate responses with a simple check (no coding required).">
+              <Menu.Item onClick={addSimpleEvalNode} icon={<IconRuler2 size="16px" />}> Simple Evaluator Node </Menu.Item>
+            </MenuTooltip>
+            <MenuTooltip label="Evaluate responses by writing JavaScript code.">
+              <Menu.Item onClick={() => addEvalNode('javascript')} icon={<IconTerminal size="16px" />}> JavaScript Evaluator Node </Menu.Item>
+            </MenuTooltip>
+            {IS_RUNNING_LOCALLY ? (<MenuTooltip label="Evaluate responses by writing Python code.">
+                  <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator Node </Menu.Item>
+            </MenuTooltip>): <></>}
+            <MenuTooltip label="Evaluate responses with an LLM like GPT-4.">
+              <Menu.Item onClick={addLLMEvalNode} icon={<IconRobot size="16px" />}> LLM Scorer Node</Menu.Item>
+            </MenuTooltip>
+            <Menu.Divider />
+            <Menu.Label>Visualizers</Menu.Label>
+            <MenuTooltip label="Plot evaluation results. (Attach an evaluator or scorer node as input.)">
+              <Menu.Item onClick={addVisNode} icon={'📊'}> Vis Node </Menu.Item>
+            </MenuTooltip>
+            <MenuTooltip label="Used to inspect responses from prompter or evaluation nodes, without opening up the pop-up view.">
+              <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
+            </MenuTooltip>
+            <Menu.Divider />
+            <Menu.Label>Misc</Menu.Label>
+            <MenuTooltip label="Make a comment about your flow.">
               <Menu.Item onClick={addCommentNode} icon={'✏️'}> Comment Node </Menu.Item>
-              {IS_RUNNING_LOCALLY ? (
-                <Menu.Item onClick={addScriptNode} icon={<IconSettingsAutomation size="16px" />}> Global Python Scripts </Menu.Item>
-              ): <></>}
+            </MenuTooltip>
+            {IS_RUNNING_LOCALLY ? (<MenuTooltip label="Specify directories to load as local packages, so they can be imported in your Python evaluator nodes (add to sys path).">
+              <Menu.Item onClick={addScriptNode} icon={<IconSettingsAutomation size="16px" />}> Global Python Scripts </Menu.Item>
+            </MenuTooltip>): <></>}
           </Menu.Dropdown>
         </Menu>
-        <Button onClick={exportFlow} size="sm" variant="outline" compact mr='xs'>Export</Button>
-        <Button onClick={importFlowFromFile} size="sm" variant="outline" compact>Import</Button>
+        <Button onClick={exportFlow} size="sm" variant="outline" bg="#eee" compact mr='xs'>Export</Button>
+        <Button onClick={importFlowFromFile} size="sm" variant="outline" bg="#eee" compact>Import</Button>
       </div>
       <div style={{position: 'fixed', right: '10px', top: '10px', zIndex: 8}}>
         {IS_RUNNING_LOCALLY ? (<></>) : (
@@ -740,7 +782,7 @@ const App = () => {
             {clipboard.copied ? 'Link copied!' : (waitingForShare ? 'Sharing...' : 'Share')}
           </Button>
         )}
-        <Button onClick={onClickNewFlow} size="sm" variant="outline" compact mr='xs' style={{float: 'left'}}> New Flow </Button>
+        <Button onClick={onClickNewFlow} size="sm" variant="outline" bg="#eee" compact mr='xs' style={{float: 'left'}}> New Flow </Button>
         <Button onClick={onClickExamples} size="sm" variant="filled" compact mr='xs' style={{float: 'left'}}> Example Flows </Button>
         <Button onClick={onClickSettings} size="sm" variant="gradient" compact><IconSettings size={"90%"} /></Button>
       </div>

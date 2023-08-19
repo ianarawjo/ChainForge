@@ -1,16 +1,17 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Menu, Switch, Button, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
+import { Switch, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconSearch, IconList } from '@tabler/icons-react';
+import { IconList } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent'
 import { LLMListContainer } from './LLMListComponent'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 import fetch_from_backend from './fetch_from_backend';
-import { PromptTemplate, escapeBraces } from './backend/template';
+import { escapeBraces } from './backend/template';
 import ChatHistoryView from './ChatHistoryView';
+import InspectFooter from './InspectFooter';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -102,6 +103,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
+  const [uninspectedResponses, setUninspectedResponses] = useState(false);
+  const [responsesWillChange, setResponsesWillChange] = useState(false);
 
   // Chat node specific
   const [contChatWithPriorLLMs, setContChatWithPriorLLMs] = useState(data.contChat !== undefined ? data.contChat : true);
@@ -123,8 +126,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
   }, [llmListContainer, alertModal]);
 
   const showResponseInspector = useCallback(() => {
-    if (inspectModal && inspectModal.current && jsonResponses)
+    if (inspectModal && inspectModal.current && jsonResponses) {
         inspectModal.current.trigger();
+        setUninspectedResponses(false);
+    }
   }, [inspectModal, jsonResponses]);
 
   // Signal that prompt node state is dirty; user should re-run:
@@ -357,8 +362,11 @@ const PromptNode = ({ data, id, type: node_type }) => {
         const num_llms_missing = Object.keys(counts).length;
         if (num_llms_missing === 0) {
             setRunTooltip('Will load responses from cache');
+            setResponsesWillChange(false);
             return;
         }
+
+        setResponsesWillChange(true);
 
         // Tally how many queries per LLM:
         let queries_per_llm = {};
@@ -471,6 +479,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
     // Create a callback to listen for progress
     let onProgressChange = () => {};
     const open_progress_listener = ([response_counts, total_num_responses]) => {
+        setResponsesWillChange(!response_counts || Object.keys(response_counts).length === 0);
+
         const max_responses = Object.keys(total_num_responses).reduce((acc, llm) => acc + total_num_responses[llm], 0);
 
         onProgressChange = (progress_by_llm_key) => {
@@ -555,6 +565,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
                     return;
                 }
+
+                if (responsesWillChange)
+                    setUninspectedResponses(true);
+                setResponsesWillChange(false);
 
                 // All responses collected! Change status to 'ready':
                 setStatus('ready');
@@ -749,9 +763,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
         : <></>}
 
         { jsonResponses && jsonResponses.length > 0 && status !== 'loading' ? 
-            (<div className="eval-inspect-response-footer nodrag" onClick={showResponseInspector} style={{display: 'flex', justifyContent:'center'}}>
-                <Button color='blue' variant='subtle' w='100%' >Inspect responses&nbsp;<IconSearch size='12pt'/></Button>
-            </div>) : <></>
+            (<InspectFooter onClick={showResponseInspector} showNotificationDot={uninspectedResponses} />
+            ) : <></>
         }
         </div>
     </div>

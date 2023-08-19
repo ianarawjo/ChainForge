@@ -21,7 +21,7 @@ const AreYouSureModal = forwardRef(({title, message, onConfirm}, ref) => {
   }
 
   return (
-    <Modal opened={opened} onClose={close} title={title} styles={{header: {backgroundColor: 'red', color: 'white'}, root: {position: 'relative', left: '-5%'}}}>
+    <Modal opened={opened} onClose={close} title={title} styles={{header: {backgroundColor: 'orange', color: 'white'}, root: {position: 'relative', left: '-5%'}}}>
       <Box maw={400} mx="auto" mt='md' mb='md'>
         <Text>{description}</Text>
       </Box>
@@ -32,7 +32,7 @@ const AreYouSureModal = forwardRef(({title, message, onConfirm}, ref) => {
               direction="row"
               wrap="wrap"
             >
-          <Button variant='light' color='red' type="submit" w='40%' onClick={close}>Cancel</Button>
+          <Button variant='light' color='orange' type="submit" w='40%' onClick={close}>Cancel</Button>
           <Button variant='filled' color='blue' type="submit" w='40%' onClick={confirmAndClose}>Confirm</Button>
         </Flex>
     </Modal>

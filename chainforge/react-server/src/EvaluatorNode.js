@@ -16,6 +16,7 @@ import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
 import fetch_from_backend from './fetch_from_backend';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
+import InspectFooter from './InspectFooter';
 
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
@@ -92,6 +93,7 @@ const EvaluatorNode = ({ data, id }) => {
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
+  const [uninspectedResponses, setUninspectedResponses] = useState(false);
 
   // The programming language for the editor. Also determines what 'execute'
   // function will ultimately be called.
@@ -104,7 +106,6 @@ const EvaluatorNode = ({ data, id }) => {
   const [lastRunLogs, setLastRunLogs] = useState("");
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
-  const [mapScope, setMapScope] = useState('response');
 
   // On initialization
   useEffect(() => {
@@ -153,7 +154,7 @@ const EvaluatorNode = ({ data, id }) => {
     setDataPropsForNode(id, {code: code});
   };
 
-  const handleRunClick = (event) => {
+  const handleRunClick = () => {
     // Disallow running a Python evaluator node when not on localhost:
     if (!IS_RUNNING_LOCALLY && progLang === 'python') {
       alertModal.current.trigger(
@@ -203,7 +204,7 @@ const EvaluatorNode = ({ data, id }) => {
       id: id,
       code: codeTextOnRun,
       responses: input_node_ids,
-      scope: mapScope,
+      scope: 'response',
       script_paths: script_paths,
     }).then(function(json) {
         // Store any Python print output
@@ -229,6 +230,10 @@ const EvaluatorNode = ({ data, id }) => {
         setLastResponses(json.responses);
         setCodeTextOnLastRun(codeTextOnRun);
         setLastRunSuccess(true);
+
+        if (status !== 'ready')
+          setUninspectedResponses(true);
+        
         setStatus('ready');
     }).catch((err) => rejected(err.message));
   };
@@ -238,8 +243,10 @@ const EvaluatorNode = ({ data, id }) => {
   };
 
   const showResponseInspector = useCallback(() => {
-    if (inspectModal && inspectModal.current && lastResponses)
+    if (inspectModal && inspectModal.current && lastResponses) {
+      setUninspectedResponses(false);
       inspectModal.current.trigger();
+    }
   }, [inspectModal, lastResponses]);
 
   const default_header = (progLang === 'python') ? 
@@ -342,10 +349,10 @@ const EvaluatorNode = ({ data, id }) => {
       }
 
       { lastRunSuccess && lastResponses && lastResponses.length > 0 ? 
-        (<div className="eval-inspect-response-footer nodrag" onClick={showResponseInspector} style={{display: 'flex', justifyContent:'center'}}>
-          <Button color='blue' variant='subtle' w='100%' >Inspect results&nbsp;<IconSearch size='12pt'/></Button>
-        </div>) : <></>}
-        
+        (<InspectFooter label={<>Inspect results&nbsp;<IconSearch size='12pt'/></>} 
+                        onClick={showResponseInspector} 
+                        showNotificationDot={uninspectedResponses} />
+        ) : <></>}  
     </div>
   );
 };

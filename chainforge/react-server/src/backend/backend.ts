@@ -157,11 +157,6 @@ async function setAPIKeys(api_keys: StringDict): Promise<void> {
     set_api_keys(api_keys);
 }
 
-// def remove_cached_responses(cache_id: str):
-//     cache_files = get_cache_keys_related_to_id(cache_id)
-//     for filename in cache_files:
-//         os.remove(os.path.join(CACHE_DIR, filename))
-
 /**
  * Loads the cache JSON file at filepath. 
  * 'Soft fails' if the file does not exist (returns empty object).
@@ -268,6 +263,10 @@ function matching_settings(cache_llm_spec: Dict | string, llm_spec: Dict | strin
 
 function areSetsEqual(xs: Set<any>, ys: Set<any>): boolean {
     return xs.size === ys.size && [...xs].every((x) => ys.has(x));
+}
+
+function allStringsAreNumeric(strs: Array<string>) {
+  return strs.every(s => !isNaN(parseFloat(s)));
 }
 
 function check_typeof_vals(arr: Array<any>): MetricType {
@@ -948,30 +947,35 @@ export async function evalWithLLM(id: string,
     all_evald_responses = all_evald_responses.concat(resp_objs);
   }
 
-  // Do additional processing to check if all evaluations are boolean-ish (e.g., 'true' and 'false')
-  let all_eval_res = new Set();
+  // Do additional processing to check if all evaluations are 
+  // boolean-ish (e.g., 'true' and 'false') or all numeric-ish (parseable as numbers)
+  let all_eval_res: Set<string> = new Set();
   for (const resp_obj of all_evald_responses) {
     if (!resp_obj.eval_res) continue;
     for (const score of resp_obj.eval_res.items) {
       if (score !== undefined)
         all_eval_res.add(score.trim().toLowerCase());
     }
-    if (all_eval_res.size > 2) 
-      break;  // it's categorical if size is over 2
   }
-  if (all_eval_res.size === 2) {
-    // Check if the results are boolean-ish:
-    if ((all_eval_res.has('true') && all_eval_res.has('false')) || 
-        (all_eval_res.has('yes') && all_eval_res.has('no'))) {
-      // Convert all eval results to boolean datatypes:
-      all_evald_responses.forEach(resp_obj => {
-        resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) => {
-          const li = i.toLowerCase();
-          return li === 'true' || li === 'yes';
-        });
-        resp_obj.eval_res.dtype = 'Categorical';
+
+  // Check if the results are boolean-ish:
+  if (all_eval_res.size === 2 && (all_eval_res.has('true') || all_eval_res.has('false') ||
+      all_eval_res.has('yes') || all_eval_res.has('no'))) {
+    // Convert all eval results to boolean datatypes:
+    all_evald_responses.forEach(resp_obj => {
+      resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) => {
+        const li = i.toLowerCase();
+        return li === 'true' || li === 'yes';
       });
-    }
+      resp_obj.eval_res.dtype = 'Categorical';
+    });
+  // Check if the results are all numeric-ish:
+  } else if (allStringsAreNumeric(Array.from(all_eval_res))) {
+    // Convert all eval results to numeric datatypes:
+    all_evald_responses.forEach(resp_obj => {
+      resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) => parseFloat(i));
+      resp_obj.eval_res.dtype = 'Numeric';
+    });
   }
 
   // Store the evaluated responses in a new cache json:

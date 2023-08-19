@@ -483,9 +483,9 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
   // the current chat completions API provides users no control over the blocking.
   // We need to detect this and fill the response with the safety reasoning:
   if (completion.filters && completion.filters.length > 0) {
-      // Request was blocked. Output why in the response text, repairing the candidate dict to mock up 'n' responses
-      const block_error_msg = `[[BLOCKED_REQUEST]] Request was blocked because it triggered safety filters: ${JSON.stringify(completion.filters)}`
-      completion.candidates = new Array(n).fill({'author': '1', 'content':block_error_msg});
+    // Request was blocked. Output why in the response text, repairing the candidate dict to mock up 'n' responses
+    const block_error_msg = `[[BLOCKED_REQUEST]] Request was blocked because it triggered safety filters: ${JSON.stringify(completion.filters)}`
+    completion.candidates = new Array(n).fill({'author': '1', 'content':block_error_msg});
   }
 
   // Weirdly, google ignores candidate_count if temperature is 0. 

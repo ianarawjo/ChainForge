@@ -210,6 +210,14 @@
   .eval-inspect-response-footer button {
     cursor: zoom-in;
   }
+  /* .blink-inspect-response-footer {
+    animation: blink-footer 0.7s ease-in 1;
+  }
+  @keyframes blink-footer {
+    50% {
+      background-color: #eff6fbb1; 
+    }
+  } */
 
   .ace-editor-container {
     resize:vertical;
@@ -913,6 +921,17 @@
   gap: 10px;
   font-family: system-ui, sans-serif;
   font-size: 14px;
+}
+
+.something-changed-circle {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 0px solid;
+  background-color: #ff0000;
+  opacity: 0.7;
+  margin-bottom: 10px;
+  margin-left: 2px;
 }
 
 /* Model settings form styling */
