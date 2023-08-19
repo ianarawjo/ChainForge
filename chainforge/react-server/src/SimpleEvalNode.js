@@ -87,11 +87,12 @@ const SimpleEvalNode = ({data, id}) => {
     setVarValueType(valueType);
     setValueFieldDisabled(true);
     dirtyStatus();
-  }, [textValue]);
+  }, [textValue, dirtyStatus]);
   const handleClearValueField = useCallback(() => {
     setTextValue(lastTextValue);
     setValueFieldDisabled(false);
-  }, [lastTextValue]);
+    dirtyStatus();
+  }, [lastTextValue, dirtyStatus]);
 
   const handleRunClick = useCallback(() => {
     // Get the ids from the connected input nodes:
@@ -204,7 +205,7 @@ const SimpleEvalNode = ({data, id}) => {
 
       <Flex gap='xs'>
         <Text mt='6px' fz='sm'>Return true if</Text>
-        <NativeSelect data={['response', 'response in lowercase', 'length of response']}
+        <NativeSelect data={['response', 'response in lowercase']}
                       defaultValue={responseFormat}
                       onChange={(e) => {
                         setResponseFormat(e.target.value);
@@ -229,6 +230,7 @@ const SimpleEvalNode = ({data, id}) => {
                    onChange={(e) => setTextValue(e.target.value)} 
                    onKeyDown={dirtyStatus}
                    disabled={valueFieldDisabled}
+                   className="nodrag"
                    variant={valueFieldDisabled ? "filled" : "default"} />
         { valueFieldDisabled ? (
           <Tooltip label='Clear variable' withArrow position="right" withinPortal>

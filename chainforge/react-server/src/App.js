@@ -713,11 +713,13 @@ const App = () => {
                           position="top-start"
                           width={220}
                           closeOnClickOutside={true}
+                          closeOnEscape
                       >
           <Menu.Target>
             <Button size="sm" variant="gradient" compact mr='sm'>Add Node +</Button>
           </Menu.Target>
           <Menu.Dropdown>
+            <Menu.Label>Input Data</Menu.Label>
             <MenuTooltip label="Specify input text to prompt or chat nodes." >
               <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields </Menu.Item>
             </MenuTooltip>
@@ -727,12 +729,16 @@ const App = () => {
             <MenuTooltip label="Import or create a spreadhseet of data to use as input to prompt or chat nodes.">
               <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
             </MenuTooltip>
+            <Menu.Divider />
+            <Menu.Label>Prompters</Menu.Label>
             <MenuTooltip label="Prompt one or multiple LLMs. Specify prompt variables in brackets {}.">
               <Menu.Item onClick={addPromptNode} icon={'💬'}> Prompt Node </Menu.Item>
             </MenuTooltip>
             <MenuTooltip label="Start or continue a conversation with chat models. Attach Prompt Node output as past context to continue chatting past the first turn.">
               <Menu.Item onClick={addChatTurnNode} icon={'🗣'}> Chat Turn Node </Menu.Item>
             </MenuTooltip>
+            <Menu.Divider />
+            <Menu.Label>Evaluators</Menu.Label>
             <MenuTooltip label="Evaluate responses with a simple check (no coding required).">
               <Menu.Item onClick={addSimpleEvalNode} icon={<IconRuler2 size="16px" />}> Simple Evaluator Node </Menu.Item>
             </MenuTooltip>
@@ -745,12 +751,16 @@ const App = () => {
             <MenuTooltip label="Evaluate responses with an LLM like GPT-4.">
               <Menu.Item onClick={addLLMEvalNode} icon={<IconRobot size="16px" />}> LLM Scorer Node</Menu.Item>
             </MenuTooltip>
+            <Menu.Divider />
+            <Menu.Label>Visualizers</Menu.Label>
             <MenuTooltip label="Plot evaluation results. (Attach an evaluator or scorer node as input.)">
               <Menu.Item onClick={addVisNode} icon={'📊'}> Vis Node </Menu.Item>
             </MenuTooltip>
             <MenuTooltip label="Used to inspect responses from prompter or evaluation nodes, without opening up the pop-up view.">
               <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
             </MenuTooltip>
+            <Menu.Divider />
+            <Menu.Label>Misc</Menu.Label>
             <MenuTooltip label="Make a comment about your flow.">
               <Menu.Item onClick={addCommentNode} icon={'✏️'}> Comment Node </Menu.Item>
             </MenuTooltip>
