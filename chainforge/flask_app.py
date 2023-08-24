@@ -1,11 +1,11 @@
-import json, os, asyncio, sys, traceback
+import json, os, sys
 from dataclasses import dataclass
 from enum import Enum
 from typing import List
 from statistics import mean, median, stdev
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from chainforge.promptengine.utils import LLM, call_dalai
+from chainforge.endpoints.dalai import call_dalai
 import requests as py_requests
 
 """ =================
@@ -26,10 +26,6 @@ cors = CORS(app, resources={r"/*": {"origins": "*"}})
 # The cache and examples files base directories
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
-
-LLM_NAME_MAP = {} 
-for model in LLM:
-    LLM_NAME_MAP[model.value] = model
 
 class MetricType(Enum):
     KeyValue = 0
@@ -404,9 +400,8 @@ def fetchOpenAIEval():
             return jsonify({'error': f"Error creating a new directory 'oaievals' at filepath {oaievals_cache_dir}: {str(e)}"})
 
     # Download the preconverted OpenAI eval from the GitHub main branch for ChainForge
-    import requests
     _url = f"https://raw.githubusercontent.com/ianarawjo/ChainForge/main/chainforge/oaievals/{evalname}.cforge"
-    response = requests.get(_url)
+    response = py_requests.get(_url)
 
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
@@ -485,8 +480,6 @@ async def callDalai():
     data = request.get_json()
     if not set(data.keys()).issuperset({'prompt', 'model', 'server', 'n', 'temperature'}):
         return jsonify({'error': 'POST data is improper format.'})
-
-    data['model'] = LLM_NAME_MAP[data['model']]
 
     try:
         query, response = await call_dalai(**data)
