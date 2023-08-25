@@ -1,7 +1,7 @@
 import markdownIt from "markdown-it";
 
-import { Dict, StringDict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse, ChatHistory, ChatHistoryInfo, isEqualChatHistory } from "./typing";
-import { LLM, getEnumName } from "./models";
+import { Dict, StringDict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse, ChatHistoryInfo, isEqualChatHistory } from "./typing";
+import { LLM, NativeLLM, getEnumName } from "./models";
 import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
@@ -13,7 +13,7 @@ import { PromptPermutationGenerator, PromptTemplate } from "./template";
 // """
 
 let LLM_NAME_MAP = {};
-Object.entries(LLM).forEach(([key, value]) => {
+Object.entries(NativeLLM).forEach(([key, value]) => {
   LLM_NAME_MAP[value] = key;
 });
 
@@ -1119,4 +1119,24 @@ export async function fetchOpenAIEval(evalname: string): Promise<Dict> {
   return fetch(`oaievals/${evalname}.cforge`)
               .then(response => response.json())
               .then(res => ({data: res}));
+}
+
+/**
+ * Passes a Python script to load a custom model provider to the Flask backend.
+
+ * @param id A unique id to use to refer to this script. Any cache'd script with the same id will be overwritten.
+ * @param code The Python script to pass, as a string. 
+ * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success, 
+ *          a 'providers' key with a list of all loaded custom provider callbacks, as dicts.
+ */
+export async function initCustomProvider(id: string, code: string): Promise<Dict> {
+  // Attempt to fetch the example flow from the local filesystem
+  // by querying the Flask server: 
+  return fetch(`${FLASK_BASE_URL}app/initCustomProvider`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+    body: JSON.stringify({ id, code })
+  }).then(function(res) {
+    return res.json();
+  });
 }

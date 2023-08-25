@@ -1,4 +1,4 @@
-from typing import Protocol, Optional, TypedDict, Dict, List, Any
+from typing import Protocol, Optional, TypedDict, Dict, List, Literal, Union, Any
 
 """
     OpenAI chat message format typing
@@ -12,26 +12,25 @@ class ChatMessage(TypedDict):
 
 ChatHistory = List[ChatMessage]
 
-"""
-    A protocol to implement for custom endpoint completions
-"""
-class CustomEndpointProtocol(Protocol):
+class ModelProviderProtocol(Protocol):
+    """
+        A Callable protocol to implement for custom model provider completions.
+        See `__call__` for more details.
+    """
     async def __call__(self, 
-                 prompt: str,
-                 model: Optional[str], 
-                 temperature: Optional[float],
-                 chat_history: Optional[ChatHistory],
-                 **kwargs: Any) -> str:
+                       prompt: str,
+                       model: Optional[str], 
+                       chat_history: Optional[ChatHistory],
+                       **kwargs: Any) -> str:
         """
           Define a call to your custom endpoint.
 
           Parameters:
            - `prompt`: Text to prompt the model. (If it's a chat model, this is the new message to send.)
            - `model`: The name of the particular model to use, from the CF settings window. Useful when you have multiple models for a single endpoint. Optional.
-           - `temperature`: The temperature to pass the model. Optional.
            - `chat_history`: Endpoints may be passed a past chat context as a list of chat messages in OpenAI format (see `chainforge.endpoints.ChatHistory`). 
                              Chat history does not include the new message to send off (which is passed instead as the `prompt` parameter).
-           - `kwargs`: Any other parameters to pass the endpoint call. Parameter names are from keynames in your endpoint's settings_spec.
+           - `kwargs`: Any other parameters to pass the endpoint call, like temperature. Parameter names are from keynames in your endpoint's settings_spec.
                        Only relevant if you are defining a custom settings_spec JSON to edit endpoint/model settings in ChainForge. 
         """
         pass
@@ -39,35 +38,40 @@ class CustomEndpointProtocol(Protocol):
 """
     A registry for custom endpoints
 """
-class _EndpointRegistry:
+class _ProviderRegistry:
     def __init__(self):
         self._registry = {}
 
-    def register(self, cls: CustomEndpointProtocol, tag=None):
-        # FIX THIS
-        key = tag if tag else cls.__name__
-        self._registry[key] = cls
+    def register(self, cls: ModelProviderProtocol, name: str, **kwargs):
+        if name is None or isinstance(name, str) is False or len(name) == 0:
+            raise Exception("Cannot register custom model provider: No name given. Name must be a string and unique.")
+        self._registry[name] = { "name": name, "func": cls, **kwargs }
 
-    def get_class(self, key):
-        # FIX THIS
-        return self._registry.get(key)
+    def get(self, name):
+        return self._registry.get(name)
+
+    def get_all(self):
+        return list(self._registry.values())
 
 # Global instance of the registry.
-EndpointRegistry = _EndpointRegistry()
+ProviderRegistry = _ProviderRegistry()
 
-def endpoint(name: str = 'custom_endpoint', 
+def provider(name: str = 'custom_provider', 
              emoji: Optional[str] = '✨', 
              models: Optional[List[str]] = None, 
+             rate_limit: Union[int, Literal["sequential"]] = "sequential",
              settings_schema: Optional[Dict] = None):
     """
-      A decorator for registering custom endpoint methods or classes (Callables)
+      A decorator for registering custom LLM provider methods or classes (Callables)
       that conform to `CustomEndpointProtocol`.
 
       Parameters:
        - `name`: The name of your custom endpoint. Required. (Must be unique; cannot be blank.)
        - `emoji`: The emoji to use as the default icon for your endpoint in the CF interface. Optional.
        - `models`: A list of models that your endpoint supports, that you want to be able to choose between in Settings window. 
-                   If you're just calling a single model, you can omit this. 
+                   If you're just calling a single model, you can omit this.
+       - `rate_limit`: If an integer, the maximum number of simulatenous requests to send per minute. 
+                   To force requests to be sequential (wait until each request returns before sending another), enter "sequential". Default is sequential.
        - `settings_schema`: a JSON Schema specifying the name of your endpoint in the ChainForge UI, the available settings, and the UI for those settings.
           The settings and UI specs are in react-jsonschema-form format: https://rjsf-team.github.io/react-jsonschema-form/. 
           
@@ -81,10 +85,11 @@ def endpoint(name: str = 'custom_endpoint',
             ```
 
             You may look to adapt an existing schema from `ModelSettingsSchemas.js` in `chainforge/react-server/src/`,
-            BUT with the following exclusions/changes:
+            BUT with the following things to keep in mind:
+             - the value of "settings" should just be the value of "properties" in the full schema 
              - don't include the 'shortname' property; this will be added by default and set to the value of `name`
              - don't include the 'model' property; this will be populated by the list you passed to `models` (if any)
-             - the value of "settings" should just be the value of "properties" in the full schema 
+             - the keynames of all properties of the schema should be valid as variable names for Python keyword args; i.e., no spaces
 
             Finally, if you want temperature to appear in the ChainForge UI, you must name your
             settings schema property `temperature`, and give it `minimum` and `maximum` values.  
@@ -93,12 +98,7 @@ def endpoint(name: str = 'custom_endpoint',
             you can try other widget types, but the CSS may not display property. 
 
     """
-    def dec(cls: CustomEndpointProtocol):
-        EndpointRegistry.register(cls, name, models, settings_schema)
+    def dec(cls: ModelProviderProtocol):
+        ProviderRegistry.register(cls, name=name, emoji=emoji, models=models, rate_limit=rate_limit, settings_schema=settings_schema)
         return cls
     return dec
-
-
-@endpoint(name='hello', emoji='✨', models=['modelA', 'modelB'], settings_schema=None)
-class MyCustomEndpoint(CustomEndpointProtocol):
-    pass

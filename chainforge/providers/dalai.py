@@ -24,7 +24,7 @@ async def call_dalai(prompt: str, model: str, server: str="http://localhost:4000
     if not server or len(server.strip()) == 0:  # In case user passed a blank server name, revert to default on port 4000
         server = "http://localhost:4000"
     if DALAI_MODEL is None:
-        from chainforge.endpoints.dalaipy import Dalai
+        from chainforge.providers.dalaipy import Dalai
         DALAI_MODEL = Dalai(server)
     elif DALAI_MODEL.server != server:  # if the port has changed, we need to create a new model
         DALAI_MODEL = Dalai(server)

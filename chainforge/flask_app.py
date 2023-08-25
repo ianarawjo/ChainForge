@@ -5,7 +5,8 @@ from typing import List
 from statistics import mean, median, stdev
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from chainforge.endpoints.dalai import call_dalai
+from chainforge.providers.dalai import call_dalai
+from chainforge.providers import ProviderRegistry
 import requests as py_requests
 
 """ =================
@@ -16,6 +17,7 @@ import requests as py_requests
 # Setup Flask app to serve static version of React front-end
 HOSTNAME = "localhost"
 PORT = 8000
+# SESSION_TOKEN = secrets.token_hex(32)
 BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
 STATIC_DIR = os.path.join(BUILD_DIR, 'static')
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
@@ -257,7 +259,7 @@ def executepy():
     data = request.get_json()
 
     # Check that all required info is here:
-    if not set(data.keys()).issuperset({'id', 'code', 'responses', 'scope'}):
+    if not set(data.keys()).issuperset({'id', 'code', 'responses', 'scope', 'token'}):
         return jsonify({'error': 'POST data is improper format.'})
     if not isinstance(data['id'], str) or len(data['id']) == 0:
         return jsonify({'error': 'POST data id is improper format (length 0 or not a string).'})
@@ -269,7 +271,7 @@ def executepy():
     if (isinstance(responses, str) or not isinstance(responses, list)) or (len(responses) > 0 and any([not isinstance(r, dict) for r in responses])):
         return jsonify({'error': 'POST data responses is improper format.'})
 
-    # add the path to any scripts to the path:
+    # Add the path to any scripts to the path:
     try:
         if 'script_paths' in data:
             for script_path in data['script_paths']:
@@ -363,7 +365,7 @@ def fetchOpenAIEval():
 
         POST'd data should be in form:
         { 
-            name: <str>  # The name of the eval to grab (without .cforge extension)
+            'name': <str>  # The name of the eval to grab (without .cforge extension)
         }
     """
     # Verify post'd data
@@ -444,9 +446,9 @@ def makeFetchCall():
 
         POST'd data should be in form:
         {
-            url: <str>  # the url to fetch from
-            headers: <dict>  # a JSON object of the headers
-            body: <dict>  # the request payload, as JSON
+            'url': <str>  # the url to fetch from
+            'headers': <dict>  # a JSON object of the headers
+            'body': <dict>  # the request payload, as JSON
         }
     """
     # Verify post'd data
@@ -489,6 +491,65 @@ async def callDalai():
     ret = jsonify({'query': query, 'response': response})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
+
+
+@app.route('/app/initCustomProvider', methods=['POST'])
+def initCustomProvider():
+    """
+        Initalizes custom model provider(s) defined in a Python script,
+        and returns specs for the front-end UI provider dropdown and the providers' settings window. 
+
+        POST'd data should be in form:
+        {
+            'id': <str>  # a unique ID that refers to this script (in case the user wants to update it, not add a new script)
+            'code': <str>  # the Python script to save + execute,
+        }
+    """
+    # Verify post'd data
+    data = request.get_json()
+    print(data)
+    if not set(data.keys()).issuperset({'code', 'id'}):
+        return jsonify({'error': 'POST data is improper format.'})
+
+    # Sanity check that the code actually registers a provider
+    if '@provider' not in data['code']:
+        return jsonify({'error': """Did not detect a @provider decorator. Custom provider scripts should register at least one @provider. 
+                                    Do `from chainforge.providers import provider` and decorate your provider completion function with @provider."""})
+
+    # Copy the posted Python script to a local file in the package directory
+    provider_scripts_dir = os.path.join(CACHE_DIR, "provider_scripts")
+    if not os.path.isdir(provider_scripts_dir):
+        # Create the directory
+        try:
+            os.mkdir(provider_scripts_dir)
+        except Exception as e:
+            return jsonify({'error': f"Error creating a new directory 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
+    # Copy the script into the directory
+    try:
+        with open(os.path.join(provider_scripts_dir, f'{id}.py'), 'w') as f:
+            f.write(data['code'])
+    except Exception as e:
+        return jsonify({'error': f"Error saving script 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
+
+    # Attempt to run the Python script, in context
+    try:
+        exec(data['code'], globals(), None)
+
+        # This should have registered one or more new CustomModelProviders.
+    except Exception as e:
+        return jsonify({'error': f'Error while executing custom provider code:\n{str(e)}'})
+
+    # Get the names and specs of all currently registered CustomModelProviders,
+    # and pass that info to the front-end (excluding the func):
+    def exclude_func(d):
+        return {k: v for k, v in d.items() if k != 'func'}
+    registered_providers = [exclude_func(d) for d in ProviderRegistry.get_all()]
+
+    return jsonify({'providers': registered_providers})
+
+@app.route('/app/callCustomProvider', methods=['POST'])
+def callCustomProvider():
+    pass
 
 
 def run_server(host="", port=8000, cmd_args=None):

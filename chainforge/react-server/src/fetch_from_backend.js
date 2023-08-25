@@ -1,8 +1,8 @@
 import { queryLLM, executejs, executepy, 
          fetchExampleFlow, fetchOpenAIEval, importCache, 
          exportCache, countQueries, grabResponses, 
-         generatePrompts,
-         evalWithLLM} from "./backend/backend";
+         generatePrompts, initCustomProvider,
+         evalWithLLM } from "./backend/backend";
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
@@ -30,6 +30,8 @@ async function _route_to_js_backend(route, params) {
       return fetchExampleFlow(params.name);
     case 'fetchOpenAIEval':
       return fetchOpenAIEval(params.name);
+    case 'initCustomProvider':
+      return initCustomProvider(params.id, params.code)
     default:
       throw new Error(`Could not find backend function for route named ${route}`);
   }

@@ -1,10 +1,10 @@
 """
-    A simple custom endpoint to add to the ChainForge interface,
-    to support Cohere AI endpoint through their Python API.
+    A simple custom model provider to add to the ChainForge interface,
+    to support Cohere AI text completions through their Python API.
 
-    NOTE: You must have the `cohere` package installed.
+    NOTE: You must have the `cohere` package installed and an API key.
 """
-from chainforge.endpoints import endpoint
+from chainforge.providers import provider
 import cohere
 
 # initialize the Cohere AsyncClient with your API Key
@@ -17,25 +17,27 @@ COHERE_SETTINGS_SCHEMA = {
       "type": "number",
       "title": "temperature",
       "description": "Controls the 'creativity' or randomness of the response.",
-      "default": 1.0,
+      "default": 0.75,
       "minimum": 0,
       "maximum": 5.0,
       "multipleOf": 0.01,
     },
   },
   "ui": {
-      "temperature": {
+    "temperature": {
       "ui:help": "Defaults to 1.0.",
       "ui:widget": "range"
     }
   }
 }
 
-# Our custom endpoint that calls Cohere's text generation API.
-@endpoint(name="Cohere",
+# Our custom model provider for Cohere's text generation API.
+@provider(name="Cohere",
           emoji="🖇", 
           models=['command', 'command-nightly', 'command-light', 'command-light-nightly'],
+          rate_limit="sequential", # enter "sequential" for blocking; an integer N > 0 means N is the max mumber of requests per minute. 
           settings_schema=COHERE_SETTINGS_SCHEMA)
-async def CohereCompletion(prompt: str, model: str, temperature:float=0.75, **kwargs) -> str:
+async def CohereCompletion(prompt: str, model: str, temperature: float = 0.75, **kwargs) -> str:
     response = await co.generate(model=model, prompt=prompt, temperature=temperature, **kwargs)
     return response
+

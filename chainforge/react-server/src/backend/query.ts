@@ -1,6 +1,6 @@
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
-import { LLM, RATE_LIMITS } from './models';
-import { Dict, LLMResponseError, LLMResponseObject, ChatHistory, isEqualChatHistory, ChatHistoryInfo } from "./typing";
+import { LLM, NativeLLM, RATE_LIMITS } from './models';
+import { Dict, LLMResponseError, LLMResponseObject, isEqualChatHistory, ChatHistoryInfo } from "./typing";
 import { extract_responses, merge_response_objs, call_llm, mergeDicts } from "./utils";
 import StorageCache from "./cache";
 
@@ -191,7 +191,7 @@ export class PromptPipeline {
             "query": cached_resp["query"],
             "responses": extracted_resps.slice(0, n),
             "raw_response": cached_resp["raw_response"],
-            "llm": cached_resp["llm"] || LLM.OpenAI_ChatGPT,
+            "llm": cached_resp["llm"] || NativeLLM.OpenAI_ChatGPT,
             // We want to use the new info, since 'vars' could have changed even though 
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
             "info": mergeDicts(info, chat_history?.fill_history),

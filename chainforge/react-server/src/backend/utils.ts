@@ -621,6 +621,27 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
   return [query, responses];
 }
 
+async function call_custom_provider(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+  if (!APP_IS_RUNNING_LOCALLY())
+    throw Error("The ChainForge app does not appear to be running locally. You can only call custom model providers if you are running ChainForge on your local machine, from a Flask app.")
+
+  // Call the custom provider n times 
+  let responses = [];
+  const query = { prompt, model, temperature, ...params };
+  while (responses.length < n) {
+    let {response, error} = await call_flask_backend('callCustomProvider', {
+      prompt, model, temperature, ...params
+    });
+  
+    if (error !== undefined || response === undefined)
+      throw new Error(error);
+
+    responses.push(response);
+  }
+  
+  return [query, responses];
+}
+
 /**
  * Switcher that routes the request to the appropriate API call function. If call doesn't exist, throws error.
  */
@@ -644,6 +665,8 @@ export async function call_llm(llm: LLM, prompt: string, n: number, temperature:
     call_api = call_anthropic;
   else if (llm_provider === LLMProvider.HuggingFace)
     call_api = call_huggingface;
+  else
+    call_api = call_custom_provider;
   
   return call_api(prompt, llm, n, temperature, params);
 }
@@ -744,8 +767,11 @@ export function extract_responses(response: Array<string | Dict> | Dict, llm: LL
     case LLMProvider.HuggingFace:
       return _extract_huggingface_responses(response as Dict[]);
     default:
-      throw new Error(`No method defined to extract responses for LLM ${llm}.`)
-  }    
+      if (Array.isArray(response) && response.length > 0 && typeof response[0] === 'string')
+        return response as string[]; 
+      else 
+        throw new Error(`No method defined to extract responses for LLM ${llm}.`)
+  }
 }
 
 /**

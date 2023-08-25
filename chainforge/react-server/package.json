@@ -12,6 +12,7 @@
     "@google-ai/generativelanguage": "^0.2.0",
     "@mantine/core": "^6.0.9",
     "@mantine/dates": "^6.0.13",
+    "@mantine/dropzone": "^6.0.19",
     "@mantine/form": "^6.0.11",
     "@mantine/prism": "^6.0.15",
     "@reactflow/background": "^11.2.0",

@@ -672,7 +672,7 @@ const App = () => {
   }
   else return (
     <div>
-      <GlobalSettingsModal ref={settingsModal} />
+      <GlobalSettingsModal ref={settingsModal} alertModal={alertModal} />
       <AlertModal ref={alertModal} />
       <LoadingOverlay visible={isLoading} overlayBlur={1} />
       <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
