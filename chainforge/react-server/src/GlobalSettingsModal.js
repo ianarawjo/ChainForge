@@ -7,6 +7,7 @@ import { Dropzone, DropzoneProps } from '@mantine/dropzone';
 import useStore from './store';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
 import fetch_from_backend from './fetch_from_backend';
+import { addCustomProviders } from './ModelSettingSchemas';
 
 const _LINK_STYLE = {color: '#1E90FF', textDecoration: 'none'};
 
@@ -45,8 +46,10 @@ const CustomProviderScriptDropzone = ({id, alertModal}) => {
               rejected(response.error);
               return;
             }
-            // Successfully init script
-            console.warn(response.providers);
+            // Successfully loaded custom providers in backend,
+            // now load them into the ChainForge UI:
+            console.log(response.providers);
+            addCustomProviders(response.providers);
           }).catch((err) => rejected(err.message));
         });
       } else {

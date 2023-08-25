@@ -10,6 +10,7 @@
  * Descriptions of OpenAI model parameters copied from OpenAI's official chat completions documentation: https://platform.openai.com/docs/models/model-endpoint-compatibility
  */
 
+import { RATE_LIMITS } from "./backend/models";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 import { filterDict } from './backend/utils';
 
@@ -25,6 +26,15 @@ export let AvailableLLMs = [
 if (APP_IS_RUNNING_LOCALLY()) {
   AvailableLLMs.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
 }
+
+const UI_SUBMIT_BUTTON_SPEC = {
+  props: {
+    disabled: false,
+    className: 'mantine-UnstyledButton-root mantine-Button-root',
+  },
+  norender: false,
+  submitText: 'Submit',
+};
 
 const ChatGPTSettings = {
     fullName: "GPT-3.5+ (OpenAI)",
@@ -122,14 +132,7 @@ const ChatGPTSettings = {
     },
 
     uiSchema: {
-        'ui:submitButtonOptions': {
-            props: {
-              disabled: false,
-              className: 'mantine-UnstyledButton-root mantine-Button-root',
-            },
-            norender: false,
-            submitText: 'Submit',
-        },
+        'ui:submitButtonOptions': UI_SUBMIT_BUTTON_SPEC,
         "shortname": {
           "ui:autofocus": true
         },
@@ -295,14 +298,7 @@ const ClaudeSettings = {
     },
 
     uiSchema: {
-        'ui:submitButtonOptions': {
-            props: {
-              disabled: false,
-              className: 'mantine-UnstyledButton-root mantine-Button-root',
-            },
-            norender: false,
-            submitText: 'Submit',
-        },
+        'ui:submitButtonOptions': UI_SUBMIT_BUTTON_SPEC,
         "shortname": {
           "ui:autofocus": true
         },
@@ -403,14 +399,7 @@ const PaLM2Settings = {
   },
 
   uiSchema: {
-      'ui:submitButtonOptions': {
-          props: {
-            disabled: false,
-            className: 'mantine-UnstyledButton-root mantine-Button-root',
-          },
-          norender: false,
-          submitText: 'Submit',
-      },
+      'ui:submitButtonOptions': UI_SUBMIT_BUTTON_SPEC,
       "shortname": {
         "ui:autofocus": true
       },
@@ -536,14 +525,7 @@ const DalaiModelSettings = {
   },
 
   uiSchema: {
-      'ui:submitButtonOptions': {
-          props: {
-            disabled: false,
-            className: 'mantine-UnstyledButton-root mantine-Button-root',
-          },
-          norender: false,
-          submitText: 'Submit',
-      },
+      'ui:submitButtonOptions': UI_SUBMIT_BUTTON_SPEC,
       "shortname": {
         "ui:autofocus": true
       },
@@ -730,19 +712,12 @@ const HuggingFaceTextInferenceSettings = {
   },
 
   uiSchema: {
-      'ui:submitButtonOptions': {
-          props: {
-            disabled: false,
-            className: 'mantine-UnstyledButton-root mantine-Button-root',
-          },
-          norender: false,
-          submitText: 'Submit',
-      },
+      'ui:submitButtonOptions': UI_SUBMIT_BUTTON_SPEC,
       "shortname": {
         "ui:autofocus": true
       },
       "model": {
-          "ui:help": "Defaults to Falcon.7B."    
+        "ui:help": "Defaults to Falcon.7B."    
       },
       "temperature": {
         "ui:help": "Defaults to 1.0.",
@@ -781,7 +756,7 @@ const HuggingFaceTextInferenceSettings = {
 };
 
 // A lookup table indexed by base_model. 
-export const ModelSettings = {
+export let ModelSettings = {
   'gpt-3.5-turbo': ChatGPTSettings,
   'gpt-4': GPT4Settings,
   'claude-v1': ClaudeSettings,
@@ -789,6 +764,97 @@ export const ModelSettings = {
   'dalai': DalaiModelSettings,
   'azure-openai': AzureOpenAISettings,
   'hf': HuggingFaceTextInferenceSettings,
+};
+
+/**
+ * Add new model provider to the AvailableLLMs list. Also adds the respective ModelSettings schema and rate limit.
+ * @param {*} name The name of the provider, to use in the dropdown menu and default name. Must be unique.
+ * @param {*} emoji The emoji to use for the provider. Optional. 
+ * @param {*} models A list of models the user can select from this provider. Optional.
+ * @param {*} rate_limit 
+ * @param {*} settings_schema 
+ */
+export const addCustomProvider = (name, emoji, models, rate_limit, settings_schema) => {
+  if (AvailableLLMs.find((item) => item.name === name))
+    throw new Error(`Cannot add a custom provider named ${name}: A provider with the same already exists.`);
+  if (typeof emoji === 'string' && (emoji.length === 0 || emoji.length > 2))
+    throw new Error(`Emoji for a custom provider must have a character.`)
+
+  let new_provider = { name };
+  new_provider.emoji = emoji || '✨';
+
+  // Each LLM *model* must have a unique name. To avoid name collisions, for custom providers,
+  // the full LLM model name is a path, __custom/<provider_name>/<submodel name> 
+  // If there's no submodel, it's just __custom/<provider_name>.
+  new_provider.base_model = name;
+  new_provider.model = `__custom/${name}` + (Array.isArray(models) && models.length > 0) ? `/${models[0]}` : '';
+
+  // Build the settings form schema for this new custom provider 
+  let compiled_schema = {
+    fullName: `${name} (custom provider)`,
+    schema: {
+      "type": "object",
+      "required": [
+        "shortname",
+      ],
+      "properties": {
+        "shortname": {
+          "type": "string",
+          "title": "Nickname",
+          "description": "Unique identifier to appear in ChainForge. Keep it short.",
+          "default": name,
+        }
+      }
+    },
+    uiSchema: {
+      'ui:submitButtonOptions': UI_SUBMIT_BUTTON_SPEC,
+      "shortname": {
+        "ui:autofocus": true
+      },
+    }
+  };
+
+  // Add a models selector if there's multiple models
+  if (Array.isArray(models) && models.length > 0) {
+    compiled_schema.schema["properties"]["model"] = {
+      "type": "string",
+      "title": "Model",
+      "description": `Select a ${name} model to query.`,
+      "enum": models,
+      "default": models[0],
+    };
+    compiled_schema.uiSchema["model"] = {
+      "ui:help": `Defaults to ${models[0]}`   
+    };
+  }
+
+  // Add the rest of the settings window if there's one
+  if (settings_schema) {
+    compiled_schema.schema["properties"] = {...compiled_schema.schema["properties"], ...settings_schema.settings};
+    compiled_schema.uiSchema = {...compiled_schema.uiSchema, ...settings_schema.ui};
+  }
+
+  // Check for a default temperature
+  const default_temp = compiled_schema?.schema?.properties?.temperature?.default;
+  if (default_temp !== undefined)
+    new_provider.temp = default_temp;
+  
+  // Add the built provider and its settings to the global lookups:
+  AvailableLLMs.push(new_provider);
+  ModelSettings[name] = compiled_schema;
+
+  // Add rate limit info, if specified
+  if (rate_limit !== undefined && typeof rate_limit === 'number' && rate_limit > 0) {
+    if (rate_limit >= 60)
+      RATE_LIMITS[`__custom/${name}`] = [ Math.trunc(rate_limit/60), 1 ]; // for instance, 300 rpm means 5 every second
+    else
+      RATE_LIMITS[`__custom/${name}`] = [ 1, Math.trunc(60/rate_limit) ]; // for instance, 10 rpm means 1 every 6 seconds
+  }
+}
+
+export const addCustomProviders = (providers) => {
+  for (const p of providers)
+    addCustomProvider(p.name, p.emoji, p.models, p.rate_limit, p.settings_schema);
 };
 
 export const getTemperatureSpecForModel = (modelName) => {

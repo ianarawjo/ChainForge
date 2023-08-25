@@ -531,6 +531,9 @@ def initCustomProvider():
     except Exception as e:
         return jsonify({'error': f"Error saving script 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
 
+    # Get the names of all currently loaded custom providers:
+    prev_names = {d['name'] for d in ProviderRegistry.get_all()}
+
     # Attempt to run the Python script, in context
     try:
         exec(data['code'], globals(), None)
@@ -545,11 +548,49 @@ def initCustomProvider():
         return {k: v for k, v in d.items() if k != 'func'}
     registered_providers = [exclude_func(d) for d in ProviderRegistry.get_all()]
 
-    return jsonify({'providers': registered_providers})
+    # Determine what new providers were registered, if any
+    new_names = {d['name'] for d in registered_providers} - prev_names
+    if len(new_names) == 0:
+        return jsonify({'error': 'Did not detect any new providers added to the registry. Make sure you are registering your provider with @provider correctly.'})
+
+    # Only return the new providers 
+    new_providers = [r for r in registered_providers if r['name'] in new_names]
+    return jsonify({'providers': new_providers})
+
 
 @app.route('/app/callCustomProvider', methods=['POST'])
-def callCustomProvider():
-    pass
+async def callCustomProvider():
+    """
+        Calls a custom model provider and returns the response.
+
+        POST'd data should be in form:
+        {
+            'name': <str>  # the name of the provider in the `ProviderRegistry`
+            'params': <dict>  # the params (prompt, model, etc) to pass to the provider function.
+        }
+    """
+    # Verify post'd data
+    data = request.get_json()
+    if not set(data.keys()).issuperset({'name', 'params'}):
+        return jsonify({'error': 'POST data is improper format.'})
+    
+    # Load the name of the provider
+    name = data['name']
+    params = data['params']
+
+    # Double-check that the custom provider exists in the registry, and (if passed) a model with that name exists
+    provider_spec = ProviderRegistry.get(name)
+    if provider_spec is None:
+        return jsonify({'error': f'Could not find provider named {name}. Perhaps you need to import a custom provider script?'})
+    
+    # Call + await the custom provider function, passing in the JSON payload as kwargs
+    try:
+        response = await provider_spec.get('func')(**params)
+    except Exception as e:
+        return jsonify({'error': f'Error encountered while calling custom provider function: {str(e)}'})
+
+    # Return the response
+    return jsonify({'response': response})
 
 
 def run_server(host="", port=8000, cmd_args=None):

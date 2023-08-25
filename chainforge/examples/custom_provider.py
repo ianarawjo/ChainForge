@@ -38,6 +38,7 @@ COHERE_SETTINGS_SCHEMA = {
           rate_limit="sequential", # enter "sequential" for blocking; an integer N > 0 means N is the max mumber of requests per minute. 
           settings_schema=COHERE_SETTINGS_SCHEMA)
 async def CohereCompletion(prompt: str, model: str, temperature: float = 0.75, **kwargs) -> str:
+    print(f"Calling Cohere model {model} with prompt '{prompt}'...")
     response = await co.generate(model=model, prompt=prompt, temperature=temperature, **kwargs)
     return response
 

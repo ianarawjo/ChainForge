@@ -223,16 +223,16 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
  */
 export async function call_azure_openai(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!AZURE_OPENAI_KEY)
-    throw Error("Could not find an Azure OpenAPI Key to use. Double-check that your key is set in Settings or in your local environment.");
+    throw new Error("Could not find an Azure OpenAPI Key to use. Double-check that your key is set in Settings or in your local environment.");
   if (!AZURE_OPENAI_ENDPOINT)
-    throw Error("Could not find an Azure OpenAI Endpoint to use. Double-check that your endpoint is set in Settings or in your local environment.");
+    throw new Error("Could not find an Azure OpenAI Endpoint to use. Double-check that your endpoint is set in Settings or in your local environment.");
   
   const deployment_name: string = params?.deployment_name;
   const model_type: string = params?.model_type;
   if (!deployment_name)
-    throw Error("Could not find an Azure OpenAPI deployment name. Double-check that your deployment name is set in Settings or in your local environment.");
+    throw new Error("Could not find an Azure OpenAPI deployment name. Double-check that your deployment name is set in Settings or in your local environment.");
   if (!model_type)
-    throw Error("Could not find a model type specified for an Azure OpenAI model. Double-check that your deployment name is set in Settings or in your local environment.");
+    throw new Error("Could not find a model type specified for an Azure OpenAI model. Double-check that your deployment name is set in Settings or in your local environment.");
 
   const client = new AzureOpenAIClient(AZURE_OPENAI_ENDPOINT, new AzureKeyCredential(AZURE_OPENAI_KEY));
 
@@ -296,12 +296,12 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
  */
 export async function call_anthropic(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!ANTHROPIC_API_KEY)
-    throw Error("Could not find an API key for Anthropic models. Double-check that your API key is set in Settings or in your local environment.");
+    throw new Error("Could not find an API key for Anthropic models. Double-check that your API key is set in Settings or in your local environment.");
 
   // Wrap the prompt in the provided template, or use the default Anthropic one
   const custom_prompt_wrapper: string = params?.custom_prompt_wrapper || (ANTHROPIC_HUMAN_PROMPT + " {prompt}" + ANTHROPIC_AI_PROMPT);
   if (!custom_prompt_wrapper.includes('{prompt}'))
-    throw Error("Custom prompt wrapper is missing required {prompt} template variable.");
+    throw new Error("Custom prompt wrapper is missing required {prompt} template variable.");
   const prompt_wrapper_template = new StringTemplate(custom_prompt_wrapper);
   let wrapped_prompt = prompt_wrapper_template.safe_substitute({prompt: prompt});
 
@@ -389,7 +389,7 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
  */
 export async function call_google_palm(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
   if (!GOOGLE_PALM_API_KEY)
-    throw Error("Could not find an API key for Google PaLM models. Double-check that your API key is set in Settings or in your local environment.");
+    throw new Error("Could not find an API key for Google PaLM models. Double-check that your API key is set in Settings or in your local environment.");
 
   const is_chat_model = model.toString().includes('chat');
 
@@ -623,16 +623,22 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
 
 async function call_custom_provider(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!APP_IS_RUNNING_LOCALLY())
-    throw Error("The ChainForge app does not appear to be running locally. You can only call custom model providers if you are running ChainForge on your local machine, from a Flask app.")
+    throw new Error("The ChainForge app does not appear to be running locally. You can only call custom model providers if you are running ChainForge on your local machine, from a Flask app.")
 
-  // Call the custom provider n times 
   let responses = [];
   const query = { prompt, model, temperature, ...params };
+
+  // Call the custom provider n times 
   while (responses.length < n) {
-    let {response, error} = await call_flask_backend('callCustomProvider', {
-      prompt, model, temperature, ...params
+    
+    let {response, error} = await call_flask_backend('callCustomProvider', 
+      { 'name': model,
+        'params': {
+          prompt, model, temperature, ...params
+        }
     });
-  
+
+    // Fail if an error is encountered
     if (error !== undefined || response === undefined)
       throw new Error(error);
 

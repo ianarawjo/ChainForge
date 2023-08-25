@@ -164,7 +164,7 @@ export class PromptPipeline {
         }
 
         if (!prompt.is_concrete())
-          throw Error(`Cannot send a prompt '${prompt}' to LLM: Prompt is a template.`)
+          throw new Error(`Cannot send a prompt '${prompt}' to LLM: Prompt is a template.`)
         
         // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
         const cache_bucket = responses[prompt_str];
