@@ -10,6 +10,9 @@ import cohere
 # Replace with your Cohere API Key
 COHERE_API_KEY = '<YOUR_API_KEY>'
 
+# Init the Cohere client
+co = cohere.Client(COHERE_API_KEY)
+
 # JSON schemas to pass react-jsonschema-form, one for this endpoints' settings and one to describe the settings UI.
 COHERE_SETTINGS_SCHEMA = {
   "settings": {
@@ -49,9 +52,7 @@ COHERE_SETTINGS_SCHEMA = {
           models=['command', 'command-nightly', 'command-light', 'command-light-nightly'],
           rate_limit="sequential", # enter "sequential" for blocking; an integer N > 0 means N is the max mumber of requests per minute. 
           settings_schema=COHERE_SETTINGS_SCHEMA)
-async def CohereCompletion(prompt: str, model: str, temperature: float = 0.75, **kwargs) -> str:
+def CohereCompletion(prompt: str, model: str, temperature: float = 0.75, **kwargs) -> str:
     print(f"Calling Cohere model {model} with prompt '{prompt}'...")
-    co = cohere.AsyncClient(COHERE_API_KEY)
-    response = await co.generate(model=model, prompt=prompt, temperature=temperature, **kwargs)
+    response = co.generate(model=model, prompt=prompt, temperature=temperature, **kwargs)
     return response.generations[0].text
-
