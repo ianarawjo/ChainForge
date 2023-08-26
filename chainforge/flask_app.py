@@ -232,6 +232,8 @@ async def make_sync_call_async(sync_method, *args, **params):
         method = partial_sync_meth
     return await loop.run_in_executor(None, method, *args)
 
+def exclude_key(d, key_to_exclude):
+        return {k: v for k, v in d.items() if k != key_to_exclude}
 
 
 """ ===================
@@ -544,6 +546,9 @@ def initCustomProvider():
     except Exception as e:
         return jsonify({'error': f"Error saving script 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
 
+    # For keeping track of what script registered providers came from
+    ProviderRegistry.set_curr_script_id(data['id'])  
+
     # Attempt to run the Python script, in context
     try:
         exec(data['code'], globals(), None)
@@ -554,9 +559,7 @@ def initCustomProvider():
 
     # Get the names and specs of all currently registered CustomModelProviders,
     # and pass that info to the front-end (excluding the func):
-    def exclude_func(d):
-        return {k: v for k, v in d.items() if k != 'func'}
-    registered_providers = [exclude_func(d) for d in ProviderRegistry.get_all()]
+    registered_providers = [exclude_key(d, 'func') for d in ProviderRegistry.get_all()]
 
     # Determine whether there's at least one custom provider.
     if len(registered_providers) == 0:
@@ -565,6 +568,38 @@ def initCustomProvider():
     # Return all loaded providers
     return jsonify({'providers': registered_providers})
 
+
+@app.route('/app/loadCachedCustomProviders', methods=['POST'])
+def loadCachedCustomProviders():
+    """
+        Initalizes all custom model provider(s) in the local provider_scripts directory.
+    """
+    provider_scripts_dir = os.path.join(CACHE_DIR, "provider_scripts")
+    if not os.path.isdir(provider_scripts_dir):
+        # No providers to load.
+        return jsonify({'providers': []})
+
+    try:
+        for file_name in os.listdir(provider_scripts_dir):
+            file_path = os.path.join(provider_scripts_dir, file_name)
+            if os.path.isfile(file_path) and os.path.splitext(file_path)[1] == '.py':
+                # For keeping track of what script registered providers came from
+                ProviderRegistry.set_curr_script_id(os.path.splitext(file_name)[0])  
+
+                # Read the Python script
+                with open(file_path, 'r') as f:
+                    code = f.read()
+                
+                # Try to execute it in the global context
+                exec(code, globals(), None)
+    except Exception as e:
+        return jsonify({'error': f'Error while loading custom providers from cache: \n{str(e)}'})
+
+    # Get the names and specs of all currently registered CustomModelProviders,
+    # and pass that info to the front-end (excluding the func):
+    registered_providers = [exclude_key(d, 'func') for d in ProviderRegistry.get_all()]
+
+    return jsonify({'providers': registered_providers})
 
 @app.route('/app/removeCustomProvider', methods=['POST'])
 def removeCustomProvider():
@@ -586,7 +621,18 @@ def removeCustomProvider():
     if not ProviderRegistry.has(name):
         return jsonify({'error': f'Could not find a custom provider named "{name}"'})
     
+    # Get the script id associated with the provider we're about to remove
+    script_id = ProviderRegistry.get(name).get('script_id')
+
+    # Remove the custom provider from the registry
     ProviderRegistry.remove(name)
+
+    # Attempt to delete associated script from cache
+    if script_id:
+        script_path = os.path.join(CACHE_DIR, "provider_scripts", f"{script_id}.py")
+        if os.path.isfile(script_path):
+            os.remove(script_path)
+
     return jsonify({'success': True})
 
 

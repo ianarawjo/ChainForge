@@ -1,10 +1,10 @@
-import React, { useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import React, { useState, forwardRef, useImperativeHandle, useCallback, useEffect } from 'react';
 import { TextInput, Button, Group, Box, Modal, Divider, Text, Tabs, useMantineTheme, rem, Flex, Center, Badge, Card } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import { IconUpload, IconBrandPython, IconX } from '@tabler/icons-react';
 import { Dropzone, DropzoneProps } from '@mantine/dropzone';
-import useStore from './store';
+import useStore, { initLLMProviders } from './store';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
 import fetch_from_backend from './fetch_from_backend';
 import { setCustomProviders } from './ModelSettingSchemas';
@@ -110,7 +110,7 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
       alertModal.current.trigger(msg);
   }, [alertModal]);
 
-  const [customProviders, setCustomProviders] = useState([]);
+  const [customProviders, setLocalCustomProviders] = useState([]);
   const removeCustomProvider = useCallback((name) => {
     fetch_from_backend('removeCustomProvider', { 
       name: name, 
@@ -122,9 +122,26 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
       // Successfully deleted the custom provider from backend;
       // now updated the front-end UI to reflect this:
       setAvailableLLMs(AvailableLLMs.filter((p) => p.name !== name));
-      setCustomProviders(customProviders.filter((p) => p.name !== name));
+      setLocalCustomProviders(customProviders.filter((p) => p.name !== name));
     }).catch((err) => handleError(err.message));
   }, [customProviders, handleError, AvailableLLMs]);
+
+  // On init
+  useEffect(() => {
+    if (APP_IS_RUNNING_LOCALLY()) {
+      // Is running locally; try to load any custom providers.
+      // Soft fails if it encounters error:
+      fetch_from_backend('loadCachedCustomProviders', {}, console.error).then((json) => {
+        if (json.error || json.providers === undefined) {
+          console.error(json.error);
+          return;
+        }
+        // Success; pass custom providers list to store:
+        setCustomProviders(json.providers);
+        setLocalCustomProviders(json.providers);
+      });
+    }
+  }, []);
 
   const form = useForm({
     initialValues: {
@@ -156,7 +173,7 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
   }));
 
 return (
-    <Modal opened={opened} onClose={close} title="ChainForge Settings" closeOnClickOutside={false} style={{position: 'relative', 'left': '-100px'}}>
+    <Modal keepMounted opened={opened} onClose={close} title="ChainForge Settings" closeOnClickOutside={false} style={{position: 'relative', 'left': '-100px'}}>
         <Box maw={380} mx="auto">
           <Tabs defaultValue="api-keys">
 
@@ -224,6 +241,7 @@ return (
               </form>
             </Tabs.Panel>
 
+
           {APP_IS_RUNNING_LOCALLY() ? 
             <Tabs.Panel value="custom-providers" pt="md">
               <Text mb="md" fz="sm" lh={1.3}>
@@ -244,7 +262,7 @@ return (
                   </Group>
                 </Card>
               )) }
-              <CustomProviderScriptDropzone id={'1'} onError={handleError} onSetProviders={setCustomProviders} />
+              <CustomProviderScriptDropzone id={customProviders.length.toString()} onError={handleError} onSetProviders={setLocalCustomProviders} />
             </Tabs.Panel>
           : <></>}
           </Tabs>

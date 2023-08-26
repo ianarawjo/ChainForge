@@ -1148,3 +1148,19 @@ export async function removeCustomProvider(name: string): Promise<Dict> {
     return res.json();
   });
 }
+
+/**
+ * Asks Python backend to load custom provider scripts that are cache'd in the user's local dir. 
+ * 
+ * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success, 
+ *          a 'providers' key with all loaded custom providers in an array. If there were none, returns empty array.
+ */
+export async function loadCachedCustomProviders(): Promise<Dict> {
+  return fetch(`${FLASK_BASE_URL}app/loadCachedCustomProviders`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+    body: "{}"
+  }).then(function(res) {
+    return res.json();
+  });
+}

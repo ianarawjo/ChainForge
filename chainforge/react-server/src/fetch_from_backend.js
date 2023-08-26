@@ -2,7 +2,7 @@ import { queryLLM, executejs, executepy,
          fetchExampleFlow, fetchOpenAIEval, importCache, 
          exportCache, countQueries, grabResponses, 
          generatePrompts, initCustomProvider,
-         removeCustomProvider, evalWithLLM } from "./backend/backend";
+         removeCustomProvider, evalWithLLM, loadCachedCustomProviders } from "./backend/backend";
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
@@ -34,6 +34,8 @@ async function _route_to_js_backend(route, params) {
       return initCustomProvider(params.id, params.code);
     case 'removeCustomProvider':
       return removeCustomProvider(params.name);
+    case 'loadCachedCustomProviders':
+      return loadCachedCustomProviders();
     default:
       throw new Error(`Could not find backend function for route named ${route}`);
   }

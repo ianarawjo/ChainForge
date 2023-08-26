@@ -42,11 +42,15 @@ class ModelProviderProtocol(Protocol):
 class _ProviderRegistry:
     def __init__(self):
         self._registry = {}
+        self._curr_script_id = '0'
+    
+    def set_curr_script_id(self, id: str):
+        self._curr_script_id = id
 
     def register(self, cls: ModelProviderProtocol, name: str, **kwargs):
         if name is None or isinstance(name, str) is False or len(name) == 0:
             raise Exception("Cannot register custom model provider: No name given. Name must be a string and unique.")
-        self._registry[name] = { "name": name, "func": cls, **kwargs }
+        self._registry[name] = { "name": name, "func": cls, "script_id": self._curr_script_id, **kwargs }
 
     def get(self, name):
         return self._registry.get(name)
