@@ -1,4 +1,4 @@
-import json, os, sys
+import json, os, sys, asyncio
 from dataclasses import dataclass
 from enum import Enum
 from typing import List
@@ -218,6 +218,20 @@ def run_over_responses(eval_func, responses: list, scope: str) -> list:
                     'type': ev_type.name,
                 }
     return responses
+
+async def make_sync_call_async(sync_method, *args, **params):
+    """
+        Makes a blocking synchronous call asynchronous, so that it can be awaited.
+        NOTE: This is necessary for LLM APIs that do not yet support async (e.g. Google PaLM).
+    """
+    loop = asyncio.get_running_loop()
+    method = sync_method
+    if len(params) > 0:
+        def partial_sync_meth(*a):
+            return sync_method(*a, **params)
+        method = partial_sync_meth
+    return await loop.run_in_executor(None, method, *args)
+
 
 
 """ ===================
@@ -507,7 +521,6 @@ def initCustomProvider():
     """
     # Verify post'd data
     data = request.get_json()
-    print(data)
     if not set(data.keys()).issuperset({'code', 'id'}):
         return jsonify({'error': 'POST data is improper format.'})
 
@@ -531,9 +544,6 @@ def initCustomProvider():
     except Exception as e:
         return jsonify({'error': f"Error saving script 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
 
-    # Get the names of all currently loaded custom providers:
-    prev_names = {d['name'] for d in ProviderRegistry.get_all()}
-
     # Attempt to run the Python script, in context
     try:
         exec(data['code'], globals(), None)
@@ -548,14 +558,36 @@ def initCustomProvider():
         return {k: v for k, v in d.items() if k != 'func'}
     registered_providers = [exclude_func(d) for d in ProviderRegistry.get_all()]
 
-    # Determine what new providers were registered, if any
-    new_names = {d['name'] for d in registered_providers} - prev_names
-    if len(new_names) == 0:
-        return jsonify({'error': 'Did not detect any new providers added to the registry. Make sure you are registering your provider with @provider correctly.'})
+    # Determine whether there's at least one custom provider.
+    if len(registered_providers) == 0:
+        return jsonify({'error': 'Did not detect any custom providers added to the registry. Make sure you are registering your provider with @provider correctly.'})
 
-    # Only return the new providers 
-    new_providers = [r for r in registered_providers if r['name'] in new_names]
-    return jsonify({'providers': new_providers})
+    # Return all loaded providers
+    return jsonify({'providers': registered_providers})
+
+
+@app.route('/app/removeCustomProvider', methods=['POST'])
+def removeCustomProvider():
+    """
+        Initalizes custom model provider(s) defined in a Python script,
+        and returns specs for the front-end UI provider dropdown and the providers' settings window. 
+
+        POST'd data should be in form:
+        {
+            'name': <str>  # a name that refers to the registered custom provider in the `ProviderRegistry`
+        }
+    """
+    # Verify post'd data
+    data = request.get_json()
+    name = data.get('name')
+    if name is None:
+        return jsonify({'error': 'POST data is improper format.'})
+    
+    if not ProviderRegistry.has(name):
+        return jsonify({'error': f'Could not find a custom provider named "{name}"'})
+    
+    ProviderRegistry.remove(name)
+    return jsonify({'success': True})
 
 
 @app.route('/app/callCustomProvider', methods=['POST'])
@@ -585,8 +617,7 @@ async def callCustomProvider():
     
     # Call + await the custom provider function, passing in the JSON payload as kwargs
     try:
-        print(params)
-        response = await provider_spec.get('func')(**params)
+        response = await make_sync_call_async(provider_spec.get('func'), **params)
     except Exception as e:
         return jsonify({'error': f'Error encountered while calling custom provider function: {str(e)}'})
 

@@ -1,5 +1,5 @@
-import React, { useState, forwardRef, useImperativeHandle } from 'react';
-import { TextInput, Button, Group, Box, Modal, Divider, Text, Tabs, useMantineTheme, rem, Flex, Center } from '@mantine/core';
+import React, { useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { TextInput, Button, Group, Box, Modal, Divider, Text, Tabs, useMantineTheme, rem, Flex, Center, Badge, Card } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import { IconUpload, IconBrandPython, IconX } from '@tabler/icons-react';
@@ -7,7 +7,7 @@ import { Dropzone, DropzoneProps } from '@mantine/dropzone';
 import useStore from './store';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
 import fetch_from_backend from './fetch_from_backend';
-import { addCustomProviders } from './ModelSettingSchemas';
+import { setCustomProviders } from './ModelSettingSchemas';
 
 const _LINK_STYLE = {color: '#1E90FF', textDecoration: 'none'};
 
@@ -27,30 +27,36 @@ const read_file = (file, cb) => {
 /** A Dropzone to load a Python `.py` script that registers a `CustomModelProvider` in the Flask backend. 
  * If successful, the list of custom model providers in the ChainForge UI dropdown is updated. 
  * */ 
-const CustomProviderScriptDropzone = ({id, alertModal}) => {
+const CustomProviderScriptDropzone = ({id, onError, onSetProviders}) => {
   const theme = useMantineTheme();
+  const [isLoading, setIsLoading] = useState(false);
+
   return (<Dropzone
+    loading={isLoading}
     onDrop={(files) => {
       if (files.length === 1) {
-        const rejected = (msg) => {
-          if (alertModal && alertModal.current)
-            alertModal.current.trigger(msg);
-        }
+        setIsLoading(true);
         read_file(files[0], (content) => {
           // Read the file into text and then send it to backend 
           fetch_from_backend('initCustomProvider', { 
             id: id, 
             code: content 
           }).then((response) => {
+            setIsLoading(false);
+
             if (response.error || !response.providers) {
-              rejected(response.error);
+              onError(response.error);
               return;
             }
             // Successfully loaded custom providers in backend,
             // now load them into the ChainForge UI:
             console.log(response.providers);
-            addCustomProviders(response.providers);
-          }).catch((err) => rejected(err.message));
+            setCustomProviders(response.providers);
+            onSetProviders(response.providers);
+          }).catch((err) => {
+            setIsLoading(false);
+            onError(err.message);
+          });
         });
       } else {
         console.error('Too many files dropped. Only drop one file at a time.')
@@ -95,7 +101,30 @@ const CustomProviderScriptDropzone = ({id, alertModal}) => {
 const GlobalSettingsModal = forwardRef((props, ref) => {
   const [opened, { open, close }] = useDisclosure(false);
   const setAPIKeys = useStore((state) => state.setAPIKeys);
+  const AvailableLLMs = useStore((state) => state.AvailableLLMs);
+  const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
   const alertModal = props?.alertModal;
+
+  const handleError = useCallback((msg) => {
+    if (alertModal && alertModal.current)
+      alertModal.current.trigger(msg);
+  }, [alertModal]);
+
+  const [customProviders, setCustomProviders] = useState([]);
+  const removeCustomProvider = useCallback((name) => {
+    fetch_from_backend('removeCustomProvider', { 
+      name: name, 
+    }).then((response) => {
+      if (response.error || !response.success) {
+        handleError(response.error);
+        return;
+      }
+      // Successfully deleted the custom provider from backend;
+      // now updated the front-end UI to reflect this:
+      setAvailableLLMs(AvailableLLMs.filter((p) => p.name !== name));
+      setCustomProviders(customProviders.filter((p) => p.name !== name));
+    }).catch((err) => handleError(err.message));
+  }, [customProviders, handleError, AvailableLLMs]);
 
   const form = useForm({
     initialValues: {
@@ -112,6 +141,7 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
     },
   });
 
+  // When the API settings form is submitted
   const onSubmit = (values) => {
     setAPIKeys(values);
     close();
@@ -200,7 +230,21 @@ return (
                 You can add model providers to ChainForge by writing custom completion functions as Python scripts. (You can even make your own settings screen!)
                 To learn more, <a href="https://chainforge.ai/docs" target="_blank" style={_LINK_STYLE}>see the documentation.</a>
               </Text>
-              <CustomProviderScriptDropzone id={'1'} alertModal={alertModal} />
+              { customProviders.map(p => (
+                <Card shadow='sm' radius='sm' pt='0px' pb='4px' mb='md' withBorder>
+                  <Group position="apart">
+                    <Group position="left" mt="md" mb="xs">
+                      <Text w='10px'>{p.emoji}</Text>
+                      <Text weight={500}>{p.name}</Text>
+                      { p.settings_schema ? 
+                          <Badge color="blue" variant="light">has settings</Badge>
+                        : <></> }
+                    </Group>
+                    <Button onClick={() => removeCustomProvider(p.name)} color='red' p='0px' mt='4px' variant='subtle'><IconX /></Button>
+                  </Group>
+                </Card>
+              )) }
+              <CustomProviderScriptDropzone id={'1'} onError={handleError} onSetProviders={setCustomProviders} />
             </Tabs.Panel>
           : <></>}
           </Tabs>

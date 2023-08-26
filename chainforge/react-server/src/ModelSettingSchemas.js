@@ -11,21 +11,8 @@
  */
 
 import { RATE_LIMITS } from "./backend/models";
-import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 import { filterDict } from './backend/utils';
-
-// Available LLMs in ChainForge, in the format expected by LLMListItems.
-export let AvailableLLMs = [
-  { name: "GPT3.5", emoji: "🤖", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
-  { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
-  { name: "Claude", emoji: "📚", model: "claude-2", base_model: "claude-v1", temp: 0.5 },
-  { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
-  { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
-  { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
-];
-if (APP_IS_RUNNING_LOCALLY()) {
-  AvailableLLMs.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
-}
+import useStore from "./store";
 
 const UI_SUBMIT_BUTTON_SPEC = {
   props: {
@@ -774,9 +761,7 @@ export let ModelSettings = {
  * @param {*} rate_limit 
  * @param {*} settings_schema 
  */
-export const addCustomProvider = (name, emoji, models, rate_limit, settings_schema) => {
-  if (AvailableLLMs.find((item) => item.name === name))
-    throw new Error(`Cannot add a custom provider named ${name}: A provider with the same already exists.`);
+export const setCustomProvider = (name, emoji, models, rate_limit, settings_schema, llmProviderList) => {
   if (typeof emoji === 'string' && (emoji.length === 0 || emoji.length > 2))
     throw new Error(`Emoji for a custom provider must have a character.`)
 
@@ -841,7 +826,12 @@ export const addCustomProvider = (name, emoji, models, rate_limit, settings_sche
     new_provider.temp = default_temp;
   
   // Add the built provider and its settings to the global lookups:
-  AvailableLLMs.push(new_provider);
+  let AvailableLLMs = useStore.getState().AvailableLLMs;
+  const prev_provider_idx = AvailableLLMs.findIndex((d) => d.name === name);
+  if (prev_provider_idx > -1)
+    AvailableLLMs[prev_provider_idx] = new_provider;
+  else 
+    AvailableLLMs.push(new_provider);
   ModelSettings[base_model] = compiled_schema;
 
   // Add rate limit info, if specified
@@ -851,11 +841,14 @@ export const addCustomProvider = (name, emoji, models, rate_limit, settings_sche
     else
       RATE_LIMITS[base_model] = [ 1, Math.trunc(60/rate_limit) ]; // for instance, 10 rpm means 1 every 6 seconds
   }
-}
 
-export const addCustomProviders = (providers) => {
+  // Commit changes to LLM list
+  useStore.getState().setAvailableLLMs(AvailableLLMs);
+};
+
+export const setCustomProviders = (providers) => {
   for (const p of providers)
-    addCustomProvider(p.name, p.emoji, p.models, p.rate_limit, p.settings_schema);
+    setCustomProvider(p.name, p.emoji, p.models, p.rate_limit, p.settings_schema);
 };
 
 export const getTemperatureSpecForModel = (modelName) => {

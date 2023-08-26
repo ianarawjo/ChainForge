@@ -1129,3 +1129,22 @@ export async function initCustomProvider(id: string, code: string): Promise<Dict
     return res.json();
   });
 }
+
+/**
+ * Asks Python script to remove a custom provider with name 'name'.
+
+ * @param name The name of the provider to remove. The name must match the name in the `ProviderRegistry`.  
+ * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success, 
+ *          a 'success' key with a true value.
+ */
+export async function removeCustomProvider(name: string): Promise<Dict> {
+  // Attempt to fetch the example flow from the local filesystem
+  // by querying the Flask server: 
+  return fetch(`${FLASK_BASE_URL}app/removeCustomProvider`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+    body: JSON.stringify({ name })
+  }).then(function(res) {
+    return res.json();
+  });
+}

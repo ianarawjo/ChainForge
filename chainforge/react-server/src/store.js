@@ -6,6 +6,7 @@ import {
 } from 'react-flow-renderer';
 import { escapeBraces } from './backend/template';
 import { filterDict } from './backend/utils';
+import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -27,11 +28,29 @@ export const colorPalettes = {
 
 const refreshableOutputNodeTypes = new Set(['evaluator', 'prompt', 'inspect', 'vis', 'llmeval', 'textfields', 'chat', 'simpleval']);
 
+export let initLLMProviders = [
+  { name: "GPT3.5", emoji: "🤖", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
+  { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
+  { name: "Claude", emoji: "📚", model: "claude-2", base_model: "claude-v1", temp: 0.5 },
+  { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
+  { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
+  { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
+];
+if (APP_IS_RUNNING_LOCALLY()) {
+  initLLMProviders.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
+}
+
 // A global store of variables, used for maintaining state
 // across ChainForge and ReactFlow components.
 const useStore = create((set, get) => ({
   nodes: [],
   edges: [],
+
+  // Available LLMs in ChainForge, in the format expected by LLMListItems.
+  AvailableLLMs: [...initLLMProviders],
+  setAvailableLLMs: (llmProviderList) => {
+    set({AvailableLLMs: llmProviderList});
+  },
 
   // Keeping track of LLM API keys
   apiKeys: initialAPIKeys,

@@ -35,6 +35,7 @@ class ModelProviderProtocol(Protocol):
         """
         pass
 
+
 """
     A registry for custom endpoints
 """
@@ -52,6 +53,14 @@ class _ProviderRegistry:
 
     def get_all(self):
         return list(self._registry.values())
+
+    def has(self, name):
+        return name in self._registry
+    
+    def remove(self, name):
+        if self.has(name):
+            del self._registry[name]
+
 
 # Global instance of the registry.
 ProviderRegistry = _ProviderRegistry()
