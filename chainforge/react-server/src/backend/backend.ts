@@ -12,11 +12,6 @@ import { PromptPermutationGenerator, PromptTemplate } from "./template";
 //     =================
 // """
 
-let LLM_NAME_MAP = {};
-Object.entries(NativeLLM).forEach(([key, value]) => {
-  LLM_NAME_MAP[value] = key;
-});
-
 enum MetricType {
   KeyValue = 0,
   KeyValue_Numeric = 1,
@@ -553,13 +548,7 @@ export async function queryLLM(id: string,
   // Ensure llm param is an array
   if (typeof llm === 'string')
     llm = [ llm ];
-  llm = llm as (Array<string> | Array<Dict>); 
-
-  for (let i = 0; i < llm.length; i++) {
-    const llm_spec = llm[i];
-    if (!(extract_llm_name(llm_spec) in LLM_NAME_MAP)) 
-      return {'error': `LLM named '${llm_spec}' is not supported.`};
-  }
+  llm = llm as (Array<string> | Array<Dict>);
 
   await setAPIKeys(api_keys);
 

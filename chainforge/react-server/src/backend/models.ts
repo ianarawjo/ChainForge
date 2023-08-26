@@ -71,6 +71,7 @@ export enum LLMProvider {
   Anthropic = "anthropic",
   Google = "google",
   HuggingFace = "hf",
+  Custom = "__custom",
 }
 
 /**
@@ -92,6 +93,8 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
     return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith('claude'))
     return LLMProvider.Anthropic;
+  else if (llm.toString().startsWith('__custom/'))
+    return LLMProvider.Custom;
   return undefined;
 }
 

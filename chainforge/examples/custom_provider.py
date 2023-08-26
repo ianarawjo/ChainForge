@@ -7,8 +7,8 @@
 from chainforge.providers import provider
 import cohere
 
-# initialize the Cohere AsyncClient with your API Key
-co = cohere.AsyncClient('<YOUR_API_KEY>')
+# Replace with your Cohere API Key
+COHERE_API_KEY = '<YOUR_API_KEY>'
 
 # JSON schemas to pass react-jsonschema-form, one for this endpoints' settings and one to describe the settings UI.
 COHERE_SETTINGS_SCHEMA = {
@@ -22,12 +22,24 @@ COHERE_SETTINGS_SCHEMA = {
       "maximum": 5.0,
       "multipleOf": 0.01,
     },
+    "max_tokens": {
+      "type": "integer",
+      "title": "max_tokens",
+      "description": "Maximum number of tokens to generate in the response.",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 1024,
+    },
   },
   "ui": {
     "temperature": {
       "ui:help": "Defaults to 1.0.",
       "ui:widget": "range"
-    }
+    },
+    "max_tokens": {
+      "ui:help": "Defaults to 100.",
+      "ui:widget": "range"
+    },
   }
 }
 
@@ -39,6 +51,7 @@ COHERE_SETTINGS_SCHEMA = {
           settings_schema=COHERE_SETTINGS_SCHEMA)
 async def CohereCompletion(prompt: str, model: str, temperature: float = 0.75, **kwargs) -> str:
     print(f"Calling Cohere model {model} with prompt '{prompt}'...")
+    co = cohere.AsyncClient(COHERE_API_KEY)
     response = await co.generate(model=model, prompt=prompt, temperature=temperature, **kwargs)
-    return response
+    return response.generations[0].text
 

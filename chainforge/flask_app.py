@@ -585,6 +585,7 @@ async def callCustomProvider():
     
     # Call + await the custom provider function, passing in the JSON payload as kwargs
     try:
+        print(params)
         response = await provider_spec.get('func')(**params)
     except Exception as e:
         return jsonify({'error': f'Error encountered while calling custom provider function: {str(e)}'})

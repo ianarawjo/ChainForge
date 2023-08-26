@@ -786,8 +786,9 @@ export const addCustomProvider = (name, emoji, models, rate_limit, settings_sche
   // Each LLM *model* must have a unique name. To avoid name collisions, for custom providers,
   // the full LLM model name is a path, __custom/<provider_name>/<submodel name> 
   // If there's no submodel, it's just __custom/<provider_name>.
-  new_provider.base_model = name;
-  new_provider.model = `__custom/${name}` + (Array.isArray(models) && models.length > 0) ? `/${models[0]}` : '';
+  const base_model = `__custom/${name}`;
+  new_provider.base_model = base_model;
+  new_provider.model = base_model + ((Array.isArray(models) && models.length > 0) ? `/${models[0]}` : '');
 
   // Build the settings form schema for this new custom provider 
   let compiled_schema = {
@@ -841,14 +842,14 @@ export const addCustomProvider = (name, emoji, models, rate_limit, settings_sche
   
   // Add the built provider and its settings to the global lookups:
   AvailableLLMs.push(new_provider);
-  ModelSettings[name] = compiled_schema;
+  ModelSettings[base_model] = compiled_schema;
 
   // Add rate limit info, if specified
   if (rate_limit !== undefined && typeof rate_limit === 'number' && rate_limit > 0) {
     if (rate_limit >= 60)
-      RATE_LIMITS[`__custom/${name}`] = [ Math.trunc(rate_limit/60), 1 ]; // for instance, 300 rpm means 5 every second
+      RATE_LIMITS[base_model] = [ Math.trunc(rate_limit/60), 1 ]; // for instance, 300 rpm means 5 every second
     else
-      RATE_LIMITS[`__custom/${name}`] = [ 1, Math.trunc(60/rate_limit) ]; // for instance, 10 rpm means 1 every 6 seconds
+      RATE_LIMITS[base_model] = [ 1, Math.trunc(60/rate_limit) ]; // for instance, 10 rpm means 1 every 6 seconds
   }
 }
 

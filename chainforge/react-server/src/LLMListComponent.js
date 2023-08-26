@@ -68,8 +68,13 @@ export function LLMList({llms, onItemsChange}) {
           updated_item.formData = {...formData};
           updated_item.settings = {...settingsData};
 
-          if ('model' in formData) // Update the name of the specific model to call
-            updated_item.model = formData['model'];
+          if ('model' in formData) { // Update the name of the specific model to call
+            if (item.base_model.startsWith('__custom'))
+              // Custom models must always have their base name, to avoid name collisions
+              updated_item.model = item.base_model + '/' + formData['model'];
+            else
+              updated_item.model = formData['model'];
+          }
           if ('shortname' in formData) {
             // Change the name, amending any name that isn't unique to ensure it is unique:
             const unique_name = ensureUniqueName(formData['shortname'], prev_names);

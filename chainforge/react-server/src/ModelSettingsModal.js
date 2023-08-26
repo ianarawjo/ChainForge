@@ -16,7 +16,6 @@ const ModelSettingsModal = forwardRef((props, ref) => {
 
   const [formData, setFormData] = useState(undefined);
   const onSettingsSubmit = props.onSettingsSubmit;
-  const selectedModelKey = props.model ? props.model.key : null;
 
   const [schema, setSchema] = useState({'type': 'object', 'description': 'No model info object was passed to settings modal.'});
   const [uiSchema, setUISchema] = useState({});

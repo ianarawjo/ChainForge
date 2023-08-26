@@ -625,17 +625,24 @@ async function call_custom_provider(prompt: string, model: LLM, n: number = 1, t
   if (!APP_IS_RUNNING_LOCALLY())
     throw new Error("The ChainForge app does not appear to be running locally. You can only call custom model providers if you are running ChainForge on your local machine, from a Flask app.")
 
+  // The model to call is in format:
+  // __custom/<provider_name>/<submodel name> 
+  // It may also exclude the final tag. 
+  // We extract the provider name (this is the name used in the Python backend's `ProviderRegistry`) and optionally, the submodel name
+  const provider_path = model.substring(9);
+  const provider_name = provider_path.substring(0, provider_path.indexOf('/'));
+  const submodel_name = (provider_path.length === provider_name.length-1) ? undefined : provider_path.substring(provider_path.lastIndexOf('/')+1);
+
   let responses = [];
   const query = { prompt, model, temperature, ...params };
 
   // Call the custom provider n times 
   while (responses.length < n) {
-    
     let {response, error} = await call_flask_backend('callCustomProvider', 
-      { 'name': model,
+      { 'name': provider_name,
         'params': {
-          prompt, model, temperature, ...params
-        }
+          prompt, model: submodel_name, temperature, ...params
+      }
     });
 
     // Fail if an error is encountered
@@ -671,7 +678,7 @@ export async function call_llm(llm: LLM, prompt: string, n: number, temperature:
     call_api = call_anthropic;
   else if (llm_provider === LLMProvider.HuggingFace)
     call_api = call_huggingface;
-  else
+  else if (llm_provider === LLMProvider.Custom)
     call_api = call_custom_provider;
   
   return call_api(prompt, llm, n, temperature, params);
