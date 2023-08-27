@@ -1,2 +1,2 @@
-__all__ = ['ModelProviderProtocol', 'provider', 'ProviderRegistry']
-from .protocol import ModelProviderProtocol, provider, ProviderRegistry
+__all__ = ['CustomProviderProtocol', 'provider', 'ProviderRegistry']
+from .protocol import CustomProviderProtocol, provider, ProviderRegistry
