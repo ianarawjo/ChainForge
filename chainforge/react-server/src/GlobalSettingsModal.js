@@ -105,6 +105,8 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
   const setAPIKeys = useStore((state) => state.setAPIKeys);
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
   const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
+  const nodes = useStore((state) => state.nodes);
+  const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const alertModal = props?.alertModal;
 
   const handleError = useCallback((msg) => {
@@ -113,6 +115,13 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
   }, [alertModal]);
 
   const [customProviders, setLocalCustomProviders] = useState([]);
+  const refreshLLMProviderLists = useCallback(() => {
+    // We unfortunately have to force all prompt/chat nodes to refresh their LLM lists, bc
+    // apparently the update to the AvailableLLMs list is not immediately propagated to them.
+    const prompt_nodes = nodes.filter(n => n.type === 'prompt' || n.type === 'chat');
+    prompt_nodes.forEach(n => setDataPropsForNode(n.id, { refreshLLMList: true }));
+  }, [nodes, setDataPropsForNode]);
+
   const removeCustomProvider = useCallback((name) => {
     fetch_from_backend('removeCustomProvider', { 
       name: name, 
@@ -125,8 +134,9 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
       // now updated the front-end UI to reflect this:
       setAvailableLLMs(AvailableLLMs.filter((p) => p.name !== name));
       setLocalCustomProviders(customProviders.filter((p) => p.name !== name));
+      refreshLLMProviderLists();
     }).catch((err) => handleError(err.message));
-  }, [customProviders, handleError, AvailableLLMs]);
+  }, [customProviders, handleError, AvailableLLMs, refreshLLMProviderLists]);
 
   // On init
   useEffect(() => {
@@ -265,7 +275,10 @@ return (
                   </Group>
                 </Card>
               )) }
-              <CustomProviderScriptDropzone onError={handleError} onSetProviders={setLocalCustomProviders} />
+              <CustomProviderScriptDropzone onError={handleError} onSetProviders={(ps) => {
+                refreshLLMProviderLists();
+                setLocalCustomProviders(ps); 
+              }} />
             </Tabs.Panel>
           : <></>}
           </Tabs>

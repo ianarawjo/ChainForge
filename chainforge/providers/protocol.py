@@ -13,32 +13,33 @@ class ChatMessage(TypedDict):
 
 ChatHistory = List[ChatMessage]
 
-class ModelProviderProtocol(Protocol):
+
+class CustomProviderProtocol(Protocol):
     """
         A Callable protocol to implement for custom model provider completions.
         See `__call__` for more details.
     """
-    async def __call__(self, 
-                       prompt: str,
-                       model: Optional[str], 
-                       chat_history: Optional[ChatHistory],
-                       **kwargs: Any) -> str:
+    def __call__(self, 
+                 prompt: str,
+                 model: Optional[str], 
+                 chat_history: Optional[ChatHistory],
+                 **kwargs: Any) -> str:
         """
-          Define a call to your custom endpoint.
+          Define a call to your custom provider.
 
           Parameters:
            - `prompt`: Text to prompt the model. (If it's a chat model, this is the new message to send.)
-           - `model`: The name of the particular model to use, from the CF settings window. Useful when you have multiple models for a single endpoint. Optional.
-           - `chat_history`: Endpoints may be passed a past chat context as a list of chat messages in OpenAI format (see `chainforge.endpoints.ChatHistory`). 
+           - `model`: The name of the particular model to use, from the CF settings window. Useful when you have multiple models for a single provider. Optional.
+           - `chat_history`: Providers may be passed a past chat context as a list of chat messages in OpenAI format (see `chainforge.providers.ChatHistory`). 
                              Chat history does not include the new message to send off (which is passed instead as the `prompt` parameter).
-           - `kwargs`: Any other parameters to pass the endpoint call, like temperature. Parameter names are from keynames in your endpoint's settings_spec.
-                       Only relevant if you are defining a custom settings_spec JSON to edit endpoint/model settings in ChainForge. 
+           - `kwargs`: Any other parameters to pass the provider API call, like temperature. Parameter names are the keynames in your provider's settings_schema.
+                       Only relevant if you are defining a custom settings_schema JSON to edit provider/model settings in ChainForge. 
         """
         pass
 
 
 """
-    A registry for custom endpoints
+    A registry for custom providers
 """
 class _ProviderRegistry:
     def __init__(self):
@@ -49,7 +50,7 @@ class _ProviderRegistry:
     def set_curr_script_id(self, id: str):
         self._curr_script_id = id
 
-    def register(self, cls: ModelProviderProtocol, name: str, **kwargs):
+    def register(self, cls: CustomProviderProtocol, name: str, **kwargs):
         if name is None or isinstance(name, str) is False or len(name) == 0:
             raise Exception("Cannot register custom model provider: No name given. Name must be a string and unique.")
         self._last_updated[name] = self._registry[name]["script_id"] if name in self._registry else None
@@ -78,23 +79,23 @@ class _ProviderRegistry:
 # Global instance of the registry.
 ProviderRegistry = _ProviderRegistry()
 
-def provider(name: str = 'custom_provider', 
-             emoji: Optional[str] = '✨', 
+def provider(name: str = 'Custom Provider', 
+             emoji: str = '✨', 
              models: Optional[List[str]] = None, 
              rate_limit: Union[int, Literal["sequential"]] = "sequential",
              settings_schema: Optional[Dict] = None):
     """
       A decorator for registering custom LLM provider methods or classes (Callables)
-      that conform to `CustomEndpointProtocol`.
+      that conform to `CustomProviderProtocol`.
 
       Parameters:
-       - `name`: The name of your custom endpoint. Required. (Must be unique; cannot be blank.)
-       - `emoji`: The emoji to use as the default icon for your endpoint in the CF interface. Optional.
-       - `models`: A list of models that your endpoint supports, that you want to be able to choose between in Settings window. 
+       - `name`: The name of your custom provider. Required. (Must be unique; cannot be blank.)
+       - `emoji`: The emoji to use as the default icon for your provider in the CF interface. Required.
+       - `models`: A list of models that your provider supports, that you want to be able to choose between in Settings window. 
                    If you're just calling a single model, you can omit this.
        - `rate_limit`: If an integer, the maximum number of simulatenous requests to send per minute. 
                    To force requests to be sequential (wait until each request returns before sending another), enter "sequential". Default is sequential.
-       - `settings_schema`: a JSON Schema specifying the name of your endpoint in the ChainForge UI, the available settings, and the UI for those settings.
+       - `settings_schema`: a JSON Schema specifying the name of your provider in the ChainForge UI, the available settings, and the UI for those settings.
           The settings and UI specs are in react-jsonschema-form format: https://rjsf-team.github.io/react-jsonschema-form/. 
           
             Specifically, your `settings_schema` dict should have keys:
@@ -120,7 +121,7 @@ def provider(name: str = 'custom_provider',
             you can try other widget types, but the CSS may not display property. 
 
     """
-    def dec(cls: ModelProviderProtocol):
+    def dec(cls: CustomProviderProtocol):
         ProviderRegistry.register(cls, name=name, emoji=emoji, models=models, rate_limit=rate_limit, settings_schema=settings_schema)
         return cls
     return dec

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle, useReducer } from "react";
 import { DragDropContext, Draggable } from "react-beautiful-dnd";
 import { Menu } from "@mantine/core";
 import { v4 as uuid } from 'uuid';
@@ -167,6 +167,14 @@ export const LLMListContainer = forwardRef(({description, modelSelectButtonText,
   // All available LLM providers, for the dropdown list
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
 
+  // For some reason, when the AvailableLLMs list is updated in the store/, it is not
+  // immediately updated here. I've tried all kinds of things, but cannot seem to fix this problem.
+  // We must force a re-render of the component: 
+  const [ignored, forceUpdate] = useReducer(x => x + 1, 0);
+  const refreshLLMProviderList = () => {
+    forceUpdate();
+  };
+
   // Selecting LLM models to prompt
   const [llmItems, setLLMItems] = useState(initLLMItems || DEFAULT_INIT_LLMS.map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i})));
   const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
@@ -251,6 +259,7 @@ export const LLMListContainer = forwardRef(({description, modelSelectButtonText,
     updateProgress,
     ensureLLMItemsErrorProgress,
     getLLMListItemForKey,
+    refreshLLMProviderList,
   }));
 
   return (<div className="llm-list-container nowheel">
