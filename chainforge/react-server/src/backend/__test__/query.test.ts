@@ -2,7 +2,7 @@
 * @jest-environment node
 */
 import { PromptPipeline } from '../query';
-import { LLM } from '../models';
+import { LLM, NativeLLM } from '../models';
 import { expect, test } from '@jest/globals';
 import { LLMResponseError, LLMResponseObject } from '../typing';
 
@@ -65,13 +65,13 @@ async function prompt_model(model: LLM): Promise<void> {
 
 test('basic prompt pipeline with chatgpt', async () => {
   // Setup a simple pipeline with a prompt template, 1 variable and 3 input values
-  await prompt_model(LLM.OpenAI_ChatGPT);
+  await prompt_model(NativeLLM.OpenAI_ChatGPT);
 }, 20000);
 
 test('basic prompt pipeline with anthropic', async () => {
-  await prompt_model(LLM.Claude_v1);
+  await prompt_model(NativeLLM.Claude_v1);
 }, 40000);
 
 test('basic prompt pipeline with google palm2', async () => {
-  await prompt_model(LLM.PaLM2_Chat_Bison);
+  await prompt_model(NativeLLM.PaLM2_Chat_Bison);
 }, 40000);

@@ -1,7 +1,7 @@
 import markdownIt from "markdown-it";
 
-import { Dict, StringDict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse, ChatHistory, ChatHistoryInfo, isEqualChatHistory } from "./typing";
-import { LLM, getEnumName } from "./models";
+import { Dict, StringDict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse, ChatHistoryInfo, isEqualChatHistory } from "./typing";
+import { LLM, NativeLLM, getEnumName } from "./models";
 import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
@@ -11,11 +11,6 @@ import { PromptPermutationGenerator, PromptTemplate } from "./template";
 //     SETUP AND GLOBALS
 //     =================
 // """
-
-let LLM_NAME_MAP = {};
-Object.entries(LLM).forEach(([key, value]) => {
-  LLM_NAME_MAP[value] = key;
-});
 
 enum MetricType {
   KeyValue = 0,
@@ -553,13 +548,7 @@ export async function queryLLM(id: string,
   // Ensure llm param is an array
   if (typeof llm === 'string')
     llm = [ llm ];
-  llm = llm as (Array<string> | Array<Dict>); 
-
-  for (let i = 0; i < llm.length; i++) {
-    const llm_spec = llm[i];
-    if (!(extract_llm_name(llm_spec) in LLM_NAME_MAP)) 
-      return {'error': `LLM named '${llm_spec}' is not supported.`};
-  }
+  llm = llm as (Array<string> | Array<Dict>);
 
   await setAPIKeys(api_keys);
 
@@ -1119,4 +1108,58 @@ export async function fetchOpenAIEval(evalname: string): Promise<Dict> {
   return fetch(`oaievals/${evalname}.cforge`)
               .then(response => response.json())
               .then(res => ({data: res}));
+}
+
+/**
+ * Passes a Python script to load a custom model provider to the Flask backend.
+
+ * @param code The Python script to pass, as a string. 
+ * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success, 
+ *          a 'providers' key with a list of all loaded custom provider callbacks, as dicts.
+ */
+export async function initCustomProvider(code: string): Promise<Dict> {
+  // Attempt to fetch the example flow from the local filesystem
+  // by querying the Flask server: 
+  return fetch(`${FLASK_BASE_URL}app/initCustomProvider`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+    body: JSON.stringify({ code })
+  }).then(function(res) {
+    return res.json();
+  });
+}
+
+/**
+ * Asks Python script to remove a custom provider with name 'name'.
+
+ * @param name The name of the provider to remove. The name must match the name in the `ProviderRegistry`.  
+ * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success, 
+ *          a 'success' key with a true value.
+ */
+export async function removeCustomProvider(name: string): Promise<Dict> {
+  // Attempt to fetch the example flow from the local filesystem
+  // by querying the Flask server: 
+  return fetch(`${FLASK_BASE_URL}app/removeCustomProvider`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+    body: JSON.stringify({ name })
+  }).then(function(res) {
+    return res.json();
+  });
+}
+
+/**
+ * Asks Python backend to load custom provider scripts that are cache'd in the user's local dir. 
+ * 
+ * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success, 
+ *          a 'providers' key with all loaded custom providers in an array. If there were none, returns empty array.
+ */
+export async function loadCachedCustomProviders(): Promise<Dict> {
+  return fetch(`${FLASK_BASE_URL}app/loadCachedCustomProviders`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+    body: "{}"
+  }).then(function(res) {
+    return res.json();
+  });
 }

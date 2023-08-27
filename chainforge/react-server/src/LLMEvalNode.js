@@ -1,23 +1,24 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle } from 'react-flow-renderer';
-import { Button, Alert, Progress, Textarea } from '@mantine/core';
+import { Alert, Progress, Textarea } from '@mantine/core';
 import { IconAlertTriangle, IconRobot, IconSearch } from "@tabler/icons-react";
 import { v4 as uuid } from 'uuid';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
 import fetch_from_backend from './fetch_from_backend';
-import { AvailableLLMs, getDefaultModelSettings } from './ModelSettingSchemas';
+import { getDefaultModelSettings } from './ModelSettingSchemas';
 import { LLMListContainer } from './LLMListComponent';
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 import InspectFooter from './InspectFooter';
+import { initLLMProviders } from './store';
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt. 
 const PLACEHOLDER_PROMPT = "Respond with 'true' if the text below has a positive sentiment, and 'false' if not. Do not reply with anything else.";
 
 // The default LLM annotator is GPT-4 at temperature 0.
 const DEFAULT_LLM_ITEM = (() => {
-  let item = [AvailableLLMs.find(i => i.base_model === 'gpt-4')]
-                           .map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i}))[0];
+  let item = [initLLMProviders.find(i => i.base_model === 'gpt-4')]
+                              .map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i}))[0];
   item.settings.temperature = 0.0;
   return item;
 })();

@@ -199,9 +199,12 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   // On upstream changes
   useEffect(() => {
-    if (data.refresh && data.refresh === true) {
+    if (data.refresh === true) {
       setDataPropsForNode(id, { refresh: false });
       setStatus('warning');
+    } else if (data.refreshLLMList === true) {
+      llmListContainer?.current?.refreshLLMProviderList();
+      setDataPropsForNode(id, { refreshLLMList: false });
     }
   }, [data]);
 

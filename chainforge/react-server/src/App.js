@@ -23,7 +23,7 @@ import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
 import AreYouSureModal from './AreYouSureModal';
 import LLMEvaluatorNode from './LLMEvalNode';
-import { getDefaultModelFormData, getDefaultModelSettings } from './ModelSettingSchemas';
+import { getDefaultModelFormData, getDefaultModelSettings, setCustomProviders } from './ModelSettingSchemas';
 import { v4 as uuid } from 'uuid';
 import LZString from 'lz-string';
 import { EXAMPLEFLOW_1 } from './example_flows';
@@ -122,7 +122,8 @@ const snapGrid = [16, 16];
 const App = () => {
 
   // Get nodes, edges, etc. state from the Zustand store:
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, setNodes, setEdges, resetLLMColors } = useStore(selector, shallow);
+  const { nodes, edges, onNodesChange, onEdgesChange, 
+          onConnect, addNode, setNodes, setEdges, resetLLMColors } = useStore(selector, shallow);
 
   // For saving / loading
   const [rfInstance, setRfInstance] = useState(null);
@@ -672,7 +673,7 @@ const App = () => {
   }
   else return (
     <div>
-      <GlobalSettingsModal ref={settingsModal} />
+      <GlobalSettingsModal ref={settingsModal} alertModal={alertModal} />
       <AlertModal ref={alertModal} />
       <LoadingOverlay visible={isLoading} overlayBlur={1} />
       <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />

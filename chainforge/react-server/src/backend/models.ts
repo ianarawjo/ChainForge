@@ -1,7 +1,8 @@
 /** 
  * A list of all model APIs natively supported by ChainForge. 
  */
-export enum LLM {
+export type LLM = string | NativeLLM;
+export enum NativeLLM {
   // OpenAI Chat
   OpenAI_ChatGPT = "gpt-3.5-turbo",
   OpenAI_ChatGPT_16k = "gpt-3.5-turbo-16k",
@@ -70,6 +71,7 @@ export enum LLMProvider {
   Anthropic = "anthropic",
   Google = "google",
   HuggingFace = "hf",
+  Custom = "__custom",
 }
 
 /**
@@ -78,7 +80,7 @@ export enum LLMProvider {
  * @returns an `LLMProvider` describing what provider hosts the model
  */
 export function getProvider(llm: LLM): LLMProvider | undefined {
-  const llm_name = getEnumName(LLM, llm.toString());
+  const llm_name = getEnumName(NativeLLM, llm.toString());
   if (llm_name?.startsWith('OpenAI'))
     return LLMProvider.OpenAI;
   else if (llm_name?.startsWith('Azure'))
@@ -91,6 +93,8 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
     return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith('claude'))
     return LLMProvider.Anthropic;
+  else if (llm.toString().startsWith('__custom/'))
+    return LLMProvider.Custom;
   return undefined;
 }
 
@@ -101,21 +105,21 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
 #   This 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
 #   If a model is missing from below, it means we must send and receive only 1 request at a time (synchronous).
 #   The following is only a guideline, and a bit on the conservative side.  */
-export const RATE_LIMITS: { [key in LLM]?: [number, number] } = {
-  [LLM.OpenAI_ChatGPT]: [30, 10],  // max 30 requests a batch; wait 10 seconds between
-  [LLM.OpenAI_ChatGPT_0301]: [30, 10],
-  [LLM.OpenAI_ChatGPT_0613]: [30, 10],
-  [LLM.OpenAI_ChatGPT_16k]: [30, 10],
-  [LLM.OpenAI_ChatGPT_16k_0613]: [30, 10],
-  [LLM.OpenAI_GPT4]: [4, 15],  // max 4 requests a batch; wait 15 seconds between
-  [LLM.OpenAI_GPT4_0314]: [4, 15],
-  [LLM.OpenAI_GPT4_0613]: [4, 15],
-  [LLM.OpenAI_GPT4_32k]: [4, 15],
-  [LLM.OpenAI_GPT4_32k_0314]: [4, 15],
-  [LLM.OpenAI_GPT4_32k_0613]: [4, 15],
-  [LLM.Azure_OpenAI]: [30, 10],
-  [LLM.PaLM2_Text_Bison]: [4, 10],  // max 30 requests per minute; so do 4 per batch, 10 seconds between (conservative)
-  [LLM.PaLM2_Chat_Bison]: [4, 10],
+export let RATE_LIMITS: { [key in LLM]?: [number, number] } = {
+  [NativeLLM.OpenAI_ChatGPT]: [30, 10],  // max 30 requests a batch; wait 10 seconds between
+  [NativeLLM.OpenAI_ChatGPT_0301]: [30, 10],
+  [NativeLLM.OpenAI_ChatGPT_0613]: [30, 10],
+  [NativeLLM.OpenAI_ChatGPT_16k]: [30, 10],
+  [NativeLLM.OpenAI_ChatGPT_16k_0613]: [30, 10],
+  [NativeLLM.OpenAI_GPT4]: [4, 15],  // max 4 requests a batch; wait 15 seconds between
+  [NativeLLM.OpenAI_GPT4_0314]: [4, 15],
+  [NativeLLM.OpenAI_GPT4_0613]: [4, 15],
+  [NativeLLM.OpenAI_GPT4_32k]: [4, 15],
+  [NativeLLM.OpenAI_GPT4_32k_0314]: [4, 15],
+  [NativeLLM.OpenAI_GPT4_32k_0613]: [4, 15],
+  [NativeLLM.Azure_OpenAI]: [30, 10],
+  [NativeLLM.PaLM2_Text_Bison]: [4, 10],  // max 30 requests per minute; so do 4 per batch, 10 seconds between (conservative)
+  [NativeLLM.PaLM2_Chat_Bison]: [4, 10],
 };
 
 

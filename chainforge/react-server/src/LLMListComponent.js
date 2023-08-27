@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle, useReducer } from "react";
 import { DragDropContext, Draggable } from "react-beautiful-dnd";
 import { Menu } from "@mantine/core";
 import { v4 as uuid } from 'uuid';
 import LLMListItem, { LLMListItemClone } from "./LLMListItem";
 import { StrictModeDroppable } from './StrictModeDroppable';
 import ModelSettingsModal from "./ModelSettingsModal";
-import { getDefaultModelSettings, AvailableLLMs } from './ModelSettingSchemas';
+import { getDefaultModelSettings } from './ModelSettingSchemas';
+import useStore, { initLLMProviders } from "./store";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
-const DEFAULT_INIT_LLMS = [AvailableLLMs[0]];
+const DEFAULT_INIT_LLMS = [initLLMProviders[0]];
 
 // Helper funcs
 // Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
@@ -68,8 +69,13 @@ export function LLMList({llms, onItemsChange}) {
           updated_item.formData = {...formData};
           updated_item.settings = {...settingsData};
 
-          if ('model' in formData) // Update the name of the specific model to call
-            updated_item.model = formData['model'];
+          if ('model' in formData) { // Update the name of the specific model to call
+            if (item.base_model.startsWith('__custom'))
+              // Custom models must always have their base name, to avoid name collisions
+              updated_item.model = item.base_model + '/' + formData['model'];
+            else
+              updated_item.model = formData['model'];
+          }
           if ('shortname' in formData) {
             // Change the name, amending any name that isn't unique to ensure it is unique:
             const unique_name = ensureUniqueName(formData['shortname'], prev_names);
@@ -158,6 +164,17 @@ export function LLMList({llms, onItemsChange}) {
 
 export const LLMListContainer = forwardRef(({description, modelSelectButtonText, initLLMItems, onSelectModel, selectModelAction, onItemsChange}, ref) => {
 
+  // All available LLM providers, for the dropdown list
+  const AvailableLLMs = useStore((state) => state.AvailableLLMs);
+
+  // For some reason, when the AvailableLLMs list is updated in the store/, it is not
+  // immediately updated here. I've tried all kinds of things, but cannot seem to fix this problem.
+  // We must force a re-render of the component: 
+  const [ignored, forceUpdate] = useReducer(x => x + 1, 0);
+  const refreshLLMProviderList = () => {
+    forceUpdate();
+  };
+
   // Selecting LLM models to prompt
   const [llmItems, setLLMItems] = useState(initLLMItems || DEFAULT_INIT_LLMS.map((i) => ({key: uuid(), settings: getDefaultModelSettings(i.base_model), ...i})));
   const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
@@ -228,7 +245,7 @@ export const LLMListContainer = forwardRef(({description, modelSelectButtonText,
     
     setLLMItems(new_items);
     if (onSelectModel) onSelectModel(item, new_items);
-  }, [llmItemsCurrState, onSelectModel, selectModelAction]);
+  }, [llmItemsCurrState, onSelectModel, selectModelAction, AvailableLLMs]);
 
   const onLLMListItemsChange = useCallback((new_items) => {
     setLLMItemsCurrState(new_items);
@@ -242,6 +259,7 @@ export const LLMListContainer = forwardRef(({description, modelSelectButtonText,
     updateProgress,
     ensureLLMItemsErrorProgress,
     getLLMListItemForKey,
+    refreshLLMProviderList,
   }));
 
   return (<div className="llm-list-container nowheel">
