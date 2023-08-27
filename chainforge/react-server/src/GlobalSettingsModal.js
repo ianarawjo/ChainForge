@@ -259,7 +259,7 @@ return (
             <Tabs.Panel value="custom-providers" pt="md">
               <Text mb="md" fz="sm" lh={1.3}>
                 You can add model providers to ChainForge by writing custom completion functions as Python scripts. (You can even make your own settings screen!)
-                To learn more, <a href="https://chainforge.ai/docs" target="_blank" style={_LINK_STYLE}>see the documentation.</a>
+                To learn more, <a href="https://chainforge.ai/docs/custom_providers/" target="_blank" style={_LINK_STYLE}>see the documentation.</a>
               </Text>
               { customProviders.map(p => (
                 <Card key={p.name} shadow='sm' radius='sm' pt='0px' pb='4px' mb='md' withBorder>

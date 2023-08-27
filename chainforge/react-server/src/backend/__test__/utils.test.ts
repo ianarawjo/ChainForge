@@ -1,5 +1,5 @@
 /*
-* @jest-environment node
+* @jest-environment jsdom
 */
 import { call_anthropic, call_chatgpt, call_google_palm, extract_responses, merge_response_objs } from '../utils';
 import { LLM, NativeLLM } from '../models';

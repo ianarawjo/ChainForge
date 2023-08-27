@@ -1,5 +1,5 @@
 /*
-* @jest-environment node
+* @jest-environment jsdom
 */
 import { NativeLLM } from '../models';
 import { expect, test } from '@jest/globals';
