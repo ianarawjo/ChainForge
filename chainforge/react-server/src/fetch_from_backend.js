@@ -31,7 +31,7 @@ async function _route_to_js_backend(route, params) {
     case 'fetchOpenAIEval':
       return fetchOpenAIEval(params.name);
     case 'initCustomProvider':
-      return initCustomProvider(params.id, params.code);
+      return initCustomProvider(params.code);
     case 'removeCustomProvider':
       return removeCustomProvider(params.name);
     case 'loadCachedCustomProviders':

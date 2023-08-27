@@ -1,4 +1,5 @@
 from typing import Protocol, Optional, TypedDict, Dict, List, Literal, Union, Any
+import time
 
 """
     OpenAI chat message format typing
@@ -43,6 +44,7 @@ class _ProviderRegistry:
     def __init__(self):
         self._registry = {}
         self._curr_script_id = '0'
+        self._last_updated = {}
     
     def set_curr_script_id(self, id: str):
         self._curr_script_id = id
@@ -50,6 +52,7 @@ class _ProviderRegistry:
     def register(self, cls: ModelProviderProtocol, name: str, **kwargs):
         if name is None or isinstance(name, str) is False or len(name) == 0:
             raise Exception("Cannot register custom model provider: No name given. Name must be a string and unique.")
+        self._last_updated[name] = self._registry[name]["script_id"] if name in self._registry else None
         self._registry[name] = { "name": name, "func": cls, "script_id": self._curr_script_id, **kwargs }
 
     def get(self, name):
@@ -64,6 +67,12 @@ class _ProviderRegistry:
     def remove(self, name):
         if self.has(name):
             del self._registry[name]
+    
+    def watch_next_registered(self):
+        self._last_updated = {}
+    
+    def last_registered(self):
+        return {k: v for k, v in self._last_updated.items()}
 
 
 # Global instance of the registry.

@@ -11,6 +11,9 @@ import { setCustomProviders } from './ModelSettingSchemas';
 
 const _LINK_STYLE = {color: '#1E90FF', textDecoration: 'none'};
 
+// To only let us call the backend to load custom providers once upon initalization
+let LOADED_CUSTOM_PROVIDERS = false;
+
 // Read a file as text and pass the text to a cb (callback) function
 const read_file = (file, cb) => {
   const reader = new FileReader();
@@ -27,7 +30,7 @@ const read_file = (file, cb) => {
 /** A Dropzone to load a Python `.py` script that registers a `CustomModelProvider` in the Flask backend. 
  * If successful, the list of custom model providers in the ChainForge UI dropdown is updated. 
  * */ 
-const CustomProviderScriptDropzone = ({id, onError, onSetProviders}) => {
+const CustomProviderScriptDropzone = ({onError, onSetProviders}) => {
   const theme = useMantineTheme();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -39,7 +42,6 @@ const CustomProviderScriptDropzone = ({id, onError, onSetProviders}) => {
         read_file(files[0], (content) => {
           // Read the file into text and then send it to backend 
           fetch_from_backend('initCustomProvider', { 
-            id: id, 
             code: content 
           }).then((response) => {
             setIsLoading(false);
@@ -128,12 +130,13 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
 
   // On init
   useEffect(() => {
-    if (APP_IS_RUNNING_LOCALLY()) {
+    if (APP_IS_RUNNING_LOCALLY() && !LOADED_CUSTOM_PROVIDERS) {
+      LOADED_CUSTOM_PROVIDERS = true;
       // Is running locally; try to load any custom providers.
       // Soft fails if it encounters error:
       fetch_from_backend('loadCachedCustomProviders', {}, console.error).then((json) => {
-        if (json.error || json.providers === undefined) {
-          console.error(json.error);
+        if (json?.error || json?.providers === undefined) {
+          console.error(json?.error || "Could not load custom provider scripts: Error contacting backend.");
           return;
         }
         // Success; pass custom providers list to store:
@@ -173,7 +176,7 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
   }));
 
 return (
-    <Modal keepMounted opened={opened} onClose={close} title="ChainForge Settings" closeOnClickOutside={false} style={{position: 'relative', 'left': '-100px'}}>
+    <Modal keepMounted opened={opened} onClose={close} title="ChainForge Settings" closeOnClickOutside={false} style={{position: 'relative', 'left': '-5%'}}>
         <Box maw={380} mx="auto">
           <Tabs defaultValue="api-keys">
 
@@ -249,7 +252,7 @@ return (
                 To learn more, <a href="https://chainforge.ai/docs" target="_blank" style={_LINK_STYLE}>see the documentation.</a>
               </Text>
               { customProviders.map(p => (
-                <Card shadow='sm' radius='sm' pt='0px' pb='4px' mb='md' withBorder>
+                <Card key={p.name} shadow='sm' radius='sm' pt='0px' pb='4px' mb='md' withBorder>
                   <Group position="apart">
                     <Group position="left" mt="md" mb="xs">
                       <Text w='10px'>{p.emoji}</Text>
@@ -262,7 +265,7 @@ return (
                   </Group>
                 </Card>
               )) }
-              <CustomProviderScriptDropzone id={customProviders.length.toString()} onError={handleError} onSetProviders={setLocalCustomProviders} />
+              <CustomProviderScriptDropzone onError={handleError} onSetProviders={setLocalCustomProviders} />
             </Tabs.Panel>
           : <></>}
           </Tabs>

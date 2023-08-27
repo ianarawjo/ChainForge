@@ -1113,18 +1113,17 @@ export async function fetchOpenAIEval(evalname: string): Promise<Dict> {
 /**
  * Passes a Python script to load a custom model provider to the Flask backend.
 
- * @param id A unique id to use to refer to this script. Any cache'd script with the same id will be overwritten.
  * @param code The Python script to pass, as a string. 
  * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success, 
  *          a 'providers' key with a list of all loaded custom provider callbacks, as dicts.
  */
-export async function initCustomProvider(id: string, code: string): Promise<Dict> {
+export async function initCustomProvider(code: string): Promise<Dict> {
   // Attempt to fetch the example flow from the local filesystem
   // by querying the Flask server: 
   return fetch(`${FLASK_BASE_URL}app/initCustomProvider`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-    body: JSON.stringify({ id, code })
+    body: JSON.stringify({ code })
   }).then(function(res) {
     return res.json();
   });

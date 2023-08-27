@@ -771,9 +771,9 @@ export const setCustomProvider = (name, emoji, models, rate_limit, settings_sche
   // Each LLM *model* must have a unique name. To avoid name collisions, for custom providers,
   // the full LLM model name is a path, __custom/<provider_name>/<submodel name> 
   // If there's no submodel, it's just __custom/<provider_name>.
-  const base_model = `__custom/${name}`;
+  const base_model = `__custom/${name}/`;
   new_provider.base_model = base_model;
-  new_provider.model = base_model + ((Array.isArray(models) && models.length > 0) ? `/${models[0]}` : '');
+  new_provider.model = base_model + ((Array.isArray(models) && models.length > 0) ? `${models[0]}` : '');
 
   // Build the settings form schema for this new custom provider 
   let compiled_schema = {

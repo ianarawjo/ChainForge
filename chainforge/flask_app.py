@@ -1,4 +1,4 @@
-import json, os, sys, asyncio
+import json, os, sys, asyncio, time
 from dataclasses import dataclass
 from enum import Enum
 from typing import List
@@ -517,13 +517,12 @@ def initCustomProvider():
 
         POST'd data should be in form:
         {
-            'id': <str>  # a unique ID that refers to this script (in case the user wants to update it, not add a new script)
             'code': <str>  # the Python script to save + execute,
         }
     """
     # Verify post'd data
     data = request.get_json()
-    if not set(data.keys()).issuperset({'code', 'id'}):
+    if 'code' not in data:
         return jsonify({'error': 'POST data is improper format.'})
 
     # Sanity check that the code actually registers a provider
@@ -531,7 +530,7 @@ def initCustomProvider():
         return jsonify({'error': """Did not detect a @provider decorator. Custom provider scripts should register at least one @provider. 
                                     Do `from chainforge.providers import provider` and decorate your provider completion function with @provider."""})
 
-    # Copy the posted Python script to a local file in the package directory
+    # Establish the custom provider script cache directory
     provider_scripts_dir = os.path.join(CACHE_DIR, "provider_scripts")
     if not os.path.isdir(provider_scripts_dir):
         # Create the directory
@@ -539,15 +538,11 @@ def initCustomProvider():
             os.mkdir(provider_scripts_dir)
         except Exception as e:
             return jsonify({'error': f"Error creating a new directory 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
-    # Copy the script into the directory
-    try:
-        with open(os.path.join(provider_scripts_dir, f'{id}.py'), 'w') as f:
-            f.write(data['code'])
-    except Exception as e:
-        return jsonify({'error': f"Error saving script 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
 
     # For keeping track of what script registered providers came from
-    ProviderRegistry.set_curr_script_id(data['id'])  
+    script_id = str(round(time.time()*1000))
+    ProviderRegistry.set_curr_script_id(script_id)
+    ProviderRegistry.watch_next_registered()
 
     # Attempt to run the Python script, in context
     try:
@@ -557,13 +552,33 @@ def initCustomProvider():
     except Exception as e:
         return jsonify({'error': f'Error while executing custom provider code:\n{str(e)}'})
 
+    # Check whether anything was updated, and what
+    new_registries = ProviderRegistry.last_registered()
+    if len(new_registries) == 0:  # Determine whether there's at least one custom provider.
+        return jsonify({'error': 'Did not detect any custom providers added to the registry. Make sure you are registering your provider with @provider correctly.'})
+
+    # At least one provider was registered; detect if it had a past script id and remove those file(s) from the cache
+    if any((v is not None for v in new_registries.values())):
+        # For every registered provider that was overwritten, remove the cache'd script(s) associated with it:
+        past_script_ids = [v for v in new_registries.values() if v is not None]
+        for sid in past_script_ids:
+            past_script_path = os.path.join(provider_scripts_dir, f"{sid}.py")
+            try:
+                if os.path.isfile(past_script_path):
+                    os.remove(past_script_path)
+            except Exception as e:
+                return jsonify({'error': f"Error removing cache'd custom provider script at filepath {past_script_path}: {str(e)}"})
+
     # Get the names and specs of all currently registered CustomModelProviders,
     # and pass that info to the front-end (excluding the func):
     registered_providers = [exclude_key(d, 'func') for d in ProviderRegistry.get_all()]
 
-    # Determine whether there's at least one custom provider.
-    if len(registered_providers) == 0:
-        return jsonify({'error': 'Did not detect any custom providers added to the registry. Make sure you are registering your provider with @provider correctly.'})
+    # Copy the passed Python script to a local file in the package directory
+    try:
+        with open(os.path.join(provider_scripts_dir, f"{script_id}.py"), 'w') as f:
+            f.write(data['code'])
+    except Exception as e:
+        return jsonify({'error': f"Error saving script 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
 
     # Return all loaded providers
     return jsonify({'providers': registered_providers})
@@ -591,7 +606,12 @@ def loadCachedCustomProviders():
                     code = f.read()
                 
                 # Try to execute it in the global context
-                exec(code, globals(), None)
+                try:
+                    exec(code, globals(), None)
+                except Exception as code_exc:
+                    # Remove the script file associated w the failed execution
+                    os.remove(file_path)
+                    raise code_exc
     except Exception as e:
         return jsonify({'error': f'Error while loading custom providers from cache: \n{str(e)}'})
 
@@ -600,6 +620,7 @@ def loadCachedCustomProviders():
     registered_providers = [exclude_key(d, 'func') for d in ProviderRegistry.get_all()]
 
     return jsonify({'providers': registered_providers})
+
 
 @app.route('/app/removeCustomProvider', methods=['POST'])
 def removeCustomProvider():
