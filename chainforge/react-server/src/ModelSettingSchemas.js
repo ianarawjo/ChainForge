@@ -866,7 +866,7 @@ export const postProcessFormData = (settingsSpec, formData) => {
   const skip_keys = {'model': true, 'shortname': true};
 
   let new_data = {};
-  let postprocessors = settingsSpec.postprocessors ? settingsSpec.postprocessors : {};
+  let postprocessors = settingsSpec?.postprocessors ? settingsSpec.postprocessors : {};
 
   Object.keys(formData).forEach(key => {
     if (key in skip_keys) return;
@@ -875,7 +875,7 @@ export const postProcessFormData = (settingsSpec, formData) => {
     else
       new_data[key] = formData[key];
   });
-    
+  
   return new_data;
 };
 

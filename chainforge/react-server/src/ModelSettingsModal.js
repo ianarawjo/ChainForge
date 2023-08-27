@@ -29,7 +29,7 @@ const ModelSettingsModal = forwardRef((props, ref) => {
     if (props.model && props.model.base_model) {
         setModelEmoji(props.model.emoji);
         if (!(props.model.base_model in ModelSettings)) {
-            setSchema({'type': 'object', 'description': `Did not find settings schema for base model ${props.model.base_model}.`});
+            setSchema({'type': 'object', 'description': `Did not find settings schema for base model ${props.model.base_model}. Maybe you are missing importing a custom provider script?`});
             setUISchema({});
             setModelName(props.model.base_model);
             return;
