@@ -182,7 +182,6 @@ export class PromptPipeline {
           }
         }
         let extracted_resps: Array<any> = cached_resp ? cached_resp["responses"] : [];
-        
         // First check if there is already a response for this item under these settings. If so, we can save an LLM call:
         if (cached_resp && extracted_resps.length >= n) {
           // console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
@@ -204,7 +203,6 @@ export class PromptPipeline {
         }
 
         num_queries_sent += 1;
-
         if (max_req > 1) {                
           // Call the LLM asynchronously to generate a response, sending off
           // requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit

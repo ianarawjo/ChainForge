@@ -637,7 +637,8 @@ export async function call_alephalpha(prompt: string, model: LLM, n: number = 1,
       "model": model.toString(),
       "prompt": prompt,
       "maximum_tokens": 64,
-      "n": n
+      "n": n,
+      ...params
     });
 
     // Setup the args for the query
@@ -655,9 +656,7 @@ export async function call_alephalpha(prompt: string, model: LLM, n: number = 1,
       body: data,
     });
     const result = await response.json();
-    console.log("result ", result)
     const responses = await result.completions?.map((x: any) => x.completion);
-    console.log('ts response ' + responses)
 
   return [query, responses];
 }
@@ -702,7 +701,7 @@ export async function call_llm(llm: LLM, prompt: string, n: number, temperature:
   // Get the correct API call for the given LLM:
   let call_api: LLMAPICall | undefined;
   let llm_provider: LLMProvider = getProvider(llm);
-
+  
   if (llm_provider === undefined)
     throw new Error(`Language model ${llm} is not supported.`);
 
@@ -801,19 +800,7 @@ function _extract_huggingface_responses(response: Array<Dict>): Array<string>{
  * Extracts the text part of a Aleph Alpha text completion.
  */
 function _extract_alephalpha_responses(response: Dict): Array<string> {
-  console.log("extractor" + response)
-//   [
-//     {
-//         "completions": [
-//             {
-//                 "completion": "\nWhat is the opening sentence of Pride and Prejudice by Jane Austen?\nWhat is the opening sentence of Pride and Prejudice by Jane Austen?\nWhat is the opening sentence of Pride and Prejudice by Jane Austen?\nWhat is the opening sentence of Pride and Prejudice by Jane Austen?\nWhat is the",
-//                 "finish_reason": "maximum_tokens"
-//             }
-//         ],
-//         "model_version": "2023-05"
-//     }
-// ]
-  return response.map((r: Dict) => r);
+return response.map((r: string) => r.trim());
 }
 
 /**
@@ -822,7 +809,6 @@ function _extract_alephalpha_responses(response: Dict): Array<string> {
  */
 export function extract_responses(response: Array<string | Dict> | Dict, llm: LLM | string): Array<string> {
   let llm_provider: LLMProvider = getProvider(llm as LLM);
-  console.log("do we get here?")
   switch (llm_provider) {
     case LLMProvider.OpenAI:
       if (llm.toString().toLowerCase().includes('davinci'))

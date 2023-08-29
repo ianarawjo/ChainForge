@@ -21,7 +21,6 @@ function isDict(o: any): boolean {
  * @param str The string to transform
  */
 export function escapeBraces(str: string): string {
-    console.log("escapeBraces")
     return str.replace(/[{}]/g, '\\$&');
 }
 
@@ -30,7 +29,6 @@ export function escapeBraces(str: string): string {
  * @param str The string to transform
  */
 export function cleanEscapedBraces(str: string): string {
-    console.log("cleanEscapedBraces")
     return str.replaceAll('\\{', '{').replaceAll('\\}', '}');
 }
 

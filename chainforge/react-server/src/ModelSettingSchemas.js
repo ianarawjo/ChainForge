@@ -778,102 +778,43 @@ const AlephAlphaLuminousSettings = {
         type: "string",
         title: "Model",
         description:
-          "Select a suggested Aleph Alpha model to query using the Inference API. For more details, check out https://huggingface.co/inference-api",
+          "Select a suggested Aleph Alpha model to query using the Aleph Alpha API. For more details, check outhttps://docs.aleph-alpha.com/api/available-models/",
         enum: [
           "luminous-extended",
           "luminous-extended-control",
           "luminous-base-control",
           "luminous-base",
           "luminous-supreme",
-          "luminous-supreme-control"
+          "luminous-supreme-control",
         ],
         default: "luminous-base",
-      },
-      custom_model: {
-        type: "string",
-        title: "Custom HF model endpoint",
-        description:
-          "(Only used if you select 'Other' above.) Enter the HuggingFace id of the text generation model you wish to query via the inference API. Alternatively, if you have hosted a model on HF Inference Endpoints, you can enter the full URL of the endpoint here.",
-        default: "",
-      },
-      model_type: {
-        type: "string",
-        title: "Model Type (Text or Chat)",
-        description:
-          "Select the type of model you are querying. You must selected 'chat' if you want to pass conversation history in Chat Turn nodes.",
-        enum: ["text", "chat"],
-        default: "text",
       },
       temperature: {
         type: "number",
         title: "temperature",
         description: "Controls the 'creativity' or randomness of the response.",
-        default: 1.0,
+        default: 0.0,
         minimum: 0,
-        maximum: 5.0,
+        maximum: 1.0,
         multipleOf: 0.01,
-      },
-      num_continuations: {
-        type: "integer",
-        title: "Number of times to continue generation (ChainForge-specific)",
-        description:
-          "The number of times to feed the model response back into the model, to continue generating text past the 250 token limit per API call. Only useful for text completions models like gpt2. Set to 0 to ignore.",
-        default: 0,
-        minimum: 0,
-        maximum: 6,
       },
       top_k: {
         type: "integer",
         title: "top_k",
-        description:
-          "Sets the maximum number of tokens to sample from on each step. Set to -1 to remain unspecified.",
-        minimum: -1,
-        default: -1,
+        description: "Introduces random sampling for generated tokens by randomly selecting the next token from the k most likely options.",
+        default: 0,
       },
       top_p: {
         type: "number",
         title: "top_p",
-        description:
-          "Sets the maximum cumulative probability of tokens to sample from (from 0 to 1.0). Set to -1 to remain unspecified.",
-        default: -1,
-        minimum: -1,
-        maximum: 1,
-        multipleOf: 0.001,
+        description: "Introduces random sampling for generated tokens by randomly selecting the next token from the smallest possible set of tokens whose cumulative probability exceeds the probability top_p.",
+        default: 0,
       },
-      repetition_penalty: {
-        type: "number",
-        title: "repetition_penalty",
-        description:
-          "The more a token is used within generation the more it is penalized to not be picked in successive generation passes. Set to -1 to remain unspecified.",
-        minimum: -1,
-        default: -1,
-        maximum: 100,
-        multipleOf: 0.01,
-      },
-      max_new_tokens: {
+      sequence_penalty_min_length: {
         type: "integer",
-        title: "max_new_tokens",
-        description:
-          "The amount of new tokens to be generated. Free HF models only support up to 250 tokens. Set to -1 to remain unspecified.",
-        default: 250,
-        minimum: -1,
-        maximum: 250,
-      },
-      do_sample: {
-        type: "boolean",
-        title: "do_sample",
-        description:
-          "Whether or not to use sampling. Default is True; uses greedy decoding otherwise.",
-        enum: [true, false],
-        default: true,
-      },
-      use_cache: {
-        type: "boolean",
-        title: "use_cache",
-        description:
-          "Whether or not to fetch from HF's cache. There is a cache layer on the inference API to speedup requests HF has already seen. Most models can use those results as is as models are deterministic (meaning the results will be the same anyway). However if you use a non-deterministic model, you can set this parameter to prevent the caching mechanism from being used resulting in a real new query.",
-        enum: [true, false],
-        default: false,
+        title: "sequence_penalty_min_length",
+        description: "Minimal number of tokens to be considered as sequence.",
+        default: 2,
       },
     },
   },
@@ -890,39 +831,95 @@ const AlephAlphaLuminousSettings = {
       "ui:autofocus": true,
     },
     model: {
-      "ui:help": "Defaults to Falcon.7B.",
+      "ui:help": "Defaults to Luminous Base.",
     },
     temperature: {
-      "ui:help": "Defaults to 1.0.",
+      "ui:help": "Defaults to 0.0.",
       "ui:widget": "range",
-    },
-    max_new_tokens: {
-      "ui:help": "Defaults to unspecified (-1)",
     },
     top_k: {
-      "ui:help": "Defaults to unspecified (-1)",
+      "ui:help": "Defaults to 0",
     },
     top_p: {
-      "ui:help": "Defaults to unspecified (-1)",
-      "ui:widget": "range",
+      "ui:help": "Defaults to 0",
     },
-    repetition_penalty: {
-      "ui:help": "Defaults to unspecified (-1)",
-      "ui:widget": "range",
+    presence_penalty: {
+      "ui:help": "Defaults to 0",
     },
-    max_new_tokens: {
-      "ui:help": "Defaults to 250 (max)",
+    frequency_penalty: {
+      "ui:help": "Defaults to 0",
     },
-    num_continuations: {
-      "ui:widget": "range",
+    sequence_penalty: {
+      "ui:help": "Defaults to 0",
     },
-    do_sample: {
+    sequence_penalty_min_length: {
+      "ui:help": "Defaults to 2",
+    },
+    repetition_penalties_include_prompt: {
+      "ui:help": "Defaults to false",
       "ui:widget": "radio",
     },
-    use_cache: {
+    repetition_penalties_include_completion: {
+      "ui:help": "Defaults to true",
       "ui:widget": "radio",
-      "ui:help":
-        "Defaults to false in ChainForge. This differs from the HuggingFace docs, as CF's intended use case is evaluation, and for evaluation we want different responses each query.",
+    },
+    use_multiplicative_presence_penalty: {
+      "ui:help": "Defaults to false",
+      "ui:widget": "radio",
+    },
+    use_multiplicative_frequency_penalty: {
+      "ui:help": "Defaults to false",
+      "ui:widget": "radio",
+    },
+    use_multiplicative_sequence_penalty: {
+      "ui:help": "Defaults to false",
+      "ui:widget": "radio",
+    },
+    penalty_exceptions: {
+      "ui:help": "Defaults to null",
+    },
+    penalty_exceptions_include_stop_sequences: {
+      "ui:help": "Defaults to true",
+      "ui:widget": "radio",
+    },
+    best_of: {
+      "ui:help": "Defaults to 1 (max. 100)",
+    },
+    logit_bias: {
+      "ui:help": "Defaults to null, type object",
+    },
+    log_probs: {
+      "ui:help": "Defaults to null, integer",
+    },
+    stop_sequences: {
+      "ui:help": "Defaults to null, string[]",
+    },
+    tokens: {
+      "ui:help": "Defaults to false, nullable, boolean",
+    },
+    raw_completion: {
+      "ui:help": "Defaults to false",
+    },
+    disable_optimizations: {
+      "ui:help": "Defaults to false",
+    },
+    completion_bias_inclusion: {
+      "ui:help": "Defaults to [], string[]",
+    },
+    completion_bias_inclusion_first_token_only: {
+      "ui:help": "Defaults to false",
+    },
+    completion_bias_exclusion: {
+      "ui:help": "Defaults to []",
+    },
+    completion_bias_exclusion_first_token_only: {
+      "ui:help": "Defaults to false",
+    },
+    contextual_control_threshold: {
+      "ui:help": "Defaults to null, is number",
+    },
+    control_log_additive: {
+      "ui:help": "Defaults to true",
     },
   },
   postprocessors: {},

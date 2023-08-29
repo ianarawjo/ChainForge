@@ -541,8 +541,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
                     setJSONResponses(json.responses);
 
                     // Log responses for debugging:
-                    console.log(json.responses);
-                }
+                    // console.log(json.responses);
+                                    }
 
                 // If there was at least one error collecting a response...
                 const llms_w_errors = Object.keys(json.errors);
@@ -594,8 +594,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 setDataPropsForNode(id, {fields: json.responses.map(
                     resp_obj => resp_obj['responses'].map(
                         r => {
-                            // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
-                            console.log(r)
+                                                        // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
                             let o = { text: escapeBraces(r), 
                                       prompt: resp_obj['prompt'],
                                       fill_history: resp_obj['vars'],
