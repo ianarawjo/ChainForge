@@ -1,5 +1,6 @@
 {
   "files": {
+<<<<<<< HEAD
     "main.css": "/static/css/main.37690c8a.css",
     "main.js": "/static/js/main.4fb95aa3.js",
     "static/js/787.4c72bb55.chunk.js": "/static/js/787.4c72bb55.chunk.js",
@@ -11,5 +12,18 @@
   "entrypoints": [
     "static/css/main.37690c8a.css",
     "static/js/main.4fb95aa3.js"
+=======
+    "main.css": "/static/css/main.a4e8271c.css",
+    "main.js": "/static/js/main.5119cfd8.js",
+    "static/js/787.4c72bb55.chunk.js": "/static/js/787.4c72bb55.chunk.js",
+    "index.html": "/index.html",
+    "main.a4e8271c.css.map": "/static/css/main.a4e8271c.css.map",
+    "main.5119cfd8.js.map": "/static/js/main.5119cfd8.js.map",
+    "787.4c72bb55.chunk.js.map": "/static/js/787.4c72bb55.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.a4e8271c.css",
+    "static/js/main.5119cfd8.js"
+>>>>>>> f7739fc (added static build with Aleph Alpha integration)
   ]
 }
