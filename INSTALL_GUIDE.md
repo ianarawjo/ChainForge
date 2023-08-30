@@ -49,7 +49,7 @@ To use a specific model provider, you need to do two things:
      - HuggingFace: `HUGGINGFACE_API_KEY`
      - Anthropic: `ANTHROPIC_API_KEY`
      - Google PaLM2: `PALM_API_KEY`
-     - Aleph Alpha: `ALEPH_ALPHA_KEY`
+     - Aleph Alpha: `ALEPH_ALPHA_API_KEY`
      - Azure OpenAI: Set two keys, `AZURE_OPENAI_KEY` and `AZURE_OPENAI_ENDPOINT`. Note that the endpoint should look like a base URL. For examples on what these keys look like, see the [Azure OpenAI documentation](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/chatgpt-quickstart?tabs=command-line&pivots=programming-language-javascript).
  - When you are done setting the API key(s), **reopen your terminal**. _(This is because the terminal loads the environment variables when it is first opened, so it needs to be refreshed before running `chainforge serve`.)_
 
