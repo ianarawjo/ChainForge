@@ -692,7 +692,6 @@ export async function call_llm(llm: LLM, prompt: string, n: number, temperature:
  */
 function _extract_openai_chat_choice_content(choice: Dict): string {
   if (choice['finish_reason'] === 'function_call' || 
-     !choice["message"]["content"] ||
      ('function_call' in choice['message'] && choice['message']['function_call'].length > 0)) {
     const func = choice['message']['function_call'];
     return '[[FUNCTION]] ' + func['name'] + func['arguments'].toString();
