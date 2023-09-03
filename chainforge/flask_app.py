@@ -275,7 +275,7 @@ def executepy():
     data = request.get_json()
 
     # Check that all required info is here:
-    if not set(data.keys()).issuperset({'id', 'code', 'responses', 'scope', 'token'}):
+    if not set(data.keys()).issuperset({'id', 'code', 'responses', 'scope'}):
         return jsonify({'error': 'POST data is improper format.'})
     if not isinstance(data['id'], str) or len(data['id']) == 0:
         return jsonify({'error': 'POST data id is improper format (length 0 or not a string).'})
