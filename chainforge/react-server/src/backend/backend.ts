@@ -548,17 +548,8 @@ export async function queryLLM(id: string,
   // Ensure llm param is an array
   if (typeof llm === 'string')
     llm = [ llm ];
-<<<<<<< HEAD
+
   llm = llm as (Array<string> | Array<Dict>);
-=======
-  llm = llm as (Array<string> | Array<Dict>); 
-  
-  for (let i = 0; i < llm.length; i++) {
-    const llm_spec = llm[i];
-    if (!(extract_llm_name(llm_spec) in LLM_NAME_MAP)) 
-      return {'error': `LLM named '${llm_spec}' is not supported.`};
-  }
->>>>>>> a4ff042 (no visible changes, removed console.log)
 
   await setAPIKeys(api_keys);
 
