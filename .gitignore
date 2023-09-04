@@ -1,5 +1,6 @@
 *.DS_Store
 chainforge/react-server/node_modules
+chainforge/react-server/build
 __pycache__
 chainforge/cache
 chainforge/examples/oaievals/
@@ -11,3 +12,5 @@ dist/
 # venv
 venv
 node_modules
+
+
