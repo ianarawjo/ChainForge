@@ -466,7 +466,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
     const prompt_template = promptText;
 
     const rejected = (err) => {
-        console.log("ran into reject")
         setStatus('error');
         setContChatToggleDisabled(false);
         triggerAlert(err.message);
@@ -541,8 +540,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
                     setJSONResponses(json.responses);
 
                     // Log responses for debugging:
-                    // console.log(json.responses);
-                                    }
+                    console.log(json.responses);
+                }
 
                 // If there was at least one error collecting a response...
                 const llms_w_errors = Object.keys(json.errors);
@@ -594,7 +593,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 setDataPropsForNode(id, {fields: json.responses.map(
                     resp_obj => resp_obj['responses'].map(
                         r => {
-                                                        // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
+                            // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
                             let o = { text: escapeBraces(r), 
                                       prompt: resp_obj['prompt'],
                                       fill_history: resp_obj['vars'],
@@ -628,7 +627,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         .then(query_llms)
         .catch(rejected);
   };
-  console.log("done fetch_resp_count")
+
   const handleNumGenChange = useCallback((event) => {
     let n = event.target.value;
     if (!isNaN(n) && n.length > 0 && /^\d+$/.test(n)) {
