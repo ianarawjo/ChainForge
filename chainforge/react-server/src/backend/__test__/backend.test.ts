@@ -65,6 +65,7 @@ test('run evaluate func over responses', async () => {
   // NOTE: Jest, for whatever reason, cannot run eval() inside tests.
   //       So, we need to give it an actual function. Unf we can't test the eval() version :(
   const code = (response: ResponseInfo) => {
+    console.log('hello there!');
     return response.text.length;
   };
 

@@ -2,7 +2,7 @@
 * @jest-environment jsdom
 */
 import { call_alephalpha, call_anthropic, call_chatgpt, call_google_palm, extract_responses, merge_response_objs } from '../utils';
-import { NativeLLM } from '../models';
+import { LLM, NativeLLM } from '../models';
 import { expect, test } from '@jest/globals';
 import { LLMResponseObject } from '../typing';
 

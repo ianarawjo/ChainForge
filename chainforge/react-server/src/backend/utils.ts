@@ -648,7 +648,6 @@ export async function call_alephalpha(prompt: string, model: LLM, n: number = 1,
       ...params,  // 'the rest' of the settings, passed from the front-end settings
     };
     
-    console.log("Call Aleph Alpha ts");
     const response = await fetch(url, {
       headers: headers,
       method: "POST",
