@@ -7,7 +7,6 @@ import { queryLLM, executejs, executepy,
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
 async function _route_to_js_backend(route, params) {
-  console.log("_route_to_js_backend", route, params);
   switch (route) {
     case 'grabResponses':
       return grabResponses(params.responses);
