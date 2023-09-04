@@ -627,7 +627,7 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
 export async function call_alephalpha(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!ALEPH_ALPHA_API_KEY)
     throw Error("Could not find an API key for Aleph Alpha models. Double-check that your API key is set in Settings or in your local environment.");
-
+    console.log(params)
     const url: string = 'https://api.aleph-alpha.com/complete';
     let headers: StringDict = {'Content-Type': 'application/json', 'Accept': 'application/json'};
     if (ALEPH_ALPHA_API_KEY !== undefined)
@@ -636,7 +636,6 @@ export async function call_alephalpha(prompt: string, model: LLM, n: number = 1,
     let data = JSON.stringify({
       "model": model.toString(),
       "prompt": prompt,
-      "maximum_tokens": 64,
       "n": n,
       ...params
     });

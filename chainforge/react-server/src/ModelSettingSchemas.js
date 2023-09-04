@@ -798,16 +798,47 @@ const AlephAlphaLuminousSettings = {
         maximum: 1.0,
         multipleOf: 0.01,
       },
+      maximum_tokens: {
+        type: "integer",
+        title: "Maximum Tokens",
+        description:
+          "The maximum number of tokens to generate in the chat completion.",
+        default: 64,
+      },
+      stop_sequences:  {
+        "type": "string",
+        "title": "stop_sequences",
+        "description": "Sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes \"\" and use whitespace to separate them.",
+        "default": ""
+      },
+      best_of: {
+        type: "integer",
+        maximum: 100,
+        minimum: 1,
+        description:
+          "best_of number of completions will be generated on server side. The completion with the highest log probability per token is returned, must be strictly greater than n",
+        default: null
+      },
+      log_probs: {
+        type: "boolean",
+        title: "log_probs",
+        description:
+          "Number of top log probabilities for each token generated.",
+        enum: [true, false],
+        default: false,
+      },
       top_k: {
         type: "integer",
         title: "top_k",
-        description: "Introduces random sampling for generated tokens by randomly selecting the next token from the k most likely options.",
+        description:
+          "Introduces random sampling for generated tokens by randomly selecting the next token from the k most likely options.",
         default: 0,
       },
       top_p: {
         type: "number",
         title: "top_p",
-        description: "Introduces random sampling for generated tokens by randomly selecting the next token from the smallest possible set of tokens whose cumulative probability exceeds the probability top_p.",
+        description:
+          "Introduces random sampling for generated tokens by randomly selecting the next token from the smallest possible set of tokens whose cumulative probability exceeds the probability top_p.",
         default: 0,
       },
       sequence_penalty_min_length: {
@@ -836,6 +867,9 @@ const AlephAlphaLuminousSettings = {
     temperature: {
       "ui:help": "Defaults to 0.0.",
       "ui:widget": "range",
+    },
+    maximum_tokens: {
+      "ui:help": "Defaults to 64.",
     },
     top_k: {
       "ui:help": "Defaults to 0",
@@ -889,7 +923,7 @@ const AlephAlphaLuminousSettings = {
       "ui:help": "Defaults to null, type object",
     },
     log_probs: {
-      "ui:help": "Defaults to null, integer",
+      "ui:widget": "radio",
     },
     stop_sequences: {
       "ui:help": "Defaults to null, string[]",
@@ -922,7 +956,18 @@ const AlephAlphaLuminousSettings = {
       "ui:help": "Defaults to true",
     },
   },
-  postprocessors: {},
+  postprocessors: {
+    stop_sequences: (str) => {
+      if (str.trim().length === 0) return [];
+      return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+    log_probs: (bool) => {
+      return bool ? 3 : null;
+    },
+    best_of: (a) => {
+      return a===1 ? null : a;
+    }
+  },
 };
 
 // A lookup table indexed by base_model.
