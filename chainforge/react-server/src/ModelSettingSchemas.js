@@ -11,7 +11,7 @@
  */
 
 import { RATE_LIMITS } from "./backend/models";
-import { filterDict } from './backend/utils';
+import { APP_IS_RUNNING_LOCALLY, filterDict } from './backend/utils';
 import useStore from "./store";
 
 const UI_SUBMIT_BUTTON_SPEC = {
@@ -30,9 +30,10 @@ export let AvailableLLMs = [
   { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
   { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
   { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
-  { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 1.0 }
+ // { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 1.0 }
 ];
 if (APP_IS_RUNNING_LOCALLY()) {
+  AvailableLLMs.push( { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 1.0 });
   AvailableLLMs.push({
     name: "Dalai (Alpaca.7B)",
     emoji: "🦙",
