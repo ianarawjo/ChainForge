@@ -11,7 +11,7 @@
  */
 
 import { RATE_LIMITS } from "./backend/models";
-import { APP_IS_RUNNING_LOCALLY, filterDict } from './backend/utils';
+import { filterDict } from './backend/utils';
 import useStore from "./store";
 
 const UI_SUBMIT_BUTTON_SPEC = {
@@ -22,26 +22,6 @@ const UI_SUBMIT_BUTTON_SPEC = {
   norender: false,
   submitText: 'Submit',
 };
-// Available LLMs in ChainForge, in the format expected by LLMListItems.
-export let AvailableLLMs = [
-  { name: "GPT3.5", emoji: "🤖", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
-  { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
-  { name: "Claude", emoji: "📚", model: "claude-2", base_model: "claude-v1", temp: 0.5 },
-  { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
-  { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
-  { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
- // { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 1.0 }
-];
-if (APP_IS_RUNNING_LOCALLY()) {
-  AvailableLLMs.push( { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 1.0 });
-  AvailableLLMs.push({
-    name: "Dalai (Alpaca.7B)",
-    emoji: "🦙",
-    model: "alpaca.7B",
-    base_model: "dalai",
-    temp: 0.5,
-  });
-}
 
 const ChatGPTSettings = {
   fullName: "GPT-3.5+ (OpenAI)",

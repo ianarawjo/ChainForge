@@ -211,20 +211,6 @@ return (
                     {...form.getInputProps('OpenAI')}
                   />
                 <br />
-                <TextInput
-                  label="Google PaLM API Key"
-                  placeholder="Paste your Google PaLM API key here"
-                  {...form.getInputProps('Google')}
-                />
-                <br />
-                <TextInput
-                  label="Aleph Alpha API Key"
-                  placeholder="Paste your Aleph Alpha API key here"
-                  {...form.getInputProps('AlephAlpha')}
-                />
-                <br />
-
-                  <br />
                   <TextInput
                     label="HuggingFace API Key"
                     placeholder="Paste your HuggingFace API key here"
@@ -245,7 +231,12 @@ return (
                     {...form.getInputProps('Google')}
                   />
                   <br />
-
+                  <TextInput
+                  label="Aleph Alpha API Key"
+                  placeholder="Paste your Aleph Alpha API key here"
+                  {...form.getInputProps('AlephAlpha')}
+                />
+                <br />
                   <Divider my="xs" label="Microsoft Azure" labelPosition="center" />
                   <TextInput
                     label="Azure OpenAI Key"
