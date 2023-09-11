@@ -2,6 +2,9 @@
   "name": "chain-forge",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "20.5.1"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.4.4",
     "@azure/openai": "^1.0.0-beta.2",
@@ -10,10 +13,10 @@
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@google-ai/generativelanguage": "^0.2.0",
-    "@mantine/core": "^6.0.9",
-    "@mantine/dates": "^6.0.13",
+    "@mantine/core": "^6.0.15",
+    "@mantine/dates": "^6.0.15",
     "@mantine/dropzone": "^6.0.19",
-    "@mantine/form": "^6.0.11",
+    "@mantine/form": "^6.0.15",
     "@mantine/prism": "^6.0.15",
     "@reactflow/background": "^11.2.0",
     "@reactflow/controls": "^11.1.11",
