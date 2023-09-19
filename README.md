@@ -68,7 +68,7 @@ Simply click Share to generate a unique link for your flow and copy it to your c
 
 ![ezgif-2-a4d8048bba](https://github.com/ianarawjo/ChainForge/assets/5251713/1c69900b-5a0f-4055-bbd3-ea191e93ecde)
 
-For instance, here's a experiment I made that tries to get an LLM to reveal a secret key: https://chainforge.ai/play/?f=28puvwc788bog
+For instance, here's an experiment I made that tries to get an LLM to reveal a secret key: https://chainforge.ai/play/?f=28puvwc788bog
 
 > **Note**
 > To prevent abuse, you can only share up to 10 flows at a time, and each flow must be <5MB after compression.
