@@ -6,11 +6,6 @@
     min-width: 200px;
   }
 
-  path.react-flow__edge-path:hover {
-    stroke: #222;
-    stroke-width: 2px;
-  }
-
   hr {
     border: none;
     background-color: #bbb;

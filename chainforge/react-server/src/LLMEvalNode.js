@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Handle } from 'react-flow-renderer';
+import { Handle } from 'reactflow';
 import { Alert, Progress, Textarea } from '@mantine/core';
 import { IconAlertTriangle, IconRobot, IconSearch } from "@tabler/icons-react";
 import { v4 as uuid } from 'uuid';

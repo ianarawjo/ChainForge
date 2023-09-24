@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Handle } from 'react-flow-renderer';
+import { Handle } from 'reactflow';
 import { NativeSelect } from '@mantine/core';
 import useStore, { colorPalettes } from './store';
 import Plot from 'react-plotly.js';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Handle } from 'react-flow-renderer';
+import { Handle } from 'reactflow';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
 import LLMResponseInspector, { exportToExcel } from './LLMResponseInspector';

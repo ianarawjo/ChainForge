@@ -3,7 +3,7 @@ import {
   addEdge,
   applyNodeChanges,
   applyEdgeChanges,
-} from 'react-flow-renderer';
+} from 'reactflow';
 import { escapeBraces } from './backend/template';
 import { filterDict } from './backend/utils';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
@@ -262,8 +262,9 @@ const useStore = create((set, get) => ({
       get().setDataPropsForNode(target.id, { refresh: true });
     }
 
-    connection.interactionWidth = 100;
+    connection.interactionWidth = 40;
     connection.markerEnd = {type: 'arrow', width: '22px', height: '22px'};
+    connection.type = 'remove';
 
     set({
       edges: addEdge(connection, get().edges) // get().edges.concat(connection)

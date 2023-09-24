@@ -5,10 +5,11 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Controls,
   Background,
-} from 'react-flow-renderer';
-import { Button, Menu, LoadingOverlay, Text, Box, List, Loader, Header, Chip, Badge, Card, Accordion, Tooltip } from '@mantine/core';
+} from 'reactflow';
+import { Button, Menu, LoadingOverlay, Text, Box, List, Loader, Tooltip } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
 import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink, IconRobot, IconRuler2 } from '@tabler/icons-react';
+import RemoveEdge from './RemoveEdge';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
 import EvaluatorNode from './EvaluatorNode';
@@ -23,11 +24,14 @@ import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
 import AreYouSureModal from './AreYouSureModal';
 import LLMEvaluatorNode from './LLMEvalNode';
-import { getDefaultModelFormData, getDefaultModelSettings, setCustomProviders } from './ModelSettingSchemas';
+import { getDefaultModelFormData, getDefaultModelSettings } from './ModelSettingSchemas';
 import { v4 as uuid } from 'uuid';
 import LZString from 'lz-string';
 import { EXAMPLEFLOW_1 } from './example_flows';
-import './text-fields-node.css';
+
+// Styling
+import 'reactflow/dist/style.css'; // reactflow
+import './text-fields-node.css'; // project
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from 'zustand/shallow';
@@ -70,8 +74,6 @@ const INITIAL_LLM = () => {
   return falcon7b;
 };
 
-// import AnimatedConnectionLine from './AnimatedConnectionLine';
-
 const nodeTypes = {
   textfields: TextFieldsNode, // Register the custom node
   prompt: PromptNode,
@@ -85,6 +87,10 @@ const nodeTypes = {
   csv: CsvNode,
   table: TabularDataNode,
   comment: CommentNode,
+};
+
+const edgeTypes = {
+  remove: RemoveEdge,
 };
 
 // Whether we are running on localhost or not, and hence whether
@@ -694,6 +700,7 @@ const App = () => {
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             zoomOnPinch={false}
             zoomOnScroll={false}
             panOnScroll={true}
