@@ -238,6 +238,11 @@ const useStore = create((set, get) => ({
       edges: newedges
     });
   },
+  removeEdge: (id) => {
+    set({
+      edges: applyEdgeChanges([{id: id, type: 'remove'}], get().edges),
+    });
+  },
   onNodesChange: (changes) => {
     set({
       nodes: applyNodeChanges(changes, get().nodes),
@@ -264,7 +269,7 @@ const useStore = create((set, get) => ({
 
     connection.interactionWidth = 40;
     connection.markerEnd = {type: 'arrow', width: '22px', height: '22px'};
-    connection.type = 'remove';
+    connection.type = 'default';
 
     set({
       edges: addEdge(connection, get().edges) // get().edges.concat(connection)

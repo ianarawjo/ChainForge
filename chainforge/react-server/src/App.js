@@ -90,7 +90,7 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
-  remove: RemoveEdge,
+  default: RemoveEdge,
 };
 
 // Whether we are running on localhost or not, and hence whether
@@ -293,7 +293,7 @@ const App = () => {
     const uid = (id) => `${id}-${Date.now()}`;
     const starting_nodes = [
       { id: uid('prompt'), type: 'prompt', data: { 
-          prompt: 'Why is the sky blue?',
+          prompt: '',
           n: 1, 
           llms: [INITIAL_LLM()] },
         position: { x: 450, y: 200 } },
