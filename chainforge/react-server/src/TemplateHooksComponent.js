@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Handle, useUpdateNodeInternals } from 'react-flow-renderer';
+import { Handle, useUpdateNodeInternals } from 'reactflow';
 import { Badge } from '@mantine/core';
 import useStore from './store'
 

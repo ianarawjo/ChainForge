@@ -548,6 +548,7 @@ export async function queryLLM(id: string,
   // Ensure llm param is an array
   if (typeof llm === 'string')
     llm = [ llm ];
+
   llm = llm as (Array<string> | Array<Dict>);
 
   await setAPIKeys(api_keys);

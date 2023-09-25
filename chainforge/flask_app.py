@@ -446,7 +446,8 @@ def fetchEnvironAPIKeys():
         'PALM_API_KEY': 'Google', 
         'HUGGINGFACE_API_KEY': 'HuggingFace',
         'AZURE_OPENAI_KEY': 'Azure_OpenAI', 
-        'AZURE_OPENAI_ENDPOINT': 'Azure_OpenAI_Endpoint'
+        'AZURE_OPENAI_ENDPOINT': 'Azure_OpenAI_Endpoint',
+        'ALEPH_ALPHA_API_KEY': 'AlephAlpha'
     }
     d = { alias: os.environ.get(key) for key, alias in keymap.items() }
     ret = jsonify(d)

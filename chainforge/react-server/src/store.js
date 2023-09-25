@@ -3,7 +3,7 @@ import {
   addEdge,
   applyNodeChanges,
   applyEdgeChanges,
-} from 'react-flow-renderer';
+} from 'reactflow';
 import { escapeBraces } from './backend/template';
 import { filterDict } from './backend/utils';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
@@ -35,6 +35,7 @@ export let initLLMProviders = [
   { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
   { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
   { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
+  { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 0.0 }
 ];
 if (APP_IS_RUNNING_LOCALLY()) {
   initLLMProviders.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
@@ -238,6 +239,11 @@ const useStore = create((set, get) => ({
       edges: newedges
     });
   },
+  removeEdge: (id) => {
+    set({
+      edges: applyEdgeChanges([{id: id, type: 'remove'}], get().edges),
+    });
+  },
   onNodesChange: (changes) => {
     set({
       nodes: applyNodeChanges(changes, get().nodes),
@@ -262,8 +268,9 @@ const useStore = create((set, get) => ({
       get().setDataPropsForNode(target.id, { refresh: true });
     }
 
-    connection.interactionWidth = 100;
+    connection.interactionWidth = 40;
     connection.markerEnd = {type: 'arrow', width: '22px', height: '22px'};
+    connection.type = 'default';
 
     set({
       edges: addEdge(connection, get().edges) // get().edges.concat(connection)

@@ -97,6 +97,7 @@ let GOOGLE_PALM_API_KEY = get_environ("PALM_API_KEY");
 let AZURE_OPENAI_KEY = get_environ("AZURE_OPENAI_KEY");
 let AZURE_OPENAI_ENDPOINT = get_environ("AZURE_OPENAI_ENDPOINT");
 let HUGGINGFACE_API_KEY = get_environ("HUGGINGFACE_API_KEY");
+let ALEPH_ALPHA_API_KEY = get_environ("ALEPH_ALPHA_API_KEY");
 
 /**
  * Sets the local API keys for the revelant LLM API(s).
@@ -117,6 +118,8 @@ export function set_api_keys(api_keys: StringDict): void {
     AZURE_OPENAI_KEY = api_keys['Azure_OpenAI'];
   if (key_is_present('Azure_OpenAI_Endpoint'))
     AZURE_OPENAI_ENDPOINT = api_keys['Azure_OpenAI_Endpoint'];
+  if (key_is_present('AlephAlpha'))
+    ALEPH_ALPHA_API_KEY = api_keys['AlephAlpha'];
   // Soft fail for non-present keys
 }
 
@@ -621,6 +624,43 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
   return [query, responses];
 }
 
+
+export async function call_alephalpha(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+  if (!ALEPH_ALPHA_API_KEY)
+    throw Error("Could not find an API key for Aleph Alpha models. Double-check that your API key is set in Settings or in your local environment.");
+  
+  const url: string = 'https://api.aleph-alpha.com/complete';
+  let headers: StringDict = {'Content-Type': 'application/json', 'Accept': 'application/json'};
+  if (ALEPH_ALPHA_API_KEY !== undefined)
+    headers.Authorization = `Bearer ${ALEPH_ALPHA_API_KEY}`;
+  
+  let data = JSON.stringify({
+    "model": model.toString(),
+    "prompt": prompt,
+    "n": n,
+    ...params
+  });
+
+  // Setup the args for the query
+  let query: Dict = {
+    model: model.toString(),
+    n: n,
+    temperature: temperature,
+    ...params,  // 'the rest' of the settings, passed from the front-end settings
+  };
+  
+  const response = await fetch(url, {
+    headers: headers,
+    method: "POST",
+    body: data,
+  });
+  const result = await response.json();
+  const responses = await result.completions?.map((x: any) => x.completion);
+
+  return [query, responses];
+}
+
+
 async function call_custom_provider(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!APP_IS_RUNNING_LOCALLY())
     throw new Error("The ChainForge app does not appear to be running locally. You can only call custom model providers if you are running ChainForge on your local machine, from a Flask app.")
@@ -651,7 +691,6 @@ async function call_custom_provider(prompt: string, model: LLM, n: number = 1, t
 
     responses.push(response);
   }
-  
   return [query, responses];
 }
 
@@ -662,7 +701,7 @@ export async function call_llm(llm: LLM, prompt: string, n: number, temperature:
   // Get the correct API call for the given LLM:
   let call_api: LLMAPICall | undefined;
   let llm_provider: LLMProvider = getProvider(llm);
-
+  
   if (llm_provider === undefined)
     throw new Error(`Language model ${llm} is not supported.`);
 
@@ -678,6 +717,8 @@ export async function call_llm(llm: LLM, prompt: string, n: number, temperature:
     call_api = call_anthropic;
   else if (llm_provider === LLMProvider.HuggingFace)
     call_api = call_huggingface;
+  else if (llm_provider === LLMProvider.Aleph_Alpha)
+    call_api = call_alephalpha;
   else if (llm_provider === LLMProvider.Custom)
     call_api = call_custom_provider;
   
@@ -756,12 +797,18 @@ function _extract_huggingface_responses(response: Array<Dict>): Array<string>{
 }
 
 /**
+ * Extracts the text part of a Aleph Alpha text completion.
+ */
+function _extract_alephalpha_responses(response: Dict): Array<string> {
+return response.map((r: string) => r.trim());
+}
+
+/**
  * Given a LLM and a response object from its API, extract the
  * text response(s) part of the response object.
  */
 export function extract_responses(response: Array<string | Dict> | Dict, llm: LLM | string): Array<string> {
   let llm_provider: LLMProvider = getProvider(llm as LLM);
-
   switch (llm_provider) {
     case LLMProvider.OpenAI:
       if (llm.toString().toLowerCase().includes('davinci'))
@@ -778,6 +825,8 @@ export function extract_responses(response: Array<string | Dict> | Dict, llm: LL
       return _extract_anthropic_responses(response as Dict[]);
     case LLMProvider.HuggingFace:
       return _extract_huggingface_responses(response as Dict[]);
+      case LLMProvider.Aleph_Alpha:
+        return _extract_alephalpha_responses(response);
     default:
       if (Array.isArray(response) && response.length > 0 && typeof response[0] === 'string')
         return response as string[]; 
