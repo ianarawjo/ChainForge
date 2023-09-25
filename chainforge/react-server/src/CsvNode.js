@@ -3,7 +3,7 @@ import { Text } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import { IconCsv } from '@tabler/icons-react';
-import { Handle } from 'react-flow-renderer';
+import { Handle } from 'reactflow';
 
 const CsvNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);

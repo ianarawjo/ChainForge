@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Handle } from 'react-flow-renderer';
+import { Handle } from 'reactflow';
 import { Button, Code, Modal, Tooltip, Box, Text } from '@mantine/core';
 import { Prism } from '@mantine/prism';
 import { useDisclosure } from '@mantine/hooks';
