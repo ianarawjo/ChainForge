@@ -272,16 +272,16 @@ const ClaudeSettings = {
         "minimum": -1,
         "default": -1
       },
-"top_p": {
-                "type": "number",
-                "title": "top_p",
-                "description": "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
-                "default": -1,
-                "minimum": -1,
-                "maximum": 1,
-                "multipleOf": 0.001,
-    },
-}
+      "top_p": {
+                      "type": "number",
+                      "title": "top_p",
+                      "description": "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
+                      "default": -1,
+                      "minimum": -1,
+                      "maximum": 1,
+                      "multipleOf": 0.001,
+          },
+      }
   },
 
     uiSchema: {
@@ -454,7 +454,7 @@ const DalaiModelSettings = {
         "default": 0.5,
               "minimum": 0,
               "maximum": 1,
-"multipleOf": 0.01,
+              "multipleOf": 0.01,
       },
       "n_predict": {
             "type": "integer",
@@ -501,14 +501,14 @@ const DalaiModelSettings = {
             "default": 1.3,
             "multipleOf": 0.001,
       },
-"seed": {
-            "type": "integer",
-            "title": "seed",
-            "description": "The seed to use when generating new responses. The default is -1 (random). Change to fixed value for deterministic outputs across different runs.",
-            "minimum": -1,
-            "default": -1,
-    },
-}
+      "seed": {
+                  "type": "integer",
+                  "title": "seed",
+                  "description": "The seed to use when generating new responses. The default is -1 (random). Change to fixed value for deterministic outputs across different runs.",
+                  "minimum": -1,
+                  "default": -1,
+          },
+      }
   },
 
   uiSchema: {
@@ -688,14 +688,14 @@ const HuggingFaceTextInferenceSettings = {
             "enum": [true, false],
             "default": true,
       },
-"use_cache": {
-            "type": "boolean",
-            "title": "use_cache",
-            "description": "Whether or not to fetch from HF's cache. There is a cache layer on the inference API to speedup requests HF has already seen. Most models can use those results as is as models are deterministic (meaning the results will be the same anyway). However if you use a non-deterministic model, you can set this parameter to prevent the caching mechanism from being used resulting in a real new query.",
-            "enum": [true, false],
-            "default": false,
-    },
-}
+      "use_cache": {
+                  "type": "boolean",
+                  "title": "use_cache",
+                  "description": "Whether or not to fetch from HF's cache. There is a cache layer on the inference API to speedup requests HF has already seen. Most models can use those results as is as models are deterministic (meaning the results will be the same anyway). However if you use a non-deterministic model, you can set this parameter to prevent the caching mechanism from being used resulting in a real new query.",
+                  "enum": [true, false],
+                  "default": false,
+      },
+    }
   },
 
   uiSchema: {
@@ -821,6 +821,9 @@ const AlephAlphaLuminousSettings = {
         description:
           "Introduces random sampling for generated tokens by randomly selecting the next token from the smallest possible set of tokens whose cumulative probability exceeds the probability top_p.",
         default: 0,
+        minimum: 0,
+        maximum: 1.0,
+        multipleOf: 0.01,
       },
       sequence_penalty_min_length: {
         type: "integer",

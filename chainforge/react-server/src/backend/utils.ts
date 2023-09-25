@@ -624,40 +624,42 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
   return [query, responses];
 }
 
+
 export async function call_alephalpha(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!ALEPH_ALPHA_API_KEY)
     throw Error("Could not find an API key for Aleph Alpha models. Double-check that your API key is set in Settings or in your local environment.");
-    console.log(params)
-    const url: string = 'https://api.aleph-alpha.com/complete';
-    let headers: StringDict = {'Content-Type': 'application/json', 'Accept': 'application/json'};
-    if (ALEPH_ALPHA_API_KEY !== undefined)
-      headers.Authorization = `Bearer ${ALEPH_ALPHA_API_KEY}`;
-   
-    let data = JSON.stringify({
-      "model": model.toString(),
-      "prompt": prompt,
-      "n": n,
-      ...params
-    });
+  
+  const url: string = 'https://api.aleph-alpha.com/complete';
+  let headers: StringDict = {'Content-Type': 'application/json', 'Accept': 'application/json'};
+  if (ALEPH_ALPHA_API_KEY !== undefined)
+    headers.Authorization = `Bearer ${ALEPH_ALPHA_API_KEY}`;
+  
+  let data = JSON.stringify({
+    "model": model.toString(),
+    "prompt": prompt,
+    "n": n,
+    ...params
+  });
 
-    // Setup the args for the query
-    let query: Dict = {
-      model: model.toString(),
-      n: n,
-      temperature: temperature,
-      ...params,  // 'the rest' of the settings, passed from the front-end settings
-    };
-    
-    const response = await fetch(url, {
-      headers: headers,
-      method: "POST",
-      body: data,
-    });
-    const result = await response.json();
-    const responses = await result.completions?.map((x: any) => x.completion);
+  // Setup the args for the query
+  let query: Dict = {
+    model: model.toString(),
+    n: n,
+    temperature: temperature,
+    ...params,  // 'the rest' of the settings, passed from the front-end settings
+  };
+  
+  const response = await fetch(url, {
+    headers: headers,
+    method: "POST",
+    body: data,
+  });
+  const result = await response.json();
+  const responses = await result.completions?.map((x: any) => x.completion);
 
   return [query, responses];
 }
+
 
 async function call_custom_provider(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!APP_IS_RUNNING_LOCALLY())
