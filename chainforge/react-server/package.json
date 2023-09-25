@@ -2,6 +2,9 @@
   "name": "chain-forge",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "^20"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.4.4",
     "@azure/openai": "^1.0.0-beta.2",
