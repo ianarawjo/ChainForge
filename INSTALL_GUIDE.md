@@ -36,6 +36,7 @@ Though you can run Chainforge, you can't do anything with it without the ability
  - HuggingFace models (via the HuggingFace Inference and Inference Endpoints API)
  - Anthropic models
  - Google PaLM2 chat and text bison models
+ - Aleph Alpha Luminous Models
  - Azure OpenAI Endpoints
  - (Locally run) Alpaca and Llama models [Dalai](https://github.com/cocktailpeanut/dalai)-served Alpaca.7b at port 4000.
     - To query models like Alpaca and Llama run on your local machine via Dalai, [install `dalai`](https://github.com/cocktailpeanut/dalai) and follow the instructions to download `alpaca.7b`. When everything is setup, run `npx dalai serve 4000`.
@@ -48,6 +49,7 @@ To use a specific model provider, you need to do two things:
      - HuggingFace: `HUGGINGFACE_API_KEY`
      - Anthropic: `ANTHROPIC_API_KEY`
      - Google PaLM2: `PALM_API_KEY`
+     - Aleph Alpha: `ALEPH_ALPHA_API_KEY`
      - Azure OpenAI: Set two keys, `AZURE_OPENAI_KEY` and `AZURE_OPENAI_ENDPOINT`. Note that the endpoint should look like a base URL. For examples on what these keys look like, see the [Azure OpenAI documentation](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/chatgpt-quickstart?tabs=command-line&pivots=programming-language-javascript).
  - When you are done setting the API key(s), **reopen your terminal**. _(This is because the terminal loads the environment variables when it is first opened, so it needs to be refreshed before running `chainforge serve`.)_
 

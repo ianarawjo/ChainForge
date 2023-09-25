@@ -164,6 +164,7 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
       Azure_OpenAI: '',
       Azure_OpenAI_Endpoint: '',
       HuggingFace: '',
+      AlephAlpha: '',
     },
 
     validate: {
@@ -209,8 +210,7 @@ return (
                     placeholder="Paste your OpenAI API key here"
                     {...form.getInputProps('OpenAI')}
                   />
-
-                  <br />
+                <br />
                   <TextInput
                     label="HuggingFace API Key"
                     placeholder="Paste your HuggingFace API key here"
@@ -231,7 +231,12 @@ return (
                     {...form.getInputProps('Google')}
                   />
                   <br />
-
+                  <TextInput
+                  label="Aleph Alpha API Key"
+                  placeholder="Paste your Aleph Alpha API key here"
+                  {...form.getInputProps('AlephAlpha')}
+                />
+                <br />
                   <Divider my="xs" label="Microsoft Azure" labelPosition="center" />
                   <TextInput
                     label="Azure OpenAI Key"

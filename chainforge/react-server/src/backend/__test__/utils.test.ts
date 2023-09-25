@@ -1,7 +1,7 @@
 /*
 * @jest-environment jsdom
 */
-import { call_anthropic, call_chatgpt, call_google_palm, extract_responses, merge_response_objs } from '../utils';
+import { call_alephalpha, call_anthropic, call_chatgpt, call_google_palm, extract_responses, merge_response_objs } from '../utils';
 import { LLM, NativeLLM } from '../models';
 import { expect, test } from '@jest/globals';
 import { LLMResponseObject } from '../typing';
@@ -102,6 +102,27 @@ test('google palm2 models', async () => {
 
   // Extract responses, check their type
   resps = extract_responses(response, NativeLLM.PaLM2_Chat_Bison);
+  expect(resps).toHaveLength(3);
+  expect(typeof resps[0]).toBe('string');
+  console.log(JSON.stringify(resps));
+}, 40000);
+
+test('aleph alpha model', async () => {
+  let [query, response] = await call_alephalpha("Who invented modern playing cards?", NativeLLM.Aleph_Alpha_Luminous_Base, 3, 0.7);
+  expect(response).toHaveLength(3);
+
+  // Extract responses, check their type
+  let resps = extract_responses(response, NativeLLM.Aleph_Alpha_Luminous_Base);
+  expect(resps).toHaveLength(3);
+  expect(typeof resps[0]).toBe('string');
+  console.log(JSON.stringify(resps));
+
+  // Call Google's PaLM Text Completions API with a basic question
+  [query, response] = await call_alephalpha("Who invented modern playing cards? The answer ", NativeLLM.Aleph_Alpha_Luminous_Base, 3, 0.7);
+  expect(response).toHaveLength(3);
+
+  // Extract responses, check their type
+  resps = extract_responses(response, NativeLLM.Aleph_Alpha_Luminous_Base);
   expect(resps).toHaveLength(3);
   expect(typeof resps[0]).toBe('string');
   console.log(JSON.stringify(resps));
