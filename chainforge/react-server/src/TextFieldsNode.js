@@ -40,9 +40,9 @@ const TextFieldsNode = ({ data, id }) => {
   });
   const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
 
-  const getUID = useCallback(() => {
-    if (textfieldsValues) {
-      return 'f' + (1 + Object.keys(textfieldsValues).reduce((acc, key) => (
+  const getUID = useCallback((textFields) => {
+    if (textFields) {
+      return 'f' + (1 + Object.keys(textFields).reduce((acc, key) => (
         Math.max(acc, parseInt(key.slice(1)))
       ), 0)).toString();
     } else {
@@ -60,7 +60,7 @@ const TextFieldsNode = ({ data, id }) => {
     delete new_vis[item_id];
     // if the new_data is empty, initialize it with one empty field
     if (Object.keys(new_fields).length === 0) {
-      new_fields[getUID()] = "";
+      new_fields[getUID(textfieldsValues)] = "";
     }
     setTextfieldsValues(new_fields);
     setFieldVisibility(new_vis);
@@ -72,7 +72,7 @@ const TextFieldsNode = ({ data, id }) => {
   useEffect(() => {
     if (!textfieldsValues || Object.keys(textfieldsValues).length === 0) {
       let init_fields = {};
-      init_fields[getUID()] = "";
+      init_fields[getUID(textfieldsValues)] = "";
       setTextfieldsValues(init_fields);
       setDataPropsForNode(id, { fields: init_fields });
     }
@@ -81,7 +81,7 @@ const TextFieldsNode = ({ data, id }) => {
   // Add a text field
   const handleAddField = useCallback(() => {
     let new_fields = {...textfieldsValues};
-    new_fields[getUID()] = "";
+    new_fields[getUID(textfieldsValues)] = "";
     setTextfieldsValues(new_fields);
     setDataPropsForNode(id, { fields: new_fields });
     pingOutputNodes(id);
