@@ -306,7 +306,7 @@ const TextFieldsNode = ({ data, id }) => {
       <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} />
       <Stack justify={'center'} align={'center'} gap={1}>
         <button onClick={handleAddField}>+</button>
-        <Popover width={200} position="bottom" withArrow shadow="md" trapFocus>
+        <Popover width={200} position="right" withArrow shadow="md" trapFocus>
           <Popover.Target>
             <div className="add-text-field-btn">
               <button>Generate with AI</button>
