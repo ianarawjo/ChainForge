@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Handle } from 'reactflow';
-import { Textarea, Tooltip } from '@mantine/core';
+import { Textarea, Tooltip, Popover, NumberInput, Button, Text, Stack } from '@mantine/core';
 import { IconTextPlus, IconEye, IconEyeOff } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
@@ -39,6 +39,8 @@ const TextFieldsNode = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
 
+  const [commandFillNumber, setCommandFillNumber] = useState(3);
+
   const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
   const [fieldVisibility, setFieldVisibility] = useState(data.fields_visibility || {});
 
@@ -57,7 +59,24 @@ const TextFieldsNode = ({ data, id }) => {
     } else {
       return 'f0';
     }
-  }, [textfieldsValues]);
+  }, []);
+
+  const handleCommandFill = () => {
+    autofill(
+      Object.values(textfieldsValues),
+      commandFillNumber
+    ).then((new_fields) => {
+      // Add all the new fields to the existing ones
+      for (const field of new_fields) {
+        const buffer = textfieldsValues;
+        const uid = getUID(buffer);
+        buffer[uid] = field;
+        setTextfieldsValues(buffer);
+        setDataPropsForNode(id, { fields: buffer });
+        pingOutputNodes(id);
+      }
+    });
+  };
 
   // Handle delete text field.
   const handleDelete = useCallback((event) => {
@@ -292,10 +311,24 @@ const TextFieldsNode = ({ data, id }) => {
         style={{ top: "50%" }}
       />
       <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} />
-      <div className="add-text-field-btn">
+      <Stack justify={'center'} align={'center'} gap={1}>
         <button onClick={handleAddField}>+</button>
-      </div>
+        <Popover width={200} position="bottom" withArrow shadow="md" trapFocus>
+          <Popover.Target>
+            <div className="add-text-field-btn">
+              <button>Generate with AI</button>
+            </div>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <Stack gap={1}>
+              <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={commandFillNumber} onChange={setCommandFillNumber}/>
+              <Button size="sm" variant="light" fullWidth onClick={handleCommandFill}>Generate</Button>
+            </Stack>
+          </Popover.Dropdown>
+        </Popover>
+      </Stack>
     </div>
+    
   );
 };
 
