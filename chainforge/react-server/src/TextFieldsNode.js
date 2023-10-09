@@ -53,9 +53,9 @@ const TextFieldsNode = ({ data, id }) => {
   });
   const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
 
-  const getUID = useCallback(() => {
-    if (textfieldsValues) {
-      return 'f' + (1 + Object.keys(textfieldsValues).reduce((acc, key) => (
+  const getUID = useCallback((textFields) => {
+    if (textFields) {
+      return 'f' + (1 + Object.keys(textFields).reduce((acc, key) => (
         Math.max(acc, parseInt(key.slice(1)))
       ), 0)).toString();
     } else {
