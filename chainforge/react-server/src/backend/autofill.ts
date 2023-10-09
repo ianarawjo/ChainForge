@@ -63,8 +63,8 @@ function decode(rows: string): Row[] {
  * @param n number of results to return
  */
 export async function autofill(input: Row[], n: number): Promise<Row[]> {
-  // TODO, use an id
-  let id = "id";
+  // hash the arguments to get a unique id
+  let id = JSON.stringify([input, n]);
 
   let history: ChatHistoryInfo[] = [{
     messages: [{
