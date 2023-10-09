@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Handle } from 'reactflow';
-import { Textarea, Tooltip, TextInput, NumberInput, Button, Text, Stack, Tabs, Switch, Skeleton } from '@mantine/core';
+import { Textarea, Tooltip, Popover, NumberInput, Button, Text, Stack } from '@mantine/core';
 import { IconTextPlus, IconEye, IconEyeOff } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
@@ -34,15 +34,6 @@ const TextFieldsNode = ({ data, id }) => {
 
   const [commandFillNumber, setCommandFillNumber] = useState(3);
 
-  const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(3);
-  const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState('');
-  const [generateAndReplaceIsUnconventional, setGenerateAndReplaceIsUnconventional] = useState(false);
-  const [generateAndReplaceIsLoading, setGenerateAndReplaceIsLoading] = useState(false);
-  const [didGenerateAndReplaceError, setDidGenerateAndReplaceError] = useState(false);
-
-  const [isCommandFillLoading, setIsCommandFillLoading] = useState(false);
-  const [didCommandFillError, setDidCommandFillError] = useState(false);
-
   const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
   const [fieldVisibility, setFieldVisibility] = useState(data.fields_visibility || {});
 
@@ -64,8 +55,6 @@ const TextFieldsNode = ({ data, id }) => {
   }, []);
 
   const handleCommandFill = () => {
-    setIsCommandFillLoading(true);
-    setDidCommandFillError(false);
     autofill(
       Object.values(textfieldsValues),
       commandFillNumber
@@ -79,40 +68,8 @@ const TextFieldsNode = ({ data, id }) => {
         setDataPropsForNode(id, { fields: buffer });
         pingOutputNodes(id);
       }
-    }).catch(e => {
-      if (e instanceof AIError) {
-        setDidCommandFillError(true);
-      } else {
-        throw new Error("Unexpected error: " + e);
-      }
-    }).finally(() => setIsCommandFillLoading(false));
+    });
   };
-
-  const handleGenerateAndReplace = () => {
-    setDidGenerateAndReplaceError(false);
-    setGenerateAndReplaceIsLoading(true);
-    generateAndReplace(
-      generateAndReplacePrompt,
-      generateAndReplaceNumber,
-      generateAndReplaceIsUnconventional
-    ).then((fields) => {
-      const buffer = {};
-      for (const field of fields) {
-        const uid = getUID(buffer);
-        buffer[uid] = field;
-        setTextfieldsValues(buffer);
-        setDataPropsForNode(id, { fields: buffer });
-        pingOutputNodes(id);
-      }
-    }).catch(e => {
-      if (e instanceof AIError) {
-        console.log(e);
-        setDidGenerateAndReplaceError(true);
-      } else {
-        throw new Error("Unexpected error: " + e);
-      }
-    }).finally(() => setGenerateAndReplaceIsLoading(false));
-  }
 
   // Handle delete text field.
   const handleDelete = useCallback((event) => {
@@ -347,9 +304,22 @@ const TextFieldsNode = ({ data, id }) => {
         style={{ top: "50%" }}
       />
       <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} />
-      <div className="add-text-field-btn">
+      <Stack justify={'center'} align={'center'} gap={1}>
         <button onClick={handleAddField}>+</button>
-      </div>
+        <Popover width={200} position="bottom" withArrow shadow="md" trapFocus>
+          <Popover.Target>
+            <div className="add-text-field-btn">
+              <button>Generate with AI</button>
+            </div>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <Stack gap={1}>
+              <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={commandFillNumber} onChange={setCommandFillNumber}/>
+              <Button size="sm" variant="light" fullWidth onClick={handleCommandFill}>Generate</Button>
+            </Stack>
+          </Popover.Dropdown>
+        </Popover>
+      </Stack>
     </BaseNode>
   );
 };
