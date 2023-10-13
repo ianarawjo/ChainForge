@@ -531,6 +531,10 @@
     border-color: #222;
   }
 
+  .join-node {
+    min-width: 200px;
+  }
+
   .tabular-data-node {
     min-width: 280px;
   }

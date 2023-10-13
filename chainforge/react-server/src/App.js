@@ -8,7 +8,7 @@ import ReactFlow, {
 } from 'reactflow';
 import { Button, Menu, LoadingOverlay, Text, Box, List, Loader, Tooltip } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
-import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink, IconRobot, IconRuler2 } from '@tabler/icons-react';
+import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink, IconRobot, IconRuler2, IconArrowMerge } from '@tabler/icons-react';
 import RemoveEdge from './RemoveEdge';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
@@ -19,6 +19,7 @@ import ScriptNode from './ScriptNode';
 import AlertModal from './AlertModal';
 import CsvNode from './CsvNode';
 import TabularDataNode from './TabularDataNode';
+import JoinNode from './JoinNode';
 import CommentNode from './CommentNode';
 import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
@@ -87,6 +88,7 @@ const nodeTypes = {
   csv: CsvNode,
   table: TabularDataNode,
   comment: CommentNode,
+  join: JoinNode,
 };
 
 const edgeTypes = {
@@ -197,33 +199,37 @@ const App = () => {
       code = "function evaluate(response) {\n  return response.text.length;\n}";
     addNode({ id: 'evalNode-'+Date.now(), type: 'evaluator', data: { language: progLang, code: code }, position: {x: x-200, y:y-100} });
   };
-  const addVisNode = (event) => {
+  const addVisNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'visNode-'+Date.now(), type: 'vis', data: {}, position: {x: x-200, y:y-100} });
   };
-  const addInspectNode = (event) => {
+  const addInspectNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'inspectNode-'+Date.now(), type: 'inspect', data: {}, position: {x: x-200, y:y-100} });
   };
-  const addScriptNode = (event) => {
+  const addScriptNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'scriptNode-'+Date.now(), type: 'script', data: {}, position: {x: x-200, y:y-100} });
   };
-  const addCsvNode = (event) => {
+  const addCsvNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'csvNode-'+Date.now(), type: 'csv', data: {}, position: {x: x-200, y:y-100} });
   };
-  const addTabularDataNode = (event) => {
+  const addTabularDataNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'table-'+Date.now(), type: 'table', data: {}, position: {x: x-200, y:y-100} });
   };
-  const addCommentNode = (event) => {
+  const addCommentNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'comment-'+Date.now(), type: 'comment', data: {}, position: {x: x-200, y:y-100} });
   };
   const addLLMEvalNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'llmeval-'+Date.now(), type: 'llmeval', data: {}, position: {x: x-200, y:y-100} });
+  };
+  const addJoinNode = () => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'join-'+Date.now(), type: 'join', data: {}, position: {x: x-200, y:y-100} });
   };
 
   const onClickExamples = () => {
@@ -766,6 +772,11 @@ const App = () => {
             </MenuTooltip>
             <MenuTooltip label="Used to inspect responses from prompter or evaluation nodes, without opening up the pop-up view.">
               <Menu.Item onClick={addInspectNode} icon={'🔍'}> Inspect Node </Menu.Item>
+            </MenuTooltip>
+            <Menu.Divider />
+            <Menu.Label>Processors</Menu.Label>
+            <MenuTooltip label="Concatenate responses or input data together before passing into later nodes, within or across variables and LLMs.">
+              <Menu.Item onClick={addJoinNode} icon={<IconArrowMerge size='14pt' />}> Join Node </Menu.Item>
             </MenuTooltip>
             <Menu.Divider />
             <Menu.Label>Misc</Menu.Label>
