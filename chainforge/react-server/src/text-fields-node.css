@@ -409,6 +409,9 @@
     color: #444;
     white-space: pre-wrap;
   }
+  .join-text-preview {
+    margin: 0px 0px 10px 0px;
+  }
 
   .small-response {
     font-size: 8pt;
