@@ -85,6 +85,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             <div className="node-header-btns-container">
                 {customButtons ? customButtons : <></>}
                 {runButton}
+                <button className="ai-button nodrag">ai</button>
                 <button className="close-button nodrag" onClick={handleCloseButtonClick}>&#x2715;</button>
                 <br/>
             </div>

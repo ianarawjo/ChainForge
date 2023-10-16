@@ -884,6 +884,58 @@
   transform: skewX(-20deg);
 }
 
+/* AI button */
+.ai-button {
+  position: relative;
+  padding: 2px 6px;
+  margin-top: -7px;
+  margin-right: 3px;
+  border-radius: 5px;
+  border: 1px solid #999;
+  font-size: 12px;
+  color: #666;
+  overflow: hidden;
+  box-shadow: 0 0 0 0 transparent;
+  -webkit-transition: all 0.2s ease-in;
+  -moz-transition: all 0.2s ease-in;
+  transition: all 0.2s ease-in;
+  cursor: pointer;
+  background: #f2d2f3;
+}
+.ai-button:hover {
+  background: rgb(177,63,204);
+  color: white;
+  box-shadow: 0 0 30px 5px rgb(177,63,204);
+  -webkit-transition: all 0.2s ease-out;
+  -moz-transition: all 0.2s ease-out;
+  transition: all 0.2s ease-out;
+}
+.ai-button:active {
+  background: rgb(129,40,151);
+}
+.ai-button:hover::before {
+  -moz-animation: sh02 0.5s 0s linear;
+  animation: sh02 0.5s 0s linear;
+}
+.ai-button::before {
+  content: '';
+  display: block;
+  width: 0px;
+  height: 86%;
+  position: absolute;
+  top: 7%;
+  left: 0%;
+  opacity: 0;
+  color: black;
+  background: #fff;
+  box-shadow: 0 0 50px 30px #fff;
+  -webkit-transform: skewX(-20deg);
+  -moz-transform: skewX(-20deg);
+  -ms-transform: skewX(-20deg);
+  -o-transform: skewX(-20deg);
+  transform: skewX(-20deg);
+}
+
 /* Make text blink */
 .text-blink {
     animation: blinker .75s linear infinite;
