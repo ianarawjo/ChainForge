@@ -275,7 +275,7 @@ const TextFieldsNode = ({ data, id }) => {
 
   return (
     <div className="text-fields-node cfnode">
-      <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} />
+      <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} aiPopoverContent={<div>hello</div>} />
       <div ref={setRef}>
         {Object.keys(textfieldsValues).map(i => (
           <div className="input-field" key={i}>
