@@ -273,10 +273,21 @@ const TextFieldsNode = ({ data, id }) => {
     return suggestedRows[0];
   }
 
+  const extendUI = (
+    <Stack gap={1}>
+      <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={commandFillNumber} onChange={setCommandFillNumber}/>
+      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions()}>Extend</Button>
+      {enoughRowsForSuggestions() ? <></>
+      : <Text size="xs" c="grape">
+          Enter at least 2 rows to generate suggestions.
+        </Text>}
+    </Stack>
+  )
+
   const aiPopover = (
-    <Tabs color="grape" defaultValue="extend" inverted>
+    <Tabs variant="outline" color="grape" defaultValue="extend" inverted>
       <Tabs.Panel value="extend" pb="xs">
-        Extend
+        {extendUI}
       </Tabs.Panel>
       <Tabs.Panel value="replace" pb="xs">
         Replace
@@ -333,25 +344,10 @@ const TextFieldsNode = ({ data, id }) => {
         style={{ top: "50%" }}
       />
       <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} />
-      <Stack justify={'center'} align={'center'} gap={1}>
+      <div className="add-text-field-btn">
         <button onClick={handleAddField}>+</button>
-        <Popover width={200} position="right" withArrow shadow="md" trapFocus>
-          <Popover.Target>
-            <div className="add-text-field-btn">
-              <button>Generate with AI</button>
-            </div>
-          </Popover.Target>
-          <Popover.Dropdown>
-            <Stack gap={1}>
-              <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={commandFillNumber} onChange={setCommandFillNumber}/>
-              <Button size="sm" variant="light" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions()}>Generate</Button>
-              {enoughRowsForSuggestions() ? <></> : <Text>Enter at least 2 rows to generate suggestions.</Text>}
-            </Stack>
-          </Popover.Dropdown>
-        </Popover>
-      </Stack>
+      </div>
     </div>
-    
   );
 };
 
