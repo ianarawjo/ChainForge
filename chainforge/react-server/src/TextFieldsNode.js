@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Handle } from 'reactflow';
-import { Textarea, Tooltip, Popover, NumberInput, Button, Text, Stack } from '@mantine/core';
+import { Textarea, Tooltip, Popover, NumberInput, Button, Text, Stack, Tabs } from '@mantine/core';
 import { IconTextPlus, IconEye, IconEyeOff } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
@@ -264,9 +264,28 @@ const TextFieldsNode = ({ data, id }) => {
     return suggestedRows[0];
   }
 
+  const aiPopover = (
+    <Tabs color="grape" defaultValue="extend" inverted>
+      <Tabs.Panel value="extend" pb="xs">
+        Extend
+      </Tabs.Panel>
+      <Tabs.Panel value="replace" pb="xs">
+        Replace
+      </Tabs.Panel>
+      <Tabs.List grow>
+        <Tabs.Tab value="extend">
+          Extend
+        </Tabs.Tab>
+        <Tabs.Tab value="replace">
+          Replace
+        </Tabs.Tab>
+      </Tabs.List>
+    </Tabs>
+  )
+
   return (
     <BaseNode classNames="text-fields-node" nodeId={id}>
-      <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} aiPopoverContent={<div>hello</div>} />
+      <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} aiPopoverContent={aiPopover} />
       <div ref={setRef}>
         {Object.keys(textfieldsValues).map(i => (
           <div className="input-field" key={i}>
