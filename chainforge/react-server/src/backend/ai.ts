@@ -1,5 +1,5 @@
 /**
- * Business logic for the AI-generated autofill feature.
+ * Business logic for the AI-generated features.
  */
 
 import { queryLLM } from "./backend";
@@ -8,7 +8,7 @@ import { ChatHistoryInfo } from "./typing";
 // Input and outputs of autofill are both rows of strings.
 export type Row = string;
 
-// LLM to use for autofilling.
+// LLM to use for AI features.
 const LLM = "gpt-3.5-turbo";
 
 /**

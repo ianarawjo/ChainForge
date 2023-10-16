@@ -1,4 +1,4 @@
-import { autofill } from "../autofill";
+import { autofill } from "../ai";
 
 describe("autofill", () => {
   it("should return an array of n rows", async () => {
