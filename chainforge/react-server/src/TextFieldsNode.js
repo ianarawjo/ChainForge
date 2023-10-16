@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Handle } from 'reactflow';
-import { Textarea, Tooltip, Popover, NumberInput, Button, Text, Stack, Tabs } from '@mantine/core';
+import { Textarea, Tooltip, TextInput, NumberInput, Button, Text, Stack, Tabs, Switch } from '@mantine/core';
 import { IconTextPlus, IconEye, IconEyeOff } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
@@ -284,13 +284,26 @@ const TextFieldsNode = ({ data, id }) => {
     </Stack>
   )
 
+  const replaceUI = (
+    <Stack gap={1}>
+      <TextInput label="Pattern"/>
+      <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={commandFillNumber} onChange={setCommandFillNumber}/>
+      <Switch color="grape" label="Be extremely creative"/>
+      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions()}>Replace</Button>
+      {enoughRowsForSuggestions() ? <></>
+      : <Text size="xs" c="grape">
+          Enter at least 2 rows to generate suggestions.
+        </Text>}
+    </Stack>
+  )
+
   const aiPopover = (
     <Tabs variant="outline" color="grape" defaultValue="extend" inverted>
       <Tabs.Panel value="extend" pb="xs">
         {extendUI}
       </Tabs.Panel>
       <Tabs.Panel value="replace" pb="xs">
-        Replace
+        {replaceUI}
       </Tabs.Panel>
       <Tabs.List grow>
         <Tabs.Tab value="extend">
