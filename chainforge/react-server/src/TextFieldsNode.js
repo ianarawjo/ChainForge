@@ -7,9 +7,7 @@ import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
 import BaseNode from './BaseNode';
 import { setsAreEqual } from './backend/utils';
-import { AIError, generateAndReplace } from './backend/ai';
-import { debounce } from 'lodash';
-import { autofill } from './backend/autofill';
+import { autofill } from './backend/ai';
 import { debounce } from 'lodash';
 
 // Helper funcs

@@ -5,13 +5,6 @@
 import { queryLLM } from "./backend";
 import { ChatHistoryInfo } from "./typing";
 
-export class AIError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "AIError";
-  }
-}
-
 // Input and outputs of autofill are both rows of strings.
 export type Row = string;
 
@@ -23,42 +16,43 @@ const LLM = "gpt-3.5-turbo";
  * @param n number of rows to generate
  */
 function autofillSystemMessage(n: number): string {
-  return `Here is a list of commands or items. Say what the pattern seems to be and generate ${n} more commands or items as an unordered markdown list:`;
+  return `Pretend you are an autofill system helping to fill out a spreadsheet column. Here are the first few rows of that column in XML, with each row marked with the tag <row>. First, tell me what the general pattern seems to be. Put your guess in a <guess> tag. Second, generate exactly ${n} more rows following the pattern you guessed. Format your response in XML using the <row> and <rows> tag. Do not ever repeat anything. Here is an example of the structure that your response should follow:
+
+  <guess>your guess goes here</guess>
+  <rows>
+    <row>first row</row>
+    <row>second row</row>
+    <row>third row</row>
+    <row>fourth row</row>
+    <row>fifth row</row>
+  </rows>`;
 }
 
 /**
- * Generate the system message used for generate and replace (GAR).
- */
-function GARSystemMessage(n: number, creative?: boolean, generatePrompts?: boolean): string {
-  return `Generate a list of exactly ${n} items. Format your response as an unordered markdown list using "-". Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be commands that can be given to an AI chat assistant." : ""}`;
-}
-
-/**
- * Returns a string representing the given rows as a markdown list
+ * Returns an XML string representing the given rows using the <rows> and <row> tags. 
  * @param rows to encode
  */
 function encode(rows: Row[]): string {
-    return rows.map(row => `- ${row}`).join('\n');
+    let xml = '<rows>';
+    for (let row of rows) {
+        xml += `<row>${row}</row>`
+    }
+    xml += '</rows>';
+    return xml;
 }
 
 /**
- * Returns the rows encoded by the given string, assuming the string is in markdown list format. Throws an AIError if the string is not in markdown list format.
+ * Returns the rows represented by the given XML string using the <rows> and <row> tags.
  * @param rows to decode
- * @param n number of rows to return
  */
-function decode(rows: string, n?: number): Row[] {
-    let lines = rows.split('\n');
-    let result: Row[] = [];
-    for (let line of lines) {
-        if (n && result.length >= n) break;
-        if (line.startsWith('- ')) {
-            result.push(line.slice(2));
-        } else {
-            continue;
-        }
-    }
-    if (result.length === 0) {
-        throw new AIError(`Failed to decode output: ${rows}`);
+function decode(rows: string): Row[] {
+    const xml = new DOMParser().parseFromString(
+      `<wrapper>${rows}</wrapper>`,
+      'text/xml');
+    const rowElements = xml.getElementsByTagName('row');
+    const result: Row[] = [];
+    for (let i = 0; i < rowElements.length; i++) {
+        result.push(rowElements[i].textContent);
     }
     return result;
 }
@@ -90,42 +84,5 @@ export async function autofill(input: Row[], n: number): Promise<Row[]> {
     /*vars=*/ {},
     /*chat_history=*/ history);
 
-  console.log("LLM said: ", result.responses[0].responses[0])
-
-  return decode(result.responses[0].responses[0], n)
-}
-
-/**
- * Uses an LLM to generate `n` new rows based on the pattern explained in `prompt`.
- * @param prompt 
- * @param n 
- */
-export async function generateAndReplace(prompt: string, n: number, creative?: boolean): Promise<Row[]> {
-  // hash the arguments to get a unique id
-  let id = JSON.stringify([prompt, n]);
-
-  // True if `prompt` contains the word 'prompt'
-  let generatePrompts = prompt.toLowerCase().includes('prompt');
-
-  let history: ChatHistoryInfo[] = [{
-    messages: [{
-      "role": "system",
-      "content": GARSystemMessage(n, creative, generatePrompts),
-    }],
-    fill_history: {},
-  }]
-
-  let input = `Generate a list of ${prompt}`;
-
-  let result = await queryLLM(
-    /*id=*/ id,
-    /*llm=*/ LLM,
-    /*n=*/ 1,
-    /*prompt=*/ input,
-    /*vars=*/ {},
-    /*chat_history=*/ history);
-
-  console.log("LLM said: ", result.responses[0].responses[0])
-
-  return decode(result.responses[0].responses[0], n)
+  return decode(result.responses[0].responses[0])
 }
