@@ -5,7 +5,7 @@ import { IconTextPlus, IconEye, IconEyeOff } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
-import { autofill } from './backend/autofill';
+import { autofill } from './backend/ai';
 import { debounce } from 'lodash';
 
 // Helper funcs
