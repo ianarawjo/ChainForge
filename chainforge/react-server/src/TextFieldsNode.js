@@ -207,6 +207,12 @@ const TextFieldsNode = ({ data, id }) => {
     return true;
   }
 
+  // At least 2 non-empty rows are needed for suggestions.
+  function enoughRowsForSuggestions() {
+    const rows = Object.values(textfieldsValues);
+    return rows.filter((row) => row !== '').length >= 2;
+  }
+
   /**
    * Returns true `a` is a subset of `b`, skipping over empty strings.
    * @param {Array} a
@@ -226,6 +232,7 @@ const TextFieldsNode = ({ data, id }) => {
   const autofillEffect = useCallback(() => {
     if (isSuggestionsLoading) return;
     const base = Object.values(textfieldsValues);
+    if (!enoughRowsForSuggestions()) return;
     if (!match(base, expectedRows) || suggestedRows.length === 0) {
       setIsSuggestionsLoading(true);
       autofill(base, SUGGESTIONS_TO_PRELOAD).then((suggestions) => {
@@ -318,7 +325,8 @@ const TextFieldsNode = ({ data, id }) => {
           <Popover.Dropdown>
             <Stack gap={1}>
               <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={commandFillNumber} onChange={setCommandFillNumber}/>
-              <Button size="sm" variant="light" fullWidth onClick={handleCommandFill}>Generate</Button>
+              <Button size="sm" variant="light" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions()}>Generate</Button>
+              {enoughRowsForSuggestions() ? <></> : <Text>Enter at least 2 rows to generate suggestions.</Text>}
             </Stack>
           </Popover.Dropdown>
         </Popover>
