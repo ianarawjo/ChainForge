@@ -6,9 +6,9 @@ import StatusIndicator from './StatusIndicatorComponent';
 import AlertModal from './AlertModal';
 import AreYouSureModal from './AreYouSureModal';
 import { useState, useEffect, useCallback} from 'react';
-import { Tooltip } from '@mantine/core';
+import { Tooltip, Popover } from '@mantine/core';
 
-export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, customButtons, handleRunClick, handleRunHover, runButtonTooltip }) {
+export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, customButtons, handleRunClick, handleRunHover, runButtonTooltip, aiPopoverContent }) {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const [statusIndicator, setStatusIndicator] = useState('none');
     const [runButton, setRunButton] = useState('none');
@@ -68,6 +68,16 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             deleteConfirmModal.current.trigger();
     }, [deleteConfirmModal]);
 
+    const aiPopover =
+      <Popover position="top">
+        <Popover.Target>
+          <button className="ai-button nodrag">ai</button>
+        </Popover.Target>
+        <Popover.Dropdown>
+          {aiPopoverContent}
+        </Popover.Dropdown>
+      </Popover>;
+
     return (<>
         <div className="node-header drag-handle">
             {icon ? (<>{icon}&nbsp;</>) : <></>}
@@ -85,7 +95,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             <div className="node-header-btns-container">
                 {customButtons ? customButtons : <></>}
                 {runButton}
-                <button className="ai-button nodrag">ai</button>
+                {aiPopoverContent ? aiPopover : <></>}
                 <button className="close-button nodrag" onClick={handleCloseButtonClick}>&#x2715;</button>
                 <br/>
             </div>
