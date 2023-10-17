@@ -32,7 +32,7 @@ function autofillSystemMessage(n: number): string {
  * Generate the system message used for generate and replace (GAR).
  */
 function GARSystemMessage(n: number, creative?: boolean): string {
-  return `Pretend you are an autofill system helping to fill out a spreadsheet column. Here is the pattern you should follow in <pattern>. Generate exactly ${n} rows following the pattern. Format your response in XML using the <row> and <rows> tag. Do not ever repeat anything.${creative ? "Be extremely creative with your outputs." : ""} Here is an example of the structure that your response should follow:
+  return `Pretend you are an autofill system helping to fill out a spreadsheet column. Here is the pattern you should follow in <pattern>. Generate exactly ${n} rows following the pattern. Format your response in XML using the <row> and <rows> tag. Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} Here is an example of the structure that your response should follow:
 
   <rows>
     <row>first row</row>
