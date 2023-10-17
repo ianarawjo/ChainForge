@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Handle } from 'reactflow';
-import { Textarea, Tooltip, TextInput, NumberInput, Button, Text, Stack, Tabs, Switch } from '@mantine/core';
+import { Textarea, Tooltip, TextInput, NumberInput, Button, Text, Stack, Tabs, Switch, Skeleton } from '@mantine/core';
 import { IconTextPlus, IconEye, IconEyeOff } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
@@ -45,6 +45,9 @@ const TextFieldsNode = ({ data, id }) => {
   const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(3);
   const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState('');
   const [generateAndReplaceIsUnconventional, setGenerateAndReplaceIsUnconventional] = useState(false);
+  const [generateAndReplaceIsLoading, setGenerateAndReplaceIsLoading] = useState(false);
+
+  const [isCommandFillLoading, setIsCommandFillLoading] = useState(false);
 
   const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
   const [fieldVisibility, setFieldVisibility] = useState(data.fields_visibility || {});
@@ -66,6 +69,7 @@ const TextFieldsNode = ({ data, id }) => {
   }, []);
 
   const handleCommandFill = () => {
+    setIsCommandFillLoading(true);
     autofill(
       Object.values(textfieldsValues),
       commandFillNumber
@@ -79,10 +83,11 @@ const TextFieldsNode = ({ data, id }) => {
         setDataPropsForNode(id, { fields: buffer });
         pingOutputNodes(id);
       }
-    });
+    }).finally(() => setIsCommandFillLoading(false));
   };
 
   const handleGenerateAndReplace = () => {
+    setGenerateAndReplaceIsLoading(true);
     generateAndReplace(
       generateAndReplacePrompt,
       generateAndReplaceNumber,
@@ -96,6 +101,7 @@ const TextFieldsNode = ({ data, id }) => {
         setDataPropsForNode(id, { fields: buffer });
         pingOutputNodes(id);
       }
+      setGenerateAndReplaceIsLoading(false);
     })
   }
 
@@ -297,7 +303,7 @@ const TextFieldsNode = ({ data, id }) => {
   const extendUI = (
     <Stack gap={1}>
       <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={commandFillNumber} onChange={setCommandFillNumber}/>
-      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions()}>Extend</Button>
+      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions()} loading={isCommandFillLoading}>Extend</Button>
       {enoughRowsForSuggestions() ? <></>
       : <Text size="xs" c="grape">
           Enter at least 2 rows to generate suggestions.
@@ -310,7 +316,7 @@ const TextFieldsNode = ({ data, id }) => {
       <TextInput label="Pattern" value={generateAndReplacePrompt} onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}/>
       <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={generateAndReplaceNumber} onChange={setGenerateAndReplaceNumber}/>
       <Switch color="grape" label="Make outputs unconventional" value={generateAndReplaceIsUnconventional} onChange={(e) => setGenerateAndReplaceIsUnconventional(e.currentTarget.checked)}/>
-      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleGenerateAndReplace}>Replace</Button>
+      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleGenerateAndReplace} loading={generateAndReplaceIsLoading}>Replace</Button>
     </Stack>
   )
 
@@ -336,36 +342,38 @@ const TextFieldsNode = ({ data, id }) => {
   return (
     <div className="text-fields-node cfnode">
       <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} aiPopoverContent={aiPopover} />
-      <div ref={setRef}>
-        {Object.keys(textfieldsValues).map(i => (
-          <div className="input-field" key={i}>
-            <Textarea id={i} name={i} 
-                     className="text-field-fixed nodrag nowheel" 
-                     autosize
-                     minRows="2"
-                     maxRows="8"
-                     value={textfieldsValues[i]} 
-                     placeholder={placeholder()} 
-                     disabled={fieldVisibility[i] === false}
-                     onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)}
-                     onKeyDown={(event) => handleKeyDown(event, i)} />
-            {Object.keys(textfieldsValues).length > 1 ? (
-              <div style={{display: 'flex', flexDirection: 'column'}}>
-                <Tooltip label='remove field' position='right' withArrow arrowSize={10} withinPortal>
-                  <button id={delButtonId + i} className="remove-text-field-btn nodrag" onClick={handleDelete} style={{flex: 1}}>X</button>
-                </Tooltip>
-                <Tooltip label={(fieldVisibility[i] === false ? 'enable' : 'disable') + ' field'} position='right' withArrow arrowSize={10} withinPortal>
-                  <button id={visibleButtonId + i} className="remove-text-field-btn nodrag" onClick={() => handleDisableField(i)} style={{flex: 1}}>
-                    {fieldVisibility[i] === false ? 
-                        <IconEyeOff size='14pt' pointerEvents='none' />
-                      : <IconEye size='14pt' pointerEvents='none' />
-                    }
-                  </button>
-                </Tooltip>
-              </div>
-            ) : <></>}
-          </div>))}
-      </div>
+      <Skeleton visible={generateAndReplaceIsLoading}>
+        <div ref={setRef}>
+          {Object.keys(textfieldsValues).map(i => (
+            <div className="input-field" key={i}>
+              <Textarea id={i} name={i} 
+                      className="text-field-fixed nodrag nowheel" 
+                      autosize
+                      minRows="2"
+                      maxRows="8"
+                      value={textfieldsValues[i]} 
+                      placeholder={placeholder()} 
+                      disabled={fieldVisibility[i] === false}
+                      onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)}
+                      onKeyDown={(event) => handleKeyDown(event, i)} />
+              {Object.keys(textfieldsValues).length > 1 ? (
+                <div style={{display: 'flex', flexDirection: 'column'}}>
+                  <Tooltip label='remove field' position='right' withArrow arrowSize={10} withinPortal>
+                    <button id={delButtonId + i} className="remove-text-field-btn nodrag" onClick={handleDelete} style={{flex: 1}}>X</button>
+                  </Tooltip>
+                  <Tooltip label={(fieldVisibility[i] === false ? 'enable' : 'disable') + ' field'} position='right' withArrow arrowSize={10} withinPortal>
+                    <button id={visibleButtonId + i} className="remove-text-field-btn nodrag" onClick={() => handleDisableField(i)} style={{flex: 1}}>
+                      {fieldVisibility[i] === false ? 
+                          <IconEyeOff size='14pt' pointerEvents='none' />
+                        : <IconEye size='14pt' pointerEvents='none' />
+                      }
+                    </button>
+                  </Tooltip>
+                </div>
+              ) : <></>}
+            </div>))}
+        </div>
+      </Skeleton>
       <Handle
         type="source"
         position="right"
