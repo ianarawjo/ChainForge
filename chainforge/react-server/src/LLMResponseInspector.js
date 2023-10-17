@@ -475,7 +475,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                     value={multiSelectValue}
                     clearSearchOnChange={true}
                     clearSearchOnBlur={true}
-                    w='80%' />
+                    w={wideFormat ? '80%' : '100%'} />
         <Checkbox checked={onlyShowScores} 
                   label="Only show scores" 
                   onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}

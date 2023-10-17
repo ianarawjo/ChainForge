@@ -171,17 +171,18 @@ const JoinNode = ({ data, id }) => {
 
     // Refresh the dropdown list with available vars/metavars:
     setGroupByVars([DEFAULT_GROUPBY_VAR_ALL].concat(
-      vars.map(varname => ({label: `within ${varname}`, value: `V${varname}`})))
+      vars.map(varname => ({label: `by ${varname}`, value: `V${varname}`})))
     .concat(
-      metavars.filter(varname => !varname.startsWith('LLM_')).map(varname => ({label: `within ${varname} (meta)`, value: `M${varname}`})))
+      metavars.filter(varname => !varname.startsWith('LLM_')).map(varname => ({label: `by ${varname} (meta)`, value: `M${varname}`})))
     );
 
     const joinByVars = (input) => {
       const varname = groupByVar.substring(1);
+      const isMetavar = groupByVar[0] === 'M';
       const [groupedResps, unspecGroup] = groupResponsesBy(input, 
-        (groupByVar[0] === 'V') ? 
-          (r) => (r.fill_history ? r.fill_history[varname] : undefined) : 
-          (r) => (r.metavars ? r.metavars[varname] : undefined)
+        isMetavar ? 
+          (r) => (r.metavars ? r.metavars[varname] : undefined) :
+          (r) => (r.fill_history ? r.fill_history[varname] : undefined)
       );
       console.log(groupedResps);
 
@@ -195,7 +196,8 @@ const JoinNode = ({ data, id }) => {
           vars[varname] = var_val;
         return {
           text: joinTexts(resp_objs.map(r => r.text !== undefined ? r.text : r), formatting),
-          fill_history: vars,
+          fill_history: isMetavar ? {} : vars,
+          metavars: isMetavar ? vars : {},
           llm: llm,
           // NOTE: We lose all other metadata here, because we could've joined across other vars or metavars values.
         };
@@ -207,6 +209,7 @@ const JoinNode = ({ data, id }) => {
         joined_texts.push({
           text: joinTexts(unspecGroup.map(u => u.text !== undefined ? u.text : u), formatting),
           fill_history: {},
+          metavars: {},
           llm: llm,
         });
       }
@@ -228,6 +231,7 @@ const JoinNode = ({ data, id }) => {
         joined_texts.push(joinTexts(nonLLMRespGroup, formatting));
 
       setJoinedTexts(joined_texts);
+      setDataPropsForNode(id, { fields: joined_texts });
       console.log(joined_texts);
     } else {
       // Join across LLMs (join irrespective of LLM):
@@ -235,6 +239,7 @@ const JoinNode = ({ data, id }) => {
         // If groupByVar is set to non-ALL (not "A"), then we need to group responses by that variable first: 
         const joined_texts = joinByVars(input_data.__input);
         setJoinedTexts(joined_texts);
+        setDataPropsForNode(id, { fields: joined_texts });
       } else {
         // Since templates could be chained, we need to run this 
         // through the prompt generator: 
@@ -252,11 +257,11 @@ const JoinNode = ({ data, id }) => {
             joined_texts = {text: joined_texts, fill_history: {}, llm: input_data.__input[0].llm};
 
           setJoinedTexts([joined_texts]);
+          setDataPropsForNode(id, { fields: [joined_texts] });
           console.log(joined_texts);
         });
       }
     }
-
 
   }, [formatting, pullInputData, groupByVar, groupByLLM]);
 

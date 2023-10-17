@@ -425,7 +425,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     const rejected = (err) => {
         setStatus('error');
         setContChatToggleDisabled(false);
-        triggerAlert(err.message);
+        triggerAlert(err.message || err);
     };
 
     // Fetch info about the number of queries we'll need to make 
