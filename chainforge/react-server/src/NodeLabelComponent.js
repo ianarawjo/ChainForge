@@ -6,7 +6,7 @@ import StatusIndicator from './StatusIndicatorComponent';
 import AlertModal from './AlertModal';
 import AreYouSureModal from './AreYouSureModal';
 import { useState, useEffect, useCallback} from 'react';
-import { Tooltip, Popover } from '@mantine/core';
+import { Tooltip, Popover, Badge, Stack } from '@mantine/core';
 import { IconSparkles } from '@tabler/icons-react';
 
 
@@ -76,7 +76,12 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
           <button className="ai-button nodrag"><IconSparkles size={10} stroke={3}/></button>
         </Popover.Target>
         <Popover.Dropdown>
-          {aiPopoverContent}
+          <Stack gap={1}>
+            <Badge color="grape" variant="outline" leftSection={<IconSparkles size={10} stroke={3}/>}>
+              Generative AI
+            </Badge>
+            {aiPopoverContent}
+          </Stack>
         </Popover.Dropdown>
       </Popover>;
 
