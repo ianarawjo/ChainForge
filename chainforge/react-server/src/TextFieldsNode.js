@@ -35,7 +35,7 @@ const TextFieldsNode = ({ data, id }) => {
 
   const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(3);
   const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState('');
-  const [generateAndReplaceIsCreative, setGenerateAndReplaceIsCreative] = useState(false);
+  const [generateAndReplaceIsUnconventional, setGenerateAndReplaceIsUnconventional] = useState(false);
 
   const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
   const [fieldVisibility, setFieldVisibility] = useState(data.fields_visibility || {});
@@ -77,10 +77,10 @@ const TextFieldsNode = ({ data, id }) => {
     generateAndReplace(
       generateAndReplacePrompt,
       generateAndReplaceNumber,
-      generateAndReplaceIsCreative
+      generateAndReplaceIsUnconventional
     ).then((fields) => {
+      const buffer = {};
       for (const field of fields) {
-        const buffer = {};
         const uid = getUID(buffer);
         buffer[uid] = field;
         setTextfieldsValues(buffer);
@@ -298,10 +298,10 @@ const TextFieldsNode = ({ data, id }) => {
 
   const replaceUI = (
     <Stack gap={1}>
-      <TextInput label="Pattern" value={generateAndReplacePrompt} onChange={setGenerateAndReplacePrompt}/>
+      <TextInput label="Pattern" value={generateAndReplacePrompt} onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}/>
       <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={generateAndReplaceNumber} onChange={setGenerateAndReplaceNumber}/>
-      <Switch color="grape" label="Be extremely creative" value={generateAndReplaceIsCreative} onChange={setGenerateAndReplaceIsCreative}/>
-      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleGenerateAndReplace()}>Replace</Button>
+      <Switch color="grape" label="Make outputs unconventional" value={generateAndReplaceIsUnconventional} onChange={(e) => setGenerateAndReplaceIsUnconventional(e.currentTarget.checked)}/>
+      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleGenerateAndReplace}>Replace</Button>
     </Stack>
   )
 
