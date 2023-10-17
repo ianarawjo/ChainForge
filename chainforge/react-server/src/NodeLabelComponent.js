@@ -7,6 +7,8 @@ import AlertModal from './AlertModal';
 import AreYouSureModal from './AreYouSureModal';
 import { useState, useEffect, useCallback} from 'react';
 import { Tooltip, Popover } from '@mantine/core';
+import { IconSparkles } from '@tabler/icons-react';
+
 
 export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, customButtons, handleRunClick, handleRunHover, runButtonTooltip, aiPopoverContent }) {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
@@ -71,7 +73,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
     const aiPopover =
       <Popover position="right" withArrow shadow="md" trapFocus>
         <Popover.Target>
-          <button className="ai-button nodrag">ai</button>
+          <button className="ai-button nodrag"><IconSparkles size={10} stroke={3}/></button>
         </Popover.Target>
         <Popover.Dropdown>
           {aiPopoverContent}
