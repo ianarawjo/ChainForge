@@ -312,13 +312,7 @@ const TextFieldsNode = ({ data, id }) => {
   )
 
   const aiPopover = (
-    <Tabs variant="outline" color="grape" defaultValue="extend" inverted>
-      <Tabs.Panel value="extend" pb="xs">
-        {extendUI}
-      </Tabs.Panel>
-      <Tabs.Panel value="replace" pb="xs">
-        {replaceUI}
-      </Tabs.Panel>
+    <Tabs color="grape" defaultValue="extend">
       <Tabs.List grow>
         <Tabs.Tab value="extend">
           Extend
@@ -327,6 +321,12 @@ const TextFieldsNode = ({ data, id }) => {
           Replace
         </Tabs.Tab>
       </Tabs.List>
+      <Tabs.Panel value="extend" pb="xs">
+        {extendUI}
+      </Tabs.Panel>
+      <Tabs.Panel value="replace" pb="xs">
+        {replaceUI}
+      </Tabs.Panel>
     </Tabs>
   )
 
