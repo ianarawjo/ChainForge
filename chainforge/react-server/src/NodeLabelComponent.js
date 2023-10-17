@@ -69,7 +69,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
     }, [deleteConfirmModal]);
 
     const aiPopover =
-      <Popover position="top" withArrow shadow="md" trapFocus>
+      <Popover position="right" withArrow shadow="md" trapFocus>
         <Popover.Target>
           <button className="ai-button nodrag">ai</button>
         </Popover.Target>
