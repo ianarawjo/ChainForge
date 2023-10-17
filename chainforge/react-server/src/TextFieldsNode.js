@@ -7,7 +7,7 @@ import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
 import BaseNode from './BaseNode';
 import { setsAreEqual } from './backend/utils';
-import { autofill } from './backend/ai';
+import { autofill, generateAndReplace } from './backend/ai';
 import { debounce } from 'lodash';
 
 // Helper funcs
@@ -32,6 +32,10 @@ const TextFieldsNode = ({ data, id }) => {
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
 
   const [commandFillNumber, setCommandFillNumber] = useState(3);
+
+  const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(3);
+  const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState('');
+  const [generateAndReplaceIsCreative, setGenerateAndReplaceIsCreative] = useState(false);
 
   const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
   const [fieldVisibility, setFieldVisibility] = useState(data.fields_visibility || {});
@@ -68,6 +72,23 @@ const TextFieldsNode = ({ data, id }) => {
       }
     });
   };
+
+  const handleGenerateAndReplace = () => {
+    generateAndReplace(
+      generateAndReplacePrompt,
+      generateAndReplaceNumber,
+      generateAndReplaceIsCreative
+    ).then((fields) => {
+      for (const field of fields) {
+        const buffer = {};
+        const uid = getUID(buffer);
+        buffer[uid] = field;
+        setTextfieldsValues(buffer);
+        setDataPropsForNode(id, { fields: buffer });
+        pingOutputNodes(id);
+      }
+    })
+  }
 
   // Handle delete text field.
   const handleDelete = useCallback((event) => {
@@ -277,14 +298,10 @@ const TextFieldsNode = ({ data, id }) => {
 
   const replaceUI = (
     <Stack gap={1}>
-      <TextInput label="Pattern"/>
-      <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={commandFillNumber} onChange={setCommandFillNumber}/>
-      <Switch color="grape" label="Be extremely creative"/>
-      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions()}>Replace</Button>
-      {enoughRowsForSuggestions() ? <></>
-      : <Text size="xs" c="grape">
-          Enter at least 2 rows to generate suggestions.
-        </Text>}
+      <TextInput label="Pattern" value={generateAndReplacePrompt} onChange={setGenerateAndReplacePrompt}/>
+      <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={generateAndReplaceNumber} onChange={setGenerateAndReplaceNumber}/>
+      <Switch color="grape" label="Be extremely creative" value={generateAndReplaceIsCreative} onChange={setGenerateAndReplaceIsCreative}/>
+      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleGenerateAndReplace()}>Replace</Button>
     </Stack>
   )
 
