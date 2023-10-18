@@ -399,6 +399,20 @@ const PromptNode = ({ data, id, type: node_type }) => {
             return;
         }
 
+        // Check if pulled chats includes undefined content.
+        // This could happen with Join nodes, where there is no longer a single "prompt" (user prompt)
+        // of the chat provenance. Instead of blocking this behavior, we replace undefined with a blank string,
+        // and output a warning to the console. 
+        if (!pulled_chats.every(c => c.messages.every(m => m.content !== undefined))) {
+            console.warn("Chat history contains undefined content. This can happen if a Join Node was used, \
+                         as there is no longer a single prompt as the provenance of the conversation. \
+                         Soft failing by replacing undefined with empty strings.");
+            pulled_chats.forEach(c => {c.messages = c.messages.map(m => {
+                if (m.content !== undefined) return m;
+                else return {...m, content: " "}; // the string contains a single space since PaLM2 refuses to answer with empty strings
+            })});
+        }
+
         // Override LLM list with the past llm info (unique LLMs in prior responses)
         _llmItemsCurrState = past_chat_llms;
 
