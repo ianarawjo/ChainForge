@@ -31,8 +31,8 @@ function autofillSystemMessage(n: number): string {
 /**
  * Generate the system message used for generate and replace (GAR).
  */
-function GARSystemMessage(n: number, creative?: boolean): string {
-  return `Pretend you are an autofill system helping to fill out a spreadsheet column. Here is the pattern you should follow in <pattern>. Generate exactly ${n} rows following the pattern. Format your response in XML using the <row> and <rows> tag. Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} Here is an example of the structure that your response should follow:
+function GARSystemMessage(n: number, creative?: boolean, generatePrompts?: boolean): string {
+  return `Pretend you are an autofill system helping to fill out a spreadsheet column. Here is the pattern you should follow in <pattern>. Generate exactly ${n} rows following the pattern. Format your response in XML using the <row> and <rows> tag. Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be prompts that can be given to an AI chat assistant." : ""} Here is an example of the structure that your response should follow:
 
   <rows>
     <row>first row</row>
@@ -111,10 +111,13 @@ export async function generateAndReplace(prompt: string, n: number, creative?: b
   // hash the arguments to get a unique id
   let id = JSON.stringify([prompt, n]);
 
+  // True if `prompt` contains the word 'prompt'
+  let generatePrompts = prompt.toLowerCase().includes('prompt');
+
   let history: ChatHistoryInfo[] = [{
     messages: [{
       "role": "system",
-      "content": GARSystemMessage(n, creative),
+      "content": GARSystemMessage(n, creative, generatePrompts),
     }],
     fill_history: {},
   }]
