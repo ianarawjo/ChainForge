@@ -44,11 +44,13 @@ function encode(rows: Row[]): string {
 /**
  * Returns the rows encoded by the given string, assuming the string is in markdown list format. Throws an AIError if the string is not in markdown list format.
  * @param rows to decode
+ * @param n number of rows to return
  */
-function decode(rows: string): Row[] {
+function decode(rows: string, n?: number): Row[] {
     let lines = rows.split('\n');
     let result: Row[] = [];
     for (let line of lines) {
+        if (n && result.length >= n) break;
         if (line.startsWith('- ')) {
             result.push(line.slice(2));
         } else {
@@ -88,7 +90,7 @@ export async function autofill(input: Row[], n: number): Promise<Row[]> {
     /*vars=*/ {},
     /*chat_history=*/ history);
 
-  return decode(result.responses[0].responses[0])
+  return decode(result.responses[0].responses[0], n)
 }
 
 /**
@@ -121,5 +123,5 @@ export async function generateAndReplace(prompt: string, n: number, creative?: b
     /*vars=*/ {},
     /*chat_history=*/ history);
 
-  return decode(result.responses[0].responses[0])
+  return decode(result.responses[0].responses[0], n)
 }
