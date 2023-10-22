@@ -311,7 +311,7 @@ const TextFieldsNode = ({ data, id }) => {
    * Returns the placeholder text for text areas. If the suggestions are still loading, return an empty string.
    */
   function placeholder() {
-    if (isSuggestionsLoading) {
+    if (!isSuggestionsLoading) {
       return SUGGESTIONS_LOADING_TEXT;
     }
     return suggestedRows[0];
