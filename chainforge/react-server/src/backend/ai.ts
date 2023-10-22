@@ -5,6 +5,13 @@
 import { queryLLM } from "./backend";
 import { ChatHistoryInfo } from "./typing";
 
+export class AIError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AIError";
+  }
+}
+
 // Input and outputs of autofill are both rows of strings.
 export type Row = string;
 
@@ -35,7 +42,7 @@ function encode(rows: Row[]): string {
 }
 
 /**
- * Returns the rows encoded by the given string, assuming the string is in markdown list format. Throws an error if the string is not in markdown list format.
+ * Returns the rows encoded by the given string, assuming the string is in markdown list format. Throws an AIError if the string is not in markdown list format.
  * @param rows to decode
  */
 function decode(rows: string): Row[] {
@@ -49,7 +56,7 @@ function decode(rows: string): Row[] {
         }
     }
     if (result.length === 0) {
-        throw new Error("Failed to decode rows.");
+        throw new AIError("Failed to decode rows.");
     }
     return result;
 }
