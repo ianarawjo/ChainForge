@@ -5,6 +5,13 @@
 import { queryLLM } from "./backend";
 import { ChatHistoryInfo } from "./typing";
 
+export class AIError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AIError";
+  }
+}
+
 // Input and outputs of autofill are both rows of strings.
 export type Row = string;
 
@@ -16,58 +23,40 @@ const LLM = "gpt-3.5-turbo";
  * @param n number of rows to generate
  */
 function autofillSystemMessage(n: number): string {
-  return `Pretend you are an autofill system helping to fill out a spreadsheet column. Here are the first few rows of that column in XML, with each row marked with the tag <row>. First, tell me what the general pattern seems to be. Put your guess in a <guess> tag. Second, generate exactly ${n} more rows following the pattern you guessed. Format your response in XML using the <row> and <rows> tag. Do not ever repeat anything. Here is an example of the structure that your response should follow:
-
-  <guess>your guess goes here</guess>
-  <rows>
-    <row>first row</row>
-    <row>second row</row>
-    <row>third row</row>
-    <row>fourth row</row>
-    <row>fifth row</row>
-  </rows>`;
+  return `First, tell me what the general pattern seems to be. Second, generate exactly ${n} more rows following the pattern you guessed. Format your response as a markdown list. Do not ever repeat anything.`;
 }
 
 /**
  * Generate the system message used for generate and replace (GAR).
  */
 function GARSystemMessage(n: number, creative?: boolean, generatePrompts?: boolean): string {
-  return `Pretend you are an autofill system helping to fill out a spreadsheet column. Here is the pattern you should follow in <pattern>. Generate exactly ${n} rows following the pattern. Format your response in XML using the <row> and <rows> tag. Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be prompts that can be given to an AI chat assistant." : ""} Here is an example of the structure that your response should follow:
-
-  <rows>
-    <row>first row</row>
-    <row>second row</row>
-    <row>third row</row>
-    <row>fourth row</row>
-    <row>fifth row</row>
-  </rows>`;  
+  return `Here is the pattern you should follow in <pattern>. Generate exactly ${n} rows following the pattern. Format your response as a markdown list. Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be prompts that can be given to an AI chat assistant." : ""}`;
 }
 
 /**
- * Returns an XML string representing the given rows using the <rows> and <row> tags. 
+ * Returns a string representing the given rows as a markdown list
  * @param rows to encode
  */
 function encode(rows: Row[]): string {
-    let xml = '<rows>';
-    for (let row of rows) {
-        xml += `<row>${row}</row>`
-    }
-    xml += '</rows>';
-    return xml;
+    return rows.map(row => `- ${row}`).join('\n');
 }
 
 /**
- * Returns the rows represented by the given XML string using the <rows> and <row> tags.
+ * Returns the rows encoded by the given string, assuming the string is in markdown list format. Throws an AIError if the string is not in markdown list format.
  * @param rows to decode
  */
 function decode(rows: string): Row[] {
-    const xml = new DOMParser().parseFromString(
-      `<wrapper>${rows}</wrapper>`,
-      'text/xml');
-    const rowElements = xml.getElementsByTagName('row');
-    const result: Row[] = [];
-    for (let i = 0; i < rowElements.length; i++) {
-        result.push(rowElements[i].textContent);
+    let lines = rows.split('\n');
+    let result: Row[] = [];
+    for (let line of lines) {
+        if (line.startsWith('- ')) {
+            result.push(line.slice(2));
+        } else {
+            continue;
+        }
+    }
+    if (result.length === 0) {
+        throw new AIError("Failed to decode rows.");
     }
     return result;
 }
