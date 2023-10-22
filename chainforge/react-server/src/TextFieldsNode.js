@@ -114,6 +114,7 @@ const TextFieldsNode = ({ data, id }) => {
       }
     }).catch(e => {
       if (e instanceof AIError) {
+        console.log(e);
         setDidGenerateAndReplaceError(true);
       } else {
         throw new Error("Unexpected error: " + e);
@@ -349,7 +350,7 @@ const TextFieldsNode = ({ data, id }) => {
           Failed to generate. Please try again.
         </Text>
         : <></>}
-      <TextInput label="Pattern" value={generateAndReplacePrompt} onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}/>
+      <TextInput label="Generate a list of..." value={generateAndReplacePrompt} onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}/>
       <NumberInput label="Rows" min={1} max={10} defaultValue={3} value={generateAndReplaceNumber} onChange={setGenerateAndReplaceNumber}/>
       <Switch color="grape" label="Make outputs unconventional" value={generateAndReplaceIsUnconventional} onChange={(e) => setGenerateAndReplaceIsUnconventional(e.currentTarget.checked)}/>
       <Button size="sm" variant="light" color="grape" fullWidth onClick={handleGenerateAndReplace} loading={generateAndReplaceIsLoading}>Replace</Button>

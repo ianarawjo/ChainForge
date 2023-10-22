@@ -23,14 +23,14 @@ const LLM = "gpt-3.5-turbo";
  * @param n number of rows to generate
  */
 function autofillSystemMessage(n: number): string {
-  return `First, tell me what the general pattern seems to be. Second, generate exactly ${n} more rows following the pattern you guessed. Format your response as a markdown list. Do not ever repeat anything.`;
+  return `First, tell me what the general pattern seems to be. Second, generate exactly ${n} more rows following the pattern you guessed. Format your response as an unordered markdown list using "-". Do not ever repeat anything.`;
 }
 
 /**
  * Generate the system message used for generate and replace (GAR).
  */
 function GARSystemMessage(n: number, creative?: boolean, generatePrompts?: boolean): string {
-  return `Here is the pattern you should follow in <pattern>. Generate exactly ${n} rows following the pattern. Format your response as a markdown list. Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be commands that can be given to an AI chat assistant." : ""}`;
+  return `Generate a list of exactly ${n} items. Format your response as an unordered markdown list using "-". Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be commands that can be given to an AI chat assistant." : ""}`;
 }
 
 /**
@@ -56,7 +56,7 @@ function decode(rows: string): Row[] {
         }
     }
     if (result.length === 0) {
-        throw new AIError("Failed to decode rows.");
+        throw new AIError(`Failed to decode output: ${rows}`);
     }
     return result;
 }
@@ -111,7 +111,7 @@ export async function generateAndReplace(prompt: string, n: number, creative?: b
     fill_history: {},
   }]
 
-  let input = `<pattern>${prompt}</pattern>`;
+  let input = `Generate a list of ${prompt}`;
 
   let result = await queryLLM(
     /*id=*/ id,
