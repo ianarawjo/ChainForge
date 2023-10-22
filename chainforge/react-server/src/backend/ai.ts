@@ -30,7 +30,7 @@ function autofillSystemMessage(n: number): string {
  * Generate the system message used for generate and replace (GAR).
  */
 function GARSystemMessage(n: number, creative?: boolean, generatePrompts?: boolean): string {
-  return `Here is the pattern you should follow in <pattern>. Generate exactly ${n} rows following the pattern. Format your response as a markdown list. Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be prompts that can be given to an AI chat assistant." : ""}`;
+  return `Here is the pattern you should follow in <pattern>. Generate exactly ${n} rows following the pattern. Format your response as a markdown list. Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be commands that can be given to an AI chat assistant." : ""}`;
 }
 
 /**
