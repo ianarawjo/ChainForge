@@ -73,7 +73,7 @@ const TextFieldsNode = ({ data, id }) => {
 
   const handleCommandFill = () => {
     setIsCommandFillLoading(true);
-    didCommandFillError(false);
+    setDidCommandFillError(false);
     autofill(
       Object.values(textfieldsValues),
       commandFillNumber
