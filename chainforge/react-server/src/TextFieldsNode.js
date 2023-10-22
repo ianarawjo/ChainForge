@@ -23,7 +23,7 @@ const delButtonId = 'del-';
 const visibleButtonId = 'eye-';
 
 const SUGGESTIONS_TO_PRELOAD = 5;
-const SUGGESTIONS_LOADING_TEXT = 'Suggestions loading...';
+const SUGGESTIONS_LOADING_TEXT = '';
 
 const TextFieldsNode = ({ data, id }) => {
 
@@ -311,7 +311,7 @@ const TextFieldsNode = ({ data, id }) => {
    * Returns the placeholder text for text areas. If the suggestions are still loading, return an empty string.
    */
   function placeholder() {
-    if (isSuggestionsLoading) {
+    if (!isSuggestionsLoading) {
       return SUGGESTIONS_LOADING_TEXT;
     }
     return suggestedRows[0];
