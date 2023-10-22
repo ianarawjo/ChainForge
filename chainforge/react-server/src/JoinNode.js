@@ -11,6 +11,7 @@ const formattingOptions = [
   {value: "\n\n", label:"double newline \\n\\n"},
   {value: "\n",   label:"newline \\n"},
   {value: "-",    label:"- dashed list"},
+  {value: "1.",    label:"1. numbered list"},
   {value: "[]",   label:'["list", "of", "strings"]'}
 ];
 
@@ -18,7 +19,9 @@ const joinTexts = (texts, formatting) => {
   if (formatting === "\n\n" || formatting === "\n")
     return texts.join(formatting);
   else if (formatting === "-")
-    return texts.map((t) => (' - ' + t)).join("\n");
+    return texts.map((t) => ('- ' + t)).join("\n");
+  else if (formatting === "1.")
+    return texts.map((t, i) => (`${i+1}. ${t}`)).join("\n");
   else if (formatting === '[]')
     return JSON.stringify(texts);
 
@@ -79,15 +82,6 @@ const removeLLMTagFromMetadata = (metavars) => {
   let mcopy = JSON.parse(JSON.stringify(metavars));
   delete metavars['__LLM_key'];
   return mcopy;
-};
-const removeLLMTagsFromMetadata = (input_data) => {
-  Object.values(input_data).forEach((resp_objs) => {
-    resp_objs.forEach(r => {
-      if ("__LLM_key" in r?.metavars)
-        delete r.metavars["__LLM_key"];
-    });
-  });
-  return input_data;
 };
 
 const truncStr = (s, maxLen) => {
@@ -203,8 +197,6 @@ const JoinNode = ({ data, id }) => {
       return;
     }
 
-    console.log(input_data);
-
     // Find all vars and metavars in the input data (if any):
     let {vars, metavars} = getVarsAndMetavars(input_data);
 
@@ -235,7 +227,6 @@ const JoinNode = ({ data, id }) => {
           (r) => (r.metavars ? r.metavars[varname] : undefined) :
           (r) => (r.fill_history ? r.fill_history[varname] : undefined)
       );
-      console.log(groupedResps);
 
       // Now join texts within each group: 
       // (NOTE: We can do this directly here as response texts can't be templates themselves)
@@ -299,7 +290,6 @@ const JoinNode = ({ data, id }) => {
 
         setJoinedTexts(joined_texts);
         setDataPropsForNode(id, { fields: joined_texts });
-        console.log(joined_texts);
       } else {
         // Join across LLMs (join irrespective of LLM):
         if (groupByVar !== 'A') {
@@ -316,7 +306,6 @@ const JoinNode = ({ data, id }) => {
 
           setJoinedTexts([joined_texts]);
           setDataPropsForNode(id, { fields: [joined_texts] });
-          console.log(joined_texts);
         }
       }
     });
@@ -330,6 +319,11 @@ const JoinNode = ({ data, id }) => {
         handleOnConnect();
     }
   }
+
+  // Refresh join output anytime the dropdowns change
+  useEffect(() => {
+    handleOnConnect();
+  }, [groupByVar, groupByLLM, formatting])
 
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
