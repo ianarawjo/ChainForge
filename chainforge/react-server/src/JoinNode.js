@@ -47,12 +47,12 @@ const getVarsAndMetavars = (input_data) => {
     vars: varnames,
     metavars: metavars,
   };
-}
+};
 
 const countNumLLMs = (resp_objs_or_dict) => {
   const resp_objs = Array.isArray(resp_objs_or_dict) ? resp_objs_or_dict : Object.values(resp_objs_or_dict).flat();
   return (new Set(resp_objs.filter(r => typeof r !== "string" && r.llm !== undefined).map(r => r.llm?.key || r.llm))).size;
-}
+};
 
 const tagMetadataWithLLM = (input_data) => {
   let new_data = {};
@@ -165,8 +165,6 @@ const JoinedTextsPopover = ({ textInfos, onHover, onClick, getColorForLLM }) => 
 
 const JoinNode = ({ data, id }) => {
 
-  let is_fetching = false;
-
   const [joinedTexts, setJoinedTexts] = useState([]);
 
   // For an info pop-up that previews all the joined inputs
@@ -174,20 +172,17 @@ const JoinNode = ({ data, id }) => {
 
   const [pastInputs, setPastInputs] = useState([]);
   const pullInputData = useStore((state) => state.pullInputData);
-  const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
   // Global lookup for what color to use per LLM
   const getColorForLLMAndSetIfNotFound = useStore((state) => state.getColorForLLMAndSetIfNotFound);
 
   const [inputHasLLMs, setInputHasLLMs] = useState(false);
-  const [inputHasMultiRespPerLLM, setInputHasMultiRespPerLLM] = useState(false);
 
   const [groupByVars, setGroupByVars] = useState([DEFAULT_GROUPBY_VAR_ALL]);
   const [groupByVar, setGroupByVar] = useState("A");
 
   const [groupByLLM, setGroupByLLM] = useState("within");
-  const [responsesPerPrompt, setResponsesPerPrompt] = useState("all");
   const [formatting, setFormatting] = useState(formattingOptions[0].value);
 
   const handleOnConnect = useCallback(() => {
@@ -367,20 +362,6 @@ const JoinNode = ({ data, id }) => {
                       mr='xs'
                       ml='40px' />
         <Text mt='3px'>LLMs</Text>
-      </div>
-    : <></>}
-    {inputHasMultiRespPerLLM ? 
-      <div style={{display: 'flex', justifyContent: 'left', maxWidth: '100%'}}>
-        <NativeSelect onChange={(e) => setResponsesPerPrompt(e.target.value)}
-                      className='nodrag nowheel'
-                      data={["all", "1", "2", "3"]}
-                      size="xs"
-                      value={"1"}
-                      maw='80px'
-                      mr='xs' 
-                      ml='40px'
-                      color='gray' />
-        <Text size='sm' mt='3px' color='gray' fs='italic'>resp / prompt</Text>
       </div>
     : <></>}
     <Divider my="xs" label="formatting" labelPosition="center" />
