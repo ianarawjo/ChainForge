@@ -6,6 +6,7 @@ import fetch_from_backend from './fetch_from_backend';
 import { IconArrowMerge, IconList } from '@tabler/icons-react';
 import { Divider, NativeSelect, Text, Popover, Tooltip, Center, Modal, Box } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
+import { escapeBraces } from './backend/template';
 
 const formattingOptions = [
   {value: "\n\n", label:"double newline \\n\\n"},
@@ -16,17 +17,19 @@ const formattingOptions = [
 ];
 
 const joinTexts = (texts, formatting) => {
+  const escaped_texts = texts.map(t => escapeBraces(t));
+
   if (formatting === "\n\n" || formatting === "\n")
-    return texts.join(formatting);
+    return escaped_texts.join(formatting);
   else if (formatting === "-")
-    return texts.map((t) => ('- ' + t)).join("\n");
+    return escaped_texts.map((t) => ('- ' + t)).join("\n");
   else if (formatting === "1.")
-    return texts.map((t, i) => (`${i+1}. ${t}`)).join("\n");
+    return escaped_texts.map((t, i) => (`${i+1}. ${t}`)).join("\n");
   else if (formatting === '[]')
-    return JSON.stringify(texts);
+    return JSON.stringify(escaped_texts);
 
   console.error(`Could not join: Unknown formatting option: ${formatting}`);
-  return texts;
+  return escaped_texts;
 };
 
 const getVarsAndMetavars = (input_data) => {
