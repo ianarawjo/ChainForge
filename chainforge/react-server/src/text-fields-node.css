@@ -409,6 +409,9 @@
     color: #444;
     white-space: pre-wrap;
   }
+  .join-text-preview {
+    margin: 0px 0px 10px 0px;
+  }
 
   .small-response {
     font-size: 8pt;
@@ -529,6 +532,10 @@
   }
   .cfnode:hover {
     border-color: #222;
+  }
+
+  .join-node {
+    min-width: 200px;
   }
 
   .tabular-data-node {
@@ -652,7 +659,7 @@
   .text-field-fixed .mantine-Textarea-wrapper textarea {
     resize: vertical;
     overflow-y: auto;
-    width: 280px;
+    width: 260px;
     padding: calc(0.5rem / 3);
     font-size: 10pt;
     font-family: monospace;

@@ -45,7 +45,7 @@ export default function CustomEdge({
 
   // Thanks in part to oshanley https://github.com/wbkd/react-flow/issues/1211#issuecomment-1585032930
   return (
-    <EdgePathContainer onPointerEnter={()=>setHovering(true)} onPointerLeave={()=>setHovering(false)} onClick={()=>console.log('click')}>
+    <EdgePathContainer onPointerEnter={()=>setHovering(true)} onPointerLeave={()=>setHovering(false)}>
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={{...style, stroke: (hovering ? '#000' : '#999')}} />
       <EdgeLabelRenderer>
         <div

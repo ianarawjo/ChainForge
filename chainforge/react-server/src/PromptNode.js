@@ -78,10 +78,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   // Get state from the Zustand store:
   const edges = useStore((state) => state.edges);
-  const output = useStore((state) => state.output);
+  const pullInputData = useStore((state) => state.pullInputData);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
-  const getNode = useStore((state) => state.getNode);
 
   // API Keys (set by user in popup GlobalSettingsModal)
   const apiKeys = useStore((state) => state.apiKeys);
@@ -208,52 +207,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
     }
   }, [data]);
 
-  // Pull all inputs needed to request responses.
-  // Returns [prompt, vars dict]
-  const pullInputData = (_targetHandles) => {
-    // Pull data from each source recursively:
-    const pulled_data = {};
-    const store_data = (_texts, _varname, _data) => {
-        if (_varname in _data)
-            _data[_varname] = _data[_varname].concat(_texts);
-        else
-            _data[_varname] = _texts;
-    };
-    const get_outputs = (varnames, nodeId) => {
-        varnames.forEach(varname => {
-            // Find the relevant edge(s):
-            edges.forEach(e => {
-                if (e.target == nodeId && e.targetHandle == varname) {
-                    // Get the immediate output:
-                    let out = output(e.source, e.sourceHandle);
-                    if (!out || !Array.isArray(out) || out.length === 0) return;
-
-                    // Check the format of the output. Can be str or dict with 'text' and more attrs:
-                    if (typeof out[0] === 'object') {
-                        out.forEach(obj => store_data([obj], varname, pulled_data));
-                    }
-                    else {
-                        // Save the list of strings from the pulled output under the var 'varname'
-                        store_data(out, varname, pulled_data);
-                    }
-                    
-                    // Get any vars that the output depends on, and recursively collect those outputs as well:
-                    const n_vars = getNode(e.source).data.vars;
-                    if (n_vars && Array.isArray(n_vars) && n_vars.length > 0)
-                        get_outputs(n_vars, e.source);
-                }
-            });
-        });
-    };
-    get_outputs(_targetHandles, id);
-
-    return pulled_data;
-  };
-
   // Chat nodes only. Pulls input data attached to the 'past conversations' handle.
   // Returns a tuple (past_chat_llms, __past_chats), where both are undefined if nothing is connected.
   const pullInputChats = () => {
-    const pulled_data = pullInputData(['__past_chats']);
+    const pulled_data = pullInputData(['__past_chats'], id);
     if (!('__past_chats' in pulled_data)) return [undefined, undefined];
 
     // For storing the unique LLMs in past_chats:
@@ -313,12 +270,12 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [promptPreviews, setPromptPreviews] = useState([]);
   const handlePreviewHover = () => {
     // Pull input data and prompt
-    const pulled_vars = pullInputData(templateVars);
+    const pulled_vars = pullInputData(templateVars, id);
     fetch_from_backend('generatePrompts', {
         prompt: promptText,
         vars: pulled_vars,
     }).then(prompts => {
-        setPromptPreviews(prompts.map(p => (new PromptInfo(p))));
+        setPromptPreviews(prompts.map(p => (new PromptInfo(p.toString()))));
     });
 
     pullInputChats();
@@ -352,7 +309,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     }
 
     // Pull the input data
-    const pulled_vars = pullInputData(templateVars);
+    const pulled_vars = pullInputData(templateVars, id);
     
     const llms = _llmItemsCurrState.map(item => item.model);
     const num_llms = llms.length;
@@ -442,6 +399,20 @@ const PromptNode = ({ data, id, type: node_type }) => {
             return;
         }
 
+        // Check if pulled chats includes undefined content.
+        // This could happen with Join nodes, where there is no longer a single "prompt" (user prompt)
+        // of the chat provenance. Instead of blocking this behavior, we replace undefined with a blank string,
+        // and output a warning to the console. 
+        if (!pulled_chats.every(c => c.messages.every(m => m.content !== undefined))) {
+            console.warn("Chat history contains undefined content. This can happen if a Join Node was used, \
+                         as there is no longer a single prompt as the provenance of the conversation. \
+                         Soft failing by replacing undefined with empty strings.");
+            pulled_chats.forEach(c => {c.messages = c.messages.map(m => {
+                if (m.content !== undefined) return m;
+                else return {...m, content: " "}; // the string contains a single space since PaLM2 refuses to answer with empty strings
+            })});
+        }
+
         // Override LLM list with the past llm info (unique LLMs in prior responses)
         _llmItemsCurrState = past_chat_llms;
 
@@ -462,13 +433,13 @@ const PromptNode = ({ data, id, type: node_type }) => {
     setProgressAnimated(true);
 
     // Pull the data to fill in template input variables, if any
-    const pulled_data = pullInputData(templateVars);
+    const pulled_data = pullInputData(templateVars, id);
     const prompt_template = promptText;
 
     const rejected = (err) => {
         setStatus('error');
         setContChatToggleDisabled(false);
-        triggerAlert(err.message);
+        triggerAlert(err.message || err);
     };
 
     // Fetch info about the number of queries we'll need to make 
