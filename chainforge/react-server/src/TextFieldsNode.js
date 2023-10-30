@@ -49,6 +49,7 @@ const TextFieldsNode = ({ data, id }) => {
   const [previousBase, setPreviousBase] = useState([]);
   const [suggestedRows, setSuggestedRows] = useState([]);
   const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
+  const [placeholder, setPlaceholder] = useState(SUGGESTIONS_LOADING_TEXT);
   // Rows expected by the autofill system. This is the union of the base rows and the suggestions.
   const [expectedRows, setExpectedRows] = useState([]);
 
@@ -264,7 +265,7 @@ const TextFieldsNode = ({ data, id }) => {
   }, []);
 
   // Query the autofill system for more suggestions when the current set of rows is not a subset of the set of expected rows (base + suggestions), where base is the set of rows that the previous suggestions were generated off of.
-  const autofillEffect = useCallback(() => {
+  const getAutofill = useCallback(debounce(() => {
     if (isSuggestionsLoading) return;
     const base = Object.values(textfieldsValues);
     // Do not re-query if no changes occured.
@@ -287,12 +288,12 @@ const TextFieldsNode = ({ data, id }) => {
           setIsSuggestionsLoading(false);
         });
     }
-  }, [expectedRows, isSuggestionsLoading, match, suggestedRows.length, textfieldsValues]);
-  
   // Debounce for 1 second.
+  }, 1000), []);
+
   useEffect(() => {
-    debounce(autofillEffect, 1000)();
-  }, [autofillEffect]);
+    getAutofill();
+  }, [textfieldsValues]);
 
   /**
    * Handle key-down events for text areas. If the user presses tab AND the text area is empty AND suggestions are loaded, autofill it. Otherwise, do nothing.
@@ -308,15 +309,14 @@ const TextFieldsNode = ({ data, id }) => {
     }
   };
 
-  /**
-   * Returns the placeholder text for text areas. If the suggestions are still loading, return an empty string.
-   */
-  function placeholder() {
-    if (!isSuggestionsLoading) {
-      return SUGGESTIONS_LOADING_TEXT;
+  // Update placeholder based on autofill suggestions.
+  useEffect(() => {
+    console.log("new suggested rows are", suggestedRows)
+    if (isSuggestionsLoading || suggestedRows.length === 0) {
+      setPlaceholder(SUGGESTIONS_LOADING_TEXT);
     }
-    return suggestedRows[0];
-  }
+    setPlaceholder(suggestedRows[0]);
+  }, [suggestedRows, isSuggestionsLoading]);
 
   const extendUI = (
     <Stack gap={1}>
@@ -380,7 +380,7 @@ const TextFieldsNode = ({ data, id }) => {
                       minRows="2"
                       maxRows="8"
                       value={textfieldsValues[i]} 
-                      placeholder={placeholder()} 
+                      placeholder={placeholder} 
                       disabled={fieldVisibility[i] === false}
                       onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)}
                       onKeyDown={(event) => handleKeyDown(event, i)} />
