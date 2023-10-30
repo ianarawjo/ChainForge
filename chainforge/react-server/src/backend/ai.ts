@@ -90,6 +90,8 @@ export async function autofill(input: Row[], n: number): Promise<Row[]> {
     /*vars=*/ {},
     /*chat_history=*/ history);
 
+  console.log("Recieved AI response")
+
   return decode(result.responses[0].responses[0], n)
 }
 
