@@ -301,7 +301,7 @@ const TextFieldsNode = ({ data, id }) => {
   }, 1000), []);
 
   useEffect(() => {
-    getAutofill();
+    //getAutofill();
   }, [textfieldsValues]);
 
   /**
