@@ -170,8 +170,9 @@ const App = () => {
   }
   const getViewportCenter = () => {
     const { centerX, centerY } = getWindowCenter();
-    const { x, y } = rfInstance.getViewport();
-    return ({x: -x+centerX, y:-y+centerY});
+    // Support Zoom
+    const { x, y, zoom } = rfInstance.getViewport();
+    return ({x: -(x / zoom) + (centerX / zoom), y: -(y / zoom) + (centerY / zoom)});
   }
 
   const addTextFieldsNode = () => {
