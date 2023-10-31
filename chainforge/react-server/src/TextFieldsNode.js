@@ -274,35 +274,34 @@ const TextFieldsNode = ({ data, id }) => {
   }, []);
 
   // Query the autofill system for more suggestions when the current set of rows is not a subset of the set of expected rows (base + suggestions), where base is the set of rows that the previous suggestions were generated off of.
-  const getAutofill = useCallback(debounce(() => {
-    if (isSuggestionsLoading) return;
-    const base = Object.values(textfieldsValues);
-    // Do not re-query if no changes occured.
-    if (base === previousBase) return;
-    if (!enoughRowsForSuggestions()) return;
-    if (!match(base, expectedRows) || suggestedRows.length === 0) {
-      setIsSuggestionsLoading(true);
-      autofill(base, SUGGESTIONS_TO_PRELOAD)
-        .then((suggestions) => {
-          setPreviousBase(base);
-          setExpectedRows(union(base, suggestions));
-          setSuggestedRows(suggestions);
-        }).catch((e) => {
-          if (e instanceof AIError) {
-            console.log('Encountered but subdued error while generating autofill suggestions:', e);
-          } else {
-            throw new Error("Unexpected error: " + e);
-          }
-        }).finally(() => {
-          setIsSuggestionsLoading(false);
-        });
-    }
-  // Debounce for 1 second.
-  }, 1000), []);
-
   useEffect(() => {
-    //getAutofill();
-  }, [textfieldsValues]);
+    const delayDebounceFn = setTimeout(() => {
+      if (isSuggestionsLoading) return;
+      const base = Object.values(textfieldsValues);
+      // Do not re-query if no changes occured.
+      if (base === previousBase) return;
+      if (!enoughRowsForSuggestions()) return;
+      if (!match(base, expectedRows) || suggestedRows.length === 0) {
+        setIsSuggestionsLoading(true);
+        autofill(base, SUGGESTIONS_TO_PRELOAD)
+          .then((suggestions) => {
+            setPreviousBase(base);
+            setExpectedRows(union(base, suggestions));
+            setSuggestedRows(suggestions);
+          }).catch((e) => {
+            if (e instanceof AIError) {
+              console.log('Encountered but subdued error while generating autofill suggestions:', e);
+            } else {
+              throw new Error("Unexpected error: " + e);
+            }
+          }).finally(() => {
+            setIsSuggestionsLoading(false);
+          });
+      }
+    }, 1000)
+
+    return () => clearTimeout(delayDebounceFn)
+  }, [textfieldsValues])
 
   /**
    * Handle key-down events for text areas. If the user presses tab AND the text area is empty AND suggestions are loaded, autofill it. Otherwise, do nothing.
