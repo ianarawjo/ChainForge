@@ -317,7 +317,7 @@ const App = () => {
     if (flow) {
       if (rf_inst) {
         if (flow.viewport)
-          rf_inst.setViewport({x: flow.viewport.x || 0, y: flow.viewport.y || 0, zoom: 1});
+          rf_inst.setViewport({x: flow.viewport.x || 0, y: flow.viewport.y || 0, zoom: flow.viewport.zoom || 1});
         else
           rf_inst.setViewport({x:0, y:0, zoom:1});
       }
