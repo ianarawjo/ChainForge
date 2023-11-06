@@ -19,11 +19,14 @@ const ModelSettingsModal = forwardRef((props, ref) => {
 
   const [schema, setSchema] = useState({'type': 'object', 'description': 'No model info object was passed to settings modal.'});
   const [uiSchema, setUISchema] = useState({});
-  const [modelName, setModelName] = useState("(unknown)");
+  const [baseModelName, setBaseModelName] = useState("(unknown)");
+
+  const [initShortname, setInitShortname] = useState(undefined);
+  const [initModelName, setInitModelName] = useState(undefined);
 
   // Totally necessary emoji picker 
   const [modelEmoji, setModelEmoji] = useState('');
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(null);
 
   useEffect(() => {
     if (props.model && props.model.base_model) {
@@ -31,22 +34,26 @@ const ModelSettingsModal = forwardRef((props, ref) => {
         if (!(props.model.base_model in ModelSettings)) {
             setSchema({'type': 'object', 'description': `Did not find settings schema for base model ${props.model.base_model}. Maybe you are missing importing a custom provider script?`});
             setUISchema({});
-            setModelName(props.model.base_model);
+            setBaseModelName(props.model.base_model);
             return;
         }
         const settingsSpec = ModelSettings[props.model.base_model];
         const schema = settingsSpec.schema;
         setSchema(schema);
         setUISchema(settingsSpec.uiSchema);
-        setModelName(settingsSpec.fullName);
+        setBaseModelName(settingsSpec.fullName);
         if (props.model.formData) {
             setFormData(props.model.formData);
+            setInitShortname(props.model.formData.shortname);
+            setInitModelName(props.model.formData.model);
         } else {
             // Create settings from schema 
             let default_settings = {};
             Object.keys(schema.properties).forEach(key => {
                 default_settings[key] = 'default' in schema.properties[key] ? schema.properties[key]['default'] : undefined;
             });
+            setInitShortname(default_settings.shortname);
+            setInitModelName(default_settings.model);
             setFormData(getDefaultModelFormData(settingsSpec));
         }
     }
@@ -58,7 +65,6 @@ const ModelSettingsModal = forwardRef((props, ref) => {
   }, [props.model]);
 
   const saveFormState = useCallback((fdata) => {
-
     // For some reason react-json-form-schema returns 'undefined' on empty strings.
     // We need to (1) detect undefined values for keys in formData and (2) if they are of type string, replace with "",
     // if that property is marked with a special "allow_empty_str" property.
@@ -82,9 +88,24 @@ const ModelSettingsModal = forwardRef((props, ref) => {
     saveFormState(submitInfo.formData);
   }, [saveFormState]);
 
+  // On every edit to the form...
   const onFormDataChange = (state) => {
-    if (state && state.formData)
+    if (state && state.formData) {
+
+      // This checks if the model name has changed, but the shortname wasn't edited (in this window).
+      // In this case, we auto-change the shortname, to save user's time and nickname models appropriately. 
+      if (state.formData.shortname === initShortname && state.formData.model !== initModelName) {
+        const shortname_map = schema.properties?.model?.shortname_map;
+        if (shortname_map && state.formData.model in shortname_map) 
+          state.formData.shortname = shortname_map[state.formData.model];
+        else
+          state.formData.shortname = state.formData.model;
+        setInitShortname(state.formData.shortname);
+        setInitModelName(state.formData.model);
+      }
+
       setFormData(state.formData);
+    }
   };
 
   const onClickSubmit = useCallback(() => {
@@ -103,7 +124,7 @@ const ModelSettingsModal = forwardRef((props, ref) => {
   // This gives the parent access to triggering the modal
   const trigger = useCallback(() => {
     open();
-  }, [schema, uiSchema, modelName, open]);
+  }, [schema, uiSchema, baseModelName, open]);
   useImperativeHandle(ref, () => ({
     trigger,
   }));
@@ -118,10 +139,9 @@ return (
                 <Popover.Dropdown>
                     <Picker data={emojidata} onEmojiSelect={onEmojiSelect} theme="light" />
                 </Popover.Dropdown>
-            </Popover><span>{`Model Settings: ${modelName}`}</span>
+            </Popover><span>{`Model Settings: ${baseModelName}`}</span>
         </div>
     } closeOnClickOutside={false} style={{position: 'relative', 'left': '-5%'}}>
-        
         <Form schema={schema} uiSchema={uiSchema} formData={formData} validator={validator} onChange={onFormDataChange} onSubmit={onSubmit} style={{width: '100%'}}>
             <Button title='Submit' onClick={onClickSubmit} style={{float: 'right', marginRight: '30px'}}>Submit</Button>
             <div style={{height: '50px'}}></div>
