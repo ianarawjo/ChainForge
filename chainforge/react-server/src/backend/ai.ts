@@ -23,7 +23,7 @@ const LLM = "gpt-3.5-turbo";
  * @param n number of rows to generate
  */
 function autofillSystemMessage(n: number): string {
-  return `First, tell me what the general pattern seems to be. Second, generate exactly ${n} more rows following the pattern you guessed. Format your response as an unordered markdown list using "-". Do not ever repeat anything.`;
+  return `Here is a list of commands or items. Say what the pattern seems to be and generate ${n} more commands or items as an unordered markdown list:`;
 }
 
 /**
@@ -90,7 +90,7 @@ export async function autofill(input: Row[], n: number): Promise<Row[]> {
     /*vars=*/ {},
     /*chat_history=*/ history);
 
-  console.log("Recieved AI response")
+  console.log("LLM said: ", result.responses[0].responses[0])
 
   return decode(result.responses[0].responses[0], n)
 }
@@ -124,6 +124,8 @@ export async function generateAndReplace(prompt: string, n: number, creative?: b
     /*prompt=*/ input,
     /*vars=*/ {},
     /*chat_history=*/ history);
+
+  console.log("LLM said: ", result.responses[0].responses[0])
 
   return decode(result.responses[0].responses[0], n)
 }
