@@ -6,13 +6,18 @@ import StatusIndicator from './StatusIndicatorComponent';
 import AlertModal from './AlertModal';
 import AreYouSureModal from './AreYouSureModal';
 import { useState, useEffect, useCallback} from 'react';
-import { Tooltip } from '@mantine/core';
+import { Tooltip, Menu } from '@mantine/core';
+import { IconCopy, IconX } from '@tabler/icons-react';
 
 export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, customButtons, handleRunClick, handleRunHover, runButtonTooltip }) {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const [statusIndicator, setStatusIndicator] = useState('none');
     const [runButton, setRunButton] = useState('none');
     const removeNode = useStore((state) => state.removeNode);
+    const duplicateNode = useStore((state) => state.duplicateNode);
+
+    const [contextMenuPos, setContextMenuPos] = useState({left: -100, top:0});
+    const [contextMenuOpened, setContextMenuOpened] = useState(false);
 
     // For 'delete node' confirmation popup
     const deleteConfirmModal = useRef(null);
@@ -68,8 +73,28 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             deleteConfirmModal.current.trigger();
     }, [deleteConfirmModal]);
 
+    const handleDuplicateNode = useCallback(() => {
+        duplicateNode(nodeId, { x: 28, y: 28 });
+    }, [nodeId, duplicateNode]);
+
+    const handleOpenContextMenu = (e) => {
+        e.preventDefault();
+        setContextMenuPos({
+            left: e.pageX,
+            top: e.pageY
+        });
+        setContextMenuOpened(true);
+    };
+
     return (<>
-        <div className="node-header drag-handle">
+    <Menu opened={contextMenuOpened} withinPortal={true} onChange={setContextMenuOpened} styles={{
+        dropdown: {
+          position: 'absolute',
+          left: contextMenuPos.left + 'px !important',
+          top: contextMenuPos.top + 'px !important',
+          boxShadow: '2px 2px 4px #ccc',
+    }}}>
+        <div className="node-header drag-handle" onPointerDown={() => setContextMenuOpened(false)} onContextMenu={handleOpenContextMenu}>
             {icon ? (<>{icon}&nbsp;</>) : <></>}
             <AreYouSureModal ref={deleteConfirmModal} title={deleteConfirmProps.title} message={deleteConfirmProps.message} onConfirm={deleteConfirmProps.onConfirm} />
             <EditText className="nodrag" name={nodeId ? nodeId + "-label" : "node-label"}
@@ -90,6 +115,10 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             </div>
             {/* <button className="AmitSahoo45-button-3 nodrag" onClick={handleRunClick}><div className="play-button"></div></button> */}
         </div>
-
+        <Menu.Dropdown>
+            <Menu.Item key='duplicate' onClick={handleDuplicateNode}><IconCopy size='10pt' />&nbsp;Duplicate Node</Menu.Item>
+            <Menu.Item key='delete' onClick={handleCloseButtonClick}><IconX size='10pt' />&nbsp;Delete Node</Menu.Item>
+        </Menu.Dropdown>
+    </Menu>
     </>);
 }

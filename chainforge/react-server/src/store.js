@@ -279,6 +279,23 @@ const useStore = create((set, get) => ({
       nodes: get().nodes.filter(n => n.id !== id)
     });
   },
+  duplicateNode: (id, offset) => {
+    const node = get().nodes.find(n => n.id === id);
+    if (!node) {
+      console.error(`Could not duplicate node: No node found with id ${id}`);
+      return undefined;
+    }
+    // Deep copy node data
+    let dup = JSON.parse(JSON.stringify(node));
+    // Shift position
+    dup.position.x += offset && offset.x !== undefined ? offset.x : 0;
+    dup.position.y += offset && offset.y !== undefined ? offset.y : 0;
+    // Change id to new unique id
+    dup.id = `${dup.type}-${Date.now()}`;
+    // Declare new node with copied data, at the shifted position
+    get().addNode(dup);
+    return dup;
+  },
   setNodes: (newnodes) => {
     set({
       nodes: newnodes
