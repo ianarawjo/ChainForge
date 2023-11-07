@@ -298,7 +298,7 @@ const TextFieldsNode = ({ data, id }) => {
             setIsSuggestionsLoading(false);
           });
       }
-    }, 1000)
+    }, 1000);
 
     return () => clearTimeout(delayDebounceFn)
   }, [textfieldsValues])
