@@ -4,6 +4,7 @@ import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import { IconCsv } from '@tabler/icons-react';
 import { Handle } from 'reactflow';
+import BaseNode from './BaseNode';
 
 const CsvNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
@@ -108,20 +109,19 @@ const CsvNode = ({ data, id }) => {
     }, [id, data.text]);
 
     return (
-        <div className="text-fields-node cfnode">
-            <NodeLabel title={data.title || 'CSV Node'} nodeId={id} icon={<IconCsv size="16px" />} />
-            {csvInput}
-            {contentDiv}
-            {countText ? countText : <></>}
-            <Handle
-                type="source"
-                position="right"
-                id="output"
-                className="grouped-handle"
-                style={{ top: "50%" }}
-            />
-        </div>
-    );
+    <BaseNode classNames="text-fields-node" nodeId={id}>
+        <NodeLabel title={data.title || 'CSV Node'} nodeId={id} icon={<IconCsv size="16px" />} />
+        {csvInput}
+        {contentDiv}
+        {countText ? countText : <></>}
+        <Handle
+            type="source"
+            position="right"
+            id="output"
+            className="grouped-handle"
+            style={{ top: "50%" }}
+        />
+    </BaseNode>);
 };
 
 export default CsvNode;
