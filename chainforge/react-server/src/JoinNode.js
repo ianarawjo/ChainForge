@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Handle } from 'reactflow';
 import useStore from './store';
+import BaseNode from './BaseNode';
 import NodeLabel from './NodeLabelComponent';
 import fetch_from_backend from './fetch_from_backend';
 import { IconArrowMerge, IconList } from '@tabler/icons-react';
@@ -332,7 +333,7 @@ const JoinNode = ({ data, id }) => {
   }, [data, id, handleOnConnect, setDataPropsForNode]);
 
   return (
-    <div className="join-node cfnode">
+    <BaseNode classNames="join-node" nodeId={id}>
     <NodeLabel title={data.title || 'Join Node'} 
                 nodeId={id}
                 icon={<IconArrowMerge size='14pt'/>}
@@ -389,7 +390,7 @@ const JoinNode = ({ data, id }) => {
       className="grouped-handle"
       style={{ top: "50%" }}
     />
-  </div>);
+  </BaseNode>);
 };
 
 export default JoinNode;

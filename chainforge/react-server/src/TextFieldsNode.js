@@ -5,6 +5,7 @@ import { IconTextPlus, IconEye, IconEyeOff } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
+import BaseNode from './BaseNode';
 
 // Helper funcs
 const union = (setA, setB) => {
@@ -164,7 +165,7 @@ const TextFieldsNode = ({ data, id }) => {
   }, [data, id, pingOutputNodes]);
 
   return (
-    <div className="text-fields-node cfnode">
+    <BaseNode classNames="text-fields-node" nodeId={id}>
       <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} />
       <div ref={setRef}>
         {Object.keys(textfieldsValues).map(i => (
@@ -205,7 +206,7 @@ const TextFieldsNode = ({ data, id }) => {
       <div className="add-text-field-btn">
         <button onClick={handleAddField}>+</button>
       </div>
-    </div>
+    </BaseNode>
   );
 };
 

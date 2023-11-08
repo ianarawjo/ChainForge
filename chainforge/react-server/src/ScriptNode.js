@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useStore from './store';
+import BaseNode from './BaseNode';
 import NodeLabel from './NodeLabelComponent';
 import { IconSettingsAutomation } from '@tabler/icons-react';
 
@@ -66,7 +67,7 @@ const ScriptNode = ({ data, id }) => {
     }, [data, id, setDataPropsForNode]);
 
     return (
-        <div className="script-node cfnode">
+        <BaseNode classNames="script-node" nodeId={id}>
             <NodeLabel title={data.title || 'Global Python Scripts'} nodeId={id} editable={false} icon={<IconSettingsAutomation size="16px" />}/>
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Enter folder paths for external modules you wish to import.</label> <br/><br/>
             <div>
@@ -75,7 +76,7 @@ const ScriptNode = ({ data, id }) => {
             <div className="add-text-field-btn">
                 <button onClick={handleAddField}>+</button>
             </div>
-        </div>
+        </BaseNode>
     );
 };
 

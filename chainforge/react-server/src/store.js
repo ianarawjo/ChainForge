@@ -270,6 +270,12 @@ const useStore = create((set, get) => ({
   },
   getNode: (id) => get().nodes.find(n => n.id === id),
   addNode: (newnode) => {
+    // Make sure we select the added node.
+    // This will float it to the top.
+    get().deselectAllNodes();
+    newnode.selected = true;
+
+    // Add the node to the internal state
     set({
       nodes: get().nodes.concat(newnode)
     });
@@ -279,8 +285,18 @@ const useStore = create((set, get) => ({
       nodes: get().nodes.filter(n => n.id !== id)
     });
   },
+  deselectAllNodes: () => {
+    // Deselect all nodes
+    set({
+      nodes: get().nodes.map((n) => {
+        n.selected = false;
+        return n;
+      })
+    });
+  },
   duplicateNode: (id, offset) => {
-    const node = get().nodes.find(n => n.id === id);
+    const nodes = get().nodes;
+    const node = nodes.find(n => n.id === id);
     if (!node) {
       console.error(`Could not duplicate node: No node found with id ${id}`);
       return undefined;
@@ -292,6 +308,10 @@ const useStore = create((set, get) => ({
     dup.position.y += offset && offset.y !== undefined ? offset.y : 0;
     // Change id to new unique id
     dup.id = `${dup.type}-${Date.now()}`;
+    // Select it (floats it to top)
+    dup.selected = true;
+    // Deselect all previous nodes
+    get().deselectAllNodes();
     // Declare new node with copied data, at the shifted position
     get().addNode(dup);
     return dup;

@@ -3,6 +3,7 @@ import { Handle } from 'reactflow';
 import { NativeSelect } from '@mantine/core';
 import useStore, { colorPalettes } from './store';
 import Plot from 'react-plotly.js';
+import BaseNode from './BaseNode';
 import NodeLabel from './NodeLabelComponent';
 import PlotLegend from './PlotLegend';
 import fetch_from_backend from './fetch_from_backend';
@@ -728,7 +729,7 @@ const VisNode = ({ data, id }) => {
       }, [plotDivRef, plotlySpec]);
 
     return (
-      <div className="vis-node cfnode">
+      <BaseNode classNames="vis-node" nodeId={id}>
         <NodeLabel title={data.title || 'Vis Node'} 
                    nodeId={id}
                    status={status}
@@ -786,7 +787,7 @@ const VisNode = ({ data, id }) => {
             style={{ top: '50%' }}
             onConnect={handleOnConnect}
         />
-      </div>
+      </BaseNode>
     );
   };
   
