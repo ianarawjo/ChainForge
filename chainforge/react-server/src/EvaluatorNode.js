@@ -4,8 +4,9 @@ import { Button, Code, Modal, Tooltip, Box, Text } from '@mantine/core';
 import { Prism } from '@mantine/prism';
 import { useDisclosure } from '@mantine/hooks';
 import useStore from './store';
-import NodeLabel from './NodeLabelComponent'
-import { IconTerminal, IconSearch, IconInfoCircle } from '@tabler/icons-react'
+import BaseNode from "./BaseNode";
+import NodeLabel from './NodeLabelComponent';
+import { IconTerminal, IconSearch, IconInfoCircle } from '@tabler/icons-react';
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 
 // Ace code editor
@@ -255,7 +256,7 @@ const EvaluatorNode = ({ data, id }) => {
   const node_header = data.title || default_header;
 
   return (
-    <div className="evaluator-node cfnode">
+    <BaseNode classNames="evaluator-node" nodeId={id}>
       <NodeLabel title={node_header} 
                   nodeId={id} 
                   onEdit={hideStatusIndicator}
@@ -353,7 +354,7 @@ const EvaluatorNode = ({ data, id }) => {
                         onClick={showResponseInspector} 
                         showNotificationDot={uninspectedResponses} />
         ) : <></>}  
-    </div>
+    </BaseNode>
   );
 };
 

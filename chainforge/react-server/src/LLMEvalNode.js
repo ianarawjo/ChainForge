@@ -4,6 +4,7 @@ import { Alert, Progress, Textarea } from '@mantine/core';
 import { IconAlertTriangle, IconRobot, IconSearch } from "@tabler/icons-react";
 import { v4 as uuid } from 'uuid';
 import useStore from './store';
+import BaseNode from './BaseNode';
 import NodeLabel from './NodeLabelComponent';
 import fetch_from_backend from './fetch_from_backend';
 import { getDefaultModelSettings } from './ModelSettingSchemas';
@@ -139,7 +140,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
   }, [data]);
 
   return (
-    <div className="evaluator-node cfnode">
+    <BaseNode classNames="evaluator-node" nodeId={id}>
       <NodeLabel title={data.title || 'LLM Scorer'} 
                   nodeId={id} 
                   icon={<IconRobot size="16px" />} 
@@ -200,7 +201,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
                         onClick={showResponseInspector}
                         showNotificationDot={uninspectedResponses} 
          />) : <></>}
-    </div>
+    </BaseNode>
   );
 };
 

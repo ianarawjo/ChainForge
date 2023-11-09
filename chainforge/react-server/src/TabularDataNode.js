@@ -6,6 +6,7 @@ import Papa from 'papaparse';
 import { v4 as uuidv4 } from 'uuid';
 import { IconX, IconArrowBarToUp, IconArrowBarToDown } from '@tabler/icons-react';
 import TemplateHooks from './TemplateHooksComponent';
+import BaseNode from './BaseNode';
 import NodeLabel from './NodeLabelComponent';
 import AlertModal from './AlertModal';
 import RenameValueModal from './RenameValueModal';
@@ -389,7 +390,7 @@ const TabularDataNode = ({ data, id }) => {
   }, [ref]);
 
   return (
-    <div className="tabular-data-node cfnode" onPointerDown={() => setContextMenuOpened(false)}>
+    <BaseNode classNames="tabular-data-node" nodeId={id} onPointerDown={() => setContextMenuOpened(false)}>
       <NodeLabel title={data.title || 'Tabular Data Node'} 
                  nodeId={id} 
                  icon={'🗂️'}
@@ -434,7 +435,7 @@ const TabularDataNode = ({ data, id }) => {
         <TemplateHooks vars={tableColumns.map(col => col.header)} nodeId={id} startY={hooksY} position='right' />
       </div>
       
-    </div>
+    </BaseNode>
   );
 };
 

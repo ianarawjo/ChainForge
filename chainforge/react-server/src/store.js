@@ -33,9 +33,9 @@ export let initLLMProviders = [
   { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
   { name: "Claude", emoji: "📚", model: "claude-2", base_model: "claude-v1", temp: 0.5 },
   { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
-  { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
   { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
-  { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 0.0 }
+  { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 0.0 },
+  { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
 ];
 if (APP_IS_RUNNING_LOCALLY()) {
   initLLMProviders.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
@@ -270,6 +270,12 @@ const useStore = create((set, get) => ({
   },
   getNode: (id) => get().nodes.find(n => n.id === id),
   addNode: (newnode) => {
+    // Make sure we select the added node.
+    // This will float it to the top.
+    get().deselectAllNodes();
+    newnode.selected = true;
+
+    // Add the node to the internal state
     set({
       nodes: get().nodes.concat(newnode)
     });
@@ -278,6 +284,37 @@ const useStore = create((set, get) => ({
     set({
       nodes: get().nodes.filter(n => n.id !== id)
     });
+  },
+  deselectAllNodes: () => {
+    // Deselect all nodes
+    set({
+      nodes: get().nodes.map((n) => {
+        n.selected = false;
+        return n;
+      })
+    });
+  },
+  duplicateNode: (id, offset) => {
+    const nodes = get().nodes;
+    const node = nodes.find(n => n.id === id);
+    if (!node) {
+      console.error(`Could not duplicate node: No node found with id ${id}`);
+      return undefined;
+    }
+    // Deep copy node data
+    let dup = JSON.parse(JSON.stringify(node));
+    // Shift position
+    dup.position.x += offset && offset.x !== undefined ? offset.x : 0;
+    dup.position.y += offset && offset.y !== undefined ? offset.y : 0;
+    // Change id to new unique id
+    dup.id = `${dup.type}-${Date.now()}`;
+    // Select it (floats it to top)
+    dup.selected = true;
+    // Deselect all previous nodes
+    get().deselectAllNodes();
+    // Declare new node with copied data, at the shifted position
+    get().addNode(dup);
+    return dup;
   },
   setNodes: (newnodes) => {
     set({

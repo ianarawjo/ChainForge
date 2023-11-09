@@ -171,6 +171,9 @@
     margin-bottom: 12px;
     padding-bottom: 4px;
   }
+  .node-header:hover {
+    border-bottom-color: #888;
+  }
 
   .prompt-node {
     background-color: #fff;

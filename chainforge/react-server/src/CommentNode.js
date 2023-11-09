@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import useStore from './store';
-import NodeLabel from './NodeLabelComponent'
+import NodeLabel from './NodeLabelComponent';
+import BaseNode from './BaseNode';
 import { Textarea } from '@mantine/core';
 
 /**
@@ -19,7 +20,7 @@ const CommentNode = ({ data, id }) => {
   };
 
   return (
-    <div className="cfnode" style={{backgroundColor: '#eee'}}>
+    <BaseNode nodeId={id} style={{backgroundColor: '#eee'}}>
       <NodeLabel title={data.title || 'Comment'} 
                   nodeId={id}
                   icon={'✏️'} />
@@ -31,7 +32,7 @@ const CommentNode = ({ data, id }) => {
                 w={'260px'} 
                 minRows={2} 
                 styles={{input: { border: 'none', backgroundColor: '#eee' }}} />
-    </div>
+    </BaseNode>
   );
 };
 

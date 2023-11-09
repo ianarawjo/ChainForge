@@ -4,7 +4,8 @@ import { Switch, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip 
 import { useDisclosure } from '@mantine/hooks';
 import { IconList } from '@tabler/icons-react';
 import useStore from './store';
-import NodeLabel from './NodeLabelComponent'
+import BaseNode from './BaseNode';
+import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent'
 import { LLMListContainer } from './LLMListComponent'
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
@@ -640,7 +641,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   }, [textAreaRef]);
 
   return (
-    <div className="prompt-node cfnode">
+    <BaseNode classNames="prompt-node" nodeId={id}>
     <NodeLabel title={data.title || node_default_title} 
                 nodeId={id} 
                 onEdit={hideStatusIndicator}
@@ -741,7 +742,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             ) : <></>
         }
         </div>
-    </div>
+    </BaseNode>
    );
 };
 

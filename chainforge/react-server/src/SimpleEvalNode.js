@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Handle } from "reactflow";
 import { NativeSelect, TextInput, Flex, Text, Box, Select, ActionIcon, Menu, Tooltip } from "@mantine/core";
 import { IconCaretDown, IconHash, IconRuler2, IconSearch, IconX } from "@tabler/icons-react";
+import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
@@ -196,7 +197,7 @@ const SimpleEvalNode = ({data, id}) => {
   }, [data]);
 
   return (
-    <div className="evaluator-node cfnode">
+    <BaseNode classNames="evaluator-node" nodeId={id}>
       <NodeLabel title={data.title || 'Simple Evaluator'} 
                   nodeId={id} 
                   icon={<IconRuler2 size="16px" />} 
@@ -295,7 +296,7 @@ const SimpleEvalNode = ({data, id}) => {
                         onClick={showResponseInspector}
                         showNotificationDot={uninspectedResponses} 
          />) : <></>}
-    </div>
+    </BaseNode>
   );
 };
 

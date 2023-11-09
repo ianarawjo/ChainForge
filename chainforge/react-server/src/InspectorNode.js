@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Handle } from 'reactflow';
 import useStore from './store';
+import BaseNode from './BaseNode';
 import NodeLabel from './NodeLabelComponent';
 import LLMResponseInspector, { exportToExcel } from './LLMResponseInspector';
 import fetch_from_backend from './fetch_from_backend';
@@ -55,7 +56,7 @@ const InspectorNode = ({ data, id }) => {
   }, [data, id, handleOnConnect, setDataPropsForNode]);
 
   return (
-    <div className="inspector-node cfnode">
+    <BaseNode classNames="inspector-node" nodeId={id}>
     <NodeLabel title={data.title || 'Inspect Node'} 
                 nodeId={id}
                 icon={'🔍'}
@@ -73,7 +74,7 @@ const InspectorNode = ({ data, id }) => {
         style={{ top: "50%" }}
         onConnect={handleOnConnect}
       />
-    </div>
+    </BaseNode>
   );
 };
 
