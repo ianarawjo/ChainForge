@@ -893,6 +893,29 @@
   -o-transform: skewX(-20deg);
   transform: skewX(-20deg);
 }
+.inspect-button {
+  width: 32px;
+  background: #ceeaf5b1; 
+}
+.inspect-button:hover {
+  background: #5ebdecb1; 
+  box-shadow: 0 0 30px 5px #7cc1ddb1;
+}
+.inspect-button:active {
+  background: #58b5da;
+}
+.inspect-button-disabled {
+  color: #bbb;
+  background: #fff;
+}
+.inspect-button-disabled:hover {
+  background: #fff;
+  box-shadow: none;
+  color: #bbb;
+}
+.inspect-button-disabled:active {
+  background: #eee;
+}
 
 /* Make text blink */
 .text-blink {

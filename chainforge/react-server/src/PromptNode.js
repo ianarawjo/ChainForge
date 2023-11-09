@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { Handle } from 'reactflow';
 import { Switch, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconList } from '@tabler/icons-react';
+import { IconList, IconSearch, IconSearchOff } from '@tabler/icons-react';
 import useStore from './store';
 import BaseNode from './BaseNode';
 import NodeLabel from './NodeLabelComponent';
@@ -652,7 +652,15 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 handleRunHover={handleRunHover}
                 runButtonTooltip={runTooltip}
                 customButtons={[
-                    <PromptListPopover key='prompt-previews' promptInfos={promptPreviews} onHover={handlePreviewHover} onClick={openInfoModal} />
+                    <PromptListPopover key='prompt-previews' promptInfos={promptPreviews} onHover={handlePreviewHover} onClick={openInfoModal} />,
+                    <Tooltip label="Inspect responses" withArrow arrowSize={6} arrowRadius={2} zIndex={1001} withinPortal={true}>
+                        <button onClick={showResponseInspector}
+                                className={"custom-button inspect-button" + ((jsonResponses && jsonResponses.length > 0 && status !== 'loading') ? "" : " inspect-button-disabled")} 
+                                key="inspect-data">
+                            {/* <div className="something-changed-circle" style={{position: 'absolute', left: '17px'}}></div> */}
+                            <IconSearch size="10pt" style={{marginBottom: '-2px'}} />
+                        </button>
+                    </Tooltip>
                 ]} />
     <LLMResponseInspectorModal ref={inspectModal} jsonResponses={jsonResponses} prompt={promptText} />
     <Modal title={'List of prompts that will be sent to LLMs (' + promptPreviews.length + ' total)'} size='xl' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-5%'}}}>
@@ -737,10 +745,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
             ]} />)
         : <></>}
 
-        { jsonResponses && jsonResponses.length > 0 && status !== 'loading' ? 
+        {/* { jsonResponses && jsonResponses.length > 0 && status !== 'loading' ? 
             (<InspectFooter onClick={showResponseInspector} showNotificationDot={uninspectedResponses} />
             ) : <></>
-        }
+        } */}
         </div>
     </BaseNode>
    );
