@@ -285,8 +285,8 @@ const TextFieldsNode = ({ data, id }) => {
 
   const aiPopover = <AiPopover
     values={textfieldsValues}
-    addValues={addMultipleFields}
-    replaceValues={replaceFields}
+    onAddValues={addMultipleFields}
+    onReplaceValues={replaceFields}
     areValuesLoading={isLoading}
     setValuesLoading={setLoading}
   />
