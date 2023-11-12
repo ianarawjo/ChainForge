@@ -66,7 +66,6 @@ const CustomProviderScriptDropzone = ({onError, onSetProviders}) => {
     }}
     onReject={(files) => console.log('rejected files', files)}
     maxSize={3 * 1024 ** 2}
-    accept={{'text/x-python-script': []}}
   >
     <Flex pos="center" spacing="md" style={{ minHeight: rem(80), pointerEvents: 'none' }}>
     <Center>
