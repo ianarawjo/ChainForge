@@ -5,7 +5,7 @@ import { IconTextPlus, IconEye, IconEyeOff } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
-import AiPopover from './AiPopover';
+import AIPopover from './AIPopover';
 import AISuggestionsManager from './backend/aiSuggestionsManager';
 
 // Helper funcs
@@ -229,14 +229,6 @@ const TextFieldsNode = ({ data, id }) => {
       }
   }
 
-  const aiPopover = <AiPopover
-    values={textfieldsValues}
-    onAddValues={addMultipleFields}
-    onReplaceValues={replaceFields}
-    areValuesLoading={isLoading}
-    setValuesLoading={setLoading}
-  />
-
   // Incremented during the rendering of this component to iterate through each empty textarea and give it a unique placeholder from the placeholders.
   let placeholderIndex = 0;
 
@@ -244,7 +236,17 @@ const TextFieldsNode = ({ data, id }) => {
 
   return (
     <div className="text-fields-node cfnode">
-      <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} aiPopoverContent={aiPopover} />
+      <NodeLabel title={data.title || 'TextFields Node'} 
+                 nodeId={id} 
+                 icon={<IconTextPlus size="16px" />} 
+                 customButtons={[
+                  <AIPopover key='ai-popover'
+                             values={textfieldsValues}
+                             onAddValues={addMultipleFields}
+                             onReplaceValues={replaceFields}
+                             areValuesLoading={isLoading}
+                             setValuesLoading={setLoading} />
+                 ]} />
       <Skeleton visible={isLoading}>
         <div ref={setRef}>
           {Object.keys(textfieldsValues).map(i => {
