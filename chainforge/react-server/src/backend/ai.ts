@@ -107,7 +107,9 @@ export async function autofill(input: Row[], n: number): Promise<Row[]> {
     /*n=*/ 1,
     /*prompt=*/ encoded,
     /*vars=*/ {},
-    /*chat_history=*/ history);
+    /*chat_history=*/ history,
+    /*api_keys=*/ undefined,
+    /*no_cache=*/ true);
 
   console.log("LLM said: ", result.responses[0].responses[0])
 
@@ -143,7 +145,9 @@ export async function generateAndReplace(prompt: string, n: number, creative?: b
     /*n=*/ 1,
     /*prompt=*/ input,
     /*vars=*/ {},
-    /*chat_history=*/ history);
+    /*chat_history=*/ history,
+    /*api_keys=*/ undefined,
+    /*no_cache=*/ true);
 
   console.log("LLM said: ", result.responses[0].responses[0])
 
