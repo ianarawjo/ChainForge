@@ -10,7 +10,7 @@ import { Tooltip, Popover, Badge, Stack } from '@mantine/core';
 import { IconSparkles } from '@tabler/icons-react';
 
 
-export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, customButtons, handleRunClick, handleRunHover, runButtonTooltip, aiPopoverContent }) {
+export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, customButtons, handleRunClick, handleRunHover, runButtonTooltip }) {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const [statusIndicator, setStatusIndicator] = useState('none');
     const [runButton, setRunButton] = useState('none');
@@ -70,21 +70,6 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             deleteConfirmModal.current.trigger();
     }, [deleteConfirmModal]);
 
-    const aiPopover =
-      <Popover position="right" withArrow shadow="md" trapFocus>
-        <Popover.Target>
-          <button className="ai-button nodrag"><IconSparkles size={10} stroke={3}/></button>
-        </Popover.Target>
-        <Popover.Dropdown>
-          <Stack gap={1}>
-            <Badge color="grape" variant="outline" leftSection={<IconSparkles size={10} stroke={3}/>}>
-              Generative AI
-            </Badge>
-            {aiPopoverContent}
-          </Stack>
-        </Popover.Dropdown>
-      </Popover>;
-
     return (<>
         <div className="node-header drag-handle">
             {icon ? (<>{icon}&nbsp;</>) : <></>}
@@ -102,7 +87,6 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             <div className="node-header-btns-container">
                 {customButtons ? customButtons : <></>}
                 {runButton}
-                {aiPopoverContent ? aiPopover : <></>}
                 <button className="close-button nodrag" onClick={handleCloseButtonClick}>&#x2715;</button>
                 <br/>
             </div>

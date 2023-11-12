@@ -7,7 +7,7 @@ import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
 import BaseNode from './BaseNode';
 import { setsAreEqual } from './backend/utils';
-import AiPopover from './AiPopover';
+import AIPopover from './AIPopover';
 import AISuggestionsManager from './backend/aiSuggestionsManager';
 
 // Helper funcs
@@ -220,14 +220,6 @@ const TextFieldsNode = ({ data, id }) => {
       }
   }
 
-  const aiPopover = <AiPopover
-    values={textfieldsValues}
-    onAddValues={addMultipleFields}
-    onReplaceValues={replaceFields}
-    areValuesLoading={isLoading}
-    setValuesLoading={setLoading}
-  />
-
   // Incremented during the rendering of this component to iterate through each empty textarea and give it a unique placeholder from the placeholders.
   let placeholderIndex = 0;
 
@@ -235,7 +227,17 @@ const TextFieldsNode = ({ data, id }) => {
 
   return (
     <BaseNode classNames="text-fields-node" nodeId={id}>
-      <NodeLabel title={data.title || 'TextFields Node'} nodeId={id} icon={<IconTextPlus size="16px" />} aiPopoverContent={aiPopover} />
+      <NodeLabel title={data.title || 'TextFields Node'} 
+                 nodeId={id} 
+                 icon={<IconTextPlus size="16px" />} 
+                 customButtons={[
+                  <AIPopover key='ai-popover'
+                             values={textfieldsValues}
+                             onAddValues={addMultipleFields}
+                             onReplaceValues={replaceFields}
+                             areValuesLoading={isLoading}
+                             setValuesLoading={setLoading} />
+                 ]} />
       <Skeleton visible={isLoading}>
         <div ref={setRef}>
           {Object.keys(textfieldsValues).map(i => {
