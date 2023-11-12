@@ -589,6 +589,9 @@ export async function queryLLM(id: string,
   const llms = llm;
   let cache: Dict = StorageCache.get(`${id}.json`) || {};  // returns {} if 'id' is not in the storage cache yet
 
+  // Ignore cache if no_cache is present
+  if (no_cache) cache = {};
+
   let llm_to_cache_filename = {};
   let past_cache_files = {};
   if (typeof cache === 'object' && cache.cache_files !== undefined) {
@@ -623,7 +626,8 @@ export async function queryLLM(id: string,
   }
 
   // Store the overall cache file for this id:
-  StorageCache.store(`${id}.json`, cache);
+  if (!no_cache)
+    StorageCache.store(`${id}.json`, cache);
 
   // Create a Proxy object to 'listen' for changes to a variable (see https://stackoverflow.com/a/50862441)
   // and then stream those changes back to a provided callback used to update progress bars.
@@ -665,7 +669,7 @@ export async function queryLLM(id: string,
 
     // Create an object to query the LLM, passing a storage key for cache'ing responses
     const cache_filepath = llm_to_cache_filename[llm_key];
-    const prompter = new PromptPipeline(prompt, cache_filepath);
+    const prompter = new PromptPipeline(prompt, no_cache ? undefined : cache_filepath);
 
     // Prompt the LLM with all permutations of the input prompt template:
     // NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
@@ -760,10 +764,11 @@ export async function queryLLM(id: string,
     cache_filenames[filename] = llm_spec;
   });
 
-  StorageCache.store(`${id}.json`, {
-    cache_files: cache_filenames,
-    responses_last_run: res,
-  });
+  if (!no_cache)
+    StorageCache.store(`${id}.json`, {
+      cache_files: cache_filenames,
+      responses_last_run: res,
+    });
   
   // Return all responses for all LLMs
   return {

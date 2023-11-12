@@ -240,7 +240,8 @@ export class PromptPipeline {
    * Useful for continuing if computation was interrupted halfway through. 
    */
   _load_cached_responses(): {[key: string]: (LLMResponseObject | LLMResponseObject[])} {
-    return StorageCache.get(this._storageKey) || {};
+    if (this._storageKey === undefined) return {};
+    else return StorageCache.get(this._storageKey) || {};
   }
 
   /**
@@ -248,7 +249,8 @@ export class PromptPipeline {
    * (Overrides the existing responses stored in the cache.)
    */
   _cache_responses(responses: Dict): void {
-    StorageCache.store(this._storageKey, responses);
+    if (this._storageKey !== undefined)
+      StorageCache.store(this._storageKey, responses);
   }
 
   async _prompt_llm(llm: LLM, 
