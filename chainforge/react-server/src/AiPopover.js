@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Stack, NumberInput, Button, Text, TextInput, Switch, Tabs, Popover, Badge } from "@mantine/core"
+import { Stack, NumberInput, Button, Text, TextInput, Switch, Tabs, Popover, Badge, Textarea } from "@mantine/core"
 import { useState } from 'react';
 import { autofill, generateAndReplace, AIError } from './backend/ai';
 import { IconSparkles } from '@tabler/icons-react';
@@ -81,11 +81,11 @@ function AIPopover({
         </Text>
         : <></>}
       <NumberInput label="Items to add" mt={5} min={1} max={10} defaultValue={3} value={commandFillNumber} onChange={setCommandFillNumber}/>
-      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions} loading={isCommandFillLoading}>Extend</Button>
       {enoughRowsForSuggestions ? <></>
-      : <Text size="xs" c="grape">
-          Enter at least 2 rows to generate suggestions.
+      : <Text size="xs" c="grape" maw={200}>
+          You must enter at least 2 fields before extending.
         </Text>}
+      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions} loading={isCommandFillLoading}>Extend</Button>
     </Stack>
   );
 
@@ -96,7 +96,7 @@ function AIPopover({
           Failed to generate. Please try again.
         </Text>
         : <></>}
-      <TextInput label="Generate a list of..." mt={5} value={generateAndReplacePrompt} onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}/>
+      <Textarea label="Generate a list of..." minRows={1} maxRows={4} autosize mt={5} value={generateAndReplacePrompt} onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}/>
       <NumberInput label="Items to generate" size="xs" mb={10} min={1} max={10} defaultValue={3} value={generateAndReplaceNumber} onChange={setGenerateAndReplaceNumber}/>
       <Switch color="grape" mb={10} size="xs" label="Make outputs unconventional" value={generateAndReplaceIsUnconventional} onChange={(e) => setGenerateAndReplaceIsUnconventional(e.currentTarget.checked)}/>
       <Button size="sm" variant="light" color="grape" fullWidth onClick={handleGenerateAndReplace} loading={areValuesLoading}>Replace</Button>
@@ -104,7 +104,7 @@ function AIPopover({
   );
   
   return (
-    <Popover position="right-start" withArrow shadow={popoverShadow} trapFocus keepMounted>
+    <Popover position="right-start" withArrow shadow={popoverShadow} withinPortal keepMounted>
       <Popover.Target>
         <button className="ai-button nodrag"><IconSparkles size={10} stroke={3}/></button>
       </Popover.Target>

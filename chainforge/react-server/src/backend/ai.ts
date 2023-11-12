@@ -1,9 +1,9 @@
 /**
  * Business logic for the AI-generated features.
  */
-
 import { queryLLM } from "./backend";
-import { ChatHistoryInfo } from "./typing";
+import { ChatHistoryInfo, Dict } from "./typing";
+import { fromMarkdown } from "mdast-util-from-markdown";
 
 export class AIError extends Error {
   constructor(message: string) {
@@ -17,6 +17,17 @@ export type Row = string;
 
 // LLM to use for AI features.
 const LLM = "gpt-3.5-turbo";
+
+/**
+ * Flattens markdown AST to text
+ */
+function compileTextFromMdAST(md: Dict): string {
+  if (md?.type === "text")
+    return md.value ?? "";
+  else if (md?.children?.length > 0)
+    return md.children.map(compileTextFromMdAST).join("\n");
+  return "";
+}
 
 /**
  * Generate the system message used for autofilling.
@@ -38,29 +49,37 @@ function GARSystemMessage(n: number, creative?: boolean, generatePrompts?: boole
  * @param rows to encode
  */
 function encode(rows: Row[]): string {
-    return rows.map(row => `- ${row}`).join('\n');
+  return rows.map(row => `- ${row}`).join('\n');
 }
 
 /**
- * Returns the rows encoded by the given string, assuming the string is in markdown list format. Throws an AIError if the string is not in markdown list format.
- * @param rows to decode
- * @param n number of rows to return
+ * Returns a list of items that appears in the given markdown text. Throws an AIError if the string is not in markdown list format.
+ * @param mdText raw text to decode (in markdown format)
  */
-function decode(rows: string, n?: number): Row[] {
-    let lines = rows.split('\n');
-    let result: Row[] = [];
-    for (let line of lines) {
-        if (n && result.length >= n) break;
-        if (line.startsWith('- ')) {
-            result.push(line.slice(2));
-        } else {
-            continue;
-        }
+function decode(mdText: string): Row[] {
+
+  let result: Row[] = [];
+
+  // Parse string as markdown
+  const md = fromMarkdown(mdText);
+
+  if (md?.children.length > 0 && md.children.some(c => c.type === 'list')) {
+    // Find the first list that appears in the markdown text, if any
+    const md_list = md.children.filter(c => c.type === 'list')[0];
+
+    // Extract and iterate over the list items, converting them to text 
+    const md_list_items = "children" in md_list ? md_list.children : [];
+    for (const item of md_list_items) {
+      const text = compileTextFromMdAST(item);
+      if (text && text.length > 0)
+        result.push(text);
     }
-    if (result.length === 0) {
-        throw new AIError(`Failed to decode output: ${rows}`);
-    }
-    return result;
+  }
+
+  if (result.length === 0)
+    throw new AIError(`Failed to decode output: ${mdText}`);
+  
+  return result;
 }
 
 /**
@@ -92,7 +111,8 @@ export async function autofill(input: Row[], n: number): Promise<Row[]> {
 
   console.log("LLM said: ", result.responses[0].responses[0])
 
-  return decode(result.responses[0].responses[0], n)
+  const new_items = decode(result.responses[0].responses[0]);
+  return new_items.slice(0, n);
 }
 
 /**
@@ -127,5 +147,6 @@ export async function generateAndReplace(prompt: string, n: number, creative?: b
 
   console.log("LLM said: ", result.responses[0].responses[0])
 
-  return decode(result.responses[0].responses[0], n)
+  const new_items = decode(result.responses[0].responses[0]);
+  return new_items.slice(0, n);
 }
