@@ -27,6 +27,7 @@ const TextFieldsNode = ({ data, id }) => {
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
+  const flags = useStore((state) => state.flags);
 
   const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
   const [fieldVisibility, setFieldVisibility] = useState(data.fields_visibility || {});
@@ -82,9 +83,14 @@ const TextFieldsNode = ({ data, id }) => {
     setTextfieldsValues(new_fields);
     setDataPropsForNode(id, { fields: new_fields });
     pingOutputNodes(id);
+
     // Cycle suggestions when new field is created
     //aiSuggestionsManager.cycleSuggestions();
-  }, [textfieldsValues, id, setDataPropsForNode, pingOutputNodes]);
+
+    // Ping AI suggestions to generate autocomplete options
+    if (flags["aiAutocomplete"])
+      aiSuggestionsManager.update(Object.values(textfieldsValues));
+  }, [textfieldsValues, id, flags, setDataPropsForNode, pingOutputNodes]);
 
   // Disable/hide a text field temporarily
   const handleDisableField = useCallback((field_id) => {
@@ -174,9 +180,9 @@ const TextFieldsNode = ({ data, id }) => {
     () => new AISuggestionsManager(onSuggestionsUpdated), []);
 
   // Notify the suggestions manager when the text fields change
-  useEffect(() => {
-    aiSuggestionsManager.update(Object.values(textfieldsValues))
-  }, [textfieldsValues, aiSuggestionsManager]);
+  // useEffect(() => {
+  //   aiSuggestionsManager.update(Object.values(textfieldsValues))
+  // }, [textfieldsValues, aiSuggestionsManager]);
 
   // Handle keydown events for the text fields
   function handleTextAreaKeyDown(event, placeholder, textareaIndex) {
@@ -222,7 +228,6 @@ const TextFieldsNode = ({ data, id }) => {
 
   // Incremented during the rendering of this component to iterate through each empty textarea and give it a unique placeholder from the placeholders.
   let placeholderIndex = 0;
-
   // TODO: figure out a better way to index the placeholders
 
   return (
@@ -230,14 +235,16 @@ const TextFieldsNode = ({ data, id }) => {
       <NodeLabel title={data.title || 'TextFields Node'} 
                  nodeId={id} 
                  icon={<IconTextPlus size="16px" />} 
-                 customButtons={[
-                  <AIPopover key='ai-popover'
-                             values={textfieldsValues}
-                             onAddValues={addMultipleFields}
-                             onReplaceValues={replaceFields}
-                             areValuesLoading={isLoading}
-                             setValuesLoading={setLoading} />
-                 ]} />
+                 customButtons={
+                  (flags["aiSupport"] ? 
+                    [<AIPopover key='ai-popover'
+                              values={textfieldsValues}
+                              onAddValues={addMultipleFields}
+                              onReplaceValues={replaceFields}
+                              areValuesLoading={isLoading}
+                              setValuesLoading={setLoading} />]
+                   : [])
+                 } />
       <Skeleton visible={isLoading}>
         <div ref={setRef}>
           {Object.keys(textfieldsValues).map(i => {
@@ -252,7 +259,7 @@ const TextFieldsNode = ({ data, id }) => {
                         minRows="2"
                         maxRows="8"
                         value={value} 
-                        placeholder={placeholder} 
+                        placeholder={flags["aiAutocomplete"] ? placeholder : undefined} 
                         disabled={fieldVisibility[i] === false}
                         onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)}
                         onKeyDown={(event) => handleTextAreaKeyDown(event, placeholder, i)} />
