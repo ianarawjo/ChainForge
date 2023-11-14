@@ -30,12 +30,26 @@ function compileTextFromMdAST(md: Dict): string {
   return "";
 }
 
+/**
+ * Removes trailing quotation marks
+ */
 function trimQuotationMarks(s: string): string {
   if (s.length <= 1) return s;
   const [c0, c1] = [s.charAt(0), s.charAt(s.length-1)];
   if ((c0 === '"' && c1 === '"') || (c0 === "'" && c1 === "'"))
     return s.slice(1, s.length-1);
   return s;
+}
+
+/** 
+ * Converts any double-brace variables like {{this}} to single-braces, like {this}
+ */
+function convertDoubleToSingleBraces(s: string): string {
+  // Use a regular expression to find all double-brace template variables
+  const regex = /{{(.*?)}}/g;
+  
+  // Replace each double-brace variable with single braces
+  return s.replace(regex, '{$1}');
 }
 
 /**
@@ -50,7 +64,7 @@ function autofillSystemMessage(n: number): string {
  * Generate the system message used for generate and replace (GAR).
  */
 function GARSystemMessage(n: number, creative?: boolean, generatePrompts?: boolean): string {
-  return `Generate a list of exactly ${n} items. Format your response as an unordered markdown list using "-". Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be commands that can be given to an AI chat assistant. If the user has specified an item or input to the prompt, generate a prompt template in Jinja format, with single braces {} around the masked variables." : ""}`;
+  return `Generate a list of exactly ${n} items. Format your response as an unordered markdown list using "-". Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be commands that can be given to an AI chat assistant. If the user has specified items or inputs to their command, generate a template in Jinja format, with single braces {} around the masked variables." : ""}`;
 }
 
 /**
@@ -88,6 +102,9 @@ function decode(mdText: string): Row[] {
 
   if (result.length === 0)
     throw new AIError(`Failed to decode output: ${mdText}`);
+
+  // Convert any double-brace template variables to single-braces:
+  result = result.map(convertDoubleToSingleBraces);
   
   return result;
 }

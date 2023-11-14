@@ -101,17 +101,7 @@ const TextFieldsNode = ({ data, id }) => {
     pingOutputNodes(id);
   }, [fieldVisibility, setDataPropsForNode, pingOutputNodes]);
 
-  // Save the state of a textfield when it changes and update hooks
-  const handleTextFieldChange = useCallback((field_id, val) => {
-
-    // Update the value of the controlled Textarea component
-    let new_fields = {...textfieldsValues};
-    new_fields[field_id] = val;
-    setTextfieldsValues(new_fields);
-
-    // Update the data for the ReactFlow node
-    let new_data = { 'fields': new_fields };
-
+  const updateTemplateVars = useCallback((new_data) => {
     // TODO: Optimize this check.
     let all_found_vars = new Set();
     const new_field_ids = Object.keys(new_data.fields);
@@ -127,13 +117,25 @@ const TextFieldsNode = ({ data, id }) => {
     if (!setsAreEqual(all_found_vars, past_vars)) {
       const new_vars_arr = Array.from(all_found_vars);
       new_data.vars = new_vars_arr;
-      setTemplateVars(new_vars_arr);
     }
 
+    return new_data;
+  }, [templateVars]);
+
+  // Save the state of a textfield when it changes and update hooks
+  const handleTextFieldChange = useCallback((field_id, val) => {
+    // Update the value of the controlled Textarea component
+    let new_fields = {...textfieldsValues};
+    new_fields[field_id] = val;
+    setTextfieldsValues(new_fields);
+
+    // Update the data for the ReactFlow node
+    let new_data = updateTemplateVars({ 'fields': new_fields });
+    if (new_data.vars) setTemplateVars(new_data.vars);
     setDataPropsForNode(id, new_data);
     pingOutputNodes(id);
 
-  }, [textfieldsValues, templateVars, id]);
+  }, [textfieldsValues, templateVars, updateTemplateVars, id]);
 
   // Dynamically update the textareas and position of the template hooks
   const ref = useRef(null);
@@ -217,13 +219,15 @@ const TextFieldsNode = ({ data, id }) => {
   // Replace the entirety of `textfieldValues` with `newFields`
   function replaceFields(fields) {
     const buffer = {};
-      for (const field of fields) {
-        const uid = getUID(buffer);
-        buffer[uid] = field;
-        setTextfieldsValues(buffer);
-        setDataPropsForNode(id, { fields: buffer });
-        pingOutputNodes(id);
-      }
+    for (const field of fields) {
+      const uid = getUID(buffer);
+      buffer[uid] = field;
+    }
+    setTextfieldsValues(buffer);
+    let new_data = updateTemplateVars({ 'fields': buffer });
+    if (new_data.vars) setTemplateVars(new_data.vars);
+    setDataPropsForNode(id, { fields: buffer });
+    pingOutputNodes(id);
   }
 
   // Incremented during the rendering of this component to iterate through each empty textarea and give it a unique placeholder from the placeholders.
