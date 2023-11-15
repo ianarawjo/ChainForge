@@ -133,7 +133,7 @@ export async function autofill(input: Row[], n: number): Promise<Row[]> {
 
   let templateVariables = [...new Set(new StringTemplate(input.join('\n')).get_vars())];
 
-  console.warn("prompt: ", autofillSystemMessage(n, templateVariables));
+  console.log("System message: ", autofillSystemMessage(n, templateVariables));
 
   let history: ChatHistoryInfo[] = [{
     messages: [{
