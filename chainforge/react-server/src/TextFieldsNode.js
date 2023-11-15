@@ -236,6 +236,42 @@ const TextFieldsNode = ({ data, id }) => {
     }
   }
 
+  // Cache the rendering of the text fields.
+  const textFields = useMemo(() =>
+    Object.keys(textfieldsValues).map(i => {
+      loadPlaceholderIfNeeded(i);
+      const placeholder = placeholders[i];
+      return (
+        <div className="input-field" key={i}>
+          <Textarea id={i} name={i} 
+                  className="text-field-fixed nodrag nowheel" 
+                  autosize
+                  minRows="2"
+                  maxRows="8"
+                  value={textfieldsValues[i]} 
+                  placeholder={flags["aiAutocomplete"] ? placeholder : undefined} 
+                  disabled={fieldVisibility[i] === false}
+                  onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)}
+                  onKeyDown={(event) => handleTextAreaKeyDown(event, placeholder, i)} />
+          {Object.keys(textfieldsValues).length > 1 ? (
+            <div style={{display: 'flex', flexDirection: 'column'}}>
+              <Tooltip label='remove field' position='right' withArrow arrowSize={10} withinPortal>
+                <button id={delButtonId + i} className="remove-text-field-btn nodrag" onClick={handleDelete} style={{flex: 1}}>X</button>
+              </Tooltip>
+              <Tooltip label={(fieldVisibility[i] === false ? 'enable' : 'disable') + ' field'} position='right' withArrow arrowSize={10} withinPortal>
+                <button id={visibleButtonId + i} className="remove-text-field-btn nodrag" onClick={() => handleDisableField(i)} style={{flex: 1}}>
+                  {fieldVisibility[i] === false ? 
+                      <IconEyeOff size='14pt' pointerEvents='none' />
+                    : <IconEye size='14pt' pointerEvents='none' />
+                  }
+                </button>
+              </Tooltip>
+            </div>
+          ) : <></>}
+        </div>)}),
+      // Update the text fields only when their values or their placeholders change.
+      [textfieldsValues, placeholders]);
+
   return (
     <BaseNode classNames="text-fields-node" nodeId={id}>
       <NodeLabel title={data.title || 'TextFields Node'} 
@@ -253,37 +289,7 @@ const TextFieldsNode = ({ data, id }) => {
                  } />
       <Skeleton visible={isLoading}>
         <div ref={setRef}>
-          {Object.keys(textfieldsValues).map(i => {
-            loadPlaceholderIfNeeded(i);
-            const placeholder = placeholders[i];
-            return (
-              <div className="input-field" key={i}>
-                <Textarea id={i} name={i} 
-                        className="text-field-fixed nodrag nowheel" 
-                        autosize
-                        minRows="2"
-                        maxRows="8"
-                        value={textfieldsValues[i]} 
-                        placeholder={flags["aiAutocomplete"] ? placeholder : undefined} 
-                        disabled={fieldVisibility[i] === false}
-                        onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)}
-                        onKeyDown={(event) => handleTextAreaKeyDown(event, placeholder, i)} />
-                {Object.keys(textfieldsValues).length > 1 ? (
-                  <div style={{display: 'flex', flexDirection: 'column'}}>
-                    <Tooltip label='remove field' position='right' withArrow arrowSize={10} withinPortal>
-                      <button id={delButtonId + i} className="remove-text-field-btn nodrag" onClick={handleDelete} style={{flex: 1}}>X</button>
-                    </Tooltip>
-                    <Tooltip label={(fieldVisibility[i] === false ? 'enable' : 'disable') + ' field'} position='right' withArrow arrowSize={10} withinPortal>
-                      <button id={visibleButtonId + i} className="remove-text-field-btn nodrag" onClick={() => handleDisableField(i)} style={{flex: 1}}>
-                        {fieldVisibility[i] === false ? 
-                            <IconEyeOff size='14pt' pointerEvents='none' />
-                          : <IconEye size='14pt' pointerEvents='none' />
-                        }
-                      </button>
-                    </Tooltip>
-                  </div>
-                ) : <></>}
-              </div>)})}
+          {textFields}
         </div>
       </Skeleton>
       <Handle
