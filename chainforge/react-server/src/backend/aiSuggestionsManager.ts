@@ -39,8 +39,8 @@ class AISuggestionsManager {
     base: Row[] = [];
     // A cache of suggestions.
     suggestions: Row[] = [];
-    // Holder for the previous state of the suggestions, used to determine if the suggestions need to be refreshed.
-    previousSuggestions: Row[] = [];
+    // Suggestions that should now be in the base if the user accepts the suggestions.
+    expectedSuggestions: Row[] = [];
     // Callback to call when the suggestions change.
     onSuggestionsUpdated: (suggestions: Row[]) => void;
     // Callback to call when the suggestions are completely refreshed.
@@ -66,7 +66,6 @@ class AISuggestionsManager {
 
     // Helper to set the suggestions and previousSuggestions together and notify the callback.
     private setSuggestions(suggestions: Row[]) {
-      this.previousSuggestions = this.suggestions;
       this.suggestions = suggestions;
       this.onSuggestionsUpdated(this.suggestions);
     }
@@ -84,7 +83,7 @@ class AISuggestionsManager {
         !this.isLoading &&
         enoughRows(newBase) &&
         this.base !== newBase &&
-        !isExtensionIgnoreEmpty(newBase, this.base, this.previousSuggestions)
+        !isExtensionIgnoreEmpty(newBase, this.base, this.expectedSuggestions)
       ) {
         return true;
       }
@@ -105,6 +104,7 @@ class AISuggestionsManager {
         // Update suggestions.
         .then((suggestions) => {
           this.setSuggestions(suggestions)
+          this.expectedSuggestions = suggestions;
           this.onSuggestionsUpdated(this.suggestions);
           this.onSuggestionsRefreshed(this.suggestions);
         })
@@ -132,7 +132,7 @@ class AISuggestionsManager {
           this.updateSuggestions();
         }
         // If the new base is an extension of the old base, update the base to reflect the extension.
-        if (isExtensionIgnoreEmpty(newBase, this.base, this.previousSuggestions)) {
+        if (isExtensionIgnoreEmpty(newBase, this.base, this.expectedSuggestions)) {
           this.base = newBase;
         }
       }, DEBOUNCE_MILLISECONDS);

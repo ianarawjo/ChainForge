@@ -231,7 +231,7 @@ const TextFieldsNode = ({ data, id }) => {
 
   // Load a placeholder into placeholders for the text field with id `i` if needed.
   function loadPlaceholderIfNeeded(i) {
-    if (placeholderNeeded(i)) {
+    if (placeholderNeeded(i) && !aiSuggestionsManager.areSuggestionsLoading()) {
       placeholders[i] = aiSuggestionsManager.popSuggestions();
     }
   }
