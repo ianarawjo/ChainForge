@@ -182,7 +182,7 @@ export async function generateAndReplace(prompt: string, n: number, creative?: b
     fill_history: {},
   }];
 
-  let input = `Generate a list of ${prompt}`;
+  let input = `Generate a list of ${escapeBraces(prompt)}`;
 
   let result = await queryLLM(
     /*id=*/ id,
