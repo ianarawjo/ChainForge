@@ -43,13 +43,21 @@ class AISuggestionsManager {
     previousSuggestions: Row[] = [];
     // Callback to call when the suggestions change.
     onSuggestionsUpdated: (suggestions: Row[]) => void;
+    // Callback to call when the suggestions are completely refreshed.
+    onSuggestionsRefreshed: (suggestions: Row[]) => void;
     // Whether the suggestions are loading.
     isLoading: boolean = false;
 
     constructor(
-      onSuggestionsUpdated: (suggestions: Row[]) => void
+      onSuggestionsUpdated?: (suggestions: Row[]) => void,
+      onSuggestionsRefreshed?: (suggestions: Row[]) => void
       ) {
-        this.onSuggestionsUpdated = onSuggestionsUpdated;
+        this.onSuggestionsUpdated = onSuggestionsUpdated
+          ? onSuggestionsUpdated
+          : () => {};
+        this.onSuggestionsRefreshed = onSuggestionsRefreshed
+          ? onSuggestionsRefreshed
+          : () => {};
     }
 
     /**
@@ -98,6 +106,7 @@ class AISuggestionsManager {
         .then((suggestions) => {
           this.setSuggestions(suggestions)
           this.onSuggestionsUpdated(this.suggestions);
+          this.onSuggestionsRefreshed(this.suggestions);
         })
         .catch(consumeAIErrors)
         .finally(() => {

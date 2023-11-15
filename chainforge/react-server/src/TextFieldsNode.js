@@ -9,6 +9,7 @@ import BaseNode from './BaseNode';
 import { setsAreEqual } from './backend/utils';
 import AIPopover from './AiPopover';
 import AISuggestionsManager from './backend/aiSuggestionsManager';
+import DefaultDict from './backend/defaultdict';
 
 // Helper funcs
 const union = (setA, setB) => {
@@ -35,8 +36,14 @@ const TextFieldsNode = ({ data, id }) => {
   // Whether the text fields should be in a loading state
   const [isLoading, setLoading] = useState(false);
 
+  // Instantiate an instance of the AI Suggestions Manager just once for this node.
+  const [aiSuggestionsManager] = useState(new AISuggestionsManager(
+    undefined,
+    () => setPlaceholders({})
+  ));
+
   // Placeholders to show in the textareas
-  const [placeholders, setPlaceholders] = useState([]);
+  let [placeholders, setPlaceholders] = useState({});
 
   const getUID = useCallback((textFields) => {
     if (textFields) {
@@ -172,20 +179,6 @@ const TextFieldsNode = ({ data, id }) => {
     }
   }, [data, id, pingOutputNodes]);
 
-  // When the suggestions from the AI Suggestions Manager change, update the placeholders to match
-  function onSuggestionsUpdated(suggestions) {
-    setPlaceholders(suggestions);
-  }
-
-  // Instantiate an instance of the AI Suggestions Manager just once for this node.
-  const aiSuggestionsManager = useMemo(
-    () => new AISuggestionsManager(onSuggestionsUpdated), []);
-
-  // Notify the suggestions manager when the text fields change
-  // useEffect(() => {
-  //   aiSuggestionsManager.update(Object.values(textfieldsValues))
-  // }, [textfieldsValues, aiSuggestionsManager]);
-
   // Handle keydown events for the text fields
   function handleTextAreaKeyDown(event, placeholder, textareaIndex) {
     // Insert the AI suggested text if:
@@ -230,10 +223,6 @@ const TextFieldsNode = ({ data, id }) => {
     pingOutputNodes(id);
   }
 
-  // Incremented during the rendering of this component to iterate through each empty textarea and give it a unique placeholder from the placeholders.
-  let placeholderIndex = 0;
-  // TODO: figure out a better way to index the placeholders
-
   return (
     <BaseNode classNames="text-fields-node" nodeId={id}>
       <NodeLabel title={data.title || 'TextFields Node'} 
@@ -252,9 +241,15 @@ const TextFieldsNode = ({ data, id }) => {
       <Skeleton visible={isLoading}>
         <div ref={setRef}>
           {Object.keys(textfieldsValues).map(i => {
-            const value = textfieldsValues[i];
-            // If the value is empty, use the next placeholder.
-            const placeholder = value === '' ? placeholders[placeholderIndex++] : '';
+            // If the value is empty, use placeholder.
+            let placeholder = '';
+            if (textfieldsValues[i] === '') {
+              // If the placeholder is not set, set it.
+              if (!placeholders[i] || placeholders[i] === '') {
+                placeholders[i] = aiSuggestionsManager.popSuggestions();
+              }
+              placeholder = placeholders[i];
+            }
             return (
               <div className="input-field" key={i}>
                 <Textarea id={i} name={i} 
@@ -262,7 +257,7 @@ const TextFieldsNode = ({ data, id }) => {
                         autosize
                         minRows="2"
                         maxRows="8"
-                        value={value} 
+                        value={textfieldsValues[i]} 
                         placeholder={flags["aiAutocomplete"] ? placeholder : undefined} 
                         disabled={fieldVisibility[i] === false}
                         onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)}
