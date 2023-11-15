@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Stack, NumberInput, Button, Text, TextInput, Switch, Tabs, Popover, Badge, Textarea } from "@mantine/core"
 import { useState } from 'react';
 import { autofill, generateAndReplace, AIError } from './backend/ai';
@@ -6,6 +6,12 @@ import { IconSparkles } from '@tabler/icons-react';
 
 const zeroGap = {gap: "0rem"};
 const popoverShadow ="rgb(38, 57, 77) 0px 10px 30px -14px";
+
+const ROW_CONSTANTS = {
+  "beginAutofilling": 1,
+  "warnIfBelow": 2,
+}
+
 
 function AIPopover({
   // A list of strings for the Extend feature to use as a basis.
@@ -31,11 +37,17 @@ function AIPopover({
   const [generateAndReplaceIsUnconventional, setGenerateAndReplaceIsUnconventional] = useState(false);
   const [didGenerateAndReplaceError, setDidGenerateAndReplaceError] = useState(false);
 
-  // At least 2 non-empty rows are needed for suggestions.
-  const enoughRowsForSuggestions = useMemo(() => {
-    const rows = Object.values(values);
-    return rows.filter((row) => row !== '').length >= 2;
-  }, [values]);
+  const nonEmptyRows = useMemo(() =>
+    Object.values(values).filter((row) => row !== '').length,
+    [values]);
+
+  const enoughRowsForSuggestions = useMemo(() =>
+    nonEmptyRows >= ROW_CONSTANTS.beginAutofilling,
+    [nonEmptyRows]);
+
+  const showWarning = useMemo(() =>
+    enoughRowsForSuggestions && nonEmptyRows < ROW_CONSTANTS.warnIfBelow,
+    [enoughRowsForSuggestions, nonEmptyRows]);
 
   const handleCommandFill = () => {
     setIsCommandFillLoading(true);
@@ -83,8 +95,13 @@ function AIPopover({
       <NumberInput label="Items to add" mt={5} min={1} max={10} defaultValue={3} value={commandFillNumber} onChange={setCommandFillNumber}/>
       {enoughRowsForSuggestions ? <></>
       : <Text size="xs" c="grape" maw={200}>
-          You must enter at least 2 fields before extending.
+          You must enter at least {ROW_CONSTANTS.beginAutofilling} fields before extending.
         </Text>}
+      {showWarning ?
+        <Text size="xs" c="grape" maw={200}>
+          You have less than {ROW_CONSTANTS.warnIfBelow} fields. You may want to add more. Adding more rows typically improves the quality of the suggestions.
+        </Text>
+        : <></>}
       <Button size="sm" variant="light" color="grape" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions} loading={isCommandFillLoading}>Extend</Button>
     </Stack>
   );
