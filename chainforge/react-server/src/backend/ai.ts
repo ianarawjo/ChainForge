@@ -1,6 +1,7 @@
 /**
  * Business logic for the AI-generated features.
  */
+import { ConsoleView } from "react-device-detect";
 import { queryLLM } from "./backend";
 import { StringTemplate, escapeBraces, containsSameTemplateVariables } from "./template";
 import { ChatHistoryInfo, Dict } from "./typing";
@@ -57,8 +58,8 @@ function convertDoubleToSingleBraces(s: string): string {
  */
 function templateVariableMessage(vars?: string[]): string {
   const stringed = vars?.map(v => `{${v}}`).join(", ") ?? "";
-  const varMessage = vars?.length > 0 ? `Use the variables: ${stringed}` : "";
-  return `Generate a template in Jinja format, with single braces {} around the masked variables. ${varMessage}`;
+  const varMessage = vars?.length > 0 ? `Each item must use all of these variables: ${stringed}` : "";
+  return `Your output is a template in Jinja format, with single braces {} around the masked variables. ${varMessage}`;
 }
 
 /**
@@ -131,6 +132,8 @@ export async function autofill(input: Row[], n: number): Promise<Row[]> {
   let encoded = encode(input);
 
   let templateVariables = [...new Set(new StringTemplate(input.join('\n')).get_vars())];
+
+  console.warn("prompt: ", autofillSystemMessage(n, templateVariables));
 
   let history: ChatHistoryInfo[] = [{
     messages: [{
