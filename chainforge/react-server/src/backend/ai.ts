@@ -54,11 +54,11 @@ function convertDoubleToSingleBraces(s: string): string {
 }
 
 /**
- * A message to instruct the LLM to handle template variables properly. Mentions the given variables if provided.
+ * A message to instruct the LLM to handle template variables properly, mentioning the given variables.
  */
-function templateVariableMessage(vars?: string[]): string {
-  const stringed = vars?.map(v => `{${v}}`).join(", ") ?? "";
-  const varMessage = vars?.length > 0 ? `Each item must use all of these variables: ${stringed}` : "";
+function templateVariableMessage(vars: string[]): string {
+  const stringed = vars.map(v => `{${v}}`).join(", ") ?? "";
+  const varMessage = vars.length > 0 ? `Each item must use all of these variables: ${stringed}` : "";
   return `Your output is a template in Jinja format, with single braces {} around the masked variables. ${varMessage}`;
 }
 
@@ -74,7 +74,7 @@ function autofillSystemMessage(n: number, templateVariables?: string[]): string 
  * Generate the system message used for generate and replace (GAR).
  */
 function GARSystemMessage(n: number, creative?: boolean, generatePrompts?: boolean): string {
-  return `Generate a list of exactly ${n} items. Format your response as an unordered markdown list using "-". Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be commands that can be given to an AI chat assistant." : ""} ${templateVariableMessage()}`;
+  return `Generate a list of exactly ${n} items. Format your response as an unordered markdown list using "-". Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be commands that can be given to an AI chat assistant." : ""} If the user has specified items or inputs to their command, generate a template in Jinja format, with single braces {} around the masked variables.`;
 }
 
 /**
