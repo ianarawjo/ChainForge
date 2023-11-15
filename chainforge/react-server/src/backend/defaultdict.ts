@@ -11,7 +11,7 @@
 class DefaultDict {
   constructor(defaultFactory) {
     return new Proxy({}, {
-      get: (target, name) => name in target ? target[name] : defaultFactory()
+      get: (target, name) => (name in target && target[name] != null) ? target[name] : defaultFactory()
     })
   }
 }

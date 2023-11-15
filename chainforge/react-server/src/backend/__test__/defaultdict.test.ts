@@ -12,4 +12,10 @@ describe('DefaultDict', () => {
     dict['a'] = 1;
     expect(dict['a']).toBe(1);
   });
+
+  it('should return the default value for a key set to null', () => {
+    const dict = new DefaultDict(() => 0);
+    dict['a'] = null;
+    expect(dict['a']).toBe(0);
+  });
 });
