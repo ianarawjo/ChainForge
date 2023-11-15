@@ -166,6 +166,8 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
   let modelname: string = model.toString();
   if (params?.stop !== undefined && (!Array.isArray(params.stop) || params.stop.length === 0))
     delete params.stop;
+  if (params?.seed !== undefined && (params.seed.toString().length === 0))
+    delete params?.seed;
   if (params?.functions !== undefined && (!Array.isArray(params.functions) || params.functions.length === 0))
     delete params?.functions;
   if (params?.function_call !== undefined && ((!(typeof params.function_call === 'string')) || params.function_call.trim().length === 0))
