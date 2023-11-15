@@ -7,7 +7,7 @@ import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
 import BaseNode from './BaseNode';
 import { setsAreEqual } from './backend/utils';
-import AIPopover from './AIPopover';
+import AIPopover from './AiPopover';
 import AISuggestionsManager from './backend/aiSuggestionsManager';
 
 // Helper funcs
