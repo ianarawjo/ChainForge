@@ -5,7 +5,7 @@ import { IconTextPlus, IconEye, IconEyeOff } from '@tabler/icons-react';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
-import AIPopover from './AIPopover';
+import AIPopover from './AiPopover';
 import AISuggestionsManager from './backend/aiSuggestionsManager';
 
 // Helper funcs
