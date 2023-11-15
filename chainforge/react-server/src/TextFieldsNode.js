@@ -45,13 +45,14 @@ const TextFieldsNode = ({ data, id }) => {
   // Whether the text fields should be in a loading state
   const [isLoading, setLoading] = useState(false);
 
-  // Instantiate an instance of the AI Suggestions Manager just once for this node.
   const [aiSuggestionsManager] = useState(new AISuggestionsManager(
+    // Do nothing when suggestions are simply updated because we are managing the placeholder state manually here.
     undefined,
+    // When suggestions are refreshed, throw out existing placeholders.
     () => setPlaceholders({})
   ));
 
-  // Placeholders to show in the textareas
+  // Placeholders to show in the textareas. Object keyed by textarea index.
   let [placeholders, setPlaceholders] = useState({});
 
   const getUID = useCallback((textFields) => {
@@ -232,6 +233,18 @@ const TextFieldsNode = ({ data, id }) => {
     pingOutputNodes(id);
   }
 
+  // Whether a placeholder is needed for the text field with id `i`.
+  function placeholderNeeded(i) {
+    return !textfieldsValues[i] && !placeholders[i] && flags["aiAutocomplete"];
+  }
+
+  // Load a placeholder into placeholders for the text field with id `i` if needed.
+  function loadPlaceholderIfNeeded(i) {
+    if (placeholderNeeded(i)) {
+      placeholders[i] = aiSuggestionsManager.popSuggestions();
+    }
+  }
+
   return (
     <div className="text-fields-node cfnode">
       <NodeLabel title={data.title || 'TextFields Node'} 
@@ -250,15 +263,8 @@ const TextFieldsNode = ({ data, id }) => {
       <Skeleton visible={isLoading}>
         <div ref={setRef}>
           {Object.keys(textfieldsValues).map(i => {
-            // If the value is empty, use placeholder.
-            let placeholder = '';
-            if (textfieldsValues[i] === '') {
-              // If the placeholder is not set, set it.
-              if (!placeholders[i] || placeholders[i] === '') {
-                placeholders[i] = aiSuggestionsManager.popSuggestions();
-              }
-              placeholder = placeholders[i];
-            }
+            loadPlaceholderIfNeeded(i);
+            const placeholder = placeholders[i];
             return (
               <div className="input-field" key={i}>
                 <Textarea id={i} name={i} 
