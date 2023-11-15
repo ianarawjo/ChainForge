@@ -1,6 +1,20 @@
-import { union, isSubset, isExtension, isExtensionIgnoreEmpty } from "../setUtils";
+import { union, isSubset, isExtension, isExtensionIgnoreEmpty, isEqual } from "../setUtils";
 
 describe("setUtils", () => {
+  describe("isEqual", () => {
+    it("returns true if two sets are equal", () => {
+      const setA = new Set([1, 2, 3]);
+      const setB = new Set([1, 2, 3]);
+      expect(isEqual(setA, setB)).toBe(true);
+    });
+
+    it("returns false if two sets are not equal", () => {
+      const setA = new Set([1, 2, 3]);
+      const setB = new Set([1, 2, 4]);
+      expect(isEqual(setA, setB)).toBe(false);
+    });
+  });
+
   describe("union", () => {
     it("returns the union of two sets", () => {
       const setA = new Set([1, 2, 3]);

@@ -1,3 +1,5 @@
+import { isEqual } from "./setUtils";
+
 function len(o: object | string | Array<any>): number {
     // Acts akin to Python's builtin 'len' method
     if (Array.isArray(o)) {
@@ -22,6 +24,15 @@ function isDict(o: any): boolean {
  */
 export function escapeBraces(str: string): string {
     return str.replace(/[{}]/g, '\\$&');
+}
+
+/**
+ * Whether s1 and s2 contain the same set of template variables.
+ */
+export function containsSameTemplateVariables(s1: string, s2: string): boolean {
+  const vars1 = new Set(new StringTemplate(s1).get_vars());
+  const vars2 = new Set(new StringTemplate(s2).get_vars());
+  return isEqual(vars1, vars2);
 }
 
 /**

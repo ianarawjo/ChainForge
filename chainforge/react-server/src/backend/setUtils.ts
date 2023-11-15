@@ -1,3 +1,8 @@
+// Returns whether two sets are equal.
+export function isEqual<T>(a: Set<T>, b: Set<T>): boolean {
+  return isSubset(a, b) && isSubset(b, a);
+}
+
 // Returns the union of two sets.
 export function union<T>(a: Set<T>, b: Set<T>): Set<T> {
   return new Set([...a, ...b]);
