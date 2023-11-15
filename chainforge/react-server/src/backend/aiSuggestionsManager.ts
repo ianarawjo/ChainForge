@@ -3,7 +3,7 @@ import { debounce } from "lodash";
 import { isExtensionIgnoreEmpty } from "./setUtils";
 
 const DEBOUNCE_MILLISECONDS = 1000;
-const MIN_ROWS_FOR_SUGGESTIONS = 2;
+const MIN_ROWS_FOR_SUGGESTIONS = 1;
 const SUGGESTIONS_TO_CACHE = 5;
 
 /**
