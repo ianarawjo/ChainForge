@@ -64,7 +64,7 @@
     "net": "^1.0.2",
     "net-browserify": "^0.2.4",
     "node-fetch": "^2.6.11",
-    "openai": "^3.3.0",
+    "openai": "~3.3.0",
     "os-browserify": "^0.3.0",
     "papaparse": "^5.4.1",
     "path-browserify": "^1.0.1",
