@@ -5,6 +5,7 @@ export type LLM = string | NativeLLM;
 export enum NativeLLM {
   // OpenAI Chat
   OpenAI_ChatGPT = "gpt-3.5-turbo",
+  OpenAI_ChatGPT_1106 = "gpt-3.5-turbo-1106",
   OpenAI_ChatGPT_16k = "gpt-3.5-turbo-16k",
   OpenAI_ChatGPT_16k_0613 = "gpt-3.5-turbo-16k-0613",
   OpenAI_ChatGPT_0301 = "gpt-3.5-turbo-0301",
@@ -12,6 +13,7 @@ export enum NativeLLM {
   OpenAI_GPT4 = "gpt-4",
   OpenAI_GPT4_0314 = "gpt-4-0314",
   OpenAI_GPT4_0613 = "gpt-4-0613",
+  OpenAI_GPT4_1106_Prev = "gpt-4-1106-preview",
   OpenAI_GPT4_32k = "gpt-4-32k",
   OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
   OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
@@ -19,6 +21,7 @@ export enum NativeLLM {
   // OpenAI Text Completions
   OpenAI_Davinci003 = "text-davinci-003",
   OpenAI_Davinci002 = "text-davinci-002",
+  OpenAI_ChatGPT_Instruct = "gpt-3.5-turbo-instruct",
 
   // Azure OpenAI Endpoints
   Azure_OpenAI = "azure-openai",

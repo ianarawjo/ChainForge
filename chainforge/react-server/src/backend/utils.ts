@@ -190,7 +190,9 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
 
   // Get the correct function to call
   let openai_call: any;
-  if (modelname.includes('davinci')) {
+  if (modelname.includes('davinci') || modelname.includes('instruct')) {
+    if ('response_format' in query)
+      delete query.response_format;
     // Create call to text completions model
     openai_call = openai.createCompletion.bind(openai);
     query['prompt'] = prompt;
@@ -811,9 +813,10 @@ return response.map((r: string) => r.trim());
  */
 export function extract_responses(response: Array<string | Dict> | Dict, llm: LLM | string): Array<string> {
   let llm_provider: LLMProvider = getProvider(llm as LLM);
+  const llm_name = llm.toString().toLowerCase();
   switch (llm_provider) {
     case LLMProvider.OpenAI:
-      if (llm.toString().toLowerCase().includes('davinci'))
+      if (llm_name.includes('davinci') || llm_name.includes('instruct'))
         return _extract_openai_completion_responses(response);
       else
         return _extract_chatgpt_responses(response);
