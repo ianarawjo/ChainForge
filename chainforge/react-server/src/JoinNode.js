@@ -17,19 +17,19 @@ const formattingOptions = [
   {value: "[]",   label:'["list", "of", "strings"]'}
 ];
 
-const joinTexts = (texts, formatting) => {
+const joinTexts = (texts, format) => {
   const escaped_texts = texts.map(t => escapeBraces(t));
 
-  if (formatting === "\n\n" || formatting === "\n")
-    return escaped_texts.join(formatting);
-  else if (formatting === "-")
+  if (format === "\n\n" || format === "\n")
+    return escaped_texts.join(format);
+  else if (format === "-")
     return escaped_texts.map((t) => ('- ' + t)).join("\n");
-  else if (formatting === "1.")
+  else if (format === "1.")
     return escaped_texts.map((t, i) => (`${i+1}. ${t}`)).join("\n");
-  else if (formatting === '[]')
+  else if (format === '[]')
     return JSON.stringify(escaped_texts);
 
-  console.error(`Could not join: Unknown formatting option: ${formatting}`);
+  console.error(`Could not join: Unknown formatting option: ${format}`);
   return escaped_texts;
 };
 
