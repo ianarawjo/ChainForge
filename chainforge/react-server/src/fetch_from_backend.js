@@ -11,7 +11,7 @@ async function _route_to_js_backend(route, params) {
     case 'grabResponses':
       return grabResponses(params.responses);
     case 'countQueriesRequired':
-      return countQueries(params.prompt, clone(params.vars), clone(params.llms), params.n, params.chat_histories, params.id);
+      return countQueries(params.prompt, clone(params.vars), clone(params.llms), params.n, params.chat_histories, params.id, params.cont_only_w_prior_llms);
     case 'generatePrompts':
       return generatePrompts(params.prompt, clone(params.vars));
     case 'queryllm':

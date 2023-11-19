@@ -209,6 +209,15 @@ function extract_llm_params(llm_spec: Dict | string): Dict {
     return {};
 }
 
+function filterVarsByLLM(vars: Dict, llm_key: string): Dict {
+  let _vars = {};
+  Object.entries(vars).forEach(([key, val]) => {
+    const vs = Array.isArray(val) ? val : [val];
+    _vars[key] = vs.filter((v) => (typeof v === 'string' || v?.llm === undefined || (v?.llm?.key === llm_key)));
+  });
+  return _vars;
+}
+
 /**
  * Test equality akin to Python's list equality.
  */
@@ -395,14 +404,24 @@ export async function countQueries(prompt: string,
                                    llms: Array<Dict | string>, 
                                    n: number, 
                                    chat_histories?: ChatHistoryInfo[] | {[key: string]: ChatHistoryInfo[]}, 
-                                   id?: string): Promise<Dict> {
+                                   id?: string,
+                                   cont_only_w_prior_llms?: boolean): Promise<Dict> {
   if (chat_histories === undefined) chat_histories = [ undefined ];
 
   let gen_prompts: PromptPermutationGenerator;
-  let all_prompt_permutations: Array<PromptTemplate>;
+  let all_prompt_permutations: Array<PromptTemplate> | Dict;
   try {
     gen_prompts = new PromptPermutationGenerator(prompt);
-    all_prompt_permutations = Array.from(gen_prompts.generate(vars));
+    if (cont_only_w_prior_llms && Array.isArray(llms) && llms.length > 1) {
+      all_prompt_permutations = {};
+      llms.forEach(llm_spec => {
+        const llm_key = extract_llm_key(llm_spec);
+        all_prompt_permutations[llm_key] = Array.from(gen_prompts.generate(filterVarsByLLM(vars, llm_key)));
+      });
+    } else {
+      all_prompt_permutations = Array.from(gen_prompts.generate(vars));
+    }
+
   } catch (err) {
     return {error: err.message};
   }
@@ -432,6 +451,9 @@ export async function countQueries(prompt: string,
   llms.forEach(llm_spec => {
     const llm_key = extract_llm_key(llm_spec);
 
+    // Get only the relevant prompt permutations
+    let _all_prompt_perms = cont_only_w_prior_llms ? all_prompt_permutations[llm_key] : all_prompt_permutations;
+
     // Get the relevant chat histories for this LLM:
     const chat_hists = (!Array.isArray(chat_histories)
                         ? chat_histories[extract_llm_nickname(llm_spec)] 
@@ -448,7 +470,7 @@ export async function countQueries(prompt: string,
         const cache_llm_responses = load_from_cache(cache_filename);
 
         // Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
-        all_prompt_permutations.forEach(prompt => {
+        _all_prompt_perms.forEach(prompt => {
           let prompt_str = prompt.toString();
 
           add_to_num_responses_req(llm_key, n * chat_hists.length);
@@ -490,7 +512,7 @@ export async function countQueries(prompt: string,
     }
     
     if (!found_cache) {
-      all_prompt_permutations.forEach(perm => {
+      _all_prompt_perms.forEach(perm => {
         add_to_num_responses_req(llm_key, n * chat_hists.length);
         add_to_missing_queries(llm_key, perm.toString(), n * chat_hists.length);
       });
@@ -625,11 +647,7 @@ export async function queryLLM(id: string,
 
     if (cont_only_w_prior_llms) {
       // Filter vars so that only the var values with the matching LLM are used, or otherwise values with no LLM metadata
-      _vars = {};
-      Object.entries(vars).forEach(([key, val]) => {
-        const vs = Array.isArray(val) ? val : [val];
-        _vars[key] = vs.filter((v) => (typeof v === 'string' || v?.llm === undefined || (v?.llm?.key === llm_key)));
-      });
+      _vars = filterVarsByLLM(vars, llm_key);
     }
 
     let chat_hists = ((chat_histories !== undefined && !Array.isArray(chat_histories)) 

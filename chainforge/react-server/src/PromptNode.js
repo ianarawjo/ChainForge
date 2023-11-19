@@ -285,6 +285,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         id: id, 
         chat_histories: chat_histories,
         n: numGenerations,
+        cont_only_w_prior_llms: showContToggle && contWithPriorLLMs,
     }, rejected).then(function(json) {
         if (!json || !json.counts) {
             throw new Error('There was no response from the server.');
@@ -331,15 +332,21 @@ const PromptNode = ({ data, id, type: node_type }) => {
         pulled_chats = bucketChatHistoryInfosByLLM(pulled_chats);
     }
 
+    // Pull the input data
+    const pulled_vars = pullInputData(templateVars, id);
+    updateShowContToggle(pulled_vars);
+
+    // Whether to continue with only the prior LLMs, for each value in vars dict
+    if (node_type !== 'chat' && showContToggle && contWithPriorLLMs) {
+        // We need to draw the LLMs to query from the input responses
+        _llmItemsCurrState = getLLMsInPulledInputData(pulled_vars);
+    }
+
     // Check if there's at least one model in the list; if not, nothing to run on.
     if (!_llmItemsCurrState || _llmItemsCurrState.length == 0) {
         setRunTooltip('No LLMs to query.');
         return;
     }
-
-    // Pull the input data
-    const pulled_vars = pullInputData(templateVars, id);
-    updateShowContToggle(pulled_vars);
     
     const llms = _llmItemsCurrState.map(item => item.model);
     const num_llms = llms.length;
