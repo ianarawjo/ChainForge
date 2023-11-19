@@ -94,6 +94,7 @@ const truncStr = (s, maxLen) => {
   else
       return s;
 };
+
 const groupResponsesBy = (responses, keyFunc) => {
   let responses_by_key = {};
   let unspecified_group = [];
@@ -336,7 +337,7 @@ const JoinNode = ({ data, id }) => {
     <BaseNode classNames="join-node" nodeId={id}>
     <NodeLabel title={data.title || 'Join Node'} 
                 nodeId={id}
-                icon={<IconArrowMerge size='14pt'/>}
+                icon={<IconArrowMerge size='12pt'/>}
                 customButtons={[
                   <JoinedTextsPopover key='joined-text-previews' textInfos={joinedTexts} onHover={handleOnConnect} onClick={openInfoModal} getColorForLLM={getColorForLLMAndSetIfNotFound} />
                 ]} />

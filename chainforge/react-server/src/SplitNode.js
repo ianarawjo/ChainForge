@@ -4,19 +4,22 @@ import useStore from './store';
 import BaseNode from './BaseNode';
 import NodeLabel from './NodeLabelComponent';
 import fetch_from_backend from './fetch_from_backend';
-import { IconArrowMerge, IconList } from '@tabler/icons-react';
+import { IconArrowMerge, IconArrowsSplit, IconList } from '@tabler/icons-react';
 import { Divider, NativeSelect, Text, Popover, Tooltip, Center, Modal, Box } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { escapeBraces } from './backend/template';
+import { processCSV } from "./backend/utils";
+
+import { fromMarkdown } from "mdast-util-from-markdown";
 
 const formattingOptions = [
-  {value: "-",    label:"- list items"},
+  {value: "list",    label:"- list items"},
   {value: "\n",   label:"newline \\n"},
   {value: "\n\n", label:"double newline \\n\\n"},
-  {value: "```",  label:"code blocks"},
-  {value: "<p>",  label:"paragraphs (markdown)"},
+  {value: ",",    label:"commas (,)"},
+  {value: "code",  label:"code blocks"},
+  {value: "paragraph",  label:"paragraphs (md)"},
 ];
-const DEFAULT_SPLIT_FORMAT = formattingOptions[0];
 
 const deepcopy = (v) => JSON.parse(JSON.stringify(v));
 const deepcopy_and_modify = (v, new_val_dict) => {
@@ -26,13 +29,96 @@ const deepcopy_and_modify = (v, new_val_dict) => {
   });
   return new_v;
 };
+const excluding_key = (d, key) => {
+  if (!(key in d)) return d;
+  const copy_d = {...d};
+  delete copy_d[key];
+  return copy_d;
+};
+const truncStr = (s, maxLen) => {
+  if (s.length > maxLen) // Cut the name short if it's long
+      return s.substring(0, maxLen) + '...'
+  else
+      return s;
+};
+const tagMetadataWithLLM = (input_data) => {
+  let new_data = {};
+  Object.entries(input_data).forEach(([varname, resp_objs]) => {
+    new_data[varname] = resp_objs.map(r => {
+      if (!r || typeof r === 'string' || !r?.llm?.key) return r;
+      let r_copy = JSON.parse(JSON.stringify(r));
+      r_copy.metavars["__LLM_key"] = r.llm.key;
+      return r_copy;
+    });
+  });
+  return new_data;
+};
+const extractLLMLookup = (input_data) => {
+  let llm_lookup = {};
+  Object.entries(input_data).forEach(([varname, resp_objs]) => {
+    resp_objs.forEach(r => {
+      if (typeof r === 'string' || !r?.llm?.key || r.llm.key in llm_lookup) return;
+      llm_lookup[r.llm.key] = r.llm;
+    });
+  });
+  return llm_lookup;
+};
+const removeLLMTagFromMetadata = (metavars) => {
+  if (!('__LLM_key' in metavars))
+    return metavars; 
+  let mcopy = JSON.parse(JSON.stringify(metavars));
+  delete metavars['__LLM_key'];
+  return mcopy;
+};
+
+/** Flattens markdown AST as dict to text (string) */
+function compileTextFromMdAST(md) {
+  if (md?.value !== undefined)
+    return md.value ?? "";
+  else if (md?.children?.length > 0)
+    return md.children.map(compileTextFromMdAST).join("");
+  return "";
+}
 
 const splitText = (s, format) => {
   // If format is newline separators, we can just split:
   if (format === "\n\n" || format === "\n")
-    return s.split(format);
+    return s.split(format).map(s => escapeBraces(s.trim())).filter(s => s.length > 0);
+  else if (format === ',')
+    return processCSV(s).map(s => escapeBraces(s)).filter(s => s.length > 0);
+
   // Other formatting rules require markdown parsing:
-  
+  // Parse string as markdown
+  const md = fromMarkdown(s);
+  let results = [];
+
+  const extract_md_blocks = (block_type) => {
+    if (md?.children.length > 0 && md.children.some(c => c.type === block_type)) {
+      // Find the relevant block(s) that appear in the markdown text, at the root level:
+      const md_blocks = md.children.filter(c => c.type === block_type);
+      for (const md_block of md_blocks) {
+        if (block_type === 'list') {
+          // Extract the list items, flattening the ASTs to text 
+          const items = "children" in md_block ? md_block.children : [];
+          for (const item of items) {
+            const text = compileTextFromMdAST(item).trim();
+            results.push(text);
+          }
+        } else if (md_block?.children !== undefined) {
+          results.push(compileTextFromMdAST(md_block).trim());
+        }
+        if (md_block.value !== undefined)
+          results.push(md_block.value);
+      }
+    }
+  };
+
+  extract_md_blocks(format);
+  results = results.filter(s => s.length > 0).map(escapeBraces);
+
+  // NOTE: It is possible to have an empty [] results after split.
+  // This happens if the splitter is a markdown separator, and none were found in the input(s).
+  return results;
 };
 
 const displaySplitTexts = (textInfos, getColorForLLM) => {
@@ -47,7 +133,7 @@ const displaySplitTexts = (textInfos, getColorForLLM) => {
       </div>);
     });
     
-    const ps = (<pre className='small-response'>{info.text || info}</pre>);
+    const ps = (<pre className='small-response'>{info.text ?? info}</pre>);
 
     return (
       <div key={"r"+idx} className="response-box" style={{ backgroundColor: (info.llm ? color_for_llm(info.llm?.name) : '#ddd'), width: `100%`}}>
@@ -106,38 +192,64 @@ const SplitNode = ({ data, id }) => {
   // Global lookup for what color to use per LLM
   const getColorForLLMAndSetIfNotFound = useStore((state) => state.getColorForLLMAndSetIfNotFound);
 
-  const [splitOnFormat, setSplitOnFormat] = useState(DEFAULT_SPLIT_FORMAT);
+  const [splitOnFormat, setSplitOnFormat] = useState(data.splitFormat || 'list');
 
   const handleOnConnect = useCallback(() => {
+    const formatting = splitOnFormat;
+
+    console.log('split');
+
     let input_data = pullInputData(["__input"], id);
     if (!input_data?.__input) {
       console.warn('Split Node: No input data detected.');
       return;
     }
 
-    // The naive splitter is just to look at every
-    // response object's text value, and split that into N objects
-    // that have the exact same properties except for their text values.
-    let output_data = {};
-    Object.entries(input_data).forEach(([key, objs]) => {
-      const updated_objs = objs.map(resp_obj => {
-        if (typeof resp_obj === "string") return splitText(resp_obj, splitOnFormat);
-        const texts = splitText(resp_obj?.text);
-        if (texts !== undefined && texts.length > 1)
+    // Create lookup table for LLMs in input, indexed by llm key
+    const llm_lookup = extractLLMLookup(input_data);
+
+    // Tag all response objects in the input data with a metavar for their LLM (using the llm key as a uid)
+    input_data = tagMetadataWithLLM(input_data);
+
+    // Generate (flatten) the inputs, which could be recursively chained templates 
+    // and a mix of LLM resp objects, templates, and strings. 
+    // (We tagged each object with its LLM key so that we can use built-in features to keep track of the LLM associated with each response object)
+    fetch_from_backend('generatePrompts', {
+      prompt: "{__input}",
+      vars: input_data,
+    }).then(promptTemplates => {
+
+      // Convert the templates into response objects
+      let resp_objs = promptTemplates.map(p => ({
+        text: p.toString(),
+        fill_history: excluding_key(p.fill_history, "__input"),
+        llm: "__LLM_key" in p.metavars ? llm_lookup[p.metavars['__LLM_key']] : undefined,
+        metavars: removeLLMTagFromMetadata(p.metavars),
+      }));
+
+      // The naive splitter is just to look at every
+      // response object's text value, and split that into N objects
+      // that have the exact same properties except for their text values.
+      const split_objs = resp_objs.map(resp_obj => {
+        if (typeof resp_obj === "string") return splitText(resp_obj, formatting);
+        const texts = splitText(resp_obj?.text, formatting);
+        if (texts !== undefined && texts.length >= 1)
           return texts.map(t => deepcopy_and_modify(resp_obj, {text: t}));
+        else if (texts?.length === 0)
+          return [];
         else
           return deepcopy(resp_obj); 
       }).flat(); // flatten the split response objects
-      output_data[key] = updated_objs;
+
+      setSplitTexts(split_objs);
+      setDataPropsForNode(id, { fields: split_objs });
     });
 
-    setSplitTexts(output_data);
-    setDataPropsForNode(id, { fields: output_data });
-  }, [pullInputData, splitOnFormat]);
+  }, [pullInputData, splitOnFormat, splitText, extractLLMLookup, tagMetadataWithLLM]);
 
   if (data.input) {
     // If there's a change in inputs...
-    if (data.input != pastInputs) {
+    if (data.input !== pastInputs) {
       setPastInputs(data.input);
       handleOnConnect();
     }
@@ -160,7 +272,7 @@ const SplitNode = ({ data, id }) => {
   <BaseNode classNames="split-node" nodeId={id}>
     <NodeLabel title={data.title || 'Split Node'} 
                 nodeId={id}
-                icon={<IconArrowMerge size='14pt'/>}
+                icon={<IconArrowsSplit size='12pt'/>}
                 customButtons={[
                   <SplitTextsPopover key='split-text-previews' textInfos={splitTexts} onHover={handleOnConnect} onClick={openInfoModal} getColorForLLM={getColorForLLMAndSetIfNotFound} />
                 ]} />
@@ -169,17 +281,19 @@ const SplitNode = ({ data, id }) => {
             {displaySplitTexts(splitTexts, getColorForLLMAndSetIfNotFound)}
         </Box>
     </Modal>
-    <div style={{display: 'flex', justifyContent: 'left', maxWidth: '100%', marginBottom: '10px'}}>
-      <Text mt='3px' mr='xs'>Split on</Text>
-      <NativeSelect onChange={(e) => setSplitOnFormat(e.target.value)}
-                    className='nodrag nowheel'
+    <NativeSelect onChange={(e) => {setSplitOnFormat(e.target.value); setDataPropsForNode(id, {splitFormat: e.target.value});}}
+                    className='nowheel'
+                    label={'Split on'}
                     data={formattingOptions}
                     size="xs"
                     value={splitOnFormat}
                     miw='80px'
-                    mr='xs' />
-    </div>
-    <Text size='xs'>All other parts of the LLM response will be ignored.</Text>
+                    mr='xs'
+                    mt='-6px' />
+    { !splitOnFormat?.includes('\n') ?
+        <Text color='gray' size='8pt' mt='xs' maw='150px'>All other parts of the LLM response will be ignored.</Text>
+      : <></>
+    }
     <Handle
       type="target"
       position="left"

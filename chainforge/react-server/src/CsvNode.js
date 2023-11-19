@@ -5,6 +5,7 @@ import NodeLabel from './NodeLabelComponent'
 import { IconCsv } from '@tabler/icons-react';
 import { Handle } from 'reactflow';
 import BaseNode from './BaseNode';
+import { processCSV } from "./backend/utils"
 
 const CsvNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
@@ -21,20 +22,10 @@ const CsvNode = ({ data, id }) => {
         }
     }, []);
 
-    const processCsv = (csv) => {
-        var matches = csv.match(/(\s*"[^"]+"\s*|\s*[^,]+|,)(?=,|$)/g);
-        if (!matches) return;
-        for (var n = 0; n < matches.length; ++n) {
-            matches[n] = matches[n].trim();
-            if (matches[n] == ',') matches[n] = '';
-        }
-        return matches.map(e => e.trim()).filter(e => e.length > 0);
-    }
-
     // Handle a change in a text fields' input.
     const handleInputChange = useCallback((event) => {
         // Update the data for this text fields' id.
-        let new_data = { 'text': event.target.value, 'fields': processCsv(event.target.value) };
+        let new_data = { 'text': event.target.value, 'fields': processCSV(event.target.value) };
         setDataPropsForNode(id, new_data);
         pingOutputNodes(id);
     }, [id, pingOutputNodes, setDataPropsForNode]);

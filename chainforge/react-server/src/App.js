@@ -8,7 +8,7 @@ import ReactFlow, {
 } from 'reactflow';
 import { Button, Menu, LoadingOverlay, Text, Box, List, Loader, Tooltip } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
-import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink, IconRobot, IconRuler2, IconArrowMerge } from '@tabler/icons-react';
+import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink, IconRobot, IconRuler2, IconArrowMerge, IconArrowsSplit } from '@tabler/icons-react';
 import RemoveEdge from './RemoveEdge';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
@@ -20,6 +20,7 @@ import AlertModal from './AlertModal';
 import CsvNode from './CsvNode';
 import TabularDataNode from './TabularDataNode';
 import JoinNode from './JoinNode';
+import SplitNode from './SplitNode';
 import CommentNode from './CommentNode';
 import GlobalSettingsModal from './GlobalSettingsModal';
 import ExampleFlowsModal from './ExampleFlowsModal';
@@ -89,6 +90,7 @@ const nodeTypes = {
   table: TabularDataNode,
   comment: CommentNode,
   join: JoinNode,
+  split: SplitNode,
 };
 
 const edgeTypes = {
@@ -231,6 +233,10 @@ const App = () => {
   const addJoinNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'join-'+Date.now(), type: 'join', data: {}, position: {x: x-200, y:y-100} });
+  };
+  const addSplitNode = () => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'split-'+Date.now(), type: 'split', data: {}, position: {x: x-200, y:y-100} });
   };
 
   const onClickExamples = () => {
@@ -725,11 +731,12 @@ const App = () => {
 
       <div id="custom-controls" style={{position: 'fixed', left: '10px', top: '10px', zIndex:8}}>
         <Menu transitionProps={{ transition: 'pop-top-left' }}
-                          position="top-start"
-                          width={220}
-                          closeOnClickOutside={true}
-                          closeOnEscape
-                      >
+              position="top-start"
+              width={220}
+              closeOnClickOutside={true}
+              closeOnEscape
+              styles={{item: { maxHeight: '28px' }}}
+        >
           <Menu.Target>
             <Button size="sm" variant="gradient" compact mr='sm'>Add Node +</Button>
           </Menu.Target>
@@ -778,6 +785,9 @@ const App = () => {
             <Menu.Label>Processors</Menu.Label>
             <MenuTooltip label="Concatenate responses or input data together before passing into later nodes, within or across variables and LLMs.">
               <Menu.Item onClick={addJoinNode} icon={<IconArrowMerge size='14pt' />}> Join Node </Menu.Item>
+            </MenuTooltip>
+            <MenuTooltip label="Split responses or input data by some format. For instance, you can split a markdown list into separate items.">
+              <Menu.Item onClick={addSplitNode} icon={<IconArrowsSplit size='14pt' />}> Split Node </Menu.Item>
             </MenuTooltip>
             <Menu.Divider />
             <Menu.Label>Misc</Menu.Label>
