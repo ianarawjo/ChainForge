@@ -92,6 +92,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   // Get state from the Zustand store:
   const edges = useStore((state) => state.edges);
   const pullInputData = useStore((state) => state.pullInputData);
+  const getImmediateInputNodeTypes = useStore((state) => state.getImmediateInputNodeTypes);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
 
@@ -135,7 +136,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const triggerAlert = useCallback((msg) => {
     setProgress(undefined);
     llmListContainer?.current?.resetLLMItemsProgress();
-    alertModal.current.trigger(msg);
+    alertModal?.current?.trigger(msg);
   }, [llmListContainer, alertModal]);
 
   const showResponseInspector = useCallback(() => {
@@ -174,8 +175,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   const updateShowContToggle = useCallback((pulled_data) => {
     if (node_type === 'chat') return; // always show when chat node
-    setShowContToggle(pulled_data && countNumLLMs(pulled_data) > 0);
-  }, [setShowContToggle, countNumLLMs]);
+    const hasPromptInput = getImmediateInputNodeTypes(templateVars, id).some(t => ['prompt', 'chat'].includes(t));
+    setShowContToggle(hasPromptInput || (pulled_data && countNumLLMs(pulled_data) > 0));
+  }, [setShowContToggle, countNumLLMs, getImmediateInputNodeTypes, templateVars, id]);
 
   const handleOnConnect = useCallback(() => {
     if (node_type === 'chat') return; // always show when chat node

@@ -412,7 +412,7 @@ export async function countQueries(prompt: string,
   let all_prompt_permutations: Array<PromptTemplate> | Dict;
   try {
     gen_prompts = new PromptPermutationGenerator(prompt);
-    if (cont_only_w_prior_llms && Array.isArray(llms) && llms.length > 1) {
+    if (cont_only_w_prior_llms && Array.isArray(llms)) {
       all_prompt_permutations = {};
       llms.forEach(llm_spec => {
         const llm_key = extract_llm_key(llm_spec);

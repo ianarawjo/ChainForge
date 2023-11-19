@@ -205,6 +205,21 @@ const useStore = create((set, get) => ({
     }
   },
 
+  // Get the types of nodes attached immediately as input to the given node
+  getImmediateInputNodeTypes: (_targetHandles, node_id) => {
+    const getNode = get().getNode;
+    const edges = get().edges; 
+    let inputNodeTypes = [];
+    edges.forEach(e => {
+      if (e.target == node_id && _targetHandles.includes(e.targetHandle)) {
+        const src_node = getNode(e.source);
+        if (src_node && src_node.type !== undefined)
+          inputNodeTypes.push(src_node.type);
+      }
+    });
+    return inputNodeTypes;
+  },
+
   // Pull all inputs needed to request responses.
   // Returns [prompt, vars dict]
   pullInputData: (_targetHandles, node_id) => {
