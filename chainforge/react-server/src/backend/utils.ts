@@ -333,6 +333,7 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
       anthr_chat_context += ' ' + chat_msg.content;
     }
     wrapped_prompt = anthr_chat_context + wrapped_prompt;  // prepend the chat context
+    delete params.chat_history;
   }
 
   // Format query
@@ -363,6 +364,7 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
         'User-Agent': "Anthropic/JS 0.5.0",
         'X-Api-Key': ANTHROPIC_API_KEY,
       };
+      console.log(query);
       const resp = await route_fetch(url, 'POST', headers, query);
       responses.push(resp);
 

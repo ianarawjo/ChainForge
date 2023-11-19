@@ -120,7 +120,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   // For continuing with prior LLMs toggle
   const [contWithPriorLLMs, setContWithPriorLLMs] = useState(data.contChat !== undefined ? data.contChat : (node_type === 'chat' ? true : false));
-  const [showContToggle, setShowContToggle] = useState(false);
+  const [showContToggle, setShowContToggle] = useState(node_type === 'chat');
   const [contToggleDisabled, setContChatToggleDisabled] = useState(false);
 
   // For an info pop-up that shows all the prompts that will be sent off
@@ -173,10 +173,12 @@ const PromptNode = ({ data, id, type: node_type }) => {
   }, [setDataPropsForNode, signalDirty]);
 
   const updateShowContToggle = useCallback((pulled_data) => {
+    if (node_type === 'chat') return; // always show when chat node
     setShowContToggle(pulled_data && countNumLLMs(pulled_data) > 0);
   }, [setShowContToggle, countNumLLMs]);
 
   const handleOnConnect = useCallback(() => {
+    if (node_type === 'chat') return; // always show when chat node
     // Re-pull data and update show cont toggle:
     updateShowContToggle(pullInputData(templateVars, id));
   }, [templateVars, id, pullInputData, updateShowContToggle]);
@@ -186,7 +188,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     const found_template_vars = new Set(extractBracketedSubstrings(text));  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
 
     if (!setsAreEqual(found_template_vars, new Set(templateVars))) {
-        updateShowContToggle(pullInputData(found_template_vars, id));
+        if (node_type !== 'chat') updateShowContToggle(pullInputData(found_template_vars, id));
         setTemplateVars(Array.from(found_template_vars));
     }
   }, [setTemplateVars, templateVars, pullInputData, id]);
@@ -285,7 +287,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         id: id, 
         chat_histories: chat_histories,
         n: numGenerations,
-        cont_only_w_prior_llms: showContToggle && contWithPriorLLMs,
+        cont_only_w_prior_llms: node_type !== 'chat' ? (showContToggle && contWithPriorLLMs) : undefined,
     }, rejected).then(function(json) {
         if (!json || !json.counts) {
             throw new Error('There was no response from the server.');
