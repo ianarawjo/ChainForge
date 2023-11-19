@@ -893,3 +893,13 @@ export const filterDict = (dict: Dict, keyFilterFunc: (key: string) => boolean) 
       return acc;
   }, {});
 };
+
+export const processCSV = (csv: string): string[] => {
+  var matches = csv.match(/(\s*"[^"]+"\s*|\s*[^,]+|,)(?=,|$)/g);
+  if (!matches) return;
+  for (var n = 0; n < matches.length; ++n) {
+      matches[n] = matches[n].trim();
+      if (matches[n] == ',') matches[n] = '';
+  }
+  return matches.map(e => e.trim()).filter(e => e.length > 0);
+}

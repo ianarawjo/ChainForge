@@ -17,19 +17,19 @@ const formattingOptions = [
   {value: "[]",   label:'["list", "of", "strings"]'}
 ];
 
-const joinTexts = (texts, formatting) => {
+const joinTexts = (texts, format) => {
   const escaped_texts = texts.map(t => escapeBraces(t));
 
-  if (formatting === "\n\n" || formatting === "\n")
-    return escaped_texts.join(formatting);
-  else if (formatting === "-")
+  if (format === "\n\n" || format === "\n")
+    return escaped_texts.join(format);
+  else if (format === "-")
     return escaped_texts.map((t) => ('- ' + t)).join("\n");
-  else if (formatting === "1.")
+  else if (format === "1.")
     return escaped_texts.map((t, i) => (`${i+1}. ${t}`)).join("\n");
-  else if (formatting === '[]')
+  else if (format === '[]')
     return JSON.stringify(escaped_texts);
 
-  console.error(`Could not join: Unknown formatting option: ${formatting}`);
+  console.error(`Could not join: Unknown formatting option: ${format}`);
   return escaped_texts;
 };
 
@@ -72,7 +72,7 @@ const tagMetadataWithLLM = (input_data) => {
 };
 const extractLLMLookup = (input_data) => {
   let llm_lookup = {};
-  Object.entries(input_data).forEach(([varname, resp_objs]) => {
+  Object.values(input_data).forEach((resp_objs) => {
     resp_objs.forEach(r => {
       if (typeof r === 'string' || !r?.llm?.key || r.llm.key in llm_lookup) return;
       llm_lookup[r.llm.key] = r.llm;
@@ -84,16 +84,17 @@ const removeLLMTagFromMetadata = (metavars) => {
   if (!('__LLM_key' in metavars))
     return metavars; 
   let mcopy = JSON.parse(JSON.stringify(metavars));
-  delete metavars['__LLM_key'];
+  delete mcopy['__LLM_key'];
   return mcopy;
 };
 
 const truncStr = (s, maxLen) => {
   if (s.length > maxLen) // Cut the name short if it's long
-      return s.substring(0, maxLen) + '...'
+      return s.substring(0, maxLen) + '...';
   else
       return s;
 };
+
 const groupResponsesBy = (responses, keyFunc) => {
   let responses_by_key = {};
   let unspecified_group = [];
@@ -192,7 +193,7 @@ const JoinNode = ({ data, id }) => {
   const handleOnConnect = useCallback(() => {
     let input_data = pullInputData(["__input"], id);
     if (!input_data?.__input) {
-      console.warn('Join Node: No input data detected.');
+      // soft fail
       return;
     }
 
@@ -336,7 +337,7 @@ const JoinNode = ({ data, id }) => {
     <BaseNode classNames="join-node" nodeId={id}>
     <NodeLabel title={data.title || 'Join Node'} 
                 nodeId={id}
-                icon={<IconArrowMerge size='14pt'/>}
+                icon={<IconArrowMerge size='12pt'/>}
                 customButtons={[
                   <JoinedTextsPopover key='joined-text-previews' textInfos={joinedTexts} onHover={handleOnConnect} onClick={openInfoModal} getColorForLLM={getColorForLLMAndSetIfNotFound} />
                 ]} />
