@@ -333,6 +333,7 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
       anthr_chat_context += ' ' + chat_msg.content;
     }
     wrapped_prompt = anthr_chat_context + wrapped_prompt;  // prepend the chat context
+    delete params.chat_history;
   }
 
   // Format query
@@ -363,6 +364,7 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
         'User-Agent': "Anthropic/JS 0.5.0",
         'X-Api-Key': ANTHROPIC_API_KEY,
       };
+      console.log(query);
       const resp = await route_fetch(url, 'POST', headers, query);
       responses.push(resp);
 
@@ -903,3 +905,33 @@ export const processCSV = (csv: string): string[] => {
   }
   return matches.map(e => e.trim()).filter(e => e.length > 0);
 }
+
+export const countNumLLMs = (resp_objs_or_dict: LLMResponseObject[] | Dict): number => {
+  const resp_objs = Array.isArray(resp_objs_or_dict) ? resp_objs_or_dict : Object.values(resp_objs_or_dict).flat();
+  return (new Set(resp_objs.filter(r => typeof r !== "string" && r.llm !== undefined).map(r => r.llm?.key || r.llm))).size;
+};
+
+export const setsAreEqual = (setA: Set<any>, setB: Set<any>): boolean => {
+  if (setA.size !== setB.size) return false;
+  let equal = true;
+  for (const item of setA) {
+    if (!setB.has(item))
+      return false;
+  }
+  return equal;
+}
+
+export const deepcopy = (v) => JSON.parse(JSON.stringify(v));
+export const deepcopy_and_modify = (v, new_val_dict) => {
+  let new_v = deepcopy(v);
+  Object.entries(new_val_dict).forEach(([key, val]) => {
+    new_v[key] = val;
+  });
+  return new_v;
+};
+export const dict_excluding_key = (d, key) => {
+  if (!(key in d)) return d;
+  const copy_d = {...d};
+  delete copy_d[key];
+  return copy_d;
+};

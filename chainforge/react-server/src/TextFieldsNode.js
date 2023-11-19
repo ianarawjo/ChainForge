@@ -6,6 +6,7 @@ import useStore from './store';
 import NodeLabel from './NodeLabelComponent';
 import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
 import BaseNode from './BaseNode';
+import { setsAreEqual } from './backend/utils';
 
 // Helper funcs
 const union = (setA, setB) => {
@@ -14,17 +15,6 @@ const union = (setA, setB) => {
     _union.add(elem);
   }
   return _union;
-}
-const setsAreEqual = (setA, setB) => {
-  if (setA.size !== setB.size) return false;
-  let equal = true;
-  for (const item of setA) {
-    if (!setB.has(item)) {
-      equal = false;
-      break;
-    }
-  }
-  return equal;
 }
 
 const delButtonId = 'del-';

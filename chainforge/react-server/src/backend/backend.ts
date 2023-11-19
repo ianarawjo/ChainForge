@@ -2,7 +2,7 @@ import markdownIt from "markdown-it";
 
 import { Dict, StringDict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse, ChatHistoryInfo, isEqualChatHistory } from "./typing";
 import { LLM, NativeLLM, getEnumName } from "./models";
-import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
+import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend, filterDict, deepcopy } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
 import { PromptPermutationGenerator, PromptTemplate } from "./template";
@@ -209,6 +209,15 @@ function extract_llm_params(llm_spec: Dict | string): Dict {
     return {};
 }
 
+function filterVarsByLLM(vars: Dict, llm_key: string): Dict {
+  let _vars = {};
+  Object.entries(vars).forEach(([key, val]) => {
+    const vs = Array.isArray(val) ? val : [val];
+    _vars[key] = vs.filter((v) => (typeof v === 'string' || v?.llm === undefined || (v?.llm?.key === llm_key)));
+  });
+  return _vars;
+}
+
 /**
  * Test equality akin to Python's list equality.
  */
@@ -395,14 +404,24 @@ export async function countQueries(prompt: string,
                                    llms: Array<Dict | string>, 
                                    n: number, 
                                    chat_histories?: ChatHistoryInfo[] | {[key: string]: ChatHistoryInfo[]}, 
-                                   id?: string): Promise<Dict> {
+                                   id?: string,
+                                   cont_only_w_prior_llms?: boolean): Promise<Dict> {
   if (chat_histories === undefined) chat_histories = [ undefined ];
 
   let gen_prompts: PromptPermutationGenerator;
-  let all_prompt_permutations: Array<PromptTemplate>;
+  let all_prompt_permutations: Array<PromptTemplate> | Dict;
   try {
     gen_prompts = new PromptPermutationGenerator(prompt);
-    all_prompt_permutations = Array.from(gen_prompts.generate(vars));
+    if (cont_only_w_prior_llms && Array.isArray(llms)) {
+      all_prompt_permutations = {};
+      llms.forEach(llm_spec => {
+        const llm_key = extract_llm_key(llm_spec);
+        all_prompt_permutations[llm_key] = Array.from(gen_prompts.generate(filterVarsByLLM(vars, llm_key)));
+      });
+    } else {
+      all_prompt_permutations = Array.from(gen_prompts.generate(vars));
+    }
+
   } catch (err) {
     return {error: err.message};
   }
@@ -432,6 +451,9 @@ export async function countQueries(prompt: string,
   llms.forEach(llm_spec => {
     const llm_key = extract_llm_key(llm_spec);
 
+    // Get only the relevant prompt permutations
+    let _all_prompt_perms = cont_only_w_prior_llms ? all_prompt_permutations[llm_key] : all_prompt_permutations;
+
     // Get the relevant chat histories for this LLM:
     const chat_hists = (!Array.isArray(chat_histories)
                         ? chat_histories[extract_llm_nickname(llm_spec)] 
@@ -448,7 +470,7 @@ export async function countQueries(prompt: string,
         const cache_llm_responses = load_from_cache(cache_filename);
 
         // Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
-        all_prompt_permutations.forEach(prompt => {
+        _all_prompt_perms.forEach(prompt => {
           let prompt_str = prompt.toString();
 
           add_to_num_responses_req(llm_key, n * chat_hists.length);
@@ -490,7 +512,7 @@ export async function countQueries(prompt: string,
     }
     
     if (!found_cache) {
-      all_prompt_permutations.forEach(perm => {
+      _all_prompt_perms.forEach(perm => {
         add_to_num_responses_req(llm_key, n * chat_hists.length);
         add_to_missing_queries(llm_key, perm.toString(), n * chat_hists.length);
       });
@@ -537,7 +559,8 @@ export async function queryLLM(id: string,
                                chat_histories?: ChatHistoryInfo[] | {[key: string]: ChatHistoryInfo[]},
                                api_keys?: Dict,
                                no_cache?: boolean,
-                               progress_listener?: (progress: {[key: symbol]: any}) => void): Promise<Dict> {
+                               progress_listener?: (progress: {[key: symbol]: any}) => void,
+                               cont_only_w_prior_llms?: boolean): Promise<Dict> {
   // Verify the integrity of the params
   if (typeof id !== 'string' || id.trim().length === 0)
     return {'error': 'id is improper format (length 0 or not a string)'};
@@ -552,9 +575,6 @@ export async function queryLLM(id: string,
   llm = llm as (Array<string> | Array<Dict>);
 
   await setAPIKeys(api_keys);
-
-  // if 'no_cache' in data and data['no_cache'] is True:
-  //     remove_cached_responses(data['id'])
   
   // Get the storage keys of any cache files for specific models + settings
   const llms = llm;
@@ -623,6 +643,12 @@ export async function queryLLM(id: string,
     let llm_params = extract_llm_params(llm_spec);
     let llm_key = extract_llm_key(llm_spec);
     let temperature: number = llm_params?.temperature !== undefined ? llm_params.temperature : 1.0;
+    let _vars = vars;
+
+    if (cont_only_w_prior_llms) {
+      // Filter vars so that only the var values with the matching LLM are used, or otherwise values with no LLM metadata
+      _vars = filterVarsByLLM(vars, llm_key);
+    }
 
     let chat_hists = ((chat_histories !== undefined && !Array.isArray(chat_histories)) 
                       ? chat_histories[llm_nickname]
@@ -642,7 +668,7 @@ export async function queryLLM(id: string,
       console.log(`Querying ${llm_str}...`)
 
       // Yield responses for 'llm' for each prompt generated from the root template 'prompt' and template variables in 'properties':
-      for await (const response of prompter.gen_responses(vars, llm_str as LLM, num_generations, temperature, llm_params, chat_hists)) {
+      for await (const response of prompter.gen_responses(_vars, llm_str as LLM, num_generations, temperature, llm_params, chat_hists)) {
         
         // Check for selective failure
         if (response instanceof LLMResponseError) {  // The request failed

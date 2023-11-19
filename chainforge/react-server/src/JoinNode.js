@@ -8,6 +8,7 @@ import { IconArrowMerge, IconList } from '@tabler/icons-react';
 import { Divider, NativeSelect, Text, Popover, Tooltip, Center, Modal, Box } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { escapeBraces } from './backend/template';
+import { countNumLLMs } from './backend/utils';
 
 const formattingOptions = [
   {value: "\n\n", label:"double newline \\n\\n"},
@@ -51,11 +52,6 @@ const getVarsAndMetavars = (input_data) => {
     vars: varnames,
     metavars: metavars,
   };
-};
-
-const countNumLLMs = (resp_objs_or_dict) => {
-  const resp_objs = Array.isArray(resp_objs_or_dict) ? resp_objs_or_dict : Object.values(resp_objs_or_dict).flat();
-  return (new Set(resp_objs.filter(r => typeof r !== "string" && r.llm !== undefined).map(r => r.llm?.key || r.llm))).size;
 };
 
 const tagMetadataWithLLM = (input_data) => {
