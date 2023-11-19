@@ -72,7 +72,7 @@ const tagMetadataWithLLM = (input_data) => {
 };
 const extractLLMLookup = (input_data) => {
   let llm_lookup = {};
-  Object.entries(input_data).forEach(([varname, resp_objs]) => {
+  Object.values(input_data).forEach((resp_objs) => {
     resp_objs.forEach(r => {
       if (typeof r === 'string' || !r?.llm?.key || r.llm.key in llm_lookup) return;
       llm_lookup[r.llm.key] = r.llm;
@@ -84,13 +84,13 @@ const removeLLMTagFromMetadata = (metavars) => {
   if (!('__LLM_key' in metavars))
     return metavars; 
   let mcopy = JSON.parse(JSON.stringify(metavars));
-  delete metavars['__LLM_key'];
+  delete mcopy['__LLM_key'];
   return mcopy;
 };
 
 const truncStr = (s, maxLen) => {
   if (s.length > maxLen) // Cut the name short if it's long
-      return s.substring(0, maxLen) + '...'
+      return s.substring(0, maxLen) + '...';
   else
       return s;
 };

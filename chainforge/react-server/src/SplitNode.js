@@ -67,7 +67,7 @@ const removeLLMTagFromMetadata = (metavars) => {
   if (!('__LLM_key' in metavars))
     return metavars; 
   let mcopy = JSON.parse(JSON.stringify(metavars));
-  delete metavars['__LLM_key'];
+  delete mcopy['__LLM_key'];
   return mcopy;
 };
 
