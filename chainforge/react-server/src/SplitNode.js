@@ -288,8 +288,8 @@ const SplitNode = ({ data, id }) => {
                     miw='80px'
                     mr='xs'
                     mt='-6px' />
-    { !splitOnFormat?.includes('\n') ?
-        <Text color='gray' size='8pt' mt='xs' maw='150px'>All other parts of the LLM response will be ignored.</Text>
+    { !(splitOnFormat?.length <= 2) ?
+        <Text color='gray' size='8pt' mt='xs' maw='150px'>All other parts of the input text will be ignored.</Text>
       : <></>
     }
     <Handle
