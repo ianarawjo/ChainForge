@@ -193,7 +193,7 @@ const JoinNode = ({ data, id }) => {
   const handleOnConnect = useCallback(() => {
     let input_data = pullInputData(["__input"], id);
     if (!input_data?.__input) {
-      console.warn('Join Node: No input data detected.');
+      // soft fail
       return;
     }
 
