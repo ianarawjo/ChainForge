@@ -13,6 +13,7 @@ import fetch_from_backend from './fetch_from_backend';
 import { escapeBraces } from './backend/template';
 import ChatHistoryView from './ChatHistoryView';
 import InspectFooter from './InspectFooter';
+import { countNumLLMs, setsAreEqual } from './backend/utils';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -31,6 +32,17 @@ const bucketChatHistoryInfosByLLM = (chat_hist_infos) => {
     });
     return chats_by_llm;
 }
+const getLLMsInPulledInputData = (pulled_data) => {
+    let found_llms = {};
+    Object.values(pulled_data).filter(_vs => {
+        let vs = Array.isArray(_vs) ? _vs : [_vs];
+        vs.forEach(v => {
+            if (v?.llm !== undefined && !(v.llm.key in found_llms))
+                found_llms[v.llm.key] = v.llm;
+        });
+    });
+    return Object.values(found_llms);
+};
 
 class PromptInfo {
     prompt; // string
@@ -106,9 +118,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [responsesWillChange, setResponsesWillChange] = useState(false);
 
-  // Chat node specific
-  const [contChatWithPriorLLMs, setContChatWithPriorLLMs] = useState(data.contChat !== undefined ? data.contChat : true);
-  const [contChatToggleDisabled, setContChatToggleDisabled] = useState(false);
+  // For continuing with prior LLMs toggle
+  const [contWithPriorLLMs, setContWithPriorLLMs] = useState(data.contChat !== undefined ? data.contChat : (node_type === 'chat' ? true : false));
+  const [showContToggle, setShowContToggle] = useState(false);
+  const [contToggleDisabled, setContChatToggleDisabled] = useState(false);
 
   // For an info pop-up that shows all the prompts that will be sent off
   // NOTE: This is the 'full' version of the PromptListPopover that activates on hover.
@@ -159,12 +172,24 @@ const PromptNode = ({ data, id, type: node_type }) => {
     }
   }, [setDataPropsForNode, signalDirty]);
 
-  const refreshTemplateHooks = (text) => {
+  const updateShowContToggle = useCallback((pulled_data) => {
+    setShowContToggle(pulled_data && countNumLLMs(pulled_data) > 0);
+  }, [setShowContToggle, countNumLLMs]);
+
+  const handleOnConnect = useCallback(() => {
+    // Re-pull data and update show cont toggle:
+    updateShowContToggle(pullInputData(templateVars, id));
+  }, [templateVars, id, pullInputData, updateShowContToggle]);
+
+  const refreshTemplateHooks = useCallback((text) => {
     // Update template var fields + handles
-    const found_template_vars = Array.from(
-        new Set(extractBracketedSubstrings(text)));  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
-    setTemplateVars(found_template_vars);
-  };
+    const found_template_vars = new Set(extractBracketedSubstrings(text));  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
+
+    if (!setsAreEqual(found_template_vars, new Set(templateVars))) {
+        updateShowContToggle(pullInputData(found_template_vars, id));
+        setTemplateVars(Array.from(found_template_vars));
+    }
+  }, [setTemplateVars, templateVars, pullInputData, id]);
 
   const handleInputChange = (event) => {
     const value = event.target.value;
@@ -202,6 +227,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     if (data.refresh === true) {
       setDataPropsForNode(id, { refresh: false });
       setStatus('warning');
+      handleOnConnect();
     } else if (data.refreshLLMList === true) {
       llmListContainer?.current?.refreshLLMProviderList();
       setDataPropsForNode(id, { refreshLLMList: false });
@@ -272,6 +298,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const handlePreviewHover = () => {
     // Pull input data and prompt
     const pulled_vars = pullInputData(templateVars, id);
+    updateShowContToggle(pulled_vars);
+
     fetch_from_backend('generatePrompts', {
         prompt: promptText,
         vars: pulled_vars,
@@ -294,7 +322,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
     // If this is a chat node, we also need to pull chat histories: 
     let [past_chat_llms, pulled_chats] = node_type === 'chat' ? pullInputChats() : [undefined, undefined];
-    if (node_type === 'chat' && contChatWithPriorLLMs) {
+    if (node_type === 'chat' && contWithPriorLLMs) {
         if (past_chat_llms === undefined) {
             setRunTooltip('Attach an input to past conversations first.');
             return;
@@ -311,6 +339,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
     // Pull the input data
     const pulled_vars = pullInputData(templateVars, id);
+    updateShowContToggle(pulled_vars);
     
     const llms = _llmItemsCurrState.map(item => item.model);
     const num_llms = llms.length;
@@ -391,7 +420,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     // in the input variables (if any). If there's keys present w/o LLMs (for instance a text node),
     // we need to pop-up an error message.
     let _llmItemsCurrState = llmItemsCurrState;
-    if (node_type === 'chat' && contChatWithPriorLLMs) {
+    if (node_type === 'chat' && contWithPriorLLMs) {
         // If there's nothing attached to past conversations, we can't continue the chat:
         if (past_chat_llms === undefined) {
             triggerAlert('You need to attach an input to the Past Conversation message first. For instance, you might query \
@@ -421,6 +450,16 @@ const PromptNode = ({ data, id, type: node_type }) => {
         pulled_chats = bucketChatHistoryInfosByLLM(pulled_chats);
     }
 
+    // Pull the data to fill in template input variables, if any
+    const pulled_data = pullInputData(templateVars, id);
+    const prompt_template = promptText;
+
+    // Whether to continue with only the prior LLMs, for each value in vars dict
+    if (node_type !== 'chat' && showContToggle && contWithPriorLLMs) {
+        // We need to draw the LLMs to query from the input responses
+        _llmItemsCurrState = getLLMsInPulledInputData(pulled_data);
+    }
+
     // Check that there is at least one LLM selected:
     if (_llmItemsCurrState.length === 0) {
         alert('Please select at least one LLM to prompt.')
@@ -432,10 +471,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
     setContChatToggleDisabled(true);
     setJSONResponses([]);
     setProgressAnimated(true);
-
-    // Pull the data to fill in template input variables, if any
-    const pulled_data = pullInputData(templateVars, id);
-    const prompt_template = promptText;
 
     const rejected = (err) => {
         setStatus('error');
@@ -501,6 +536,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             api_keys: (apiKeys ? apiKeys : {}),
             no_cache: false,
             progress_listener: onProgressChange,
+            cont_only_w_prior_llms: node_type !== 'chat' ? (showContToggle && contWithPriorLLMs) : undefined,
         }, rejected).then(function(json) {
             if (!json) {
                 rejected('Request was sent and received by backend server, but there was no response.');
@@ -703,26 +739,27 @@ const PromptNode = ({ data, id, type: node_type }) => {
             <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
 
-        {node_type === 'chat' ? (
+        { showContToggle ? 
             <div>
                 <Switch
-                    label={contChatWithPriorLLMs ? "Continue chat with prior LLM(s)" : "Continue chat with new LLMs:"}
+                    label={contWithPriorLLMs ? "Continue with prior LLM(s)" : "Continue with new LLMs:"}
                     defaultChecked={true}
-                    checked={contChatWithPriorLLMs} 
-                    disabled={contChatToggleDisabled}
+                    checked={contWithPriorLLMs} 
+                    disabled={contToggleDisabled}
                     onChange={(event) => {
                         setStatus('warning');
-                        setContChatWithPriorLLMs(event.currentTarget.checked);
+                        setContWithPriorLLMs(event.currentTarget.checked);
                         setDataPropsForNode(id, { contChat: event.currentTarget.checked });
                     }}
                     color='cyan'
                     size='xs'
-                    mb={contChatWithPriorLLMs ? '4px' : '10px'}
+                    mb={contWithPriorLLMs ? '4px' : '10px'}
                 />
             </div>
-        ) : <></>} 
+            : <></>
+        }
         
-        {node_type !== 'chat' || !contChatWithPriorLLMs ? (
+        {(!contWithPriorLLMs || !showContToggle) ? (
          <LLMListContainer 
             ref={llmListContainer}
             initLLMItems={data.llms} 

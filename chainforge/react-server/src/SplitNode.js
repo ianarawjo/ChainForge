@@ -8,7 +8,7 @@ import { IconArrowMerge, IconArrowsSplit, IconList } from '@tabler/icons-react';
 import { Divider, NativeSelect, Text, Popover, Tooltip, Center, Modal, Box } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { escapeBraces } from './backend/template';
-import { processCSV } from "./backend/utils";
+import { processCSV, deepcopy, deepcopy_and_modify, dict_excluding_key } from "./backend/utils";
 
 import { fromMarkdown } from "mdast-util-from-markdown";
 
@@ -21,20 +21,6 @@ const formattingOptions = [
   {value: "paragraph",  label:"paragraphs (md)"},
 ];
 
-const deepcopy = (v) => JSON.parse(JSON.stringify(v));
-const deepcopy_and_modify = (v, new_val_dict) => {
-  let new_v = deepcopy(v);
-  Object.entries(new_val_dict).forEach(([key, val]) => {
-    new_v[key] = val;
-  });
-  return new_v;
-};
-const excluding_key = (d, key) => {
-  if (!(key in d)) return d;
-  const copy_d = {...d};
-  delete copy_d[key];
-  return copy_d;
-};
 const truncStr = (s, maxLen) => {
   if (s.length > maxLen) // Cut the name short if it's long
       return s.substring(0, maxLen) + '...'
@@ -220,7 +206,7 @@ const SplitNode = ({ data, id }) => {
       // Convert the templates into response objects
       let resp_objs = promptTemplates.map(p => ({
         text: p.toString(),
-        fill_history: excluding_key(p.fill_history, "__input"),
+        fill_history: dict_excluding_key(p.fill_history, "__input"),
         llm: "__LLM_key" in p.metavars ? llm_lookup[p.metavars['__LLM_key']] : undefined,
         metavars: removeLLMTagFromMetadata(p.metavars),
       }));
