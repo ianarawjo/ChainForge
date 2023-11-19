@@ -364,7 +364,11 @@ const PaLM2Settings = {
         "title": "Model",
         "description": "Select a PaLM model to query. For more details on the differences, see the Google PaLM API documentation.",
         "enum": ["text-bison-001", "chat-bison-001"],
-        "default": "chat-bison-001"
+        "default": "chat-bison-001",
+        "shortname_map": {
+          "text-bison-001": "PaLM2-text",
+          "chat-bison-001": "PaLM2-chat",
+        }
       },
       "temperature": {
         "type": "number",
@@ -636,9 +640,19 @@ const HuggingFaceTextInferenceSettings = {
       "model": {
         "type": "string",
         "title": "Model",
-              "description": "Select a suggested HuggingFace-hosted model to query using the Inference API. For more details, check out https://huggingface.co/inference-api",
-              "enum": ["tiiuae/falcon-7b-instruct", "microsoft/DialoGPT-large", "bigscience/bloom-560m", "gpt2", "bigcode/santacoder", "bigcode/starcoder", "Other (HuggingFace)"],
-              "default": "tiiuae/falcon-7b-instruct",
+        "description": "Select a suggested HuggingFace-hosted model to query using the Inference API. For more details, check out https://huggingface.co/inference-api",
+        "enum": ["mistralai/Mistral-7B-Instruct-v0.1", "HuggingFaceH4/zephyr-7b-beta", "tiiuae/falcon-7b-instruct", "microsoft/DialoGPT-large", "bigscience/bloom-560m", "gpt2", "bigcode/santacoder", "bigcode/starcoder", "Other (HuggingFace)"],
+        "default": "tiiuae/falcon-7b-instruct",
+        "shortname_map": {
+          "mistralai/Mistral-7B-Instruct-v0.1": "Mistral-7B", 
+          "HuggingFaceH4/zephyr-7b-beta": "Zephyr-7B", 
+          "tiiuae/falcon-7b-instruct": "Falcon-7B", 
+          "microsoft/DialoGPT-large": "DialoGPT",
+          "bigscience/bloom-560m": "Bloom560M",
+          "gpt2": "GPT-2",
+          "bigcode/santacoder": "santacoder",
+          "bigcode/starcoder": "starcoder"
+        },
       },
       "custom_model": {
         "type": "string",
@@ -775,7 +789,7 @@ const AlephAlphaLuminousSettings = {
         title: "Nickname",
         description:
           "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "AA-Luminous",
+        default: "Luminous",
       },
       model: {
         type: "string",
@@ -791,6 +805,14 @@ const AlephAlphaLuminousSettings = {
           "luminous-supreme-control",
         ],
         default: "luminous-base",
+        shortname_map: {
+          "luminous-extended": "luminous-ext",
+          "luminous-extended-control": "luminous-ext-ctrl",
+          "luminous-base-control": "luminous-base-ctrl",
+          "luminous-base": "luminous-base",
+          "luminous-supreme": "luminous-supr",
+          "luminous-supreme-control": "luminous-supr-ctrl",
+        },
       },
       temperature: {
         type: "number",
