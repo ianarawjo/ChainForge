@@ -197,11 +197,9 @@ const SplitNode = ({ data, id }) => {
   const handleOnConnect = useCallback(() => {
     const formatting = splitOnFormat;
 
-    console.log('split');
-
     let input_data = pullInputData(["__input"], id);
     if (!input_data?.__input) {
-      console.warn('Split Node: No input data detected.');
+      // soft fail if no inputs detected
       return;
     }
 
