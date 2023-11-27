@@ -575,6 +575,8 @@ export async function queryLLM(id: string,
   llm = llm as (Array<string> | Array<Dict>);
 
   await setAPIKeys(api_keys);
+
+  console.log(vars);
   
   // Get the storage keys of any cache files for specific models + settings
   const llms = llm;
@@ -718,7 +720,23 @@ export async function queryLLM(id: string,
   }
 
   // Convert the responses into a more standardized format with less information
-  const res = Object.values(responses).flatMap(rs => rs.map(to_standard_format));
+  let res = Object.values(responses).flatMap(rs => rs.map(to_standard_format));
+
+  // Reorder the responses to match the original vars dict ordering of keys and values
+  res.sort((a, b) => {
+    if (!a.vars || !b.vars) return 0;
+    for (const [varname, vals] of Object.entries(vars)) {
+      if (varname in a.vars && varname in b.vars) {
+        const a_val = a.vars[varname];
+        const b_val = b.vars[varname];
+        const a_idx = vals.findIndex(v => v === a_val || v?.text === a_val);
+        const b_idx = vals.findIndex(v => v === b_val || v?.text === b_val);
+        if (a_idx > -1 && b_idx > -1 && a_idx !== b_idx) 
+          return a_idx - b_idx;
+      }
+    }
+    return 0;
+  });
   
   // Save the responses *of this run* to the storage cache, for further recall:
   let cache_filenames = past_cache_files;
