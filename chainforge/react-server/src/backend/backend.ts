@@ -575,8 +575,6 @@ export async function queryLLM(id: string,
   llm = llm as (Array<string> | Array<Dict>);
 
   await setAPIKeys(api_keys);
-
-  console.log(vars);
   
   // Get the storage keys of any cache files for specific models + settings
   const llms = llm;
