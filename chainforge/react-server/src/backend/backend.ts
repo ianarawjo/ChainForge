@@ -718,7 +718,21 @@ export async function queryLLM(id: string,
   }
 
   // Convert the responses into a more standardized format with less information
-  const res = Object.values(responses).flatMap(rs => rs.map(to_standard_format));
+  let res = Object.values(responses).flatMap(rs => rs.map(to_standard_format));
+
+  // Reorder the responses to match the original vars dict ordering of keys and values
+  res.sort((a, b) => {
+    if (!a.vars || !b.vars) return 0;
+    for (const [varname, vals] of Object.entries(vars)) {
+      if (varname in a.vars && varname in b.vars) {
+        const a_idx = vals.indexOf(a.vars[varname]);
+        const b_idx = vals.indexOf(b.vars[varname]);
+        if (a_idx > -1 && b_idx > -1 && a_idx !== b_idx) 
+          return a_idx - b_idx;
+      }
+    }
+    return 0;
+  });
   
   // Save the responses *of this run* to the storage cache, for further recall:
   let cache_filenames = past_cache_files;

@@ -160,7 +160,6 @@ const useStore = create((set, get) => ({
               const row_keys = Object.keys(row);
 
               // Check if this is an 'empty' row (with all empty strings); if so, skip it:
-              console.log(row);
               if (row_keys.every(key => key === '__uid' || !row[key] || (typeof row[key] === "string" && row[key].trim() === "")))
                 return undefined;
 
