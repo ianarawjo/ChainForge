@@ -575,6 +575,8 @@ export async function queryLLM(id: string,
   llm = llm as (Array<string> | Array<Dict>);
 
   await setAPIKeys(api_keys);
+
+  console.log(vars);
   
   // Get the storage keys of any cache files for specific models + settings
   const llms = llm;
@@ -725,8 +727,10 @@ export async function queryLLM(id: string,
     if (!a.vars || !b.vars) return 0;
     for (const [varname, vals] of Object.entries(vars)) {
       if (varname in a.vars && varname in b.vars) {
-        const a_idx = vals.indexOf(a.vars[varname]);
-        const b_idx = vals.indexOf(b.vars[varname]);
+        const a_val = a.vars[varname];
+        const b_val = b.vars[varname];
+        const a_idx = vals.findIndex(v => v === a_val || v?.text === a_val);
+        const b_idx = vals.findIndex(v => v === b_val || v?.text === b_val);
         if (a_idx > -1 && b_idx > -1 && a_idx !== b_idx) 
           return a_idx - b_idx;
       }
