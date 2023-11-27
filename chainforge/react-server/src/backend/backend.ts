@@ -330,38 +330,47 @@ function check_typeof_vals(arr: Array<any>): MetricType {
     return val_type;
 }
 
-function run_over_responses(eval_func: (resp: ResponseInfo) => any, responses: Array<StandardizedLLMResponse>): Array<StandardizedLLMResponse> {
+function run_over_responses(process_func: (resp: ResponseInfo) => any, 
+                            responses: StandardizedLLMResponse[],
+                            process_type: 'evaluator' | 'processor'): StandardizedLLMResponse[] {
   return responses.map((_resp_obj: StandardizedLLMResponse) => {
     // Deep clone the response object
-    const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
+    let resp_obj = JSON.parse(JSON.stringify(_resp_obj));
 
-    // Map the evaluator func over every individual response text in each response object
+    // Map the processor func over every individual response text in each response object
     const res = resp_obj.responses;
-    const evals = res.map(
-      (r: string) => eval_func(new ResponseInfo(r, 
-                                                resp_obj.prompt, 
-                                                resp_obj.vars, 
-                                                resp_obj.metavars || {}, 
-                                                extract_llm_nickname(resp_obj.llm))
-    ));
+    const processed = res.map((r: string) => 
+      process_func(new ResponseInfo(r, 
+                                    resp_obj.prompt, 
+                                    resp_obj.vars, 
+                                    resp_obj.metavars || {}, 
+                                    extract_llm_nickname(resp_obj.llm)))
+    );
 
-    // Check the type of evaluation results
-    // NOTE: We assume this is consistent across all evaluations, but it may not be.
-    const eval_res_type = check_typeof_vals(evals);
+    // If type is just a processor
+    if (process_type === 'processor') {
+      // Replace response texts in resp_obj with the transformed ones:
+      resp_obj.responses = processed;
 
-    if (eval_res_type === MetricType.Numeric) {
-        // Store items with summary of mean, median, etc
-        resp_obj.eval_res = {
-          items: evals,
+    } else { // If type is an evaluator
+      // Check the type of evaluation results
+      // NOTE: We assume this is consistent across all evaluations, but it may not be.
+      const eval_res_type = check_typeof_vals(processed);
+
+      if (eval_res_type === MetricType.Numeric) {
+          // Store items with summary of mean, median, etc
+          resp_obj.eval_res = {
+            items: processed,
+            dtype: getEnumName(MetricType, eval_res_type),
+          };
+      } else if ([MetricType.Unknown, MetricType.Empty].includes(eval_res_type)) {
+        throw new Error('Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.');
+      } else {
+        // Categorical, KeyValue, etc, we just store the items:
+        resp_obj.eval_res = { 
+          items: processed,
           dtype: getEnumName(MetricType, eval_res_type),
-        };
-    } else if ([MetricType.Unknown, MetricType.Empty].includes(eval_res_type)) {
-      throw new Error('Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.');
-    } else {
-      // Categorical, KeyValue, etc, we just store the items:
-      resp_obj.eval_res = { 
-        items: evals,
-        dtype: getEnumName(MetricType, eval_res_type),
+        }
       }
     }
 
@@ -773,93 +782,79 @@ export async function queryLLM(id: string,
  * 
  * @param id a unique ID to refer to this information. Used when cache'ing evaluation results. 
  * @param code the code to evaluate. Must include an 'evaluate()' function that takes a 'response' of type ResponseInfo. Alternatively, can be the evaluate function itself.
- * @param response_ids the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
- * @param scope the scope of responses to run on --a single response, or all across each batch. (If batch, evaluate() func has access to 'responses'.)
+ * @param responses the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
+ * @param scope the scope of responses to run on --a single response, or all across each batch. (If batch, evaluate() func has access to 'responses'.) NOTE: Currently this feature is disabled.
+ * @param process_type the type of processing to perform. Evaluators only 'score'/annotate responses with an 'eval_res' key. Processors change responses (e.g. text).
  */
 export async function executejs(id: string, 
                                 code: string | ((rinfo: ResponseInfo) => any), 
-                                response_ids: string | string[], 
-                                scope: 'response' | 'batch'): Promise<Dict> {
-  // Check format of response_ids
-  if (!Array.isArray(response_ids))
-    response_ids = [ response_ids ];
-  response_ids = response_ids as Array<string>;
+                                responses: StandardizedLLMResponse[], 
+                                scope: 'response' | 'batch',
+                                process_type: 'evaluator' | 'processor'): Promise<Dict> {
+  const req_func_name = (!process_type || process_type === 'evaluator') ? 'evaluate' : 'process';
 
   // Instantiate the evaluator function by eval'ing the passed code
   // DANGER DANGER!!
   let iframe: HTMLElement | undefined;
+  let process_func: any;
   if (typeof code === 'string') {
     try {
-        /*
-          To run Javascript code in a psuedo-'sandbox' environment, we
-          can use an iframe and run eval() inside the iframe, instead of the current environment.
-          This is slightly safer than using eval() directly, doesn't clog our namespace, and keeps
-          multiple Evaluate node execution environments separate. 
-          
-          The Evaluate node in the front-end has a hidden iframe with the following id. 
-          We need to get this iframe element. 
-        */
-        iframe = document.getElementById(`${id}-iframe`);
-        if (!iframe)
-          throw new Error("Could not find iframe sandbox for evaluator node.");
+      /*
+        To run Javascript code in a psuedo-'sandbox' environment, we
+        can use an iframe and run eval() inside the iframe, instead of the current environment.
+        This is slightly safer than using eval() directly, doesn't clog our namespace, and keeps
+        multiple Evaluate node execution environments separate. 
+        
+        The Evaluate node in the front-end has a hidden iframe with the following id. 
+        We need to get this iframe element. 
+      */
+      iframe = document.getElementById(`${id}-iframe`);
+      if (!iframe)
+        throw new Error("Could not find iframe sandbox for evaluator node.");
 
-        // Now run eval() on the 'window' of the iframe:
-        // @ts-ignore
-        iframe.contentWindow.eval(code);
+      // Now run eval() on the 'window' of the iframe:
+      // @ts-ignore
+      iframe.contentWindow.eval(code);
 
-        // Now check that there is an 'evaluate' method in the iframe's scope.
-        // NOTE: We need to tell Typescript to ignore this, since it's a dynamic type check.
-        // @ts-ignore
-        if (iframe.contentWindow.evaluate === undefined) {
-          throw new Error('evaluate() function is undefined.');
-        }
+      // Now check that there is an 'evaluate' method in the iframe's scope.
+      // NOTE: We need to tell Typescript to ignore this, since it's a dynamic type check.
+      // @ts-ignore
+      process_func = (!process_type || process_type === 'evaluator') ? iframe.contentWindow.evaluate : iframe.contentWindow.process;
+      if (process_func === undefined)
+        throw new Error(`${req_func_name}() function is undefined.`);
+
     } catch (err) {
-      return {'error': `Could not compile evaluator code. Error message:\n${err.message}`};
+      return {'error': `Could not compile code. Error message:\n${err.message}`};
     }
   }
 
   // Load all responses with the given ID:
-  let all_evald_responses: StandardizedLLMResponse[] = [];
   let all_logs: string[] = [];
-  for (let i = 0; i < response_ids.length; i++) {
-    const cache_id = response_ids[i];
-    const fname = `${cache_id}.json`;
-    if (!StorageCache.has(fname))
-      return {error: `Did not find cache file for id ${cache_id}`, logs: all_logs};
+  let processed_resps: StandardizedLLMResponse[];
+  try {
+    // Intercept any calls to console.log, .warn, or .error, so we can store the calls
+    // and print them in the 'output' footer of the Evaluator Node: 
+    // @ts-ignore
+    HIJACK_CONSOLE_LOGGING(id, iframe.contentWindow);
 
-    // Load the raw responses from the cache
-    const responses = load_cache_responses(fname);
-    if (responses.length === 0)
-      continue;
+    // Run the user-defined 'evaluate' function over the responses: 
+    // NOTE: 'evaluate' here was defined dynamically from 'eval' above. We've already checked that it exists. 
+    // @ts-ignore
+    processed_resps = run_over_responses((iframe ? process_func : code), responses, process_type);
 
-    let evald_responses: StandardizedLLMResponse[];
-    try {
-      // Intercept any calls to console.log, .warn, or .error, so we can store the calls
-      // and print them in the 'output' footer of the Evaluator Node: 
-      // @ts-ignore
-      HIJACK_CONSOLE_LOGGING(id, iframe.contentWindow);
-
-      // Run the user-defined 'evaluate' function over the responses: 
-      // NOTE: 'evaluate' here was defined dynamically from 'eval' above. We've already checked that it exists. 
-      // @ts-ignore
-      evald_responses = run_over_responses((iframe ? iframe.contentWindow.evaluate : code), responses, scope);
-
-      // Revert the console.log, .warn, .error back to browser default:
-      // @ts-ignore
-      all_logs = all_logs.concat(REVERT_CONSOLE_LOGGING(id, iframe.contentWindow));
-    } catch (err) {
-      // @ts-ignore
-      all_logs = all_logs.concat(REVERT_CONSOLE_LOGGING(id, iframe.contentWindow));
-      return { error: `Error encountered while trying to run "evaluate" method:\n${err.message}`, logs: all_logs };
-    }
-
-    all_evald_responses = all_evald_responses.concat(evald_responses);
+    // Revert the console.log, .warn, .error back to browser default:
+    // @ts-ignore
+    all_logs = all_logs.concat(REVERT_CONSOLE_LOGGING(id, iframe.contentWindow));
+  } catch (err) {
+    // @ts-ignore
+    all_logs = all_logs.concat(REVERT_CONSOLE_LOGGING(id, iframe.contentWindow));
+    return { error: `Error encountered while trying to run "evaluate" method:\n${err.message}`, logs: all_logs };
   }
 
   // Store the evaluated responses in a new cache json:
-  StorageCache.store(`${id}.json`, all_evald_responses);
+  StorageCache.store(`${id}.json`, processed_resps);
 
-  return {responses: all_evald_responses, logs: all_logs};
+  return {responses: processed_resps, logs: all_logs};
 }
 
 /**
@@ -872,28 +867,19 @@ export async function executejs(id: string,
  * @param id a unique ID to refer to this information. Used when cache'ing evaluation results. 
  * @param code the code to evaluate. Must include an 'evaluate()' function that takes a 'response' of type ResponseInfo. Alternatively, can be the evaluate function itself.
  * @param response_ids the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
- * @param scope the scope of responses to run on --a single response, or all across each batch. (If batch, evaluate() func has access to 'responses'.)
+ * @param scope the scope of responses to run on --a single response, or all across each batch. (If batch, evaluate() func has access to 'responses'.) NOTE: Currently disabled.
+ * @param process_type the type of processing to perform. Evaluators only 'score'/annotate responses with an 'eval_res' key. Processors change responses (e.g. text).
  */
 export async function executepy(id: string, 
                                 code: string | ((rinfo: ResponseInfo) => any), 
-                                response_ids: string | string[], 
+                                responses: StandardizedLLMResponse[], 
                                 scope: 'response' | 'batch',
+                                process_type: 'evaluator' | 'processor',
                                 script_paths?: string[]): Promise<Dict> {
   if (!APP_IS_RUNNING_LOCALLY()) {
     // We can't execute Python if we're not running the local Flask server. Error out:
     throw new Error("Cannot evaluate Python code: ChainForge does not appear to be running on localhost.")
   }
-
-  // Check format of response_ids
-  if (!Array.isArray(response_ids))
-    response_ids = [ response_ids ];
-  response_ids = response_ids as Array<string>;
-
-  // Load cache'd responses for all response_ids:
-  const {responses, error} = await grabResponses(response_ids);
-
-  if (error !== undefined)
-    throw new Error(error);
   
   // All responses loaded; call our Python server to execute the evaluation code across all responses:
   const flask_response = await call_flask_backend('executepy', {
@@ -901,6 +887,7 @@ export async function executepy(id: string,
     code: code,
     responses: responses,
     scope: scope,
+    process_type: process_type,
     script_paths: script_paths,
   }).catch(err => {
     throw new Error(err.message);

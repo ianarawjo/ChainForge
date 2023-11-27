@@ -12,7 +12,7 @@ import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomati
 import RemoveEdge from './RemoveEdge';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
-import EvaluatorNode from './EvaluatorNode';
+import CodeEvaluatorNode from './CodeEvaluatorNode';
 import VisNode from './VisNode';
 import InspectNode from './InspectorNode';
 import ScriptNode from './ScriptNode';
@@ -81,7 +81,7 @@ const nodeTypes = {
   prompt: PromptNode,
   chat: PromptNode,
   simpleval: SimpleEvalNode,
-  evaluator: EvaluatorNode,
+  evaluator: CodeEvaluatorNode,
   llmeval: LLMEvaluatorNode,
   vis: VisNode,
   inspect: InspectNode,
@@ -91,6 +91,7 @@ const nodeTypes = {
   comment: CommentNode,
   join: JoinNode,
   split: SplitNode,
+  processor: CodeEvaluatorNode,
 };
 
 const edgeTypes = {
@@ -237,6 +238,15 @@ const App = () => {
   const addSplitNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'split-'+Date.now(), type: 'split', data: {}, position: {x: x-200, y:y-100} });
+  };
+  const addProcessorNode = (progLang) => {
+    const { x, y } = getViewportCenter();
+    let code = "";
+    if (progLang === 'python') 
+      code = "def process(response):\n  return response.text;";
+    else if (progLang === 'javascript')
+      code = "function process(response) {\n  return response.text;\n}";
+    addNode({ id: 'process-'+Date.now(), type: 'processor', data: { language: progLang, code: code }, position: {x: x-200, y:y-100} });
   };
 
   const onClickExamples = () => {
@@ -762,16 +772,16 @@ const App = () => {
             <Menu.Divider />
             <Menu.Label>Evaluators</Menu.Label>
             <MenuTooltip label="Evaluate responses with a simple check (no coding required).">
-              <Menu.Item onClick={addSimpleEvalNode} icon={<IconRuler2 size="16px" />}> Simple Evaluator Node </Menu.Item>
+              <Menu.Item onClick={addSimpleEvalNode} icon={<IconRuler2 size="16px" />}> Simple Evaluator </Menu.Item>
             </MenuTooltip>
             <MenuTooltip label="Evaluate responses by writing JavaScript code.">
-              <Menu.Item onClick={() => addEvalNode('javascript')} icon={<IconTerminal size="16px" />}> JavaScript Evaluator Node </Menu.Item>
+              <Menu.Item onClick={() => addEvalNode('javascript')} icon={<IconTerminal size="16px" />}> JavaScript Evaluator </Menu.Item>
             </MenuTooltip>
             {IS_RUNNING_LOCALLY ? (<MenuTooltip label="Evaluate responses by writing Python code.">
-                  <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator Node </Menu.Item>
+                  <Menu.Item onClick={() => addEvalNode('python')} icon={<IconTerminal size="16px" />}> Python Evaluator </Menu.Item>
             </MenuTooltip>): <></>}
             <MenuTooltip label="Evaluate responses with an LLM like GPT-4.">
-              <Menu.Item onClick={addLLMEvalNode} icon={<IconRobot size="16px" />}> LLM Scorer Node</Menu.Item>
+              <Menu.Item onClick={addLLMEvalNode} icon={<IconRobot size="16px" />}> LLM Scorer </Menu.Item>
             </MenuTooltip>
             <Menu.Divider />
             <Menu.Label>Visualizers</Menu.Label>
@@ -783,6 +793,12 @@ const App = () => {
             </MenuTooltip>
             <Menu.Divider />
             <Menu.Label>Processors</Menu.Label>
+            <MenuTooltip label="Transform responses by mapping a JavaScript function over them.">
+              <Menu.Item onClick={() => addProcessorNode('javascript')} icon={<IconTerminal size='14pt' />}> JavaScript Processor </Menu.Item>
+            </MenuTooltip>
+            {IS_RUNNING_LOCALLY ? <MenuTooltip label="Transform responses by mapping a Python function over them.">
+              <Menu.Item onClick={() => addProcessorNode('python')} icon={<IconTerminal size='14pt' />}> Python Processor </Menu.Item>
+            </MenuTooltip>: <></>}
             <MenuTooltip label="Concatenate responses or input data together before passing into later nodes, within or across variables and LLMs.">
               <Menu.Item onClick={addJoinNode} icon={<IconArrowMerge size='14pt' />}> Join Node </Menu.Item>
             </MenuTooltip>

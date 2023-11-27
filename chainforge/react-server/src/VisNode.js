@@ -150,11 +150,19 @@ const VisNode = ({ data, id }) => {
     useEffect(() => {
         if (!responses || responses.length === 0 || !multiSelectValue) return;
 
+        // Check if there are evaluation results 
+        if (responses.every(r => r?.eval_res === undefined)) {
+            setPlaceholderText(<p style={{maxWidth: '220px', backgroundColor: '#f0f0aa', padding: '10px', fontSize: '10pt'}}>
+                To plot evaluation results, you need to run LLM responses through an Evaluator Node or LLM Scorer Node first.
+            </p>);
+            return;
+        }
+
         setStatus('none');
 
         const get_llm = (resp_obj) => {
             if (selectedLLMGroup === 'LLM')
-                return resp_obj.llm;
+                return typeof resp_obj.llm === "string" ? resp_obj.llm : resp_obj.llm?.name;
             else
                 return resp_obj.metavars[selectedLLMGroup];
         };
@@ -204,7 +212,7 @@ const VisNode = ({ data, id }) => {
 
         // Get the type of evaluation results, if present
         // (This is assumed to be consistent across response batches)
-        let typeof_eval_res = 'dtype' in responses[0].eval_res ? responses[0].eval_res['dtype'] : 'Numeric';
+        let typeof_eval_res = (responses[0].eval_res && 'dtype' in responses[0].eval_res) ? responses[0].eval_res['dtype'] : 'Numeric';
 
         // If categorical type, check if all binary:
         if (typeof_eval_res === 'Categorical') {
@@ -244,6 +252,7 @@ const VisNode = ({ data, id }) => {
         };
 
         const get_items = (eval_res_obj) => {
+            if (eval_res_obj === undefined) return [];
             if (typeof_eval_res.includes('KeyValue'))
                 return eval_res_obj.items.map(item => item[metric_axes_labels[0]]);
             return eval_res_obj.items;

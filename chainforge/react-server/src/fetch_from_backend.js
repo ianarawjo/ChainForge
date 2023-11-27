@@ -17,9 +17,9 @@ async function _route_to_js_backend(route, params) {
     case 'queryllm':
       return queryLLM(params.id, clone(params.llm), params.n, params.prompt, clone(params.vars), params.chat_histories, params.api_keys, params.no_cache, params.progress_listener, params.cont_only_w_prior_llms);
     case 'executejs':
-      return executejs(params.id, params.code, params.responses, params.scope);
+      return executejs(params.id, params.code, params.responses, params.scope, params.process_type);
     case 'executepy':
-      return executepy(params.id, params.code, params.responses, params.scope, params.script_paths);
+      return executepy(params.id, params.code, params.responses, params.scope, params.process_type, params.script_paths);
     case 'evalWithLLM':
       return evalWithLLM(params.id, params.llm, params.root_prompt, params.responses, params.api_keys, params.progress_listener);
     case 'importCache':

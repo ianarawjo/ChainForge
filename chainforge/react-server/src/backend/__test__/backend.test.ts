@@ -3,7 +3,7 @@
 */
 import { NativeLLM } from '../models';
 import { expect, test } from '@jest/globals';
-import { queryLLM, executejs, countQueries, ResponseInfo } from '../backend';
+import { queryLLM, executejs, countQueries, ResponseInfo, grabResponses } from '../backend';
 import { StandardizedLLMResponse, Dict } from '../typing';
 import StorageCache from '../cache';
 
@@ -69,6 +69,8 @@ test('run evaluate func over responses', async () => {
     return response.text.length;
   };
 
+  const input_resps = await grabResponses(['dummy_response_id']) as StandardizedLLMResponse[];
+
 //   const code = `
 // function evaluate(response) {
 //   console.log('hello there!');
@@ -77,7 +79,7 @@ test('run evaluate func over responses', async () => {
 // `;
 
   // Execute the code, and map the evaluate function over all responses
-  const {responses, logs, error} = await executejs('evalid', code, ['dummy_response_id'], 'response');
+  const {responses, logs, error} = await executejs('evalid', code, input_resps, 'response', 'evaluator');
 
   // There should be no errors
   if (error)

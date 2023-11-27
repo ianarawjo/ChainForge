@@ -935,3 +935,33 @@ export const dict_excluding_key = (d, key) => {
   delete copy_d[key];
   return copy_d;
 };
+
+export const getLLMsInPulledInputData = (pulled_data: Dict) => {
+  let found_llms = {};
+  Object.values(pulled_data).filter(_vs => {
+    let vs = Array.isArray(_vs) ? _vs : [_vs];
+    vs.forEach(v => {
+      if (v?.llm !== undefined && !(v.llm.key in found_llms))
+        found_llms[v.llm.key] = v.llm;
+    });
+  });
+  return Object.values(found_llms);
+};
+
+export const stripLLMDetailsFromResponses = (resps) => resps.map(r => ({...r, llm: (typeof r?.llm === 'string' ? r?.llm : (r?.llm?.name ?? 'undefined'))}));
+
+export const toStandardResponseFormat = (r) => {
+  let resp_obj: Dict = {
+    vars: r?.fill_history ?? {},
+    metavars: r?.metavars ?? {},
+    llm: r?.llm ?? undefined,
+    prompt: r?.prompt ?? "",
+    responses: [typeof r === 'string' ? r : r?.text],
+    tokens: r?.raw_response?.usage ?? {},
+  };
+  if ('eval_res' in r)
+    resp_obj.eval_res = r.eval_res;
+  if ('chat_history' in r)
+    resp_obj.chat_history = r.chat_history;
+  return resp_obj;
+};
