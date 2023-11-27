@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Handle } from 'reactflow';
 import { Button, Code, Modal, Tooltip, Box, Text } from '@mantine/core';
 import { Prism } from '@mantine/prism';
@@ -16,8 +16,9 @@ import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
 import fetch_from_backend from './fetch_from_backend';
-import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
+import { APP_IS_RUNNING_LOCALLY, stripLLMDetailsFromResponses, toStandardResponseFormat } from './backend/utils';
 import InspectFooter from './InspectFooter';
+import { escapeBraces } from './backend/template';
 
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
@@ -53,6 +54,7 @@ class ResponseInfo:
     ...
 `;
 
+// Code evaluator examples for info modal
 const _info_example_py = `
 def evaluate(response):
   # Return the length of the response (num of characters)
@@ -78,9 +80,48 @@ function evaluate(response) {
   return ... // for instance, true or false
 }`;
 
-const EvaluatorNode = ({ data, id }) => {
+// Code processor examples for info modal
+const _info_proc_example_py = `
+def process(response):
+  # Return the first 12 characters
+  return response.text[:12]
+`;
+const _info_proc_example_js = `
+function process(response) {
+  // Return the first 12 characters
+  return response.text.slice(0, 12);
+}`;
+const _info_proc_example_var_py = `
+def process(response):
+  # Find the index of the substring "ANSWER:"
+  answer_index = response.text.find("ANSWER:")
+
+  # If "ANSWER:" is in the text, return everything after it
+  if answer_index != -1:
+    return response.text[answer_index + len("ANSWER:"):]
+  else: # return error message
+    return "NOT FOUND"
+`;
+const _info_proc_example_var_js = `
+function process(response) {
+  // Find the index of the substring "ANSWER:"
+  const answerIndex = response.text.indexOf("ANSWER:");
+
+  // If "ANSWER:" is in the text, return everything after it
+  if (answerIndex !== -1)
+    return response.text.substring(answerIndex + "ANSWER:".length);
+  else  // return error message
+    return "NOT FOUND";
+}`;
+
+/**
+ *  The Code Evaluator class supports users in writing JavaScript and Python functions that map across LLM responses.
+ *  It has two modes: evaluator and processor mode. Evaluators annotate responses with scores; processors transform response objects themselves. 
+ */
+const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
 
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
+  const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const [status, setStatus] = useState('none');
@@ -129,7 +170,7 @@ const EvaluatorNode = ({ data, id }) => {
     }).then(function(json) {
       if (json.responses && json.responses.length > 0) {
         // Store responses and set status to green checkmark
-        setLastResponses(json.responses);
+        setLastResponses(stripLLMDetailsFromResponses(json.responses));
         setStatus('ready');
       }
     });
@@ -164,18 +205,22 @@ const EvaluatorNode = ({ data, id }) => {
         instead. If you'd like to run the Python evaluator, consider installing ChainForge locally.");
       return;
     }
-    
-    // Get the ids from the connected input nodes:
-    const input_node_ids = inputEdgesForNode(id).map(e => e.source);
-    if (input_node_ids.length === 0) {
-        console.warn("No inputs for evaluator node.");
-        return;
+
+    // Pull input data
+    let pulled_inputs = pullInputData(["responseBatch"], id);
+    if (!pulled_inputs || !pulled_inputs["responseBatch"]) {
+      console.warn(`No inputs for code ${node_type} node.`);
+      return;
     }
+    // Convert to standard response format (StandardLLMResponseFormat)
+    pulled_inputs = pulled_inputs["responseBatch"].map(toStandardResponseFormat);
 
     // Double-check that the code includes an 'evaluate' function:
-    const find_evalfunc_regex = progLang === 'python' ? /def\s+evaluate\s*(.*):/ : /function\s+evaluate\s*(.*)/;
-    if (codeText.search(find_evalfunc_regex) === -1) {
-      const err_msg = `Could not find required function 'evaluate'. Make sure you have defined an 'evaluate' function.`;
+    const find_func_regex = node_type === 'evaluator' ? (progLang === 'python' ? /def\s+evaluate\s*(.*):/ : /function\s+evaluate\s*(.*)/)
+                                                      : (progLang === 'python' ? /def\s+process\s*(.*):/ : /function\s+process\s*(.*)/);
+    if (codeText.search(find_func_regex) === -1) {
+      const req_func_name = node_type === 'evaluator' ? 'evaluate' : 'process';
+      const err_msg = `Could not find required function '${req_func_name}'. Make sure you have defined an '${req_func_name}' function.`;
       setStatus('error');
       alertModal.current.trigger(err_msg);
       return;
@@ -189,6 +234,8 @@ const EvaluatorNode = ({ data, id }) => {
       setStatus('error');
       alertModal.current.trigger(err_msg);
     };
+
+    // const _llmItemsCurrState = getLLMsInPulledInputData(pulled_data);
 
     // Get all the Python script nodes, and get all the folder paths
     // NOTE: Python only!
@@ -204,8 +251,9 @@ const EvaluatorNode = ({ data, id }) => {
     fetch_from_backend(execute_route, {
       id: id,
       code: codeTextOnRun,
-      responses: input_node_ids,
+      responses: pulled_inputs,
       scope: 'response',
+      process_type: node_type,
       script_paths: script_paths,
     }).then(function(json) {
         // Store any Python print output
@@ -226,11 +274,26 @@ const EvaluatorNode = ({ data, id }) => {
         
         // Ping any vis + inspect nodes attached to this node to refresh their contents:
         pingOutputNodes(id);
-
-        console.log(json.responses);
-        setLastResponses(json.responses);
+        setLastResponses(stripLLMDetailsFromResponses(json.responses));
         setCodeTextOnLastRun(codeTextOnRun);
         setLastRunSuccess(true);
+
+        setDataPropsForNode(id, {fields: json.responses.map(
+          resp_obj => resp_obj['responses'].map(r => {
+            // Carry over the response text, prompt, prompt fill history (vars), and llm data
+            let o = { text: escapeBraces(r), 
+                      prompt: resp_obj['prompt'],
+                      fill_history: resp_obj['vars'],
+                      metavars: resp_obj['metavars'] || {},
+                      llm: resp_obj['llm'] };
+
+            // Carry over any chat history
+            if (resp_obj['chat_history']) 
+              o.chat_history = resp_obj['chat_history'];
+
+            return o;
+          })).flat()
+        });
 
         if (status !== 'ready')
           setUninspectedResponses(true);
@@ -250,10 +313,67 @@ const EvaluatorNode = ({ data, id }) => {
     }
   }, [inspectModal, lastResponses]);
 
-  const default_header = (progLang === 'python') ? 
-                          'Python Evaluator Node'
-                          : 'JavaScript Evaluator Node';
+  /* Memoized variables for displaying the UI that depend on the node type (evaluator or processor) and the programming language. */
+  const default_header = useMemo(() => {
+    const capitalized_type = node_type.charAt(0).toUpperCase() + node_type.slice(1);
+    if (progLang === 'python')
+      return `Python ${capitalized_type} Node`;
+    else
+      return `JavaScript ${capitalized_type} Node`;
+  }, [progLang, node_type]); 
   const node_header = data.title || default_header;
+  const run_tooltip = useMemo(() => `Run ${node_type} over inputs`, [node_type]);
+  const code_instruct_header = useMemo(() => {
+    if (node_type === 'evaluator')
+      return <div className="code-mirror-field-header">Define an <Code>evaluate</Code> func to map over each response:</div>;
+    else 
+      return <div className="code-mirror-field-header">Define a <Code>process</Code> func to map over each response:</div>;
+  }, [node_type]);
+  const code_info_modal = useMemo(() => {
+    if (node_type === 'evaluator')
+      return <Box m='lg' mt='xl'>
+        <Text mb='sm'>To use a {default_header}, write a function <Code>evaluate</Code> that takes a single argument of class <Code>ResponseInfo</Code>.
+        The function should return a \'score\' for that response, which usually is a number or a boolean value (strings as categoricals are supported, but experimental).</Text>
+        <Text mt='sm' mb='sm'>
+        For instance, here is an evaluator that returns the length of a response:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? _info_example_py : _info_example_js}
+        </Prism>
+        <Text mt='md' mb='sm'>This function gets the text of the response via <Code>response.text</Code>, then calculates its length in characters. The full <Code>ResponseInfo</Code> class has the following properties and methods:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? _info_codeblock_py : _info_codeblock_js}
+        </Prism>
+        <Text mt='md' mb='sm'>For instance, say you have a prompt template <Code>What is the capital of &#123;country&#125;?</Code> on a Prompt Node. 
+          You want to get the input variable 'country', which filled the prompt that led to the current response. You can use<Code>response.var</Code>:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? _info_example_var_py : _info_example_var_js}
+        </Prism>
+        <Text mt='md'>Note that you are allowed to define variables outside of the function, or define more functions, as long as a function called <Code>evaluate</Code> is defined. 
+        For more information on what's possible, see the <a href="https://chainforge.ai/docs/" target='_blank'>documentation</a> or load some Example Flows.</Text>
+      </Box>;
+    else 
+      return <Box m='lg' mt='xl'>
+        <Text mb='sm'>To use a {default_header}, write a function <Code>process</Code> that takes a single argument of class <Code>ResponseInfo</Code>.
+        The function should returned the <strong>transformed response text</strong>, as a string or number.</Text>
+        <Text mt='sm' mb='sm'>
+        For instance, here is a processor that simply returns the first 12 characters of the response:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? _info_proc_example_py : _info_proc_example_js}
+        </Prism>
+        <Text mt='md' mb='sm'>This function gets the text of the response via <Code>response.text</Code>, then slices it until the 12th-indexed character. The full <Code>ResponseInfo</Code> class has the following properties and methods:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? _info_codeblock_py : _info_codeblock_js}
+        </Prism>
+        <Text mt='md' mb='sm'>For another example, say you have a prompt that requests the LLM output in a consistent format, with "ANSWER:" at the end like Chain-of-Thought. 
+          You want to get just the part after 'ANSWER:' Here's how you can do this:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? _info_proc_example_var_py : _info_proc_example_var_js}
+        </Prism>
+        <Text mt='md'>Note that you are allowed to define variables outside of the function, or define more functions, as long as a function called <Code>process</Code> is defined. 
+        For more information on what's possible, see the <a href="https://chainforge.ai/docs/" target='_blank'>documentation</a>. Finally, note that currently 
+        you cannot change the response metadata itself (i.e., var, meta dictionaries); if you have a use case for that feature, raise an Issue on our GitHub.</Text>
+      </Box>;
+  }, [progLang, node_type])
 
   return (
     <BaseNode classNames="evaluator-node" nodeId={id}>
@@ -264,7 +384,7 @@ const EvaluatorNode = ({ data, id }) => {
                   status={status}
                   alertModal={alertModal}
                   handleRunClick={handleRunClick}
-                  runButtonTooltip="Run evaluator over inputs"
+                  runButtonTooltip={run_tooltip}
                   customButtons={[
                     <Tooltip label='Info' key="eval-info">
                       <button onClick={openInfoModal} className='custom-button' style={{border:'none'}}>
@@ -274,26 +394,7 @@ const EvaluatorNode = ({ data, id }) => {
                   />
       <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
       <Modal title={default_header} size='60%' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-5%'}}}>
-        <Box m='lg' mt='xl'>
-          <Text mb='sm'>To use a {default_header}, write a function <Code>evaluate</Code> that takes a single argument of class <Code>ResponseInfo</Code>.
-          The function should return a 'score' for that response, which usually is a number or a boolean value (strings as categoricals are supported, but experimental).</Text>
-          <Text mt='sm' mb='sm'>
-          For instance, here is an evaluator that returns the length of a response:</Text>
-          <Prism language={progLang === 'python' ? 'py' : 'ts'}>
-            {progLang === 'python' ? _info_example_py : _info_example_js}
-          </Prism>
-          <Text mt='md' mb='sm'>This function gets the text of the response via <Code>response.text</Code>, then calculates its length in characters. The full <Code>ResponseInfo</Code> class has the following properties and methods:</Text>
-          <Prism language={progLang === 'python' ? 'py' : 'ts'}>
-            {progLang === 'python' ? _info_codeblock_py : _info_codeblock_js}
-          </Prism>
-          <Text mt='md' mb='sm'>For instance, say you have a prompt template <Code>What is the capital of &#123;country&#125;?</Code> on a Prompt Node. 
-            You want to get the input variable 'country', which filled the prompt that led to the current response. You can use<Code>response.var</Code>:</Text>
-          <Prism language={progLang === 'python' ? 'py' : 'ts'}>
-            {progLang === 'python' ? _info_example_var_py : _info_example_var_js}
-          </Prism>
-          <Text mt='md'>Note that you are allowed to define variables outside of the function, or define more functions, as long as a function called <Code>evaluate</Code> is defined. 
-          For more information on what's possible, see the <a href="https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md#python-evaluator-node" target='_blank'>documentation</a> or load some Example Flows.</Text>
-        </Box>
+        {code_info_modal}
       </Modal>
       <iframe style={{display: 'none'}} id={`${id}-iframe`}></iframe>
       <Handle
@@ -311,14 +412,7 @@ const EvaluatorNode = ({ data, id }) => {
           style={{ top: '50%' }}
         />
       <div className="core-mirror-field">
-        <div className="code-mirror-field-header">Define an <Code>evaluate</Code> func to map over each response:
-        {/* &nbsp;<select name="mapscope" id="mapscope" onChange={handleOnMapScopeSelect}>
-            <option value="response">response</option>
-            <option value="batch">batch of responses</option>
-        </select> */}
-        </div>
-        
-        {/* <span className="code-style">response</span>: */}
+        {code_instruct_header}
         <div className="ace-editor-container nodrag">
           <AceEditor
             mode={progLang}
@@ -358,4 +452,4 @@ const EvaluatorNode = ({ data, id }) => {
   );
 };
 
-export default EvaluatorNode;
+export default CodeEvaluatorNode;

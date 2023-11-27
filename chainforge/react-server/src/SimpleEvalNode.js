@@ -8,6 +8,7 @@ import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 import useStore from "./store";
 import fetch_from_backend from "./fetch_from_backend";
+import { stripLLMDetailsFromResponses, toStandardResponseFormat } from "./backend/utils";
 
 const createJSEvalCodeFor = (responseFormat, operation, value, valueType) => {
   let responseObj = 'r.text'
@@ -52,7 +53,7 @@ const createJSEvalCodeFor = (responseFormat, operation, value, valueType) => {
 const SimpleEvalNode = ({data, id}) => {
   
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
-  const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
+  const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const [pastInputs, setPastInputs] = useState([]);
 
@@ -97,17 +98,25 @@ const SimpleEvalNode = ({data, id}) => {
     dirtyStatus();
   }, [lastTextValue, dirtyStatus]);
 
-  const handleRunClick = useCallback(() => {
-    // Get the ids from the connected input nodes:
-    const input_node_ids = inputEdgesForNode(id).map(e => e.source);
-    if (input_node_ids.length === 0) {
-        console.warn("No inputs for simple evaluator node.");
-        return;
+  const handlePullInputs = useCallback(() => {
+    // Pull input data
+    let pulled_inputs = pullInputData(["responseBatch"], id);
+    if (!pulled_inputs || !pulled_inputs["responseBatch"]) {
+      console.warn(`No inputs to the Simple Evaluator node.`);
+      return [];
     }
+    // Convert to standard response format (StandardLLMResponseFormat)
+    return pulled_inputs["responseBatch"].map(toStandardResponseFormat);
+  }, [pullInputData, id, toStandardResponseFormat]); 
+
+  const handleRunClick = useCallback(() => {
+    // Pull inputs to the node
+    let pulled_inputs = handlePullInputs();
 
     // Set status and created rejection callback
     setStatus('loading');
     setLastResponses([]);
+
     const rejected = (err_msg) => {
       setStatus('error');
       alertModal.current.trigger(err_msg);
@@ -120,31 +129,32 @@ const SimpleEvalNode = ({data, id}) => {
 
     // Run evaluator in backend
     fetch_from_backend('executejs', {
-      id: id,
-      code: code,
-      responses: input_node_ids,
-      scope: 'response',
+        id: id,
+        code: code,
+        responses: pulled_inputs,
+        scope: 'response',
+        process_type: 'evaluator'
     }).then(function(json) {    
-        // Check if there's an error; if so, bubble it up to user and exit:
-        if (!json || json.error) {
-          setLastRunSuccess(false);
-          rejected(json ? json.error : 'Unknown error encountered when requesting evaluations: empty response returned.');
-          return;
-        }
-        
-        // Ping any vis + inspect nodes attached to this node to refresh their contents:
-        pingOutputNodes(id);
+      // Check if there's an error; if so, bubble it up to user and exit:
+      if (!json || json.error) {
+        setLastRunSuccess(false);
+        rejected(json ? json.error : 'Unknown error encountered when requesting evaluations: empty response returned.');
+        return;
+      }
+      
+      // Ping any vis + inspect nodes attached to this node to refresh their contents:
+      pingOutputNodes(id);
 
-        console.log(json.responses);
-        setLastResponses(json.responses);
-        setLastRunSuccess(true);
+      console.log(json.responses);
+      setLastResponses(stripLLMDetailsFromResponses(json.responses));
+      setLastRunSuccess(true);
 
-        if (status !== 'ready')
-          setUninspectedResponses(true);
-        
-        setStatus('ready');
+      if (status !== 'ready')
+        setUninspectedResponses(true);
+      
+      setStatus('ready');
     }).catch((err) => rejected(err.message));
-  }, [inputEdgesForNode, pingOutputNodes, setStatus, alertModal, status, varValue, varValueType, responseFormat, textValue, valueFieldDisabled]);
+  }, [handlePullInputs, pingOutputNodes, setStatus, alertModal, status, varValue, varValueType, responseFormat, textValue, valueFieldDisabled]);
 
   const showResponseInspector = useCallback(() => {
     if (inspectModal && inspectModal.current && lastResponses) {
@@ -154,31 +164,24 @@ const SimpleEvalNode = ({data, id}) => {
   }, [inspectModal, lastResponses]);
 
   const handleOnConnect = useCallback(() => {
-    // Get the ids from the connected input nodes:
-    const input_node_ids = inputEdgesForNode(id).map(e => e.source);
-
-    // Fetch all input responses
-    fetch_from_backend(
-      'grabResponses',
-      {responses: input_node_ids}
-    ).then(function(json) {
-      if (json.responses && json.responses.length > 0) {
-        // Find all vars and metavars in responses
-        let varnames = new Set();
-        let metavars = new Set();
-        json.responses.forEach(resp_obj => {
-            Object.keys(resp_obj.vars).forEach(v => varnames.add(v));
-            if (resp_obj.metavars)
-                Object.keys(resp_obj.metavars).forEach(v => metavars.add(v));
-        });
-        const avs = Array.from(varnames);
-        const amvs = Array.from(metavars).filter(v => !(v.startsWith('LLM_')));
-        setAvailableVars(avs);
-        setAvailableMetavars(amvs);
-        setDataPropsForNode(id, { availableVars: avs, availableMetavars: amvs });
-      }
-    });
-  }, [data, id, inputEdgesForNode, setDataPropsForNode]);
+    // Pull inputs to the node
+    let pulled_inputs = handlePullInputs();
+    if (pulled_inputs && pulled_inputs.length > 0) {
+      // Find all vars and metavars in responses
+      let varnames = new Set();
+      let metavars = new Set();
+      pulled_inputs.forEach(resp_obj => {
+          Object.keys(resp_obj.vars).forEach(v => varnames.add(v));
+          if (resp_obj.metavars)
+              Object.keys(resp_obj.metavars).forEach(v => metavars.add(v));
+      });
+      const avs = Array.from(varnames);
+      const amvs = Array.from(metavars).filter(v => !(v.startsWith('LLM_')));
+      setAvailableVars(avs);
+      setAvailableMetavars(amvs);
+      setDataPropsForNode(id, { availableVars: avs, availableMetavars: amvs });
+    }
+  }, [data, id, handlePullInputs, setDataPropsForNode]);
 
   if (data.input) {
     // If there's a change in inputs...

@@ -13,7 +13,7 @@ import fetch_from_backend from './fetch_from_backend';
 import { escapeBraces } from './backend/template';
 import ChatHistoryView from './ChatHistoryView';
 import InspectFooter from './InspectFooter';
-import { countNumLLMs, setsAreEqual } from './backend/utils';
+import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -32,17 +32,6 @@ const bucketChatHistoryInfosByLLM = (chat_hist_infos) => {
     });
     return chats_by_llm;
 }
-const getLLMsInPulledInputData = (pulled_data) => {
-    let found_llms = {};
-    Object.values(pulled_data).filter(_vs => {
-        let vs = Array.isArray(_vs) ? _vs : [_vs];
-        vs.forEach(v => {
-            if (v?.llm !== undefined && !(v.llm.key in found_llms))
-                found_llms[v.llm.key] = v.llm;
-        });
-    });
-    return Object.values(found_llms);
-};
 
 class PromptInfo {
     prompt; // string

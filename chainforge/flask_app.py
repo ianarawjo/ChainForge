@@ -158,12 +158,12 @@ def check_typeof_vals(arr: list) -> MetricType:
     else:
         return val_type
 
-def run_over_responses(eval_func, responses: list, scope: str) -> list:
+def run_over_responses(process_func, responses: list, scope: str, process_type: str) -> list:
     for resp_obj in responses:
         res = resp_obj['responses']
         if scope == 'response':
-            # Run evaluator func over every individual response text
-            evals = [eval_func(
+            # Run process func over every individual response text
+            proc = [process_func(
                         ResponseInfo(
                             text=r,
                             prompt=resp_obj['prompt'],
@@ -172,51 +172,62 @@ def run_over_responses(eval_func, responses: list, scope: str) -> list:
                             llm=resp_obj['llm'])
                     ) for r in res]
 
-            # Check the type of evaluation results
-            # NOTE: We assume this is consistent across all evaluations, but it may not be.
-            eval_res_type = check_typeof_vals(evals)
+            if process_type == 'processor':
+                # Response text was just transformed, not evaluated
+                resp_obj['responses'] = proc
+            else: 
+                # Responses were evaluated/scored
+                # Check the type of evaluation results
+                # NOTE: We assume this is consistent across all evaluations, but it may not be.
+                eval_res_type = check_typeof_vals(proc)
 
-            if eval_res_type == MetricType.Numeric:
-                # Store items with summary of mean, median, etc
-                resp_obj['eval_res'] = {
-                    'mean': mean(evals),
-                    'median': median(evals),
-                    'stdev': stdev(evals) if len(evals) > 1 else 0,
-                    'range': (min(evals), max(evals)),
-                    'items': evals,
-                    'dtype': eval_res_type.name,
-                }
-            elif eval_res_type in (MetricType.Unknown, MetricType.Empty):
-                raise Exception('Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.')
-            else:
-                # Categorical, KeyValue, etc, we just store the items:
-                resp_obj['eval_res'] = { 
-                    'items': evals,
-                    'dtype': eval_res_type.name,
-                }
+                if eval_res_type == MetricType.Numeric:
+                    # Store items with summary of mean, median, etc
+                    resp_obj['eval_res'] = {
+                        'mean': mean(proc),
+                        'median': median(proc),
+                        'stdev': stdev(proc) if len(proc) > 1 else 0,
+                        'range': (min(proc), max(proc)),
+                        'items': proc,
+                        'dtype': eval_res_type.name,
+                    }
+                elif eval_res_type in (MetricType.Unknown, MetricType.Empty):
+                    raise Exception('Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.')
+                else:
+                    # Categorical, KeyValue, etc, we just store the items:
+                    resp_obj['eval_res'] = { 
+                        'items': proc,
+                        'dtype': eval_res_type.name,
+                    }
         else:  
-            # Run evaluator func over the entire response batch
-            ev = eval_func([
+            # Run process func over the entire response batch
+            proc = process_func([
                     ResponseInfo(text=r,
                                  prompt=resp_obj['prompt'],
                                  var=resp_obj['vars'],
                                  llm=resp_obj['llm'])
-                for r in res])
-            ev_type = check_typeof_vals([ev])
-            if ev_type == MetricType.Numeric:
-                resp_obj['eval_res'] = {
-                    'mean': ev,
-                    'median': ev,
-                    'stdev': 0,
-                    'range': (ev, ev),
-                    'items': [ev],
-                    'type': ev_type.name,
-                }
-            else:
-                resp_obj['eval_res'] = { 
-                    'items': [ev],
-                    'type': ev_type.name,
-                }
+                   for r in res])
+            
+            if process_type == 'processor':
+                # Response text was just transformed, not evaluated
+                resp_obj['responses'] = proc
+            else: 
+                # Responses were evaluated/scored
+                ev_type = check_typeof_vals([proc])
+                if ev_type == MetricType.Numeric:
+                    resp_obj['eval_res'] = {
+                        'mean': proc,
+                        'median': proc,
+                        'stdev': 0,
+                        'range': (proc, proc),
+                        'items': [proc],
+                        'type': ev_type.name,
+                    }
+                else:
+                    resp_obj['eval_res'] = { 
+                        'items': [proc],
+                        'type': ev_type.name,
+                    }
     return responses
 
 async def make_sync_call_async(sync_method, *args, **params):
@@ -266,6 +277,7 @@ def executepy():
             'responses': List[StandardizedLLMResponse]  # the responses to run on.
             'scope': 'response' | 'batch'  # the scope of responses to run on --a single response, or all across each batch. 
                                            # If batch, evaluator has access to 'responses'. Only matters if n > 1 for each prompt.
+            'process_type': 'evaluator' | 'processor'  # the type of processing to perform. Evaluators only 'score'/annotate responses. Processors change responses (e.g. text).
             'script_paths': unspecified | List[str]  # the paths to scripts to be added to the path before the lambda function is evaluated
         }
 
@@ -304,6 +316,9 @@ def executepy():
     except Exception as e:
         return jsonify({'error': f'Could not add script path to sys.path. Error message:\n{str(e)}'})
 
+    # Get processor type, if any
+    process_type = data['process_type'] if 'process_type' in data else 'evaluator'
+
     # Create the evaluator function
     # DANGER DANGER! 
     try:
@@ -311,7 +326,10 @@ def executepy():
 
         # Double-check that there is an 'evaluate' method in our namespace. 
         # This will throw a NameError if not: 
-        evaluate  # noqa
+        if process_type == 'evaluator':
+            evaluate  # noqa
+        else:
+            process  # noqa
     except Exception as e:
         return jsonify({'error': f'Could not compile evaluator code. Error message:\n{str(e)}'})
     
@@ -319,7 +337,7 @@ def executepy():
     logs = []
     try:
         HIJACK_PYTHON_PRINT()
-        evald_responses = run_over_responses(evaluate, responses, scope=data['scope'])  # noqa
+        evald_responses = run_over_responses(evaluate if process_type == 'evaluator' else process, responses, scope=data['scope'], process_type=process_type)  # noqa
         logs = REVERT_PYTHON_PRINT()
     except Exception as e:
         logs = REVERT_PYTHON_PRINT()
