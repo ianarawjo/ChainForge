@@ -160,18 +160,19 @@ const useStore = create((set, get) => ({
               const row_keys = Object.keys(row);
 
               // Check if this is an 'empty' row (with all empty strings); if so, skip it:
-              if (row_keys.every(key => key === '__uid' || !row[key] || row[key].trim() === ""))
+              console.log(row);
+              if (row_keys.every(key => key === '__uid' || !row[key] || (typeof row[key] === "string" && row[key].trim() === "")))
                 return undefined;
 
               const row_excluding_col = {};
               row_keys.forEach(key => {
                 if (key !== src_col.key && key !== '__uid')
-                  row_excluding_col[col_header_lookup[key]] = row[key];
+                  row_excluding_col[col_header_lookup[key]] = row[key].toString();
               });
               return {
                 // We escape any braces in the source text before they're passed downstream.
                 // This is a special property of tabular data nodes: we don't want their text to be treated as prompt templates.
-                text: escapeBraces((src_col.key in row) ? row[src_col.key] : ""),
+                text: escapeBraces((src_col.key in row) ? row[src_col.key].toString() : ""),
                 metavars: row_excluding_col,
                 associate_id: row.__uid, // this is used by the backend to 'carry' certain values together
               }
