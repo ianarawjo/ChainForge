@@ -45,6 +45,7 @@ const countResponsesBy = (responses, keyFunc) => {
   });
   return [responses_by_key, unspecified_group];
 };
+const getLLMName = (resp_obj) => (typeof resp_obj?.llm === 'string' ? resp_obj.llm : resp_obj?.llm?.name);
 
 const SUCCESS_EVAL_SCORES = new Set(['true', 'yes']);
 const FAILURE_EVAL_SCORES = new Set(['false', 'no']);
@@ -85,7 +86,7 @@ export const exportToExcel = (jsonResponses, filename) => {
   // NOTE: We need to 'unwind' responses in each batch, since each res_obj can have N>1 responses.
   //       We will store every response text on a single row, but keep track of batches by creating a batch ID number.
   const data = jsonResponses.map((res_obj, res_obj_idx) => {
-    const llm = res_obj.llm;
+    const llm = getLLMName(res_obj);
     const prompt = res_obj.prompt;
     const vars = res_obj.vars;
     const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
@@ -166,7 +167,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       Object.keys(res_obj.vars).forEach(v => {
         found_vars.add(v);
       });
-      found_llms.add(res_obj.llm);
+      found_llms.add(getLLMName(res_obj));
     });
     found_vars = Array.from(found_vars);
     found_llms = Array.from(found_llms);
@@ -258,14 +259,14 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             </div>);
         });
         return (
-            <div key={"r"+res_idx} className="response-box" style={{ backgroundColor: color_for_llm(res_obj.llm), width: `${fixed_width}%` }}>
+            <div key={"r"+res_idx} className="response-box" style={{ backgroundColor: color_for_llm(getLLMName(res_obj)), width: `${fixed_width}%` }}>
                 <div className="response-var-inline-container">
                   {var_tags}
                 </div>
                 {eatenvars.includes('LLM') ?
                       ps
                     : (<div className="response-item-llm-name-wrapper">
-                        <h1>{res_obj.llm}</h1>
+                        <h1>{getLLMName(res_obj)}</h1>
                         {ps}
                       </div>)
                 }
@@ -282,7 +283,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       let var_cols, colnames, getColVal, found_sel_var_vals; 
       if (tableColVar === 'LLM') {
         var_cols = found_vars;
-        getColVal = (r => r.llm);
+        getColVal = getLLMName;
         found_sel_var_vals = found_llms;
         colnames = var_cols.concat(found_llms);
       } else {
@@ -298,7 +299,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         colnames = var_cols.concat(found_sel_var_vals);
       }
 
-      const getVar = (r, v) => v === 'LLM' ? r.llm : r.vars[v];
+      const getVar = (r, v) => v === 'LLM' ? getLLMName(r) : r.vars[v];
 
       // Then group responses by prompts. Each prompt will become a separate row of the table (will be treated as unique)
       let responses_by_prompt = groupResponsesBy(responses, (r => var_cols.map(v => getVar(r, v)).join('|')))[0]; 
@@ -307,7 +308,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         // We assume here that prompt input vars will be the same across all responses in this bundle,
         // so we just take the value of the first one per each varname:
         const var_cols_vals = var_cols.map(v => {
-          const val = (v === 'LLM') ? resp_objs[0].llm : resp_objs[0].vars[v];
+          const val = (v === 'LLM') ? getLLMName(resp_objs[0]) : resp_objs[0].vars[v];
           return (val !== undefined) ? val : '(unspecified)';
         });
         const resp_objs_by_col_var = groupResponsesBy(resp_objs, getColVal)[0];
@@ -352,7 +353,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
               // Base case. Display n response(s) to each single prompt, back-to-back:
               let fixed_width = 100;
               if (wideFormat && eatenvars.length > 0) {
-                const num_llms = Array.from(new Set(resps.map(res_obj => res_obj.llm))).length;
+                const num_llms = Array.from(new Set(resps.map(getLLMName))).length;
                 fixed_width = Math.max(20, Math.trunc(100 / num_llms)) - 1; // 20% width is lowest we will go (5 LLM response boxes max)
               }
               const resp_boxes = generateResponseBoxes(resps, eatenvars, fixed_width);
@@ -377,7 +378,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           // we also bucket any 'leftover' responses that didn't have the requested variable (a kind of 'soft fail')
           const group_name = varnames[0];
           const [grouped_resps, leftover_resps] = (group_name === 'LLM') 
-                                                  ? groupResponsesBy(resps, (r => r.llm)) 
+                                                  ? groupResponsesBy(resps, getLLMName) 
                                                   : groupResponsesBy(resps, (r => ((group_name in r.vars) ? r.vars[group_name] : null)));
           const get_header = (group_name === 'LLM') 
                               ? ((key, val) => (<div key={val} style={{backgroundColor: color_for_llm(val)}} className='response-llm-header'>{val}</div>))
