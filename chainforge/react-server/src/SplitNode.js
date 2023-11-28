@@ -8,9 +8,10 @@ import { IconArrowMerge, IconArrowsSplit, IconList } from '@tabler/icons-react';
 import { Divider, NativeSelect, Text, Popover, Tooltip, Center, Modal, Box } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { escapeBraces } from './backend/template';
-import { processCSV, deepcopy, deepcopy_and_modify, dict_excluding_key } from "./backend/utils";
+import { processCSV, deepcopy, deepcopy_and_modify, dict_excluding_key, toStandardResponseFormat } from "./backend/utils";
 
 import { fromMarkdown } from "mdast-util-from-markdown";
+import StorageCache from './backend/cache';
 
 const formattingOptions = [
   {value: "list",    label:"- list items"},
@@ -243,6 +244,11 @@ const SplitNode = ({ data, id }) => {
   useEffect(() => {
     handleOnConnect();
   }, [splitOnFormat])
+
+  // Store the outputs to the cache whenever they change
+  useEffect(() => {
+    StorageCache.store(`${id}.json`, splitTexts.map(toStandardResponseFormat));
+  }, [splitTexts]);
 
   useEffect(() => {
     if (data.refresh && data.refresh === true) {

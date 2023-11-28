@@ -58,10 +58,11 @@ export default class StorageCache {
    * Use loadFromLocalStorage to unpack the localStorage data.
    * 
    * @param localStorageKey The key that will be used in localStorage (default='chainforge')
+   * @param data Optional. JSON-compatible data to store. If undefined, will store the StorageCache's data. If defined, will only store the passed data.
    * @returns True if succeeded, false if failure (e.g., too big for localStorage).
    */
-  public static saveToLocalStorage(localStorageKey: string='chainforge'): boolean {
-    const data = StorageCache.getInstance().data;
+  public static saveToLocalStorage(localStorageKey: string='chainforge', data?: Dict): boolean {
+    data = data ?? StorageCache.getInstance().data;
     const compressed = LZString.compressToUTF16(JSON.stringify(data));
     try {
       localStorage.setItem(localStorageKey, compressed);
@@ -83,22 +84,23 @@ export default class StorageCache {
    * Performs lz-string decompression from UTF16 encoding. 
    * 
    * @param localStorageKey The key that will be used in localStorage (default='chainforge')
-   * @returns True if succeeded, false if failure (e.g., key not found). 
+   * @returns Loaded data if succeeded, undefined if failure (e.g., key not found). 
    */
-  public static loadFromLocalStorage(localStorageKey: string='chainforge'): boolean {
+  public static loadFromLocalStorage(localStorageKey: string='chainforge', setStorageCacheData: boolean=true): boolean {
     const compressed = localStorage.getItem(localStorageKey);
     if (!compressed) {
       console.error(`Could not find cache data in localStorage with key ${localStorageKey}.`);
-      return false;
+      return undefined;
     }
     try {
       let data = JSON.parse(LZString.decompressFromUTF16(compressed));
-      StorageCache.getInstance().data = data;
+      if (setStorageCacheData)
+        StorageCache.getInstance().data = data;
       console.log('loaded', data);
-      return true;
+      return data;
     } catch (error) {
       console.error(error.message);
-      return false;
+      return undefined;
     }
   }
 }

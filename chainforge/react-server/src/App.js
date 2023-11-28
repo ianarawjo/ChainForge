@@ -300,7 +300,7 @@ const App = () => {
     // NOTE: This currently only saves the front-end state. Cache files
     // are not pulled or overwritten upon loading from localStorage. 
     const flow = rf.toObject();
-    localStorage.setItem('chainforge-flow', JSON.stringify(flow));
+    StorageCache.saveToLocalStorage('chainforge-flow', flow);
 
     // Attempt to save the current state of the back-end state,
     // the StorageCache. (This does LZ compression to save space.)
@@ -342,7 +342,7 @@ const App = () => {
       setEdges(flow.edges || []); 
 
       // Save flow that user loaded to autosave cache, in case they refresh the browser
-      localStorage.setItem('chainforge-flow', JSON.stringify(flow));
+      StorageCache.saveToLocalStorage('chainforge-flow', flow);
       StorageCache.saveToLocalStorage('chainforge-state');
     }
   };
@@ -350,10 +350,10 @@ const App = () => {
     return localStorage.getItem('chainforge-flow') !== null;
   };
   const loadFlowFromAutosave = async (rf_inst) => {
-    const saved_flow = localStorage.getItem('chainforge-flow');
+    const saved_flow = StorageCache.loadFromLocalStorage('chainforge-flow', false);
     if (saved_flow) {
       StorageCache.loadFromLocalStorage('chainforge-state');
-      loadFlow(JSON.parse(saved_flow), rf_inst);
+      loadFlow(saved_flow, rf_inst);
     }
   };
 

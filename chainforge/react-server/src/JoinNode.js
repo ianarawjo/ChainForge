@@ -8,7 +8,8 @@ import { IconArrowMerge, IconList } from '@tabler/icons-react';
 import { Divider, NativeSelect, Text, Popover, Tooltip, Center, Modal, Box } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { escapeBraces } from './backend/template';
-import { countNumLLMs } from './backend/utils';
+import { countNumLLMs, toStandardResponseFormat } from './backend/utils';
+import StorageCache from './backend/cache';
 
 const formattingOptions = [
   {value: "\n\n", label:"double newline \\n\\n"},
@@ -320,6 +321,11 @@ const JoinNode = ({ data, id }) => {
   useEffect(() => {
     handleOnConnect();
   }, [groupByVar, groupByLLM, formatting])
+
+  // Store the outputs to the cache whenever they change
+  useEffect(() => {
+    StorageCache.store(`${id}.json`, joinedTexts.map(toStandardResponseFormat));
+  }, [joinedTexts]);
 
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
