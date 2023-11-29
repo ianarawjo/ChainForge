@@ -200,14 +200,15 @@ const TextFieldsNode = ({ data, id }) => {
 
   // Add the entire list of `fields` to `textfieldsValues`
   function addMultipleFields(fields) {
+    // Unpack the object to force a re-render
+    const buffer = {...textfieldsValues};
     for (const field of fields) {
-      const buffer = textfieldsValues;
       const uid = getUID(buffer);
       buffer[uid] = field;
-      setTextfieldsValues(buffer);
-      setDataPropsForNode(id, { fields: buffer });
-      pingOutputNodes(id);
     }
+    setTextfieldsValues(buffer);
+    setDataPropsForNode(id, { fields: buffer });
+    pingOutputNodes(id);
   }
 
   // Replace the entirety of `textfieldValues` with `newFields`
