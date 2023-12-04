@@ -37,8 +37,10 @@ export enum NativeLLM {
   // Anthropic
   Claude_v2 = "claude-2",
   Claude_v2_0 = "claude-2.0",
+  Claude_v2_1 = "claude-2.1",
   Claude_1_instant = "claude-instant-1",
   Claude_1_instant_1 = "claude-instant-1.1",
+  Claude_1_instant_2 = "claude-instant-1.2",
   Claude_v1 = "claude-v1",
   Claude_v1_0 = "claude-v1.0",
   Claude_v1_2 = "claude-v1.2",
