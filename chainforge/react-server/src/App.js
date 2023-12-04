@@ -8,7 +8,7 @@ import ReactFlow, {
 } from 'reactflow';
 import { Button, Menu, LoadingOverlay, Text, Box, List, Loader, Tooltip } from '@mantine/core';
 import { useClipboard } from '@mantine/hooks';
-import { IconSettings, IconTextPlus, IconTerminal, IconCsv, IconSettingsAutomation, IconFileSymlink, IconRobot, IconRuler2, IconArrowMerge, IconArrowsSplit } from '@tabler/icons-react';
+import { IconSettings, IconTextPlus, IconTerminal, IconSettingsAutomation, IconFileSymlink, IconRobot, IconRuler2, IconArrowMerge, IconArrowsSplit, IconForms } from '@tabler/icons-react';
 import RemoveEdge from './RemoveEdge';
 import TextFieldsNode from './TextFieldsNode'; // Import a custom node
 import PromptNode from './PromptNode';
@@ -17,7 +17,7 @@ import VisNode from './VisNode';
 import InspectNode from './InspectorNode';
 import ScriptNode from './ScriptNode';
 import AlertModal from './AlertModal';
-import CsvNode from './CsvNode';
+import ItemsNode from './ItemsNode';
 import TabularDataNode from './TabularDataNode';
 import JoinNode from './JoinNode';
 import SplitNode from './SplitNode';
@@ -86,7 +86,7 @@ const nodeTypes = {
   vis: VisNode,
   inspect: InspectNode,
   script: ScriptNode,
-  csv: CsvNode,
+  csv: ItemsNode,
   table: TabularDataNode,
   comment: CommentNode,
   join: JoinNode,
@@ -215,7 +215,7 @@ const App = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'scriptNode-'+Date.now(), type: 'script', data: {}, position: {x: x-200, y:y-100} });
   };
-  const addCsvNode = () => {
+  const addItemsNode = () => {
     const { x, y } = getViewportCenter();
     addNode({ id: 'csvNode-'+Date.now(), type: 'csv', data: {}, position: {x: x-200, y:y-100} });
   };
@@ -757,10 +757,10 @@ const App = () => {
             <MenuTooltip label="Specify input text to prompt or chat nodes. You can also declare variables in brackets {} to chain TextFields together." >
               <Menu.Item onClick={addTextFieldsNode} icon={<IconTextPlus size="16px" />}> TextFields Node </Menu.Item>
             </MenuTooltip>
-            <MenuTooltip label="Specify input text as comma-separated values. Good for specifying lots of short text values. An alternative to TextFields node.">
-              <Menu.Item onClick={addCsvNode} icon={<IconCsv size="16px" />}> CSV Node </Menu.Item>
+            <MenuTooltip label="Specify inputs as a comma-separated list of items. Good for specifying lots of short text values. An alternative to TextFields node.">
+              <Menu.Item onClick={addItemsNode} icon={<IconForms size="16px" />}> Items Node </Menu.Item>
             </MenuTooltip>
-            <MenuTooltip label="Import or create a spreadhseet of data to use as input to prompt or chat nodes.">
+            <MenuTooltip label="Import or create a spreadhseet of data to use as input to prompt or chat nodes. Import accepts xlsx, csv, and jsonl.">
               <Menu.Item onClick={addTabularDataNode} icon={'🗂️'}> Tabular Data Node </Menu.Item>
             </MenuTooltip>
             <Menu.Divider />

@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Text } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
-import { IconCsv } from '@tabler/icons-react';
+import { IconForms } from '@tabler/icons-react';
 import { Handle } from 'reactflow';
 import BaseNode from './BaseNode';
 import { processCSV } from "./backend/utils"
 
-const CsvNode = ({ data, id }) => {
+const ItemsNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const pingOutputNodes = useStore((state) => state.pingOutputNodes);
     const [contentDiv, setContentDiv] = useState(null);
@@ -83,7 +83,14 @@ const CsvNode = ({ data, id }) => {
         var text_val = data.text || '';
         setCsvInput(
             <div className="input-field" key={id}>
-                <textarea id={id} name={id} className="text-field-fixed nodrag csv-input" rows="2" cols="40" defaultValue={text_val} onChange={handleInputChange} placeholder='Paste your CSV text here' onKeyDown={handKeyDown} onBlur={handleOnBlur} autoFocus={true}/>
+                <textarea id={id} name={id} className="text-field-fixed nodrag csv-input" 
+                rows="2" cols="40" 
+                defaultValue={text_val} 
+                placeholder='Put your comma-separated list here' 
+                onKeyDown={handKeyDown} 
+                onChange={handleInputChange} 
+                onBlur={handleOnBlur} 
+                autoFocus={true}/>
             </div>
         );
         setContentDiv(null);
@@ -101,7 +108,7 @@ const CsvNode = ({ data, id }) => {
 
     return (
     <BaseNode classNames="text-fields-node" nodeId={id}>
-        <NodeLabel title={data.title || 'CSV Node'} nodeId={id} icon={<IconCsv size="16px" />} />
+        <NodeLabel title={data.title || 'Items Node'} nodeId={id} icon={<IconForms size="16px" />} />
         {csvInput}
         {contentDiv}
         {countText ? countText : <></>}
@@ -115,4 +122,4 @@ const CsvNode = ({ data, id }) => {
     </BaseNode>);
 };
 
-export default CsvNode;
+export default ItemsNode;
