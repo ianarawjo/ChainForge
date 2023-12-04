@@ -19,11 +19,13 @@ def main():
     #     action='store_true')
     
     # TODO: Reimplement this where the React server is given the backend's port before loading.
-    serve_parser.add_argument('--port', help='The port to run the server on. Defaults to 8000.', type=int, default=8000, nargs='?')
+    serve_parser.add_argument('--port', 
+                              help='The port to run the server on. Defaults to 8000.', 
+                              type=int, default=8000, nargs='?')
     serve_parser.add_argument('--host', 
                               help="The host to run the server on. Defaults to 'localhost'.", 
                               type=str, default="localhost", nargs='?')
-    
+
     args = parser.parse_args()
 
     # Currently only support the 'serve' command...

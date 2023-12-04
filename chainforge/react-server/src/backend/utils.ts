@@ -19,7 +19,7 @@ const fetch = require('node-fetch');
 
 /** Where the ChainForge Flask server is being hosted, if any. */
 // @ts-ignore
-export const FLASK_BASE_URL = (window.__CF_HOSTNAME !== undefined && window.__CF_PORT !== undefined) ? `http://${window.__CF_HOSTNAME}:${window.__CF_PORT}/` : 'http://localhost:8000/';
+export const FLASK_BASE_URL = (window.__CF_HOSTNAME !== undefined && window.__CF_PORT !== undefined) ? '/' : 'http://localhost:8000/';
 
 export async function call_flask_backend(route: string, params: Dict | string): Promise<Dict> {
   return fetch(`${FLASK_BASE_URL}app/${route}`, {
