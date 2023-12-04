@@ -727,6 +727,8 @@ const App = () => {
             zoomOnPinch={false}
             zoomOnScroll={false}
             panOnScroll={true}
+            disableKeyboardA11y={true}
+            deleteKeyCode={[]}
             // connectionLineComponent={AnimatedConnectionLine}
             // connectionLineStyle={connectionLineStyle}
             snapToGrid={true}
