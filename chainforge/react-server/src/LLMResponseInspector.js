@@ -289,6 +289,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         found_sel_var_vals = found_llms;
         colnames = var_cols.concat(metavar_cols).concat(found_llms);
       } else {
+        metavar_cols = [];
         var_cols = found_vars.filter(v => v !== tableColVar)
                              .concat(found_llms.length > 1 ? ['LLM'] : []); // only add LLM column if num LLMs > 1
         getColVal = (r => r.vars[tableColVar]);
@@ -298,7 +299,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           acc.add(tableColVar in res_obj.vars ? res_obj.vars[tableColVar] : '(unspecified)');
           return acc;
         }, new Set()));
-        colnames = var_cols.concat(metavar_cols).concat(found_sel_var_vals);
+        colnames = var_cols.concat(found_sel_var_vals);
       }
 
       const getVar = (r, v) => v === 'LLM' ? getLLMName(r) : r.vars[v];
