@@ -162,14 +162,15 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     
     // Find all vars in responses
     let found_vars = new Set();
+    let found_metavars = new Set();
     let found_llms = new Set();
     jsonResponses.forEach(res_obj => {
-      Object.keys(res_obj.vars).forEach(v => {
-        found_vars.add(v);
-      });
+      Object.keys(res_obj.vars).forEach(v => found_vars.add(v));
+      Object.keys(res_obj.metavars).forEach(v => found_metavars.add(v));
       found_llms.add(getLLMName(res_obj));
     });
     found_vars = Array.from(found_vars);
+    found_metavars = Array.from(found_metavars).filter(v => !v.startsWith("LLM_"));
     found_llms = Array.from(found_llms);
 
     // Whether there's some evaluation scores in the responses
@@ -281,11 +282,12 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       // Generate a table, with default columns for: input vars, LLMs queried
       // First get column names as input vars + LLMs:
       let var_cols, colnames, getColVal, found_sel_var_vals; 
+      let metavar_cols = found_metavars;
       if (tableColVar === 'LLM') {
         var_cols = found_vars;
         getColVal = getLLMName;
         found_sel_var_vals = found_llms;
-        colnames = var_cols.concat(found_llms);
+        colnames = var_cols.concat(metavar_cols).concat(found_llms);
       } else {
         var_cols = found_vars.filter(v => v !== tableColVar)
                              .concat(found_llms.length > 1 ? ['LLM'] : []); // only add LLM column if num LLMs > 1
@@ -296,7 +298,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           acc.add(tableColVar in res_obj.vars ? res_obj.vars[tableColVar] : '(unspecified)');
           return acc;
         }, new Set()));
-        colnames = var_cols.concat(found_sel_var_vals);
+        colnames = var_cols.concat(metavar_cols).concat(found_sel_var_vals);
       }
 
       const getVar = (r, v) => v === 'LLM' ? getLLMName(r) : r.vars[v];
@@ -309,6 +311,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         // so we just take the value of the first one per each varname:
         const var_cols_vals = var_cols.map(v => {
           const val = (v === 'LLM') ? getLLMName(resp_objs[0]) : resp_objs[0].vars[v];
+          return (val !== undefined) ? val : '(unspecified)';
+        });
+        const metavar_cols_vals = metavar_cols.map(v => {
+          const val = resp_objs[0].metavars[v];
           return (val !== undefined) ? val : '(unspecified)';
         });
         const resp_objs_by_col_var = groupResponsesBy(resp_objs, getColVal)[0];
@@ -326,6 +332,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         return (
           <tr key={`r${idx}`} style={{borderBottom: '8px solid #eee'}}>
             {var_cols_vals.map((c, i) => (<td key={`v${i}`} className='inspect-table-var'>{c}</td>))}
+            {metavar_cols_vals.map((c, i) => (<td key={`m${i}`} className='inspect-table-metavar'>{c}</td>))}
             {sel_var_cols.map((c, i) => (<td key={`c${i}`} className='inspect-table-llm-resp'>{c}</td>))}
           </tr>
         );

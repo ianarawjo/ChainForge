@@ -329,6 +329,13 @@
     font-weight: 500;
     white-space: pre-wrap;
   }
+  .inspect-table-metavar {
+    background-color: rgb(224, 232, 250);
+    padding-top: 10px;
+    border-right: 1px solid #cde; 
+    font-weight: 500;
+    white-space: pre-wrap;
+  }
   .inspect-table-llm-resp {
     padding-top: 8px;
     padding-bottom: 20px;
