@@ -108,6 +108,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const inspectModal = useRef(null);
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [responsesWillChange, setResponsesWillChange] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   // For continuing with prior LLMs toggle
   const [contWithPriorLLMs, setContWithPriorLLMs] = useState(data.contChat !== undefined ? data.contChat : (node_type === 'chat' ? true : false));
@@ -677,6 +678,23 @@ const PromptNode = ({ data, id, type: node_type }) => {
     }
   }, [textAreaRef]);
 
+  const inspectResponsesDrawer = useMemo(() => 
+    <div style={{position: 'absolute', 
+                left: '100%', 
+                top: '12px',
+                backgroundColor: 'white',
+                border: "1px solid #999",
+                borderTopRightRadius: '5px', 
+                borderBottomRightRadius: '5px',
+                borderBottomLeftRadius: '2px',
+                boxShadow: "4px 0px 4px 0px rgba(0, 0, 0, 0.1) inset",
+                display: showDrawer ? 'initial' : 'none'}}>
+        <div className='inspect-response-container nowheel nodrag' style={{margin: '0px 10px 10px 12px'}}>
+            <LLMResponseInspector jsonResponses={jsonResponses} />
+        </div>
+    </div>
+  , [jsonResponses, showDrawer])
+
   return (
     <BaseNode classNames="prompt-node" nodeId={id}>
     <NodeLabel title={data.title || node_default_title} 
@@ -776,25 +794,16 @@ const PromptNode = ({ data, id, type: node_type }) => {
         : <></>}
 
         { jsonResponses && jsonResponses.length > 0 && status !== 'loading' ? 
-            (<InspectFooter onClick={showResponseInspector} showNotificationDot={uninspectedResponses} />
+            (<InspectFooter onClick={showResponseInspector} 
+                showNotificationDot={uninspectedResponses} 
+                       isDrawerOpen={showDrawer}
+                   showDrawerButton={true} 
+                      onDrawerClick={() => {setShowDrawer(!showDrawer); setUninspectedResponses(false);}} />
             ) : <></>
         }
         </div>
 
-        <div style={{position: 'absolute', 
-                    left: '100%', 
-                    top: '12px', 
-                    transition: 'right 0.3s ease-in-out', 
-                    backgroundColor: 'white',
-                    border: "1px solid #999",
-                    borderTopRightRadius: '5px', 
-                    borderBottomRightRadius: '5px',
-                    borderBottomLeftRadius: '2px',
-                    boxShadow: "2px 0px 8px 0px rgba(0, 0, 0, 0.1) inset"}}>
-                <div className='inspect-response-container nowheel nodrag' style={{margin: '8px 10px 10px 12px'}}>
-                    <LLMResponseInspector jsonResponses={jsonResponses} />
-                </div>
-        </div>
+        {inspectResponsesDrawer}
         
     </BaseNode>
    );
