@@ -14,6 +14,7 @@ import { escapeBraces } from './backend/template';
 import ChatHistoryView from './ChatHistoryView';
 import InspectFooter from './InspectFooter';
 import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
+import LLMResponseInspector from './LLMResponseInspector';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -779,6 +780,22 @@ const PromptNode = ({ data, id, type: node_type }) => {
             ) : <></>
         }
         </div>
+
+        <div style={{position: 'absolute', 
+                    left: '100%', 
+                    top: '12px', 
+                    transition: 'right 0.3s ease-in-out', 
+                    backgroundColor: 'white',
+                    border: "1px solid #999",
+                    borderTopRightRadius: '5px', 
+                    borderBottomRightRadius: '5px',
+                    borderBottomLeftRadius: '2px',
+                    boxShadow: "2px 0px 8px 0px rgba(0, 0, 0, 0.1) inset"}}>
+                <div className='inspect-response-container nowheel nodrag' style={{margin: '8px 10px 10px 12px'}}>
+                    <LLMResponseInspector jsonResponses={jsonResponses} />
+                </div>
+        </div>
+        
     </BaseNode>
    );
 };
