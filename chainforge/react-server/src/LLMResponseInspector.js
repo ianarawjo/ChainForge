@@ -4,7 +4,7 @@
  * Separated from ReactFlow node UI so that it can 
  * be deployed in multiple locations.  
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect, Checkbox, Flex, Tabs } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconTable, IconLayoutList } from '@tabler/icons-react';
@@ -360,14 +360,15 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           if (varnames.length === 0) {
               // Base case. Display n response(s) to each single prompt, back-to-back:
               let fixed_width = 100;
-              if (wideFormat && eatenvars.length > 0) {
+              let side_by_side_resps = wideFormat;
+              if (side_by_side_resps && eatenvars.length > 0) {
                 const num_llms = Array.from(new Set(resps.map(getLLMName))).length;
                 fixed_width = Math.max(20, Math.trunc(100 / num_llms)) - 1; // 20% width is lowest we will go (5 LLM response boxes max)
               }
               const resp_boxes = generateResponseBoxes(resps, eatenvars, fixed_width);
               const className = eatenvars.length > 0 ? "response-group" : "";
               const boxesClassName = eatenvars.length > 0 ? "response-boxes-wrapper" : "";
-              const flexbox = (wideFormat && fixed_width < 100) ? 'flex' : 'block';
+              const flexbox = (side_by_side_resps && fixed_width < 100) ? 'flex' : 'block';
               const defaultOpened = !first_opened || eatenvars.length === 0 || eatenvars[eatenvars.length-1] === 'LLM';
               first_opened = true;
               leaf_id += 1;
@@ -436,6 +437,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     setMultiSelectValue(new_val);
   };
 
+  const sz = useMemo(() => 
+    (wideFormat ? 'sm' : 'xs')
+  , [wideFormat]);
+
   return (<div style={{height: '100%'}}>
 
     <Tabs value={viewFormat} onTabChange={setViewFormat} styles={{tabLabel: {fontSize: wideFormat ? '12pt' : '9pt' }}}>
@@ -452,7 +457,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                       label="Group responses by (order matters):"
                       data={multiSelectVars}
                       placeholder="Pick vars to group responses, in order of importance"
-                      size={wideFormat ? 'sm' : 'xs'}
+                      size={sz}
                       value={multiSelectValue}
                       clearSearchOnChange={true}
                       clearSearchOnBlur={true}
@@ -461,6 +466,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                     label="Only show scores" 
                     onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
                     mb='xs'
+                    size={sz}
                     display={showEvalScoreOptions ? 'inherit' : 'none'} />
         </Flex>
       </Tabs.Panel>
@@ -475,13 +481,14 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             data={multiSelectVars}
             label="Select the main variable to use for columns:"
             mb="sm"
-            size={wideFormat ? 'sm' : 'xs'}
+            size={sz}
             w="80%"
           />
           <Checkbox checked={onlyShowScores} 
                     label="Only show scores" 
                     onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
                     mb='md'
+                    size={sz}
                     display={showEvalScoreOptions ? 'inherit' : 'none'} />
         </Flex>
       </Tabs.Panel>

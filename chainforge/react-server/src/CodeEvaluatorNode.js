@@ -19,6 +19,7 @@ import fetch_from_backend from './fetch_from_backend';
 import { APP_IS_RUNNING_LOCALLY, stripLLMDetailsFromResponses, toStandardResponseFormat } from './backend/utils';
 import InspectFooter from './InspectFooter';
 import { escapeBraces } from './backend/template';
+import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
 
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
@@ -124,6 +125,7 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
   const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const bringNodeToFront = useStore((state) => state.bringNodeToFront);
   const [status, setStatus] = useState('none');
   const nodes = useStore((state) => state.nodes);
 
@@ -136,6 +138,7 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   // The programming language for the editor. Also determines what 'execute'
   // function will ultimately be called.
@@ -295,7 +298,7 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
           })).flat()
         });
 
-        if (status !== 'ready')
+        if (status !== 'ready' && !showDrawer)
           setUninspectedResponses(true);
         
         setStatus('ready');
@@ -446,8 +449,18 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
       { lastRunSuccess && lastResponses && lastResponses.length > 0 ? 
         (<InspectFooter label={<>Inspect results&nbsp;<IconSearch size='12pt'/></>} 
                         onClick={showResponseInspector} 
-                        showNotificationDot={uninspectedResponses} />
-        ) : <></>}  
+                        showNotificationDot={uninspectedResponses} 
+                        isDrawerOpen={showDrawer}
+                        showDrawerButton={true} 
+                        onDrawerClick={() => {
+                          setShowDrawer(!showDrawer); 
+                          setUninspectedResponses(false);
+                          bringNodeToFront(id);
+                        }}
+        />) : <></>}  
+      
+      <LLMResponseInspectorDrawer jsonResponses={lastResponses} showDrawer={showDrawer} />
+
     </BaseNode>
   );
 };

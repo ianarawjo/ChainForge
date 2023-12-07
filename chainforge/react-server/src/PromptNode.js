@@ -15,6 +15,7 @@ import ChatHistoryView from './ChatHistoryView';
 import InspectFooter from './InspectFooter';
 import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
 import LLMResponseInspector from './LLMResponseInspector';
+import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -85,6 +86,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const getImmediateInputNodeTypes = useStore((state) => state.getImmediateInputNodeTypes);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
+  const bringNodeToFront = useStore((state) => state.bringNodeToFront);
 
   // API Keys (set by user in popup GlobalSettingsModal)
   const apiKeys = useStore((state) => state.apiKeys);
@@ -579,7 +581,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                     return;
                 }
 
-                if (responsesWillChange)
+                if (responsesWillChange && !showDrawer)
                     setUninspectedResponses(true);
                 setResponsesWillChange(false);
 
@@ -677,23 +679,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
       textAreaRef.current = elem;
     }
   }, [textAreaRef]);
-
-  const inspectResponsesDrawer = useMemo(() => 
-    <div style={{position: 'absolute', 
-                left: '100%', 
-                top: '12px',
-                backgroundColor: 'white',
-                border: "1px solid #999",
-                borderTopRightRadius: '5px', 
-                borderBottomRightRadius: '5px',
-                borderBottomLeftRadius: '2px',
-                boxShadow: "4px 0px 4px 0px rgba(0, 0, 0, 0.1) inset",
-                display: showDrawer ? 'initial' : 'none'}}>
-        <div className='inspect-response-container nowheel nodrag' style={{margin: '0px 10px 10px 12px'}}>
-            <LLMResponseInspector jsonResponses={jsonResponses} />
-        </div>
-    </div>
-  , [jsonResponses, showDrawer])
 
   return (
     <BaseNode classNames="prompt-node" nodeId={id}>
@@ -798,12 +783,16 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 showNotificationDot={uninspectedResponses} 
                        isDrawerOpen={showDrawer}
                    showDrawerButton={true} 
-                      onDrawerClick={() => {setShowDrawer(!showDrawer); setUninspectedResponses(false);}} />
+                      onDrawerClick={() => {
+                        setShowDrawer(!showDrawer); 
+                        setUninspectedResponses(false);
+                        bringNodeToFront(id);
+                    }} />
             ) : <></>
         }
         </div>
 
-        {inspectResponsesDrawer}
+        <LLMResponseInspectorDrawer jsonResponses={jsonResponses} showDrawer={showDrawer} />
         
     </BaseNode>
    );
