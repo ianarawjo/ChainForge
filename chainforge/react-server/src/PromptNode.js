@@ -14,6 +14,8 @@ import { escapeBraces } from './backend/template';
 import ChatHistoryView from './ChatHistoryView';
 import InspectFooter from './InspectFooter';
 import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
+import LLMResponseInspector from './LLMResponseInspector';
+import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -84,6 +86,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const getImmediateInputNodeTypes = useStore((state) => state.getImmediateInputNodeTypes);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
+  const bringNodeToFront = useStore((state) => state.bringNodeToFront);
 
   // API Keys (set by user in popup GlobalSettingsModal)
   const apiKeys = useStore((state) => state.apiKeys);
@@ -107,6 +110,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const inspectModal = useRef(null);
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [responsesWillChange, setResponsesWillChange] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   // For continuing with prior LLMs toggle
   const [contWithPriorLLMs, setContWithPriorLLMs] = useState(data.contChat !== undefined ? data.contChat : (node_type === 'chat' ? true : false));
@@ -577,7 +581,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                     return;
                 }
 
-                if (responsesWillChange)
+                if (responsesWillChange && !showDrawer)
                     setUninspectedResponses(true);
                 setResponsesWillChange(false);
 
@@ -775,10 +779,21 @@ const PromptNode = ({ data, id, type: node_type }) => {
         : <></>}
 
         { jsonResponses && jsonResponses.length > 0 && status !== 'loading' ? 
-            (<InspectFooter onClick={showResponseInspector} showNotificationDot={uninspectedResponses} />
+            (<InspectFooter onClick={showResponseInspector} 
+                showNotificationDot={uninspectedResponses} 
+                       isDrawerOpen={showDrawer}
+                   showDrawerButton={true} 
+                      onDrawerClick={() => {
+                        setShowDrawer(!showDrawer); 
+                        setUninspectedResponses(false);
+                        bringNodeToFront(id);
+                    }} />
             ) : <></>
         }
         </div>
+
+        <LLMResponseInspectorDrawer jsonResponses={jsonResponses} showDrawer={showDrawer} />
+        
     </BaseNode>
    );
 };
