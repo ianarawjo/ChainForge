@@ -12,6 +12,7 @@ import { LLMListContainer } from './LLMListComponent';
 import LLMResponseInspectorModal from './LLMResponseInspectorModal';
 import InspectFooter from './InspectFooter';
 import { initLLMProviders } from './store';
+import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt. 
 const PLACEHOLDER_PROMPT = "Respond with 'true' if the text below has a positive sentiment, and 'false' if not. Do not reply with anything else.";
@@ -32,10 +33,12 @@ const LLMEvaluatorNode = ({ data, id }) => {
 
   const inspectModal = useRef(null);
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
+  const bringNodeToFront = useStore((state) => state.bringNodeToFront);
   const apiKeys = useStore((state) => state.apiKeys);
 
   const [lastResponses, setLastResponses] = useState([]);
@@ -104,12 +107,13 @@ const LLMEvaluatorNode = ({ data, id }) => {
   
         console.log(json.responses);
         setLastResponses(json.responses);
-        setUninspectedResponses(true);
+        if (!showDrawer)
+          setUninspectedResponses(true);
         setStatus('ready');
         setProgress(undefined);
       }).catch(handleError);
     });
-  }, [inputEdgesForNode, promptText, llmScorers, apiKeys, pingOutputNodes, setStatus, alertModal]);
+  }, [inputEdgesForNode, promptText, llmScorers, apiKeys, pingOutputNodes, setStatus, showDrawer, alertModal]);
 
   const handlePromptChange = useCallback((event) => {
     // Store prompt text
@@ -200,7 +204,17 @@ const LLMEvaluatorNode = ({ data, id }) => {
         (<InspectFooter label={<>Inspect scores&nbsp;<IconSearch size='12pt'/></>}
                         onClick={showResponseInspector}
                         showNotificationDot={uninspectedResponses} 
+                        isDrawerOpen={showDrawer}
+                        showDrawerButton={true} 
+                        onDrawerClick={() => {
+                          setShowDrawer(!showDrawer); 
+                          setUninspectedResponses(false);
+                          bringNodeToFront(id);
+                        }}
          />) : <></>}
+      
+      <LLMResponseInspectorDrawer jsonResponses={lastResponses} showDrawer={showDrawer} />
+
     </BaseNode>
   );
 };

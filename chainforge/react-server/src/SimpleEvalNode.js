@@ -9,6 +9,7 @@ import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 import useStore from "./store";
 import fetch_from_backend from "./fetch_from_backend";
 import { stripLLMDetailsFromResponses, toStandardResponseFormat } from "./backend/utils";
+import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 
 const createJSEvalCodeFor = (responseFormat, operation, value, valueType) => {
   let responseObj = 'r.text'
@@ -55,6 +56,7 @@ const SimpleEvalNode = ({data, id}) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
+  const bringNodeToFront = useStore((state) => state.bringNodeToFront);
   const [pastInputs, setPastInputs] = useState([]);
 
   const [status, setStatus] = useState('none');
@@ -64,6 +66,7 @@ const SimpleEvalNode = ({data, id}) => {
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
+  const [showDrawer, setShowDrawer] = useState(false);
 
   const [responseFormat, setResponseFormat] = useState(data.responseFormat || "response");
   const [operation, setOperation] = useState(data.operation || "contains");
@@ -149,12 +152,12 @@ const SimpleEvalNode = ({data, id}) => {
       setLastResponses(stripLLMDetailsFromResponses(json.responses));
       setLastRunSuccess(true);
 
-      if (status !== 'ready')
+      if (status !== 'ready' && !showDrawer)
         setUninspectedResponses(true);
       
       setStatus('ready');
     }).catch((err) => rejected(err.message));
-  }, [handlePullInputs, pingOutputNodes, setStatus, alertModal, status, varValue, varValueType, responseFormat, textValue, valueFieldDisabled]);
+  }, [handlePullInputs, pingOutputNodes, setStatus, alertModal, status, varValue, varValueType, responseFormat, textValue, showDrawer, valueFieldDisabled]);
 
   const showResponseInspector = useCallback(() => {
     if (inspectModal && inspectModal.current && lastResponses) {
@@ -298,7 +301,17 @@ const SimpleEvalNode = ({data, id}) => {
         (<InspectFooter label={<>Inspect scores&nbsp;<IconSearch size='12pt'/></>}
                         onClick={showResponseInspector}
                         showNotificationDot={uninspectedResponses} 
+                        isDrawerOpen={showDrawer}
+                        showDrawerButton={true} 
+                        onDrawerClick={() => {
+                          setShowDrawer(!showDrawer); 
+                          setUninspectedResponses(false);
+                          bringNodeToFront(id);
+                        }}
          />) : <></>}
+        
+      <LLMResponseInspectorDrawer jsonResponses={lastResponses} showDrawer={showDrawer} />
+
     </BaseNode>
   );
 };

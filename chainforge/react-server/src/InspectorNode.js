@@ -63,7 +63,7 @@ const InspectorNode = ({ data, id }) => {
                 customButtons={[
                     <button className="custom-button" key="export-data" onClick={() => exportToExcel(jsonResponses)}>Export data</button>
                 ]} />
-      <div className='inspect-response-container nowheel nodrag'>
+      <div className='inspect-response-container nowheel nodrag' style={{marginTop: '-8pt'}}>
         <LLMResponseInspector jsonResponses={jsonResponses} />
       </div>
       <Handle

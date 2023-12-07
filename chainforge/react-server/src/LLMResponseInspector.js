@@ -4,8 +4,8 @@
  * Separated from ReactFlow node UI so that it can 
  * be deployed in multiple locations.  
  */
-import React, { useState, useEffect, useRef } from 'react';
-import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect, Checkbox, Flex } from '@mantine/core';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect, Checkbox, Flex, Tabs } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconTable, IconLayoutList } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
@@ -339,7 +339,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         );
       });
 
-      setResponses([(<Table key='table'>
+      setResponses([(<Table key='table' fontSize={wideFormat ? 'sm' : 'xs'}>
         <thead>
           <tr>{colnames.map(c => (<th key={c}>{c}</th>))}</tr>
         </thead>
@@ -360,14 +360,15 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           if (varnames.length === 0) {
               // Base case. Display n response(s) to each single prompt, back-to-back:
               let fixed_width = 100;
-              if (wideFormat && eatenvars.length > 0) {
+              let side_by_side_resps = wideFormat;
+              if (side_by_side_resps && eatenvars.length > 0) {
                 const num_llms = Array.from(new Set(resps.map(getLLMName))).length;
                 fixed_width = Math.max(20, Math.trunc(100 / num_llms)) - 1; // 20% width is lowest we will go (5 LLM response boxes max)
               }
               const resp_boxes = generateResponseBoxes(resps, eatenvars, fixed_width);
               const className = eatenvars.length > 0 ? "response-group" : "";
               const boxesClassName = eatenvars.length > 0 ? "response-boxes-wrapper" : "";
-              const flexbox = (wideFormat && fixed_width < 100) ? 'flex' : 'block';
+              const flexbox = (side_by_side_resps && fixed_width < 100) ? 'flex' : 'block';
               const defaultOpened = !first_opened || eatenvars.length === 0 || eatenvars[eatenvars.length-1] === 'LLM';
               first_opened = true;
               leaf_id += 1;
@@ -436,62 +437,62 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     setMultiSelectValue(new_val);
   };
 
+  const sz = useMemo(() => 
+    (wideFormat ? 'sm' : 'xs')
+  , [wideFormat]);
+
   return (<div style={{height: '100%'}}>
-    
-    {wideFormat ? 
-      <Radio.Group
-        name="viewFormat"
-        value={viewFormat}
-        onChange={setViewFormat}
-      >
-        <Group mt="0px" mb='xs'>
-        <Radio value="hierarchy" label={<span><IconLayoutList size='10pt' style={{marginBottom: '-1px'}}/> Grouped List</span>} />
-        <Radio value="table" label={<span><IconTable size='10pt' style={{marginBottom: '-1px'}}/> Table</span>} />
-        </Group>
-      </Radio.Group>
-    : <></>}
 
-    {viewFormat === "table" ? 
-      <Flex gap='xl' align='end'>
-        <NativeSelect 
-          value={tableColVar}
-          onChange={(event) => {
-            setTableColVar(event.currentTarget.value);
-            setUserSelectedTableCol(true);
-          }}
-          data={multiSelectVars}
-          label="Select the main variable to use for columns:"
-          mb="sm"
-          w="80%"
-        />
-        <Checkbox checked={onlyShowScores} 
-                  label="Only show scores" 
-                  onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
-                  mb='md'
-                  display={showEvalScoreOptions ? 'inherit' : 'none'} />
-      </Flex>
-    : <></>}
-
-    {wideFormat === false || viewFormat === "hierarchy" ?
-      <Flex gap='xl' align='end'>
-        <MultiSelect ref={multiSelectRef}
-                    onChange={handleMultiSelectValueChange}
-                    className='nodrag nowheel inspect-multiselect'
-                    label="Group responses by (order matters):"
-                    data={multiSelectVars}
-                    placeholder="Pick vars to group responses, in order of importance"
-                    size={wideFormat ? 'sm' : 'xs'}
-                    value={multiSelectValue}
-                    clearSearchOnChange={true}
-                    clearSearchOnBlur={true}
-                    w={wideFormat ? '80%' : '100%'} />
-        <Checkbox checked={onlyShowScores} 
-                  label="Only show scores" 
-                  onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
-                  mb='xs'
-                  display={showEvalScoreOptions ? 'inherit' : 'none'} />
-      </Flex>
-    : <></>}
+    <Tabs value={viewFormat} onTabChange={setViewFormat} styles={{tabLabel: {fontSize: wideFormat ? '12pt' : '9pt' }}}>
+      <Tabs.List>
+        <Tabs.Tab value="hierarchy"><IconLayoutList size="10pt" style={{marginBottom: wideFormat ? '0px' : '-4px'}}/>{wideFormat ? " Grouped List" : ""}</Tabs.Tab>
+        <Tabs.Tab value="table"><IconTable size="10pt" style={{marginBottom: wideFormat ? '0px' : '-4px'}}/>{wideFormat ? " Table View" : ""}</Tabs.Tab>
+      </Tabs.List>
+      
+      <Tabs.Panel value="hierarchy" pt="xs">
+        <Flex gap='xl' align='end'>
+          <MultiSelect ref={multiSelectRef}
+                      onChange={handleMultiSelectValueChange}
+                      className='nodrag nowheel inspect-multiselect'
+                      label="Group responses by (order matters):"
+                      data={multiSelectVars}
+                      placeholder="Pick vars to group responses, in order of importance"
+                      size={sz}
+                      value={multiSelectValue}
+                      clearSearchOnChange={true}
+                      clearSearchOnBlur={true}
+                      w={wideFormat ? '80%' : '100%'} />
+          <Checkbox checked={onlyShowScores} 
+                    label="Only show scores" 
+                    onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
+                    mb='xs'
+                    size={sz}
+                    display={showEvalScoreOptions ? 'inherit' : 'none'} />
+        </Flex>
+      </Tabs.Panel>
+      <Tabs.Panel value="table" pt="xs">
+        <Flex gap='xl' align='end'>
+          <NativeSelect 
+            value={tableColVar}
+            onChange={(event) => {
+              setTableColVar(event.currentTarget.value);
+              setUserSelectedTableCol(true);
+            }}
+            data={multiSelectVars}
+            label="Select the main variable to use for columns:"
+            mb="sm"
+            size={sz}
+            w="80%"
+          />
+          <Checkbox checked={onlyShowScores} 
+                    label="Only show scores" 
+                    onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
+                    mb='md'
+                    size={sz}
+                    display={showEvalScoreOptions ? 'inherit' : 'none'} />
+        </Flex>
+      </Tabs.Panel>
+    </Tabs>
 
     <div className="nowheel nodrag">
       {responses}

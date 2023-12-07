@@ -309,6 +309,14 @@ const useStore = create((set, get) => ({
       })
     });
   },
+  bringNodeToFront: (id) => {
+    set({
+      nodes: get().nodes.map((n) => {
+        n.selected = n.id === id;
+        return n;
+      })
+    });
+  },
   duplicateNode: (id, offset) => {
     const nodes = get().nodes;
     const node = nodes.find(n => n.id === id);
