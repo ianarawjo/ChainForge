@@ -446,7 +446,7 @@
     margin: 4px 3px;
     background-color: rgba(255, 255, 255, 0.4);
     white-space: pre-wrap;
-    user-select: auto;
+    user-select: text;
     cursor: text;
   }
   .small-response-metrics {
