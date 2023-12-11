@@ -243,7 +243,7 @@ const useStore = create((set, get) => ({
       varnames.forEach(varname => {
         // Check for duplicate variable names
         if (var_history.has(String(varname).toLowerCase())) {
-          throw "Error: Duplicate variable names!"
+          throw "Duplicate variable name, {" + varname + "}, in the same chain is not allowed."
         }
         else {
           var_history.add(String(varname).toLowerCase())
