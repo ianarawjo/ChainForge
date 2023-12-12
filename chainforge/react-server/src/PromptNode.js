@@ -16,6 +16,7 @@ import InspectFooter from './InspectFooter';
 import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
 import LLMResponseInspector from './LLMResponseInspector';
 import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
+import { ProjectError } from './backend/errors';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -178,7 +179,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
     try {
     updateShowContToggle(pullInputData(templateVars, id));
     } catch (err) {
-        alertModal.current.trigger(err)
+        if (err instanceof ProjectError) {
+            alertModal.current.trigger(err.message)
+        }
     }
   }, [templateVars, id, pullInputData, updateShowContToggle]);
 
@@ -312,7 +315,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
         pullInputChats();
     } catch (err) {
-        alertModal.current.trigger(err)
+        if (err instanceof ProjectError){
+            alertModal.current.trigger(err.message)
+        }
     }
   };
 

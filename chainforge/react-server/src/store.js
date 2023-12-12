@@ -7,6 +7,7 @@ import {
 import { escapeBraces } from './backend/template';
 import { filterDict } from './backend/utils';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
+import { ProjectError } from './backend/errors';
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -243,7 +244,10 @@ const useStore = create((set, get) => ({
       varnames.forEach(varname => {
         // Check for duplicate variable names
         if (var_history.has(String(varname).toLowerCase())) {
-          throw "Duplicate variable name, {" + varname + "}, in the same chain is not allowed."
+          throw new ProjectError({
+            name: 'DUPLICATE_VARIABLE_NAME',
+            message: "Duplicate variable name, {" + varname + "}, in the same chain is not allowed.",
+          })
         }
         else {
           var_history.add(String(varname).toLowerCase())
