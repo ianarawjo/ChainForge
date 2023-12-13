@@ -297,6 +297,7 @@ const App = () => {
   const saveFlow = useCallback((rf_inst) => {
     const rf = rf_inst || rfInstance;
     if (!rf) return;
+
     // NOTE: This currently only saves the front-end state. Cache files
     // are not pulled or overwritten upon loading from localStorage. 
     const flow = rf.toObject();
@@ -612,7 +613,25 @@ const App = () => {
 
     // Autosave the flow to localStorage every minute:
     console.log('set autosaving interval');
-    const interv = setInterval(() => saveFlow(rf_inst), 60000); // 60000 milliseconds = 1 minute
+    const interv = setInterval(() => {
+
+      // Start a timer, in case the saving takes a long time
+      const startTime = Date.now();
+
+      // Save the flow to localStorage
+      saveFlow(rf_inst);
+
+      // Check how long the save took
+      const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        // If the operation took longer than a second, that's not good.
+        // Although this function is called async inside setInterval, 
+        // calls to localStorage block the UI in JavaScript, freezing the screen.
+        // We smart-disable autosaving here when we detect it's starting the freeze the UI:
+        console.warn("Autosaving disabled. The time required to save to localStorage exceeds 1 second. This can happen when there's a lot of data in your flow. Make sure to export frequently to save your work.");
+        clearInterval(interv);
+      }
+    }, 60000); // 60000 milliseconds = 1 minute
     setAutosavingInterval(interv);
 
     if (!IS_RUNNING_LOCALLY) {
