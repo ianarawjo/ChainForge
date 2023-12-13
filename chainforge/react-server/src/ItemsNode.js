@@ -8,6 +8,7 @@ import BaseNode from './BaseNode';
 import { processCSV } from "./backend/utils"
 import AISuggestionsManager from './backend/aiSuggestionsManager';
 import AIPopover from './AiPopover';
+import { cleanEscapedBraces, escapeBraces } from './backend/template';
 
 const replaceDoubleQuotesWithSingle = (str) => str.replaceAll('"', "'");
 const wrapInQuotesIfContainsComma = (str) => str.includes(",") ? `"${str}"` : str;
@@ -55,7 +56,7 @@ const ItemsNode = ({ data, id }) => {
     // Handle a change in a text fields' input.
     const setFieldsFromText = useCallback((text_val) => {
         // Update the data for this text fields' id.
-        let new_data = { text: text_val, fields: processCSV(text_val).map(stripWrappingQuotes) };
+        let new_data = { text: text_val, fields: processCSV(text_val).map(stripWrappingQuotes).map(escapeBraces) };
         setDataPropsForNode(id, new_data);
         pingOutputNodes(id);
     }, [id, pingOutputNodes, setDataPropsForNode]);
@@ -86,7 +87,7 @@ const ItemsNode = ({ data, id }) => {
         const html = [];
         elements.forEach((e, idx) => {
             // html.push(<Badge color="orange" size="lg" radius="sm">{e}</Badge>)
-            html.push(<span key={idx} className="csv-element">{e}</span>);
+            html.push(<span key={idx} className="csv-element">{cleanEscapedBraces(e)}</span>);
             if (idx < elements.length - 1) {
                 html.push(<span key={idx + 'comma'} className="csv-comma">,</span>);
             }
