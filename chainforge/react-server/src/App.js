@@ -40,7 +40,7 @@ import { shallow } from 'zustand/shallow';
 import useStore from './store';
 import fetch_from_backend from './fetch_from_backend';
 import StorageCache from './backend/cache';
-import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
+import { APP_IS_RUNNING_LOCALLY, browserTabIsActive } from './backend/utils';
 
 // Device / Browser detection
 import { isMobile, isChrome, isFirefox, isEdgeChromium, isChromium } from 'react-device-detect';
@@ -345,6 +345,9 @@ const App = () => {
       // Save flow that user loaded to autosave cache, in case they refresh the browser
       StorageCache.saveToLocalStorage('chainforge-flow', flow);
       StorageCache.saveToLocalStorage('chainforge-state');
+
+      // Start auto-saving, if it's not already enabled
+      if (rf_inst) initAutosaving(rf_inst);
     }
   };
   const autosavedFlowExists = () => {
@@ -607,13 +610,15 @@ const App = () => {
 
   }, [rfInstance, nodes, IS_RUNNING_LOCALLY, handleError, clipboard, waitingForShare]);
 
-  // Run once upon ReactFlow initialization
-  const onInit = (rf_inst) => {
-    setRfInstance(rf_inst);
+  // Initialize auto-saving
+  const initAutosaving = (rf_inst) => {
+    if (autosavingInterval !== null) return;  // autosaving interval already set
+    console.log("Init autosaving!");
 
     // Autosave the flow to localStorage every minute:
-    console.log('set autosaving interval');
     const interv = setInterval(() => {
+      // Check the visibility of the browser tab --if it's not visible, don't autosave
+      if (!browserTabIsActive()) return;
 
       // Start a timer, in case the saving takes a long time
       const startTime = Date.now();
@@ -623,16 +628,22 @@ const App = () => {
 
       // Check how long the save took
       const duration = Date.now() - startTime;
-      if (duration > 1000) {
-        // If the operation took longer than a second, that's not good.
+      if (duration > 1500) {
+        // If the operation took longer than 1.5 seconds, that's not good.
         // Although this function is called async inside setInterval, 
         // calls to localStorage block the UI in JavaScript, freezing the screen.
         // We smart-disable autosaving here when we detect it's starting the freeze the UI:
         console.warn("Autosaving disabled. The time required to save to localStorage exceeds 1 second. This can happen when there's a lot of data in your flow. Make sure to export frequently to save your work.");
         clearInterval(interv);
+        setAutosavingInterval(null);
       }
     }, 60000); // 60000 milliseconds = 1 minute
     setAutosavingInterval(interv);
+  };
+
+  // Run once upon ReactFlow initialization
+  const onInit = (rf_inst) => {
+    setRfInstance(rf_inst);
 
     if (!IS_RUNNING_LOCALLY) {
 

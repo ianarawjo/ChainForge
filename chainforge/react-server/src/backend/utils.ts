@@ -965,3 +965,14 @@ export const toStandardResponseFormat = (r) => {
     resp_obj.chat_history = r.chat_history;
   return resp_obj;
 };
+
+// Check if the current browser window/tab is 'active' or not
+export const browserTabIsActive = () => {
+  try {
+    const visible = document.visibilityState === 'visible'; 
+    return visible;
+  } catch(e) {
+    console.error(e);
+    return true;  // indeterminate
+  }
+};
