@@ -757,7 +757,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     <div>
         <div style={{marginBottom: '10px', padding: '4px'}}>
             <label htmlFor="num-generations" style={{fontSize: '10pt'}}>Num responses per prompt:&nbsp;</label>
-            <input id="num-generations" name="num-generations" type="number" min={1} max={50} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
+            <input id="num-generations" name="num-generations" type="number" min={1} max={999} defaultValue={data.n || 1} onChange={handleNumGenChange} className="nodrag"></input>
         </div>
 
         { showContToggle ? 
