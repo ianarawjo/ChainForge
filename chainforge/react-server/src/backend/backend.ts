@@ -1,8 +1,8 @@
 import markdownIt from "markdown-it";
 
 import { Dict, StringDict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse, ChatHistoryInfo, isEqualChatHistory } from "./typing";
-import { LLM, NativeLLM, getEnumName } from "./models";
-import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend, filterDict, deepcopy } from "./utils";
+import { LLM, getEnumName } from "./models";
+import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
 import { PromptPermutationGenerator, PromptTemplate } from "./template";
@@ -137,17 +137,6 @@ function get_cache_keys_related_to_id(cache_id: string, include_basefile: boolea
 }
 
 async function setAPIKeys(api_keys: StringDict): Promise<void> {
-  if (APP_IS_RUNNING_LOCALLY()) {
-    // Try to fetch API keys from os.environ variables in the locally running Flask backend:
-    try {
-      const api_keys = await fetchEnvironAPIKeys();
-      set_api_keys(api_keys);
-    } catch (err) {
-      console.warn('Warning: Could not fetch API key environment variables from Flask server. Error:', err.message);
-      // Soft fail
-    }
-  }
-
   if (api_keys !== undefined)
     set_api_keys(api_keys);
 }
@@ -583,11 +572,15 @@ export async function queryLLM(id: string,
 
   llm = llm as (Array<string> | Array<Dict>);
 
-  await setAPIKeys(api_keys);
+  if (api_keys !== undefined)
+    set_api_keys(api_keys);
   
   // Get the storage keys of any cache files for specific models + settings
   const llms = llm;
   let cache: Dict = StorageCache.get(`${id}.json`) || {};  // returns {} if 'id' is not in the storage cache yet
+
+  // Ignore cache if no_cache is present
+  if (no_cache) cache = {};
 
   let llm_to_cache_filename = {};
   let past_cache_files = {};
@@ -623,7 +616,8 @@ export async function queryLLM(id: string,
   }
 
   // Store the overall cache file for this id:
-  StorageCache.store(`${id}.json`, cache);
+  if (!no_cache)
+    StorageCache.store(`${id}.json`, cache);
 
   // Create a Proxy object to 'listen' for changes to a variable (see https://stackoverflow.com/a/50862441)
   // and then stream those changes back to a provided callback used to update progress bars.
@@ -665,7 +659,7 @@ export async function queryLLM(id: string,
 
     // Create an object to query the LLM, passing a storage key for cache'ing responses
     const cache_filepath = llm_to_cache_filename[llm_key];
-    const prompter = new PromptPipeline(prompt, cache_filepath);
+    const prompter = new PromptPipeline(prompt, no_cache ? undefined : cache_filepath);
 
     // Prompt the LLM with all permutations of the input prompt template:
     // NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
@@ -760,10 +754,11 @@ export async function queryLLM(id: string,
     cache_filenames[filename] = llm_spec;
   });
 
-  StorageCache.store(`${id}.json`, {
-    cache_files: cache_filenames,
-    responses_last_run: res,
-  });
+  if (!no_cache)
+    StorageCache.store(`${id}.json`, {
+      cache_files: cache_filenames,
+      responses_last_run: res,
+    });
   
   // Return all responses for all LLMs
   return {
@@ -927,7 +922,8 @@ export async function evalWithLLM(id: string,
     response_ids = [ response_ids ];
   response_ids = response_ids as Array<string>;
 
-  if (api_keys) setAPIKeys(api_keys);
+  if (api_keys !== undefined)
+    set_api_keys(api_keys);
 
   // Load all responses with the given ID:
   let all_evald_responses: StandardizedLLMResponse[] = [];

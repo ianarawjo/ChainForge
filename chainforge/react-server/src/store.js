@@ -10,6 +10,7 @@ import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
 
 // Initial project settings
 const initialAPIKeys = {};
+const initialFlags = { "aiSupport": true };
 const initialLLMColors = {};
 
 /** The color palette used for displaying info about different LLMs. */
@@ -56,7 +57,21 @@ const useStore = create((set, get) => ({
   // Keeping track of LLM API keys
   apiKeys: initialAPIKeys,
   setAPIKeys: (apiKeys) => {
-    set({apiKeys: apiKeys});
+    // Filter out any empty or incorrectly formatted API key values:
+    const new_keys = filterDict(apiKeys, (key) => typeof apiKeys[key] === "string" && apiKeys[key].length > 0);
+    // Only update API keys present in the new array; don't delete existing ones:
+    set({apiKeys: {...get().apiKeys, ...new_keys}});
+  },
+
+  // Flags to toggle on or off features across the application
+  flags: initialFlags,
+  getFlag: (flagName) => {
+    return get().flags[flagName] ?? false;
+  },
+  setFlag: (flagName, flagValue) => {
+    let flags = {...get().flags};
+    flags[flagName] = flagValue;
+    set({flags: flags});
   },
 
   // Keep track of LLM colors, to ensure color consistency across various plots and displays

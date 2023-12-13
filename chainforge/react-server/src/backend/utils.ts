@@ -897,9 +897,9 @@ export const filterDict = (dict: Dict, keyFilterFunc: (key: string) => boolean) 
 };
 
 export const processCSV = (csv: string): string[] => {
-  var matches = csv.match(/(\s*"[^"]+"\s*|\s*[^,]+|,)(?=,|$)/g);
+  let matches = csv.match(/(\s*"[^"]+"\s*|\s*[^,]+|,)(?=,|$)/g);
   if (!matches) return;
-  for (var n = 0; n < matches.length; ++n) {
+  for (let n = 0; n < matches.length; ++n) {
       matches[n] = matches[n].trim();
       if (matches[n] == ',') matches[n] = '';
   }
@@ -964,4 +964,15 @@ export const toStandardResponseFormat = (r) => {
   if ('chat_history' in r)
     resp_obj.chat_history = r.chat_history;
   return resp_obj;
+};
+
+// Check if the current browser window/tab is 'active' or not
+export const browserTabIsActive = () => {
+  try {
+    const visible = document.visibilityState === 'visible'; 
+    return visible;
+  } catch(e) {
+    console.error(e);
+    return true;  // indeterminate
+  }
 };

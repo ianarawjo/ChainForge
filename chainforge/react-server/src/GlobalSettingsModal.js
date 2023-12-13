@@ -1,8 +1,8 @@
 import React, { useState, forwardRef, useImperativeHandle, useCallback, useEffect } from 'react';
-import { TextInput, Button, Group, Box, Modal, Divider, Text, Tabs, useMantineTheme, rem, Flex, Center, Badge, Card } from '@mantine/core';
+import { TextInput, Button, Group, Box, Modal, Divider, Text, Tabs, useMantineTheme, rem, Flex, Center, Badge, Card, Switch } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
-import { IconUpload, IconBrandPython, IconX } from '@tabler/icons-react';
+import { IconUpload, IconBrandPython, IconX, IconSparkles } from '@tabler/icons-react';
 import { Dropzone, DropzoneProps } from '@mantine/dropzone';
 import useStore, { initLLMProviders } from './store';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
@@ -102,11 +102,31 @@ const CustomProviderScriptDropzone = ({onError, onSetProviders}) => {
 const GlobalSettingsModal = forwardRef((props, ref) => {
   const [opened, { open, close }] = useDisclosure(false);
   const setAPIKeys = useStore((state) => state.setAPIKeys);
+  const getFlag = useStore((state) => state.getFlag);
+  const setFlag = useStore((state) => state.setFlag);
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
   const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
   const nodes = useStore((state) => state.nodes);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const alertModal = props?.alertModal;
+
+  const [aiSupportActive, setAISupportActive] = useState(getFlag("aiSupport"));
+  const handleAISupportChecked = useCallback((e) => {
+    const checked = e.currentTarget.checked;
+    setAISupportActive(checked);
+    setFlag("aiSupport", checked);
+    if (!checked) { // turn off autocomplete if AI support is not checked
+      setAIAutocompleteActive(false);
+      setFlag("aiAutocomplete", false);
+    }
+  }, [setFlag, setAISupportActive]);
+
+  const [aiAutocompleteActive, setAIAutocompleteActive] = useState(getFlag("aiAutocomplete"));
+  const handleAIAutocompleteChecked = useCallback((e) => {
+    const checked = e.currentTarget.checked;
+    setAIAutocompleteActive(checked);
+    setFlag("aiAutocomplete", checked);
+  }, [setFlag, setAIAutocompleteActive]);
 
   const handleError = useCallback((msg) => {
     if (alertModal && alertModal.current)
@@ -187,14 +207,14 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
 
 return (
     <Modal keepMounted opened={opened} onClose={close} title="ChainForge Settings" closeOnClickOutside={false} style={{position: 'relative', 'left': '-5%'}}>
-        <Box maw={380} mx="auto">
+        <Box maw={400} mx="auto">
           <Tabs defaultValue="api-keys">
 
             <Tabs.List>
               <Tabs.Tab value="api-keys" >API Keys</Tabs.Tab>
-              <Tabs.Tab value="custom-providers" >Custom Model Providers</Tabs.Tab>
+              <Tabs.Tab value="ai-support" >AI Support (BETA)</Tabs.Tab>
+              <Tabs.Tab value="custom-providers" >Custom Providers</Tabs.Tab>
             </Tabs.List>
-
 
             <Tabs.Panel value="api-keys" pt="xs">
               <Text mb="md" fz="xs" lh={1.15} color='dimmed'>
@@ -256,8 +276,21 @@ return (
                     <Button type="submit">Submit</Button>
                   </Group>
               </form>
-            </Tabs.Panel>
+          </Tabs.Panel>
 
+          <Tabs.Panel value="ai-support" pt="xs">
+            <Text mb="md" fz="sm" lh={1.3}>
+              AI support features in ChainForge include purple sparkly buttons <IconSparkles size="10pt" /> and smart autocomplete.
+              By default, AI support features require OpenAI API access to call GPT3.5 and GPT4 models. 
+              You can hide, disable, or change these features here. 
+            </Text>
+            <Switch label="AI Support Features" size="sm" description="Adds purple sparkly AI buttons to nodes. Must have OpenAI API key access to use." 
+                    checked={aiSupportActive} onChange={handleAISupportChecked} />
+            {aiSupportActive ? <Group>
+              <Switch label="Autocomplete" size="sm" mt="sm" disabled={!aiSupportActive} description="Works in background to streamline generation of input data. Press Tab in TextFields Nodes in empty fields to extend input data (currently only works in TextFields). NOTE: This will make OpenAI API calls in the background. We are not responsible for any additional costs incurred." 
+                    checked={aiAutocompleteActive} onChange={handleAIAutocompleteChecked} />
+             </Group>: <></>}
+          </Tabs.Panel>
 
           {APP_IS_RUNNING_LOCALLY() ? 
             <Tabs.Panel value="custom-providers" pt="md">
@@ -285,6 +318,7 @@ return (
               }} />
             </Tabs.Panel>
           : <></>}
+
           </Tabs>
         </Box>
     </Modal>
