@@ -57,6 +57,7 @@ const selector = (state) => ({
   setNodes: state.setNodes,
   setEdges: state.setEdges,
   resetLLMColors: state.resetLLMColors,
+  setAPIKeys: state.setAPIKeys,
 });
 
 // The initial LLM to use when new flows are created, or upon first load
@@ -134,7 +135,7 @@ const App = () => {
 
   // Get nodes, edges, etc. state from the Zustand store:
   const { nodes, edges, onNodesChange, onEdgesChange, 
-          onConnect, addNode, setNodes, setEdges, resetLLMColors } = useStore(selector, shallow);
+          onConnect, addNode, setNodes, setEdges, resetLLMColors, setAPIKeys } = useStore(selector, shallow);
 
   // For saving / loading
   const [rfInstance, setRfInstance] = useState(null);
@@ -344,8 +345,7 @@ const App = () => {
 
       // Save flow that user loaded to autosave cache, in case they refresh the browser
       StorageCache.saveToLocalStorage('chainforge-flow', flow);
-      StorageCache.saveToLocalStorage('chainforge-state');
-
+      
       // Start auto-saving, if it's not already enabled
       if (rf_inst) initAutosaving(rf_inst);
     }
@@ -645,7 +645,15 @@ const App = () => {
   const onInit = (rf_inst) => {
     setRfInstance(rf_inst);
 
-    if (!IS_RUNNING_LOCALLY) {
+    if (IS_RUNNING_LOCALLY) {
+      // If we're running locally, try to fetch API keys from Python os.environ variables in the locally running Flask backend:
+      fetch_from_backend('fetchEnvironAPIKeys').then((api_keys) => {
+        setAPIKeys(api_keys);
+      }).catch((err) => {
+        // Soft fail
+        console.warn('Warning: Could not fetch API key environment variables from Flask server. Error:', err.message);
+      });
+    } else {
 
       // Check if there's a shared flow UID in the URL as a GET param
       // If so, we need to look it up in the database and attempt to load it:

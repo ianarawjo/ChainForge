@@ -1,8 +1,8 @@
 import markdownIt from "markdown-it";
 
 import { Dict, StringDict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse, ChatHistoryInfo, isEqualChatHistory } from "./typing";
-import { LLM, NativeLLM, getEnumName } from "./models";
-import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend, filterDict, deepcopy } from "./utils";
+import { LLM, getEnumName } from "./models";
+import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
 import { PromptPermutationGenerator, PromptTemplate } from "./template";
@@ -137,17 +137,6 @@ function get_cache_keys_related_to_id(cache_id: string, include_basefile: boolea
 }
 
 async function setAPIKeys(api_keys: StringDict): Promise<void> {
-  if (APP_IS_RUNNING_LOCALLY()) {
-    // Try to fetch API keys from os.environ variables in the locally running Flask backend:
-    try {
-      const api_keys = await fetchEnvironAPIKeys();
-      set_api_keys(api_keys);
-    } catch (err) {
-      console.warn('Warning: Could not fetch API key environment variables from Flask server. Error:', err.message);
-      // Soft fail
-    }
-  }
-
   if (api_keys !== undefined)
     set_api_keys(api_keys);
 }
@@ -583,7 +572,8 @@ export async function queryLLM(id: string,
 
   llm = llm as (Array<string> | Array<Dict>);
 
-  await setAPIKeys(api_keys);
+  if (api_keys !== undefined)
+    set_api_keys(api_keys);
   
   // Get the storage keys of any cache files for specific models + settings
   const llms = llm;
@@ -932,7 +922,8 @@ export async function evalWithLLM(id: string,
     response_ids = [ response_ids ];
   response_ids = response_ids as Array<string>;
 
-  if (api_keys) setAPIKeys(api_keys);
+  if (api_keys !== undefined)
+    set_api_keys(api_keys);
 
   // Load all responses with the given ID:
   let all_evald_responses: StandardizedLLMResponse[] = [];

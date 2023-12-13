@@ -2,7 +2,7 @@ import { queryLLM, executejs, executepy,
          fetchExampleFlow, fetchOpenAIEval, importCache, 
          exportCache, countQueries, grabResponses, 
          generatePrompts, initCustomProvider,
-         removeCustomProvider, evalWithLLM, loadCachedCustomProviders } from "./backend/backend";
+         removeCustomProvider, evalWithLLM, loadCachedCustomProviders, fetchEnvironAPIKeys } from "./backend/backend";
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
@@ -30,6 +30,8 @@ async function _route_to_js_backend(route, params) {
       return fetchExampleFlow(params.name);
     case 'fetchOpenAIEval':
       return fetchOpenAIEval(params.name);
+    case 'fetchEnvironAPIKeys':
+      return fetchEnvironAPIKeys();
     case 'initCustomProvider':
       return initCustomProvider(params.code);
     case 'removeCustomProvider':

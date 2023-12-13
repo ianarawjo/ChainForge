@@ -57,7 +57,10 @@ const useStore = create((set, get) => ({
   // Keeping track of LLM API keys
   apiKeys: initialAPIKeys,
   setAPIKeys: (apiKeys) => {
-    set({apiKeys: apiKeys});
+    // Filter out any empty or incorrectly formatted API key values:
+    const new_keys = filterDict(apiKeys, (key) => typeof apiKeys[key] === "string" && apiKeys[key].length > 0);
+    // Only update API keys present in the new array; don't delete existing ones:
+    set({apiKeys: {...get().apiKeys, ...new_keys}});
   },
 
   // Flags to toggle on or off features across the application
