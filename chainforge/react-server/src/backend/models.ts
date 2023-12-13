@@ -50,6 +50,7 @@ export enum NativeLLM {
   // Google models
   PaLM2_Text_Bison = "text-bison-001",  // it's really models/text-bison-001, but that's confusing
   PaLM2_Chat_Bison = "chat-bison-001",
+  GEMINI_PRO = "gemini-pro",
 
  // Aleph Alpha
   Aleph_Alpha_Luminous_Extended = "luminous-extended",

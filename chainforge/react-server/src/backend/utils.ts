@@ -94,6 +94,7 @@ let DALAI_RESPONSE: Dict | undefined;
 let OPENAI_API_KEY = get_environ("OPENAI_API_KEY");
 let ANTHROPIC_API_KEY = get_environ("ANTHROPIC_API_KEY");
 let GOOGLE_PALM_API_KEY = get_environ("PALM_API_KEY");
+let GOOGLE_GEMINI_API_KEY = get_environ("GEMINI_API_KEY");
 let AZURE_OPENAI_KEY = get_environ("AZURE_OPENAI_KEY");
 let AZURE_OPENAI_ENDPOINT = get_environ("AZURE_OPENAI_ENDPOINT");
 let HUGGINGFACE_API_KEY = get_environ("HUGGINGFACE_API_KEY");
@@ -504,6 +505,40 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
   }
 
   return [query, completion];
+}
+
+export async function call_google_gemini(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
+  if (!GOOGLE_GEMINI_API_KEY)
+    throw new Error("Could not find an API key for Google Gemini models. Double-check that your API key is set in Settings or in your local environment.");
+  
+  // Ignoring chat for now, but by default it does support chat
+    const is_chat_model = false;
+  
+  // Required non-standard params 
+  const max_output_tokens = params?.max_output_tokens || 800;
+  const chat_history = params?.chat_history;
+  delete params?.chat_history;
+
+  let query: Dict = {
+    model: `models/${model}`,
+    candidate_count: n,
+    temperature: temperature,
+    max_output_tokens: max_output_tokens,
+    ...params,
+  };
+
+  // Remove erroneous parameters for text and chat models
+  if (query.top_k !== undefined && query.top_k <= 0)
+    delete query.top_k;
+  if (query.top_p !== undefined && query.top_p <= 0)
+    delete query.top_p;
+  if (is_chat_model && query.max_output_tokens !== undefined)
+    delete query.max_output_tokens;
+  if (is_chat_model && query.stop_sequences !== undefined)
+    delete query.stop_sequences;
+
+  console.log(`Calling Google PaLM model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
+
 }
 
 export async function call_dalai(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
