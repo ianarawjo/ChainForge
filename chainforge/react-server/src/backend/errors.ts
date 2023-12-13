@@ -1,6 +1,9 @@
-import { ErrorBase } from "./utils";
+export class DuplicateVariableNameError extends Error {
+    variable: string
 
-type ErrorName = 
-    | 'DUPLICATE_VARIABLE_NAME'
-
-export class ProjectError extends ErrorBase<ErrorName> {}
+    constructor(variable: string) {
+        super()
+        this.name = "DuplicateVariableNameError"
+        this.message = "Duplicate variable name, {" + variable + "}, in the same chain is not allowed."
+    }
+}

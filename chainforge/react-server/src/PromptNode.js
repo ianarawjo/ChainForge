@@ -16,7 +16,7 @@ import InspectFooter from './InspectFooter';
 import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
 import LLMResponseInspector from './LLMResponseInspector';
 import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
-import { ProjectError } from './backend/errors';
+import { DuplicateVariableNameError } from './backend/errors';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -179,8 +179,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
     try {
     updateShowContToggle(pullInputData(templateVars, id));
     } catch (err) {
-        if (err instanceof ProjectError) {
+        if (err instanceof DuplicateVariableNameError){
             alertModal.current.trigger(err.message)
+        } else {
+            throw err
         }
     }
   }, [templateVars, id, pullInputData, updateShowContToggle]);
@@ -315,8 +317,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
         pullInputChats();
     } catch (err) {
-        if (err instanceof ProjectError){
+        if (err instanceof DuplicateVariableNameError){
             alertModal.current.trigger(err.message)
+        } else {
+            throw err
         }
     }
   };
@@ -416,7 +420,11 @@ const PromptNode = ({ data, id, type: node_type }) => {
             setRunTooltip('Could not reach backend server.');
         });
     } catch (err) {
-       alertModal.current.trigger(err) 
+        if (err instanceof DuplicateVariableNameError) {
+            alertModal.current.trigger(err.message) 
+        } else {
+            throw err
+        }
     }
   };
 
