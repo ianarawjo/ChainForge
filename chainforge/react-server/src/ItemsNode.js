@@ -1,19 +1,48 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Text } from '@mantine/core';
+import { Skeleton, Text } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
 import { IconForms } from '@tabler/icons-react';
 import { Handle } from 'reactflow';
 import BaseNode from './BaseNode';
 import { processCSV } from "./backend/utils"
+import AISuggestionsManager from './backend/aiSuggestionsManager';
+import AIPopover from './AiPopover';
+
+const replaceDoubleQuotesWithSingle = (str) => str.replaceAll('"', "'");
+const wrapInQuotesIfContainsComma = (str) => str.includes(",") ? `"${str}"` : str;
+const makeSafeForCSLFormat = (str) => wrapInQuotesIfContainsComma(replaceDoubleQuotesWithSingle(str));
+const stripWrappingQuotes = (str) => {
+    if (typeof str === "string" && str.length >= 2 && str.charAt(0) === '"' && str.charAt(str.length-1) === '"')
+        return str.substring(1, str.length-1);
+    else 
+        return str;
+};
+
 
 const ItemsNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const pingOutputNodes = useStore((state) => state.pingOutputNodes);
+    const flags = useStore((state) => state.flags);
+
     const [contentDiv, setContentDiv] = useState(null);
     const [isEditing, setIsEditing] = useState(true);
     const [csvInput, setCsvInput] = useState(null);
     const [countText, setCountText] = useState(null);
+  
+    // Only if AI autocomplete is enabled. 
+    // TODO: This is harder to implement; see https://codepen.io/2undercover/pen/oNzyYO
+    const [autocompletePlaceholders, setAutocompletePlaceholders] = useState([]);
+
+    // Whether text field is in a loading state
+    const [isLoading, setIsLoading] = useState(false);
+
+    const [aiSuggestionsManager] = useState(new AISuggestionsManager(
+      // Do nothing when suggestions are simply updated because we are managing the placeholder state manually here.
+      undefined,
+      // When suggestions are refreshed, revise placeholders
+      setAutocompletePlaceholders
+    ));
 
     // initializing
     useEffect(() => {
@@ -23,9 +52,9 @@ const ItemsNode = ({ data, id }) => {
     }, []);
 
     // Handle a change in a text fields' input.
-    const handleInputChange = useCallback((event) => {
+    const setFieldsFromText = useCallback((text_val) => {
         // Update the data for this text fields' id.
-        let new_data = { 'text': event.target.value, 'fields': processCSV(event.target.value) };
+        let new_data = { text: text_val, fields: processCSV(text_val).map(stripWrappingQuotes) };
         setDataPropsForNode(id, new_data);
         pingOutputNodes(id);
     }, [id, pingOutputNodes, setDataPropsForNode]);
@@ -88,14 +117,14 @@ const ItemsNode = ({ data, id }) => {
                 defaultValue={text_val} 
                 placeholder='Put your comma-separated list here' 
                 onKeyDown={handKeyDown} 
-                onChange={handleInputChange} 
+                onChange={(event) => setFieldsFromText(event.target.value)} 
                 onBlur={handleOnBlur} 
                 autoFocus={true}/>
             </div>
         );
         setContentDiv(null);
         setCountText(null);
-    }, [isEditing, handleInputChange, handleOnBlur, handKeyDown]);
+    }, [isEditing, setFieldsFromText, handleOnBlur, handKeyDown]);
 
     // when data.text changes, update the content div
     useEffect(() => {
@@ -108,10 +137,24 @@ const ItemsNode = ({ data, id }) => {
 
     return (
     <BaseNode classNames="text-fields-node" nodeId={id}>
-        <NodeLabel title={data.title || 'Items Node'} nodeId={id} icon={<IconForms size="16px" />} />
-        {csvInput}
-        {contentDiv}
-        {countText ? countText : <></>}
+        <NodeLabel title={data.title || 'Items Node'} 
+                   nodeId={id} 
+                   icon={<IconForms size="16px" />}
+                   customButtons={
+                    (flags["aiSupport"] ? 
+                      [<AIPopover key='ai-popover'
+                                  values={data.fields ?? []}
+                                  onAddValues={(vals) => setFieldsFromText(data.text + ", " + vals.map(makeSafeForCSLFormat).join(", "))}
+                                  onReplaceValues={(vals) => setFieldsFromText(vals.map(makeSafeForCSLFormat).join(", "))}
+                                  areValuesLoading={isLoading}
+                                  setValuesLoading={setIsLoading} />]
+                     : [])
+                   } />
+        <Skeleton visible={isLoading}>
+            {csvInput}
+            {contentDiv}
+            {countText}
+        </Skeleton>
         <Handle
             type="source"
             position="right"

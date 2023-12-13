@@ -287,7 +287,7 @@ return (
             <Switch label="AI Support Features" size="sm" description="Must have OpenAI API key access to use. Adds purple sparkly AI buttons to nodes." 
                     checked={aiSupportActive} onChange={handleAISupportChecked} />
             {aiSupportActive ? <Group>
-              <Switch label="Autocomplete" size="sm" mt="sm" disabled={!aiSupportActive} description="Works in background to streamline generation of input data. Press Tab in TextFields, CSV, etc nodes to extend input data. NOTE: This will make OpenAI API calls in the background. We are not responsible for any additional costs incurred." 
+              <Switch label="Autocomplete" size="sm" mt="sm" disabled={!aiSupportActive} description="Works in background to streamline generation of input data. Press Tab in TextFields Nodes in empty fields to extend input data (currently only works in TextFields). NOTE: This will make OpenAI API calls in the background. We are not responsible for any additional costs incurred." 
                     checked={aiAutocompleteActive} onChange={handleAIAutocompleteChecked} />
              </Group>: <></>}
           </Tabs.Panel>

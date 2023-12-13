@@ -32,18 +32,18 @@ describe("AISuggestionsManager", () => {
     });
   });
 
-  describe("popSuggestions", () => {
+  describe("popSuggestion", () => {
     it("should return and remove the first suggestion by default", () => {
       suggestionsManager.suggestions = [...mockRows];
       const firstSuggestion = mockRows[0];
-      expect(suggestionsManager.popSuggestions()).toEqual(firstSuggestion);
+      expect(suggestionsManager.popSuggestion()).toEqual(firstSuggestion);
       expect(suggestionsManager.suggestions).toEqual(mockRows.slice(1));
     });
 
     it("should return and remove the suggestion at the given index", () => {
       suggestionsManager.suggestions = [...mockRows];
       const secondSuggestion = mockRows[1];
-      expect(suggestionsManager.popSuggestions(1)).toEqual(secondSuggestion);
+      expect(suggestionsManager.popSuggestion(1)).toEqual(secondSuggestion);
       expect(suggestionsManager.suggestions).toEqual(
         mockRows.slice(0, 1).concat(mockRows.slice(2))
       );

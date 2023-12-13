@@ -4,7 +4,7 @@ import { isExtensionIgnoreEmpty } from "./setUtils";
 
 const DEBOUNCE_MILLISECONDS = 1000;
 const MIN_ROWS_FOR_SUGGESTIONS = 1;
-const SUGGESTIONS_TO_CACHE = 5;
+const NUM_SUGGESTIONS_TO_CACHE = 5;
 
 /**
  * Helper Function
@@ -26,7 +26,7 @@ function consumeAIErrors(e: Error) {
   if (e instanceof AIError) {
     console.log('Encountered but subdued error while generating suggestions:', e);
   } else {
-    throw new Error("Unexpected error: " + e);
+    throw e;
   }
 }
 
@@ -42,18 +42,18 @@ class AISuggestionsManager {
     // Suggestions that should now be in the base if the user accepts the suggestions.
     expectedSuggestions: Row[] = [];
     // Callback to call when the suggestions change.
-    onSuggestionsUpdated: (suggestions: Row[]) => void;
+    onSuggestionsChanged: (suggestions: Row[]) => void;
     // Callback to call when the suggestions are completely refreshed.
     onSuggestionsRefreshed: (suggestions: Row[]) => void;
     // Whether the suggestions are loading.
     isLoading: boolean = false;
 
     constructor(
-      onSuggestionsUpdated?: (suggestions: Row[]) => void,
+      onSuggestionsChanged?: (suggestions: Row[]) => void,
       onSuggestionsRefreshed?: (suggestions: Row[]) => void
       ) {
-        this.onSuggestionsUpdated = onSuggestionsUpdated
-          ? onSuggestionsUpdated
+        this.onSuggestionsChanged = onSuggestionsChanged
+          ? onSuggestionsChanged
           : () => {};
         this.onSuggestionsRefreshed = onSuggestionsRefreshed
           ? onSuggestionsRefreshed
@@ -67,7 +67,7 @@ class AISuggestionsManager {
     // Helper to set the suggestions and previousSuggestions together and notify the callback.
     private setSuggestions(suggestions: Row[]) {
       this.suggestions = suggestions;
-      this.onSuggestionsUpdated(this.suggestions);
+      this.onSuggestionsChanged(this.suggestions);
     }
 
     // Returns whether suggestions should be updated based on the current state and the new base.
@@ -92,20 +92,18 @@ class AISuggestionsManager {
 
     // Clears the suggestions.
     private clearSuggestions() {
-      this.setSuggestions([])
-      this.onSuggestionsUpdated(this.suggestions);
+      this.setSuggestions([]);
     }
 
     // Updates the suggestions by querying the LLM.
     private updateSuggestions() {
       this.isLoading = true;
       // Query LLM.
-      autofill(this.base, SUGGESTIONS_TO_CACHE)
+      autofill(this.base, NUM_SUGGESTIONS_TO_CACHE)
         // Update suggestions.
         .then((suggestions) => {
-          this.setSuggestions(suggestions)
+          this.setSuggestions(suggestions);
           this.expectedSuggestions = suggestions;
-          this.onSuggestionsUpdated(this.suggestions);
           this.onSuggestionsRefreshed(this.suggestions);
         })
         .catch(consumeAIErrors)
@@ -143,7 +141,7 @@ class AISuggestionsManager {
     }
 
     // Returns the suggestion and removes it from the list. Defaults to the first one if no index.
-    popSuggestions(index?: number): Row {
+    popSuggestion(index?: number): Row {
       const i = index ? index : 0;
       const popped = this.suggestions[i];
       const leftHalf = this.suggestions.slice(0, i);
@@ -155,7 +153,7 @@ class AISuggestionsManager {
     // Removes a suggestion from the list.
     removeSuggestion(suggestion: Row): void {
       const i = this.suggestions.indexOf(suggestion);
-      this.popSuggestions(i);
+      this.popSuggestion(i);
     }
 
     // Returns whether suggestions are loading.

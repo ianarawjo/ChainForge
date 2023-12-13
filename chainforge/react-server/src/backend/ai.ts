@@ -152,6 +152,9 @@ export async function autofill(input: Row[], n: number): Promise<Row[]> {
     /*chat_history=*/ history,
     /*api_keys=*/ undefined,
     /*no_cache=*/ true);
+  
+  if (result.errors && Object.keys(result.errors).length > 0) 
+    throw new Error(Object.values(result.errors)[0].toString());
 
   const output = result.responses[0].responses[0];
 
@@ -187,7 +190,7 @@ export async function generateAndReplace(prompt: string, n: number, creative?: b
 
   let input = `Generate a list of ${escapeBraces(prompt)}`;
 
-  let result = await queryLLM(
+  const result = await queryLLM(
     /*id=*/ id,
     /*llm=*/ LLM,
     /*n=*/ 1,
@@ -196,6 +199,9 @@ export async function generateAndReplace(prompt: string, n: number, creative?: b
     /*chat_history=*/ history,
     /*api_keys=*/ undefined,
     /*no_cache=*/ true);
+  
+  if (result.errors && Object.keys(result.errors).length > 0) 
+    throw new Error(Object.values(result.errors)[0].toString());
 
   console.log("LLM said: ", result.responses[0].responses[0]);
 

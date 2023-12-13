@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Stack, NumberInput, Button, Text, TextInput, Switch, Tabs, Popover, Badge, Textarea } from "@mantine/core"
 import { useState } from 'react';
 import { autofill, generateAndReplace, AIError } from './backend/ai';
 import { IconSparkles } from '@tabler/icons-react';
+import AlertModal from './AlertModal';
 
 const zeroGap = {gap: "0rem"};
 const popoverShadow ="rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -37,6 +38,9 @@ function AIPopover({
   const [generateAndReplaceIsUnconventional, setGenerateAndReplaceIsUnconventional] = useState(false);
   const [didGenerateAndReplaceError, setDidGenerateAndReplaceError] = useState(false);
 
+  // Alert for errors
+  const alertModal = useRef(null);
+
   const nonEmptyRows = useMemo(() =>
     Object.values(values).filter((row) => row !== '').length,
     [values]);
@@ -61,7 +65,8 @@ function AIPopover({
       if (e instanceof AIError) {
         setDidCommandFillError(true);
       } else {
-        throw new Error("Unexpected error: " + e);
+        if (alertModal.current) alertModal.current.trigger(e?.message);
+        else console.error(e);
       }
     }).finally(() => setIsCommandFillLoading(false));
   };
@@ -80,7 +85,8 @@ function AIPopover({
         console.log(e);
         setDidGenerateAndReplaceError(true);
       } else {
-        throw new Error("Unexpected error: " + e);
+        if (alertModal.current) alertModal.current.trigger(e?.message);
+        else console.error(e);
       }
     }).finally(() => setValuesLoading(false));
   };
@@ -148,6 +154,8 @@ function AIPopover({
           </Tabs>
         </Stack>
       </Popover.Dropdown>
+
+      <AlertModal ref={alertModal} />
     </Popover>
   );
 }

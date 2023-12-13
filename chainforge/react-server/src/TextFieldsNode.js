@@ -34,7 +34,7 @@ const TextFieldsNode = ({ data, id }) => {
   const [fieldVisibility, setFieldVisibility] = useState(data.fields_visibility || {});
 
   // Whether the text fields should be in a loading state
-  const [isLoading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [aiSuggestionsManager] = useState(new AISuggestionsManager(
     // Do nothing when suggestions are simply updated because we are managing the placeholder state manually here.
@@ -233,7 +233,7 @@ const TextFieldsNode = ({ data, id }) => {
   // Load a placeholder into placeholders for the text field with id `i` if needed.
   function loadPlaceholderIfNeeded(i) {
     if (placeholderNeeded(i) && !aiSuggestionsManager.areSuggestionsLoading()) {
-      placeholders[i] = aiSuggestionsManager.popSuggestions();
+      placeholders[i] = aiSuggestionsManager.popSuggestion();
     }
   }
 
@@ -285,7 +285,7 @@ const TextFieldsNode = ({ data, id }) => {
                               onAddValues={addMultipleFields}
                               onReplaceValues={replaceFields}
                               areValuesLoading={isLoading}
-                              setValuesLoading={setLoading} />]
+                              setValuesLoading={setIsLoading} />]
                    : [])
                  } />
       <Skeleton visible={isLoading}>
