@@ -1,9 +1,10 @@
 import React, { useMemo, useRef } from 'react';
-import { Stack, NumberInput, Button, Text, TextInput, Switch, Tabs, Popover, Badge, Textarea } from "@mantine/core"
+import { Stack, NumberInput, Button, Text, TextInput, Switch, Tabs, Popover, Badge, Textarea, Alert } from "@mantine/core"
 import { useState } from 'react';
 import { autofill, generateAndReplace, AIError } from './backend/ai';
-import { IconSparkles } from '@tabler/icons-react';
+import { IconSparkles, IconAlertCircle } from '@tabler/icons-react';
 import AlertModal from './AlertModal';
+import { useStore } from './store';
 
 const zeroGap = {gap: "0rem"};
 const popoverShadow ="rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -39,6 +40,16 @@ function AIPopover({
   const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState('');
   const [generateAndReplaceIsUnconventional, setGenerateAndReplaceIsUnconventional] = useState(false);
   const [didGenerateAndReplaceError, setDidGenerateAndReplaceError] = useState(false);
+
+  // To check for OpenAI API key
+  const noOpenAIKeyMessage = useMemo(() => {
+    if (apiKeys && apiKeys['OpenAI']) return undefined;
+    else return (
+      <Alert variant="light" color="grape" title="No OpenAI API key detected." maw={200} fz='xs' icon={<IconAlertCircle />}>
+        You must set an OpenAI API key before you can use generative AI support features.
+      </Alert>
+    );
+  }, [apiKeys]);
 
   // Alert for errors
   const alertModal = useRef(null);
@@ -95,7 +106,7 @@ function AIPopover({
     }).finally(() => setValuesLoading(false));
   };
 
-  const extendUI = (
+  const extendUI = useMemo(() => (
     <Stack>
       {didCommandFillError ?
         <Text size="xs" c="red">
@@ -114,24 +125,24 @@ function AIPopover({
         : <></>}
       <Button size="sm" variant="light" color="grape" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions} loading={isCommandFillLoading}>Extend</Button>
     </Stack>
-  );
+  ), [didCommandFillError, enoughRowsForSuggestions, showWarning, isCommandFillLoading, handleCommandFill, setCommandFillNumber, commandFillNumber] );
 
-  const replaceUI = (
+  const replaceUI = useMemo(() => (
     <Stack style={zeroGap}>
       {didGenerateAndReplaceError ?
         <Text size="xs" c="red">
           Failed to generate. Please try again.
         </Text>
         : <></>}
-      <Textarea label="Generate a list of..." minRows={1} maxRows={4} autosize mt={5} value={generateAndReplacePrompt} onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}/>
-      <NumberInput label="Items to generate" size="xs" mb={10} min={1} max={10} defaultValue={3} value={generateAndReplaceNumber} onChange={setGenerateAndReplaceNumber}/>
+      <Textarea label="Generate a list of..." data-autofocus minRows={1} maxRows={4} autosize mt={5} value={generateAndReplacePrompt} onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}/>
+      <NumberInput label="Items to generate" size="xs" mb={10} min={1} max={10} defaultValue={3} value={generateAndReplaceNumber} onChange={setGenerateAndReplaceNumber} />
       <Switch color="grape" mb={10} size="xs" label="Make outputs unconventional" value={generateAndReplaceIsUnconventional} onChange={(e) => setGenerateAndReplaceIsUnconventional(e.currentTarget.checked)}/>
       <Button size="sm" variant="light" color="grape" fullWidth onClick={handleGenerateAndReplace} loading={areValuesLoading}>Replace</Button>
     </Stack>
-  );
+  ), [didGenerateAndReplaceError, generateAndReplacePrompt, setGenerateAndReplacePrompt, generateAndReplaceNumber, setGenerateAndReplaceNumber, generateAndReplaceIsUnconventional, setGenerateAndReplaceIsUnconventional, handleGenerateAndReplace, areValuesLoading]);
   
   return (
-    <Popover position="right-start" withArrow shadow={popoverShadow} withinPortal keepMounted>
+    <Popover position="right-start" withArrow shadow={popoverShadow} withinPortal keepMounted trapFocus>
       <Popover.Target>
         <button className="ai-button nodrag"><IconSparkles size={10} stroke={3}/></button>
       </Popover.Target>
@@ -142,18 +153,14 @@ function AIPopover({
           </Badge>
           <Tabs color="grape" defaultValue="replace">
             <Tabs.List grow>
-              <Tabs.Tab value="replace">
-                  Replace
-                </Tabs.Tab>
-              <Tabs.Tab value="extend">
-                Extend
-              </Tabs.Tab>
+              <Tabs.Tab value="replace">Replace</Tabs.Tab>
+              <Tabs.Tab value="extend">Extend</Tabs.Tab>
             </Tabs.List>
             <Tabs.Panel value="extend" pb="xs">
-              {extendUI}
+              {noOpenAIKeyMessage ? noOpenAIKeyMessage : extendUI}
             </Tabs.Panel>
             <Tabs.Panel value="replace" pb="xs">
-              {replaceUI}
+              {noOpenAIKeyMessage ? noOpenAIKeyMessage : replaceUI}
             </Tabs.Panel>
           </Tabs>
         </Stack>
