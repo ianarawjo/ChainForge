@@ -1,6 +1,7 @@
 import { Row, autofill, AIError } from "./ai";
 import { debounce } from "lodash";
 import { isExtensionIgnoreEmpty } from "./setUtils";
+import { Dict } from "./typing";
 
 const DEBOUNCE_MILLISECONDS = 1000;
 const MIN_ROWS_FOR_SUGGESTIONS = 1;
@@ -45,12 +46,15 @@ class AISuggestionsManager {
     onSuggestionsChanged: (suggestions: Row[]) => void;
     // Callback to call when the suggestions are completely refreshed.
     onSuggestionsRefreshed: (suggestions: Row[]) => void;
+    // Fetches API keys from front-end
+    getAPIKeys: () => Dict;
     // Whether the suggestions are loading.
     isLoading: boolean = false;
 
     constructor(
       onSuggestionsChanged?: (suggestions: Row[]) => void,
-      onSuggestionsRefreshed?: (suggestions: Row[]) => void
+      onSuggestionsRefreshed?: (suggestions: Row[]) => void,
+      getAPIKeys?: () => Dict,
       ) {
         this.onSuggestionsChanged = onSuggestionsChanged
           ? onSuggestionsChanged
@@ -58,6 +62,7 @@ class AISuggestionsManager {
         this.onSuggestionsRefreshed = onSuggestionsRefreshed
           ? onSuggestionsRefreshed
           : () => {};
+        this.getAPIKeys = getAPIKeys;
     }
 
     /**
@@ -99,7 +104,7 @@ class AISuggestionsManager {
     private updateSuggestions() {
       this.isLoading = true;
       // Query LLM.
-      autofill(this.base, NUM_SUGGESTIONS_TO_CACHE)
+      autofill(this.base, NUM_SUGGESTIONS_TO_CACHE, this.getAPIKeys())
         // Update suggestions.
         .then((suggestions) => {
           this.setSuggestions(suggestions);

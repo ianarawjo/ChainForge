@@ -207,13 +207,13 @@ const GlobalSettingsModal = forwardRef((props, ref) => {
 
 return (
     <Modal keepMounted opened={opened} onClose={close} title="ChainForge Settings" closeOnClickOutside={false} style={{position: 'relative', 'left': '-5%'}}>
-        <Box maw={380} mx="auto">
+        <Box maw={400} mx="auto">
           <Tabs defaultValue="api-keys">
 
             <Tabs.List>
               <Tabs.Tab value="api-keys" >API Keys</Tabs.Tab>
-              <Tabs.Tab value="ai-support" >AI Support</Tabs.Tab>
-              <Tabs.Tab value="custom-providers" >Custom Model Providers</Tabs.Tab>
+              <Tabs.Tab value="ai-support" >AI Support (BETA)</Tabs.Tab>
+              <Tabs.Tab value="custom-providers" >Custom Providers</Tabs.Tab>
             </Tabs.List>
 
             <Tabs.Panel value="api-keys" pt="xs">
@@ -284,7 +284,7 @@ return (
               By default, AI support features require OpenAI API access to call GPT3.5 and GPT4 models. 
               You can hide, disable, or change these features here. 
             </Text>
-            <Switch label="AI Support Features" size="sm" description="Must have OpenAI API key access to use. Adds purple sparkly AI buttons to nodes." 
+            <Switch label="AI Support Features" size="sm" description="Adds purple sparkly AI buttons to nodes. Must have OpenAI API key access to use." 
                     checked={aiSupportActive} onChange={handleAISupportChecked} />
             {aiSupportActive ? <Group>
               <Switch label="Autocomplete" size="sm" mt="sm" disabled={!aiSupportActive} description="Works in background to streamline generation of input data. Press Tab in TextFields Nodes in empty fields to extend input data (currently only works in TextFields). NOTE: This will make OpenAI API calls in the background. We are not responsible for any additional costs incurred." 

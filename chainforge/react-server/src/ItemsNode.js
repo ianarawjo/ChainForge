@@ -23,6 +23,7 @@ const stripWrappingQuotes = (str) => {
 const ItemsNode = ({ data, id }) => {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const pingOutputNodes = useStore((state) => state.pingOutputNodes);
+    const apiKeys = useStore((state) => state.apiKeys);
     const flags = useStore((state) => state.flags);
 
     const [contentDiv, setContentDiv] = useState(null);
@@ -147,7 +148,8 @@ const ItemsNode = ({ data, id }) => {
                                   onAddValues={(vals) => setFieldsFromText(data.text + ", " + vals.map(makeSafeForCSLFormat).join(", "))}
                                   onReplaceValues={(vals) => setFieldsFromText(vals.map(makeSafeForCSLFormat).join(", "))}
                                   areValuesLoading={isLoading}
-                                  setValuesLoading={setIsLoading} />]
+                                  setValuesLoading={setIsLoading}
+                                  apiKeys={apiKeys} />]
                      : [])
                    } />
         <Skeleton visible={isLoading}>

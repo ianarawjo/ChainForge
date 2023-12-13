@@ -125,7 +125,7 @@ function decode(mdText: string): Row[] {
  * @param input rows for the autofilling system
  * @param n number of results to return
  */
-export async function autofill(input: Row[], n: number): Promise<Row[]> {
+export async function autofill(input: Row[], n: number, apiKeys?: Dict): Promise<Row[]> {
   // hash the arguments to get a unique id
   let id = JSON.stringify([input, n]);
 
@@ -150,7 +150,7 @@ export async function autofill(input: Row[], n: number): Promise<Row[]> {
     /*prompt=*/ encoded,
     /*vars=*/ {},
     /*chat_history=*/ history,
-    /*api_keys=*/ undefined,
+    /*api_keys=*/ apiKeys,
     /*no_cache=*/ true);
   
   if (result.errors && Object.keys(result.errors).length > 0) 
@@ -173,7 +173,7 @@ export async function autofill(input: Row[], n: number): Promise<Row[]> {
  * @param n 
  * @param templateVariables list of template variables to use
  */
-export async function generateAndReplace(prompt: string, n: number, creative?: boolean): Promise<Row[]> {
+export async function generateAndReplace(prompt: string, n: number, creative?: boolean, apiKeys?: Dict): Promise<Row[]> {
   // hash the arguments to get a unique id
   let id = JSON.stringify([prompt, n]);
 
@@ -197,7 +197,7 @@ export async function generateAndReplace(prompt: string, n: number, creative?: b
     /*prompt=*/ input,
     /*vars=*/ {},
     /*chat_history=*/ history,
-    /*api_keys=*/ undefined,
+    /*api_keys=*/ apiKeys,
     /*no_cache=*/ true);
   
   if (result.errors && Object.keys(result.errors).length > 0) 

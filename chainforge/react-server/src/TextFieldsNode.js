@@ -28,6 +28,7 @@ const TextFieldsNode = ({ data, id }) => {
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
+  const apiKeys = useStore((state) => state.apiKeys);
   const flags = useStore((state) => state.flags);
 
   const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
@@ -40,7 +41,8 @@ const TextFieldsNode = ({ data, id }) => {
     // Do nothing when suggestions are simply updated because we are managing the placeholder state manually here.
     undefined,
     // When suggestions are refreshed, throw out existing placeholders.
-    () => setPlaceholders({})
+    () => setPlaceholders({}),
+    () => apiKeys,
   ));
 
   // Placeholders to show in the textareas. Object keyed by textarea index.
@@ -285,7 +287,8 @@ const TextFieldsNode = ({ data, id }) => {
                               onAddValues={addMultipleFields}
                               onReplaceValues={replaceFields}
                               areValuesLoading={isLoading}
-                              setValuesLoading={setIsLoading} />]
+                              setValuesLoading={setIsLoading}
+                              apiKeys={apiKeys} />]
                    : [])
                  } />
       <Skeleton visible={isLoading}>

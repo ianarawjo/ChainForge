@@ -24,7 +24,9 @@ function AIPopover({
   // A boolean that indicates whether the values are in a loading state
   areValuesLoading,
   // A function that takes a boolean that the popover will call to set whether the values should be loading
-  setValuesLoading
+  setValuesLoading,
+  // API keys to pass when querying LLMs (only those from front-end settings window)
+  apiKeys,
 }) {
 
   // Command Fill state
@@ -58,7 +60,8 @@ function AIPopover({
     setDidCommandFillError(false);
     autofill(
       Object.values(values),
-      commandFillNumber
+      commandFillNumber,
+      apiKeys,
     )
     .then(onAddValues)
     .catch(e => {
@@ -77,7 +80,8 @@ function AIPopover({
     generateAndReplace(
       generateAndReplacePrompt,
       generateAndReplaceNumber,
-      generateAndReplaceIsUnconventional
+      generateAndReplaceIsUnconventional,
+      apiKeys,
     )
     .then(onReplaceValues)
     .catch(e => {
