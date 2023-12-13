@@ -4,13 +4,14 @@
 
 // from chainforge.promptengine.models import LLM
 import { LLM, LLMProvider, getProvider } from './models';
-import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory, ChatMessage, PaLMChatMessage, PaLMChatContext, HuggingFaceChatHistory } from './typing';
+import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory, ChatMessage, PaLMChatMessage, PaLMChatContext, HuggingFaceChatHistory, GeminiChatContext, GeminiChatMessage } from './typing';
 import { env as process_env } from 'process';
 import { StringTemplate } from './template';
 
 /* LLM API SDKs */
 import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
 import { OpenAIClient as AzureOpenAIClient, AzureKeyCredential } from "@azure/openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
@@ -510,21 +511,25 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
 export async function call_google_gemini(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
   if (!GOOGLE_GEMINI_API_KEY)
     throw new Error("Could not find an API key for Google Gemini models. Double-check that your API key is set in Settings or in your local environment.");
+
+  // calling the correct model client
+  const genAI = new GoogleGenerativeAI(GOOGLE_GEMINI_API_KEY);
+  const gemini_model = genAI.getGenerativeModel({model: model.toString()});
   
-  // Ignoring chat for now, but by default it does support chat
-    const is_chat_model = false;
-  
+  // removing chat for now. by default chat is supported
+  const is_chat_model = false;
+
   // Required non-standard params 
-  const max_output_tokens = params?.max_output_tokens || 800;
+  const max_output_tokens = params?.max_output_tokens || 1000;
   const chat_history = params?.chat_history;
   delete params?.chat_history;
 
   let query: Dict = {
-    model: `models/${model}`,
-    candidate_count: n,
-    temperature: temperature,
-    max_output_tokens: max_output_tokens,
-    ...params,
+      model: `models/${model}`,
+      candidate_count: n,
+      temperature: temperature,
+      max_output_tokens: max_output_tokens,
+      ...params,
   };
 
   // Remove erroneous parameters for text and chat models
@@ -537,8 +542,61 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
   if (is_chat_model && query.stop_sequences !== undefined)
     delete query.stop_sequences;
 
-  console.log(`Calling Google PaLM model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
+  // For some reason Google needs to be special and have its API params be different names --camel or snake-case 
+  // --depending on if it's the Python or Node JS API. ChainForge needs a consistent name, so we must convert snake to camel:
+  const casemap = {
+    safety_settings: 'safetySettings',
+    stop_sequences: 'stopSequences',
+    candidate_count: 'candidateCount',
+    max_output_tokens: 'maxOutputTokens',
+    top_p: 'topP',
+    top_k: 'topK',
+  };
+  Object.entries(casemap).forEach(([key, val]) => {
+    if (key in query) {
+      query[val] = query[key];
+      delete query[key];
+    }
+  });
 
+
+  let gemini_chat_context: GeminiChatContext = { history: [] };
+
+  // Chat completions
+  if (chat_history !== undefined && chat_history.length > 0) {
+    // Carry over any chat history, converting OpenAI formatted chat history to Google PaLM:
+    
+    let gemini_messages: GeminiChatMessage[] = [];
+    for (const chat_msg of chat_history) {
+      if (chat_msg.role === 'system') {
+        // Carry the system message over as PaLM's chat 'context':
+        gemini_messages.push({ role: 'model', parts: chat_msg.content });
+      } else if (chat_msg.role === 'user') {
+        gemini_messages.push({ role: 'user', parts: chat_msg.content });
+      } else
+      gemini_messages.push({ role: 'model', parts: chat_msg.content });
+    }
+    gemini_chat_context.history = gemini_messages;
+  }
+
+  console.log(`Calling Google Gemini model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
+
+  const chat = gemini_model.startChat(
+    {
+      history: gemini_chat_context.history,
+      generationConfig: query,
+    },
+  );
+
+  const chatResult = await chat.sendMessage(prompt);
+  const chatResponse = await chatResult.response;
+  const response = {
+    text: chatResponse.text,
+    candidates: chatResponse.candidates,
+    promptFeedback: chatResponse.promptFeedback,
+  }
+
+  return [query, response];
 }
 
 export async function call_dalai(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
@@ -821,6 +879,18 @@ function _extract_openai_responses(response: Dict): Array<string> {
  */
 function _extract_palm_responses(completion: Dict): Array<string> {
     return completion['candidates'].map((c: Dict) => c.output || c.content);
+}
+
+/**
+ * Extracts the text part of a 'EnhancedGenerateContentResponse' object from Google Gemini `sendChat` or `chat`.
+ */
+function _extract_gemini_responses(completion: Dict): Array<string> {
+  // for now only returns simple text responses.
+  // var results = [];
+  // if(completion["candidates"] !== null && completion["candidates"] !== undefined) {
+  //   results = completion["candidates"].map((c: Dict) => c.content.parts.join(' '));
+  // }
+  return [completion["text"]];
 }
 
 /**
