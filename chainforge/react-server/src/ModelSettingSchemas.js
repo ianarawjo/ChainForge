@@ -1104,7 +1104,7 @@ export let ModelSettings = {
   'gpt-3.5-turbo': ChatGPTSettings,
   'gpt-4': GPT4Settings,
   'claude-v1': ClaudeSettings,
-  'palm2-bison': PaLM2Settings,
+  'gemini-pro': PaLM2Settings,
   'dalai': DalaiModelSettings,
   'azure-openai': AzureOpenAISettings,
   'hf': HuggingFaceTextInferenceSettings,
