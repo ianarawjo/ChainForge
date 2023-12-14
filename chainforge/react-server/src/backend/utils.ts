@@ -413,8 +413,6 @@ export async function call_google_ai(prompt: string, model: LLM, n: number = 1, 
 export async function call_google_palm(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
   if (!GOOGLE_PALM_API_KEY)
     throw new Error("Could not find an API key for Google PaLM models. Double-check that your API key is set in Settings or in your local environment.");
-  
-  console.log('call_google_palm: ');
   const is_chat_model = model.toString().includes('chat');
 
   // Required non-standard params 
@@ -534,7 +532,6 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
   const gemini_model = genAI.getGenerativeModel({model: model.toString()});
   
   // removing chat for now. by default chat is supported
-  const is_chat_model = false;
 
   // Required non-standard params 
   const max_output_tokens = params?.max_output_tokens || 1000;
@@ -548,16 +545,6 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
       max_output_tokens: max_output_tokens,
       ...params,
   };
-
-  // Remove erroneous parameters for text and chat models
-  if (query.top_k !== undefined && query.top_k <= 0)
-    delete query.top_k;
-  if (query.top_p !== undefined && query.top_p <= 0)
-    delete query.top_p;
-  if (is_chat_model && query.max_output_tokens !== undefined)
-    delete query.max_output_tokens;
-  if (is_chat_model && query.stop_sequences !== undefined)
-    delete query.stop_sequences;
 
   // For some reason Google needs to be special and have its API params be different names --camel or snake-case 
   // --depending on if it's the Python or Node JS API. ChainForge needs a consistent name, so we must convert snake to camel:
@@ -602,9 +589,6 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
     gemini_chat_context.history = gemini_messages;
   }
 
-  console.log('gemini_chat_context: ', gemini_chat_context);
-  console.log('gen_Config: ', gen_Config);
-
   console.log(`Calling Google Gemini model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
 
   let responses: Array<Dict> = [];
@@ -619,14 +603,12 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
   
     const chatResult = await chat.sendMessage(prompt);
     const chatResponse = await chatResult.response;
-    console.log(chatResponse);
     const response = {
       text: chatResponse.text(),
       candidates: chatResponse.candidates,
       promptFeedback: chatResponse.promptFeedback,
     }
     responses.push(response);
-    console.log(response);
   }
 
   return [query, responses];
@@ -908,10 +890,8 @@ function _extract_openai_responses(response: Dict): Array<string> {
 function _extract_google_ai_responses(response: Dict, llm: LLM | string): Array<string> {
   switch(llm) {
     case NativeLLM.GEMINI_PRO:
-      console.log('extracting gemini responses');
       return _extract_gemini_responses(response as Array<Dict>);
     default:
-      console.log('extracting palm responses');
       return _extract_palm_responses(response);
   }
 }
