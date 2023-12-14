@@ -102,7 +102,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
     return LLMProvider.OpenAI;
   else if (llm_name?.startsWith('Azure'))
     return LLMProvider.Azure_OpenAI;
-  else if (llm_name?.startsWith('PaLM2'))
+  else if (llm_name?.startsWith('PaLM2') || llm_name?.startsWith('GEMINI'))
     return LLMProvider.Google;
   else if (llm_name?.startsWith('Dalai'))
     return LLMProvider.Dalai;

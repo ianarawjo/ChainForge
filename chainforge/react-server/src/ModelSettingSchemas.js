@@ -346,7 +346,7 @@ const ClaudeSettings = {
 };
 
 const PaLM2Settings = {
-  fullName: "PaLM (Google)",
+  fullName: "Google AI Models (PaLM2 \\ Gemini)",
   schema: {
     "type": "object",
     "required": [
@@ -357,17 +357,18 @@ const PaLM2Settings = {
         "type": "string",
         "title": "Nickname",
         "description": "Unique identifier to appear in ChainForge. Keep it short.",
-        "default": "chat-bison"
+        "default": "google-gemini"
       },
       "model": {
         "type": "string",
         "title": "Model",
         "description": "Select a PaLM model to query. For more details on the differences, see the Google PaLM API documentation.",
-        "enum": ["text-bison-001", "chat-bison-001"],
-        "default": "chat-bison-001",
+        "enum": ["text-bison-001", "chat-bison-001", "gemini-pro"],
+        "default": "gemini-pro",
         "shortname_map": {
           "text-bison-001": "PaLM2-text",
           "chat-bison-001": "PaLM2-chat",
+          "gemini-pro": "Gemini-Pro"
         }
       },
       "temperature": {
@@ -417,7 +418,7 @@ const PaLM2Settings = {
         "ui:autofocus": true
       },
       "model": {
-          "ui:help": "Defaults to chat-bison."
+          "ui:help": "Defaults to gemini-pro."
       },
       "temperature": {
         "ui:help": "Defaults to 0.5.",
@@ -435,6 +436,106 @@ const PaLM2Settings = {
       "stop_sequences": {
         "ui:widget": "textarea",
         "ui:help": "Defaults to no additional stop sequences (empty). Ignored for chat models."
+      },
+  },
+
+  postprocessors: {
+    'stop_sequences': (str) => {
+      if (str.trim().length === 0) return [];
+      return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    }
+  }
+};
+
+const GeminiSettings = {
+  fullName: "Gemini (Google)",
+  schema: {
+    "type": "object",
+    "required": [
+          "shortname"
+      ],
+    "properties": {
+      "shortname": {
+        "type": "string",
+        "title": "Nickname",
+        "description": "Unique identifier to appear in ChainForge. Keep it short.",
+        "default": "google-gemini"
+      },
+      "model": {
+        "type": "string",
+        "title": "Model",
+        "description": "Select a PaLM model to query. For more details on the differences, see the Google PaLM API documentation.",
+        "enum": ["gemini-pro"],
+        "default": "chat-bison-001",
+        "shortname_map": {
+          "gemini-pro": "Google-Gemini-Pro"
+        }
+      },
+      "temperature": {
+        "type": "number",
+        "title": "temperature",
+        "description": "Controls the randomness of the output. Must be positive. Typical values are in the range: [0.0, 1.0]. Higher values produce a more random and varied response. A temperature of zero will be deterministic. (ChainForge only allows a max 1.0 temperature for PaLM).",
+        "default": 0.5,
+        "minimum": 0,
+        "maximum": 1,
+        "multipleOf": 0.01
+      },
+      "top_k": {
+        "type": "integer",
+        "title": "top_k",
+        "description": "Sets the maximum number of tokens to sample from on each step. (The PaLM API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
+        "minimum": -1,
+        "default": -1
+      },
+      "top_p": {
+        "type": "number",
+        "title": "top_p",
+        "description": "Sets the maximum cumulative probability of tokens to sample from. (The PaLM API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
+        "default": -1,
+        "minimum": -1,
+        "maximum": 1,
+        "multipleOf": 0.001,
+      },
+      "max_output_tokens": {
+        "type": "integer",
+        "title": "max_output_tokens (ignored for chat models)",
+        "description": "Maximum number of tokens to include in each response of a text-bison model. Must be greater than zero. If unset, will default to 512. Ignored for chat models.",
+        "default": 1024,
+        "minimum": 1
+      },
+      "stop_sequences": {
+        "type": "string",
+        "title": "stop_sequences (ignored for chat models)",
+        "description": "A set of up to 5 character sequences that will stop output generation. If specified, the API will stop at the first appearance of a stop sequence. The stop sequence will not be included as part of the response.\nEnclose stop sequences in double-quotes \"\" and use whitespace to separate them. Ignored for chat models.",
+              "default": ""
+      },
+    }
+  },
+
+  uiSchema: {
+      'ui:submitButtonOptions': UI_SUBMIT_BUTTON_SPEC,
+      "shortname": {
+        "ui:autofocus": true
+      },
+      "model": {
+          "ui:help": "Defaults to gemini-pro."
+      },
+      "temperature": {
+        "ui:help": "Defaults to 0.5.",
+        "ui:widget": "range"
+      },
+      "max_output_tokens": {
+          "ui:help": "Defaults to 1024."
+      },
+      "top_k": {
+          "ui:help": "Defaults to -1 (none)."
+      },
+      "top_p": {
+        "ui:help": "Defaults to -1 (none)."
+      },
+      "stop_sequences": {
+        "ui:widget": "textarea",
+        "ui:help": "Defaults to no additional stop sequences (empty)."
       },
   },
 
