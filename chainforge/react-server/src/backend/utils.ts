@@ -570,6 +570,14 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
   // Gemini only supports candidate_count of 1
   gen_Config['candidateCount'] = 1;
 
+  // By default for topK is none, and topP is 1.0
+  if ('topK' in gen_Config && gen_Config['topK'] === -1) {
+    delete gen_Config['topK'];
+  }
+  if ('topP' in gen_Config && gen_Config['topP'] === -1) {
+    gen_Config['topP'] = 1.0;
+  }
+
   let gemini_chat_context: GeminiChatContext = { history: [] };
 
   // Chat completions
@@ -902,7 +910,7 @@ function _extract_google_ai_responses(response: Dict, llm: LLM | string): Array<
  * NOTE: The candidate object for `generate_text` has a key 'output' which contains the response,
  * while the `chat` API uses a key 'content'. This checks for either.
  */
-function _extract_palm_responses(completion: Dict,): Array<string> {
+function _extract_palm_responses(completion: Dict): Array<string> {
     return completion['candidates'].map((c: Dict) => c.output || c.content);
 }
 
@@ -910,11 +918,6 @@ function _extract_palm_responses(completion: Dict,): Array<string> {
  * Extracts the text part of a 'EnhancedGenerateContentResponse' object from Google Gemini `sendChat` or `chat`.
  */
 function _extract_gemini_responses(completions: Array<Dict>): Array<string> {
-  // for now only returns simple text responses.
-  // var results = [];
-  // if(completion["candidates"] !== null && completion["candidates"] !== undefined) {
-  //   results = completion["candidates"].map((c: Dict) => c.content.parts.join(' '));
-  // }
   return completions.map((c: Dict) => c.text);
 }
 
