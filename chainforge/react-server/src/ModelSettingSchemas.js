@@ -346,7 +346,7 @@ const ClaudeSettings = {
 };
 
 const PaLM2Settings = {
-  fullName: "Google AI Models (PaLM2 \\ Gemini)",
+  fullName: "Google AI Models (Gemini & PaLM)",
   schema: {
     "type": "object",
     "required": [
@@ -357,18 +357,18 @@ const PaLM2Settings = {
         "type": "string",
         "title": "Nickname",
         "description": "Unique identifier to appear in ChainForge. Keep it short.",
-        "default": "google-gemini"
+        "default": "Gemini"
       },
       "model": {
         "type": "string",
         "title": "Model",
         "description": "Select a PaLM model to query. For more details on the differences, see the Google PaLM API documentation.",
-        "enum": ["text-bison-001", "chat-bison-001", "gemini-pro"],
+        "enum": ["gemini-pro", "text-bison-001", "chat-bison-001"],
         "default": "gemini-pro",
         "shortname_map": {
           "text-bison-001": "PaLM2-text",
           "chat-bison-001": "PaLM2-chat",
-          "gemini-pro": "Gemini-Pro"
+          "gemini-pro": "Gemini",
         }
       },
       "temperature": {
@@ -1005,7 +1005,7 @@ export let ModelSettings = {
   'gpt-3.5-turbo': ChatGPTSettings,
   'gpt-4': GPT4Settings,
   'claude-v1': ClaudeSettings,
-  'gemini-pro': PaLM2Settings,
+  'palm2-bison': PaLM2Settings,
   'dalai': DalaiModelSettings,
   'azure-openai': AzureOpenAISettings,
   'hf': HuggingFaceTextInferenceSettings,

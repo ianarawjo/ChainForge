@@ -34,7 +34,7 @@ export let initLLMProviders = [
   { name: "GPT3.5", emoji: "🤖", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
   { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
   { name: "Claude", emoji: "📚", model: "claude-2", base_model: "claude-v1", temp: 0.5 },
-  { name: "Gemini-Pro", emoji: "♊", model: "gemini-pro", base_model: "gemini-pro", temp: 0.7 },
+  { name: "Gemini", emoji: "♊", model: "gemini-pro", base_model: "palm2-bison", temp: 0.7 },
   { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
   { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 0.0 },
   { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },

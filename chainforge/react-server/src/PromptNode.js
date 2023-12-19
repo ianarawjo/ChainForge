@@ -134,7 +134,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   const showResponseInspector = useCallback(() => {
     if (inspectModal && inspectModal.current && jsonResponses) {
-        inspectModal.current.trigger();
+        inspectModal.current?.trigger();
         setUninspectedResponses(false);
     }
   }, [inspectModal, jsonResponses]);
@@ -179,7 +179,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         const pulled_data = pullInputData(templateVars, id);
         updateShowContToggle(pulled_data);
     } catch (err) {
-        alertModal.current.trigger(err.message);
+        // alertModal.current?.trigger(err.message);
         console.error(err);
     }
   }, [templateVars, id, pullInputData, updateShowContToggle]);
@@ -189,7 +189,13 @@ const PromptNode = ({ data, id, type: node_type }) => {
     const found_template_vars = new Set(extractBracketedSubstrings(text));  // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
 
     if (!setsAreEqual(found_template_vars, new Set(templateVars))) {
-        if (node_type !== 'chat') updateShowContToggle(pullInputData(found_template_vars, id));
+        if (node_type !== 'chat') {
+            try {
+                updateShowContToggle(pullInputData(found_template_vars, id));
+            } catch (err) {
+                console.error(err);
+            }
+        }
         setTemplateVars(Array.from(found_template_vars));
     }
   }, [setTemplateVars, templateVars, pullInputData, id]);
@@ -314,8 +320,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
         pullInputChats();
     } catch (err) {
-        alertModal.current.trigger(err.message);
+        // soft fail
         console.error(err);
+        setPromptPreviews([]);
     }
   };
 
@@ -345,7 +352,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     try {
         pulled_vars = pullInputData(templateVars, id);
     } catch (err) {
-        alertModal.current.trigger(err.message) 
+        setRunTooltip('Error: Duplicate variables detected.');
         console.error(err);
         return;  // early exit
     }
@@ -474,7 +481,16 @@ const PromptNode = ({ data, id, type: node_type }) => {
     }
 
     // Pull the data to fill in template input variables, if any
-    const pulled_data = pullInputData(templateVars, id);
+    let pulled_data = {};
+    try {
+        // Try to pull inputs
+        pulled_data = pullInputData(templateVars, id);
+    } catch (err) {
+        alertModal.current?.trigger(err.message);
+        console.error(err);
+        return;  // early exit
+    }
+
     const prompt_template = promptText;
 
     // Whether to continue with only the prior LLMs, for each value in vars dict
