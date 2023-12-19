@@ -46,6 +46,16 @@ export interface PaLMChatContext {
   examples?: Dict[],
 }
 
+export interface GeminiChatMessage {
+  role: string,
+  parts: string,
+}
+
+export interface GeminiChatContext {
+  history: GeminiChatMessage[],
+}
+
+
 /** HuggingFace conversation models format */
 export interface HuggingFaceChatHistory {
   past_user_inputs: string[],

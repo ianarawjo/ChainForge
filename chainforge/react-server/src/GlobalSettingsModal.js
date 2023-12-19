@@ -245,8 +245,8 @@ return (
 
                   <br />
                   <TextInput
-                    label="Google PaLM API Key"
-                    placeholder="Paste your Google PaLM API key here"
+                    label="Google AI API Key (PaLM/GEMINI)"
+                    placeholder="Paste your Google PaLM/GEMINI API key here"
                     {...form.getInputProps('Google')}
                   />
                   <br />

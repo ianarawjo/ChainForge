@@ -50,6 +50,7 @@ export enum NativeLLM {
   // Google models
   PaLM2_Text_Bison = "text-bison-001",  // it's really models/text-bison-001, but that's confusing
   PaLM2_Chat_Bison = "chat-bison-001",
+  GEMINI_PRO = "gemini-pro",
 
  // Aleph Alpha
   Aleph_Alpha_Luminous_Extended = "luminous-extended",
@@ -101,7 +102,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
     return LLMProvider.OpenAI;
   else if (llm_name?.startsWith('Azure'))
     return LLMProvider.Azure_OpenAI;
-  else if (llm_name?.startsWith('PaLM2'))
+  else if (llm_name?.startsWith('PaLM2') || llm_name?.startsWith('GEMINI'))
     return LLMProvider.Google;
   else if (llm_name?.startsWith('Dalai'))
     return LLMProvider.Dalai;

@@ -346,7 +346,7 @@ const ClaudeSettings = {
 };
 
 const PaLM2Settings = {
-  fullName: "PaLM (Google)",
+  fullName: "Google AI Models (PaLM2 \\ Gemini)",
   schema: {
     "type": "object",
     "required": [
@@ -357,17 +357,18 @@ const PaLM2Settings = {
         "type": "string",
         "title": "Nickname",
         "description": "Unique identifier to appear in ChainForge. Keep it short.",
-        "default": "chat-bison"
+        "default": "google-gemini"
       },
       "model": {
         "type": "string",
         "title": "Model",
         "description": "Select a PaLM model to query. For more details on the differences, see the Google PaLM API documentation.",
-        "enum": ["text-bison-001", "chat-bison-001"],
-        "default": "chat-bison-001",
+        "enum": ["text-bison-001", "chat-bison-001", "gemini-pro"],
+        "default": "gemini-pro",
         "shortname_map": {
           "text-bison-001": "PaLM2-text",
           "chat-bison-001": "PaLM2-chat",
+          "gemini-pro": "Gemini-Pro"
         }
       },
       "temperature": {
@@ -417,7 +418,7 @@ const PaLM2Settings = {
         "ui:autofocus": true
       },
       "model": {
-          "ui:help": "Defaults to chat-bison."
+          "ui:help": "Defaults to gemini-pro."
       },
       "temperature": {
         "ui:help": "Defaults to 0.5.",
@@ -445,6 +446,7 @@ const PaLM2Settings = {
     }
   }
 };
+
 
 const DalaiModelSettings = {
   fullName: "Dalai-hosted local model (Alpaca, Llama)",
@@ -1003,7 +1005,7 @@ export let ModelSettings = {
   'gpt-3.5-turbo': ChatGPTSettings,
   'gpt-4': GPT4Settings,
   'claude-v1': ClaudeSettings,
-  'palm2-bison': PaLM2Settings,
+  'gemini-pro': PaLM2Settings,
   'dalai': DalaiModelSettings,
   'azure-openai': AzureOpenAISettings,
   'hf': HuggingFaceTextInferenceSettings,
