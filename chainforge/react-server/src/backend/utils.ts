@@ -3,14 +3,15 @@
 // from string import Template
 
 // from chainforge.promptengine.models import LLM
-import { LLM, LLMProvider, getProvider } from './models';
-import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory, ChatMessage, PaLMChatMessage, PaLMChatContext, HuggingFaceChatHistory } from './typing';
+import { LLM, LLMProvider, NativeLLM, getProvider } from './models';
+import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory, ChatMessage, PaLMChatMessage, PaLMChatContext, HuggingFaceChatHistory, GeminiChatContext, GeminiChatMessage } from './typing';
 import { env as process_env } from 'process';
 import { StringTemplate } from './template';
 
 /* LLM API SDKs */
 import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
 import { OpenAIClient as AzureOpenAIClient, AzureKeyCredential } from "@azure/openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
@@ -393,13 +394,25 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
 }
 
 /**
+ * Calls a Google PaLM/Gemini model, based on the model selection from the user. 
+ * Returns raw query and response JSON dicts.
+ */
+export async function call_google_ai(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
+  switch(model) {
+    case NativeLLM.GEMINI_PRO:
+      return call_google_gemini(prompt, model, n, temperature, params);
+    default:
+      return call_google_palm(prompt, model, n, temperature, params);
+  }
+}
+
+/**
  * Calls a Google PaLM model. 
-   Returns raw query and response JSON dicts.
+ * Returns raw query and response JSON dicts.
  */
 export async function call_google_palm(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
   if (!GOOGLE_PALM_API_KEY)
     throw new Error("Could not find an API key for Google PaLM models. Double-check that your API key is set in Settings or in your local environment.");
-
   const is_chat_model = model.toString().includes('chat');
 
   // Required non-standard params 
@@ -504,6 +517,109 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
   }
 
   return [query, completion];
+}
+
+export async function call_google_gemini(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
+  if (!GOOGLE_PALM_API_KEY)
+    throw new Error("Could not find an API key for Google Gemini models. Double-check that your API key is set in Settings or in your local environment.");
+
+  // calling the correct model client
+
+  console.log('call_google_gemini: ');
+  model = NativeLLM.GEMINI_PRO;
+
+  const genAI = new GoogleGenerativeAI(GOOGLE_PALM_API_KEY);
+  const gemini_model = genAI.getGenerativeModel({model: model.toString()});
+  
+  // removing chat for now. by default chat is supported
+
+  // Required non-standard params 
+  const max_output_tokens = params?.max_output_tokens || 1000;
+  const chat_history = params?.chat_history;
+  delete params?.chat_history;
+
+  let query: Dict = {
+      model: `models/${model}`,
+      candidate_count: n,
+      temperature: temperature,
+      max_output_tokens: max_output_tokens,
+      ...params,
+  };
+
+  // For some reason Google needs to be special and have its API params be different names --camel or snake-case 
+  // --depending on if it's the Python or Node JS API. ChainForge needs a consistent name, so we must convert snake to camel:
+  const casemap = {
+    safety_settings: 'safetySettings',
+    stop_sequences: 'stopSequences',
+    candidate_count: 'candidateCount',
+    max_output_tokens: 'maxOutputTokens',
+    top_p: 'topP',
+    top_k: 'topK',
+  };
+
+  let gen_Config = {};
+
+  Object.entries(casemap).forEach(([key, val]) => {
+    if (key in query) {
+      gen_Config[val] = query[key];
+      query[val] = query[key];
+      delete query[key];
+    }
+  });
+
+  // Gemini only supports candidate_count of 1
+  gen_Config['candidateCount'] = 1;
+
+  // By default for topK is none, and topP is 1.0
+  if ('topK' in gen_Config && gen_Config['topK'] === -1) {
+    delete gen_Config['topK'];
+  }
+  if ('topP' in gen_Config && gen_Config['topP'] === -1) {
+    gen_Config['topP'] = 1.0;
+  }
+
+  let gemini_chat_context: GeminiChatContext = { history: [] };
+
+  // Chat completions
+  if (chat_history !== undefined && chat_history.length > 0) {
+    // Carry over any chat history, converting OpenAI formatted chat history to Google PaLM:
+    
+    let gemini_messages: GeminiChatMessage[] = [];
+    for (const chat_msg of chat_history) {
+      if (chat_msg.role === 'system') {
+        // Carry the system message over as PaLM's chat 'context':
+        gemini_messages.push({ role: 'model', parts: chat_msg.content });
+      } else if (chat_msg.role === 'user') {
+        gemini_messages.push({ role: 'user', parts: chat_msg.content });
+      } else
+      gemini_messages.push({ role: 'model', parts: chat_msg.content });
+    }
+    gemini_chat_context.history = gemini_messages;
+  }
+
+  console.log(`Calling Google Gemini model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
+
+  let responses: Array<Dict> = [];
+
+  while(responses.length < n) {
+    const chat = gemini_model.startChat(
+      {
+        history: gemini_chat_context.history,
+        generationConfig: gen_Config,
+      },
+    );
+  
+    const chatResult = await chat.sendMessage(prompt);
+    const chatResponse = await chatResult.response;
+    const response = {
+      text: chatResponse.text(),
+      candidates: chatResponse.candidates,
+      promptFeedback: chatResponse.promptFeedback,
+    }
+    responses.push(response);
+  }
+
+  return [query, responses];
 }
 
 export async function call_dalai(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
@@ -716,7 +832,7 @@ export async function call_llm(llm: LLM, prompt: string, n: number, temperature:
   else if (llm_provider === LLMProvider.Azure_OpenAI)
     call_api = call_azure_openai;
   else if (llm_provider === LLMProvider.Google)
-    call_api = call_google_palm;
+    call_api = call_google_ai;
   else if (llm_provider === LLMProvider.Dalai)
     call_api = call_dalai;
   else if (llm_provider === LLMProvider.Anthropic)
@@ -778,6 +894,16 @@ function _extract_openai_responses(response: Dict): Array<string> {
     return _extract_openai_completion_responses(response);
 }
 
+
+function _extract_google_ai_responses(response: Dict, llm: LLM | string): Array<string> {
+  switch(llm) {
+    case NativeLLM.GEMINI_PRO:
+      return _extract_gemini_responses(response as Array<Dict>);
+    default:
+      return _extract_palm_responses(response);
+  }
+}
+
 /**
  * Extracts the text part of a 'Completion' object from Google PaLM2 `generate_text` or `chat`.
  *
@@ -786,6 +912,13 @@ function _extract_openai_responses(response: Dict): Array<string> {
  */
 function _extract_palm_responses(completion: Dict): Array<string> {
     return completion['candidates'].map((c: Dict) => c.output || c.content);
+}
+
+/**
+ * Extracts the text part of a 'EnhancedGenerateContentResponse' object from Google Gemini `sendChat` or `chat`.
+ */
+function _extract_gemini_responses(completions: Array<Dict>): Array<string> {
+  return completions.map((c: Dict) => c.text);
 }
 
 /**
@@ -825,7 +958,7 @@ export function extract_responses(response: Array<string | Dict> | Dict, llm: LL
     case LLMProvider.Azure_OpenAI:
       return _extract_openai_responses(response);
     case LLMProvider.Google:
-      return _extract_palm_responses(response);
+      return _extract_google_ai_responses(response as Dict, llm);
     case LLMProvider.Dalai:
       return [response.toString()];
     case LLMProvider.Anthropic:

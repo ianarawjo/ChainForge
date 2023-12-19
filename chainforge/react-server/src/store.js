@@ -7,6 +7,7 @@ import {
 import { escapeBraces } from './backend/template';
 import { filterDict } from './backend/utils';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
+import { DuplicateVariableNameError } from './backend/errors';
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -33,7 +34,7 @@ export let initLLMProviders = [
   { name: "GPT3.5", emoji: "🤖", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
   { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
   { name: "Claude", emoji: "📚", model: "claude-2", base_model: "claude-v1", temp: 0.5 },
-  { name: "PaLM2", emoji: "🦬", model: "chat-bison-001", base_model: "palm2-bison", temp: 0.7 },
+  { name: "Gemini", emoji: "♊", model: "gemini-pro", base_model: "palm2-bison", temp: 0.7 },
   { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
   { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 0.0 },
   { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
@@ -253,8 +254,15 @@ const useStore = create((set, get) => ({
 
     // Pull data from each source recursively:
     const pulled_data = {};
-    const get_outputs = (varnames, nodeId) => {
+    const get_outputs = (varnames, nodeId, var_history) => {
       varnames.forEach(varname => {
+        // Check for duplicate variable names
+        if (var_history.has(String(varname).toLowerCase())) 
+          throw new DuplicateVariableNameError(varname);
+        
+        // Add to unique name tally
+        var_history.add(String(varname).toLowerCase());
+        
         // Find the relevant edge(s):
         edges.forEach(e => {
           if (e.target == nodeId && e.targetHandle == varname) {
@@ -274,12 +282,12 @@ const useStore = create((set, get) => ({
             // Get any vars that the output depends on, and recursively collect those outputs as well:
             const n_vars = getNode(e.source).data.vars;
             if (n_vars && Array.isArray(n_vars) && n_vars.length > 0)
-              get_outputs(n_vars, e.source);
+              get_outputs(n_vars, e.source, var_history);
           }
         });
       });
     };
-    get_outputs(_targetHandles, node_id);
+    get_outputs(_targetHandles, node_id, new Set());
 
     return pulled_data;
   },
