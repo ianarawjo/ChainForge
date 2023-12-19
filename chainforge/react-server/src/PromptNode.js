@@ -16,6 +16,7 @@ import InspectFooter from './InspectFooter';
 import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
 import LLMResponseInspector from './LLMResponseInspector';
 import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
+import { DuplicateVariableNameError } from './backend/errors';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -175,7 +176,15 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const handleOnConnect = useCallback(() => {
     if (node_type === 'chat') return; // always show when chat node
     // Re-pull data and update show cont toggle:
+    try {
     updateShowContToggle(pullInputData(templateVars, id));
+    } catch (err) {
+        if (err instanceof DuplicateVariableNameError){
+            alertModal.current.trigger(err.message)
+        } else {
+            throw err
+        }
+    }
   }, [templateVars, id, pullInputData, updateShowContToggle]);
 
   const refreshTemplateHooks = useCallback((text) => {
@@ -295,17 +304,25 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [promptPreviews, setPromptPreviews] = useState([]);
   const handlePreviewHover = () => {
     // Pull input data and prompt
-    const pulled_vars = pullInputData(templateVars, id);
-    updateShowContToggle(pulled_vars);
+    try {
+        const pulled_vars = pullInputData(templateVars, id);
+        updateShowContToggle(pulled_vars);
 
-    fetch_from_backend('generatePrompts', {
-        prompt: promptText,
-        vars: pulled_vars,
-    }).then(prompts => {
-        setPromptPreviews(prompts.map(p => (new PromptInfo(p.toString()))));
-    });
+        fetch_from_backend('generatePrompts', {
+            prompt: promptText,
+            vars: pulled_vars,
+        }).then(prompts => {
+            setPromptPreviews(prompts.map(p => (new PromptInfo(p.toString()))));
+        });
 
-    pullInputChats();
+        pullInputChats();
+    } catch (err) {
+        if (err instanceof DuplicateVariableNameError){
+            alertModal.current.trigger(err.message)
+        } else {
+            throw err
+        }
+    }
   };
 
   // On hover over the 'Run' button, request how many responses are required and update the tooltip. Soft fails.
@@ -330,77 +347,85 @@ const PromptNode = ({ data, id, type: node_type }) => {
     }
 
     // Pull the input data
-    const pulled_vars = pullInputData(templateVars, id);
-    updateShowContToggle(pulled_vars);
+        try {
+        const pulled_vars = pullInputData(templateVars, id);
+        updateShowContToggle(pulled_vars);
 
-    // Whether to continue with only the prior LLMs, for each value in vars dict
-    if (node_type !== 'chat' && showContToggle && contWithPriorLLMs) {
-        // We need to draw the LLMs to query from the input responses
-        _llmItemsCurrState = getLLMsInPulledInputData(pulled_vars);
-    }
+        // Whether to continue with only the prior LLMs, for each value in vars dict
+        if (node_type !== 'chat' && showContToggle && contWithPriorLLMs) {
+            // We need to draw the LLMs to query from the input responses
+            _llmItemsCurrState = getLLMsInPulledInputData(pulled_vars);
+        }
 
-    // Check if there's at least one model in the list; if not, nothing to run on.
-    if (!_llmItemsCurrState || _llmItemsCurrState.length == 0) {
-        setRunTooltip('No LLMs to query.');
-        return;
-    }
-    
-    const llms = _llmItemsCurrState.map(item => item.model);
-    const num_llms = llms.length;
-
-    // Fetch response counts from backend
-    fetchResponseCounts(promptText, pulled_vars, _llmItemsCurrState, pulled_chats, (err) => {
-        console.warn(err.message);  // soft fail
-    }).then(([counts, total_num_responses]) => {
-        // Check for empty counts (means no requests will be sent!)
-        const num_llms_missing = Object.keys(counts).length;
-        if (num_llms_missing === 0) {
-            setRunTooltip('Will load responses from cache');
-            setResponsesWillChange(false);
+        // Check if there's at least one model in the list; if not, nothing to run on.
+        if (!_llmItemsCurrState || _llmItemsCurrState.length == 0) {
+            setRunTooltip('No LLMs to query.');
             return;
         }
+        
+        const llms = _llmItemsCurrState.map(item => item.model);
+        const num_llms = llms.length;
 
-        setResponsesWillChange(true);
+        // Fetch response counts from backend
+        fetchResponseCounts(promptText, pulled_vars, _llmItemsCurrState, pulled_chats, (err) => {
+            console.warn(err.message);  // soft fail
+        }).then(([counts, total_num_responses]) => {
+            // Check for empty counts (means no requests will be sent!)
+            const num_llms_missing = Object.keys(counts).length;
+            if (num_llms_missing === 0) {
+                setRunTooltip('Will load responses from cache');
+                setResponsesWillChange(false);
+                return;
+            }
 
-        // Tally how many queries per LLM:
-        let queries_per_llm = {};
-        Object.keys(counts).forEach(llm_key => {
-            queries_per_llm[llm_key] = Object.keys(counts[llm_key]).reduce(
-                (acc, prompt) => acc + counts[llm_key][prompt]
-            , 0);
+            setResponsesWillChange(true);
+
+            // Tally how many queries per LLM:
+            let queries_per_llm = {};
+            Object.keys(counts).forEach(llm_key => {
+                queries_per_llm[llm_key] = Object.keys(counts[llm_key]).reduce(
+                    (acc, prompt) => acc + counts[llm_key][prompt]
+                , 0);
+            });
+
+            // Check if all counts are the same:
+            if (num_llms_missing > 1) {
+                const some_llm_num = queries_per_llm[Object.keys(queries_per_llm)[0]];
+                const all_same_num_queries = Object.keys(queries_per_llm).reduce((acc, llm_key) => acc && queries_per_llm[llm_key] === some_llm_num, true)
+                if (num_llms_missing === num_llms && all_same_num_queries) { // Counts are the same
+                    const req = some_llm_num > 1 ? 'requests' : 'request';
+                    setRunTooltip(`Will send ${some_llm_num} new ${req}` + (num_llms > 1 ? ' per LLM' : ''));
+                }
+                else if (all_same_num_queries) {
+                    const req = some_llm_num > 1 ? 'requests' : 'request';
+                    setRunTooltip(`Will send ${some_llm_num} new ${req}` + (num_llms > 1 ? ` to ${num_llms_missing} LLMs` : ''));
+                }
+                else { // Counts are different 
+                    const sum_queries = Object.keys(queries_per_llm).reduce((acc, llm_key) => acc + queries_per_llm[llm_key], 0);
+                    setRunTooltip(`Will send a variable # of queries to LLM(s) (total=${sum_queries})`);
+                }
+            } else {
+                const llm_key = Object.keys(queries_per_llm)[0];
+                const llm_name = llmListContainer?.current?.getLLMListItemForKey(llm_key)?.name;
+                const llm_count = queries_per_llm[llm_key];
+                const req = llm_count > 1 ? 'queries' : 'query';
+                if (llm_name === undefined)
+                    setRunTooltip(`Will send ${llm_count} ${req} per LLM`);
+                else if (num_llms > num_llms_missing)
+                    setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name} and load others`);
+                else
+                    setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name}`);
+            }
+        }).catch(() => {
+            setRunTooltip('Could not reach backend server.');
         });
-
-        // Check if all counts are the same:
-        if (num_llms_missing > 1) {
-            const some_llm_num = queries_per_llm[Object.keys(queries_per_llm)[0]];
-            const all_same_num_queries = Object.keys(queries_per_llm).reduce((acc, llm_key) => acc && queries_per_llm[llm_key] === some_llm_num, true)
-            if (num_llms_missing === num_llms && all_same_num_queries) { // Counts are the same
-                const req = some_llm_num > 1 ? 'requests' : 'request';
-                setRunTooltip(`Will send ${some_llm_num} new ${req}` + (num_llms > 1 ? ' per LLM' : ''));
-            }
-            else if (all_same_num_queries) {
-                const req = some_llm_num > 1 ? 'requests' : 'request';
-                setRunTooltip(`Will send ${some_llm_num} new ${req}` + (num_llms > 1 ? ` to ${num_llms_missing} LLMs` : ''));
-            }
-            else { // Counts are different 
-                const sum_queries = Object.keys(queries_per_llm).reduce((acc, llm_key) => acc + queries_per_llm[llm_key], 0);
-                setRunTooltip(`Will send a variable # of queries to LLM(s) (total=${sum_queries})`);
-            }
+    } catch (err) {
+        if (err instanceof DuplicateVariableNameError) {
+            alertModal.current.trigger(err.message) 
         } else {
-            const llm_key = Object.keys(queries_per_llm)[0];
-            const llm_name = llmListContainer?.current?.getLLMListItemForKey(llm_key)?.name;
-            const llm_count = queries_per_llm[llm_key];
-            const req = llm_count > 1 ? 'queries' : 'query';
-            if (llm_name === undefined)
-                setRunTooltip(`Will send ${llm_count} ${req} per LLM`);
-            else if (num_llms > num_llms_missing)
-                setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name} and load others`);
-            else
-                setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name}`);
+            throw err
         }
-    }).catch(() => {
-        setRunTooltip('Could not reach backend server.');
-    });
+    }
   };
 
   const handleRunClick = (event) => {

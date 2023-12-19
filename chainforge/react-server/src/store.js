@@ -7,6 +7,7 @@ import {
 import { escapeBraces } from './backend/template';
 import { filterDict } from './backend/utils';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
+import { DuplicateVariableNameError } from './backend/errors';
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -253,8 +254,16 @@ const useStore = create((set, get) => ({
 
     // Pull data from each source recursively:
     const pulled_data = {};
+    let var_history = new Set();
     const get_outputs = (varnames, nodeId) => {
       varnames.forEach(varname => {
+        // Check for duplicate variable names
+        if (var_history.has(String(varname).toLowerCase())) {
+          throw new DuplicateVariableNameError(varname)
+        }
+        else {
+          var_history.add(String(varname).toLowerCase())
+        }
         // Find the relevant edge(s):
         edges.forEach(e => {
           if (e.target == nodeId && e.targetHandle == varname) {
