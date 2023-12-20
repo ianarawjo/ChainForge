@@ -1092,9 +1092,9 @@ export const toStandardResponseFormat = (r) => {
     responses: [typeof r === 'string' ? r : r?.text],
     tokens: r?.raw_response?.usage ?? {},
   };
-  if ('eval_res' in r)
+  if (r?.eval_res !== undefined)
     resp_obj.eval_res = r.eval_res;
-  if ('chat_history' in r)
+  if (r?.chat_history !== undefined)
     resp_obj.chat_history = r.chat_history;
   return resp_obj;
 };
