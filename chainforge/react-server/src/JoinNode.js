@@ -10,14 +10,12 @@ import { useDisclosure } from '@mantine/hooks';
 import { escapeBraces } from './backend/template';
 import { countNumLLMs, toStandardResponseFormat, tagMetadataWithLLM, extractLLMLookup, removeLLMTagFromMetadata, truncStr, groupResponsesBy } from './backend/utils';
 import StorageCache from './backend/cache';
-
-const formattingOptions = [
-  {value: "\n\n", label:"double newline \\n\\n"},
-  {value: "\n",   label:"newline \\n"},
-  {value: "-",    label:"- dashed list"},
-  {value: "1.",    label:"1. numbered list"},
-  {value: "[]",   label:'["list", "of", "strings"]'}
-];
+import { formattingOptions } from './backend/utils';
+import { tagMetadataWithLLM } from './backend/utils';
+import { extractLLMLookup } from './backend/utils';
+import { removeLLMTagFromMetadata } from './backend/utils';
+import { truncStr } from './backend/utils';
+import { groupResponsesBy } from './backend/utils';
 
 const joinTexts = (texts, format) => {
   const escaped_texts = texts.map(t => escapeBraces(t));
