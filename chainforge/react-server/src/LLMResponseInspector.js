@@ -10,9 +10,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { IconTable, IconLayoutList } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 import useStore from './store';
-import { filterDict } from './backend/utils';
-import { truncStr } from './backend/utils';
-import { groupResponsesBy } from './backend/utils';
+import { filterDict, truncStr, groupResponsesBy } from './backend/utils';
 
 // Helper funcs
 const countResponsesBy = (responses, keyFunc) => {

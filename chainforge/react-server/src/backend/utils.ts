@@ -1110,14 +1110,6 @@ export const browserTabIsActive = () => {
   }
 };
 
-export const formattingOptions = [
-  {value: "\n\n", label:"double newline \\n\\n"},
-  {value: "\n",   label:"newline \\n"},
-  {value: "-",    label:"- dashed list"},
-  {value: "1.",    label:"1. numbered list"},
-  {value: "[]",   label:'["list", "of", "strings"]'}
-];
-
 export const tagMetadataWithLLM = (input_data) => {
   let new_data = {};
   Object.entries(input_data).forEach(([varname, resp_objs]) => {

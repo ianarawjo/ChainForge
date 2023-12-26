@@ -8,15 +8,19 @@ import { IconArrowMerge, IconArrowsSplit, IconList } from '@tabler/icons-react';
 import { Divider, NativeSelect, Text, Popover, Tooltip, Center, Modal, Box } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { escapeBraces } from './backend/template';
-import { processCSV, deepcopy, deepcopy_and_modify, dict_excluding_key, toStandardResponseFormat } from "./backend/utils";
+import { processCSV, deepcopy, deepcopy_and_modify, dict_excluding_key, toStandardResponseFormat, tagMetadataWithLLM, extractLLMLookup, removeLLMTagFromMetadata, truncStr } from "./backend/utils";
 
 import { fromMarkdown } from "mdast-util-from-markdown";
 import StorageCache from './backend/cache';
-import { formattingOptions } from './backend/utils';
-import { tagMetadataWithLLM } from './backend/utils';
-import { extractLLMLookup } from './backend/utils';
-import { removeLLMTagFromMetadata } from './backend/utils';
-import { truncStr } from './backend/utils';
+
+const formattingOptions = [
+  {value: "list",    label:"- list items"},
+  {value: "\n",   label:"newline \\n"},
+  {value: "\n\n", label:"double newline \\n\\n"},
+  {value: ",",    label:"commas (,)"},
+  {value: "code",  label:"code blocks"},
+  {value: "paragraph",  label:"paragraphs (md)"},
+];
 
 /** Flattens markdown AST as dict to text (string) */
 function compileTextFromMdAST(md) {
