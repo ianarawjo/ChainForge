@@ -40,7 +40,8 @@ import GlobalSettingsModal from "./GlobalSettingsModal";
 import ExampleFlowsModal from "./ExampleFlowsModal";
 import AreYouSureModal from "./AreYouSureModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
-import SimpleEvalNode from "./SimpleEvalNode";
+import SimpleEvalNode from './SimpleEvalNode';
+import MultiEvalNode from './MultiEvalNode';
 import {
   getDefaultModelFormData,
   getDefaultModelSettings,
@@ -113,6 +114,7 @@ const nodeTypes = {
   simpleval: SimpleEvalNode,
   evaluator: CodeEvaluatorNode,
   llmeval: LLMEvaluatorNode,
+  multieval: MultiEvalNode,
   vis: VisNode,
   inspect: InspectNode,
   script: ScriptNode,
@@ -344,6 +346,10 @@ const App = () => {
       data: {},
       position: { x: x - 200, y: y - 100 },
     });
+  };
+  const addMultiEvalNode = () => {
+    const { x, y } = getViewportCenter();
+    addNode({ id: 'multieval-'+Date.now(), type: 'multieval', data: {}, position: {x: x-200, y:y-100} });
   };
   const addJoinNode = () => {
     const { x, y } = getViewportCenter();
@@ -1131,6 +1137,9 @@ const App = () => {
                   {" "}
                   LLM Scorer{" "}
                 </Menu.Item>
+              </MenuTooltip>
+              <MenuTooltip label="Define multiple criteria to evaluate responses by. Supports mix of code and LLM-based scorers.">
+                <Menu.Item onClick={addMultiEvalNode} icon={<IconAbacus size="16px" />}> Multi-Evaluator </Menu.Item>
               </MenuTooltip>
               <Menu.Divider />
               <Menu.Label>Visualizers</Menu.Label>
