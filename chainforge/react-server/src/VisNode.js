@@ -7,15 +7,9 @@ import BaseNode from './BaseNode';
 import NodeLabel from './NodeLabelComponent';
 import PlotLegend from './PlotLegend';
 import fetch_from_backend from './fetch_from_backend';
+import { truncStr } from './backend/utils';
 
 // Helper funcs
-const truncStr = (s, maxLen) => {
-    if (s === undefined) return s;
-    if (s.length > maxLen) // Cut the name short if it's long
-        return s.substring(0, maxLen) + '...'
-    else
-        return s;
-}
 const splitAndAddBreaks = (s, chunkSize) => {
     // Split the input string into chunks of specified size
     let chunks = [];

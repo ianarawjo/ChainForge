@@ -8,7 +8,7 @@ import { IconArrowMerge, IconArrowsSplit, IconList } from '@tabler/icons-react';
 import { Divider, NativeSelect, Text, Popover, Tooltip, Center, Modal, Box } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { escapeBraces } from './backend/template';
-import { processCSV, deepcopy, deepcopy_and_modify, dict_excluding_key, toStandardResponseFormat } from "./backend/utils";
+import { processCSV, deepcopy, deepcopy_and_modify, dict_excluding_key, toStandardResponseFormat, tagMetadataWithLLM, extractLLMLookup, removeLLMTagFromMetadata, truncStr } from "./backend/utils";
 
 import { fromMarkdown } from "mdast-util-from-markdown";
 import StorageCache from './backend/cache';
@@ -21,42 +21,6 @@ const formattingOptions = [
   {value: "code",  label:"code blocks"},
   {value: "paragraph",  label:"paragraphs (md)"},
 ];
-
-const truncStr = (s, maxLen) => {
-  if (s.length > maxLen) // Cut the name short if it's long
-      return s.substring(0, maxLen) + '...'
-  else
-      return s;
-};
-const tagMetadataWithLLM = (input_data) => {
-  let new_data = {};
-  Object.entries(input_data).forEach(([varname, resp_objs]) => {
-    new_data[varname] = resp_objs.map(r => {
-      if (!r || typeof r === 'string' || !r?.llm?.key) return r;
-      let r_copy = JSON.parse(JSON.stringify(r));
-      r_copy.metavars["__LLM_key"] = r.llm.key;
-      return r_copy;
-    });
-  });
-  return new_data;
-};
-const extractLLMLookup = (input_data) => {
-  let llm_lookup = {};
-  Object.entries(input_data).forEach(([varname, resp_objs]) => {
-    resp_objs.forEach(r => {
-      if (typeof r === 'string' || !r?.llm?.key || r.llm.key in llm_lookup) return;
-      llm_lookup[r.llm.key] = r.llm;
-    });
-  });
-  return llm_lookup;
-};
-const removeLLMTagFromMetadata = (metavars) => {
-  if (!('__LLM_key' in metavars))
-    return metavars; 
-  let mcopy = JSON.parse(JSON.stringify(metavars));
-  delete mcopy['__LLM_key'];
-  return mcopy;
-};
 
 /** Flattens markdown AST as dict to text (string) */
 function compileTextFromMdAST(md) {
