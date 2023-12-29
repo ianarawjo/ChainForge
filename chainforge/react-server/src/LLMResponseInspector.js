@@ -10,28 +10,9 @@ import { useDisclosure } from '@mantine/hooks';
 import { IconTable, IconLayoutList } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 import useStore from './store';
-import { filterDict } from './backend/utils';
+import { filterDict, truncStr, groupResponsesBy } from './backend/utils';
 
 // Helper funcs
-const truncStr = (s, maxLen) => {
-  if (s.length > maxLen) // Cut the name short if it's long
-      return s.substring(0, maxLen) + '...'
-  else
-      return s;
-};
-const groupResponsesBy = (responses, keyFunc) => {
-  let responses_by_key = {};
-  let unspecified_group = [];
-  responses.forEach(item => {
-      const key = keyFunc(item);
-      const d = key !== null ? responses_by_key : unspecified_group;
-      if (key in d)
-          d[key].push(item);
-      else
-          d[key] = [item];
-  });
-  return [responses_by_key, unspecified_group];
-};
 const countResponsesBy = (responses, keyFunc) => {
   let responses_by_key = {};
   let unspecified_group = [];

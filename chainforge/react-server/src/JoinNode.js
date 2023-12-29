@@ -8,7 +8,7 @@ import { IconArrowMerge, IconList } from '@tabler/icons-react';
 import { Divider, NativeSelect, Text, Popover, Tooltip, Center, Modal, Box } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { escapeBraces } from './backend/template';
-import { countNumLLMs, toStandardResponseFormat } from './backend/utils';
+import { countNumLLMs, toStandardResponseFormat, tagMetadataWithLLM, extractLLMLookup, removeLLMTagFromMetadata, truncStr, groupResponsesBy } from './backend/utils';
 import StorageCache from './backend/cache';
 
 const formattingOptions = [
@@ -53,57 +53,6 @@ const getVarsAndMetavars = (input_data) => {
     vars: varnames,
     metavars: metavars,
   };
-};
-
-const tagMetadataWithLLM = (input_data) => {
-  let new_data = {};
-  Object.entries(input_data).forEach(([varname, resp_objs]) => {
-    new_data[varname] = resp_objs.map(r => {
-      if (!r || typeof r === 'string' || !r?.llm?.key) return r;
-      let r_copy = JSON.parse(JSON.stringify(r));
-      r_copy.metavars["__LLM_key"] = r.llm.key;
-      return r_copy;
-    });
-  });
-  return new_data;
-};
-const extractLLMLookup = (input_data) => {
-  let llm_lookup = {};
-  Object.values(input_data).forEach((resp_objs) => {
-    resp_objs.forEach(r => {
-      if (typeof r === 'string' || !r?.llm?.key || r.llm.key in llm_lookup) return;
-      llm_lookup[r.llm.key] = r.llm;
-    });
-  });
-  return llm_lookup;
-};
-const removeLLMTagFromMetadata = (metavars) => {
-  if (!('__LLM_key' in metavars))
-    return metavars; 
-  let mcopy = JSON.parse(JSON.stringify(metavars));
-  delete mcopy['__LLM_key'];
-  return mcopy;
-};
-
-const truncStr = (s, maxLen) => {
-  if (s.length > maxLen) // Cut the name short if it's long
-      return s.substring(0, maxLen) + '...';
-  else
-      return s;
-};
-
-const groupResponsesBy = (responses, keyFunc) => {
-  let responses_by_key = {};
-  let unspecified_group = [];
-  responses.forEach(item => {
-      const key = keyFunc(item);
-      const d = key !== null ? responses_by_key : unspecified_group;
-      if (key in d)
-          d[key].push(item);
-      else
-          d[key] = [item];
-  });
-  return [responses_by_key, unspecified_group];
 };
 
 const DEFAULT_GROUPBY_VAR_ALL = { label: "all text", value: "A" };

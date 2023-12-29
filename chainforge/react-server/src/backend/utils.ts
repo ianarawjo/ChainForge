@@ -1109,3 +1109,57 @@ export const browserTabIsActive = () => {
     return true;  // indeterminate
   }
 };
+
+export const tagMetadataWithLLM = (input_data) => {
+  let new_data = {};
+  Object.entries(input_data).forEach(([varname, resp_objs]) => {
+    new_data[varname] = (resp_objs as any[]).map(r => {
+      if (!r || typeof r === 'string' || !r?.llm?.key) return r;
+      let r_copy = JSON.parse(JSON.stringify(r));
+      r_copy.metavars["__LLM_key"] = r.llm.key;
+      return r_copy;
+    });
+  });
+  return new_data;
+};
+
+export const extractLLMLookup = (input_data) => {
+  let llm_lookup = {};
+  Object.values(input_data).forEach((resp_objs) => {
+    (resp_objs as any[]).forEach(r => {
+      if (typeof r === 'string' || !r?.llm?.key || r.llm.key in llm_lookup) return;
+      llm_lookup[r.llm.key] = r.llm;
+    });
+  });
+  return llm_lookup;
+};
+
+export const removeLLMTagFromMetadata = (metavars) => {
+  if (!('__LLM_key' in metavars))
+    return metavars; 
+  let mcopy = JSON.parse(JSON.stringify(metavars));
+  delete mcopy['__LLM_key'];
+  return mcopy;
+};
+
+export const truncStr = (s, maxLen) => {
+  if (s === undefined) return s;
+  if (s.length > maxLen) // Cut the name short if it's long
+      return s.substring(0, maxLen) + '...';
+  else
+      return s;
+};
+
+export const groupResponsesBy = (responses, keyFunc) => {
+  let responses_by_key = {};
+  let unspecified_group = [];
+  responses.forEach(item => {
+      const key = keyFunc(item);
+      const d = key !== null ? responses_by_key : unspecified_group;
+      if (key in d)
+          d[key].push(item);
+      else
+          d[key] = [item];
+  });
+  return [responses_by_key, unspecified_group];
+};
