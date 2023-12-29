@@ -1,15 +1,9 @@
-import React, {
-  useState,
-  useRef,
-  useCallback,
-  useEffect,
-  useMemo,
-} from "react";
-import { Handle } from "reactflow";
-import { Code, Modal, Tooltip, Box, Text } from "@mantine/core";
-import { Prism } from "@mantine/prism";
-import { useDisclosure } from "@mantine/hooks";
-import useStore from "./store";
+import React, { useState, useRef, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { Handle } from 'reactflow';
+import { Button, Code, Modal, Tooltip, Box, Text } from '@mantine/core';
+import { Prism } from '@mantine/prism';
+import { useDisclosure } from '@mantine/hooks';
+import useStore from './store';
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import { IconTerminal, IconSearch, IconInfoCircle } from "@tabler/icons-react";
@@ -126,10 +120,117 @@ function process(response) {
 }`;
 
 /**
- *  The Code Evaluator class supports users in writing JavaScript and Python functions that map across LLM responses.
- *  It has two modes: evaluator and processor mode. Evaluators annotate responses with scores; processors transform response objects themselves.
+ * Inner component for code evaluators/processors, storing the body of the UI (outside of the header and footers).
+ */
+export const CodeEvaluatorComponent = forwardRef(({ code, id, type: node_type, progLang, showUserInstruction, onCodeEdit, onCodeChangedFromLastRun, onCodeEqualToLastRun }, ref) => {
+  // Code in the editor
+  const [codeText, setCodeText] = useState(code ?? "");
+  const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
+
+  // Controlled handle when user edits code
+  const handleCodeEdit = (code) => {
+    if (codeTextOnLastRun !== false) {
+      const code_changed = code !== codeTextOnLastRun;
+      if (code_changed && onCodeChangedFromLastRun)
+        onCodeChangedFromLastRun();
+      else if (!code_changed && onCodeEqualToLastRun)
+        onCodeEqualToLastRun();
+    }
+    setCodeText(code);
+    if (onCodeEdit) onCodeEdit();
+  };
+  
+  // Runs the code evaluator/processor over the inputs, returning the results as a Promise.
+  // Errors are raised as a rejected Promise. 
+  const run = (inputs, script_paths) => {
+
+    // Double-check that the code includes an 'evaluate' or 'process' function, whichever is needed:
+    const find_func_regex = node_type === 'evaluator' ? (progLang === 'python' ? /def\s+evaluate\s*(.*):/ : /function\s+evaluate\s*(.*)/)
+                                                      : (progLang === 'python' ? /def\s+process\s*(.*):/ : /function\s+process\s*(.*)/);
+    if (codeText.search(find_func_regex) === -1) {
+      const req_func_name = node_type === 'evaluator' ? 'evaluate' : 'process';
+      const err_msg = `Could not find required function '${req_func_name}'. Make sure you have defined an '${req_func_name}' function.`;
+      return Promise.reject(new Error(err_msg));  // hard fail
+    }
+
+    const codeTextOnRun = codeText + '';
+    const execute_route = (progLang === 'python') ? 'executepy' : 'executejs';
+    return fetch_from_backend(execute_route, {
+      id: id,
+      code: codeTextOnRun,
+      responses: inputs,
+      scope: 'response',
+      process_type: node_type,
+      script_paths: script_paths,
+    }).then(function(json) {
+        // Check if there's an error; if so, bubble it up to user and exit:
+        if (!json || json.error) {
+          if (!json) json.error = 'Unknown error encountered when requesting evaluations: empty response returned.';
+          else if (json.logs) json.logs.push(json.error);
+        } else {
+          setCodeTextOnLastRun(codeTextOnRun);
+        }
+
+        return {
+          code: code,  // string
+          responses: json?.responses,  // array of ResponseInfo Objects
+          error: json?.error,  // undefined or, if present, a string of the error message
+          logs: json?.logs,  // an array of strings representing console.logs/prints made during execution
+        };
+    });
+  };
+
+  // TODO: Define functions you want accessible from the parent component
+  useImperativeHandle(ref, () => ({
+    run,
+  }));
+
+  // Helpful instruction for user
+  const code_instruct_header = useMemo(() => {
+    if (node_type === 'evaluator')
+      return <div className="code-mirror-field-header">Define an <Code>evaluate</Code> func to map over each response:</div>;
+    else 
+      return <div className="code-mirror-field-header">Define a <Code>process</Code> func to map over each response:</div>;
+  }, [node_type]);
+
+  return (
+    <div className="core-mirror-field">
+      {showUserInstruction ? code_instruct_header : <></>}
+      <div className="ace-editor-container nodrag">
+        <AceEditor
+          mode={progLang}
+          theme="xcode"
+          onChange={handleCodeEdit}
+          value={code}
+          name={"aceeditor_"+id}
+          editorProps={{ $blockScrolling: true }}
+          width='100%'
+          height='100px'
+          style={{minWidth:'310px'}}
+          setOptions={{useWorker: false}}
+          tabSize={2}
+          onLoad={editorInstance => {  // Make Ace Editor div resizeable. 
+            editorInstance.container.style.resize = "both";
+            document.addEventListener("mouseup", e => (
+              editorInstance.resize()
+            ));
+          }}
+        />
+      </div>
+    </div>
+  );
+});
+
+/**
+ *  The Code Evaluator node supports users in writing JavaScript and Python functions that map across LLM responses.
+ *  It has two possible node_types: 'evaluator' and 'processor' mode. 
+ *  Evaluators annotate responses with scores; processors transform response objects themselves. 
  */
 const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
+
+  // The inner component storing the code UI and providing an interface to run the code over inputs
+  const codeEvaluatorRef = useRef(null);
+
   const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
@@ -155,19 +256,15 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
   // eslint-disable-next-line
   const [progLang, setProgLang] = useState(data.language || "python");
 
-  // The text in the code editor.
-  const [codeText, setCodeText] = useState(data.code);
-  const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
-
   const [lastRunLogs, setLastRunLogs] = useState("");
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
 
   // On initialization
   useEffect(() => {
-    if (!IS_RUNNING_LOCALLY && progLang === "python") {
-      // The user has loaded a Python evaluator node
-      // without access to the Flask backend on localhost.
+    if (!IS_RUNNING_LOCALLY && progLang === 'python') {
+      // The user has loaded a Python evaluator node 
+      // without access to the Flask backend on localhost. 
       // Warn them the evaluator won't function:
       console.warn(
         "Loaded a Python evaluator node without access to Flask backend on localhost.",
@@ -200,15 +297,18 @@ consider installing ChainForge locally.`,
     }
   }, [data]);
 
-  const handleCodeChange = (code) => {
-    if (codeTextOnLastRun !== false) {
-      const code_changed = code !== codeTextOnLastRun;
-      if (code_changed && status !== "warning") setStatus("warning");
-      else if (!code_changed && status === "warning") setStatus("ready");
-    }
-    setCodeText(code);
-    setDataPropsForNode(id, { code });
+  // Callbacks for inner code eval component
+  const handleCodeEdit = (code) => {
+    setDataPropsForNode(id, {code: code});
   };
+  const handleCodeChangedFromLastRun = useCallback(() => {
+    if (status === 'warning')
+      setStatus('ready');
+  }, [status, setStatus]);
+  const handleCodeEqualToLastRun = useCallback(() => {
+    if (status !== 'warning')
+      setStatus('warning');
+  }, [status, setStatus]);
 
   const handleRunClick = () => {
     // Disallow running a Python evaluator node when not on localhost:
@@ -230,33 +330,16 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
     // Convert to standard response format (StandardLLMResponseFormat)
     pulled_inputs = pulled_inputs.responseBatch.map(toStandardResponseFormat);
 
-    // Double-check that the code includes an 'evaluate' function:
-    const find_func_regex =
-      node_type === "evaluator"
-        ? progLang === "python"
-          ? /def\s+evaluate\s*(.*):/
-          : /function\s+evaluate\s*(.*)/
-        : progLang === "python"
-          ? /def\s+process\s*(.*):/
-          : /function\s+process\s*(.*)/;
-    if (codeText.search(find_func_regex) === -1) {
-      const req_func_name = node_type === "evaluator" ? "evaluate" : "process";
-      const err_msg = `Could not find required function '${req_func_name}'. Make sure you have defined an '${req_func_name}' function.`;
-      setStatus("error");
-      alertModal.current.trigger(err_msg);
-      return;
-    }
-
-    setStatus("loading");
+    setStatus('loading');
     setLastRunLogs("");
     setLastResponses([]);
 
-    const rejected = (err_msg) => {
-      setStatus("error");
-      alertModal.current.trigger(err_msg);
+    const rejected = (err) => {
+      setStatus('error');
+      setLastRunSuccess(false);
+      if (typeof err !== "string") console.error(err);
+      alertModal.current.trigger(typeof err === "string" ? err : err?.message);
     };
-
-    // const _llmItemsCurrState = getLLMsInPulledInputData(pulled_data);
 
     // Get all the Python script nodes, and get all the folder paths
     // NOTE: Python only!
@@ -269,40 +352,20 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
     }
 
     // Run evaluator in backend
-    const codeTextOnRun = codeText + "";
-    const execute_route = progLang === "python" ? "executepy" : "executejs";
-    fetch_from_backend(execute_route, {
-      id,
-      code: codeTextOnRun,
-      responses: pulled_inputs,
-      scope: "response",
-      process_type: node_type,
-      script_paths,
-    })
-      .then(function (json) {
-        // Store any Python print output
-        if (json?.logs) {
-          const logs = json.logs;
-          if (json.error) logs.push(json.error);
-          setLastRunLogs(logs.join("\n   > "));
-        }
-
+    codeEvaluatorRef.current?.run(pulled_inputs, script_paths)
+      .then((json) => {
+        if (json?.logs)
+          setLastRunLogs(json.logs.join('\n   > '));
+    
         // Check if there's an error; if so, bubble it up to user and exit:
         if (!json || json.error) {
-          setStatus("error");
-          setLastRunSuccess(false);
-          alertModal.current.trigger(
-            json
-              ? json.error
-              : "Unknown error encountered when requesting evaluations: empty response returned.",
-          );
+          rejected(json?.error);
           return;
         }
 
         // Ping any vis + inspect nodes attached to this node to refresh their contents:
         pingOutputNodes(id);
         setLastResponses(stripLLMDetailsFromResponses(json.responses));
-        setCodeTextOnLastRun(codeTextOnRun);
         setLastRunSuccess(true);
 
         setDataPropsForNode(id, {
@@ -329,11 +392,12 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
             .flat(),
         });
 
-        if (status !== "ready" && !showDrawer) setUninspectedResponses(true);
-
-        setStatus("ready");
+        if (status !== 'ready' && !showDrawer)
+          setUninspectedResponses(true);
+        
+        setStatus('ready');
       })
-      .catch((err) => rejected(err.message));
+      .catch(rejected);
   };
 
   const hideStatusIndicator = () => {
@@ -357,24 +421,7 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
     else return `JavaScript ${capitalized_type} Node`;
   }, [progLang, node_type]);
   const node_header = data.title || default_header;
-  const run_tooltip = useMemo(
-    () => `Run ${node_type} over inputs`,
-    [node_type],
-  );
-  const code_instruct_header = useMemo(() => {
-    if (node_type === "evaluator")
-      return (
-        <div className="code-mirror-field-header">
-          Define an <Code>evaluate</Code> func to map over each response:
-        </div>
-      );
-    else
-      return (
-        <div className="code-mirror-field-header">
-          Define a <Code>process</Code> func to map over each response:
-        </div>
-      );
-  }, [node_type]);
+  const run_tooltip = useMemo(() => `Run ${node_type} over inputs`, [node_type]);
   const code_info_modal = useMemo(() => {
     if (node_type === "evaluator")
       return (
@@ -540,37 +587,22 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
         style={{ top: "50%" }}
       />
       <Handle
-        type="source"
-        position="right"
-        id="output"
-        className="grouped-handle"
-        style={{ top: "50%" }}
-      />
-      <div className="core-mirror-field">
-        {code_instruct_header}
-        <div className="ace-editor-container nodrag">
-          <AceEditor
-            mode={progLang}
-            theme="xcode"
-            onChange={handleCodeChange}
-            value={data.code}
-            name={"aceeditor_" + id}
-            editorProps={{ $blockScrolling: true }}
-            width="100%"
-            height="100px"
-            style={{ minWidth: "310px" }}
-            setOptions={{ useWorker: false }}
-            tabSize={2}
-            onLoad={(editorInstance) => {
-              // Make Ace Editor div resizeable.
-              editorInstance.container.style.resize = "both";
-              document.addEventListener("mouseup", () =>
-                editorInstance.resize(),
-              );
-            }}
-          />
-        </div>
-      </div>
+          type="source"
+          position="right"
+          id="output"
+          className="grouped-handle"
+          style={{ top: '50%' }}
+        />
+
+      <CodeEvaluatorComponent ref={codeEvaluatorRef} 
+                              code={data.code} 
+                              id={id} 
+                              type={node_type} 
+                              progLang={progLang} 
+                              showUserInstruction
+                              onCodeEdit={handleCodeEdit}
+                              onCodeChangedFromLastRun={handleCodeChangedFromLastRun}
+                              onCodeEqualToLastRun={handleCodeEqualToLastRun} />
 
       {lastRunLogs && lastRunLogs.length > 0 ? (
         <div

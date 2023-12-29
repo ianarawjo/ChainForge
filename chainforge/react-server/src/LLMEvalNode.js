@@ -171,78 +171,45 @@ const LLMEvaluatorNode = ({ data, id }) => {
 
   return (
     <BaseNode classNames="evaluator-node" nodeId={id}>
-      <NodeLabel
-        title={data.title || "LLM Scorer"}
-        nodeId={id}
-        icon={<IconRobot size="16px" />}
-        status={status}
-        alertModal={alertModal}
-        handleRunClick={handleRunClick}
-        runButtonTooltip="Run scorer over inputs"
-      />
-      <LLMResponseInspectorModal
-        ref={inspectModal}
-        jsonResponses={lastResponses}
-      />
+      <NodeLabel title={data.title || 'LLM Scorer'} 
+                  nodeId={id} 
+                  icon={<IconRobot size="16px" />} 
+                  status={status}
+                  alertModal={alertModal}
+                  handleRunClick={handleRunClick}
+                  runButtonTooltip="Run scorer over inputs" />
+      <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
 
-      <Textarea
-        autosize
-        label="Describe how to 'score' a single response."
-        placeholder={PLACEHOLDER_PROMPT}
-        description="The text of the response will be pasted directly below your rubric."
-        className="prompt-field-fixed nodrag nowheel"
-        minRows="4"
-        maxRows="12"
-        maw="290px"
-        mb="lg"
-        value={promptText}
-        onChange={handlePromptChange}
-      />
+      <Textarea autosize
+                label="Describe how to 'score' a single response."
+                placeholder={PLACEHOLDER_PROMPT}
+                description="The text of the response will be pasted directly below your rubric."
+                className="prompt-field-fixed nodrag nowheel" 
+                minRows="4"
+                maxRows="12"
+                maw='290px'
+                mb='lg'
+                value={promptText}
+                onChange={handlePromptChange} />
+      
+      <LLMListContainer 
+                initLLMItems={llmScorers} 
+                description="Model to use as scorer:"
+                modelSelectButtonText="Change"
+                selectModelAction="replace"
+                onAddModel={() => {}} 
+                onItemsChange={onLLMListItemsChange} />
+  
+      {progress !== undefined ? 
+          (<Progress animate={true} sections={[
+              { value: progress.success, color: 'blue', tooltip: 'API call succeeded' },
+              { value: progress.error, color: 'red', tooltip: 'Error collecting response' }
+          ]} />)
+      : <></>}
 
-      <LLMListContainer
-        initLLMItems={llmScorers}
-        description="Model to use as scorer:"
-        modelSelectButtonText="Change"
-        selectModelAction="replace"
-        onItemsChange={onLLMListItemsChange}
-      />
-
-      {progress !== undefined ? (
-        <Progress
-          animate={true}
-          sections={[
-            {
-              value: progress.success,
-              color: "blue",
-              tooltip: "API call succeeded",
-            },
-            {
-              value: progress.error,
-              color: "red",
-              tooltip: "Error collecting response",
-            },
-          ]}
-        />
-      ) : (
-        <></>
-      )}
-
-      <Alert
-        icon={<IconAlertTriangle size="1rem" />}
-        p="10px"
-        radius="xs"
-        title="Caution"
-        color="yellow"
-        maw="270px"
-        mt="xs"
-        styles={{
-          title: { margin: "0px" },
-          icon: { marginRight: "4px" },
-          message: { fontSize: "10pt" },
-        }}
-      >
+      {/* <Alert icon={<IconAlertTriangle size="1rem" />} p='10px' radius='xs' title="Caution" color="yellow" maw='270px' mt='xs' styles={{title: {margin: '0px'}, icon: {marginRight: '4px'}, message: {fontSize: '10pt'}}}>
         AI scores are not 100% accurate.
-      </Alert>
+      </Alert>  */}
 
       <Handle
         type="target"
