@@ -272,8 +272,8 @@ const TextFieldsNode = ({ data, id }) => {
             </div>
           ) : <></>}
         </div>)}),
-      // Update the text fields only when their values or their placeholders change.
-      [textfieldsValues, placeholders]);
+    // Update the text fields only when their values, placeholders, or visibility changes.
+    [textfieldsValues, placeholders, fieldVisibility]);
 
   return (
     <BaseNode classNames="text-fields-node" nodeId={id}>
