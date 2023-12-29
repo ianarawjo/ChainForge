@@ -1,17 +1,19 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Handle } from "reactflow";
 import { NativeSelect, TextInput, Flex, Text, Group, Box, Select, ActionIcon, Menu, Tooltip, Card, rem, Input, Code, Progress, Collapse, Button } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
-import { IconAbacus, IconArrowDown, IconCaretDown, IconChevronDown, IconChevronRight, IconDots, IconHash, IconRuler2, IconSearch, IconTrash, IconX } from "@tabler/icons-react";
+import { IconAbacus, IconArrowDown, IconCaretDown, IconChevronDown, IconChevronRight, IconDots, IconHash, IconInfoCircle, IconPlus, IconRobot, IconRuler2, IconSearch, IconSparkles, IconTerminal, IconTrash, IconX } from "@tabler/icons-react";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 import useStore from "./store";
 import fetch_from_backend from "./fetch_from_backend";
-import { stripLLMDetailsFromResponses, toStandardResponseFormat } from "./backend/utils";
+import { APP_IS_RUNNING_LOCALLY, stripLLMDetailsFromResponses, toStandardResponseFormat } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { CodeEvaluatorComponent } from "./CodeEvaluatorNode";
+
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 /** A wrapper for a single evaluator, that can be renamed */
 const EvaluatorContainer = ({name, type: evalType, children}) => {
@@ -29,14 +31,14 @@ const EvaluatorContainer = ({name, type: evalType, children}) => {
           </Group>
           <Group spacing='4px' ml="auto">
             <Text color='#bbb' size="sm" mr='6px'>{evalType}</Text>
-            <Progress
+            {/* <Progress
                 radius="xl"
                 w={32}
                 size={14}
                 sections={[
                   { value: 70, color: 'green', tooltip: '70% true' },
                   { value: 30, color: 'red', tooltip: '30% false' },
-                ]} />
+                ]} /> */}
             <Menu withinPortal position="right-start" shadow="sm">
               <Menu.Target>
                 <ActionIcon variant="subtle" color="gray">
@@ -46,9 +48,8 @@ const EvaluatorContainer = ({name, type: evalType, children}) => {
 
               <Menu.Dropdown>
                 <Menu.Item icon={<IconSearch size='14px' />}>Inspect scores</Menu.Item>
-                <Menu.Item icon={<IconTrash size='14px' />} color="red">
-                  Delete
-                </Menu.Item>
+                <Menu.Item icon={<IconInfoCircle size='14px' />}>Help / info</Menu.Item>
+                <Menu.Item icon={<IconTrash size='14px' />} color="red">Delete</Menu.Item>
               </Menu.Dropdown>
             </Menu>
           </Group>
@@ -71,6 +72,11 @@ const MultiEvalNode = ({data, id}) => {
   const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
+  const flags = useStore((state) => state.flags);
+
+  const AI_SUPPORT_ENABLED = useMemo(() => {
+    return flags["aiSupport"];
+  }, [flags]);
 
   const [status, setStatus] = useState('none');
   const alertModal = useRef(null);
@@ -144,14 +150,19 @@ const MultiEvalNode = ({data, id}) => {
       <iframe style={{display: 'none'}} id={`${id}-iframe`}></iframe>
 
       <EvaluatorContainer name="Formatting" type="JavaScript">
-        <CodeEvaluatorComponent code={"function evaluate(r) {\n\treturn r.text\n}"} 
+        <CodeEvaluatorComponent code={"function evaluate(r) {\n\ttry {\n\t\tJSON.parse(r.text);\n\t\treturn true;\n\t} catch (e) {\n\t\treturn false;\n\t} \n}"} 
                                 id={id} 
                                 type={'evaluator'} 
                                 progLang={'javascript'} />
       </EvaluatorContainer>
       <EvaluatorContainer name="Grammaticality" type="LLM" />
-      <EvaluatorContainer name="Length" type="Python" />
-      
+      <EvaluatorContainer name="Length" type="Python">
+        <CodeEvaluatorComponent code={"def evaluate(r):\n\treturn len(r.text.split())"} 
+                                id={id} 
+                                type={'evaluator'} 
+                                progLang={'python'} />
+      </EvaluatorContainer>
+
       <Handle
           type="target"
           position="left"
@@ -165,6 +176,24 @@ const MultiEvalNode = ({data, id}) => {
           className="grouped-handle"
           style={{ top: '50%' }} />
       
+      <div className="add-text-field-btn">
+        <Menu withinPortal position="right-start" shadow="sm">
+          <Menu.Target>
+            <ActionIcon variant="outline" color="gray" size='sm'>
+              <IconPlus size='12px' />
+            </ActionIcon>
+          </Menu.Target>
+
+          <Menu.Dropdown>
+            <Menu.Item icon={<IconTerminal size='14px' />}>JavaScript</Menu.Item>
+            {IS_RUNNING_LOCALLY ? <Menu.Item icon={<IconTerminal size='14px' />}>Python</Menu.Item> : <></>}
+            <Menu.Item icon={<IconRobot size='14px' />}>LLM</Menu.Item>
+            {AI_SUPPORT_ENABLED ? <Menu.Divider /> : <></>}
+            {AI_SUPPORT_ENABLED ? <Menu.Item icon={<IconSparkles size='14px' />}>Let an AI decide!</Menu.Item> : <></>}
+          </Menu.Dropdown>
+        </Menu>
+      </div>
+
       { lastRunSuccess && lastResponses && lastResponses.length > 0 ? 
         (<InspectFooter label={<>Inspect scores&nbsp;<IconSearch size='12pt'/></>}
                         onClick={showResponseInspector}
