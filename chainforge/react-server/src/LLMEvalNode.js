@@ -329,19 +329,14 @@ const LLMEvaluatorNode = ({ data, id }) => {
 
   return (
     <BaseNode classNames="evaluator-node" nodeId={id}>
-      <NodeLabel
-        title={data.title || "LLM Scorer"}
-        nodeId={id}
-        icon={<IconRobot size="16px" />}
-        status={status}
-        alertModal={alertModal}
-        handleRunClick={handleRunClick}
-        runButtonTooltip="Run scorer over inputs"
-      />
-      <LLMResponseInspectorModal
-        ref={inspectModal}
-        jsonResponses={lastResponses}
-      />
+      <NodeLabel title={data.title || 'LLM Scorer'} 
+                  nodeId={id} 
+                  icon={<IconRobot size="16px" />} 
+                  status={status}
+                  alertModal={alertModal}
+                  handleRunClick={handleRunClick}
+                  runButtonTooltip="Run scorer over inputs" />
+      <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
 
       <div className="llm-scorer-container">
         <LLMEvaluatorComponent

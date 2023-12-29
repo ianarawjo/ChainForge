@@ -11,9 +11,10 @@ import useStore from "./store";
 import fetch_from_backend from "./fetch_from_backend";
 import { stripLLMDetailsFromResponses, toStandardResponseFormat } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
+import { CodeEvaluatorComponent } from "./CodeEvaluatorNode";
 
 /** A wrapper for a single evaluator, that can be renamed */
-const EvaluatorContainer = ({name, evalType, evalComponent}) => {
+const EvaluatorContainer = ({name, type: evalType, children}) => {
   const [opened, { toggle }] = useDisclosure(false);
 
   return (
@@ -54,9 +55,9 @@ const EvaluatorContainer = ({name, evalType, evalComponent}) => {
         </Group>
       </Card.Section>
 
-      <Card.Section inheritPadding>
+      <Card.Section p={'0px'}>
         <Collapse in={opened}>
-          <Code>Put the inner evaluator component here!!</Code>
+          {children}
         </Collapse>
       </Card.Section>
     </Card>
@@ -142,9 +143,14 @@ const MultiEvalNode = ({data, id}) => {
       <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
       <iframe style={{display: 'none'}} id={`${id}-iframe`}></iframe>
 
-      <EvaluatorContainer name="Formatting" evalType="JavaScript" />
-      <EvaluatorContainer name="Grammaticality" evalType="LLM" />
-      <EvaluatorContainer name="Length" evalType="Python" />
+      <EvaluatorContainer name="Formatting" type="JavaScript">
+        <CodeEvaluatorComponent code={"function evaluate(r) {\n\treturn r.text\n}"} 
+                                id={id} 
+                                type={'evaluator'} 
+                                progLang={'javascript'} />
+      </EvaluatorContainer>
+      <EvaluatorContainer name="Grammaticality" type="LLM" />
+      <EvaluatorContainer name="Length" type="Python" />
       
       <Handle
           type="target"

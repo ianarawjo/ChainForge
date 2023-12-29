@@ -324,9 +324,9 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
 
   // On initialization
   useEffect(() => {
-    if (!IS_RUNNING_LOCALLY && progLang === "python") {
-      // The user has loaded a Python evaluator node
-      // without access to the Flask backend on localhost.
+    if (!IS_RUNNING_LOCALLY && progLang === 'python') {
+      // The user has loaded a Python evaluator node 
+      // without access to the Flask backend on localhost. 
       // Warn them the evaluator won't function:
       console.warn(
         "Loaded a Python evaluator node without access to Flask backend on localhost.",
@@ -450,9 +450,10 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
             .flat(),
         });
 
-        if (status !== "ready" && !showDrawer) setUninspectedResponses(true);
-
-        setStatus("ready");
+        if (status !== 'ready' && !showDrawer)
+          setUninspectedResponses(true);
+        
+        setStatus('ready');
       })
       .catch(rejected);
   };
