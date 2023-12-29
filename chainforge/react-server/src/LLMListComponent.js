@@ -40,7 +40,7 @@ const ensureUniqueName = (_name, _prev_names) => {
   return new_name;
 };
 
-export function LLMList({ llms, onItemsChange }) {
+export function LLMList({llms, onItemsChange, hideTrashIcon}) {
   const [items, setItems] = useState(llms);
   const settingsModal = useRef(null);
   const [selectedModel, setSelectedModel] = useState(undefined);
@@ -170,11 +170,7 @@ export function LLMList({ llms, onItemsChange }) {
         <StrictModeDroppable
           droppableId="llm-list-droppable"
           renderClone={(provided, snapshot, rubric) => (
-            <LLMListItemClone
-              provided={provided}
-              snapshot={snapshot}
-              item={items[rubric.source.index]}
-            />
+            <LLMListItemClone provided={provided} snapshot={snapshot} item={items[rubric.source.index]} hideTrashIcon={hideTrashIcon} />
           )}
         >
           {(provided) => (
@@ -182,14 +178,7 @@ export function LLMList({ llms, onItemsChange }) {
               {items.map((item, index) => (
                 <Draggable key={item.key} draggableId={item.key} index={index}>
                   {(provided, snapshot) => (
-                    <LLMListItem
-                      provided={provided}
-                      snapshot={snapshot}
-                      item={item}
-                      removeCallback={removeItem}
-                      progress={item.progress}
-                      onClickSettings={() => onClickSettings(item)}
-                    />
+                    <LLMListItem provided={provided} snapshot={snapshot} item={item} removeCallback={removeItem} progress={item.progress} onClickSettings={() => onClickSettings(item)} hideTrashIcon={hideTrashIcon} />
                   )}
                 </Draggable>
               ))}
@@ -202,17 +191,9 @@ export function LLMList({ llms, onItemsChange }) {
   );
 }
 
-export const LLMListContainer = forwardRef(function LLMListContainer(
-  {
-    description,
-    modelSelectButtonText,
-    initLLMItems,
-    onSelectModel,
-    selectModelAction,
-    onItemsChange,
-  },
-  ref,
-) {
+
+export const LLMListContainer = forwardRef(({description, modelSelectButtonText, initLLMItems, onSelectModel, selectModelAction, onItemsChange, hideTrashIcon}, ref) => {
+
   // All available LLM providers, for the dropdown list
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
 
@@ -375,7 +356,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
       </div>
 
       <div className="nodrag">
-        <LLMList llms={llmItems} onItemsChange={onLLMListItemsChange} />
+        <LLMList llms={llmItems} onItemsChange={onLLMListItemsChange} hideTrashIcon={hideTrashIcon} />
       </div>
     </div>
   );

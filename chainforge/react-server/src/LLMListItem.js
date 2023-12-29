@@ -74,14 +74,7 @@ export const DragItem = styled.div`
   flex-direction: column;
 `;
 
-const LLMListItem = ({
-  item,
-  provided,
-  snapshot,
-  removeCallback,
-  onClickSettings,
-  progress,
-}) => {
+const LLMListItem = ({ item, provided, snapshot, removeCallback, onClickSettings, progress, hideTrashIcon }) => {
   // Set color by temperature only on item change (not every render)
   const [tempColor, setTempColor] = useState(perc2color(50));
   const temperature = item.settings?.temperature;
@@ -121,17 +114,13 @@ const LLMListItem = ({
             <></>
           )}
         </CardHeader>
-        <LLMItemButtonGroup
-          onClickTrash={() => removeCallback(item.key)}
-          ringProgress={progress}
-          onClickSettings={onClickSettings}
-        />
+        <LLMItemButtonGroup onClickTrash={() => removeCallback(item.key)} ringProgress={progress} onClickSettings={onClickSettings} hideTrashIcon={hideTrashIcon} />
       </div>
     </DragItem>
   );
 };
 
-export const LLMListItemClone = ({ item, provided, snapshot }) => {
+export const LLMListItemClone = ({ item, provided, snapshot, hideTrashIcon }) => {
   // Set color by temperature only on item change (not every render)
   const [tempColor, setTempColor] = useState(perc2color(50));
   const temperature = item.settings?.temperature;
@@ -149,27 +138,12 @@ export const LLMListItemClone = ({ item, provided, snapshot }) => {
       snapshot={snapshot}
     >
       <div>
-        <CardHeader>
-          {item.emoji}&nbsp;{item.name}
-          {temperature !== undefined ? (
-            <TemperatureStatus style={{ color: tempColor }}>
-              &nbsp;
-              <IconTemperature
-                size={14}
-                stroke={2}
-                style={{
-                  position: "relative",
-                  top: "2px",
-                  marginRight: "-3px",
-                }}
-              />
-              :{temperature !== undefined ? temperature : ""}
-            </TemperatureStatus>
-          ) : (
-            <></>
-          )}
-        </CardHeader>
-        <LLMItemButtonGroup />
+      <CardHeader>{item.emoji}&nbsp;{item.name}{
+            temperature !== undefined ?
+              (<TemperatureStatus style={{color: tempColor}}>&nbsp;<IconTemperature size={14} stroke={2} style={{position: 'relative', top: '2px', marginRight: '-3px'}} />:{temperature !== undefined ? temperature : ""}</TemperatureStatus>)
+              : (<></>)}
+      </CardHeader>
+        <LLMItemButtonGroup hideTrashIcon={hideTrashIcon} />
       </div>
     </DragItem>
   );

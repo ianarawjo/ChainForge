@@ -1,21 +1,21 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
-import { Handle } from "reactflow";
-import { Alert, Progress, Textarea } from "@mantine/core";
-import { IconAlertTriangle, IconRobot, IconSearch } from "@tabler/icons-react";
-import { v4 as uuid } from "uuid";
-import useStore, { initLLMProviders } from "./store";
-import BaseNode from "./BaseNode";
-import NodeLabel from "./NodeLabelComponent";
-import fetch_from_backend from "./fetch_from_backend";
-import { getDefaultModelSettings } from "./ModelSettingSchemas";
-import { LLMListContainer } from "./LLMListComponent";
-import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
-import InspectFooter from "./InspectFooter";
-import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { Handle } from 'reactflow';
+import { Alert, Button, Group, NativeSelect, Progress, Text, TextInput, Textarea } from '@mantine/core';
+import { IconAlertTriangle, IconRobot, IconSearch, IconSettings } from "@tabler/icons-react";
+import { v4 as uuid } from 'uuid';
+import useStore from './store';
+import BaseNode from './BaseNode';
+import NodeLabel from './NodeLabelComponent';
+import fetch_from_backend from './fetch_from_backend';
+import { getDefaultModelSettings } from './ModelSettingSchemas';
+import { LLMListContainer } from './LLMListComponent';
+import LLMResponseInspectorModal from './LLMResponseInspectorModal';
+import InspectFooter from './InspectFooter';
+import { initLLMProviders } from './store';
+import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
 
-// The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
-const PLACEHOLDER_PROMPT =
-  "Respond with 'true' if the text below has a positive sentiment, and 'false' if not. Do not reply with anything else.";
+// The default prompt shown in gray highlights to give people a good example of an evaluation prompt. 
+const PLACEHOLDER_PROMPT = "Respond with 'true' if the text below has a positive sentiment, and 'false' if not. Do not reply with anything else.";
 
 // The default LLM annotator is GPT-4 at temperature 0.
 const DEFAULT_LLM_ITEM = (() => {
@@ -188,9 +188,19 @@ const LLMEvaluatorNode = ({ data, id }) => {
                 minRows="4"
                 maxRows="12"
                 maw='290px'
-                mb='lg'
+                mb='sm'
                 value={promptText}
                 onChange={handlePromptChange} />
+      
+      <Group spacing='xs'>
+        <Text size='sm' fw='500' mb='14px'>Stick to format:</Text>
+        <NativeSelect size='sm'
+                      data={['binary (true/false)', 'categories', 'numbers', 'open-ended']}
+                      defaultValue={'binary (true/false)'}
+                      mb='sm' />
+      </Group>
+      
+      
       
       <LLMListContainer 
                 initLLMItems={llmScorers} 
@@ -198,7 +208,8 @@ const LLMEvaluatorNode = ({ data, id }) => {
                 modelSelectButtonText="Change"
                 selectModelAction="replace"
                 onAddModel={() => {}} 
-                onItemsChange={onLLMListItemsChange} />
+                onItemsChange={onLLMListItemsChange}
+                hideTrashIcon={true} />
   
       {progress !== undefined ? 
           (<Progress animate={true} sections={[

@@ -105,20 +105,20 @@ hr {
   }
 }
 
-.llm-list-container {
-  background-color: #eee;
-  border-radius: 4px;
-  padding: 8px;
-  overflow-y: auto;
-  max-height: 205px;
-}
-.llm-list-backdrop {
-  margin: 6px 0px 6px 6px;
-  padding-bottom: 4px;
-  text-align: left;
-  font-size: 10pt;
-  color: #777;
-}
+  .llm-list-container {
+    background-color: #eee; 
+    border-radius: 4px;
+    padding: 2px 8px;
+    overflow-y: auto;
+    max-height: 205px;
+  }
+  .llm-list-backdrop {
+    margin: 6px 0px 6px 6px;
+    padding-bottom: 4px;
+    text-align: left; 
+    font-size: 10pt;
+    color: #777;
+  }
 
 button.remove-edge-btn {
   border-radius: 50%;
