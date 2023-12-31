@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Handle } from "reactflow";
-import { NativeSelect, TextInput, Flex, Text, Group, Box, Select, ActionIcon, Menu, Tooltip, Card, rem, Input, Code, Progress, Collapse, Button } from "@mantine/core";
+import { NativeSelect, TextInput, Flex, Text, Group, Box, Select, ActionIcon, Menu, Tooltip, Card, rem, Input, Code, Progress, Collapse, Button, Alert } from "@mantine/core";
 import { useDisclosure } from '@mantine/hooks';
 import { IconAbacus, IconArrowDown, IconCaretDown, IconChevronDown, IconChevronRight, IconDots, IconHash, IconInfoCircle, IconPlus, IconRobot, IconRuler2, IconSearch, IconSparkles, IconTerminal, IconTrash, IconX } from "@tabler/icons-react";
 import BaseNode from "./BaseNode";
@@ -12,13 +12,26 @@ import { APP_IS_RUNNING_LOCALLY, stripLLMDetailsFromResponses, toStandardRespons
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { CodeEvaluatorComponent } from "./CodeEvaluatorNode";
 import { LLMEvaluatorComponent } from "./LLMEvalNode";
+import { GatheringResponsesRingProgress } from "./LLMItemButtonGroup";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
+const TEST_EVAL_COMPS = [
+  {name: 'Formatting', type: 'javascript', state: { code: "function evaluate(r) {\n\ttry {\n\t\tJSON.parse(r.text);\n\t\treturn true;\n\t} catch (e) {\n\t\treturn false;\n\t} \n}" }},
+  {name: 'Grammaticality', type: 'llm', state: { prompt: "Is this grammatical?", format: "bin" }},
+  {name: 'Length', type: 'python', state: { code: "def evaluate(r):\n\treturn len(r.text.split())" }}
+];
+const EVAL_TYPE_PRETTY_NAME = {
+  'python': 'Python',
+  'javascript': 'JavaScript',
+  'llm': 'LLM',
+};
+
 /** A wrapper for a single evaluator, that can be renamed */
-const EvaluatorContainer = ({name, type: evalType, padding, children}) => {
+const EvaluatorContainer = ({name, type: evalType, padding, onDelete, children}) => {
   const [opened, { toggle }] = useDisclosure(false);
   const _padding = useMemo(() => padding ?? "0px", [padding]);
+  const [title, setTitle] = useState(name ?? "Criteria");
 
   return (
     <Card withBorder shadow="sm" mb='xs' radius="md" style={{cursor: 'default'}}>
@@ -28,10 +41,11 @@ const EvaluatorContainer = ({name, type: evalType, padding, children}) => {
             <Button onClick={toggle} variant="subtle" color="gray" p='0px' m='0px'>
               {opened ? <IconChevronDown size='14pt'/> : <IconChevronRight size='14pt'/>}
             </Button>
-            <TextInput value={name} placeholder="Criteria name" variant="unstyled" size="sm" classNames="nodrag nowheel" styles={{input: {padding: '0px', height: '14pt', minHeight: '0pt', fontWeight: '500'}}} />
+            <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Criteria name" variant="unstyled" size="sm" classNames="nodrag nowheel" styles={{input: {padding: '0px', height: '14pt', minHeight: '0pt', fontWeight: '500'}}} />
           </Group>
           <Group spacing='4px' ml="auto">
             <Text color='#bbb' size="sm" mr='6px'>{evalType}</Text>
+            <GatheringResponsesRingProgress progress={{success: 30, error: 0}} />
             {/* <Progress
                 radius="xl"
                 w={32}
@@ -50,7 +64,7 @@ const EvaluatorContainer = ({name, type: evalType, padding, children}) => {
               <Menu.Dropdown>
                 <Menu.Item icon={<IconSearch size='14px' />}>Inspect scores</Menu.Item>
                 <Menu.Item icon={<IconInfoCircle size='14px' />}>Help / info</Menu.Item>
-                <Menu.Item icon={<IconTrash size='14px' />} color="red">Delete</Menu.Item>
+                <Menu.Item icon={<IconTrash size='14px' />} color="red" onClick={onDelete}>Delete</Menu.Item>
               </Menu.Dropdown>
             </Menu>
           </Group>
@@ -73,20 +87,59 @@ const MultiEvalNode = ({data, id}) => {
   const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
-  const flags = useStore((state) => state.flags);
 
+  const flags = useStore((state) => state.flags);
   const AI_SUPPORT_ENABLED = useMemo(() => {
     return flags["aiSupport"];
   }, [flags]);
 
   const [status, setStatus] = useState('none');
   const alertModal = useRef(null);
-
   const inspectModal = useRef(null);
+
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
   const [showDrawer, setShowDrawer] = useState(false);
+
+  /** Store evaluators as array of JSON serialized state:
+   * {  name: <string>  // the user's nickname for the evaluator, which displays as the title of the banner
+   *    type: 'python' | 'javascript' | 'llm'  // the type of evaluator
+   *    state: <dict>  // the internal state necessary for that specific evaluator component (e.g., a prompt for llm eval, or code for code eval)
+   * }
+  */
+  const [evaluators, setEvaluators] = useState(data.evaluators ?? TEST_EVAL_COMPS);
+
+  // Add an evaluator to the end of the list
+  const addEvaluator = useCallback((name, type, state) => {
+    setEvaluators(evaluators.concat({name, type, state}));
+  }, [setEvaluators, evaluators]);
+
+  // Sync evaluator state to stored state of this node
+  const syncEvaluatorsState = useCallback(() => {
+    setDataPropsForNode(id, { evaluators: evaluators });
+  }, [evaluators, setDataPropsForNode, id]);
+
+  // Generate UI for the evaluator state
+  const evaluatorComponents = useMemo(() => 
+    evaluators.map((e, idx) => {
+      let component;
+      if (e.type === 'python' || e.type === 'javascript') {
+        component = <CodeEvaluatorComponent code={e.state?.code} progLang={e.type} type='evaluator' id={id} />;
+      } else if (e.type === 'llm') {
+        component = <LLMEvaluatorComponent prompt={e.state?.prompt} grader={e.state?.grader} format={e.state?.format} id={id} showUserInstruction={false} />;
+      } else {
+        console.error(`Unknown evaluator type ${e.type} inside multi-evaluator node. Cannot display evaluator UI.`);
+        component = <Alert>Error: Unknown evaluator type {e.type}</Alert>;
+      }
+      return <EvaluatorContainer name={e.name} 
+                                 type={EVAL_TYPE_PRETTY_NAME[e.type]} 
+                                 onDelete={() => setEvaluators(evaluators.filter((_, i) => i !== idx))}
+                                 padding={e.type === 'llm' ? "8px" : undefined}>
+        {component}
+      </EvaluatorContainer>;
+  }), [evaluators, id]);
+
 
   const handleError = useCallback((err) => {
     console.error(err);
@@ -121,6 +174,8 @@ const MultiEvalNode = ({data, id}) => {
     setLastResponses([]);
 
     // Run stuff here! 
+    // TODO
+
   }, [handlePullInputs, pingOutputNodes, setStatus, alertModal, status, showDrawer]);
 
   const showResponseInspector = useCallback(() => {
@@ -130,6 +185,7 @@ const MultiEvalNode = ({data, id}) => {
     }
   }, [inspectModal, lastResponses]);
 
+  // Something changed upstream
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
       setDataPropsForNode(id, { refresh: false });
@@ -150,21 +206,7 @@ const MultiEvalNode = ({data, id}) => {
       <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
       <iframe style={{display: 'none'}} id={`${id}-iframe`}></iframe>
 
-      <EvaluatorContainer name="Formatting" type="JavaScript">
-        <CodeEvaluatorComponent code={"function evaluate(r) {\n\ttry {\n\t\tJSON.parse(r.text);\n\t\treturn true;\n\t} catch (e) {\n\t\treturn false;\n\t} \n}"} 
-                                id={id} 
-                                type={'evaluator'} 
-                                progLang={'javascript'} />
-      </EvaluatorContainer>
-      <EvaluatorContainer name="Grammaticality" type="LLM" padding="8px 8px 8px 8px">
-        <LLMEvaluatorComponent prompt="Is this grammatical?" format="bin" showUserInstruction={false} />
-      </EvaluatorContainer>
-      <EvaluatorContainer name="Length" type="Python">
-        <CodeEvaluatorComponent code={"def evaluate(r):\n\treturn len(r.text.split())"} 
-                                id={id} 
-                                type={'evaluator'} 
-                                progLang={'python'} />
-      </EvaluatorContainer>
+      {evaluatorComponents}
 
       <Handle
           type="target"
@@ -188,9 +230,19 @@ const MultiEvalNode = ({data, id}) => {
           </Menu.Target>
 
           <Menu.Dropdown>
-            <Menu.Item icon={<IconTerminal size='14px' />}>JavaScript</Menu.Item>
-            {IS_RUNNING_LOCALLY ? <Menu.Item icon={<IconTerminal size='14px' />}>Python</Menu.Item> : <></>}
-            <Menu.Item icon={<IconRobot size='14px' />}>LLM</Menu.Item>
+            <Menu.Item icon={<IconTerminal size='14px' />}
+                       onClick={() => addEvaluator(`Criteria ${evaluators.length+1}`, 'javascript', { code: 'function evaluate(r) {\n\treturn r.text.length;\n}' })} >
+              JavaScript
+            </Menu.Item>
+            {IS_RUNNING_LOCALLY ? 
+              <Menu.Item icon={<IconTerminal size='14px' />}
+                         onClick={() => addEvaluator(`Criteria ${evaluators.length+1}`, 'python', { code: 'def evaluate(r):\n\treturn len(r.text)' })} >
+                Python
+              </Menu.Item> : <></>}
+            <Menu.Item icon={<IconRobot size='14px' />}
+                       onClick={() => addEvaluator(`Criteria ${evaluators.length+1}`, 'llm', { prompt: '', format: 'bin' })} >
+              LLM
+            </Menu.Item>
             {AI_SUPPORT_ENABLED ? <Menu.Divider /> : <></>}
             {AI_SUPPORT_ENABLED ? <Menu.Item icon={<IconSparkles size='14px' />}>Let an AI decide!</Menu.Item> : <></>}
           </Menu.Dropdown>

@@ -592,7 +592,9 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
           </Text>
         </Box>
       );
-  }, [progLang, node_type]);
+
+    return btns;
+  }, [openInfoModal, flags, codeEvaluatorRef, progLang, handleCodeEdit]);
 
   // Custom buttons for the node label
   const customButtons = useMemo(() => {
