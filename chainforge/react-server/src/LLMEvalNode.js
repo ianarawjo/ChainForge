@@ -17,6 +17,19 @@ import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt. 
 const PLACEHOLDER_PROMPT = "Respond with 'true' if the text below has a positive sentiment, and 'false' if not. Do not reply with anything else.";
 
+const OUTPUT_FORMATS = [
+  {value: "bin", label: 'binary (true/false)'}, 
+  {value: "cat", label: 'categories'}, 
+  {value: "num", label: 'numbers'},
+  {value: "open", label: 'open-ended'}
+];
+const OUTPUT_FORMAT_PROMPTS = {
+  "bin": "Only reply with boolean values true or false, nothing else.",
+  "cat": "Only reply with your categorization, nothing else.",
+  "num": "Only reply with a numeric value (a number), nothing else.",
+  "open": "",
+};
+
 // The default LLM annotator is GPT-4 at temperature 0.
 const DEFAULT_LLM_ITEM = (() => {
   const item = [initLLMProviders.find((i) => i.base_model === "gpt-4")].map(
@@ -48,9 +61,8 @@ const LLMEvaluatorNode = ({ data, id }) => {
 
   const [lastResponses, setLastResponses] = useState([]);
 
-  const [llmScorers, setLLMScorers] = useState([
-    data.grader || DEFAULT_LLM_ITEM,
-  ]);
+  const [llmScorers, setLLMScorers] = useState([data.grader || DEFAULT_LLM_ITEM]);
+  const [expectedFormat, setExpectedFormat] = useState(data.format ?? "bin");
 
   // Progress when querying responses
   const [progress, setProgress] = useState(undefined);
@@ -95,11 +107,15 @@ const LLMEvaluatorNode = ({ data, id }) => {
         });
       };
 
+      // Create prompt template to wrap user-specified scorer prompt and input data
+      const formatting_instr = OUTPUT_FORMAT_PROMPTS[expectedFormat] ?? "";
+      const template = "You are evaluating text that will be pasted below. " + promptText + " " + formatting_instr + '\n```\n{input}\n```';
+
       // Run LLM as evaluator
       fetch_from_backend("evalWithLLM", {
         id,
         llm: llmScorers[0],
-        root_prompt: promptText + "\n```\n{input}\n```",
+        root_prompt: template, 
         responses: input_node_ids,
         api_keys: apiKeys || {},
         progress_listener,
@@ -128,16 +144,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
         })
         .catch(handleError);
     });
-  }, [
-    inputEdgesForNode,
-    promptText,
-    llmScorers,
-    apiKeys,
-    pingOutputNodes,
-    setStatus,
-    showDrawer,
-    alertModal,
-  ]);
+  }, [inputEdgesForNode, promptText, llmScorers, apiKeys, expectedFormat, pingOutputNodes, setStatus, showDrawer, alertModal]);
 
   const handlePromptChange = useCallback(
     (event) => {
@@ -193,14 +200,13 @@ const LLMEvaluatorNode = ({ data, id }) => {
                 onChange={handlePromptChange} />
       
       <Group spacing='xs'>
-        <Text size='sm' fw='500' mb='14px'>Stick to format:</Text>
+        <Text size='sm' fw='500' mb='14px'>Expected format:</Text>
         <NativeSelect size='sm'
-                      data={['binary (true/false)', 'categories', 'numbers', 'open-ended']}
-                      defaultValue={'binary (true/false)'}
+                      data={OUTPUT_FORMATS}
+                      value={expectedFormat}
+                      onChange={(e) => {setExpectedFormat(e.target.value); setDataPropsForNode(id, {format: e.target.value});}}
                       mb='sm' />
       </Group>
-      
-      
       
       <LLMListContainer 
                 initLLMItems={llmScorers} 
