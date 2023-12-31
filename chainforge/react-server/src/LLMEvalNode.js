@@ -26,16 +26,16 @@ const PLACEHOLDER_PROMPT =
   "Respond with 'true' if the text has a positive sentiment, 'false' if not.";
 
 const OUTPUT_FORMATS = [
-  { value: "bin", label: "binary (true/false)" },
-  { value: "cat", label: "categorical" },
-  { value: "num", label: "numeric" },
-  { value: "open", label: "open-ended" },
+  {value: "bin", label: 'binary (true/false)'}, 
+  {value: "cat", label: 'categories'}, 
+  {value: "num", label: 'numbers'},
+  {value: "open", label: 'open-ended'}
 ];
 const OUTPUT_FORMAT_PROMPTS = {
-  bin: "Only reply with boolean values true or false, nothing else.",
-  cat: "Only reply with your categorization, nothing else.",
-  num: "Only reply with a numeric value (a number), nothing else.",
-  open: "",
+  "bin": "Only reply with boolean values true or false, nothing else.",
+  "cat": "Only reply with your categorization, nothing else.",
+  "num": "Only reply with a numeric value (a number), nothing else.",
+  "open": "",
 };
 
 // The default LLM annotator is GPT-4 at temperature 0.
