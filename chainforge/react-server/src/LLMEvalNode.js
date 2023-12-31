@@ -27,8 +27,8 @@ const PLACEHOLDER_PROMPT =
 
 const OUTPUT_FORMATS = [
   {value: "bin", label: 'binary (true/false)'}, 
-  {value: "cat", label: 'categories'}, 
-  {value: "num", label: 'numbers'},
+  {value: "cat", label: 'categorical'}, 
+  {value: "num", label: 'numeric'},
   {value: "open", label: 'open-ended'}
 ];
 const OUTPUT_FORMAT_PROMPTS = {
