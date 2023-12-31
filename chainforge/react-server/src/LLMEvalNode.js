@@ -15,7 +15,7 @@ import { initLLMProviders } from './store';
 import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt. 
-const PLACEHOLDER_PROMPT = "Respond with 'true' if the text below has a positive sentiment, and 'false' if not. Do not reply with anything else.";
+const PLACEHOLDER_PROMPT = "Respond with 'true' if the text has a positive sentiment, 'false' if not.";
 
 const OUTPUT_FORMATS = [
   {value: "bin", label: 'binary (true/false)'}, 
@@ -103,9 +103,13 @@ export const LLMEvaluatorComponent = forwardRef(({ prompt, grader, format, id, s
     });
   };
 
+  // Export the current internal state as JSON
+  const serialize = () => ({ prompt: promptText, grader: llmScorers.length > 0 ? llmScorers[0] : undefined, format: expectedFormat });
+
   // Define functions accessible from the parent component
   useImperativeHandle(ref, () => ({
     run,
+    serialize,
   }));
 
   return (<>

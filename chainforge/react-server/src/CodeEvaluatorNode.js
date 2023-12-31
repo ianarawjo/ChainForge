@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { Handle } from 'reactflow';
-import { Button, Code, Modal, Tooltip, Box, Text } from '@mantine/core';
+import { Button, Code, Modal, Tooltip, Box, Text, Skeleton } from '@mantine/core';
 import { Prism } from '@mantine/prism';
 import { useDisclosure } from '@mantine/hooks';
 import useStore from './store';
@@ -15,21 +15,18 @@ import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
-import fetch_from_backend from "./fetch_from_backend";
-import {
-  APP_IS_RUNNING_LOCALLY,
-  stripLLMDetailsFromResponses,
-  toStandardResponseFormat,
-} from "./backend/utils";
-import InspectFooter from "./InspectFooter";
-import { escapeBraces } from "./backend/template";
-import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
+import fetch_from_backend from './fetch_from_backend';
+import { APP_IS_RUNNING_LOCALLY, stripLLMDetailsFromResponses, toStandardResponseFormat } from './backend/utils';
+import InspectFooter from './InspectFooter';
+import { escapeBraces } from './backend/template';
+import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
+import { AIGenCodeEvaluatorPopover } from './AiPopover';
 
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
-const _info_codeblock_js = `
+export const INFO_CODEBLOCK_JS = `
 class ResponseInfo {
   text: string;  // The text of the LLM response
   prompt: string  // The text of the prompt using to query the LLM
@@ -42,7 +39,7 @@ class ResponseInfo {
   asMarkdownAST(): Tokens[]  // runs markdown-it .parse; returns list of markdown nodes
 }`;
 
-const _info_codeblock_py = `
+export const INFO_CODEBLOCK_PY = `
 class ResponseInfo:
   text: str  # The text of the LLM response
   prompt: str  # The text of the prompt using to query the LLM
@@ -60,24 +57,24 @@ class ResponseInfo:
 `;
 
 // Code evaluator examples for info modal
-const _info_example_py = `
+export const INFO_EXAMPLE_PY = `
 def evaluate(response):
   # Return the length of the response (num of characters)
   return len(response.text);
 `;
-const _info_example_js = `
+export const INFO_EXAMPLE_JS = `
 function evaluate(response) {
   // Return the length of the response (num of characters)
   return response.text.length;
 }`;
-const _info_example_var_py = `
+export const INFO_EXAMPLE_VAR_PY = `
 def evaluate(response):
   country = response.var['country'];
   # do something with country here, such as lookup whether 
   # the correct capital is in response.text
   return ... # for instance, True or False
 `;
-const _info_example_var_js = `
+export const INFO_EXAMPLE_VAR_JS = `
 function evaluate(response) {
   let country = response.var['country'];
   // do something with country here, such as lookup whether 
@@ -86,17 +83,17 @@ function evaluate(response) {
 }`;
 
 // Code processor examples for info modal
-const _info_proc_example_py = `
+const INFO_PROC_EXAMPLE_PY = `
 def process(response):
   # Return the first 12 characters
   return response.text[:12]
 `;
-const _info_proc_example_js = `
+const INFO_PROC_EXAMPLE_JS = `
 function process(response) {
   // Return the first 12 characters
   return response.text.slice(0, 12);
 }`;
-const _info_proc_example_var_py = `
+const INFO_PROC_EXAMPLE_VAR_PY = `
 def process(response):
   # Find the index of the substring "ANSWER:"
   answer_index = response.text.find("ANSWER:")
@@ -107,7 +104,7 @@ def process(response):
   else: # return error message
     return "NOT FOUND"
 `;
-const _info_proc_example_var_js = `
+const INFO_PROC_EXAMPLE_VAR_JS = `
 function process(response) {
   // Find the index of the substring "ANSWER:"
   const answerIndex = response.text.indexOf("ANSWER:");
@@ -180,9 +177,14 @@ export const CodeEvaluatorComponent = forwardRef(({ code, id, type: node_type, p
     });
   };
 
+  // Export the current internal state as JSON
+  const serialize = () => ({ code: codeText });
+
   // Define functions accessible from the parent component
   useImperativeHandle(ref, () => ({
     run,
+    serialize,
+    setCodeText,
   }));
 
   // Helpful instruction for user
@@ -237,6 +239,10 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
   const [status, setStatus] = useState("none");
   const nodes = useStore((state) => state.nodes);
+
+  // For genAI features
+  const flags = useStore((state) => state.flags);
+  const [isEvalCodeGenerating, setIsEvalCodeGenerating] = useState(false);
 
   // For displaying error messages to user
   const alertModal = useRef(null);
@@ -415,167 +421,95 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
 
   /* Memoized variables for displaying the UI that depend on the node type (evaluator or processor) and the programming language. */
   const default_header = useMemo(() => {
-    const capitalized_type =
-      node_type.charAt(0).toUpperCase() + node_type.slice(1);
-    if (progLang === "python") return `Python ${capitalized_type} Node`;
-    else return `JavaScript ${capitalized_type} Node`;
-  }, [progLang, node_type]);
+    const capitalized_type = node_type.charAt(0).toUpperCase() + node_type.slice(1);
+    if (progLang === 'python')
+      return `Python ${capitalized_type}`;
+    else
+      return `JavaScript ${capitalized_type}`;
+  }, [progLang, node_type]); 
   const node_header = data.title || default_header;
   const run_tooltip = useMemo(() => `Run ${node_type} over inputs`, [node_type]);
   const code_info_modal = useMemo(() => {
-    if (node_type === "evaluator")
-      return (
-        <Box m="lg" mt="xl">
-          <Text mb="sm">
-            To use a {default_header}, write a function <Code>evaluate</Code>{" "}
-            that takes a single argument of class <Code>ResponseInfo</Code>. The
-            function should return a &apos;score&apos; for that response, which
-            usually is a number or a boolean value (strings as categoricals are
-            supported, but experimental).
-          </Text>
-          <Text mt="sm" mb="sm">
-            For instance, here is an evaluator that returns the length of a
-            response:
-          </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python" ? _info_example_py : _info_example_js}
-          </Prism>
-          <Text mt="md" mb="sm">
-            This function gets the text of the response via{" "}
-            <Code>response.text</Code>, then calculates its length in
-            characters. The full <Code>ResponseInfo</Code> class has the
-            following properties and methods:
-          </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python" ? _info_codeblock_py : _info_codeblock_js}
-          </Prism>
-          <Text mt="md" mb="sm">
-            For instance, say you have a prompt template{" "}
-            <Code>What is the capital of &#123;country&#125;?</Code> on a Prompt
-            Node. You want to get the input variable &apos;country&apos;, which
-            filled the prompt that led to the current response. You can use
-            <Code>response.var</Code>:
-          </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python"
-              ? _info_example_var_py
-              : _info_example_var_js}
-          </Prism>
-          <Text mt="md">
-            Note that you are allowed to define variables outside of the
-            function, or define more functions, as long as a function called{" "}
-            <Code>evaluate</Code> is defined. For more information on
-            what&apos;s possible, see the{" "}
-            <a
-              href="https://chainforge.ai/docs/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              documentation
-            </a>{" "}
-            or load some Example Flows.
-          </Text>
-        </Box>
+    if (node_type === 'evaluator')
+      return <Box m='lg' mt='xl'>
+        <Text mb='sm'>To use a {default_header}, write a function <Code>evaluate</Code> that takes a single argument of class <Code>ResponseInfo</Code>.
+        The function should return a \'score\' for that response, which usually is a number or a boolean value (strings as categoricals are supported, but experimental).</Text>
+        <Text mt='sm' mb='sm'>
+        For instance, here is an evaluator that returns the length of a response:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? INFO_EXAMPLE_PY : INFO_EXAMPLE_JS}
+        </Prism>
+        <Text mt='md' mb='sm'>This function gets the text of the response via <Code>response.text</Code>, then calculates its length in characters. The full <Code>ResponseInfo</Code> class has the following properties and methods:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? INFO_CODEBLOCK_PY : INFO_CODEBLOCK_JS}
+        </Prism>
+        <Text mt='md' mb='sm'>For instance, say you have a prompt template <Code>What is the capital of &#123;country&#125;?</Code> on a Prompt Node. 
+          You want to get the input variable 'country', which filled the prompt that led to the current response. You can use<Code>response.var</Code>:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? INFO_EXAMPLE_VAR_PY : INFO_EXAMPLE_VAR_JS}
+        </Prism>
+        <Text mt='md'>Note that you are allowed to define variables outside of the function, or define more functions, as long as a function called <Code>evaluate</Code> is defined. 
+        For more information on what's possible, see the <a href="https://chainforge.ai/docs/" target='_blank'>documentation</a> or load some Example Flows.</Text>
+      </Box>;
+    else 
+      return <Box m='lg' mt='xl'>
+        <Text mb='sm'>To use a {default_header}, write a function <Code>process</Code> that takes a single argument of class <Code>ResponseInfo</Code>.
+        The function should returned the <strong>transformed response text</strong>, as a string or number.</Text>
+        <Text mt='sm' mb='sm'>
+        For instance, here is a processor that simply returns the first 12 characters of the response:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? INFO_PROC_EXAMPLE_PY : INFO_PROC_EXAMPLE_JS}
+        </Prism>
+        <Text mt='md' mb='sm'>This function gets the text of the response via <Code>response.text</Code>, then slices it until the 12th-indexed character. The full <Code>ResponseInfo</Code> class has the following properties and methods:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? INFO_CODEBLOCK_PY : INFO_CODEBLOCK_JS}
+        </Prism>
+        <Text mt='md' mb='sm'>For another example, say you have a prompt that requests the LLM output in a consistent format, with "ANSWER:" at the end like Chain-of-Thought. 
+          You want to get just the part after 'ANSWER:' Here's how you can do this:</Text>
+        <Prism language={progLang === 'python' ? 'py' : 'ts'}>
+          {progLang === 'python' ? INFO_PROC_EXAMPLE_VAR_PY : INFO_PROC_EXAMPLE_VAR_JS}
+        </Prism>
+        <Text mt='md'>Note that you are allowed to define variables outside of the function, or define more functions, as long as a function called <Code>process</Code> is defined. 
+        For more information on what's possible, see the <a href="https://chainforge.ai/docs/" target='_blank'>documentation</a>. Finally, note that currently 
+        you cannot change the response metadata itself (i.e., var, meta dictionaries); if you have a use case for that feature, raise an Issue on our GitHub.</Text>
+      </Box>;
+  }, [progLang, node_type])
+
+  // Custom buttons for the node label
+  const customButtons = useMemo(() => {
+    let btns = [
+      <Tooltip label='Info' key="eval-info">
+        <button onClick={openInfoModal} className='custom-button' style={{border:'none'}}>
+          <IconInfoCircle size='12pt' color='gray' style={{marginBottom: '-4px'}} />
+        </button>
+      </Tooltip>
+    ];
+
+    if (flags['aiSupport'])
+      btns.push(
+        <AIGenCodeEvaluatorPopover 
+          key='ai-popover'
+          progLang={progLang}
+          onGeneratedCode={(code) => { codeEvaluatorRef?.current?.setCodeText(code); handleCodeEdit(code); }}
+          onLoadingChange={(isLoading) => setIsEvalCodeGenerating(isLoading)} />
       );
-    else
-      return (
-        <Box m="lg" mt="xl">
-          <Text mb="sm">
-            To use a {default_header}, write a function <Code>process</Code>{" "}
-            that takes a single argument of class <Code>ResponseInfo</Code>. The
-            function should returned the{" "}
-            <strong>transformed response text</strong>, as a string or number.
-          </Text>
-          <Text mt="sm" mb="sm">
-            For instance, here is a processor that simply returns the first 12
-            characters of the response:
-          </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python"
-              ? _info_proc_example_py
-              : _info_proc_example_js}
-          </Prism>
-          <Text mt="md" mb="sm">
-            This function gets the text of the response via{" "}
-            <Code>response.text</Code>, then slices it until the 12th-indexed
-            character. The full <Code>ResponseInfo</Code> class has the
-            following properties and methods:
-          </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python" ? _info_codeblock_py : _info_codeblock_js}
-          </Prism>
-          <Text mt="md" mb="sm">
-            {`For another example, say you have a prompt that requests the LLM
-            output in a consistent format, with "ANSWER:" at the end like
-            Chain-of-Thought. You want to get just the part after 'ANSWER:'
-            Here's how you can do this:`}
-          </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python"
-              ? _info_proc_example_var_py
-              : _info_proc_example_var_js}
-          </Prism>
-          <Text mt="md">
-            Note that you are allowed to define variables outside of the
-            function, or define more functions, as long as a function called{" "}
-            <Code>process</Code> is defined. For more information on what&apos;s
-            possible, see the{" "}
-            <a
-              href="https://chainforge.ai/docs/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              documentation
-            </a>
-            . Finally, note that currently you cannot change the response
-            metadata itself (i.e., var, meta dictionaries); if you have a use
-            case for that feature, raise an Issue on our GitHub.
-          </Text>
-        </Box>
-      );
-  }, [progLang, node_type]);
+
+    return btns;
+  }, [openInfoModal, flags, codeEvaluatorRef, progLang, handleCodeEdit]);
 
   return (
     <BaseNode classNames="evaluator-node" nodeId={id}>
-      <NodeLabel
-        title={node_header}
-        nodeId={id}
-        onEdit={hideStatusIndicator}
-        icon={<IconTerminal size="16px" />}
-        status={status}
-        alertModal={alertModal}
-        handleRunClick={handleRunClick}
-        runButtonTooltip={run_tooltip}
-        customButtons={[
-          <Tooltip label="Info" key="eval-info">
-            <button
-              onClick={openInfoModal}
-              className="custom-button"
-              style={{ border: "none" }}
-            >
-              <IconInfoCircle
-                size="12pt"
-                color="gray"
-                style={{ marginBottom: "-4px" }}
-              />
-            </button>
-          </Tooltip>,
-        ]}
-      />
-      <LLMResponseInspectorModal
-        ref={inspectModal}
-        jsonResponses={lastResponses}
-      />
-      <Modal
-        title={default_header}
-        size="60%"
-        opened={infoModalOpened}
-        onClose={closeInfoModal}
-        styles={{
-          header: { backgroundColor: "#FFD700" },
-          root: { position: "relative", left: "-5%" },
-        }}
-      >
+      <NodeLabel title={node_header} 
+                  nodeId={id} 
+                  onEdit={hideStatusIndicator}
+                  icon={<IconTerminal size="16px" />} 
+                  status={status}
+                  alertModal={alertModal}
+                  handleRunClick={handleRunClick}
+                  runButtonTooltip={run_tooltip}
+                  customButtons={customButtons} />
+      <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
+      <Modal title={default_header} size='60%' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-5%'}}}>
         {code_info_modal}
       </Modal>
       <iframe style={{ display: "none" }} id={`${id}-iframe`}></iframe>
@@ -594,15 +528,17 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
           style={{ top: '50%' }}
         />
 
-      <CodeEvaluatorComponent ref={codeEvaluatorRef} 
-                              code={data.code} 
-                              id={id} 
-                              type={node_type} 
-                              progLang={progLang} 
-                              showUserInstruction
-                              onCodeEdit={handleCodeEdit}
-                              onCodeChangedFromLastRun={handleCodeChangedFromLastRun}
-                              onCodeEqualToLastRun={handleCodeEqualToLastRun} />
+      <Skeleton visible={isEvalCodeGenerating}>
+        <CodeEvaluatorComponent ref={codeEvaluatorRef} 
+                                code={data.code} 
+                                id={id} 
+                                type={node_type} 
+                                progLang={progLang} 
+                                showUserInstruction
+                                onCodeEdit={handleCodeEdit}
+                                onCodeChangedFromLastRun={handleCodeChangedFromLastRun}
+                                onCodeEqualToLastRun={handleCodeEqualToLastRun} />
+      </Skeleton>
 
       {lastRunLogs && lastRunLogs.length > 0 ? (
         <div

@@ -49,7 +49,7 @@ function compileTextFromMdAST(md) {
   return "";
 }
 
-const splitText = (s, format) => {
+export const splitText = (s, format) => {
   // If format is newline separators, we can just split:
   if (format === "\n\n" || format === "\n")
     return s

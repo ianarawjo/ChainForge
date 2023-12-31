@@ -1,29 +1,89 @@
-import React, { useMemo, useRef, useState } from "react";
-import {
-  Stack,
-  NumberInput,
-  Button,
-  Text,
-  Switch,
-  Tabs,
-  Popover,
-  Badge,
-  Textarea,
-  Alert,
-} from "@mantine/core";
-import { autofill, generateAndReplace, AIError } from "./backend/ai";
-import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
-import AlertModal from "./AlertModal";
+import React, { useCallback, useMemo, useRef } from 'react';
+import { Stack, NumberInput, Button, Text, TextInput, Switch, Tabs, Popover, Badge, Textarea, Alert } from "@mantine/core"
+import { useState } from 'react';
+import { autofill, generateAndReplace, AIError } from './backend/ai';
+import { IconSparkles, IconAlertCircle } from '@tabler/icons-react';
+import AlertModal from './AlertModal';
+import useStore from './store';
+import { INFO_CODEBLOCK_JS, INFO_CODEBLOCK_PY, INFO_EXAMPLE_JS, INFO_EXAMPLE_PY } from './CodeEvaluatorNode';
+import { queryLLM } from './backend/backend';
+import { splitText } from './SplitNode';
+import { cleanEscapedBraces, escapeBraces } from './backend/template';
 
-const zeroGap = { gap: "0rem" };
-const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
+const zeroGap = {gap: "0rem"};
+const popoverShadow ="rgb(38, 57, 77) 0px 10px 30px -14px";
 
 const ROW_CONSTANTS = {
-  beginAutofilling: 1,
-  warnIfBelow: 2,
+  "beginAutofilling": 1,
+  "warnIfBelow": 2,
 };
 
-function AIPopover({
+const changeFourSpaceTabsToTwo = (code) => {
+  const lines = code.split("\n");
+  let retabbed_lines = [];
+  function countLeadingSpaces(str) {
+    const match = str.match(/^ */);
+    return match ? match[0].length : 0;
+  }
+
+  // First we need to check what format the code is in.
+  // It could be 2-space tabs already, in which case we'll just return it as-is:
+  const leadingSpaces = lines.map(countLeadingSpaces);
+  if (leadingSpaces.some(n => n === 2)) // if any line has exactly 2 spaces to begin it
+    return code;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const num_leading_spaces = leadingSpaces[i];
+    if (num_leading_spaces >= 3)
+      retabbed_lines.push('  '.repeat(Math.floor(num_leading_spaces / 4)) + line.substring(num_leading_spaces));
+    else 
+      retabbed_lines.push(line);
+  }
+  return retabbed_lines.join('\n');
+};
+
+// The generic popover button, a sparkly purple button that shows a popover with 'Generative AI' back on top. 
+// Extend for specific implementations .
+export function AIPopover({
+  // Pass the specific UI and logic for the popover as a child component
+  children,
+}) {
+
+  // API keys 
+  const apiKeys = useStore((state) => state.apiKeys);
+
+  // To check for OpenAI API key
+  const noOpenAIKeyMessage = useMemo(() => {
+    if (apiKeys && apiKeys['OpenAI']) return undefined;
+    else return (
+      <Alert variant="light" color="grape" title="No OpenAI API key detected." mt='xs' maw={200} fz='xs' icon={<IconAlertCircle />}>
+        You must set an OpenAI API key before you can use generative AI support features.
+      </Alert>
+    );
+  }, [apiKeys]);
+
+  return (
+    <Popover position="right-start" withArrow shadow={popoverShadow} withinPortal keepMounted>
+      <Popover.Target>
+        <button className="ai-button nodrag"><IconSparkles size={10} stroke={3}/></button>
+      </Popover.Target>
+      <Popover.Dropdown className="nodrag nowheel">
+        <Stack style={zeroGap}>
+          <Badge color="grape" variant="light" leftSection={<IconSparkles size={10} stroke={3}/>}>
+            Generative AI
+          </Badge>
+          {noOpenAIKeyMessage ? noOpenAIKeyMessage : children}
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
+/**
+ * AI Popover UI for TextFields and Items nodes
+ */
+export function AIGenReplaceItemsPopover({
   // A list of strings for the Extend feature to use as a basis.
   values,
   // A function that takes a list of strings that the popover will call to add new values
@@ -34,9 +94,14 @@ function AIPopover({
   areValuesLoading,
   // A function that takes a boolean that the popover will call to set whether the values should be loading
   setValuesLoading,
-  // API keys to pass when querying LLMs (only those from front-end settings window)
-  apiKeys,
 }) {
+
+  // API keys 
+  const apiKeys = useStore((state) => state.apiKeys);
+
+  // Alerts
+  const alertModal = useRef(null);
+
   // Command Fill state
   const [commandFillNumber, setCommandFillNumber] = useState(3);
   const [isCommandFillLoading, setIsCommandFillLoading] = useState(false);
@@ -52,32 +117,9 @@ function AIPopover({
   const [didGenerateAndReplaceError, setDidGenerateAndReplaceError] =
     useState(false);
 
-  // To check for OpenAI API key
-  const noOpenAIKeyMessage = useMemo(() => {
-    if (apiKeys && apiKeys.OpenAI) return undefined;
-    else
-      return (
-        <Alert
-          variant="light"
-          color="grape"
-          title="No OpenAI API key detected."
-          maw={200}
-          fz="xs"
-          icon={<IconAlertCircle />}
-        >
-          You must set an OpenAI API key before you can use generative AI
-          support features.
-        </Alert>
-      );
-  }, [apiKeys]);
-
-  // Alert for errors
-  const alertModal = useRef(null);
-
-  const nonEmptyRows = useMemo(
-    () => Object.values(values).filter((row) => row !== "").length,
-    [values],
-  );
+  const nonEmptyRows = useMemo(() =>
+    Object.values(values).filter((row) => row !== '').length,
+    [values]);
 
   const enoughRowsForSuggestions = useMemo(
     () => nonEmptyRows >= ROW_CONSTANTS.beginAutofilling,
@@ -163,46 +205,123 @@ function AIPopover({
   ), [didGenerateAndReplaceError, generateAndReplacePrompt, setGenerateAndReplacePrompt, generateAndReplaceNumber, setGenerateAndReplaceNumber, generateAndReplaceIsUnconventional, setGenerateAndReplaceIsUnconventional, handleGenerateAndReplace, areValuesLoading]);
   
   return (
-    <Popover
-      position="right-start"
-      withArrow
-      shadow={popoverShadow}
-      withinPortal
-      keepMounted
-      trapFocus={noOpenAIKeyMessage === undefined}
-    >
-      <Popover.Target>
-        <button className="ai-button nodrag">
-          <IconSparkles size={10} stroke={3} />
-        </button>
-      </Popover.Target>
-      <Popover.Dropdown className="nodrag nowheel">
-        <Stack style={zeroGap}>
-          <Badge
-            color="grape"
-            variant="light"
-            leftSection={<IconSparkles size={10} stroke={3} />}
-          >
-            Generative AI
-          </Badge>
-          <Tabs color="grape" defaultValue="replace">
-            <Tabs.List grow>
-              <Tabs.Tab value="replace">Replace</Tabs.Tab>
-              <Tabs.Tab value="extend">Extend</Tabs.Tab>
-            </Tabs.List>
-            <Tabs.Panel value="extend" pb="xs">
-              {noOpenAIKeyMessage || extendUI}
-            </Tabs.Panel>
-            <Tabs.Panel value="replace" pb="xs">
-              {noOpenAIKeyMessage || replaceUI}
-            </Tabs.Panel>
-          </Tabs>
-        </Stack>
-      </Popover.Dropdown>
-
+    <AIPopover>
+      <Tabs color="grape" defaultValue="replace">
+        <Tabs.List grow>
+          <Tabs.Tab value="replace">Replace</Tabs.Tab>
+          <Tabs.Tab value="extend">Extend</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="extend" pb="xs">
+          {extendUI}
+        </Tabs.Panel>
+        <Tabs.Panel value="replace" pb="xs">
+          {replaceUI}
+        </Tabs.Panel>
+      </Tabs>
       <AlertModal ref={alertModal} />
-    </Popover>
-  );
+    </AIPopover>);
 }
 
-export default AIPopover;
+/**
+ * AI Popover UI for code evaluators.
+ */
+export function AIGenCodeEvaluatorPopover({
+  // The programming language to generate evaluation code in (currently, only 'python' or 'javascript') 
+  progLang,
+  // Callback when the AI has returned code to put in the evaluator's text editor
+  onGeneratedCode,
+  // Callback that takes a boolean that the popover will call to set whether the values are loading and are done loading
+  onLoadingChange,
+}) {
+
+  // API keys 
+  const apiKeys = useStore((state) => state.apiKeys);
+
+  // State
+  const [prompt, setPrompt] = useState("");
+  const [awaitingResponse, setAwaitingResponse] = useState(false);
+
+  // Alerts
+  const alertModal = useRef(null);
+  const [didEncounterError, setDidEncounterError] = useState(false);
+
+  // Generate an evaluate function, given the user-specified prompt, in the proper programming language
+  const handleGenerateEvalCode = useCallback(() => {
+
+    setDidEncounterError(false);
+    setAwaitingResponse(true);
+    if (onLoadingChange) onLoadingChange(true);
+    
+    const template = 
+`You are to generate a function to evaluate textual data, given a user-specified specification. 
+The function will be mapped over an array of objects of type ResponseInfo.
+Your solution must contain a function called 'evaluate' that takes a single object, 'r', of type ResponseInfo. A ResponseInfo is defined as:
+
+\`\`\`${progLang === 'javascript' ? INFO_CODEBLOCK_JS : INFO_CODEBLOCK_PY}\`\`\`
+
+For instance, here is an evaluator that returns the length of a response:
+
+\`\`\`${progLang === 'javascript' ? INFO_EXAMPLE_JS : INFO_EXAMPLE_PY}\`\`\`
+
+You can only write in ${progLang.charAt(0).toUpperCase() + progLang.substring(1)}. 
+You ${progLang === 'javascript' ? 'CANNOT import any external packages. ' : 'can use imports if necessary. Do not include any type hints.'} 
+Your function can only return boolean, numeric, or string values.
+
+Here is the user's specification:
+
+${prompt}`;
+  
+  const handleError = (err) => {
+    setAwaitingResponse(false);
+    if (onLoadingChange) onLoadingChange(false);
+    setDidEncounterError(true);
+    if (typeof err !== "string") console.error(err);
+    alertModal.current.trigger(typeof err === "string" ? err : err?.message);
+  };
+
+  queryLLM(prompt, "gpt-4", 1, escapeBraces(template), {}, undefined, apiKeys, true)
+    .then((result) => {
+      setAwaitingResponse(false);
+      if (onLoadingChange) onLoadingChange(false);
+
+      // Handle any errors when collecting the response
+      if (result.errors && Object.keys(result.errors).length > 0) 
+        throw new Error(Object.values(result.errors)[0].toString());
+
+      // Extract the first response
+      const response = result.responses[0].responses[0];
+      console.log("LLM said: ", response);
+
+      // Try to extract out a single code block from the response
+      const code_blocks = splitText(response, "code");
+
+      // Concat all found code blocks
+      if (code_blocks.length > 0) {
+        // Success! (we assume...)
+        let cleaned_code = cleanEscapedBraces(code_blocks.join("\n\n"));
+        if (progLang === 'python') {
+          // We are using 2-space tabs but LLM outputs are generally 4-space tabs. Clean this up:
+          cleaned_code = changeFourSpaceTabsToTwo(cleaned_code)
+        }
+        onGeneratedCode(cleaned_code);
+      } else {
+        // No code detected in response!
+        setDidEncounterError(true);
+      }
+    })
+    .catch(handleError);
+
+  }, [progLang, onLoadingChange, onGeneratedCode, prompt, alertModal]);
+
+  return (
+    <AIPopover>
+      <Stack style={zeroGap}>
+        {didEncounterError ? <Text size="xs" c="red">Failed to generate. Please try again.</Text> : <></>}
+        <Textarea label="Describe what to evaluate" size="sm" data-autofocus minRows={2} maxRows={4} autosize mt={5} value={prompt} onChange={(e) => setPrompt(e.currentTarget.value)}/>
+        <Button size="sm" variant="light" color="grape" mt="sm" fullWidth onClick={handleGenerateEvalCode} loading={awaitingResponse}>Generate</Button>
+      </Stack>
+      <AlertModal ref={alertModal} />
+    </AIPopover>);
+}
+
+

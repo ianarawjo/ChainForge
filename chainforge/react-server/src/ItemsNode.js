@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Skeleton, Text } from "@mantine/core";
-import useStore from "./store";
-import NodeLabel from "./NodeLabelComponent";
-import { IconForms } from "@tabler/icons-react";
-import { Handle } from "reactflow";
-import BaseNode from "./BaseNode";
-import { processCSV } from "./backend/utils";
-import AIPopover from "./AiPopover";
-import { cleanEscapedBraces, escapeBraces } from "./backend/template";
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Skeleton, Text } from '@mantine/core';
+import useStore from './store';
+import NodeLabel from './NodeLabelComponent'
+import { IconForms } from '@tabler/icons-react';
+import { Handle } from 'reactflow';
+import BaseNode from './BaseNode';
+import { processCSV } from "./backend/utils"
+import AISuggestionsManager from './backend/aiSuggestionsManager';
+import { AIGenReplaceItemsPopover } from './AiPopover';
+import { cleanEscapedBraces, escapeBraces } from './backend/template';
 
 const replaceDoubleQuotesWithSingle = (str) => str.replaceAll('"', "'");
 const wrapInQuotesIfContainsComma = (str) =>
@@ -26,31 +27,30 @@ const stripWrappingQuotes = (str) => {
 };
 
 const ItemsNode = ({ data, id }) => {
-  const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
-  const pingOutputNodes = useStore((state) => state.pingOutputNodes);
-  const apiKeys = useStore((state) => state.apiKeys);
-  const flags = useStore((state) => state.flags);
+    const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+    const pingOutputNodes = useStore((state) => state.pingOutputNodes);
+    const flags = useStore((state) => state.flags);
 
-  const [contentDiv, setContentDiv] = useState(null);
-  const [isEditing, setIsEditing] = useState(true);
-  const [csvInput, setCsvInput] = useState(null);
-  const [countText, setCountText] = useState(null);
+    const [contentDiv, setContentDiv] = useState(null);
+    const [isEditing, setIsEditing] = useState(true);
+    const [csvInput, setCsvInput] = useState(null);
+    const [countText, setCountText] = useState(null);
 
-  // Whether text field is in a loading state
-  const [isLoading, setIsLoading] = useState(false);
+    // Whether text field is in a loading state
+    const [isLoading, setIsLoading] = useState(false);
 
-  // Debounce helpers
-  const debounceTimeoutRef = useRef(null);
-  const debounce = (func, delay) => {
-    return (...args) => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-      debounceTimeoutRef.current = setTimeout(() => {
-        func(...args);
-      }, delay);
+    // Debounce helpers
+    const debounceTimeoutRef = useRef(null);
+    const debounce = (func, delay) => {
+        return (...args) => {
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+        }
+        debounceTimeoutRef.current = setTimeout(() => {
+            func(...args);
+        }, delay);
+        };
     };
-  };
 
   // initializing
   useEffect(() => {
@@ -172,52 +172,33 @@ const ItemsNode = ({ data, id }) => {
 
   return (
     <BaseNode classNames="text-fields-node" nodeId={id}>
-      <NodeLabel
-        title={data.title || "Items Node"}
-        nodeId={id}
-        icon={<IconForms size="16px" />}
-        customButtons={
-          flags.aiSupport
-            ? [
-                <AIPopover
-                  key="ai-popover"
-                  values={data.fields ?? []}
-                  onAddValues={(vals) =>
-                    setFieldsFromText(
-                      data.text +
-                        ", " +
-                        vals.map(makeSafeForCSLFormat).join(", "),
-                      true,
-                    )
-                  }
-                  onReplaceValues={(vals) =>
-                    setFieldsFromText(
-                      vals.map(makeSafeForCSLFormat).join(", "),
-                      true,
-                    )
-                  }
-                  areValuesLoading={isLoading}
-                  setValuesLoading={setIsLoading}
-                  apiKeys={apiKeys}
-                />,
-              ]
-            : []
-        }
-      />
-      <Skeleton visible={isLoading}>
-        {csvInput}
-        {contentDiv}
-        {countText}
-      </Skeleton>
-      <Handle
-        type="source"
-        position="right"
-        id="output"
-        className="grouped-handle"
-        style={{ top: "50%" }}
-      />
-    </BaseNode>
-  );
+        <NodeLabel title={data.title || 'Items Node'} 
+                   nodeId={id} 
+                   icon={<IconForms size="16px" />}
+                   customButtons={
+                    (flags["aiSupport"] ? 
+                      [<AIGenReplaceItemsPopover 
+                                  key='ai-popover'
+                                  values={data.fields ?? []}
+                                  onAddValues={(vals) => setFieldsFromText(data.text + ", " + vals.map(makeSafeForCSLFormat).join(", "), true)}
+                                  onReplaceValues={(vals) => setFieldsFromText(vals.map(makeSafeForCSLFormat).join(", "), true)}
+                                  areValuesLoading={isLoading}
+                                  setValuesLoading={setIsLoading} />]
+                     : [])
+                   } />
+        <Skeleton visible={isLoading}>
+            {csvInput}
+            {contentDiv}
+            {countText}
+        </Skeleton>
+        <Handle
+            type="source"
+            position="right"
+            id="output"
+            className="grouped-handle"
+            style={{ top: "50%" }}
+        />
+    </BaseNode>);
 };
 
 export default ItemsNode;
