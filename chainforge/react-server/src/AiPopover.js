@@ -127,131 +127,41 @@ function AIPopover({
       .finally(() => setValuesLoading(false));
   };
 
-  const extendUI = useMemo(
-    () => (
-      <Stack>
-        {didCommandFillError ? (
-          <Text size="xs" c="red">
-            Failed to generate. Please try again.
-          </Text>
-        ) : (
-          <></>
-        )}
-        <NumberInput
-          label="Items to add"
-          mt={5}
-          min={1}
-          max={10}
-          defaultValue={3}
-          value={commandFillNumber}
-          onChange={setCommandFillNumber}
-        />
-        {enoughRowsForSuggestions ? (
-          <></>
-        ) : (
-          <Text size="xs" c="grape" maw={200}>
-            You must enter at least {ROW_CONSTANTS.beginAutofilling} fields
-            before extending.
-          </Text>
-        )}
-        {showWarning ? (
-          <Text size="xs" c="grape" maw={200}>
-            You have less than {ROW_CONSTANTS.warnIfBelow} fields. You may want
-            to add more. Adding more rows typically improves the quality of the
-            suggestions.
-          </Text>
-        ) : (
-          <></>
-        )}
-        <Button
-          size="sm"
-          variant="light"
-          color="grape"
-          fullWidth
-          onClick={handleCommandFill}
-          disabled={!enoughRowsForSuggestions}
-          loading={isCommandFillLoading}
-        >
-          Extend
-        </Button>
-      </Stack>
-    ),
-    [
-      didCommandFillError,
-      enoughRowsForSuggestions,
-      showWarning,
-      isCommandFillLoading,
-      handleCommandFill,
-      setCommandFillNumber,
-      commandFillNumber,
-    ],
-  );
+  const extendUI = useMemo(() => (
+    <Stack>
+      {didCommandFillError ?
+        <Text size="xs" c="red">
+          Failed to generate. Please try again.
+        </Text>
+        : <></>}
+      <NumberInput label="Items to add" mt={5} min={1} max={10} defaultValue={3} value={commandFillNumber} onChange={setCommandFillNumber}/>
+      {enoughRowsForSuggestions ? <></>
+      : <Text size="xs" c="grape" maw={200}>
+          You must enter at least {ROW_CONSTANTS.beginAutofilling} fields before extending.
+        </Text>}
+      {showWarning ?
+        <Text size="xs" c="grape" maw={200}>
+          You have less than {ROW_CONSTANTS.warnIfBelow} fields. You may want to add more. Adding more rows typically improves the quality of the suggestions.
+        </Text>
+        : <></>}
+      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleCommandFill} disabled={!enoughRowsForSuggestions} loading={isCommandFillLoading}>Extend</Button>
+    </Stack>
+  ), [didCommandFillError, enoughRowsForSuggestions, showWarning, isCommandFillLoading, handleCommandFill, setCommandFillNumber, commandFillNumber] );
 
-  const replaceUI = useMemo(
-    () => (
-      <Stack style={zeroGap}>
-        {didGenerateAndReplaceError ? (
-          <Text size="xs" c="red">
-            Failed to generate. Please try again.
-          </Text>
-        ) : (
-          <></>
-        )}
-        <Textarea
-          label="Generate a list of..."
-          data-autofocus
-          minRows={1}
-          maxRows={4}
-          autosize
-          mt={5}
-          value={generateAndReplacePrompt}
-          onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}
-        />
-        <NumberInput
-          label="Items to generate"
-          size="xs"
-          mb={10}
-          min={1}
-          max={10}
-          defaultValue={3}
-          value={generateAndReplaceNumber}
-          onChange={setGenerateAndReplaceNumber}
-        />
-        <Switch
-          color="grape"
-          mb={10}
-          size="xs"
-          label="Make outputs unconventional"
-          value={generateAndReplaceIsUnconventional}
-          onChange={(e) =>
-            setGenerateAndReplaceIsUnconventional(e.currentTarget.checked)
-          }
-        />
-        <Button
-          size="sm"
-          variant="light"
-          color="grape"
-          fullWidth
-          onClick={handleGenerateAndReplace}
-          loading={areValuesLoading}
-        >
-          Replace
-        </Button>
-      </Stack>
-    ),
-    [
-      didGenerateAndReplaceError,
-      generateAndReplacePrompt,
-      setGenerateAndReplacePrompt,
-      generateAndReplaceNumber,
-      setGenerateAndReplaceNumber,
-      generateAndReplaceIsUnconventional,
-      setGenerateAndReplaceIsUnconventional,
-      handleGenerateAndReplace,
-      areValuesLoading,
-    ],
-  );
-
+  const replaceUI = useMemo(() => (
+    <Stack style={zeroGap}>
+      {didGenerateAndReplaceError ?
+        <Text size="xs" c="red">
+          Failed to generate. Please try again.
+        </Text>
+        : <></>}
+      <Textarea label="Generate a list of..." size="sm" data-autofocus minRows={1} maxRows={4} autosize mt={5} value={generateAndReplacePrompt} onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}/>
+      <NumberInput label="Items to generate" size="xs" mb={10} min={1} max={10} defaultValue={3} value={generateAndReplaceNumber} onChange={setGenerateAndReplaceNumber} />
+      <Switch color="grape" mb={10} size="xs" label="Make outputs unconventional" value={generateAndReplaceIsUnconventional} onChange={(e) => setGenerateAndReplaceIsUnconventional(e.currentTarget.checked)}/>
+      <Button size="sm" variant="light" color="grape" fullWidth onClick={handleGenerateAndReplace} loading={areValuesLoading}>Replace</Button>
+    </Stack>
+  ), [didGenerateAndReplaceError, generateAndReplacePrompt, setGenerateAndReplacePrompt, generateAndReplaceNumber, setGenerateAndReplaceNumber, generateAndReplaceIsUnconventional, setGenerateAndReplaceIsUnconventional, handleGenerateAndReplace, areValuesLoading]);
+  
   return (
     <Popover
       position="right-start"

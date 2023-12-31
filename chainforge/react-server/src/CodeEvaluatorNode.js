@@ -180,7 +180,7 @@ export const CodeEvaluatorComponent = forwardRef(({ code, id, type: node_type, p
     });
   };
 
-  // TODO: Define functions you want accessible from the parent component
+  // Define functions accessible from the parent component
   useImperativeHandle(ref, () => ({
     run,
   }));

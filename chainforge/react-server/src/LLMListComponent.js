@@ -1,12 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-  forwardRef,
-  useImperativeHandle,
-  useReducer,
-} from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle, useReducer, useMemo } from "react";
 import { DragDropContext, Draggable } from "react-beautiful-dnd";
 import { Menu } from "@mantine/core";
 import { v4 as uuid } from "uuid";
@@ -192,7 +184,7 @@ export function LLMList({llms, onItemsChange, hideTrashIcon}) {
 }
 
 
-export const LLMListContainer = forwardRef(({description, modelSelectButtonText, initLLMItems, onSelectModel, selectModelAction, onItemsChange, hideTrashIcon}, ref) => {
+export const LLMListContainer = forwardRef(({description, modelSelectButtonText, initLLMItems, onSelectModel, selectModelAction, onItemsChange, hideTrashIcon, bgColor}, ref) => {
 
   // All available LLM providers, for the dropdown list
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
@@ -326,38 +318,32 @@ export const LLMListContainer = forwardRef(({description, modelSelectButtonText,
     refreshLLMProviderList,
   }));
 
-  return (
-    <div className="llm-list-container nowheel">
-      <div className="llm-list-backdrop">
-        {description || "Models to query:"}
-        <div className="add-llm-model-btn nodrag">
-          <Menu
-            transitionProps={{ transition: "pop-top-left" }}
+  const _bgStyle = useMemo(() => (
+    bgColor ? {backgroundColor: bgColor} : {}
+  ), [bgColor]);
+
+  return (<div className="llm-list-container nowheel" style={_bgStyle}>
+    <div className="llm-list-backdrop" style={_bgStyle}>
+      {description || "Models to query:"}
+      <div className="add-llm-model-btn nodrag">
+        <Menu transitionProps={{ transition: 'pop-top-left' }}
             position="bottom-start"
             width={220}
             withinPortal={true}
-          >
-            <Menu.Target>
-              <button>{modelSelectButtonText || "Add +"}</button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              {AvailableLLMs.map((item) => (
-                <Menu.Item
-                  key={item.model}
-                  onClick={() => handleSelectModel(item.base_model)}
-                  icon={item.emoji}
-                >
-                  {item.name}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
-        </div>
-      </div>
-
-      <div className="nodrag">
-        <LLMList llms={llmItems} onItemsChange={onLLMListItemsChange} hideTrashIcon={hideTrashIcon} />
+        >
+          <Menu.Target>
+            <button style={_bgStyle}>{modelSelectButtonText || "Add +"}</button>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {AvailableLLMs.map(item => (
+                <Menu.Item key={item.model} onClick={() => handleSelectModel(item.base_model)} icon={item.emoji}>{item.name}</Menu.Item>))
+            }
+          </Menu.Dropdown>
+        </Menu>
       </div>
     </div>
-  );
+    <div className="nodrag">
+        <LLMList llms={llmItems} onItemsChange={onLLMListItemsChange} hideTrashIcon={hideTrashIcon} />
+    </div>
+  </div>);
 });

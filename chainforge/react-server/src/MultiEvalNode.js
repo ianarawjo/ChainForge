@@ -8,16 +8,17 @@ import NodeLabel from "./NodeLabelComponent";
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 import useStore from "./store";
-import fetch_from_backend from "./fetch_from_backend";
 import { APP_IS_RUNNING_LOCALLY, stripLLMDetailsFromResponses, toStandardResponseFormat } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { CodeEvaluatorComponent } from "./CodeEvaluatorNode";
+import { LLMEvaluatorComponent } from "./LLMEvalNode";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 /** A wrapper for a single evaluator, that can be renamed */
-const EvaluatorContainer = ({name, type: evalType, children}) => {
+const EvaluatorContainer = ({name, type: evalType, padding, children}) => {
   const [opened, { toggle }] = useDisclosure(false);
+  const _padding = useMemo(() => padding ?? "0px", [padding]);
 
   return (
     <Card withBorder shadow="sm" mb='xs' radius="md" style={{cursor: 'default'}}>
@@ -56,7 +57,7 @@ const EvaluatorContainer = ({name, type: evalType, children}) => {
         </Group>
       </Card.Section>
 
-      <Card.Section p={'0px'}>
+      <Card.Section p={opened ? _padding : "0px"}>
         <Collapse in={opened}>
           {children}
         </Collapse>
@@ -155,7 +156,9 @@ const MultiEvalNode = ({data, id}) => {
                                 type={'evaluator'} 
                                 progLang={'javascript'} />
       </EvaluatorContainer>
-      <EvaluatorContainer name="Grammaticality" type="LLM" />
+      <EvaluatorContainer name="Grammaticality" type="LLM" padding="8px 8px 8px 8px">
+        <LLMEvaluatorComponent prompt="Is this grammatical?" format="bin" showUserInstruction={false} />
+      </EvaluatorContainer>
       <EvaluatorContainer name="Length" type="Python">
         <CodeEvaluatorComponent code={"def evaluate(r):\n\treturn len(r.text.split())"} 
                                 id={id} 

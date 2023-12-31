@@ -119,6 +119,9 @@ hr {
     font-size: 10pt;
     color: #777;
   }
+  .llm-scorer-container {
+    width: 290px;
+  }
 
 button.remove-edge-btn {
   border-radius: 50%;
