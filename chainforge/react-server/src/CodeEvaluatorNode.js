@@ -16,7 +16,7 @@ import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
 import fetch_from_backend from './fetch_from_backend';
-import { APP_IS_RUNNING_LOCALLY, stripLLMDetailsFromResponses, toStandardResponseFormat } from './backend/utils';
+import { APP_IS_RUNNING_LOCALLY, getVarsAndMetavars, stripLLMDetailsFromResponses, toStandardResponseFormat } from './backend/utils';
 import InspectFooter from './InspectFooter';
 import { escapeBraces } from './backend/template';
 import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
@@ -243,6 +243,7 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
   // For genAI features
   const flags = useStore((state) => state.flags);
   const [isEvalCodeGenerating, setIsEvalCodeGenerating] = useState(false);
+  const [lastContext, setLastContext] = useState({});
 
   // For displaying error messages to user
   const alertModal = useRef(null);
@@ -265,6 +266,18 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
   const [lastRunLogs, setLastRunLogs] = useState("");
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
+
+  const pullInputs = useCallback(() => {
+    // Pull input data
+    let pulled_inputs = pullInputData(["responseBatch"], id);
+    if (!pulled_inputs || !pulled_inputs["responseBatch"]) {
+      console.warn(`No inputs for code ${node_type} node.`);
+      return null;
+    }
+    // Convert to standard response format (StandardLLMResponseFormat)
+    pulled_inputs = pulled_inputs["responseBatch"].map(toStandardResponseFormat);
+    return pulled_inputs;
+  }, [id, pullInputData]);
 
   // On initialization
   useEffect(() => {
@@ -299,7 +312,10 @@ consider installing ChainForge locally.`,
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
       setDataPropsForNode(id, { refresh: false });
-      setStatus("warning");
+      setStatus('warning');
+      const pulled_inputs = pullInputs();
+      if (pulled_inputs) 
+        setLastContext(getVarsAndMetavars(pulled_inputs));
     }
   }, [data]);
 
@@ -328,13 +344,8 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
     }
 
     // Pull input data
-    let pulled_inputs = pullInputData(["responseBatch"], id);
-    if (!pulled_inputs || !pulled_inputs.responseBatch) {
-      console.warn(`No inputs for code ${node_type} node.`);
-      return;
-    }
-    // Convert to standard response format (StandardLLMResponseFormat)
-    pulled_inputs = pulled_inputs.responseBatch.map(toStandardResponseFormat);
+    let pulled_inputs = pullInputs();
+    if (!pulled_inputs) return;
 
     setStatus('loading');
     setLastRunLogs("");
@@ -372,6 +383,7 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
         // Ping any vis + inspect nodes attached to this node to refresh their contents:
         pingOutputNodes(id);
         setLastResponses(stripLLMDetailsFromResponses(json.responses));
+        setLastContext(getVarsAndMetavars(json.responses));
         setLastRunSuccess(true);
 
         setDataPropsForNode(id, {
@@ -485,17 +497,18 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
       </Tooltip>
     ];
 
-    if (flags['aiSupport'])
+    if (flags['aiSupport']) 
       btns.push(
         <AIGenCodeEvaluatorPopover 
           key='ai-popover'
           progLang={progLang}
+          context={lastContext}
           onGeneratedCode={(code) => { codeEvaluatorRef?.current?.setCodeText(code); handleCodeEdit(code); }}
           onLoadingChange={(isLoading) => setIsEvalCodeGenerating(isLoading)} />
       );
 
     return btns;
-  }, [openInfoModal, flags, codeEvaluatorRef, progLang, handleCodeEdit]);
+  }, [openInfoModal, flags, codeEvaluatorRef, progLang, lastContext]);
 
   return (
     <BaseNode classNames="evaluator-node" nodeId={id}>

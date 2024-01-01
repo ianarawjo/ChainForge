@@ -8,7 +8,7 @@ import useStore from './store';
 import { INFO_CODEBLOCK_JS, INFO_CODEBLOCK_PY, INFO_EXAMPLE_JS, INFO_EXAMPLE_PY } from './CodeEvaluatorNode';
 import { queryLLM } from './backend/backend';
 import { splitText } from './SplitNode';
-import { cleanEscapedBraces, escapeBraces } from './backend/template';
+import { escapeBraces } from './backend/template';
 
 const zeroGap = {gap: "0rem"};
 const popoverShadow ="rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -42,6 +42,38 @@ const changeFourSpaceTabsToTwo = (code) => {
   }
   return retabbed_lines.join('\n');
 };
+
+// Generates part of a longer prompt to the LLM about the shape of Response objects
+// input into an evaluator (the names of template vars, and available metavars)
+const generateContextPromptForVarMetaVarContext = (context) => {
+  if (!context) return "";
+
+  const promptify_key_arr = (arr) => {
+    if (arr.length === 1)
+      return `with the key "${arr[0]}"`;
+    else return "with the keys " + arr.map(s => `"${s}"`).join(", ");
+  }
+
+  let context_str = "";
+  const metavars = context.metavars ? context.metavars.filter((m) => !m.startsWith("LLM_")) : [];
+  const has_vars = context.vars && context.vars.length > 0;
+  const has_metavars = metavars && metavars.length > 0;
+  const has_context = has_vars || has_metavars;
+  if (has_context)
+    context_str = "\nThe ResponseInfo instances have ";
+  if (has_vars) {
+    context_str += "var dictionaries " + promptify_key_arr(context.vars);
+    if (has_metavars) context_str += " and ";
+  }
+  if (has_metavars) {
+    context_str += "meta dictionaries " + promptify_key_arr(metavars);
+  }
+  if (has_context)
+    context_str += ".\n";
+
+  return context_str;
+}
+
 
 // The generic popover button, a sparkly purple button that shows a popover with 'Generative AI' back on top. 
 // Extend for specific implementations .
@@ -232,6 +264,8 @@ export function AIGenCodeEvaluatorPopover({
   onGeneratedCode,
   // Callback that takes a boolean that the popover will call to set whether the values are loading and are done loading
   onLoadingChange,
+  // The keys available in vars and metavar dicts, for added context to the LLM
+  context,
 }) {
 
   // API keys 
@@ -251,11 +285,13 @@ export function AIGenCodeEvaluatorPopover({
     setDidEncounterError(false);
     setAwaitingResponse(true);
     if (onLoadingChange) onLoadingChange(true);
+
+    const context_str = generateContextPromptForVarMetaVarContext(context);
     
     const template = 
-`You are to generate a function to evaluate textual data, given a user-specified specification. 
+`You are to generate one function to evaluate textual data, given a user-specified specification. 
 The function will be mapped over an array of objects of type ResponseInfo.
-Your solution must contain a function called 'evaluate' that takes a single object, 'r', of type ResponseInfo. A ResponseInfo is defined as:
+Your solution must contain a single function called 'evaluate' that takes a single object, 'r', of type ResponseInfo. A ResponseInfo is defined as:
 
 \`\`\`${progLang === 'javascript' ? INFO_CODEBLOCK_JS : INFO_CODEBLOCK_PY}\`\`\`
 
@@ -266,7 +302,7 @@ For instance, here is an evaluator that returns the length of a response:
 You can only write in ${progLang.charAt(0).toUpperCase() + progLang.substring(1)}. 
 You ${progLang === 'javascript' ? 'CANNOT import any external packages. ' : 'can use imports if necessary. Do not include any type hints.'} 
 Your function can only return boolean, numeric, or string values.
-
+${context_str}
 Here is the user's specification:
 
 ${prompt}`;
@@ -293,16 +329,19 @@ ${prompt}`;
       console.log("LLM said: ", response);
 
       // Try to extract out a single code block from the response
-      const code_blocks = splitText(response, "code");
+      let code_blocks = splitText(response, "code");
 
       // Concat all found code blocks
       if (code_blocks.length > 0) {
         // Success! (we assume...)
-        let cleaned_code = cleanEscapedBraces(code_blocks.join("\n\n"));
-        if (progLang === 'python') {
-          // We are using 2-space tabs but LLM outputs are generally 4-space tabs. Clean this up:
-          cleaned_code = changeFourSpaceTabsToTwo(cleaned_code)
-        }
+        // If there's more than 1 code block, remove any others that also define an 'evaluate' function,
+        // after the first appearance:
+        const first_eval = code_blocks.findIndex((c) => c.includes('evaluate(r'));
+        code_blocks = code_blocks.filter((c, idx) => idx <= first_eval || !c.includes('evaluate(r'));
+
+        // We are using 2-space tabs but LLM outputs are generally 4-space tabs. Clean this up:
+        const cleaned_code = changeFourSpaceTabsToTwo(code_blocks.join("\n\n"));
+
         onGeneratedCode(cleaned_code);
       } else {
         // No code detected in response!
@@ -311,7 +350,7 @@ ${prompt}`;
     })
     .catch(handleError);
 
-  }, [progLang, onLoadingChange, onGeneratedCode, prompt, alertModal]);
+  }, [progLang, onLoadingChange, onGeneratedCode, prompt, context, alertModal]);
 
   return (
     <AIPopover>
