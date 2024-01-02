@@ -57,13 +57,13 @@ const ItemsNode = ({ data, id }) => {
 
     // Handle a change in a text fields' input.
     const setFieldsFromText = useCallback((text_val) => {
-        // Debounce the state change to only run 500 ms after the edit
+        // Debounce the state change to only run 300 ms after the edit
         debounce((_text_val) => {
             // Update the data for this text fields' id.
             const new_data = { text: _text_val, fields: processCSV(_text_val).map(stripWrappingQuotes).map(escapeBraces) };
             setDataPropsForNode(id, new_data);
             pingOutputNodes(id);
-        }, 500)(text_val);
+        }, 300)(text_val);
     }, [id, pingOutputNodes, setDataPropsForNode]);
 
     const handKeyDown = useCallback((event) => {

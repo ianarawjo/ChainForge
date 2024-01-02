@@ -163,7 +163,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     })) {
         signalDirty();
     }
-  }, [setDataPropsForNode, signalDirty]);
+  }, [signalDirty]);
 
   const updateShowContToggle = useCallback((pulled_data) => {
     if (node_type === 'chat') return; // always show when chat node
@@ -686,7 +686,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         setNumGenerations(n);
         setDataPropsForNode(id, {n: n});
     }
-  }, [numGenerationsLastRun, setDataPropsForNode, status]);
+  }, [numGenerationsLastRun, status]);
 
   const hideStatusIndicator = () => {
     if (status !== 'none') { setStatus('none'); }

@@ -145,7 +145,7 @@ const TextFieldsNode = ({ data, id }) => {
   }, [templateVars]);
 
   // Save the state of a textfield when it changes and update hooks
-  const handleTextFieldChange = useCallback((field_id, val) => {
+  const handleTextFieldChange = useCallback((field_id, val, shouldDebounce) => {
     // Update the value of the controlled Textarea component
     let new_fields = {...textfieldsValues};
     new_fields[field_id] = val;
@@ -155,8 +155,12 @@ const TextFieldsNode = ({ data, id }) => {
     let new_data = updateTemplateVars({ 'fields': new_fields });
     if (new_data.vars) setTemplateVars(new_data.vars);
 
-    // Debounce the global state change to happen only after 500ms, as it forces a costly rerender:
-    debounce(setDataPropsForNode, 500)(id, new_data);
+    // Debounce the global state change to happen only after 300ms, as it forces a costly rerender:
+    debounce((_id, _new_data) => {
+      setDataPropsForNode(_id, _new_data);
+      pingOutputNodes(_id);
+    }, shouldDebounce ? 300 : 1)(id, new_data);
+
   }, [textfieldsValues, setTextfieldsValues, templateVars, updateTemplateVars, setTemplateVars, pingOutputNodes, setDataPropsForNode, id]);
 
   // Dynamically update the textareas and position of the template hooks
@@ -269,8 +273,8 @@ const TextFieldsNode = ({ data, id }) => {
                   value={textfieldsValues[i]} 
                   placeholder={flags["aiAutocomplete"] ? placeholder : undefined} 
                   disabled={fieldVisibility[i] === false}
-                  onBlur={() => pingOutputNodes(id)}
-                  onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)}
+                  onBlur={(event) => handleTextFieldChange(i, event.currentTarget.value, false)}
+                  onChange={(event) => handleTextFieldChange(i, event.currentTarget.value, true)}
                   onKeyDown={(event) => handleTextAreaKeyDown(event, placeholder, i)} />
           {Object.keys(textfieldsValues).length > 1 ? (
             <div style={{display: 'flex', flexDirection: 'column'}}>
