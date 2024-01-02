@@ -5,7 +5,7 @@ import {
   applyEdgeChanges,
 } from 'reactflow';
 import { escapeBraces } from './backend/template';
-import { filterDict } from './backend/utils';
+import { deepcopy, filterDict } from './backend/utils';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
 import { DuplicateVariableNameError } from './backend/errors';
 
@@ -304,7 +304,7 @@ const useStore = create((set, get) => ({
           if (n.id === id) {
             for (const key of Object.keys(data_props)) 
               n.data[key] = data_props[key]; 
-            n.data = JSON.parse(JSON.stringify(n.data));
+            n.data = deepcopy(n.data);
           }
           return n;
         })

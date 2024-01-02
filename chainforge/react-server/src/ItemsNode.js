@@ -56,14 +56,19 @@ const ItemsNode = ({ data, id }) => {
     }, []);
 
     // Handle a change in a text fields' input.
-    const setFieldsFromText = useCallback((text_val) => {
-        // Debounce the state change to only run 300 ms after the edit
-        debounce((_text_val) => {
+    const setFieldsFromText = useCallback((text_val, no_debounce) => {
+        const _update = (_text_val) => {
             // Update the data for this text fields' id.
             const new_data = { text: _text_val, fields: processCSV(_text_val).map(stripWrappingQuotes).map(escapeBraces) };
             setDataPropsForNode(id, new_data);
             pingOutputNodes(id);
-        }, 300)(text_val);
+        };
+
+        // Debounce the state change to only run 300 ms after the edit
+        if (no_debounce)
+            _update(text_val);
+        else 
+            debounce(_update, 300)(text_val);
     }, [id, pingOutputNodes, setDataPropsForNode]);
 
     const handKeyDown = useCallback((event) => {
@@ -106,7 +111,7 @@ const ItemsNode = ({ data, id }) => {
         setCountText(
             <Text size="xs" style={{ marginTop: '5px' }} color='gray' align='right'>{elements.length} elements</Text>
         );
-    }, [data.text, handleDivOnClick]);
+    }, [data, handleDivOnClick]);
 
     // When isEditing changes, add input
     useEffect(() => {
@@ -139,8 +144,7 @@ const ItemsNode = ({ data, id }) => {
         if (isEditing || !data.text) return;
 
         renderCsvDiv();
-
-    }, [id, data.text]);
+    }, [id, data]);
 
     return (
     <BaseNode classNames="text-fields-node" nodeId={id}>
@@ -151,8 +155,8 @@ const ItemsNode = ({ data, id }) => {
                     (flags["aiSupport"] ? 
                       [<AIPopover key='ai-popover'
                                   values={data.fields ?? []}
-                                  onAddValues={(vals) => setFieldsFromText(data.text + ", " + vals.map(makeSafeForCSLFormat).join(", "))}
-                                  onReplaceValues={(vals) => setFieldsFromText(vals.map(makeSafeForCSLFormat).join(", "))}
+                                  onAddValues={(vals) => setFieldsFromText(data.text + ", " + vals.map(makeSafeForCSLFormat).join(", "), true)}
+                                  onReplaceValues={(vals) => setFieldsFromText(vals.map(makeSafeForCSLFormat).join(", "), true)}
                                   areValuesLoading={isLoading}
                                   setValuesLoading={setIsLoading}
                                   apiKeys={apiKeys} />]
