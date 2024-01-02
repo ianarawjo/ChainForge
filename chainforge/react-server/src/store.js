@@ -5,7 +5,7 @@ import {
   applyEdgeChanges,
 } from 'reactflow';
 import { escapeBraces } from './backend/template';
-import { filterDict } from './backend/utils';
+import { deepcopy, filterDict } from './backend/utils';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
 import { DuplicateVariableNameError } from './backend/errors';
 
@@ -292,14 +292,19 @@ const useStore = create((set, get) => ({
     return pulled_data;
   },
 
+  /**
+   * Sets select 'data' properties for node 'id'. This updates global state, and forces re-renders. Use sparingly.
+   * @param {*} id The id of the node to set 'data' properties for.
+   * @param {*} data_props The properties to set on the node's 'data'. 
+   */
   setDataPropsForNode: (id, data_props) => {
     set({
       nodes: (nds => 
         nds.map(n => {
           if (n.id === id) {
-            for (const key of Object.keys(data_props))
-              n.data[key] = data_props[key];
-            n.data = JSON.parse(JSON.stringify(n.data));  // deep copy json
+            for (const key of Object.keys(data_props)) 
+              n.data[key] = data_props[key]; 
+            n.data = deepcopy(n.data);
           }
           return n;
         })

@@ -125,6 +125,19 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [progressAnimated, setProgressAnimated] = useState(true);
   const [runTooltip, setRunTooltip] = useState(null);
 
+  // Debounce helpers
+  const debounceTimeoutRef = useRef(null);
+  const debounce = (func, delay) => {
+    return (...args) => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      debounceTimeoutRef.current = setTimeout(() => {
+        func(...args);
+      }, delay);
+    };
+  };
+
   const triggerAlert = useCallback((msg) => {
     setProgress(undefined);
     llmListContainer?.current?.resetLLMItemsProgress();
@@ -151,8 +164,11 @@ const PromptNode = ({ data, id, type: node_type }) => {
   }, [signalDirty]);
 
   const onLLMListItemsChange = useCallback((new_items, old_items) => {
-    setLLMItemsCurrState(new_items);
-    setDataPropsForNode(id, { llms: new_items });
+    // Update the local and global state, with some debounce to limit re-rendering:
+    debounce((_id, _new_items) => {
+        setLLMItemsCurrState(_new_items);
+        setDataPropsForNode(_id, { llms: _new_items });
+    }, 300)(id, new_items);
     
     // If there's been any change to the item list, signal dirty: 
     if (new_items.length !== old_items.length || !new_items.every(i => old_items.some(s => s.key === i.key))) {
@@ -538,16 +554,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         
             // Update individual progress bars
             const num_llms = _llmItemsCurrState.length;
-            const num_resp_per_llm = (max_responses / num_llms);
-            llmListContainer?.current?.updateProgress(item => {
-                if (item.key in progress_by_llm_key) {
-                    item.progress = {
-                        success: progress_by_llm_key[item.key]['success'] / num_resp_per_llm * 100,
-                        error: progress_by_llm_key[item.key]['error'] / num_resp_per_llm * 100,
-                    }
-                }
-                return item;
-            });
+            const num_resp_per_llm = (max_responses / num_llms);            
             
             // Update total progress bar
             const total_num_success = Object.keys(progress_by_llm_key).reduce((acc, llm_key) => {
@@ -557,12 +564,26 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 return acc + progress_by_llm_key[llm_key]['error'];
             }, 0);
 
-            setProgress({
-                success: Math.max(5, total_num_success / max_responses * 100),
-                error: total_num_error / max_responses * 100 }
-            );
+            // Debounce the progress bars UI update to ensure we don't re-render too often:
+            debounce(() => {
+                llmListContainer?.current?.updateProgress(item => {
+                    if (item.key in progress_by_llm_key) {
+                        item.progress = {
+                            success: progress_by_llm_key[item.key]['success'] / num_resp_per_llm * 100,
+                            error: progress_by_llm_key[item.key]['error'] / num_resp_per_llm * 100,
+                        }
+                    }
+                    return item;
+                });
+
+                setProgress({
+                    success: Math.max(5, total_num_success / max_responses * 100),
+                    error: total_num_error / max_responses * 100 }
+                );
+            }, 30)();
         };
     };
+
 
     // Run all prompt permutations through the LLM to generate + cache responses:
     const query_llms = () => {
@@ -638,6 +659,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
                 // so we can keep track of 'upstream' LLMs (and plot against them) later on:
                 const llm_metavar_key = getUniqueLLMMetavarKey(json.responses);
+
                 setDataPropsForNode(id, {fields: json.responses.map(
                     resp_obj => resp_obj['responses'].map(
                         r => {

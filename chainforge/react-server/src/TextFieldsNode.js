@@ -273,7 +273,6 @@ const TextFieldsNode = ({ data, id }) => {
                   value={textfieldsValues[i]} 
                   placeholder={flags["aiAutocomplete"] ? placeholder : undefined} 
                   disabled={fieldVisibility[i] === false}
-                  onBlur={(event) => handleTextFieldChange(i, event.currentTarget.value, false)}
                   onChange={(event) => handleTextFieldChange(i, event.currentTarget.value, true)}
                   onKeyDown={(event) => handleTextAreaKeyDown(event, placeholder, i)} />
           {Object.keys(textfieldsValues).length > 1 ? (
