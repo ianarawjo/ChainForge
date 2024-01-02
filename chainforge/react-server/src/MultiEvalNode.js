@@ -133,6 +133,7 @@ const MultiEvalNode = ({data, id}) => {
         component = <Alert>Error: Unknown evaluator type {e.type}</Alert>;
       }
       return <EvaluatorContainer name={e.name} 
+                                 key={`${e.name}-${idx}`}
                                  type={EVAL_TYPE_PRETTY_NAME[e.type]} 
                                  onDelete={() => setEvaluators(evaluators.filter((_, i) => i !== idx))}
                                  padding={e.type === 'llm' ? "8px" : undefined}>
