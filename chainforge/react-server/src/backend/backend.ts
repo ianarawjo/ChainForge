@@ -732,21 +732,20 @@ export async function queryLLM(id: string,
       vars_lookup[varname][v] = i;
     });
   });
+  const vars_entries = Object.entries(vars_lookup);
   res.sort((a, b) => {
     if (!a.vars || !b.vars) return 0;
-    for (const [varname, vals] of Object.entries(vars_lookup)) {
+    for (const [varname, vals] of vars_entries) {
       if (varname in a.vars && varname in b.vars) {
-        const a_val = a.vars[varname];
-        const b_val = b.vars[varname];
-        const a_idx = vals[a_val];
-        const b_idx = vals[b_val];
+        const a_idx = vals[a.vars[varname]];
+        const b_idx = vals[b.vars[varname]];
         if (a_idx > -1 && b_idx > -1 && a_idx !== b_idx) 
           return a_idx - b_idx;
       }
     }
     return 0;
   });
-  
+
   // Save the responses *of this run* to the storage cache, for further recall:
   let cache_filenames = past_cache_files;
   llms.forEach((llm_spec: string | Dict) => {
@@ -759,7 +758,6 @@ export async function queryLLM(id: string,
       cache_files: cache_filenames,
       responses_last_run: res,
     });
-  
   // Return all responses for all LLMs
   return {
     responses: res, 
