@@ -92,16 +92,16 @@ const selector = (state) => ({
 
 // The initial LLM to use when new flows are created, or upon first load
 const INITIAL_LLM = () => {
-  const falcon7b = {
-    key: uuid(),
-    name: "Falcon.7B.Instruct",
-    emoji: "🤗",
-    model: "tiiuae/falcon-7b-instruct",
-    base_model: "hf",
-    temp: 1.0,
-    settings: getDefaultModelSettings("hf"),
-    formData: getDefaultModelFormData("hf"),
-  };
+  let falcon7b = { 
+    key: uuid(), 
+    name: "Mistral-7B", 
+    emoji: "🤗", 
+    model: "mistralai/Mistral-7B-Instruct-v0.1", 
+    base_model: "hf", 
+    temp: 1.0, 
+    settings: getDefaultModelSettings('hf'),
+    formData: getDefaultModelFormData('hf'), 
+  }; 
   falcon7b.formData.shortname = falcon7b.name;
   falcon7b.formData.model = falcon7b.model;
   return falcon7b;
