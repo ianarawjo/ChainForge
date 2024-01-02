@@ -145,7 +145,7 @@ const TextFieldsNode = ({ data, id }) => {
     setDataPropsForNode(id, new_data);
     pingOutputNodes(id);
 
-  }, [textfieldsValues, templateVars, updateTemplateVars, id]);
+  }, [textfieldsValues, setTextfieldsValues, templateVars, updateTemplateVars, setTemplateVars, pingOutputNodes, setDataPropsForNode, id]);
 
   // Dynamically update the textareas and position of the template hooks
   const ref = useRef(null);
@@ -214,7 +214,7 @@ const TextFieldsNode = ({ data, id }) => {
   }
 
   // Replace the entirety of `textfieldValues` with `newFields`
-  function replaceFields(fields) {
+  const replaceFields = useCallback((fields) => {
     const buffer = {};
     for (const field of fields) {
       const uid = getUID(buffer);
@@ -222,10 +222,11 @@ const TextFieldsNode = ({ data, id }) => {
     }
     setTextfieldsValues(buffer);
     let new_data = updateTemplateVars({ 'fields': buffer });
-    if (new_data.vars) setTemplateVars(new_data.vars);
-    setDataPropsForNode(id, { fields: buffer });
+    if (new_data.vars !== undefined)
+      setTemplateVars(new_data.vars);
+    setDataPropsForNode(id, new_data);
     pingOutputNodes(id);
-  }
+  }, [updateTemplateVars, setTextfieldsValues, getUID, setTemplateVars, setDataPropsForNode, pingOutputNodes, id]);
 
   // Whether a placeholder is needed for the text field with id `i`.
   function placeholderNeeded(i) {
