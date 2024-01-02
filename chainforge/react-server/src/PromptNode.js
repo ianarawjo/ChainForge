@@ -15,7 +15,6 @@ import ChatHistoryView from './ChatHistoryView';
 import InspectFooter from './InspectFooter';
 import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
 import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
-import { DuplicateVariableNameError } from './backend/errors';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -232,16 +231,18 @@ const PromptNode = ({ data, id, type: node_type }) => {
   }, []);
 
   // On upstream changes
+  const refresh = useMemo(() => data.refresh, [data.refresh]);
+  const refreshLLMList = useMemo(() => data.refreshLLMList, [data.refreshLLMList]);
   useEffect(() => {
-    if (data.refresh === true) {
+    if (refresh === true) {
       setDataPropsForNode(id, { refresh: false });
       setStatus('warning');
       handleOnConnect();
-    } else if (data.refreshLLMList === true) {
+    } else if (refreshLLMList === true) {
       llmListContainer?.current?.refreshLLMProviderList();
       setDataPropsForNode(id, { refreshLLMList: false });
     }
-  }, [data]);
+  }, [refresh, refreshLLMList]);
 
   // Chat nodes only. Pulls input data attached to the 'past conversations' handle.
   // Returns a tuple (past_chat_llms, __past_chats), where both are undefined if nothing is connected.
