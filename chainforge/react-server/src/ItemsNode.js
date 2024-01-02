@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Skeleton, Text } from '@mantine/core';
 import useStore from './store';
 import NodeLabel from './NodeLabelComponent'
@@ -31,20 +31,22 @@ const ItemsNode = ({ data, id }) => {
     const [isEditing, setIsEditing] = useState(true);
     const [csvInput, setCsvInput] = useState(null);
     const [countText, setCountText] = useState(null);
-  
-    // Only if AI autocomplete is enabled. 
-    // TODO: This is harder to implement; see https://codepen.io/2undercover/pen/oNzyYO
-    const [autocompletePlaceholders, setAutocompletePlaceholders] = useState([]);
 
     // Whether text field is in a loading state
     const [isLoading, setIsLoading] = useState(false);
 
-    const [aiSuggestionsManager] = useState(new AISuggestionsManager(
-      // Do nothing when suggestions are simply updated because we are managing the placeholder state manually here.
-      undefined,
-      // When suggestions are refreshed, revise placeholders
-      setAutocompletePlaceholders
-    ));
+    // Debounce helpers
+    const debounceTimeoutRef = useRef(null);
+    const debounce = (func, delay) => {
+        return (...args) => {
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+        }
+        debounceTimeoutRef.current = setTimeout(() => {
+            func(...args);
+        }, delay);
+        };
+    };
 
     // initializing
     useEffect(() => {
@@ -55,10 +57,13 @@ const ItemsNode = ({ data, id }) => {
 
     // Handle a change in a text fields' input.
     const setFieldsFromText = useCallback((text_val) => {
-        // Update the data for this text fields' id.
-        let new_data = { text: text_val, fields: processCSV(text_val).map(stripWrappingQuotes).map(escapeBraces) };
-        setDataPropsForNode(id, new_data);
-        pingOutputNodes(id);
+        // Debounce the state change to only run 300 ms after the edit
+        debounce((_text_val) => {
+            // Update the data for this text fields' id.
+            const new_data = { text: _text_val, fields: processCSV(_text_val).map(stripWrappingQuotes).map(escapeBraces) };
+            setDataPropsForNode(id, new_data);
+            pingOutputNodes(id);
+        }, 300)(text_val);
     }, [id, pingOutputNodes, setDataPropsForNode]);
 
     const handKeyDown = useCallback((event) => {

@@ -554,7 +554,7 @@ def initCustomProvider():
     if not os.path.isdir(provider_scripts_dir):
         # Create the directory
         try:
-            os.mkdir(provider_scripts_dir)
+            os.makedirs(provider_scripts_dir, exist_ok=True)
         except Exception as e:
             return jsonify({'error': f"Error creating a new directory 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
 

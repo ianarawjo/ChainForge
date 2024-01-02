@@ -9,7 +9,6 @@ import BaseNode from './BaseNode';
 import { setsAreEqual } from './backend/utils';
 import AIPopover from './AiPopover';
 import AISuggestionsManager from './backend/aiSuggestionsManager';
-import DefaultDict from './backend/defaultdict';
 
 // Helper funcs
 const union = (setA, setB) => {
@@ -47,6 +46,19 @@ const TextFieldsNode = ({ data, id }) => {
 
   // Placeholders to show in the textareas. Object keyed by textarea index.
   let [placeholders, setPlaceholders] = useState({});
+
+  // Debounce helpers
+  const debounceTimeoutRef = useRef(null);
+  const debounce = (func, delay) => {
+    return (...args) => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      debounceTimeoutRef.current = setTimeout(() => {
+        func(...args);
+      }, delay);
+    };
+  };
 
   const getUID = useCallback((textFields) => {
     if (textFields) {
@@ -133,7 +145,7 @@ const TextFieldsNode = ({ data, id }) => {
   }, [templateVars]);
 
   // Save the state of a textfield when it changes and update hooks
-  const handleTextFieldChange = useCallback((field_id, val) => {
+  const handleTextFieldChange = useCallback((field_id, val, shouldDebounce) => {
     // Update the value of the controlled Textarea component
     let new_fields = {...textfieldsValues};
     new_fields[field_id] = val;
@@ -142,10 +154,14 @@ const TextFieldsNode = ({ data, id }) => {
     // Update the data for the ReactFlow node
     let new_data = updateTemplateVars({ 'fields': new_fields });
     if (new_data.vars) setTemplateVars(new_data.vars);
-    setDataPropsForNode(id, new_data);
-    pingOutputNodes(id);
 
-  }, [textfieldsValues, templateVars, updateTemplateVars, id]);
+    // Debounce the global state change to happen only after 300ms, as it forces a costly rerender:
+    debounce((_id, _new_data) => {
+      setDataPropsForNode(_id, _new_data);
+      pingOutputNodes(_id);
+    }, shouldDebounce ? 300 : 1)(id, new_data);
+
+  }, [textfieldsValues, setTextfieldsValues, templateVars, updateTemplateVars, setTemplateVars, pingOutputNodes, setDataPropsForNode, id]);
 
   // Dynamically update the textareas and position of the template hooks
   const ref = useRef(null);
@@ -153,7 +169,7 @@ const TextFieldsNode = ({ data, id }) => {
   useEffect(() => {
     const node_height = ref.current.clientHeight;
     setHooksY(node_height + 68);
-  }, [textfieldsValues, handleTextFieldChange]);
+  }, [textfieldsValues]);
 
   const setRef = useCallback((elem) => {
     // To listen for resize events of the textarea, we need to use a ResizeObserver.
@@ -176,11 +192,13 @@ const TextFieldsNode = ({ data, id }) => {
   }, [ref]);
 
   // Pass upstream changes down to later nodes in the chain
+  const refresh = useMemo(() => data.refresh, [data.refresh]);
   useEffect(() => {
-    if (data.refresh && data.refresh === true) {
+    if (refresh === true) {
       pingOutputNodes(id);
+      setDataPropsForNode(id, {refresh: false});
     }
-  }, [data, id, pingOutputNodes]);
+  }, [refresh]);
 
   // Handle keydown events for the text fields
   function handleTextAreaKeyDown(event, placeholder, textareaIndex) {
@@ -214,7 +232,7 @@ const TextFieldsNode = ({ data, id }) => {
   }
 
   // Replace the entirety of `textfieldValues` with `newFields`
-  function replaceFields(fields) {
+  const replaceFields = useCallback((fields) => {
     const buffer = {};
     for (const field of fields) {
       const uid = getUID(buffer);
@@ -222,10 +240,11 @@ const TextFieldsNode = ({ data, id }) => {
     }
     setTextfieldsValues(buffer);
     let new_data = updateTemplateVars({ 'fields': buffer });
-    if (new_data.vars) setTemplateVars(new_data.vars);
-    setDataPropsForNode(id, { fields: buffer });
+    if (new_data.vars !== undefined)
+      setTemplateVars(new_data.vars);
+    setDataPropsForNode(id, new_data);
     pingOutputNodes(id);
-  }
+  }, [updateTemplateVars, setTextfieldsValues, getUID, setTemplateVars, setDataPropsForNode, pingOutputNodes, id]);
 
   // Whether a placeholder is needed for the text field with id `i`.
   function placeholderNeeded(i) {
@@ -254,7 +273,8 @@ const TextFieldsNode = ({ data, id }) => {
                   value={textfieldsValues[i]} 
                   placeholder={flags["aiAutocomplete"] ? placeholder : undefined} 
                   disabled={fieldVisibility[i] === false}
-                  onChange={(event) => handleTextFieldChange(i, event.currentTarget.value)}
+                  onBlur={(event) => handleTextFieldChange(i, event.currentTarget.value, false)}
+                  onChange={(event) => handleTextFieldChange(i, event.currentTarget.value, true)}
                   onKeyDown={(event) => handleTextAreaKeyDown(event, placeholder, i)} />
           {Object.keys(textfieldsValues).length > 1 ? (
             <div style={{display: 'flex', flexDirection: 'column'}}>
