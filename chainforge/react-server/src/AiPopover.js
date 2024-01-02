@@ -356,8 +356,8 @@ ${prompt}`;
     <AIPopover>
       <Stack style={zeroGap}>
         {didEncounterError ? <Text size="xs" c="red">Failed to generate. Please try again.</Text> : <></>}
-        <Textarea label="Describe what to evaluate" size="sm" data-autofocus minRows={2} maxRows={4} autosize mt={5} value={prompt} onChange={(e) => setPrompt(e.currentTarget.value)}/>
-        <Button size="sm" variant="light" color="grape" mt="sm" fullWidth onClick={handleGenerateEvalCode} loading={awaitingResponse}>Generate</Button>
+        <Textarea label="Describe what to evaluate:" size="sm" data-autofocus minRows={2} maxRows={4} autosize mt={5} value={prompt} onChange={(e) => setPrompt(e.currentTarget.value)}/>
+        <Button size="sm" variant="light" color="grape" mt="sm" fullWidth onClick={handleGenerateEvalCode} loading={awaitingResponse}>Generate Code</Button>
       </Stack>
       <AlertModal ref={alertModal} />
     </AIPopover>);
