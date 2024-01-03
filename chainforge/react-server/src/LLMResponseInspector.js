@@ -182,15 +182,14 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       setReceivedResponsesOnce(true);
     }
 
-    const responses = structuredClone(jsonResponses);
+    console.log("HERE")
+    console.log(responses)
+
+    // Filter for search functionality
+    var responses = jsonResponses
 
     if (searchValue.length !== 0){
-      Object.keys(responses).forEach(key => {
-        const response = responses[key]["responses"][0].toLowerCase()
-        if (!response.includes(searchValue)) {
-          delete responses[key]
-        }
-      })
+      responses = responses.filter(response => response["responses"].some(text => text.toLowerCase().includes(searchValue)))
     }
 
     const selected_vars = multiSelectValue;
