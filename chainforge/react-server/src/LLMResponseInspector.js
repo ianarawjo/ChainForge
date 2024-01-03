@@ -5,7 +5,7 @@
  * be deployed in multiple locations.  
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect, Checkbox, Flex, Tabs } from '@mantine/core';
+import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect, Checkbox, Flex, Tabs, Input} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconTable, IconLayoutList } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
@@ -125,6 +125,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   const [multiSelectVars, setMultiSelectVars] = useState([]);
   const [multiSelectValue, setMultiSelectValue] = useState([]);
 
+  const [searchValue, setSearchValue] = useState('');
+
   // The var name to use for columns in the table view
   const [tableColVar, setTableColVar] = useState("LLM");
   const [userSelectedTableCol, setUserSelectedTableCol] = useState(false);
@@ -180,7 +182,17 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       setReceivedResponsesOnce(true);
     }
 
-    const responses = jsonResponses;
+    const responses = structuredClone(jsonResponses);
+
+    if (searchValue.length !== 0){
+      Object.keys(responses).forEach(key => {
+        const response = responses[key]["responses"][0].toLowerCase()
+        if (!response.includes(searchValue)) {
+          delete responses[key]
+        }
+      })
+    }
+
     const selected_vars = multiSelectValue;
 
     // Functions to associate a color to each LLM in responses
@@ -406,7 +418,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       setResponses(divs);
     }
 
-  }, [multiSelectValue, jsonResponses, wideFormat, viewFormat, tableColVar, onlyShowScores]);
+  }, [multiSelectValue, jsonResponses, wideFormat, viewFormat, tableColVar, onlyShowScores, searchValue]);
 
   // When the user clicks an item in the drop-down,
   // we want to autoclose the multiselect drop-down:
@@ -417,6 +429,11 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     }
     setMultiSelectValue(new_val);
   };
+
+
+  const handleSearchValueChange = (content) => {
+    setSearchValue(content.target.value.trim().toLowerCase());
+  }
 
   const sz = useMemo(() => 
     (wideFormat ? 'sm' : 'xs')
@@ -431,6 +448,9 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       </Tabs.List>
       
       <Tabs.Panel value="hierarchy" pt="xs">
+        <Flex gap='xl' align='end'>
+          <Input id='search_bar' size={sz} placeholder={"Search keywords"} w={wideFormat ? '80%' : '100%'} onChange={handleSearchValueChange}/>
+        </Flex>
         <Flex gap='xl' align='end'>
           <MultiSelect ref={multiSelectRef}
                       onChange={handleMultiSelectValueChange}
@@ -452,6 +472,9 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         </Flex>
       </Tabs.Panel>
       <Tabs.Panel value="table" pt="xs">
+        <Flex gap='xl' align='end'>
+          <Input id='search_bar' size={sz} placeholder={"Search keywords"} w="80%" onChange={handleSearchValueChange}/>
+        </Flex>
         <Flex gap='xl' align='end'>
           <NativeSelect 
             value={tableColVar}
