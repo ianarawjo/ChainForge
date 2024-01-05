@@ -182,14 +182,12 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       setReceivedResponsesOnce(true);
     }
 
-    console.log("HERE")
-    console.log(responses)
-
     // Filter for search functionality
     var responses = jsonResponses
-
+    responses[0]["responses"].push("miniverse")
     if (searchValue.length !== 0){
-      responses = responses.filter(response => response["responses"].some(text => text.toLowerCase().includes(searchValue)))
+      responses = responses.filter(response => response["responses"].some(text => {
+        return text.toLowerCase().includes(searchValue)}));
     }
 
     const selected_vars = multiSelectValue;
@@ -224,12 +222,30 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           res_obj.responses.forEach((r, idx) => {
             resp_str_to_eval_res[r] = eval_res_items[idx]
           });
-        const same_resp_text_counts = countResponsesBy(res_obj.responses, (r) => r)[0];
-        const same_resp_keys = Object.keys(same_resp_text_counts).sort((key1, key2) => (same_resp_text_counts[key2] - same_resp_text_counts[key1]));
 
-        // Spans for actual individual response texts
-        const ps = same_resp_keys.map((r, idx) => (
-          <div key={idx}>
+        let responses = res_obj.responses;
+
+        if (searchValue.length !== 0) {
+          let re = new RegExp(searchValue, "gi")
+          responses = responses.filter(response => (response.toLowerCase().includes(searchValue)))
+        }
+
+        const same_resp_text_counts = countResponsesBy(responses, (r) => r)[0];
+        let same_resp_keys = Object.keys(same_resp_text_counts).sort((key1, key2) => (same_resp_text_counts[key2] - same_resp_text_counts[key1]));
+
+        const ps = same_resp_keys.map((r, idx) => {
+          function _getText(text, searchText) {
+            return searchText ? _getTextWithHighlights(text, searchText) : text;
+          }
+        
+          function _getTextWithHighlights(text, searchValue) {
+            const regex = new RegExp(searchValue, 'gi');
+            const newText = text.replace(regex, `<mark class="highlight">$&</mark>`);
+            return <span dangerouslySetInnerHTML={{ __html: newText }} />;
+          }
+
+          const textToShow = _getText(r, searchValue);
+          return (<div key={idx}>
             {same_resp_text_counts[r] > 1 ? 
               (<span className="num-same-responses">{same_resp_text_counts[r]} times</span>)
             : <></>}
@@ -237,9 +253,9 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
               <p className="small-response-metrics">{getEvalResultStr(resp_str_to_eval_res[r])}</p>
             ) : <></>}
             {(contains_eval_res && onlyShowScores) ? <pre>{}</pre> : 
-              <pre className="small-response">{r}</pre>}
+              <div className="small-response">{textToShow}</div>}
           </div>
-        ));
+        )});
 
         // At the deepest level, there may still be some vars left over. We want to display these
         // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
