@@ -497,7 +497,7 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
       </Tooltip>
     ];
 
-    if (flags['aiSupport']) 
+    if (flags['aiSupport'] && node_type === 'evaluator') 
       btns.push(
         <AIGenCodeEvaluatorPopover 
           key='ai-popover'
@@ -508,7 +508,7 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
       );
 
     return btns;
-  }, [openInfoModal, flags, codeEvaluatorRef, progLang, lastContext]);
+  }, [openInfoModal, flags, codeEvaluatorRef, progLang, node_type, lastContext]);
 
   return (
     <BaseNode classNames="evaluator-node" nodeId={id}>
