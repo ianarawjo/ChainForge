@@ -4,10 +4,10 @@
  * Separated from ReactFlow node UI so that it can 
  * be deployed in multiple locations.  
  */
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect, Checkbox, Flex, Tabs } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import { IconTable, IconLayoutList } from '@tabler/icons-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Collapse, MultiSelect, Table, NativeSelect, Checkbox, Flex, Tabs, ActionIcon, Tooltip, TextInput} from '@mantine/core';
+import { useDisclosure, useToggle } from '@mantine/hooks';
+import { IconTable, IconLayoutList, IconLetterCaseToggle, IconFilter } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 import useStore from './store';
 import { filterDict, truncStr, groupResponsesBy } from './backend/utils';
@@ -27,6 +27,7 @@ const countResponsesBy = (responses, keyFunc) => {
   return [responses_by_key, unspecified_group];
 };
 const getLLMName = (resp_obj) => (typeof resp_obj?.llm === 'string' ? resp_obj.llm : resp_obj?.llm?.name);
+const escapeRegExp = (txt) => txt.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 
 const SUCCESS_EVAL_SCORES = new Set(['true', 'yes']);
 const FAILURE_EVAL_SCORES = new Set(['false', 'no']);
@@ -52,6 +53,47 @@ const getEvalResultStr = (eval_item) => {
     </>);
   }
 };
+
+function getIndicesOfSubstringMatches(s, substr, caseSensitive) {
+  let regex = new RegExp(escapeRegExp(substr), 'g' + (caseSensitive ? '' : 'i'));
+  let result;
+  let indices = [];
+  while ( (result = regex.exec(s)) )
+    indices.push(result.index);
+  return indices;
+}
+
+// Splits a string by a substring or regex, but includes the delimiter (substring/regex match) elements in the returned array.
+function splitAndIncludeDelimiter(s, substr, caseSensitive) {
+  let indices = getIndicesOfSubstringMatches(s, substr, caseSensitive);
+  if (indices.length === 0)
+    return [s];
+
+  const len_sub = substr.length;
+  let results = [];
+  let prev_idx = 0;
+  indices.forEach(idx => {
+    const pre_delim = s.substring(prev_idx, idx);
+    const delim = s.substring(idx, idx+len_sub);
+    results.push(pre_delim);
+    results.push(delim);
+    prev_idx = idx+len_sub;
+  });
+  
+  const end_str = s.substring(prev_idx);
+  if (end_str.length > 0) results.push(end_str);
+
+  return results;
+}
+
+// Returns an HTML version of text where 'searchValue' is highlighted.
+function genSpansForHighlightedValue(text, searchValue, caseSensitive) {
+  // Split texts by searchValue and map to <span> and <mark> elements
+  return splitAndIncludeDelimiter(text, searchValue, caseSensitive).map((s, idx) => {
+    if (idx % 2 === 0) return (<span key={idx}>{s}</span>);
+    else               return (<mark key={`m${idx}`} className="highlight">{s}</mark>);
+  });
+}
 
 // Export the JSON responses to an excel file (downloads the file):
 export const exportToExcel = (jsonResponses, filename) => {
@@ -125,6 +167,18 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   const [multiSelectVars, setMultiSelectVars] = useState([]);
   const [multiSelectValue, setMultiSelectValue] = useState([]);
 
+  // Search bar functionality
+  const [searchValue, setSearchValue] = useState('');
+  const [caseSensitive, toggleCaseSensitivity] = useToggle([false, true]);
+  const [filterBySearchValue, toggleFilterBySearchValue] = useToggle([true, false]);
+  const [numMatches, setNumMatches] = useState(-1);
+  const numResponses = useMemo(() => {
+    if (jsonResponses && Array.isArray(jsonResponses) && jsonResponses.length > 0) 
+      return jsonResponses.reduce((acc, resp_obj) => (acc + resp_obj["responses"].length), 0);
+    else 
+      return 0;
+  }, [jsonResponses]);
+
   // The var name to use for columns in the table view
   const [tableColVar, setTableColVar] = useState("LLM");
   const [userSelectedTableCol, setUserSelectedTableCol] = useState(false);
@@ -162,14 +216,14 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     let msvars = found_vars.map(name => (
       // We add a $ prefix to mark this as a prompt parameter, and so 
       // in the future we can add special types of variables without name collisions
-      {value: `${name}`, label: name} 
+      {value: name, label: name} 
     )).concat({value: 'LLM', label: 'LLM'});
     setMultiSelectVars(msvars);
 
     // If only one LLM is present, and user hasn't manually selected one to plot,
     // and there's more than one prompt variable as input, default to plotting the 
     // first found prompt variable as columns instead:
-    if (!userSelectedTableCol && tableColVar === 'LLM' && found_llms.length === 1 && found_vars.length > 1) {
+    if (viewFormat === "table" && !userSelectedTableCol && tableColVar === 'LLM' && found_llms.length === 1 && found_vars.length > 1) {
       setTableColVar(found_vars[0]);
       return; // useEffect will replot with the new values
     }
@@ -179,9 +233,22 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       setMultiSelectValue([msvars[0].value]);
       setReceivedResponsesOnce(true);
     }
+    else if (multiSelectValue.some(name => !msvars.some(o => (o.value === name)))) { 
+      // If the multi select vars changed and no longer includes the user's selected value, 
+      // erase every value that went away, then early exit because useEffect is going to immediately recall this function:
+      setMultiSelectValue(multiSelectValue.filter(name => msvars.some(o => (o.value === name))));
+      return; // useEffect will replot with the new values
+    }
 
-    const responses = jsonResponses;
+    let responses = jsonResponses;
+    let numResponsesDisplayed = 0;
     const selected_vars = multiSelectValue;
+    const empty_cell_text = searchValue.length > 0 ? "(no match)" : "(no data)";
+    const search_regex = new RegExp(escapeRegExp(searchValue), (caseSensitive ? '' : 'i'));
+    
+    // Filter responses by search value, if user has searched
+    if (searchValue.length > 0 && filterBySearchValue)
+      responses = responses.filter(res_obj => res_obj["responses"].some(search_regex.test.bind(search_regex)));
 
     // Functions to associate a color to each LLM in responses
     const color_for_llm = (llm) => (getColorForLLMAndSetIfNotFound(llm) + '99');
@@ -204,21 +271,33 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       return resps.map((res_obj, res_idx) => {
 
         const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
-
+        
         // Bucket responses that have the same text, and sort by the 
         // number of same responses so that the top div is the most prevalent response.
-        // We first need to keep track of the original evaluation result per response str:
+        let responses = res_obj.responses;
+
+        // If user has searched for something, further filter the response texts by only those that contain the search term
+        if (searchValue.length > 0) {
+          const filtered_resps = responses.filter(search_regex.test.bind(search_regex));
+          numResponsesDisplayed += filtered_resps.length;
+          if (filterBySearchValue) responses = filtered_resps;
+        }
+
+        // We need to keep track of the original evaluation result per response str:
         let resp_str_to_eval_res = {};
         if (eval_res_items)
-          res_obj.responses.forEach((r, idx) => {
+          responses.forEach((r, idx) => {
             resp_str_to_eval_res[r] = eval_res_items[idx]
           });
-        const same_resp_text_counts = countResponsesBy(res_obj.responses, (r) => r)[0];
-        const same_resp_keys = Object.keys(same_resp_text_counts).sort((key1, key2) => (same_resp_text_counts[key2] - same_resp_text_counts[key1]));
+        
+        const same_resp_text_counts = countResponsesBy(responses, (r) => r)[0];
+        let same_resp_keys = Object.keys(same_resp_text_counts).sort(
+          (key1, key2) => (same_resp_text_counts[key2] - same_resp_text_counts[key1])
+        );
 
-        // Spans for actual individual response texts
-        const ps = same_resp_keys.map((r, idx) => (
-          <div key={idx}>
+        const ps = same_resp_keys.map((r, idx) => {
+          const textToShow = searchValue ? genSpansForHighlightedValue(r, searchValue, caseSensitive) : r;
+          return (<div key={idx}>
             {same_resp_text_counts[r] > 1 ? 
               (<span className="num-same-responses">{same_resp_text_counts[r]} times</span>)
             : <></>}
@@ -226,9 +305,9 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
               <p className="small-response-metrics">{getEvalResultStr(resp_str_to_eval_res[r])}</p>
             ) : <></>}
             {(contains_eval_res && onlyShowScores) ? <pre>{}</pre> : 
-              <pre className="small-response">{r}</pre>}
+              <div className="small-response">{textToShow}</div>}
           </div>
-        ));
+        )});
 
         // At the deepest level, there may still be some vars left over. We want to display these
         // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
@@ -306,8 +385,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             // Return response divs as response box here:
             return (<div>{generateResponseBoxes(rs, var_cols, 100)}</div>);
           } else {
-            console.warn(`Could not find response object for column variable ${tableColVar} with value ${val}`);
-            return (<i>(no data)</i>);
+            return (<i>{empty_cell_text}</i>);
           }
         });
 
@@ -406,7 +484,9 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       setResponses(divs);
     }
 
-  }, [multiSelectValue, jsonResponses, wideFormat, viewFormat, tableColVar, onlyShowScores]);
+    setNumMatches(numResponsesDisplayed);
+
+  }, [multiSelectValue, jsonResponses, wideFormat, viewFormat, tableColVar, onlyShowScores, searchValue, caseSensitive, filterBySearchValue]);
 
   // When the user clicks an item in the drop-down,
   // we want to autoclose the multiselect drop-down:
@@ -418,9 +498,32 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     setMultiSelectValue(new_val);
   };
 
+
+  const handleSearchValueChange = (content) => {
+    setSearchValue(content.target.value);
+  }
+
   const sz = useMemo(() => 
     (wideFormat ? 'sm' : 'xs')
   , [wideFormat]);
+
+  const searchBar = useMemo(() => (
+    <Flex gap='6px' align='end' w='100%'>
+      <TextInput id='search_bar' label={"Find" + (searchValue.length > 0 ? ` (${numMatches}/${numResponses})` : '')} autoComplete="off" size={sz} placeholder={"Search keywords"} w="100%" value={searchValue} onChange={handleSearchValueChange}/>
+      <div>
+        <Tooltip label={`Case sensitivity (${caseSensitive ? "on" : "off"})`} withArrow arrowPosition='center'>
+          <ActionIcon variant={caseSensitive ? 'filled' : 'light'} size={sz} mb='4px' onClick={toggleCaseSensitivity}>
+            <IconLetterCaseToggle />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={`Filter responses by term (${filterBySearchValue ? "on" : "off"})`} withArrow arrowPosition='center'>
+          <ActionIcon variant={filterBySearchValue ? 'filled' : 'light'} size={sz} mb='2px' onClick={toggleFilterBySearchValue}>
+            <IconFilter />
+          </ActionIcon>
+        </Tooltip>
+      </div>
+    </Flex>
+  ), [handleSearchValueChange, caseSensitive, searchValue, filterBySearchValue, numResponses, numMatches, sz, toggleCaseSensitivity, toggleFilterBySearchValue]);
 
   return (<div style={{height: '100%'}}>
 
@@ -431,18 +534,19 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       </Tabs.List>
       
       <Tabs.Panel value="hierarchy" pt="xs">
-        <Flex gap='xl' align='end'>
+        <Flex gap={sz} align='end' w='100%' mb={wideFormat ? '0px' : 'xs'}>
           <MultiSelect ref={multiSelectRef}
                       onChange={handleMultiSelectValueChange}
-                      className='nodrag nowheel inspect-multiselect'
-                      label="Group responses by (order matters):"
+                      className='nodrag nowheel'
+                      label={"Group responses by" + (wideFormat ? " (order matters):" : ":")}
                       data={multiSelectVars}
                       placeholder="Pick vars to group responses, in order of importance"
                       size={sz}
                       value={multiSelectValue}
                       clearSearchOnChange={true}
                       clearSearchOnBlur={true}
-                      w={wideFormat ? '80%' : '100%'} />
+                      w={wideFormat ? '50%' : '100%'} />
+          {searchBar}
           <Checkbox checked={onlyShowScores} 
                     label="Only show scores" 
                     onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
@@ -452,7 +556,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         </Flex>
       </Tabs.Panel>
       <Tabs.Panel value="table" pt="xs">
-        <Flex gap='xl' align='end'>
+        <Flex gap={sz} align='end' mb="sm">
           <NativeSelect 
             value={tableColVar}
             onChange={(event) => {
@@ -460,11 +564,11 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
               setUserSelectedTableCol(true);
             }}
             data={multiSelectVars}
-            label="Select the main variable to use for columns:"
-            mb="sm"
+            label="Select main column variable:"
             size={sz}
-            w="80%"
+            w={wideFormat ? '50%' : '100%'}
           />
+          {searchBar}
           <Checkbox checked={onlyShowScores} 
                     label="Only show scores" 
                     onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
