@@ -282,9 +282,6 @@
     border: 1px solid #999;
     border-radius: 5px;
   }
-  .inspect-multiselect {
-    margin-bottom: 6px;
-  }
   .inspect-response-container {
     overflow-y: scroll;
     min-width: 150px;

@@ -5,9 +5,9 @@
  * be deployed in multiple locations.  
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect, Checkbox, Flex, Tabs, Input} from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import { IconTable, IconLayoutList } from '@tabler/icons-react';
+import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect, Checkbox, Flex, Tabs, Input, Button, ActionIcon, Tooltip, TextInput} from '@mantine/core';
+import { useDisclosure, useToggle } from '@mantine/hooks';
+import { IconTable, IconLayoutList, IconLetterCaseToggle, IconFilter, IconFilterOff, IconLetterCaseLower } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 import useStore from './store';
 import { filterDict, truncStr, groupResponsesBy } from './backend/utils';
@@ -52,6 +52,47 @@ const getEvalResultStr = (eval_item) => {
     </>);
   }
 };
+
+function getIndicesOfSubstringMatches(s, substr, caseSensitive) {
+  let regex = new RegExp(substr, 'g' + (caseSensitive ? '' : 'i'));
+  let result;
+  let indices = [];
+  while ( (result = regex.exec(s)) )
+    indices.push(result.index);
+  return indices;
+}
+
+// Splits a string by a substring or regex, but includes the delimiter (substring/regex match) elements in the returned array.
+function splitAndIncludeDelimiter(s, substr, caseSensitive) {
+  let indices = getIndicesOfSubstringMatches(s, substr, caseSensitive);
+  if (indices.length === 0)
+    return [s];
+
+  const len_sub = substr.length;
+  let results = [];
+  let prev_idx = 0;
+  indices.forEach(idx => {
+    const pre_delim = s.substring(prev_idx, idx);
+    const delim = s.substring(idx, idx+len_sub);
+    results.push(pre_delim);
+    results.push(delim);
+    prev_idx = idx+len_sub;
+  });
+  
+  const end_str = s.substring(prev_idx);
+  if (end_str.length > 0) results.push(end_str);
+
+  return results;
+}
+
+// Returns an HTML version of text where 'searchValue' is highlighted.
+function genSpansForHighlightedValue(text, searchValue, caseSensitive) {
+  // Split texts by searchValue and map to <span> and <mark> elements
+  return splitAndIncludeDelimiter(text, searchValue, caseSensitive).map((s, idx) => {
+    if (idx % 2 === 0) return (<span key={idx}>{s}</span>);
+    else               return (<mark key={`m${idx}`} className="highlight">{s}</mark>);
+  });
+}
 
 // Export the JSON responses to an excel file (downloads the file):
 export const exportToExcel = (jsonResponses, filename) => {
@@ -125,7 +166,17 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   const [multiSelectVars, setMultiSelectVars] = useState([]);
   const [multiSelectValue, setMultiSelectValue] = useState([]);
 
+  // Search bar functionality
   const [searchValue, setSearchValue] = useState('');
+  const [caseSensitive, toggleCaseSensitivity] = useToggle([false, true]);
+  const [filterBySearchValue, toggleFilterBySearchValue] = useToggle([true, false]);
+  const [numMatches, setNumMatches] = useState(-1);
+  const numResponses = useMemo(() => {
+    if (jsonResponses && Array.isArray(jsonResponses) && jsonResponses.length > 0) 
+      return jsonResponses.reduce((acc, resp_obj) => (acc + resp_obj["responses"].length), 0);
+    else 
+      return 0;
+  }, [jsonResponses]);
 
   // The var name to use for columns in the table view
   const [tableColVar, setTableColVar] = useState("LLM");
@@ -182,15 +233,15 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       setReceivedResponsesOnce(true);
     }
 
-    // Filter for search functionality
-    var responses = jsonResponses
-    responses[0]["responses"].push("miniverse")
-    if (searchValue.length !== 0){
-      responses = responses.filter(response => response["responses"].some(text => {
-        return text.toLowerCase().includes(searchValue)}));
-    }
-
+    let responses = jsonResponses;
+    let numResponsesDisplayed = 0;
     const selected_vars = multiSelectValue;
+    const empty_cell_text = searchValue.length > 0 ? "(no match)" : "(no data)";
+    const search_regex = new RegExp(searchValue, (caseSensitive ? '' : 'i'));
+    
+    // Filter responses by search value, if user has searched
+    if (searchValue.length > 0 && filterBySearchValue)
+      responses = responses.filter(res_obj => res_obj["responses"].some(search_regex.test.bind(search_regex)));
 
     // Functions to associate a color to each LLM in responses
     const color_for_llm = (llm) => (getColorForLLMAndSetIfNotFound(llm) + '99');
@@ -213,38 +264,32 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       return resps.map((res_obj, res_idx) => {
 
         const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
-
+        
         // Bucket responses that have the same text, and sort by the 
         // number of same responses so that the top div is the most prevalent response.
-        // We first need to keep track of the original evaluation result per response str:
-        let resp_str_to_eval_res = {};
-        if (eval_res_items)
-          res_obj.responses.forEach((r, idx) => {
-            resp_str_to_eval_res[r] = eval_res_items[idx]
-          });
-
         let responses = res_obj.responses;
 
-        if (searchValue.length !== 0) {
-          let re = new RegExp(searchValue, "gi")
-          responses = responses.filter(response => (response.toLowerCase().includes(searchValue)))
+        // If user has searched for something, further filter the response texts by only those that contain the search term
+        if (searchValue.length > 0) {
+          const filtered_resps = responses.filter(search_regex.test.bind(search_regex));
+          numResponsesDisplayed += filtered_resps.length;
+          if (filterBySearchValue) responses = filtered_resps;
         }
 
+        // We need to keep track of the original evaluation result per response str:
+        let resp_str_to_eval_res = {};
+        if (eval_res_items)
+          responses.forEach((r, idx) => {
+            resp_str_to_eval_res[r] = eval_res_items[idx]
+          });
+        
         const same_resp_text_counts = countResponsesBy(responses, (r) => r)[0];
-        let same_resp_keys = Object.keys(same_resp_text_counts).sort((key1, key2) => (same_resp_text_counts[key2] - same_resp_text_counts[key1]));
+        let same_resp_keys = Object.keys(same_resp_text_counts).sort(
+          (key1, key2) => (same_resp_text_counts[key2] - same_resp_text_counts[key1])
+        );
 
         const ps = same_resp_keys.map((r, idx) => {
-          function _getText(text, searchText) {
-            return searchText ? _getTextWithHighlights(text, searchText) : text;
-          }
-        
-          function _getTextWithHighlights(text, searchValue) {
-            const regex = new RegExp(searchValue, 'gi');
-            const newText = text.replace(regex, `<mark class="highlight">$&</mark>`);
-            return <span dangerouslySetInnerHTML={{ __html: newText }} />;
-          }
-
-          const textToShow = _getText(r, searchValue);
+          const textToShow = searchValue ? genSpansForHighlightedValue(r, searchValue, caseSensitive) : r;
           return (<div key={idx}>
             {same_resp_text_counts[r] > 1 ? 
               (<span className="num-same-responses">{same_resp_text_counts[r]} times</span>)
@@ -333,8 +378,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             // Return response divs as response box here:
             return (<div>{generateResponseBoxes(rs, var_cols, 100)}</div>);
           } else {
-            console.warn(`Could not find response object for column variable ${tableColVar} with value ${val}`);
-            return (<i>(no data)</i>);
+            return (<i>{empty_cell_text}</i>);
           }
         });
 
@@ -433,7 +477,9 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       setResponses(divs);
     }
 
-  }, [multiSelectValue, jsonResponses, wideFormat, viewFormat, tableColVar, onlyShowScores, searchValue]);
+    setNumMatches(numResponsesDisplayed);
+
+  }, [multiSelectValue, jsonResponses, wideFormat, viewFormat, tableColVar, onlyShowScores, searchValue, caseSensitive, filterBySearchValue]);
 
   // When the user clicks an item in the drop-down,
   // we want to autoclose the multiselect drop-down:
@@ -447,12 +493,30 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
 
 
   const handleSearchValueChange = (content) => {
-    setSearchValue(content.target.value.trim().toLowerCase());
+    setSearchValue(content.target.value);
   }
 
   const sz = useMemo(() => 
     (wideFormat ? 'sm' : 'xs')
   , [wideFormat]);
+
+  const searchBar = useMemo(() => (
+    <Flex gap='6px' align='end' w='100%'>
+      <TextInput id='search_bar' label={"Find" + (searchValue.length > 0 ? ` (${numMatches}/${numResponses})` : '')} autoComplete="off" size={sz} placeholder={"Search keywords"} w="100%" value={searchValue} onChange={handleSearchValueChange}/>
+      <div>
+        <Tooltip label={`Case sensitivity (${caseSensitive ? "on" : "off"})`} withArrow arrowPosition='center'>
+          <ActionIcon variant={caseSensitive ? 'filled' : 'light'} size={sz} mb='4px' onClick={toggleCaseSensitivity}>
+            <IconLetterCaseToggle />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={`Filter responses by term (${filterBySearchValue ? "on" : "off"})`} withArrow arrowPosition='center'>
+          <ActionIcon variant={filterBySearchValue ? 'filled' : 'light'} size={sz} mb='2px' onClick={toggleFilterBySearchValue}>
+            <IconFilter />
+          </ActionIcon>
+        </Tooltip>
+      </div>
+    </Flex>
+  ), [handleSearchValueChange, caseSensitive, searchValue, filterBySearchValue, numResponses, numMatches, sz, toggleCaseSensitivity, toggleFilterBySearchValue]);
 
   return (<div style={{height: '100%'}}>
 
@@ -463,21 +527,19 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       </Tabs.List>
       
       <Tabs.Panel value="hierarchy" pt="xs">
-        <Flex gap='xl' align='end'>
-          <Input id='search_bar' size={sz} placeholder={"Search keywords"} w={wideFormat ? '80%' : '100%'} onChange={handleSearchValueChange}/>
-        </Flex>
-        <Flex gap='xl' align='end'>
+        <Flex gap={sz} align='end' w='100%' mb={wideFormat ? '0px' : 'xs'}>
           <MultiSelect ref={multiSelectRef}
                       onChange={handleMultiSelectValueChange}
-                      className='nodrag nowheel inspect-multiselect'
-                      label="Group responses by (order matters):"
+                      className='nodrag nowheel'
+                      label={"Group responses by" + (wideFormat ? " (order matters):" : ":")}
                       data={multiSelectVars}
                       placeholder="Pick vars to group responses, in order of importance"
                       size={sz}
                       value={multiSelectValue}
                       clearSearchOnChange={true}
                       clearSearchOnBlur={true}
-                      w={wideFormat ? '80%' : '100%'} />
+                      w={wideFormat ? '50%' : '100%'} />
+          {searchBar}
           <Checkbox checked={onlyShowScores} 
                     label="Only show scores" 
                     onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
@@ -487,10 +549,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         </Flex>
       </Tabs.Panel>
       <Tabs.Panel value="table" pt="xs">
-        <Flex gap='xl' align='end'>
-          <Input id='search_bar' size={sz} placeholder={"Search keywords"} w="80%" onChange={handleSearchValueChange}/>
-        </Flex>
-        <Flex gap='xl' align='end'>
+        <Flex gap={sz} align='end' mb="sm">
           <NativeSelect 
             value={tableColVar}
             onChange={(event) => {
@@ -498,11 +557,11 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
               setUserSelectedTableCol(true);
             }}
             data={multiSelectVars}
-            label="Select the main variable to use for columns:"
-            mb="sm"
+            label="Select main column variable:"
             size={sz}
-            w="80%"
+            w={wideFormat ? '50%' : '100%'}
           />
+          {searchBar}
           <Checkbox checked={onlyShowScores} 
                     label="Only show scores" 
                     onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
