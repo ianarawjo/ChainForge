@@ -4,10 +4,10 @@
  * Separated from ReactFlow node UI so that it can 
  * be deployed in multiple locations.  
  */
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Collapse, Radio, MultiSelect, Group, Table, NativeSelect, Checkbox, Flex, Tabs, Input, Button, ActionIcon, Tooltip, TextInput} from '@mantine/core';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Collapse, MultiSelect, Table, NativeSelect, Checkbox, Flex, Tabs, ActionIcon, Tooltip, TextInput} from '@mantine/core';
 import { useDisclosure, useToggle } from '@mantine/hooks';
-import { IconTable, IconLayoutList, IconLetterCaseToggle, IconFilter, IconFilterOff, IconLetterCaseLower } from '@tabler/icons-react';
+import { IconTable, IconLayoutList, IconLetterCaseToggle, IconFilter } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 import useStore from './store';
 import { filterDict, truncStr, groupResponsesBy } from './backend/utils';
@@ -27,6 +27,7 @@ const countResponsesBy = (responses, keyFunc) => {
   return [responses_by_key, unspecified_group];
 };
 const getLLMName = (resp_obj) => (typeof resp_obj?.llm === 'string' ? resp_obj.llm : resp_obj?.llm?.name);
+const escapeRegExp = (txt) => txt.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 
 const SUCCESS_EVAL_SCORES = new Set(['true', 'yes']);
 const FAILURE_EVAL_SCORES = new Set(['false', 'no']);
@@ -54,7 +55,7 @@ const getEvalResultStr = (eval_item) => {
 };
 
 function getIndicesOfSubstringMatches(s, substr, caseSensitive) {
-  let regex = new RegExp(substr, 'g' + (caseSensitive ? '' : 'i'));
+  let regex = new RegExp(escapeRegExp(substr), 'g' + (caseSensitive ? '' : 'i'));
   let result;
   let indices = [];
   while ( (result = regex.exec(s)) )
@@ -215,14 +216,14 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     let msvars = found_vars.map(name => (
       // We add a $ prefix to mark this as a prompt parameter, and so 
       // in the future we can add special types of variables without name collisions
-      {value: `${name}`, label: name} 
+      {value: name, label: name} 
     )).concat({value: 'LLM', label: 'LLM'});
     setMultiSelectVars(msvars);
 
     // If only one LLM is present, and user hasn't manually selected one to plot,
     // and there's more than one prompt variable as input, default to plotting the 
     // first found prompt variable as columns instead:
-    if (!userSelectedTableCol && tableColVar === 'LLM' && found_llms.length === 1 && found_vars.length > 1) {
+    if (viewFormat === "table" && !userSelectedTableCol && tableColVar === 'LLM' && found_llms.length === 1 && found_vars.length > 1) {
       setTableColVar(found_vars[0]);
       return; // useEffect will replot with the new values
     }
@@ -232,12 +233,18 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       setMultiSelectValue([msvars[0].value]);
       setReceivedResponsesOnce(true);
     }
+    else if (multiSelectValue.some(name => !msvars.some(o => (o.value === name)))) { 
+      // If the multi select vars changed and no longer includes the user's selected value, 
+      // erase every value that went away, then early exit because useEffect is going to immediately recall this function:
+      setMultiSelectValue(multiSelectValue.filter(name => msvars.some(o => (o.value === name))));
+      return; // useEffect will replot with the new values
+    }
 
     let responses = jsonResponses;
     let numResponsesDisplayed = 0;
     const selected_vars = multiSelectValue;
     const empty_cell_text = searchValue.length > 0 ? "(no match)" : "(no data)";
-    const search_regex = new RegExp(searchValue, (caseSensitive ? '' : 'i'));
+    const search_regex = new RegExp(escapeRegExp(searchValue), (caseSensitive ? '' : 'i'));
     
     // Filter responses by search value, if user has searched
     if (searchValue.length > 0 && filterBySearchValue)
