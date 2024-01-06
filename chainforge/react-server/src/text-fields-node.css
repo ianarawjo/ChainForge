@@ -437,7 +437,9 @@
     font-size: 8pt;
     font-family: monospace;
     border-top-style: dashed;
+    border-top-width: 0.0625rem;
     border-bottom-style: dashed;
+    border-bottom-width: 0.0625rem;
     border-color: #fff;
     padding: 2px;
     margin: 4px 3px;
