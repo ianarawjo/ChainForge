@@ -266,18 +266,30 @@ export function AIGenCodeEvaluatorPopover({
   onLoadingChange,
   // The keys available in vars and metavar dicts, for added context to the LLM
   context,
+  // The code currently in the evaluator
+  currentEvalCode,
 }) {
 
   // API keys 
   const apiKeys = useStore((state) => state.apiKeys);
 
   // State
-  const [prompt, setPrompt] = useState("");
+  const [replacePrompt, setReplacePrompt] = useState("");
+  const [editPrompt, setEditPrompt] = useState("");
   const [awaitingResponse, setAwaitingResponse] = useState(false);
 
   // Alerts
   const alertModal = useRef(null);
   const [didEncounterError, setDidEncounterError] = useState(false);
+
+  // Handle errors
+  const handleError = useCallback((err) => {
+    setAwaitingResponse(false);
+    if (onLoadingChange) onLoadingChange(false);
+    setDidEncounterError(true);
+    if (typeof err !== "string") console.error(err);
+    alertModal.current?.trigger(typeof err === "string" ? err : err?.message);
+  }, [setAwaitingResponse, onLoadingChange, setDidEncounterError, alertModal]);
 
   // Generate an evaluate function, given the user-specified prompt, in the proper programming language
   const handleGenerateEvalCode = useCallback(() => {
@@ -300,22 +312,14 @@ For instance, here is an evaluator that returns the length of a response:
 \`\`\`${progLang === 'javascript' ? INFO_EXAMPLE_JS : INFO_EXAMPLE_PY}\`\`\`
 
 You can only write in ${progLang.charAt(0).toUpperCase() + progLang.substring(1)}. 
-You ${progLang === 'javascript' ? 'CANNOT import any external packages. ' : 'can use imports if necessary. Do not include any type hints.'} 
+You ${progLang === 'javascript' ? 'CANNOT import any external packages, and always use "let" to define variables instead of "var".' : 'can use imports if necessary. Do not include any type hints.'} 
 Your function can only return boolean, numeric, or string values.
 ${context_str}
 Here is the user's specification:
 
-${prompt}`;
-  
-  const handleError = (err) => {
-    setAwaitingResponse(false);
-    if (onLoadingChange) onLoadingChange(false);
-    setDidEncounterError(true);
-    if (typeof err !== "string") console.error(err);
-    alertModal.current.trigger(typeof err === "string" ? err : err?.message);
-  };
+${replacePrompt}`;
 
-  queryLLM(prompt, "gpt-4", 1, escapeBraces(template), {}, undefined, apiKeys, true)
+  queryLLM(replacePrompt, "gpt-4", 1, escapeBraces(template), {}, undefined, apiKeys, true)
     .then((result) => {
       setAwaitingResponse(false);
       if (onLoadingChange) onLoadingChange(false);
@@ -350,15 +354,78 @@ ${prompt}`;
     })
     .catch(handleError);
 
-  }, [progLang, onLoadingChange, onGeneratedCode, prompt, context, alertModal]);
+  }, [progLang, onLoadingChange, onGeneratedCode, handleError, replacePrompt, context]);
+
+  // Edit existing code according to user-specified instruction
+  const handleEditCode = useCallback(() => {
+
+    setDidEncounterError(false);
+    setAwaitingResponse(true);
+    if (onLoadingChange) onLoadingChange(true);
+
+    const context_str = generateContextPromptForVarMetaVarContext(context);
+    
+    const template = 
+`Edit the code below according to the following: ${editPrompt}
+
+You ${progLang === 'javascript' ? 'CANNOT import any external packages.' : 'can use imports if necessary. Do not include any type hints.'} 
+Functions should only return boolean, numeric, or string values. Present the edited code in a single block.
+
+Code: 
+\`\`\`${progLang}
+${currentEvalCode}
+\`\`\``;
+
+  queryLLM(editPrompt, "gpt-4", 1, escapeBraces(template), {}, undefined, apiKeys, true)
+    .then((result) => {
+      setAwaitingResponse(false);
+      if (onLoadingChange) onLoadingChange(false);
+
+      // Handle any errors when collecting the response
+      if (result.errors && Object.keys(result.errors).length > 0) 
+        throw new Error(Object.values(result.errors)[0].toString());
+
+      // Extract the first response
+      const response = result.responses[0].responses[0];
+      console.log("LLM said: ", response);
+
+      // Try to extract out a single code block from the response
+      let code_blocks = splitText(response, "code");
+
+      // Concat all found code blocks
+      if (code_blocks.length > 0) {
+        // Success! (we assume...)
+        // We are using 2-space tabs but LLM outputs are generally 4-space tabs. Clean this up:
+        const edited_code = changeFourSpaceTabsToTwo(code_blocks.join("\n\n"));
+        onGeneratedCode(edited_code);
+      } else {
+        // No code detected in response!
+        setDidEncounterError(true);
+      }
+    })
+    .catch(handleError);
+
+  }, [progLang, onLoadingChange, onGeneratedCode, currentEvalCode, handleError, editPrompt, context]);
 
   return (
     <AIPopover>
-      <Stack style={zeroGap}>
-        {didEncounterError ? <Text size="xs" c="red">Failed to generate. Please try again.</Text> : <></>}
-        <Textarea label="Describe what to evaluate:" size="sm" data-autofocus minRows={2} maxRows={4} autosize mt={5} value={prompt} onChange={(e) => setPrompt(e.currentTarget.value)}/>
-        <Button size="sm" variant="light" color="grape" mt="sm" fullWidth onClick={handleGenerateEvalCode} loading={awaitingResponse}>Generate Code</Button>
-      </Stack>
+      <Tabs color="grape" defaultValue="replace">
+        <Tabs.List grow>
+          <Tabs.Tab value="replace">Replace</Tabs.Tab>
+          <Tabs.Tab value="edit">Edit</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="replace" pb="xs">
+          <Stack style={zeroGap}>
+            {didEncounterError ? <Text size="xs" c="red">Failed to generate. Please try again.</Text> : <></>}
+            <Textarea label="Describe what to evaluate:" description="Generated code replaces existing code." size="sm" data-autofocus minRows={2} maxRows={4} autosize mt={5} value={replacePrompt} onChange={(e) => setReplacePrompt(e.currentTarget.value)}/>
+            <Button size="sm" variant="light" color="grape" mt="sm" fullWidth onClick={handleGenerateEvalCode} loading={awaitingResponse}>Generate Code</Button>
+          </Stack>
+        </Tabs.Panel>
+        <Tabs.Panel value="edit" pb="xs">
+          <Textarea label="Describe how to edit existing code:" description="Describe what to change in the code." size="sm" data-autofocus minRows={2} maxRows={4} autosize mt={5} value={editPrompt} onChange={(e) => setEditPrompt(e.currentTarget.value)} />
+          <Button size="sm" variant="light" color="grape" mt="sm" fullWidth onClick={handleEditCode} loading={awaitingResponse}>Edit Code</Button>
+        </Tabs.Panel>
+      </Tabs>
       <AlertModal ref={alertModal} />
     </AIPopover>);
 }

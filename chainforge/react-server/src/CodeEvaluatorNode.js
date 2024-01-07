@@ -232,6 +232,7 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
 
   // The inner component storing the code UI and providing an interface to run the code over inputs
   const codeEvaluatorRef = useRef(null);
+  const currentCode = useMemo(() => data.code, [data.code]);
 
   const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
@@ -504,11 +505,12 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
           progLang={progLang}
           context={lastContext}
           onGeneratedCode={(code) => { codeEvaluatorRef?.current?.setCodeText(code); handleCodeEdit(code); }}
-          onLoadingChange={(isLoading) => setIsEvalCodeGenerating(isLoading)} />
+          onLoadingChange={(isLoading) => setIsEvalCodeGenerating(isLoading)}
+          currentEvalCode={currentCode} />
       );
 
     return btns;
-  }, [openInfoModal, flags, codeEvaluatorRef, progLang, node_type, lastContext]);
+  }, [openInfoModal, flags, codeEvaluatorRef, progLang, node_type, currentCode, lastContext]);
 
   return (
     <BaseNode classNames="evaluator-node" nodeId={id}>
