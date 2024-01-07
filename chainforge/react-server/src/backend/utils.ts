@@ -47,7 +47,7 @@ export function APP_IS_RUNNING_LOCALLY(): boolean {
       // @ts-ignore
       _APP_IS_RUNNING_LOCALLY = location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "0.0.0.0" || location.hostname === "" || window.__CF_HOSTNAME !== undefined;
     } catch (e) {
-      // ReferenceError --window or location does not exist. 
+      // ReferenceError --window or location does not exist.
       // We must not be running client-side in a browser, in this case (e.g., we are running a Node.js server)
       _APP_IS_RUNNING_LOCALLY = false;
     }
@@ -56,7 +56,7 @@ export function APP_IS_RUNNING_LOCALLY(): boolean {
 }
 
 /**
- * Equivalent to a 'fetch' call, but routes it to the backend Flask server in 
+ * Equivalent to a 'fetch' call, but routes it to the backend Flask server in
  * case we are running a local server and prefer to not deal with CORS issues making API calls client-side.
  */
 async function route_fetch(url: string, method: string, headers: Dict, body: Dict) {
@@ -127,18 +127,18 @@ export function set_api_keys(api_keys: StringDict): void {
 /**
  * Construct an OpenAI format chat history for sending off to an OpenAI API call.
  * @param prompt The next prompt (user message) to append.
- * @param chat_history The prior turns of the chat, ending with the AI assistants' turn. 
+ * @param chat_history The prior turns of the chat, ending with the AI assistants' turn.
  * @param system_msg Optional; the system message to use if none is present in chat_history. (Ignored if chat_history already has a sys message.)
  */
 function construct_openai_chat_history(prompt: string, chat_history: ChatHistory | undefined, system_msg: string): ChatHistory {
   const prompt_msg: ChatMessage = { role: 'user', content: prompt };
   if (chat_history !== undefined && chat_history.length > 0) {
     if (chat_history[0].role === 'system') {
-      // In this case, the system_msg is ignored because the prior history already contains one. 
+      // In this case, the system_msg is ignored because the prior history already contains one.
       return chat_history.concat([prompt_msg]);
     } else {
       // In this case, there's no system message that starts the prior history, so inject one:
-      // NOTE: We might reach this scenario if we chain output of a non-OpenAI chat model into an OpenAI model. 
+      // NOTE: We might reach this scenario if we chain output of a non-OpenAI chat model into an OpenAI model.
       return [{"role": "system", "content": system_msg}].concat(chat_history).concat([prompt_msg]);
     }
   } else return [
@@ -148,8 +148,8 @@ function construct_openai_chat_history(prompt: string, chat_history: ChatHistory
 }
 
 /**
- * Calls OpenAI models via OpenAI's API. 
-   @returns raw query and response JSON dicts. 
+ * Calls OpenAI models via OpenAI's API.
+   @returns raw query and response JSON dicts.
  */
 export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!OPENAI_API_KEY)
@@ -197,7 +197,7 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
     // Create call to text completions model
     openai_call = openai.createCompletion.bind(openai);
     query['prompt'] = prompt;
-  } else { 
+  } else {
     // Create call to chat model
     openai_call = openai.createChatCompletion.bind(openai);
 
@@ -218,14 +218,14 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
       console.log(error?.message || error);
       throw new Error(error?.message || error);
     }
-  } 
-  
+  }
+
   return [query, response];
 }
 
 /**
  * Calls OpenAI models hosted on Microsoft Azure services.
- *  Returns raw query and response JSON dicts. 
+ *  Returns raw query and response JSON dicts.
  *
  *  NOTE: It is recommended to set an environment variables AZURE_OPENAI_KEY and AZURE_OPENAI_ENDPOINT
  */
@@ -234,7 +234,7 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
     throw new Error("Could not find an Azure OpenAPI Key to use. Double-check that your key is set in Settings or in your local environment.");
   if (!AZURE_OPENAI_ENDPOINT)
     throw new Error("Could not find an Azure OpenAI Endpoint to use. Double-check that your endpoint is set in Settings or in your local environment.");
-  
+
   const deployment_name: string = params?.deployment_name;
   const model_type: string = params?.model_type;
   if (!deployment_name)
@@ -258,7 +258,7 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
   delete params?.system_msg;
   delete params?.model_type;
   delete params?.deployment_name;
-    
+
   // Setup the args for the query
   let query: Dict = {
     n: n,
@@ -285,7 +285,7 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
       throw new Error(error?.message || error);
     }
   }
-  
+
   return [query, response];
 }
 
@@ -294,7 +294,7 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
    Returns raw query and response JSON dicts.
 
    Unique parameters:
-      - custom_prompt_wrapper: Anthropic models expect prompts in form "\n\nHuman: ${prompt}\n\nAssistant". If you wish to 
+      - custom_prompt_wrapper: Anthropic models expect prompts in form "\n\nHuman: ${prompt}\n\nAssistant". If you wish to
                                explore custom prompt wrappers that deviate, write a python Template that maps from 'prompt' to custom wrapper.
                                If set to None, defaults to Anthropic's suggested prompt wrapper.
       - max_tokens_to_sample: A maximum number of tokens to generate before stopping.
@@ -316,7 +316,7 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
   if (params?.custom_prompt_wrapper !== undefined)
     delete params.custom_prompt_wrapper;
 
-  // Required non-standard params 
+  // Required non-standard params
   const max_tokens_to_sample = params?.max_tokens_to_sample || 1024;
   const stop_sequences = params?.stop_sequences || [ANTHROPIC_HUMAN_PROMPT];
 
@@ -394,7 +394,7 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
 }
 
 /**
- * Calls a Google PaLM/Gemini model, based on the model selection from the user. 
+ * Calls a Google PaLM/Gemini model, based on the model selection from the user.
  * Returns raw query and response JSON dicts.
  */
 export async function call_google_ai(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
@@ -407,7 +407,7 @@ export async function call_google_ai(prompt: string, model: LLM, n: number = 1, 
 }
 
 /**
- * Calls a Google PaLM model. 
+ * Calls a Google PaLM model.
  * Returns raw query and response JSON dicts.
  */
 export async function call_google_palm(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
@@ -415,7 +415,7 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
     throw new Error("Could not find an API key for Google PaLM models. Double-check that your API key is set in Settings or in your local environment.");
   const is_chat_model = model.toString().includes('chat');
 
-  // Required non-standard params 
+  // Required non-standard params
   const max_output_tokens = params?.max_output_tokens || 800;
   const chat_history = params?.chat_history;
   delete params?.chat_history;
@@ -438,7 +438,7 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
   if (is_chat_model && query.stop_sequences !== undefined)
     delete query.stop_sequences;
 
-  // For some reason Google needs to be special and have its API params be different names --camel or snake-case 
+  // For some reason Google needs to be special and have its API params be different names --camel or snake-case
   // --depending on if it's the Python or Node JS API. ChainForge needs a consistent name, so we must convert snake to camel:
   const casemap = {
     safety_settings: 'safetySettings',
@@ -475,14 +475,14 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
       query.prompt = palm_chat_context;
     } else {
       query.prompt = { messages: [{content: prompt}] };
-    }  
+    }
   } else {
     // Text completions
     query.prompt = { text: prompt };
   }
 
   console.log(`Calling Google PaLM model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`);
-  
+
   // Call the correct model client
   const method = is_chat_model ? 'generateMessage' : 'generateText';
   const url = `https://generativelanguage.googleapis.com/v1beta2/models/${model}:${method}?key=${GOOGLE_PALM_API_KEY}`;
@@ -510,7 +510,7 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
     completion.candidates = new Array(n).fill({'author': '1', 'content':block_error_msg});
   }
 
-  // Weirdly, google ignores candidate_count if temperature is 0. 
+  // Weirdly, google ignores candidate_count if temperature is 0.
   // We have to check for this and manually append the n-1 responses:
   if (n > 1 && completion.candidates?.length === 1) {
     completion.candidates = new Array(n).fill(completion.candidates[0]);
@@ -530,10 +530,10 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
 
   const genAI = new GoogleGenerativeAI(GOOGLE_PALM_API_KEY);
   const gemini_model = genAI.getGenerativeModel({model: model.toString()});
-  
+
   // removing chat for now. by default chat is supported
 
-  // Required non-standard params 
+  // Required non-standard params
   const max_output_tokens = params?.max_output_tokens || 1000;
   const chat_history = params?.chat_history;
   delete params?.chat_history;
@@ -546,7 +546,7 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
       ...params,
   };
 
-  // For some reason Google needs to be special and have its API params be different names --camel or snake-case 
+  // For some reason Google needs to be special and have its API params be different names --camel or snake-case
   // --depending on if it's the Python or Node JS API. ChainForge needs a consistent name, so we must convert snake to camel:
   const casemap = {
     safety_settings: 'safetySettings',
@@ -583,7 +583,7 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
   // Chat completions
   if (chat_history !== undefined && chat_history.length > 0) {
     // Carry over any chat history, converting OpenAI formatted chat history to Google PaLM:
-    
+
     let gemini_messages: GeminiChatMessage[] = [];
     for (const chat_msg of chat_history) {
       if (chat_msg.role === 'system') {
@@ -608,7 +608,7 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
         generationConfig: gen_Config,
       },
     );
-  
+
     const chatResult = await chat.sendMessage(prompt);
     const chatResponse = await chatResult.response;
     const response = {
@@ -692,14 +692,14 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
   const using_custom_model_endpoint: boolean = param_exists(params?.custom_model);
 
   let headers: StringDict = {'Content-Type': 'application/json'};
-  // For HuggingFace, technically, the API keys are optional. 
+  // For HuggingFace, technically, the API keys are optional.
   if (HUGGINGFACE_API_KEY !== undefined)
     headers.Authorization = `Bearer ${HUGGINGFACE_API_KEY}`;
-  
+
   // Inference Endpoints for text completion models has the same call,
-  // except the endpoint is an entire URL. Detect this: 
-  const url = (using_custom_model_endpoint && params.custom_model.startsWith('https:')) ? 
-                params.custom_model : 
+  // except the endpoint is an entire URL. Detect this:
+  const url = (using_custom_model_endpoint && params.custom_model.startsWith('https:')) ?
+                params.custom_model :
                 `https://api-inference.huggingface.co/models/${using_custom_model_endpoint ? params.custom_model.trim() : model}`;
 
   let responses: Array<Dict> = [];
@@ -710,8 +710,8 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
     let curr_text = prompt;
     while (curr_cont <= num_continuations) {
       const inputs = (model_type === 'chat')
-                    ? ({ text: curr_text, 
-                        past_user_inputs: hf_chat_hist.past_user_inputs, 
+                    ? ({ text: curr_text,
+                        past_user_inputs: hf_chat_hist.past_user_inputs,
                         generated_responses: hf_chat_hist.generated_responses })
                     : curr_text;
 
@@ -722,12 +722,12 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
         body: JSON.stringify({inputs: inputs, parameters: query, options: options}),
       });
       const result = await response.json();
-  
+
       // HuggingFace sometimes gives us an error, for instance if a model is loading.
       // It returns this as an 'error' key in the response:
       if (result?.error !== undefined)
         throw new Error(result.error);
-      else if ((model_type !== 'chat' && (!Array.isArray(result) || result.length !== 1)) || 
+      else if ((model_type !== 'chat' && (!Array.isArray(result) || result.length !== 1)) ||
                (model_type === 'chat' && (Array.isArray(result) || !result || result?.generated_text === undefined)))
         throw new Error("Result of HuggingFace API call is in unexpected format:" + JSON.stringify(result));
 
@@ -750,12 +750,12 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
 export async function call_alephalpha(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!ALEPH_ALPHA_API_KEY)
     throw Error("Could not find an API key for Aleph Alpha models. Double-check that your API key is set in Settings or in your local environment.");
-  
+
   const url: string = 'https://api.aleph-alpha.com/complete';
   let headers: StringDict = {'Content-Type': 'application/json', 'Accept': 'application/json'};
   if (ALEPH_ALPHA_API_KEY !== undefined)
     headers.Authorization = `Bearer ${ALEPH_ALPHA_API_KEY}`;
-  
+
   let data = JSON.stringify({
     "model": model.toString(),
     "prompt": prompt,
@@ -770,7 +770,7 @@ export async function call_alephalpha(prompt: string, model: LLM, n: number = 1,
     temperature: temperature,
     ...params,  // 'the rest' of the settings, passed from the front-end settings
   };
-  
+
   const response = await fetch(url, {
     headers: headers,
     method: "POST",
@@ -782,14 +782,69 @@ export async function call_alephalpha(prompt: string, model: LLM, n: number = 1,
   return [query, responses];
 }
 
+export async function call_ollama_provider(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+  const url: string = params.ollama_url;
+
+  // FIXME: Ollama doesn't support batch inference, but llama.cpp does so it will eventually
+  // For now, we send n requests and then wait for all of them to finish
+  let data = JSON.stringify({
+    "model": params.ollamaModel.toString(),
+    "prompt": prompt,
+    "n": n, // Doesn't do anything, but will do something when ollama supports batch inference
+    stream: false,
+    ...params
+  });
+
+  console.log("Calling ollama");
+  console.log(data);
+
+  // Setup the args for the query
+  let query: Dict = {
+    model: "mistral", // model.toString(),
+    n: n,
+    stream: false,
+    temperature: temperature,
+    ...params,  // 'the rest' of the settings, passed from the front-end settings
+  };
+
+  let resps : Response[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const response = await fetch(url, {
+      method: "POST",
+      body: data,
+    });
+    resps.push(response);
+  }
+
+  let parse_response = (body) => {
+    // // Split newlines
+    // let split = body.trim().split("\n");
+    // // Then parse each line as json
+    // let continued_response = "";
+    // split.forEach((line : string) => {
+    //   continued_response += json["response"];
+    // });
+    console.log("body", body);
+    const json = JSON.parse(body);
+    return {generated_text: json.response};
+  };
+
+  let responses = await Promise.all(resps.map((resp) => resp.text())).then((responses) => {
+    return responses.map((response) => parse_response(response));
+  });
+
+  console.log("responses:", responses)
+  return [query, responses];
+}
 
 async function call_custom_provider(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
   if (!APP_IS_RUNNING_LOCALLY())
     throw new Error("The ChainForge app does not appear to be running locally. You can only call custom model providers if you are running ChainForge on your local machine, from a Flask app.")
 
   // The model to call is in format:
-  // __custom/<provider_name>/<submodel name> 
-  // It may also exclude the final tag. 
+  // __custom/<provider_name>/<submodel name>
+  // It may also exclude the final tag.
   // We extract the provider name (this is the name used in the Python backend's `ProviderRegistry`) and optionally, the submodel name
   const provider_path = model.substring(9);
   const provider_name = provider_path.substring(0, provider_path.indexOf('/'));
@@ -798,9 +853,9 @@ async function call_custom_provider(prompt: string, model: LLM, n: number = 1, t
   let responses = [];
   const query = { prompt, model, temperature, ...params };
 
-  // Call the custom provider n times 
+  // Call the custom provider n times
   while (responses.length < n) {
-    let {response, error} = await call_flask_backend('callCustomProvider', 
+    let {response, error} = await call_flask_backend('callCustomProvider',
       { 'name': provider_name,
         'params': {
           prompt, model: submodel_name, temperature, ...params
@@ -823,7 +878,7 @@ export async function call_llm(llm: LLM, prompt: string, n: number, temperature:
   // Get the correct API call for the given LLM:
   let call_api: LLMAPICall | undefined;
   let llm_provider: LLMProvider = getProvider(llm);
-  
+
   if (llm_provider === undefined)
     throw new Error(`Language model ${llm} is not supported.`);
 
@@ -841,20 +896,22 @@ export async function call_llm(llm: LLM, prompt: string, n: number, temperature:
     call_api = call_huggingface;
   else if (llm_provider === LLMProvider.Aleph_Alpha)
     call_api = call_alephalpha;
+  else if (llm_provider === LLMProvider.Ollama)
+    call_api = call_ollama_provider;
   else if (llm_provider === LLMProvider.Custom)
     call_api = call_custom_provider;
-  
+
   return call_api(prompt, llm, n, temperature, params);
 }
 
 
 /**
- * Extracts the relevant portion of a OpenAI chat response.    
+ * Extracts the relevant portion of a OpenAI chat response.
  * Note that chat choice objects can now include 'function_call' and a blank 'content' response.
- * This method detects a 'function_call's presence, prepends [[FUNCTION]] and converts the function call into JS format. 
+ * This method detects a 'function_call's presence, prepends [[FUNCTION]] and converts the function call into JS format.
  */
 function _extract_openai_chat_choice_content(choice: Dict): string {
-  if (choice['finish_reason'] === 'function_call' || 
+  if (choice['finish_reason'] === 'function_call' ||
      ('function_call' in choice['message'] && choice['message']['function_call'].length > 0)) {
     const func = choice['message']['function_call'];
     return '[[FUNCTION]] ' + func['name'] + func['arguments'].toString();
@@ -865,7 +922,7 @@ function _extract_openai_chat_choice_content(choice: Dict): string {
 
 /**
  * Extracts the text part of a response JSON from ChatGPT. If there is more
- * than 1 response (e.g., asking the LLM to generate multiple responses), 
+ * than 1 response (e.g., asking the LLM to generate multiple responses),
  * this produces a list of all returned responses.
  */
 function _extract_chatgpt_responses(response: Dict): Array<string> {
@@ -874,7 +931,7 @@ function _extract_chatgpt_responses(response: Dict): Array<string> {
 
 /**
  * Extracts the text part of a response JSON from OpenAI completions models like Davinci. If there are more
- * than 1 response (e.g., asking the LLM to generate multiple responses), 
+ * than 1 response (e.g., asking the LLM to generate multiple responses),
  * this produces a list of all returned responses.
  */
 function _extract_openai_completion_responses(response: Dict): Array<string> {
@@ -939,7 +996,17 @@ function _extract_huggingface_responses(response: Array<Dict>): Array<string>{
  * Extracts the text part of a Aleph Alpha text completion.
  */
 function _extract_alephalpha_responses(response: Dict): Array<string> {
-return response.map((r: string) => r.trim());
+  return response.map((r: string) => r.trim());
+}
+
+/**
+ * Extracts the text part of a Ollama text completion.
+ */
+function _extract_ollama_responses(response: Array<Dict>): Array<string> {
+  console.log(_extract_ollama_responses, response);
+  console.log(response.map((r: Dict) => r.generated_text));
+  console.log(response.map((r: Dict) => r.generated_text.trim()));
+  return response.map((r: Object) => r["generated_text"].trim());
 }
 
 /**
@@ -965,20 +1032,22 @@ export function extract_responses(response: Array<string | Dict> | Dict, llm: LL
       return _extract_anthropic_responses(response as Dict[]);
     case LLMProvider.HuggingFace:
       return _extract_huggingface_responses(response as Dict[]);
-      case LLMProvider.Aleph_Alpha:
-        return _extract_alephalpha_responses(response);
+    case LLMProvider.Aleph_Alpha:
+      return _extract_alephalpha_responses(response);
+    case LLMProvider.Ollama:
+      return _extract_ollama_responses(response as Dict[]);
     default:
       if (Array.isArray(response) && response.length > 0 && typeof response[0] === 'string')
-        return response as string[]; 
-      else 
+        return response as string[];
+      else
         throw new Error(`No method defined to extract responses for LLM ${llm}.`)
   }
 }
 
 /**
  * Marge the 'responses' and 'raw_response' properties of two LLMResponseObjects,
- * keeping all the other params from the second argument (llm, query, etc). 
- * 
+ * keeping all the other params from the second argument (llm, query, etc).
+ *
  * If one object is undefined or null, returns the object that is defined, unaltered.
  */
 export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, resp_obj_B: LLMResponseObject | undefined): LLMResponseObject | undefined {
@@ -1102,7 +1171,7 @@ export const toStandardResponseFormat = (r) => {
 // Check if the current browser window/tab is 'active' or not
 export const browserTabIsActive = () => {
   try {
-    const visible = document.visibilityState === 'visible'; 
+    const visible = document.visibilityState === 'visible';
     return visible;
   } catch(e) {
     console.error(e);
@@ -1136,7 +1205,7 @@ export const extractLLMLookup = (input_data) => {
 
 export const removeLLMTagFromMetadata = (metavars) => {
   if (!('__LLM_key' in metavars))
-    return metavars; 
+    return metavars;
   let mcopy = JSON.parse(JSON.stringify(metavars));
   delete mcopy['__LLM_key'];
   return mcopy;
