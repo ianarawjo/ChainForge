@@ -795,14 +795,10 @@ export async function call_ollama_provider(prompt: string, model: LLM, n: number
     ...params
   });
 
-  console.log("Calling ollama");
-  console.log(data);
-
   // Setup the args for the query
   let query: Dict = {
-    model: "mistral", // model.toString(),
+    model: params.ollamaModel.toString(),
     n: n,
-    stream: false,
     temperature: temperature,
     ...params,  // 'the rest' of the settings, passed from the front-end settings
   };
@@ -818,14 +814,6 @@ export async function call_ollama_provider(prompt: string, model: LLM, n: number
   }
 
   let parse_response = (body) => {
-    // // Split newlines
-    // let split = body.trim().split("\n");
-    // // Then parse each line as json
-    // let continued_response = "";
-    // split.forEach((line : string) => {
-    //   continued_response += json["response"];
-    // });
-    console.log("body", body);
     const json = JSON.parse(body);
     return {generated_text: json.response};
   };
@@ -834,7 +822,6 @@ export async function call_ollama_provider(prompt: string, model: LLM, n: number
     return responses.map((response) => parse_response(response));
   });
 
-  console.log("responses:", responses)
   return [query, responses];
 }
 
@@ -1003,9 +990,6 @@ function _extract_alephalpha_responses(response: Dict): Array<string> {
  * Extracts the text part of a Ollama text completion.
  */
 function _extract_ollama_responses(response: Array<Dict>): Array<string> {
-  console.log(_extract_ollama_responses, response);
-  console.log(response.map((r: Dict) => r.generated_text));
-  console.log(response.map((r: Dict) => r.generated_text.trim()));
   return response.map((r: Object) => r["generated_text"].trim());
 }
 
