@@ -528,8 +528,6 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
     throw new Error("Could not find an API key for Google Gemini models. Double-check that your API key is set in Settings or in your local environment.");
 
   // calling the correct model client
-
-  console.log('call_google_gemini: ');
   model = NativeLLM.GEMINI_PRO;
 
   const genAI = new GoogleGenerativeAI(GOOGLE_PALM_API_KEY);
@@ -817,7 +815,7 @@ export async function call_ollama_provider(prompt: string, model: LLM, n: number
     url += "generate";
   }
 
-  console.log(query);
+  console.log(`Calling Ollama API at ${url} for model '${ollama_model}' with prompt '${prompt}' n=${n} times. Please be patient...`);
 
   // Call Ollama API
   let resps : Response[] = [];

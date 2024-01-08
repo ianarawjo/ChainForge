@@ -604,6 +604,11 @@ const PromptNode = ({ data, id, type: node_type }) => {
             }
             else if (json.responses && json.errors) {
 
+                // Remove progress bars
+                setProgress(undefined);
+                setProgressAnimated(false);
+                debounce(() => {}, 1)(); // erase any pending debounces
+
                 // Store and log responses (if any)
                 if (json.responses) {
                     setJSONResponses(json.responses);
@@ -646,9 +651,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 setStatus('ready');
                 setContChatToggleDisabled(false);
 
-                // Remove progress bars
-                setProgress(undefined);
-                setProgressAnimated(true);
+                // Remove individual progress rings
                 llmListContainer?.current?.resetLLMItemsProgress();
                 
                 // Save prompt text so we remember what prompt we have responses cache'd for:
