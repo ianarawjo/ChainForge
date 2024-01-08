@@ -89,6 +89,10 @@ function get_environ(key: string): string | undefined {
   return undefined;
 }
 
+function appendEndSlashIfMissing(path: string) {
+  return path + ((path[path.length-1] === '/') ? "" : "/");
+}
+
 let DALAI_MODEL: string | undefined;
 let DALAI_RESPONSE: Dict | undefined;
 
@@ -783,42 +787,57 @@ export async function call_alephalpha(prompt: string, model: LLM, n: number = 1,
 }
 
 export async function call_ollama_provider(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
-  const url: string = params.ollama_url;
+  let url: string = appendEndSlashIfMissing(params?.ollama_url);
+  const ollama_model: string = params?.ollamaModel.toString();
+  const model_type: string = params?.model_type ?? "text";
+  const system_msg: string = params?.system_msg ?? "";
+  const chat_history: ChatHistory | undefined = params?.chat_history;
+  
+  // Cleanup
+  for (const name of ["ollamaModel", "ollama_url", "model_type", "system_msg", "chat_history"])
+    if (name in params) delete params[name];
 
   // FIXME: Ollama doesn't support batch inference, but llama.cpp does so it will eventually
   // For now, we send n requests and then wait for all of them to finish
-  let data = JSON.stringify({
-    "model": params.ollamaModel.toString(),
-    "prompt": prompt,
-    "n": n, // Doesn't do anything, but will do something when ollama supports batch inference
-    stream: false,
-    ...params
-  });
-
-  // Setup the args for the query
   let query: Dict = {
-    model: params.ollamaModel.toString(),
-    n: n,
+    model: ollama_model,
+    stream: false,
     temperature: temperature,
-    ...params,  // 'the rest' of the settings, passed from the front-end settings
+    ...params, // 'the rest' of the settings, passed from the front-end settings
   };
 
-  let resps : Response[] = [];
+  // If the model type is explicitly or implicitly set to "chat", pass chat history instead:
+  if (model_type === 'chat' || /[-:](chat)/.test(ollama_model)) {
+    // Construct chat history and pass to query payload
+    query.messages = construct_openai_chat_history(prompt, chat_history, system_msg);
+    url += "chat";
+  } else {
+    // Text-only models
+    query.prompt = prompt;
+    url += "generate";
+  }
 
+  console.log(query);
+
+  // Call Ollama API
+  let resps : Response[] = [];
   for (let i = 0; i < n; i++) {
     const response = await fetch(url, {
       method: "POST",
-      body: data,
+      body: JSON.stringify(query),
     });
     resps.push(response);
   }
 
-  let parse_response = (body) => {
+  const parse_response = (body: string) => {
     const json = JSON.parse(body);
-    return {generated_text: json.response};
+    if (json.message) // chat models
+      return {generated_text: json.message.content}
+    else // text-only models
+      return {generated_text: json.response};
   };
 
-  let responses = await Promise.all(resps.map((resp) => resp.text())).then((responses) => {
+  const responses = await Promise.all(resps.map((resp) => resp.text())).then((responses) => {
     return responses.map((response) => parse_response(response));
   });
 

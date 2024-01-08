@@ -880,14 +880,7 @@ const AlephAlphaLuminousSettings = {
     },
   },
   uiSchema: {
-    "ui:submitButtonOptions": {
-      props: {
-        disabled: false,
-        className: "mantine-UnstyledButton-root mantine-Button-root",
-      },
-      norender: false,
-      submitText: "Submit",
-    },
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
     shortname: {
       "ui:autofocus": true,
     },
@@ -1017,14 +1010,28 @@ const OllamaSettings = {
         type: "string",
         title: "Model",
         description:
-          "Select a model to query using Ollama's API. Make sure you've pulled the model before. For more details, check out https://ollama.ai/library",
+          "Enter the model to query using Ollama's API. Make sure you've pulled the model before. For more details, check out https://ollama.ai/library",
         default: "mistral",
       },
       ollama_url: {
         type: "string",
         title: "URL",
-        description: "URL of the Ollama server generate endpoint.",
-        default: "http://localhost:11434/api/generate",
+        description: "URL of the Ollama server generate endpoint. Only enter the path up to /api, nothing else.",
+        default: "http://localhost:11434/api",
+      },
+      model_type: {
+        type: "string",
+        title: "Model Type (Text or Chat)",
+        description: "Select 'chat' to pass conversation history and use system messages on chat-enabled models, such as llama-2. Detected automatically when '-chat' or ':chat' is present in model name. You must select 'chat' if you want to use this model in Chat Turn nodes.",
+        enum: ["text", "chat"],
+        default: "text",
+      },
+      system_msg: {
+        type: "string",
+        title: "System Message (chat models only)",
+        description: "Enter your system message here. Note that the type of model must be set to 'chat' for this to be passed.",
+        default: "",
+        allow_empty_str: true,
       },
       temperature: {
         type: "number",
@@ -1038,7 +1045,7 @@ const OllamaSettings = {
       raw: {
         type: "boolean",
         title: "raw",
-        description: "Whether to disable the templating done by Ollama. If true, you'll need to insert annotations ([INST]) in your prompt.",
+        description: "Whether to disable the templating done by Ollama. If checked, you'll need to insert annotations ([INST]) in your prompt.",
         default: false,
       },
       top_k: {
@@ -1069,6 +1076,25 @@ const OllamaSettings = {
         description: "Sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes \"\" and use whitespace to separate them.",
         default: ""
       },
+    },
+  },
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    raw: {
+      "ui:help": "Defaults to false.",
+    },
+  },
+  postprocessors: {
+    stop_sequences: (str) => {
+      if (str.trim().length === 0) return [];
+      return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
   },
 };
