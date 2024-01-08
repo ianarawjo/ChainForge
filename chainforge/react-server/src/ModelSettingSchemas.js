@@ -254,7 +254,7 @@ const ClaudeSettings = {
                 "type": "string",
                 "title": "Model Version",
                 "description": "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
-                "enum": ["claude-2", "claude-2.0", "claude-2.1", "claude-instant-1", "claude-instant-1.1", "claude-instant-1.2", "claude-v1", "claude-v1-100k", "claude-instant-v1", "claude-instant-v1-100k", "claude-v1.3", 
+                "enum": ["claude-2", "claude-2.0", "claude-2.1", "claude-instant-1", "claude-instant-1.1", "claude-instant-1.2", "claude-v1", "claude-v1-100k", "claude-instant-v1", "claude-instant-v1-100k", "claude-v1.3",
                          "claude-v1.3-100k", "claude-v1.2", "claude-v1.0", "claude-instant-v1.1", "claude-instant-v1.1-100k", "claude-instant-v1.0"],
                 "default": "claude-2"
       },
@@ -646,9 +646,9 @@ const HuggingFaceTextInferenceSettings = {
         "enum": ["mistralai/Mistral-7B-Instruct-v0.1", "HuggingFaceH4/zephyr-7b-beta", "tiiuae/falcon-7b-instruct", "microsoft/DialoGPT-large", "bigscience/bloom-560m", "gpt2", "bigcode/santacoder", "bigcode/starcoder", "Other (HuggingFace)"],
         "default": "tiiuae/falcon-7b-instruct",
         "shortname_map": {
-          "mistralai/Mistral-7B-Instruct-v0.1": "Mistral-7B", 
-          "HuggingFaceH4/zephyr-7b-beta": "Zephyr-7B", 
-          "tiiuae/falcon-7b-instruct": "Falcon-7B", 
+          "mistralai/Mistral-7B-Instruct-v0.1": "Mistral-7B",
+          "HuggingFaceH4/zephyr-7b-beta": "Zephyr-7B",
+          "tiiuae/falcon-7b-instruct": "Falcon-7B",
           "microsoft/DialoGPT-large": "DialoGPT",
           "bigscience/bloom-560m": "Bloom560M",
           "gpt2": "GPT-2",
@@ -742,7 +742,7 @@ const HuggingFaceTextInferenceSettings = {
         "ui:autofocus": true
       },
       "model": {
-        "ui:help": "Defaults to Falcon.7B."    
+        "ui:help": "Defaults to Falcon.7B."
       },
       "temperature": {
         "ui:help": "Defaults to 1.0.",
@@ -797,7 +797,7 @@ const AlephAlphaLuminousSettings = {
         type: "string",
         title: "Model",
         description:
-          "Select a suggested Aleph Alpha model to query using the Aleph Alpha API. For more details, check outhttps://docs.aleph-alpha.com/api/available-models/",
+          "Select a suggested Aleph Alpha model to query using the Aleph Alpha API. For more details, check out https://docs.aleph-alpha.com/api/available-models/",
         enum: [
           "luminous-extended",
           "luminous-extended-control",
@@ -880,14 +880,7 @@ const AlephAlphaLuminousSettings = {
     },
   },
   uiSchema: {
-    "ui:submitButtonOptions": {
-      props: {
-        disabled: false,
-        className: "mantine-UnstyledButton-root mantine-Button-root",
-      },
-      norender: false,
-      submitText: "Submit",
-    },
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
     shortname: {
       "ui:autofocus": true,
     },
@@ -1000,6 +993,112 @@ const AlephAlphaLuminousSettings = {
   },
 };
 
+const OllamaSettings = {
+  fullName: "Ollama",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "Ollama",
+      },
+      ollamaModel: {
+        type: "string",
+        title: "Model",
+        description:
+          "Enter the model to query using Ollama's API. Make sure you've pulled the model before. For more details, check out https://ollama.ai/library",
+        default: "mistral",
+      },
+      ollama_url: {
+        type: "string",
+        title: "URL",
+        description: "URL of the Ollama server generate endpoint. Only enter the path up to /api, nothing else.",
+        default: "http://localhost:11434/api",
+      },
+      model_type: {
+        type: "string",
+        title: "Model Type (Text or Chat)",
+        description: "Select 'chat' to pass conversation history and use system messages on chat-enabled models, such as llama-2. Detected automatically when '-chat' or ':chat' is present in model name. You must select 'chat' if you want to use this model in Chat Turn nodes.",
+        enum: ["text", "chat"],
+        default: "text",
+      },
+      system_msg: {
+        type: "string",
+        title: "System Message (chat models only)",
+        description: "Enter your system message here. Note that the type of model must be set to 'chat' for this to be passed.",
+        default: "",
+        allow_empty_str: true,
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description: "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
+        default: 1.0,
+        minimum: 0,
+        maximum: 1.0,
+        multipleOf: 0.01,
+      },
+      raw: {
+        type: "boolean",
+        title: "raw",
+        description: "Whether to disable the templating done by Ollama. If checked, you'll need to insert annotations ([INST]) in your prompt.",
+        default: false,
+      },
+      top_k: {
+        type: "integer",
+        title: "top_k",
+        description: "Only sample from the top K options for each subsequent token. Used to remove \"long tail\" low probability responses. Defaults to -1, which disables it.",
+        minimum: -1,
+        default: -1
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description: "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
+        default: -1,
+        minimum: -1,
+        maximum: 1,
+        multipleOf: 0.001,
+      },
+      seed: {
+        type: "integer",
+        title: "seed",
+        description: "If specified, the OpenAI API will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed.",
+        allow_empty_str: true,
+      },
+      stop_sequences:  {
+        type: "string",
+        title: "stop_sequences",
+        description: "Sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes \"\" and use whitespace to separate them.",
+        default: ""
+      },
+    },
+  },
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    raw: {
+      "ui:help": "Defaults to false.",
+    },
+  },
+  postprocessors: {
+    stop_sequences: (str) => {
+      if (str.trim().length === 0) return [];
+      return str.match(/"((?:[^"\\]|\\.)*)"/g).map(s => s.substring(1, s.length-1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+  },
+};
+
 // A lookup table indexed by base_model.
 export let ModelSettings = {
   'gpt-3.5-turbo': ChatGPTSettings,
@@ -1009,16 +1108,17 @@ export let ModelSettings = {
   'dalai': DalaiModelSettings,
   'azure-openai': AzureOpenAISettings,
   'hf': HuggingFaceTextInferenceSettings,
-  "luminous-base": AlephAlphaLuminousSettings
+  "luminous-base": AlephAlphaLuminousSettings,
+  "ollama": OllamaSettings,
   };
 
 /**
  * Add new model provider to the AvailableLLMs list. Also adds the respective ModelSettings schema and rate limit.
  * @param {*} name The name of the provider, to use in the dropdown menu and default name. Must be unique.
- * @param {*} emoji The emoji to use for the provider. Optional. 
+ * @param {*} emoji The emoji to use for the provider. Optional.
  * @param {*} models A list of models the user can select from this provider. Optional.
- * @param {*} rate_limit 
- * @param {*} settings_schema 
+ * @param {*} rate_limit
+ * @param {*} settings_schema
  */
 export const setCustomProvider = (name, emoji, models, rate_limit, settings_schema, llmProviderList) => {
   if (typeof emoji === 'string' && (emoji.length === 0 || emoji.length > 2))
@@ -1028,13 +1128,13 @@ export const setCustomProvider = (name, emoji, models, rate_limit, settings_sche
   new_provider.emoji = emoji || '✨';
 
   // Each LLM *model* must have a unique name. To avoid name collisions, for custom providers,
-  // the full LLM model name is a path, __custom/<provider_name>/<submodel name> 
+  // the full LLM model name is a path, __custom/<provider_name>/<submodel name>
   // If there's no submodel, it's just __custom/<provider_name>.
   const base_model = `__custom/${name}/`;
   new_provider.base_model = base_model;
   new_provider.model = base_model + ((Array.isArray(models) && models.length > 0) ? `${models[0]}` : '');
 
-  // Build the settings form schema for this new custom provider 
+  // Build the settings form schema for this new custom provider
   let compiled_schema = {
     fullName: `${name} (custom provider)`,
     schema: {
@@ -1069,7 +1169,7 @@ export const setCustomProvider = (name, emoji, models, rate_limit, settings_sche
       "default": models[0],
     };
     compiled_schema.uiSchema["model"] = {
-      "ui:help": `Defaults to ${models[0]}`   
+      "ui:help": `Defaults to ${models[0]}`
     };
   }
 
@@ -1083,13 +1183,13 @@ export const setCustomProvider = (name, emoji, models, rate_limit, settings_sche
   const default_temp = compiled_schema?.schema?.properties?.temperature?.default;
   if (default_temp !== undefined)
     new_provider.temp = default_temp;
-  
+
   // Add the built provider and its settings to the global lookups:
   let AvailableLLMs = useStore.getState().AvailableLLMs;
   const prev_provider_idx = AvailableLLMs.findIndex((d) => d.name === name);
   if (prev_provider_idx > -1)
     AvailableLLMs[prev_provider_idx] = new_provider;
-  else 
+  else
     AvailableLLMs.push(new_provider);
   ModelSettings[base_model] = compiled_schema;
 
@@ -1134,7 +1234,7 @@ export const postProcessFormData = (settingsSpec, formData) => {
     else
       new_data[key] = formData[key];
   });
-  
+
   return new_data;
 };
 

@@ -1,5 +1,5 @@
-/** 
- * A list of all model APIs natively supported by ChainForge. 
+/**
+ * A list of all model APIs natively supported by ChainForge.
  */
 export type LLM = string | NativeLLM;
 export enum NativeLLM {
@@ -75,6 +75,7 @@ export enum NativeLLM {
   // A special flag for a user-defined HuggingFace model endpoint.
   // The actual model name will be passed as a param to the LLM call function.
   HF_OTHER = "Other (HuggingFace)",
+  Ollama = "ollama",
 }
 
 /**
@@ -88,6 +89,7 @@ export enum LLMProvider {
   Google = "google",
   HuggingFace = "hf",
   Aleph_Alpha = "alephalpha",
+  Ollama = "ollama",
   Custom = "__custom",
 }
 
@@ -112,9 +114,11 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
     return LLMProvider.Anthropic;
   else if (llm_name?.startsWith('Aleph_Alpha'))
     return LLMProvider.Aleph_Alpha;
+  else if (llm_name?.startsWith('Ollama'))
+    return LLMProvider.Ollama;
   else if (llm.toString().startsWith('__custom/'))
     return LLMProvider.Custom;
-  
+
   return undefined;
 }
 
@@ -145,8 +149,8 @@ export let RATE_LIMITS: { [key in LLM]?: [number, number] } = {
 
 /** Equivalent to a Python enum's .name property */
 export function getEnumName(enumObject: any, enumValue: any): string | undefined {
-  for (const key in enumObject) 
-    if (enumObject[key] === enumValue) 
+  for (const key in enumObject)
+    if (enumObject[key] === enumValue)
       return key;
   return undefined;
 }

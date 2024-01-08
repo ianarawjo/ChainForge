@@ -17,7 +17,7 @@ const initialLLMColors = {};
 /** The color palette used for displaying info about different LLMs. */
 const llmColorPalette = ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#f7ee45', '#f955cd', '#26e080', '#2654e0', '#7d8191', '#bea5d1'];
 
-/** The color palette used for displaying variations of prompts and prompt variables (non-LLM differences). 
+/** The color palette used for displaying variations of prompts and prompt variables (non-LLM differences).
  * Distinct from the LLM color palette in order to avoid confusion around what the data means.
  * Palette adapted from https://lospec.com/palette-list/sness by Space Sandwich */
 const varColorPalette = ['#0bdb52', '#e71861', '#7161de', '#f6d714', '#80bedb', '#ffa995', '#a9b399', '#dc6f0f', '#8d022e', '#138e7d', '#c6924f', '#885818', '#616b6d'];
@@ -40,7 +40,10 @@ export let initLLMProviders = [
   { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
 ];
 if (APP_IS_RUNNING_LOCALLY()) {
-  initLLMProviders.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
+  initLLMProviders.push({ name: "Ollama", emoji: "🦙", model: "ollama", base_model: "ollama", temp: 1.0 });
+  // -- Deprecated provider --
+  // initLLMProviders.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
+  // -------------------------
 }
 
 // A global store of variables, used for maintaining state
@@ -79,7 +82,7 @@ const useStore = create((set, get) => ({
   llmColors: initialLLMColors,
 
   // Gets the color for the model named 'llm_name' in llmColors; returns undefined if not found.
-  getColorForLLM: (llm_name) => {  
+  getColorForLLM: (llm_name) => {
     const colors = get().llmColors;
     if (llm_name in colors)
       return colors[llm_name];
@@ -87,7 +90,7 @@ const useStore = create((set, get) => ({
   },
 
   // Gets the color for the specified LLM. If not found, generates a new (ideally unique) color
-  // and saves it to the llmColors dict. 
+  // and saves it to the llmColors dict.
   getColorForLLMAndSetIfNotFound: (llm_name) => {
     let color = get().getColorForLLM(llm_name);
     if (color) return color;
@@ -97,7 +100,7 @@ const useStore = create((set, get) => ({
   },
 
   // Generates a unique color not yet used in llmColors (unless # colors is large)
-  genUniqueLLMColor: () => {  
+  genUniqueLLMColor: () => {
     const used_colors = new Set(Object.values(get().llmColors));
     const get_unused_color = (all_colors) => {
       for (let i = 0; i < all_colors.length; i++) {
@@ -107,7 +110,7 @@ const useStore = create((set, get) => ({
       }
       return undefined;
     };
-    
+
     let unique_color = get_unused_color(llmColorPalette);
     if (unique_color) return unique_color;
 
@@ -116,7 +119,7 @@ const useStore = create((set, get) => ({
     unique_color = get_unused_color(varColorPalette);
     if (unique_color) return unique_color;
 
-    // If we've reached here, we've run out of all predefined colors. 
+    // If we've reached here, we've run out of all predefined colors.
     // Choose one to repeat, at random:
     const all_colors = llmColorPalette.concat(varColorPalette);
     return all_colors[Math.floor(Math.random() * all_colors.length)];
@@ -133,7 +136,7 @@ const useStore = create((set, get) => ({
       llmColors: []
     });
   },
- 
+
   inputEdgesForNode: (sourceNodeId) => {
     return get().edges.filter(e => e.target == sourceNodeId);
   },
@@ -164,7 +167,7 @@ const useStore = create((set, get) => ({
           const src_col = columns.find(c => c.header === sourceHandleKey);
           if (src_col !== undefined) {
 
-            // Construct a lookup table from column key to header name, 
+            // Construct a lookup table from column key to header name,
             // as the 'metavars' dict should be keyed by column *header*, not internal key:
             let col_header_lookup = {};
             columns.forEach(c => {
@@ -203,10 +206,10 @@ const useStore = create((set, get) => ({
           if (Array.isArray(src_node.data["fields"]))
             return src_node.data["fields"];
           else {
-            // We have to filter over a special 'fields_visibility' prop, which 
+            // We have to filter over a special 'fields_visibility' prop, which
             // can select what fields get output:
             if ("fields_visibility" in src_node.data)
-              return Object.values(filterDict(src_node.data["fields"], 
+              return Object.values(filterDict(src_node.data["fields"],
                                               fid => src_node.data["fields_visibility"][fid] !== false));
             else  // return all field values
               return Object.values(src_node.data["fields"]);
@@ -224,7 +227,7 @@ const useStore = create((set, get) => ({
   // Get the types of nodes attached immediately as input to the given node
   getImmediateInputNodeTypes: (_targetHandles, node_id) => {
     const getNode = get().getNode;
-    const edges = get().edges; 
+    const edges = get().edges;
     let inputNodeTypes = [];
     edges.forEach(e => {
       if (e.target == node_id && _targetHandles.includes(e.targetHandle)) {
@@ -242,9 +245,9 @@ const useStore = create((set, get) => ({
     // Functions/data from the store:
     const getNode = get().getNode;
     const output = get().output;
-    const edges = get().edges; 
+    const edges = get().edges;
 
-    // Helper function to store collected data in dict: 
+    // Helper function to store collected data in dict:
     const store_data = (_texts, _varname, _data) => {
       if (_varname in _data)
         _data[_varname] = _data[_varname].concat(_texts);
@@ -257,12 +260,12 @@ const useStore = create((set, get) => ({
     const get_outputs = (varnames, nodeId, var_history) => {
       varnames.forEach(varname => {
         // Check for duplicate variable names
-        if (var_history.has(String(varname).toLowerCase())) 
+        if (var_history.has(String(varname).toLowerCase()))
           throw new DuplicateVariableNameError(varname);
-        
+
         // Add to unique name tally
         var_history.add(String(varname).toLowerCase());
-        
+
         // Find the relevant edge(s):
         edges.forEach(e => {
           if (e.target == nodeId && e.targetHandle == varname) {
@@ -278,7 +281,7 @@ const useStore = create((set, get) => ({
               // Save the list of strings from the pulled output under the var 'varname'
               store_data(out, varname, pulled_data);
             }
-            
+
             // Get any vars that the output depends on, and recursively collect those outputs as well:
             const n_vars = getNode(e.source).data.vars;
             if (n_vars && Array.isArray(n_vars) && n_vars.length > 0)
@@ -295,15 +298,15 @@ const useStore = create((set, get) => ({
   /**
    * Sets select 'data' properties for node 'id'. This updates global state, and forces re-renders. Use sparingly.
    * @param {*} id The id of the node to set 'data' properties for.
-   * @param {*} data_props The properties to set on the node's 'data'. 
+   * @param {*} data_props The properties to set on the node's 'data'.
    */
   setDataPropsForNode: (id, data_props) => {
     set({
-      nodes: (nds => 
+      nodes: (nds =>
         nds.map(n => {
           if (n.id === id) {
-            for (const key of Object.keys(data_props)) 
-              n.data[key] = data_props[key]; 
+            for (const key of Object.keys(data_props))
+              n.data[key] = data_props[key];
             n.data = deepcopy(n.data);
           }
           return n;
@@ -393,10 +396,10 @@ const useStore = create((set, get) => ({
     });
   },
   onConnect: (connection) => {
-    
+
     // Get the target node information
     const target = get().getNode(connection.target);
-    
+
     if (target.type === 'vis' || target.type === 'inspect' || target.type === 'simpleval') {
       get().setDataPropsForNode(target.id, { input: connection.source });
     }

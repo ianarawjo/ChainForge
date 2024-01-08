@@ -1,10 +1,9 @@
 import React, { useMemo, useRef } from 'react';
-import { Stack, NumberInput, Button, Text, TextInput, Switch, Tabs, Popover, Badge, Textarea, Alert } from "@mantine/core"
+import { Stack, NumberInput, Button, Text, Switch, Tabs, Popover, Badge, Textarea, Alert } from "@mantine/core"
 import { useState } from 'react';
 import { autofill, generateAndReplace, AIError } from './backend/ai';
 import { IconSparkles, IconAlertCircle } from '@tabler/icons-react';
 import AlertModal from './AlertModal';
-import { useStore } from './store';
 
 const zeroGap = {gap: "0rem"};
 const popoverShadow ="rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -142,7 +141,7 @@ function AIPopover({
   ), [didGenerateAndReplaceError, generateAndReplacePrompt, setGenerateAndReplacePrompt, generateAndReplaceNumber, setGenerateAndReplaceNumber, generateAndReplaceIsUnconventional, setGenerateAndReplaceIsUnconventional, handleGenerateAndReplace, areValuesLoading]);
   
   return (
-    <Popover position="right-start" withArrow shadow={popoverShadow} withinPortal keepMounted trapFocus>
+    <Popover position="right-start" withArrow shadow={popoverShadow} withinPortal keepMounted trapFocus={noOpenAIKeyMessage === undefined}>
       <Popover.Target>
         <button className="ai-button nodrag"><IconSparkles size={10} stroke={3}/></button>
       </Popover.Target>
