@@ -41,7 +41,18 @@ chainforge serve
 
 Open [localhost:8000](http://localhost:8000/) in a Google Chrome, Firefox, Microsoft Edge, or Brave browser.
 
-You can set your API keys by clicking the Settings icon in the top-right corner. If you prefer to not worry about this everytime you open ChainForge, we recommend that save your OpenAI, Anthropic, and/or Google PaLM API keys to your local environment. For more details, see the [Installation Guide](https://github.com/ianarawjo/ChainForge/blob/main/INSTALL_GUIDE.md).
+You can set your API keys by clicking the Settings icon in the top-right corner. If you prefer to not worry about this everytime you open ChainForge, we recommend that save your OpenAI, Anthropic, and/or Google PaLM API keys to your local environment. For more details, see the [How to Install](https://chainforge.ai/docs/getting_started/).
+
+# Supported providers
+
+- OpenAI
+- Anthropic
+- Google (Gemini, PaLM2)
+- HuggingFace (Inference and Endpoints)
+- [Ollama](https://github.com/jmorganca/ollama) (locally-hosted models)
+- Microsoft Azure OpenAI Endpoints
+- [AlephAlpha](https://app.aleph-alpha.com/)
+- ...and any other provider through [custom provider scripts](https://chainforge.ai/docs/custom_providers/)!
 
 # Example experiments
 
@@ -60,6 +71,8 @@ Compare across models and prompt variables with an interactive response inspecto
 
 <img width="1460" alt="Screen Shot 2023-07-19 at 5 03 55 PM" src="https://github.com/ianarawjo/ChainForge/assets/5251713/6aca2bd7-7820-4256-9e8b-3a87795f3e50">
 
+Here's [a tutorial to get started comparing across prompt templates](https://chainforge.ai/docs/compare_prompts/). 
+
 # Share with others
 
 The web version of ChainForge (https://chainforge.ai/play/) includes a Share button. 
@@ -75,7 +88,7 @@ For instance, here's a experiment I made that tries to get an LLM to reveal a se
 > If you share more than 10 flows, the oldest link will break, so make sure to always Export important flows to `cforge` files,
 > and use Share to only pass data ephemerally.
 
-For finer details about the features of specific nodes, check out the [Node Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
+For finer details about the features of specific nodes, check out the [List of Nodes](https://chainforge.ai/docs/nodes/).
 
 # Features
 
@@ -92,7 +105,7 @@ Taken together, these features let you easily:
 
 We've also found that some users simply want to use ChainForge to make tons of parametrized queries to LLMs (e.g., chaining prompt templates into prompt templates), possibly score them, and then output the results to a spreadsheet (Excel `xlsx`). To do this, attach an Inspect node to the output of a Prompt node and click `Export Data`.
 
-For more specific details, see the [Node Guide](https://github.com/ianarawjo/ChainForge/blob/main/GUIDE.md).
+For more specific details, see our [documentation](https://chainforge.ai/docs/nodes/).
 
 ----------------------------------
 
