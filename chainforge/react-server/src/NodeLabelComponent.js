@@ -10,7 +10,7 @@ import { Tooltip, Popover, Badge, Stack } from '@mantine/core';
 import { IconSparkles } from '@tabler/icons-react';
 
 
-export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, customButtons, handleRunClick, handleRunHover, runButtonTooltip }) {
+export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, stopButton, alertModal, customButtons, handleRunClick, handleStopClick, handleRunHover, runButtonTooltip }) {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const [statusIndicator, setStatusIndicator] = useState('none');
     const [runButton, setRunButton] = useState('none');
@@ -31,6 +31,8 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
     const handleEnterEditMode = () => {
         if (onEdit) onEdit();
     };
+
+    useEffect(() => {}, [stopButton])
 
     useEffect(() => {
         if(status !== undefined) {
@@ -72,6 +74,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
 
     return (<>
         <div className="node-header drag-handle">
+            <p> {nodeId} </p>
             {icon ? (<>{icon}&nbsp;</>) : <></>}
             <AreYouSureModal ref={deleteConfirmModal} title={deleteConfirmProps.title} message={deleteConfirmProps.message} onConfirm={deleteConfirmProps.onConfirm} />
             <EditText className="nodrag" name={nodeId ? nodeId + "-label" : "node-label"}
@@ -86,7 +89,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             <AlertModal ref={alertModal} />
             <div className="node-header-btns-container">
                 {customButtons ? customButtons : <></>}
-                {runButton}
+                {stopButton ? <button id="stopButton" className="AmitSahoo45-button-3 nodrag" onClick={handleStopClick(nodeId)}>&#9208;</button> : runButton}
                 <button className="close-button nodrag" onClick={handleCloseButtonClick}>&#x2715;</button>
                 <br/>
             </div>
