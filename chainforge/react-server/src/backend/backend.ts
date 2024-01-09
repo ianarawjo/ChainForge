@@ -6,6 +6,7 @@ import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backen
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
 import { PromptPermutationGenerator, PromptTemplate } from "./template";
+import QueryTracker from "./queryTracker";
 
 // """ =================
 //     SETUP AND GLOBALS
@@ -587,27 +588,41 @@ export async function queryLLM(id: string,
   if (typeof cache === 'object' && cache.cache_files !== undefined) {
     const past_cache_files: Dict = cache.cache_files;
     let past_cache_filenames: Array<string> = Object.keys(past_cache_files);
-    llms.forEach(llm_spec => {
-      let found_cache = false;
-      for (const [filename, cache_llm_spec] of Object.entries(past_cache_files)) {
-        if (matching_settings(cache_llm_spec, llm_spec)) {
-          llm_to_cache_filename[extract_llm_key(llm_spec)] = filename;
-          found_cache = true;
-          break;
-        }
+    try {    
+      llms.forEach(llm_spec => {
+          if (QueryTracker.has(id)) {
+            console.log("HIT 1")
+            return;
+          }
+          let found_cache = false;
+          for (const [filename, cache_llm_spec] of Object.entries(past_cache_files)) {
+            if (matching_settings(cache_llm_spec, llm_spec)) {
+              llm_to_cache_filename[extract_llm_key(llm_spec)] = filename;
+              found_cache = true;
+              break;
+            }
+          }
+          if (!found_cache) {
+            const new_filename = gen_unique_cache_filename(id, past_cache_filenames);
+            llm_to_cache_filename[extract_llm_key(llm_spec)] = new_filename;
+            cache.cache_files[new_filename] = llm_spec;
+            past_cache_filenames.push(new_filename);
+          }
+        }); 
+    } catch (e) {
+      if (e.message === "CANCELLED") {
+        return;
       }
-      if (!found_cache) {
-        const new_filename = gen_unique_cache_filename(id, past_cache_filenames);
-        llm_to_cache_filename[extract_llm_key(llm_spec)] = new_filename;
-        cache.cache_files[new_filename] = llm_spec;
-        past_cache_filenames.push(new_filename);
-      }
-    });    
+    } 
   } else {
     // Create a new cache JSON object
     cache = { cache_files: {}, responses_last_run: [] };
     let prev_filenames: Array<string> = [];
     llms.forEach((llm_spec: string | Dict) => {
+      if (QueryTracker.has(id)) {
+        console.log("HIT 2")
+        return;
+      }
       const fname = gen_unique_cache_filename(id, prev_filenames);
       llm_to_cache_filename[extract_llm_key(llm_spec)] = fname;
       cache.cache_files[fname] = llm_spec;
@@ -711,11 +726,18 @@ export async function queryLLM(id: string,
     // Await the responses from all queried LLMs
     const llm_results = await Promise.all(tasks);
     llm_results.forEach(result => {
+      if (QueryTracker.has(id)) {
+        console.log("HIT 3")
+        throw new Error("CANCELLED");
+      }
       responses[result.llm_key] = result.responses;
       if (result.errors.length > 0)
         all_errors[result.llm_key] = result.errors;
     });
   } catch (e) {
+    if (e.message === "CANCELLED") {
+      return;
+    }
     console.error(`Error requesting responses: ${e.message}`);
     return { error: e.message };
   }
@@ -725,13 +747,23 @@ export async function queryLLM(id: string,
 
   // Reorder the responses to match the original vars dict ordering of keys and values
   let vars_lookup = {}; // we create a lookup table for faster sort
-  Object.entries(vars).forEach(([varname, vals]) => {
-    vars_lookup[varname] = {};
-    vals.forEach((vobj: Dict | string, i: number) => {
-      const v = typeof vobj === "string" ? vobj : vobj?.text;
-      vars_lookup[varname][v] = i;
+  try {  
+    Object.entries(vars).forEach(([varname, vals]) => {
+      vars_lookup[varname] = {};
+      vals.forEach((vobj: Dict | string, i: number) => {
+        if (QueryTracker.has(id)) {
+          console.log("HIT 4")
+          throw new Error("CANCELLED");
+        }
+        const v = typeof vobj === "string" ? vobj : vobj?.text;
+        vars_lookup[varname][v] = i;
+      });
     });
-  });
+  } catch (e) {
+    if (e.message === "CANCELLED") {
+      return;
+    }
+  }
   const vars_entries = Object.entries(vars_lookup);
   res.sort((a, b) => {
     if (!a.vars || !b.vars) return 0;
@@ -748,10 +780,20 @@ export async function queryLLM(id: string,
 
   // Save the responses *of this run* to the storage cache, for further recall:
   let cache_filenames = past_cache_files;
-  llms.forEach((llm_spec: string | Dict) => {
-    const filename = llm_to_cache_filename[extract_llm_key(llm_spec)];
-    cache_filenames[filename] = llm_spec;
-  });
+  try { 
+    llms.forEach((llm_spec: string | Dict) => {
+      if (QueryTracker.has(id)) {
+        console.log("HIT 5")
+        throw new Error("CANCELLED");
+      }
+      const filename = llm_to_cache_filename[extract_llm_key(llm_spec)];
+      cache_filenames[filename] = llm_spec;
+    });
+  } catch (e) {
+    if (e.message === "CANCELLED") {
+      return;
+    }
+  }
 
   if (!no_cache)
     StorageCache.store(`${id}.json`, {
@@ -759,6 +801,11 @@ export async function queryLLM(id: string,
       responses_last_run: res,
     });
   // Return all responses for all LLMs
+
+  if (QueryTracker.has(id)) {
+    console.log("HIT 6")
+    return;
+  }
   return {
     responses: res, 
     errors: all_errors

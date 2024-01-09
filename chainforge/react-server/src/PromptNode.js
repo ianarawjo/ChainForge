@@ -15,6 +15,7 @@ import ChatHistoryView from './ChatHistoryView';
 import InspectFooter from './InspectFooter';
 import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
 import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
+import QueryTracker from './backend/queryTracker';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -95,6 +96,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [promptText, setPromptText] = useState(data.prompt || "");
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
   const [status, setStatus] = useState('none');
+  const [stopButton, setStopButton] = useState(false);
   const [numGenerations, setNumGenerations] = useState(data.n || 1);
   const [numGenerationsLastRun, setNumGenerationsLastRun] = useState(data.n || 1);
 
@@ -155,6 +157,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const signalDirty = useCallback(() => {
     if (promptTextOnLastRun !== null && status === 'ready')
         setStatus('warning');
+        setStopButton(false);
   }, [promptTextOnLastRun, status])
 
   const addModel = useCallback((new_model, all_items) => {
@@ -225,6 +228,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     // Update status icon, if need be:
     if (promptTextOnLastRun !== null && status !== 'warning' && value !== promptTextOnLastRun) {
         setStatus('warning');
+        setStopButton(false);
     }
 
     refreshTemplateHooks(value);
@@ -242,6 +246,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             // Store responses and set status to green checkmark
             setJSONResponses(json.responses);
             setStatus('ready');
+            setStopButton(false);
         }
     });
   }, []);
@@ -253,6 +258,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     if (refresh === true) {
       setDataPropsForNode(id, { refresh: false });
       setStatus('warning');
+      setStopButton(false);
       handleOnConnect();
     } else if (refreshLLMList === true) {
       llmListContainer?.current?.refreshLLMProviderList();
@@ -524,12 +530,14 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
     // Set status indicator
     setStatus('loading');
+    setStopButton(true);
     setContChatToggleDisabled(true);
     setJSONResponses([]);
     setProgressAnimated(true);
 
     const rejected = (err) => {
         setStatus('error');
+        setStopButton(false);
         setContChatToggleDisabled(false);
         triggerAlert(err.message || err);
     };
@@ -600,7 +608,22 @@ const PromptNode = ({ data, id, type: node_type }) => {
             cont_only_w_prior_llms: node_type !== 'chat' ? (showContToggle && contWithPriorLLMs) : undefined,
         }, rejected).then(function(json) {
             if (!json) {
-                rejected('Request was sent and received by backend server, but there was no response.');
+                if (QueryTracker.has(id)){
+                    // Remove progress bars
+                    setProgress(undefined);
+                    setProgressAnimated(false);
+                    debounce(() => {}, 1)(); // erase any pending debounces
+    
+                    // All responses collected! Change status to 'ready':
+                    setStatus('none');
+                    setStopButton(false);
+                    setContChatToggleDisabled(false);
+    
+                    // Remove individual progress rings
+                    llmListContainer?.current?.resetLLMItemsProgress();
+                } else {
+                    rejected('Request was sent and received by backend server, but there was no response.');
+                }
             }
             else if (json.responses && json.errors) {
 
@@ -629,6 +652,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
                     // Set error status
                     setStatus('error');
+                    setStopButton(false);
                     setContChatToggleDisabled(false);
 
                     // Trigger alert and display one error message per LLM of all collected errors:
@@ -649,6 +673,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
                 // All responses collected! Change status to 'ready':
                 setStatus('ready');
+                setStopButton(false);
                 setContChatToggleDisabled(false);
 
                 // Remove individual progress rings
@@ -691,6 +716,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             } else {
                 rejected(json.error || 'Unknown error when querying LLM');
             }
+            QueryTracker.delete(id);
         }, rejected);
     };
 
@@ -701,6 +727,12 @@ const PromptNode = ({ data, id, type: node_type }) => {
         .catch(rejected);
   };
 
+  const handleStopClick = (nodeId) => {
+    console.log("STOP CLICK")
+    QueryTracker.add(nodeId);
+    console.log(QueryTracker.getInstance())
+  }
+
   const handleNumGenChange = useCallback((event) => {
     let n = event.target.value;
     if (!isNaN(n) && n.length > 0 && /^\d+$/.test(n)) {
@@ -708,13 +740,14 @@ const PromptNode = ({ data, id, type: node_type }) => {
         n = parseInt(n);
         if (n !== numGenerationsLastRun && status === 'ready')
             setStatus('warning');
+            setStopButton(false);
         setNumGenerations(n);
         setDataPropsForNode(id, {n: n});
     }
   }, [numGenerationsLastRun, status]);
 
   const hideStatusIndicator = () => {
-    if (status !== 'none') { setStatus('none'); }
+    if (status !== 'none') { setStatus('none'); setStopButton(false); }
   };
 
   // Dynamically update the textareas and position of the template hooks
@@ -748,8 +781,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 onEdit={hideStatusIndicator}
                 icon={node_icon} 
                 status={status}
+                stopButton = {stopButton}
                 alertModal={alertModal}
                 handleRunClick={handleRunClick}
+                handleStopClick={handleStopClick}
                 handleRunHover={handleRunHover}
                 runButtonTooltip={runTooltip}
                 customButtons={[
@@ -813,6 +848,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                     disabled={contToggleDisabled}
                     onChange={(event) => {
                         setStatus('warning');
+                        setStopButton(false);
                         setContWithPriorLLMs(event.currentTarget.checked);
                         setDataPropsForNode(id, { contChat: event.currentTarget.checked });
                     }}
