@@ -96,7 +96,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [promptText, setPromptText] = useState(data.prompt || "");
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
   const [status, setStatus] = useState('none');
-  const [stopButton, setStopButton] = useState(false);
+  const [stopButton, setStopButton] = useState('');
   const [numGenerations, setNumGenerations] = useState(data.n || 1);
   const [numGenerationsLastRun, setNumGenerationsLastRun] = useState(data.n || 1);
 
@@ -157,7 +157,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const signalDirty = useCallback(() => {
     if (promptTextOnLastRun !== null && status === 'ready')
         setStatus('warning');
-        setStopButton(false);
+        setStopButton('none');
   }, [promptTextOnLastRun, status])
 
   const addModel = useCallback((new_model, all_items) => {
@@ -228,7 +228,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     // Update status icon, if need be:
     if (promptTextOnLastRun !== null && status !== 'warning' && value !== promptTextOnLastRun) {
         setStatus('warning');
-        setStopButton(false);
+        setStopButton('none');
     }
 
     refreshTemplateHooks(value);
@@ -246,7 +246,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             // Store responses and set status to green checkmark
             setJSONResponses(json.responses);
             setStatus('ready');
-            setStopButton(false);
+            setStopButton('none');
         }
     });
   }, []);
@@ -258,7 +258,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     if (refresh === true) {
       setDataPropsForNode(id, { refresh: false });
       setStatus('warning');
-      setStopButton(false);
+      setStopButton('none');
       handleOnConnect();
     } else if (refreshLLMList === true) {
       llmListContainer?.current?.refreshLLMProviderList();
@@ -530,14 +530,14 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
     // Set status indicator
     setStatus('loading');
-    setStopButton(true);
+    setStopButton('green');
     setContChatToggleDisabled(true);
     setJSONResponses([]);
     setProgressAnimated(true);
 
     const rejected = (err) => {
         setStatus('error');
-        setStopButton(false);
+        setStopButton('none');
         setContChatToggleDisabled(false);
         triggerAlert(err.message || err);
     };
@@ -616,7 +616,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     
                     // All responses collected! Change status to 'ready':
                     setStatus('none');
-                    setStopButton(false);
+                    setStopButton('none');
                     setContChatToggleDisabled(false);
     
                     // Remove individual progress rings
@@ -652,7 +652,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
                     // Set error status
                     setStatus('error');
-                    setStopButton(false);
+                    setStopButton('none');
                     setContChatToggleDisabled(false);
 
                     // Trigger alert and display one error message per LLM of all collected errors:
@@ -673,7 +673,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
                 // All responses collected! Change status to 'ready':
                 setStatus('ready');
-                setStopButton(false);
+                setStopButton('none');
                 setContChatToggleDisabled(false);
 
                 // Remove individual progress rings
@@ -728,9 +728,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
   };
 
   const handleStopClick = (nodeId) => {
-    console.log("STOP CLICK")
+    setStopButton('red');
     QueryTracker.add(nodeId);
-    console.log(QueryTracker.getInstance())
   }
 
   const handleNumGenChange = useCallback((event) => {
@@ -740,14 +739,14 @@ const PromptNode = ({ data, id, type: node_type }) => {
         n = parseInt(n);
         if (n !== numGenerationsLastRun && status === 'ready')
             setStatus('warning');
-            setStopButton(false);
+            setStopButton('none');
         setNumGenerations(n);
         setDataPropsForNode(id, {n: n});
     }
   }, [numGenerationsLastRun, status]);
 
   const hideStatusIndicator = () => {
-    if (status !== 'none') { setStatus('none'); setStopButton(false); }
+    if (status !== 'none') { setStatus('none'); setStopButton('none'); }
   };
 
   // Dynamically update the textareas and position of the template hooks
@@ -848,7 +847,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                     disabled={contToggleDisabled}
                     onChange={(event) => {
                         setStatus('warning');
-                        setStopButton(false);
+                        setStopButton('none');
                         setContWithPriorLLMs(event.currentTarget.checked);
                         setDataPropsForNode(id, { contChat: event.currentTarget.checked });
                     }}

@@ -21,6 +21,8 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
     const [deleteConfirmProps, setDeleteConfirmProps] = useState({
         title: 'Delete node', message: 'Are you sure?', onConfirm: () => {}
     });
+    const greenStopButton = <button className="AmitSahoo45-button-3 nodrag" onClick={() => handleStopClick(nodeId)}>&#9208;</button>
+    const redStopButton = <button className="stopping-button nodrag" >stopping...</button>
 
     const handleNodeLabelChange = (evt) => {
         const { value } = evt;
@@ -110,7 +112,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             <AlertModal ref={alertModal} />
             <div className="node-header-btns-container">
                 {customButtons ? customButtons : <></>}
-                {stopButton ? <button className="AmitSahoo45-button-3 nodrag" onClick={() => handleStopClick(nodeId)}>&#9208;</button> : runButton}
+                {stopButton === 'green' ? greenStopButton : stopButton === 'red' ? redStopButton : runButton}
                 <button className="close-button nodrag" onClick={handleCloseButtonClick}>&#x2715;</button>
                 <br/>
             </div>

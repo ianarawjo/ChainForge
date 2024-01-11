@@ -9,7 +9,7 @@ import { LLMResponseError, LLMResponseObject } from '../typing';
 async function prompt_model(model: LLM): Promise<void> {
   const pipeline = new PromptPipeline('What is the oldest {thing} in the world? Keep your answer brief.', model.toString());
   let responses: Array<LLMResponseObject | LLMResponseError> = [];
-  for await (const response of pipeline.gen_responses({thing: ['bar', 'tree', 'book']}, model, 1, 1.0)) {
+  for await (const response of pipeline.gen_responses("nodeID", {thing: ['bar', 'tree', 'book']}, model, 1, 1.0)) {
     responses.push(response);
   }
   expect(responses).toHaveLength(3);
@@ -24,7 +24,7 @@ async function prompt_model(model: LLM): Promise<void> {
 
   // Now query ChatGPT again, but set n=2 to force it to send off 1 query per prompt.
   responses = [];
-  for await (const response of pipeline.gen_responses({thing: ['bar', 'tree', 'book']}, model, 2, 1.0)) {
+  for await (const response of pipeline.gen_responses("nodeID", {thing: ['bar', 'tree', 'book']}, model, 2, 1.0)) {
     responses.push(response);
   }
   expect(responses).toHaveLength(3);  // still 3
@@ -45,7 +45,7 @@ async function prompt_model(model: LLM): Promise<void> {
 
   // Now send off the exact same query. It should use only the cache'd results:
   responses = [];
-  for await (const response of pipeline.gen_responses({thing: ['bar', 'tree', 'book']}, model, 2, 1.0)) {
+  for await (const response of pipeline.gen_responses("nodeID", {thing: ['bar', 'tree', 'book']}, model, 2, 1.0)) {
     responses.push(response);
   }
   expect(responses).toHaveLength(3);  // still 3

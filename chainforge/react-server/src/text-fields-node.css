@@ -810,6 +810,23 @@
   margin-top: -3px;
 }
 
+.stopping-button {
+  position: relative;
+  padding: 2px 6px;
+  margin-top: -7px;
+  border-radius: 5px;
+  border: 1px solid #999;
+  font-size: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  background: rgb(200 , 26, 69);
+  color: white;
+  box-shadow: 0 0 30px 5px rgb(234, 63, 106, 0.815);
+  -webkit-transition: all 0.2s ease-out;
+  -moz-transition: all 0.2s ease-out;
+  transition: all 0.2s ease-out;
+}
+
 /* Close button */
 .close-button {
   position: relative;

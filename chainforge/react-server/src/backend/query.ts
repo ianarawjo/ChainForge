@@ -3,6 +3,7 @@ import { LLM, NativeLLM, RATE_LIMITS } from './models';
 import { Dict, LLMResponseError, LLMResponseObject, isEqualChatHistory, ChatHistoryInfo } from "./typing";
 import { extract_responses, merge_response_objs, call_llm, mergeDicts } from "./utils";
 import StorageCache from "./cache";
+import QueryTracker from "./queryTracker";
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
@@ -129,12 +130,13 @@ export class PromptPipeline {
    *                                 and 3 different prior chat histories, it will send off 9 queries. 
    * @yields Yields `LLMResponseObject` if API call succeeds, or `LLMResponseError` if API call fails, for all requests. 
    */
-  async *gen_responses(vars: Dict, 
+  async *gen_responses( id: string,
+                        vars: Dict,
                         llm: LLM,
-                          n: number = 1, 
-                temperature: number = 1.0, 
-                llm_params?: Dict,
-            chat_histories?: ChatHistoryInfo[]): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
+                        n: number = 1, 
+                        temperature: number = 1.0, 
+                        llm_params?: Dict,
+                        chat_histories?: ChatHistoryInfo[]): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
     // Load any cache'd responses
     let responses = this._load_cached_responses();
 
@@ -205,24 +207,28 @@ export class PromptPipeline {
 
         num_queries_sent += 1;
 
-        if (max_req > 1) {                
-          // Call the LLM asynchronously to generate a response, sending off
-          // requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
-          tasks.push(this._prompt_llm(llm, prompt, n, temperature, 
-                                      cached_resp, 
-                                      cached_resp_idx,
-                                      num_queries_sent, 
-                                      max_req, 
-                                      wait_secs, 
-                                      llm_params,
-                                      chat_history));
-        } else {
-          // Block. Await + yield a single LLM call.
-          let result = await this._prompt_llm(llm, prompt, n, temperature, 
-                                              cached_resp, cached_resp_idx, 
-                                              undefined, undefined, undefined, 
-                                              llm_params, chat_history);
-          yield this.collect_LLM_response(result, llm, responses);
+        try {
+          if (max_req > 1) {                
+            // Call the LLM asynchronously to generate a response, sending off
+            // requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
+            tasks.push(this._prompt_llm(id, llm, prompt, n, temperature, 
+                                        cached_resp, 
+                                        cached_resp_idx,
+                                        num_queries_sent, 
+                                        max_req, 
+                                        wait_secs, 
+                                        llm_params,
+                                        chat_history));
+          } else {
+            // Block. Await + yield a single LLM call.
+            let result = await this._prompt_llm(id, llm, prompt, n, temperature, 
+                                                cached_resp, cached_resp_idx, 
+                                                undefined, undefined, undefined, 
+                                                llm_params, chat_history);
+            yield this.collect_LLM_response(result, llm, responses);
+          }
+        } catch (e) {
+          if (e.message === "Node cancelled") { throw e }
         }
       }
     }
@@ -253,7 +259,8 @@ export class PromptPipeline {
       StorageCache.store(this._storageKey, responses);
   }
 
-  async _prompt_llm(llm: LLM, 
+  async _prompt_llm(id: string, 
+                    llm: LLM, 
                     prompt: PromptTemplate, 
                     n: number = 1, 
                     temperature: number = 1.0, 
@@ -291,8 +298,10 @@ export class PromptPipeline {
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;
     try {
+      if (QueryTracker.has(id))  { throw new Error("Node cancelled"); }
       [query, response] = await call_llm(llm, prompt.toString(), n, temperature, params);
     } catch(err) {
+      if (err.message === "Node cancelled") { throw err }
       return { prompt: prompt, 
                query: undefined, 
                response: new LLMResponseError(err.message), 
