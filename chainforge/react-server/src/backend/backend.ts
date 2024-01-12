@@ -6,6 +6,8 @@ import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backen
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
 import { PromptPermutationGenerator, PromptTemplate } from "./template";
+import { UserForcedPrematureExit } from "./errors";
+import QueryStopper from "./queryStopper";
 
 // """ =================
 //     SETUP AND GLOBALS
@@ -667,11 +669,16 @@ export async function queryLLM(id: string,
     let errors: Array<string> = [];
     let num_resps = 0;
     let num_errors = 0;
+
+    function check_stop_condition() {
+      return QueryStopper.has(id)
+    }
+
     try {
       console.log(`Querying ${llm_str}...`)
 
       // Yield responses for 'llm' for each prompt generated from the root template 'prompt' and template variables in 'properties':
-      for await (const response of prompter.gen_responses(id, _vars, llm_str as LLM, num_generations, temperature, llm_params, chat_hists)) {
+      for await (const response of prompter.gen_responses(_vars, llm_str as LLM, num_generations, temperature, llm_params, chat_hists, check_stop_condition)) {
         
         // Check for selective failure
         if (response instanceof LLMResponseError) {  // The request failed
@@ -694,7 +701,7 @@ export async function queryLLM(id: string,
         };
       }
     } catch (e) {
-      if (e.message === "Node cancelled") { throw e; }
+      if (e instanceof UserForcedPrematureExit) { throw e; }
       console.error(`Error generating responses for ${llm_str}: ${e.message}`);
       throw e;
     }
@@ -717,7 +724,7 @@ export async function queryLLM(id: string,
         all_errors[result.llm_key] = result.errors;
     });
   } catch (e) {
-    if (e.message === "Node cancelled") { return };
+    if (e instanceof UserForcedPrematureExit) { return; }
     console.error(`Error requesting responses: ${e.message}`);
     return { error: e.message };
   }

@@ -15,7 +15,7 @@ import ChatHistoryView from './ChatHistoryView';
 import InspectFooter from './InspectFooter';
 import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
 import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
-import QueryTracker from './backend/queryTracker';
+import QueryStopper from './backend/queryStopper';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -608,7 +608,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             cont_only_w_prior_llms: node_type !== 'chat' ? (showContToggle && contWithPriorLLMs) : undefined,
         }, rejected).then(function(json) {
             if (!json) {
-                if (QueryTracker.has(id)){
+                if (QueryStopper.has(id)){
                     // Remove progress bars
                     setProgress(undefined);
                     setProgressAnimated(false);
@@ -716,7 +716,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             } else {
                 rejected(json.error || 'Unknown error when querying LLM');
             }
-            QueryTracker.delete(id);
+            QueryStopper.clear(id);
         }, rejected);
     };
 
@@ -729,7 +729,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   const handleStopClick = (nodeId) => {
     setStopButton('red');
-    QueryTracker.add(nodeId);
+    QueryStopper.add(nodeId);
   }
 
   const handleNumGenChange = useCallback((event) => {

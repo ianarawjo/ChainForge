@@ -13,7 +13,6 @@ import { IconSparkles } from '@tabler/icons-react';
 export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, stopButton, alertModal, customButtons, handleRunClick, handleStopClick, handleRunHover, runButtonTooltip }) {    const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const [statusIndicator, setStatusIndicator] = useState('none');
     const [runButton, setRunButton] = useState('none');
-    const [displayStopButton, setDisplayStopButton] = useState('none');
     const removeNode = useStore((state) => state.removeNode);
 
     // For 'delete node' confirmation popup
@@ -61,28 +60,6 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
     }, [handleRunClick, runButtonTooltip]);
 
     useEffect(() => {}, [stopButton])
-
-    // useEffect(() => {
-    //     if (stopButton === 'green') {
-    //         setDisplayStopButton(
-    //             <Tooltip label={"Cancel query"} withArrow arrowSize={6} arrowRadius={2} zIndex={1001} withinPortal={true} >
-    //             <button className="AmitSahoo45-button-3 nodrag" onClick={() => handleStopClick(nodeId)}>&#9654;</button>
-    //             </Tooltip>
-    //         );
-    //     } else if (stopButton === 'red') {
-    //         setDisplayStopButton(
-    //             <Tooltip label={"Cancelling query..."} withArrow arrowSize={6} arrowRadius={2} zIndex={1001} withinPortal={true} >
-    //             <button className="close-button nodrag" >&#9208;</button>
-    //             </Tooltip>
-    //         );
-    //     } else if (runButton === 'none') {
-    //         setDisplayStopButton(<button className="AmitSahoo45-button-3 nodrag" onClick={handleRunClick} onPointerEnter={handleRunHover}>&#9654;</button>);
-    //     } else {
-    //         setDisplayStopButton(runButton)
-    //     }
-    // }, [stopButton])
-
-    useEffect(() => {}, [displayStopButton])
 
     const handleCloseButtonClick = useCallback(() => {
         setDeleteConfirmProps({
