@@ -671,7 +671,7 @@ export async function queryLLM(id: string,
     let num_errors = 0;
 
     function check_stop_condition() {
-      return QueryStopper.has(id)
+      return QueryStopper.has(id);
     }
 
     try {

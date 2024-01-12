@@ -11,7 +11,7 @@ export class DuplicateVariableNameError extends Error {
 export class UserForcedPrematureExit extends Error {
     constructor() {
         super();
-        this.name = "UserForcedPrematureExit"
-        this.message = "You have forced the premature exit of the query."
+        this.name = "UserForcedPrematureExit";
+        this.message = "You have forced the premature exit of the query.";
     }
 }

@@ -230,7 +230,7 @@ export class PromptPipeline {
             yield this.collect_LLM_response(result, llm, responses);
           }
         } catch (e) {
-          if (e instanceof UserForcedPrematureExit) { throw e; }
+          throw e;
         }
       }
     }
@@ -302,6 +302,7 @@ export class PromptPipeline {
     try {
       if (check_stop_condition && check_stop_condition())  { throw new UserForcedPrematureExit(); }
       [query, response] = await call_llm(llm, prompt.toString(), n, temperature, params);
+      if (check_stop_condition && check_stop_condition())  { throw new UserForcedPrematureExit(); }
     } catch(err) {
       if (err instanceof UserForcedPrematureExit) { throw err; }
       return { prompt: prompt, 
