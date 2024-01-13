@@ -128,9 +128,7 @@ function decode(mdText: string): Row[] {
 export async function autofill(input: Row[], n: number, apiKeys?: Dict): Promise<Row[]> {
   // hash the arguments to get a unique id
   let id = JSON.stringify([input, n]);
-
   let encoded = encode(input);
-
   let templateVariables = [...new Set(new StringTemplate(input.join('\n')).get_vars())];
 
   console.log("System message: ", autofillSystemMessage(n, templateVariables));

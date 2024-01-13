@@ -21,7 +21,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
         title: 'Delete node', message: 'Are you sure?', onConfirm: () => {}
     });
     const stopButton = useMemo(() => 
-        <button className="AmitSahoo45-button-3 nodrag" style={{paddingTop: '0px', paddingBottom: '0px'}} onClick={() => handleStopClick(nodeId)}>
+        <button className="AmitSahoo45-button-3 nodrag" style={{padding: '0px 10px 0px 9px'}} onClick={() => handleStopClick(nodeId)}>
             &#9724;
         </button>
     , [handleStopClick, nodeId]);

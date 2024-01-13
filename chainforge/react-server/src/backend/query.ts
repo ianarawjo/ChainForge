@@ -301,7 +301,7 @@ export class PromptPipeline {
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
       // Call the LLM, returning when the Promise returns (if it does!)
-      [query, response] = await call_llm(llm, prompt.toString(), n, temperature, params);
+      [query, response] = await call_llm(llm, prompt.toString(), n, temperature, params, should_cancel);
 
       // When/if we emerge from getting a response, check if this process has been canceled in the meantime: 
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();

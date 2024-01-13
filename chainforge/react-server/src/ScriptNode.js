@@ -32,7 +32,6 @@ const ScriptNode = ({ data, id }) => {
         if (Object.keys(new_data.scriptFiles).length === 0) {
             new_data.scriptFiles[get_id()] = '';
         }
-        console.log(new_data);
         setDataPropsForNode(id, new_data);
     }, [data, id, setDataPropsForNode]);
 
