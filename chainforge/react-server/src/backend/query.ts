@@ -3,7 +3,7 @@ import { LLM, NativeLLM, RATE_LIMITS } from './models';
 import { Dict, LLMResponseError, LLMResponseObject, isEqualChatHistory, ChatHistoryInfo } from "./typing";
 import { extract_responses, merge_response_objs, call_llm, mergeDicts } from "./utils";
 import StorageCache from "./cache";
-import QueryStopper from "./queryStopper";
+import CancelTracker from "./canceler";
 import { UserForcedPrematureExit } from "./errors";
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
@@ -137,7 +137,7 @@ export class PromptPipeline {
                         temperature: number = 1.0, 
                         llm_params?: Dict,
                         chat_histories?: ChatHistoryInfo[],
-                        check_stop_condition?: ()=>boolean): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
+                        should_cancel?: ()=>boolean): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
     // Load any cache'd responses
     let responses = this._load_cached_responses();
 
@@ -208,29 +208,26 @@ export class PromptPipeline {
 
         num_queries_sent += 1;
 
-        try {
-          if (max_req > 1) {                
-            // Call the LLM asynchronously to generate a response, sending off
-            // requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
-            tasks.push(this._prompt_llm(llm, prompt, n, temperature, 
-                                        cached_resp, 
-                                        cached_resp_idx,
-                                        num_queries_sent, 
-                                        max_req, 
-                                        wait_secs, 
-                                        llm_params,
-                                        chat_history,
-                                        check_stop_condition));
-          } else {
-            // Block. Await + yield a single LLM call.
-            let result = await this._prompt_llm(llm, prompt, n, temperature, 
-                                                cached_resp, cached_resp_idx, 
-                                                undefined, undefined, undefined, 
-                                                llm_params, chat_history, check_stop_condition);
-            yield this.collect_LLM_response(result, llm, responses);
-          }
-        } catch (e) {
-          throw e;
+        if (max_req > 1) {                
+          // Call the LLM asynchronously to generate a response, sending off
+          // requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
+          tasks.push(this._prompt_llm(llm, prompt, n, temperature, 
+                                      cached_resp, 
+                                      cached_resp_idx,
+                                      num_queries_sent, 
+                                      max_req, 
+                                      wait_secs, 
+                                      llm_params,
+                                      chat_history,
+                                      should_cancel));
+        } else {
+          // Block. Await + yield a single LLM call.
+          let result = await this._prompt_llm(llm, prompt, n, temperature, 
+                                              cached_resp, cached_resp_idx, 
+                                              undefined, undefined, undefined, 
+                                              llm_params, chat_history, 
+                                              should_cancel);
+          yield this.collect_LLM_response(result, llm, responses);
         }
       }
     }
@@ -272,7 +269,7 @@ export class PromptPipeline {
                     rate_limit_wait_secs?: number,
                     llm_params?: Dict,
                     chat_history?: ChatHistoryInfo,
-                    check_stop_condition?: ()=>boolean): Promise<_IntermediateLLMResponseType> {
+                    should_cancel?: ()=>boolean): Promise<_IntermediateLLMResponseType> {
     // Detect how many responses we have already (from cache obj past_resp_obj)
     if (past_resp_obj) {
       // How many *new* queries we need to send: 
@@ -292,7 +289,7 @@ export class PromptPipeline {
         await sleep(wait_secs);
       }
     }
-    
+
     // Now try to call the API. If it fails for whatever reason, 'soft fail' by returning
     // an LLMResponseException object as the 'response'.
     let params = clone(llm_params);
@@ -300,18 +297,24 @@ export class PromptPipeline {
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;
     try {
-      if (check_stop_condition && check_stop_condition())  { throw new UserForcedPrematureExit(); }
+      // When/if we emerge from sleep, check if this process has been canceled in the meantime: 
+      if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+      // Call the LLM, returning when the Promise returns (if it does!)
       [query, response] = await call_llm(llm, prompt.toString(), n, temperature, params);
-      if (check_stop_condition && check_stop_condition())  { throw new UserForcedPrematureExit(); }
+
+      // When/if we emerge from getting a response, check if this process has been canceled in the meantime: 
+      if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
     } catch(err) {
-      if (err instanceof UserForcedPrematureExit) { throw err; }
+      if (err instanceof UserForcedPrematureExit) throw err; // bubble cancels up
+
       return { prompt: prompt, 
                query: undefined, 
                response: new LLMResponseError(err.message), 
                past_resp_obj: undefined,
                past_resp_obj_cache_idx: -1 };
     }
-    
+
     return { prompt, 
              chat_history,
              query, 

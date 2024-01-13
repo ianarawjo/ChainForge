@@ -9,9 +9,9 @@ export class DuplicateVariableNameError extends Error {
 }
 
 export class UserForcedPrematureExit extends Error {
-    constructor() {
+    constructor(id?: string) {
         super();
         this.name = "UserForcedPrematureExit";
-        this.message = "You have forced the premature exit of the query.";
+        this.message = "You have forced the premature exit of the process" + (id !== undefined ? ` with id ${id}` : "");
     }
 }

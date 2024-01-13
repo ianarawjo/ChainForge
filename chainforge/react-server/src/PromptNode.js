@@ -15,7 +15,8 @@ import ChatHistoryView from './ChatHistoryView';
 import InspectFooter from './InspectFooter';
 import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
 import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
-import QueryStopper from './backend/queryStopper';
+import CancelTracker from './backend/canceler';
+import { UserForcedPrematureExit } from './backend/errors';
 
 const getUniqueLLMMetavarKey = (responses) => {
     const metakeys = new Set(responses.map(resp_obj => Object.keys(resp_obj.metavars)).flat());
@@ -96,7 +97,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [promptText, setPromptText] = useState(data.prompt || "");
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState(null);
   const [status, setStatus] = useState('none');
-  const [stopButton, setStopButton] = useState('');
   const [numGenerations, setNumGenerations] = useState(data.n || 1);
   const [numGenerationsLastRun, setNumGenerationsLastRun] = useState(data.n || 1);
 
@@ -126,6 +126,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [progress, setProgress] = useState(undefined);
   const [progressAnimated, setProgressAnimated] = useState(true);
   const [runTooltip, setRunTooltip] = useState(null);
+
+  // Cancelation of pending queries
+  const [cancelId, setCancelId] = useState(Date.now());
+  const refreshCancelId = () => setCancelId(Date.now());
 
   // Debounce helpers
   const debounceTimeoutRef = useRef(null);
@@ -157,7 +161,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const signalDirty = useCallback(() => {
     if (promptTextOnLastRun !== null && status === 'ready')
         setStatus('warning');
-        setStopButton('none');
   }, [promptTextOnLastRun, status])
 
   const addModel = useCallback((new_model, all_items) => {
@@ -226,10 +229,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
     data['prompt'] = value;
 
     // Update status icon, if need be:
-    if (promptTextOnLastRun !== null && status !== 'warning' && value !== promptTextOnLastRun) {
+    if (promptTextOnLastRun !== null && status !== 'warning' && value !== promptTextOnLastRun) 
         setStatus('warning');
-        setStopButton('none');
-    }
 
     refreshTemplateHooks(value);
   };
@@ -246,7 +247,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
             // Store responses and set status to green checkmark
             setJSONResponses(json.responses);
             setStatus('ready');
-            setStopButton('none');
         }
     });
   }, []);
@@ -258,7 +258,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
     if (refresh === true) {
       setDataPropsForNode(id, { refresh: false });
       setStatus('warning');
-      setStopButton('none');
       handleOnConnect();
     } else if (refreshLLMList === true) {
       llmListContainer?.current?.refreshLLMProviderList();
@@ -530,16 +529,19 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
     // Set status indicator
     setStatus('loading');
-    setStopButton('green');
     setContChatToggleDisabled(true);
     setJSONResponses([]);
     setProgressAnimated(true);
 
     const rejected = (err) => {
-        setStatus('error');
-        setStopButton('none');
-        setContChatToggleDisabled(false);
-        triggerAlert(err.message || err);
+        if (err instanceof UserForcedPrematureExit || CancelTracker.has(cancelId)) {
+            // Handle a premature cancelation
+            console.log("Canceled.");
+        } else {
+            setStatus('error');
+            setContChatToggleDisabled(false);
+            triggerAlert(err.message || err);
+        }
     };
 
     // Fetch info about the number of queries we'll need to make 
@@ -558,7 +560,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         const max_responses = Object.keys(total_num_responses).reduce((acc, llm) => acc + total_num_responses[llm], 0);
 
         onProgressChange = (progress_by_llm_key) => {
-            if (!progress_by_llm_key) return;
+            if (!progress_by_llm_key || CancelTracker.has(cancelId)) return;
         
             // Update individual progress bars
             const num_llms = _llmItemsCurrState.length;
@@ -592,7 +594,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
         };
     };
 
-
     // Run all prompt permutations through the LLM to generate + cache responses:
     const query_llms = () => {
         return fetch_from_backend('queryllm', {
@@ -606,82 +607,23 @@ const PromptNode = ({ data, id, type: node_type }) => {
             no_cache: false,
             progress_listener: onProgressChange,
             cont_only_w_prior_llms: node_type !== 'chat' ? (showContToggle && contWithPriorLLMs) : undefined,
+            cancel_id: cancelId,
         }, rejected).then(function(json) {
-            if (!json) {
-                if (QueryStopper.has(id)){
-                    // Remove progress bars
-                    setProgress(undefined);
-                    setProgressAnimated(false);
-                    debounce(() => {}, 1)(); // erase any pending debounces
-    
-                    // All responses collected! Change status to 'ready':
-                    setStatus('none');
-                    setStopButton('none');
-                    setContChatToggleDisabled(false);
-    
-                    // Remove individual progress rings
-                    llmListContainer?.current?.resetLLMItemsProgress();
-                } else {
-                    rejected('Request was sent and received by backend server, but there was no response.');
-                }
-            }
-            else if (json.responses && json.errors) {
+            // We have to early exit explicitly because we will still enter this function even if 'rejected' is called
+            if (!json && CancelTracker.has(cancelId)) 
+                return;
 
-                // Remove progress bars
-                setProgress(undefined);
-                setProgressAnimated(false);
-                debounce(() => {}, 1)(); // erase any pending debounces
+            // Remove progress bars
+            setProgress(undefined);
+            setProgressAnimated(false);
+            debounce(() => {}, 1)(); // erase any pending debounces
 
-                // Store and log responses (if any)
-                if (json.responses) {
-                    setJSONResponses(json.responses);
+            // Store and log responses (if any)
+            if (json?.responses) {
+                setJSONResponses(json.responses);
 
-                    // Log responses for debugging:
-                    console.log(json.responses);
-                }
-
-                // If there was at least one error collecting a response...
-                const llms_w_errors = Object.keys(json.errors);
-                if (llms_w_errors.length > 0) {
-                    // Remove the total progress bar
-                    setProgress(undefined);
-
-                    // Ensure there's a sliver of error displayed in the progress bar
-                    // of every LLM item that has an error:
-                    llmListContainer?.current?.ensureLLMItemsErrorProgress(llms_w_errors);
-
-                    // Set error status
-                    setStatus('error');
-                    setStopButton('none');
-                    setContChatToggleDisabled(false);
-
-                    // Trigger alert and display one error message per LLM of all collected errors:
-                    let combined_err_msg = "";
-                    llms_w_errors.forEach(llm_key => {
-                        const item = _llmItemsCurrState.find((item) => item.key === llm_key);                       
-                        combined_err_msg += item?.name + ': ' + JSON.stringify(json.errors[llm_key][0]) + '\n';
-                    });
-                    // We trigger the alert directly (don't use triggerAlert) here because we want to keep the progress bar:
-                    alertModal?.current?.trigger('Errors collecting responses. Re-run prompt node to retry.\n\n'+combined_err_msg);
-
-                    return;
-                }
-
-                if (responsesWillChange && !showDrawer)
-                    setUninspectedResponses(true);
-                setResponsesWillChange(false);
-
-                // All responses collected! Change status to 'ready':
-                setStatus('ready');
-                setStopButton('none');
-                setContChatToggleDisabled(false);
-
-                // Remove individual progress rings
-                llmListContainer?.current?.resetLLMItemsProgress();
-                
-                // Save prompt text so we remember what prompt we have responses cache'd for:
-                setPromptTextOnLastRun(promptText);
-                setNumGenerationsLastRun(numGenerations);
+                // Log responses for debugging:
+                console.log(json.responses);
 
                 // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
                 // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
@@ -693,9 +635,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
                         r => {
                             // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
                             let o = { text: escapeBraces(r), 
-                                      prompt: resp_obj['prompt'],
-                                      fill_history: resp_obj['vars'],
-                                      llm: _llmItemsCurrState.find((item) => item.name === resp_obj.llm) };
+                                    prompt: resp_obj['prompt'],
+                                    fill_history: resp_obj['vars'],
+                                    llm: _llmItemsCurrState.find((item) => item.name === resp_obj.llm) };
 
                             // Carry over any metavars
                             o.metavars = resp_obj['metavars'] || {};
@@ -710,13 +652,58 @@ const PromptNode = ({ data, id, type: node_type }) => {
                         }
                     )).flat()
                 });
-
-                // Ping any inspect nodes attached to this node to refresh their contents:
-                pingOutputNodes(id);
-            } else {
-                rejected(json.error || 'Unknown error when querying LLM');
             }
-            QueryStopper.clear(id);
+
+            // If there was at least one error collecting a response...
+            const llms_w_errors = json?.errors ? Object.keys(json.errors) : [];
+            if (llms_w_errors.length > 0) {
+                // Remove the total progress bar
+                setProgress(undefined);
+
+                // Ensure there's a sliver of error displayed in the progress bar
+                // of every LLM item that has an error:
+                llmListContainer?.current?.ensureLLMItemsErrorProgress(llms_w_errors);
+
+                // Set error status
+                setStatus('error');
+                setContChatToggleDisabled(false);
+
+                // Trigger alert and display one error message per LLM of all collected errors:
+                let combined_err_msg = "";
+                llms_w_errors.forEach(llm_key => {
+                    const item = _llmItemsCurrState.find((item) => item.key === llm_key);                       
+                    combined_err_msg += item?.name + ': ' + JSON.stringify(json.errors[llm_key][0]) + '\n';
+                });
+                // We trigger the alert directly (don't use triggerAlert) here because we want to keep the progress bar:
+                alertModal?.current?.trigger('Errors collecting responses. Re-run prompt node to retry.\n\n'+combined_err_msg);
+
+                return;
+            }
+
+            if (responsesWillChange && !showDrawer)
+                setUninspectedResponses(true);
+
+            setResponsesWillChange(false);
+            setContChatToggleDisabled(false);
+
+            // Remove individual progress rings
+            llmListContainer?.current?.resetLLMItemsProgress();
+
+            if (json?.error || !json) {
+                rejected(json?.error ?? 'Request was sent and received by backend server, but there was no response.');
+                return; 
+            } 
+            
+            // Save prompt text so we remember what prompt we have responses cache'd for:
+            setPromptTextOnLastRun(promptText);
+            setNumGenerationsLastRun(numGenerations);
+
+            // All responses collected! Change status to 'ready':
+            setStatus('ready');
+
+            // Ping any inspect nodes attached to this node to refresh their contents:
+            pingOutputNodes(id);
+            
         }, rejected);
     };
 
@@ -727,10 +714,22 @@ const PromptNode = ({ data, id, type: node_type }) => {
         .catch(rejected);
   };
 
-  const handleStopClick = (nodeId) => {
-    setStopButton('red');
-    QueryStopper.add(nodeId);
-  }
+  const handleStopClick = useCallback(() => {
+    CancelTracker.add(cancelId);
+    refreshCancelId();
+
+    // Update UI to seem like it's been immediately canceled, even 
+    // though we cannot fully cancel the queryLLMs Promise. 
+    // Remove progress bars
+    setProgress(undefined);
+    setProgressAnimated(false);
+    debounce(() => {}, 1)(); // erase any pending debounces
+
+    // Set error status
+    setStatus('none');
+    setContChatToggleDisabled(false);
+    llmListContainer?.current?.resetLLMItemsProgress();
+  }, [cancelId, refreshCancelId]);
 
   const handleNumGenChange = useCallback((event) => {
     let n = event.target.value;
@@ -739,14 +738,13 @@ const PromptNode = ({ data, id, type: node_type }) => {
         n = parseInt(n);
         if (n !== numGenerationsLastRun && status === 'ready')
             setStatus('warning');
-            setStopButton('none');
         setNumGenerations(n);
         setDataPropsForNode(id, {n: n});
     }
   }, [numGenerationsLastRun, status]);
 
   const hideStatusIndicator = () => {
-    if (status !== 'none') { setStatus('none'); setStopButton('none'); }
+    if (status !== 'none') setStatus('none');
   };
 
   // Dynamically update the textareas and position of the template hooks
@@ -780,7 +778,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
                 onEdit={hideStatusIndicator}
                 icon={node_icon} 
                 status={status}
-                stopButton = {stopButton}
+                isRunning = {status === 'loading'}
                 alertModal={alertModal}
                 handleRunClick={handleRunClick}
                 handleStopClick={handleStopClick}
@@ -847,7 +845,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
                     disabled={contToggleDisabled}
                     onChange={(event) => {
                         setStatus('warning');
-                        setStopButton('none');
                         setContWithPriorLLMs(event.currentTarget.checked);
                         setDataPropsForNode(id, { contChat: event.currentTarget.checked });
                     }}
