@@ -100,7 +100,8 @@ export interface LLMAPICall {
    model: LLM,
    n: number,
    temperature: number,
-   params?: Dict): Promise<[Dict, Dict]>
+   params?: Dict,
+   should_cancel?: (() => boolean)): Promise<[Dict, Dict]>,
 }
 
 /** A standard response format expected by the front-end. */

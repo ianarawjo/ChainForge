@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import useStore from './store';
 import { EditText } from 'react-edit-text';
 import 'react-edit-text/dist/index.css';
@@ -10,8 +10,7 @@ import { Tooltip, Popover, Badge, Stack } from '@mantine/core';
 import { IconSparkles } from '@tabler/icons-react';
 
 
-export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, alertModal, customButtons, handleRunClick, handleRunHover, runButtonTooltip }) {
-    const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editable, status, isRunning, alertModal, customButtons, handleRunClick, handleStopClick, handleRunHover, runButtonTooltip }) {    const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const [statusIndicator, setStatusIndicator] = useState('none');
     const [runButton, setRunButton] = useState('none');
     const removeNode = useStore((state) => state.removeNode);
@@ -21,6 +20,11 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
     const [deleteConfirmProps, setDeleteConfirmProps] = useState({
         title: 'Delete node', message: 'Are you sure?', onConfirm: () => {}
     });
+    const stopButton = useMemo(() => 
+        <button className="AmitSahoo45-button-3 nodrag" style={{padding: '0px 10px 0px 9px'}} onClick={() => handleStopClick(nodeId)}>
+            &#9724;
+        </button>
+    , [handleStopClick, nodeId]);
 
     const handleNodeLabelChange = (evt) => {
         const { value } = evt;
@@ -47,9 +51,8 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             if (runButtonTooltip)
                 setRunButton(
                     <Tooltip label={runButtonTooltip} withArrow arrowSize={6} arrowRadius={2} zIndex={1001} withinPortal={true} >
-                    {run_btn}
-                    </Tooltip>
-                );
+                        {run_btn}
+                    </Tooltip>);
             else
                 setRunButton(run_btn);
         }
@@ -57,6 +60,8 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             setRunButton(<></>);
         }
     }, [handleRunClick, runButtonTooltip]);
+
+    useEffect(() => {}, [stopButton])
 
     const handleCloseButtonClick = useCallback(() => {
         setDeleteConfirmProps({
@@ -86,7 +91,7 @@ export default function NodeLabel({ title, nodeId, icon, onEdit, onSave, editabl
             <AlertModal ref={alertModal} />
             <div className="node-header-btns-container">
                 {customButtons ? customButtons : <></>}
-                {runButton}
+                {isRunning ? stopButton : runButton}
                 <button className="close-button nodrag" onClick={handleCloseButtonClick}>&#x2715;</button>
                 <br/>
             </div>

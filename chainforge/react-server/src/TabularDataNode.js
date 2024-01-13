@@ -73,7 +73,7 @@ const TabularDataNode = ({ data, id }) => {
       }));
       return;
     }
-    console.log('handleSaveCell', rowIdx, columnKey, value);
+    // console.log('handleSaveCell', rowIdx, columnKey, value);
     tableData[rowIdx][columnKey] = value;
     setTableData([...tableData]);
   }, [tableData, tableColumns, pingOutputNodes]);

@@ -6,6 +6,8 @@ import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backen
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
 import { PromptPermutationGenerator, PromptTemplate } from "./template";
+import { UserForcedPrematureExit } from "./errors";
+import CancelTracker from "./canceler";
 
 // """ =================
 //     SETUP AND GLOBALS
@@ -547,6 +549,9 @@ export async function fetchEnvironAPIKeys(): Promise<Dict> {
  * @param chat_histories Either an array of `ChatHistory` (to use across all LLMs), or a dict indexed by LLM nicknames of `ChatHistory` arrays to use per LLM. 
  * @param api_keys (optional) a dict of {api_name: api_key} pairs. Supported key names: OpenAI, Anthropic, Google
  * @param no_cache (optional) if true, deletes any cache'd responses for 'id' (always calls the LLMs fresh)
+ * @param progress_listener (optional) a callback whenever an LLM response is collected, on the current progress
+ * @param cont_only_w_prior_llms (optional) whether we are continuing using prior LLMs
+ * @param cancel_id (optional) the id that would appear in CancelTracker if the user cancels the querying (NOT the same as 'id' --must be unique!)
  * @returns a dictionary in format `{responses: StandardizedLLMResponse[], errors: string[]}`
  */
 export async function queryLLM(id: string, 
@@ -558,7 +563,8 @@ export async function queryLLM(id: string,
                                api_keys?: Dict,
                                no_cache?: boolean,
                                progress_listener?: (progress: {[key: symbol]: any}) => void,
-                               cont_only_w_prior_llms?: boolean): Promise<Dict> {
+                               cont_only_w_prior_llms?: boolean,
+                               cancel_id?: string): Promise<Dict> {
   // Verify the integrity of the params
   if (typeof id !== 'string' || id.trim().length === 0)
     return {'error': 'id is improper format (length 0 or not a string)'};
@@ -635,6 +641,9 @@ export async function queryLLM(id: string,
     }
   });
 
+  // Helper function to check whether this process has been canceled
+  const should_cancel = () => CancelTracker.has(cancel_id);
+
   // For each LLM, generate and cache responses:
   let responses: {[key: string]: Array<LLMResponseObject>} = {};
   let all_errors = {};
@@ -667,11 +676,12 @@ export async function queryLLM(id: string,
     let errors: Array<string> = [];
     let num_resps = 0;
     let num_errors = 0;
+
     try {
       console.log(`Querying ${llm_str}...`)
 
       // Yield responses for 'llm' for each prompt generated from the root template 'prompt' and template variables in 'properties':
-      for await (const response of prompter.gen_responses(_vars, llm_str as LLM, num_generations, temperature, llm_params, chat_hists)) {
+      for await (const response of prompter.gen_responses(_vars, llm_str as LLM, num_generations, temperature, llm_params, chat_hists, should_cancel)) {
         
         // Check for selective failure
         if (response instanceof LLMResponseError) {  // The request failed
@@ -694,8 +704,12 @@ export async function queryLLM(id: string,
         };
       }
     } catch (e) {
-      console.error(`Error generating responses for ${llm_str}: ${e.message}`);
-      throw e;
+      if (e instanceof UserForcedPrematureExit) { 
+        throw e; 
+      } else {
+        console.error(`Error generating responses for ${llm_str}: ${e.message}`);
+        throw e;
+      }
     }
 
     return {
@@ -716,6 +730,7 @@ export async function queryLLM(id: string,
         all_errors[result.llm_key] = result.errors;
     });
   } catch (e) {
+    if (e instanceof UserForcedPrematureExit) throw e;
     console.error(`Error requesting responses: ${e.message}`);
     return { error: e.message };
   }
@@ -758,6 +773,7 @@ export async function queryLLM(id: string,
       cache_files: cache_filenames,
       responses_last_run: res,
     });
+
   // Return all responses for all LLMs
   return {
     responses: res, 

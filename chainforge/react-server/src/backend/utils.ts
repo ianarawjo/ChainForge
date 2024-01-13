@@ -12,6 +12,7 @@ import { StringTemplate } from './template';
 import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
 import { OpenAIClient as AzureOpenAIClient, AzureKeyCredential } from "@azure/openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { UserForcedPrematureExit } from './errors';
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
@@ -155,7 +156,7 @@ function construct_openai_chat_history(prompt: string, chat_history: ChatHistory
  * Calls OpenAI models via OpenAI's API.
    @returns raw query and response JSON dicts.
  */
-export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   if (!OPENAI_API_KEY)
     throw new Error("Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.");
 
@@ -233,7 +234,7 @@ export async function call_chatgpt(prompt: string, model: LLM, n: number = 1, te
  *
  *  NOTE: It is recommended to set an environment variables AZURE_OPENAI_KEY and AZURE_OPENAI_ENDPOINT
  */
-export async function call_azure_openai(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+export async function call_azure_openai(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   if (!AZURE_OPENAI_KEY)
     throw new Error("Could not find an Azure OpenAPI Key to use. Double-check that your key is set in Settings or in your local environment.");
   if (!AZURE_OPENAI_ENDPOINT)
@@ -306,7 +307,7 @@ export async function call_azure_openai(prompt: string, model: LLM, n: number = 
 
    NOTE: It is recommended to set an environment variable ANTHROPIC_API_KEY with your Anthropic API key
  */
-export async function call_anthropic(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+export async function call_anthropic(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   if (!ANTHROPIC_API_KEY)
     throw new Error("Could not find an API key for Anthropic models. Double-check that your API key is set in Settings or in your local environment.");
 
@@ -357,6 +358,8 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
   // Repeat call n times, waiting for each response to come in:
   let responses: Array<Dict> = [];
   while (responses.length < n) {
+    // Abort if canceled
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
     if (APP_IS_RUNNING_LOCALLY()) {
       // If we're running locally, route the request through the Flask backend,
@@ -369,7 +372,6 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
         'User-Agent': "Anthropic/JS 0.5.0",
         'X-Api-Key': ANTHROPIC_API_KEY,
       };
-      console.log(query);
       const resp = await route_fetch(url, 'POST', headers, query);
       responses.push(resp);
 
@@ -389,7 +391,6 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
         throw new Error(`${resp.error.type}: ${resp.error.message}`);
       }
 
-      // console.log('Received Anthropic response from server proxy:', resp);
       responses.push(resp);
     }
   }
@@ -401,12 +402,12 @@ export async function call_anthropic(prompt: string, model: LLM, n: number = 1, 
  * Calls a Google PaLM/Gemini model, based on the model selection from the user.
  * Returns raw query and response JSON dicts.
  */
-export async function call_google_ai(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
+export async function call_google_ai(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   switch(model) {
     case NativeLLM.GEMINI_PRO:
-      return call_google_gemini(prompt, model, n, temperature, params);
+      return call_google_gemini(prompt, model, n, temperature, params, should_cancel);
     default:
-      return call_google_palm(prompt, model, n, temperature, params);
+      return call_google_palm(prompt, model, n, temperature, params, should_cancel);
   }
 }
 
@@ -414,7 +415,7 @@ export async function call_google_ai(prompt: string, model: LLM, n: number = 1, 
  * Calls a Google PaLM model.
  * Returns raw query and response JSON dicts.
  */
-export async function call_google_palm(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
+export async function call_google_palm(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   if (!GOOGLE_PALM_API_KEY)
     throw new Error("Could not find an API key for Google PaLM models. Double-check that your API key is set in Settings or in your local environment.");
   const is_chat_model = model.toString().includes('chat');
@@ -523,7 +524,7 @@ export async function call_google_palm(prompt: string, model: LLM, n: number = 1
   return [query, completion];
 }
 
-export async function call_google_gemini(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
+export async function call_google_gemini(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   if (!GOOGLE_PALM_API_KEY)
     throw new Error("Could not find an API key for Google Gemini models. Double-check that your API key is set in Settings or in your local environment.");
 
@@ -604,6 +605,8 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
   let responses: Array<Dict> = [];
 
   while(responses.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
     const chat = gemini_model.startChat(
       {
         history: gemini_chat_context.history,
@@ -624,7 +627,7 @@ export async function call_google_gemini(prompt: string, model: LLM, n: number =
   return [query, responses];
 }
 
-export async function call_dalai(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict): Promise<[Dict, Dict]> {
+export async function call_dalai(prompt: string, model: LLM, n: number = 1, temperature: number = 0.7, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   if (APP_IS_RUNNING_LOCALLY()) {
     // Try to call Dalai server, through Flask:
     let {query, response, error} = await call_flask_backend('callDalai', {
@@ -641,7 +644,7 @@ export async function call_dalai(prompt: string, model: LLM, n: number = 1, temp
 }
 
 
-export async function call_huggingface(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+export async function call_huggingface(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   // Whether we should notice a given param in 'params'
   const param_exists = (p: any) => (p !== undefined && !((typeof p === 'number' && p < 0) || (typeof p === 'string' && p.trim().length === 0)));
   const set_param_if_exists = (name: string, query: Dict) => {
@@ -710,7 +713,11 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
     let continued_response: Dict = { generated_text: "" };
     let curr_cont = 0;
     let curr_text = prompt;
+
     while (curr_cont <= num_continuations) {
+      // Abort if user canceled the query operation
+      if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
       const inputs = (model_type === 'chat')
                     ? ({ text: curr_text,
                         past_user_inputs: hf_chat_hist.past_user_inputs,
@@ -749,7 +756,7 @@ export async function call_huggingface(prompt: string, model: LLM, n: number = 1
 }
 
 
-export async function call_alephalpha(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+export async function call_alephalpha(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   if (!ALEPH_ALPHA_API_KEY)
     throw Error("Could not find an API key for Aleph Alpha models. Double-check that your API key is set in Settings or in your local environment.");
 
@@ -784,7 +791,7 @@ export async function call_alephalpha(prompt: string, model: LLM, n: number = 1,
   return [query, responses];
 }
 
-export async function call_ollama_provider(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+export async function call_ollama_provider(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   let url: string = appendEndSlashIfMissing(params?.ollama_url);
   const ollama_model: string = params?.ollamaModel.toString();
   const model_type: string = params?.model_type ?? "text";
@@ -820,10 +827,15 @@ export async function call_ollama_provider(prompt: string, model: LLM, n: number
   // Call Ollama API
   let resps : Response[] = [];
   for (let i = 0; i < n; i++) {
+    // Abort if the user canceled
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit(); 
+
+    // Query Ollama and collect the response
     const response = await fetch(url, {
       method: "POST",
       body: JSON.stringify(query),
     });
+
     resps.push(response);
   }
 
@@ -842,7 +854,7 @@ export async function call_ollama_provider(prompt: string, model: LLM, n: number
   return [query, responses];
 }
 
-async function call_custom_provider(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict): Promise<[Dict, Dict]> {
+async function call_custom_provider(prompt: string, model: LLM, n: number = 1, temperature: number = 1.0, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   if (!APP_IS_RUNNING_LOCALLY())
     throw new Error("The ChainForge app does not appear to be running locally. You can only call custom model providers if you are running ChainForge on your local machine, from a Flask app.")
 
@@ -859,6 +871,10 @@ async function call_custom_provider(prompt: string, model: LLM, n: number = 1, t
 
   // Call the custom provider n times
   while (responses.length < n) {
+    // Abort if the user canceled
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit(); 
+
+    // Collect response from the custom provider
     let {response, error} = await call_flask_backend('callCustomProvider',
       { 'name': provider_name,
         'params': {
@@ -878,7 +894,7 @@ async function call_custom_provider(prompt: string, model: LLM, n: number = 1, t
 /**
  * Switcher that routes the request to the appropriate API call function. If call doesn't exist, throws error.
  */
-export async function call_llm(llm: LLM, prompt: string, n: number, temperature: number, params?: Dict): Promise<[Dict, Dict]> {
+export async function call_llm(llm: LLM, prompt: string, n: number, temperature: number, params?: Dict, should_cancel?: (() => boolean)): Promise<[Dict, Dict]> {
   // Get the correct API call for the given LLM:
   let call_api: LLMAPICall | undefined;
   let llm_provider: LLMProvider = getProvider(llm);
@@ -905,7 +921,7 @@ export async function call_llm(llm: LLM, prompt: string, n: number, temperature:
   else if (llm_provider === LLMProvider.Custom)
     call_api = call_custom_provider;
 
-  return call_api(prompt, llm, n, temperature, params);
+  return call_api(prompt, llm, n, temperature, params, should_cancel);
 }
 
 
