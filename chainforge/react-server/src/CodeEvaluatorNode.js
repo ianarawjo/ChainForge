@@ -449,7 +449,6 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
       { lastRunSuccess && lastResponses && lastResponses.length > 0 ? 
         (<InspectFooter label={<>Inspect results&nbsp;<IconSearch size='12pt'/></>} 
                         onClick={showResponseInspector} 
-                        showNotificationDot={uninspectedResponses} 
                         isDrawerOpen={showDrawer}
                         showDrawerButton={true} 
                         onDrawerClick={() => {

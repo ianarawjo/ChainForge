@@ -872,8 +872,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         : <></>}
 
         { jsonResponses && jsonResponses.length > 0 && status !== 'loading' ? 
-            (<InspectFooter onClick={showResponseInspector} 
-                showNotificationDot={uninspectedResponses} 
+            (<InspectFooter onClick={showResponseInspector}  
                        isDrawerOpen={showDrawer}
                    showDrawerButton={true} 
                       onDrawerClick={() => {

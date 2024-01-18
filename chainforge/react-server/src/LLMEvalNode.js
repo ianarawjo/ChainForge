@@ -203,7 +203,6 @@ const LLMEvaluatorNode = ({ data, id }) => {
       { lastResponses && lastResponses.length > 0 ? 
         (<InspectFooter label={<>Inspect scores&nbsp;<IconSearch size='12pt'/></>}
                         onClick={showResponseInspector}
-                        showNotificationDot={uninspectedResponses} 
                         isDrawerOpen={showDrawer}
                         showDrawerButton={true} 
                         onDrawerClick={() => {
