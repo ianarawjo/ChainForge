@@ -1,12 +1,10 @@
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, NativeLLM, RATE_LIMITS } from './models';
 import { Dict, LLMResponseError, LLMResponseObject, isEqualChatHistory, ChatHistoryInfo } from "./typing";
-import { extract_responses, merge_response_objs, call_llm, mergeDicts } from "./utils";
+import { extract_responses, merge_response_objs, call_llm, mergeDicts, deepcopy, extractSettingsVars, areEqualVarsDicts } from "./utils";
 import StorageCache from "./cache";
 import { UserForcedPrematureExit } from "./errors";
 import { v4 as uuid } from 'uuid';
-
-const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
 interface _IntermediateLLMResponseType {
   prompt: PromptTemplate,
@@ -158,6 +156,11 @@ export class PromptPipeline {
       const info = prompt.fill_history;
       const metavars = prompt.metavars;
 
+      // Settings params are special template vars of form {=name}, where = prefaces the varname.
+      // These must be extracted and, below, passed as 'llm_params'. Note that the name of the param
+      // *has to be correct* and match the param name, for this to work. 
+      const settings_params = extractSettingsVars(info);
+
       // Loop over any present chat histories. (If none, will have a single pass with 'undefined' as chat_history value.)
       for (const chat_history of _chat_histories) {
 
@@ -174,12 +177,13 @@ export class PromptPipeline {
         const cache_bucket = responses[prompt_str];
         let cached_resps: LLMResponseObject[] = Array.isArray(cache_bucket) ? cache_bucket : (cache_bucket === undefined ? [] : [ cache_bucket ]);
 
-        // Check if there's a cached response with the same prompt + (if present) chat history:
+        // Check if there's a cached response with the same prompt + (if present) chat history and settings vars:
         let cached_resp: LLMResponseObject | undefined = undefined;
         let cached_resp_idx: number = -1; 
-        // Find an indivdual response obj that matches the chat history:
+        // Find an indivdual response obj that matches the chat history + (if present) settings vars:
         for (let i = 0; i < cached_resps.length; i++) {
-          if (isEqualChatHistory(cached_resps[i].chat_history, chat_history?.messages)) {
+          if (isEqualChatHistory(cached_resps[i].chat_history, chat_history?.messages) 
+            && areEqualVarsDicts(settings_params, extractSettingsVars(cached_resps[i].info))) {
             cached_resp = cached_resps[i];
             cached_resp_idx = i;
             break;
@@ -219,7 +223,7 @@ export class PromptPipeline {
                                       num_queries_sent, 
                                       max_req, 
                                       wait_secs, 
-                                      llm_params,
+                                      {...llm_params, ...settings_params},
                                       chat_history,
                                       should_cancel));
         } else {
@@ -227,7 +231,8 @@ export class PromptPipeline {
           let result = await this._prompt_llm(llm, prompt, n, temperature, 
                                               cached_resp, cached_resp_idx, 
                                               undefined, undefined, undefined, 
-                                              llm_params, chat_history, 
+                                              {...llm_params, ...settings_params}, 
+                                              chat_history, 
                                               should_cancel);
           yield this.collect_LLM_response(result, llm, responses);
         }
@@ -294,7 +299,7 @@ export class PromptPipeline {
 
     // Now try to call the API. If it fails for whatever reason, 'soft fail' by returning
     // an LLMResponseException object as the 'response'.
-    let params = clone(llm_params);
+    let params = deepcopy(llm_params);
     if (chat_history !== undefined) params.chat_history = chat_history.messages;
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;

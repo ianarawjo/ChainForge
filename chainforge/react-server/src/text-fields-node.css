@@ -276,6 +276,16 @@
     font-size: 8pt;
   }
 
+  .settings-var-inline {
+    background: #eee;
+    margin: -3px 0px 0px 0px !important;
+    padding: 4px 4px 8px 8px !important;
+    border-radius: 0px 0px 12px 12px !important;
+  }
+  .wrap-line {
+    white-space: pre-wrap;
+  }
+
   .inspector-node {
     background-color: #fff;
     padding: 10px;
@@ -424,7 +434,7 @@
     font-family: monospace;
     border-radius: 6px;
     padding: 8px;
-    margin: 10px 0px;
+    margin: 10px 0px 0px 0px;
     background-color: #ddd;
     color: #444;
     white-space: pre-wrap;

@@ -79,7 +79,12 @@ export class StringTemplate {
                         if (varname in sub_dict) {
                             // Replace '{varname}' with the substitution value:
                             const replacement = sub_dict[varname];
-                            template = template.substring(0, group_start_idx) + replacement + template.substring(i+1);
+                            let tail = template.substring(i+1);
+                            // Check if the varname is a special settings var (starts with =); if so, look for a newline after it:
+                            if (varname.charAt(0) === '=' && /^[ \t]*\n/.test(tail))
+                                tail = tail.substring(tail.indexOf('\n')+1); // remove the whitespace and \n, to vanish the line
+                            // Patch the string
+                            template = template.substring(0, group_start_idx) + replacement + tail;
                             // Reset the iterator to point to the very next character upon the start of the next loop:
                             i = group_start_idx + replacement.length - 1;
                         }
@@ -254,8 +259,22 @@ export class PromptTemplate {
             paramDict = newParamDict;
         }
 
+        // For 'settings' template vars of form {=system_msg}, we use the same logic of storing param
+        // values as before -- the only difference is that, when it comes to the actual substitution of
+        // the string, we *don't fill the template with anything* --it vanishes.
+        let params_wo_settings = paramDict;
+        // To improve performance, we first check if there's a settings var present at all before deep cloning: 
+        if (Object.keys(paramDict).some(key => key?.charAt(0) === '=')) {
+            // A settings var is present; deep clone the param dict and replace it with the empty string:
+            params_wo_settings = JSON.parse(JSON.stringify(paramDict));
+            Object.keys(paramDict).forEach(key => {
+                if (key?.charAt(0) === '=')
+                    params_wo_settings[key] = ""; // set settings params to empty
+            });
+        }
+
         let filled_pt = new PromptTemplate(
-            new StringTemplate(this.template).safe_substitute(paramDict)
+            new StringTemplate(this.template).safe_substitute(params_wo_settings)
         );
 
         // Deep copy prior fill history of this PromptTemplate from this version over to new one

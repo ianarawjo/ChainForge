@@ -1109,13 +1109,50 @@ export function mergeDicts(A?: Dict, B?: Dict): Dict | undefined {
   return d; // gives priority to B
 }
 
-export const filterDict = (dict: Dict, keyFilterFunc: (key: string) => boolean) => {
+export const filterDict = (dict: Dict, keyFilterFunc: (key: string) => boolean, keyTransformFunc?: (key: string) => string) => {
   return Object.keys(dict).reduce((acc, key) => {
       if (keyFilterFunc(key) === true)
-          acc[key] = dict[key];
+          acc[keyTransformFunc ? keyTransformFunc(key) : key] = dict[key];
       return acc;
   }, {});
 };
+
+/** Extracts only the settings vars (of form like "=system_msg", starts with =) from a vars dict. 
+ * (This also removes the = at the start of the keys.)
+ * 
+ * Returns empty dict {} if no settings vars found.
+*/
+export const extractSettingsVars = (vars: Dict, llm?: LLM) => {
+  if (Object.keys(vars).some(k => k.charAt(0) === '=')) {
+
+    // TODO: We need to type-cast correctly here by looking up the llm schema
+    // d = typecast_settings_vars(getSettingsSchemaForLLM(llm));
+
+    return filterDict(deepcopy(vars), 
+                      k => k.charAt(0) === '=', 
+                      k => k.substring(1));
+  } else return {};
+}
+
+/**
+ * Given two info vars dicts, detects whether any + all vars (keys) match values. 
+ */
+export const areEqualVarsDicts = (A: Dict | undefined, B: Dict | undefined): boolean => {
+  if (A === undefined) {
+    if (B === undefined) return true;
+    return false; 
+  }
+  const keys_A = Object.keys(A);
+  const keys_B = Object.keys(B);
+  if (keys_A.length !== keys_B.length) return false;
+  else if (keys_A.length === 0) return true;
+  const all_vars = new Set(keys_A.concat(keys_B));
+  for (const v of all_vars) {
+    if (!(v in B) || !(v in A) || B[v] !== A[v])
+      return false;
+  }
+  return true; 
+}
 
 export const processCSV = (csv: string): string[] => {
   let matches = csv.match(/(\s*"[^"]+"\s*|\s*[^,]+|,)(?=,|$)/g);
