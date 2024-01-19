@@ -1295,6 +1295,36 @@ export function typecastSettingsDict(settings_dict, llm) {
 }
 
 /**
+ * Processes settings values to the correct types according to schema for the model 'llm'.
+ * @param {*} settings_dict A dict of form setting_name: value (string: string)
+ * @param {*} llm A string of the name of the model to query. 
+ */
+export function typecastSettingsDict(settings_dict, llm) {
+  let settings = getSettingsSchemaForLLM(llm);
+  let schema = settings?.schema?.properties ?? {};
+  let postprocessors = settings?.postprocessors ?? {};
+
+  // Return a clone of settings dict but with its values correctly typecast and postprocessed
+  return transformDict(settings_dict, undefined, undefined, (key, val) => {
+    if (key in schema) {
+      // Check for postprocessing for this key; if so, its 'type' is determined by the processor:
+      if (key in postprocessors)
+        return postprocessors[key](val);
+
+      // For other cases, use 'type' to typecast it:
+      const typeof_setting = schema[key].type ?? "string";
+      if (typeof_setting === "number") // process numbers (floats)
+        return parseFloat(val);
+      else if (typeof_setting === "integer") // process integers
+        return parseInt(val);
+      else if (typeof_setting === "boolean") // process booleans
+        return val.trim().toLowerCase() === "true";
+    }
+    return val; // process strings
+  });
+}
+
+/**
  * Add new model provider to the AvailableLLMs list. Also adds the respective ModelSettings schema and rate limit.
  * @param {*} name The name of the provider, to use in the dropdown menu and default name. Must be unique.
  * @param {*} emoji The emoji to use for the provider. Optional.
