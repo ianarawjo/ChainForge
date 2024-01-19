@@ -11,7 +11,7 @@
  */
 
 import { LLMProvider, RATE_LIMITS, getProvider } from "./backend/models";
-import { transformDict } from "./backend/utils";
+import { transformDict } from './backend/utils';
 import useStore from "./store";
 
 const UI_SUBMIT_BUTTON_SPEC = {
