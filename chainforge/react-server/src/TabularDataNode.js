@@ -462,7 +462,7 @@ const TabularDataNode = ({ data, id }) => {
                 }}
                 color='indigo'
                 size='xs'
-                mt='-16px'
+                mt={shouldSample && tableColumns.length >= 2 ? '-50px' : '-16px'}
         />
         {shouldSample ? 
           <Tooltip label='Number of table rows to sample. Outputs will only draw from this many rows.' width={200} position='left' withArrow multiline>
