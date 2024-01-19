@@ -159,8 +159,8 @@ const useStore = create((set, get) => ({
 
       // If the source node has tabular data, use that:
       if (src_node.type === 'table') {
-        if ("rows" in src_node.data && "columns" in src_node.data) {
-          const rows = src_node.data.rows;
+        if (("sel_rows" in src_node.data || "rows" in src_node.data) && "columns" in src_node.data) {
+          let rows = src_node.data.sel_rows ?? src_node.data.rows;
           const columns = src_node.data.columns;
 
           // The sourceHandleKey is the key of the column in the table that we're interested in:

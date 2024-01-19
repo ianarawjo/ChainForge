@@ -1272,3 +1272,30 @@ export const batchResponsesByUID = (responses) => {
     }
   }).concat(unspecified_id_group);
 };
+
+/**
+ * Naive method to sample N items at random from an array. 
+ * @param arr an array of items
+ * @param num_sample the number of items to sample
+ * @returns The sampled elements of the array (unmodified).
+ */
+export function sampleRandomElements(arr: any[], num_sample: number): any[] {
+  if (num_sample >= arr.length)
+    return arr; // nothing to do
+
+  // Find num_sample unique indexes
+  const idxs: Set<number> = new Set();
+  while (idxs.size < num_sample) {
+    // Pick an index at random
+    const idx = Math.floor(Math.random() * arr.length);
+
+    // If it's already chosen, continue
+    if (idxs.has(idx)) continue;
+
+    // Otherwise, add to sample
+    idxs.add(idx);
+  }
+
+  // Return the items at the sampled indexes
+  return Array.from(idxs).map(idx => arr[idx]);
+}
