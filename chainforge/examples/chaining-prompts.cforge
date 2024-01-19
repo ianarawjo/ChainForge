@@ -29,8 +29,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "4d3e646f-c799-46ec-88f8-3494f6577877",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -58,8 +63,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "4d3e646f-c799-46ec-88f8-3494f6577877",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -87,8 +97,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "4d3e646f-c799-46ec-88f8-3494f6577877",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -116,8 +131,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "99dd71d3-fe8c-4207-a77d-944368aba873",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -145,8 +165,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "99dd71d3-fe8c-4207-a77d-944368aba873",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -174,8 +199,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "99dd71d3-fe8c-4207-a77d-944368aba873",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -203,8 +233,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "3c182dab-6ccd-46c8-97fb-dadaeba0c53c",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -232,8 +267,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "3c182dab-6ccd-46c8-97fb-dadaeba0c53c",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -261,8 +301,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "3c182dab-6ccd-46c8-97fb-dadaeba0c53c",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -290,8 +335,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "740459d8-f968-4efe-9448-376e20834d4d",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -319,8 +369,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "740459d8-f968-4efe-9448-376e20834d4d",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -348,8 +403,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "740459d8-f968-4efe-9448-376e20834d4d",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -377,8 +437,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "80f88757-3b99-4e82-913e-c39e70e50de7",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -406,8 +471,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "80f88757-3b99-4e82-913e-c39e70e50de7",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -435,8 +505,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "80f88757-3b99-4e82-913e-c39e70e50de7",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -464,8 +539,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "a2aa2b9f-ed78-4a10-a5c1-92bbd23fd19b",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -493,8 +573,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "a2aa2b9f-ed78-4a10-a5c1-92bbd23fd19b",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -522,8 +607,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "a2aa2b9f-ed78-4a10-a5c1-92bbd23fd19b",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -609,7 +699,7 @@
       },
       {
         "width": 302,
-        "height": 260,
+        "height": 319,
         "data": {
           "input": "promptNode-1683813691363",
           "refresh": false
@@ -629,7 +719,7 @@
       },
       {
         "width": 312,
-        "height": 342,
+        "height": 368,
         "data": {
           "fields": [
             {
@@ -663,8 +753,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "47bc3bee-9f58-435a-9f4f-dc5c7f0b7d80",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -701,8 +796,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "678e4b5a-55f9-4b30-975f-4f905318e419",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -739,8 +839,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "96131260-55cd-47b7-8f91-cc63849bfd46",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -777,8 +882,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "06bf2f9f-3435-45ba-b1df-4089994ba818",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -815,8 +925,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "ad2d9d03-185a-480f-9f30-60d35c9a5e84",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -853,8 +968,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "3482814f-1b9c-4525-beff-777b820da731",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -891,8 +1011,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "9c5fe679-d2eb-4c95-87b3-0b6a22329155",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -929,8 +1054,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "6a800fff-0256-4edf-96d0-1bed80aee4a3",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -967,8 +1097,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "d90a3905-34da-41ae-a731-d0a2ba133120",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -1005,8 +1140,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "2fc1b9fb-e086-463e-a9d4-b1a1595d94ab",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -1043,8 +1183,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "7876f414-1219-43b3-b05d-b8d8c4436f94",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -1081,8 +1226,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "1ece4e52-5fc4-4d3c-a12e-e915c9442095",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -1119,8 +1269,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "cf5e3ea6-dd33-45c6-916b-7cf2878df494",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -1157,8 +1312,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "7f8498e0-320c-4517-b0c5-c7f8ce47d639",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -1195,8 +1355,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "6ca663c7-cfb1-4407-961e-0ace91167983",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -1233,8 +1398,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "5e52cf75-758e-4a02-bed7-42c762ddca94",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -1271,8 +1441,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "b5583aff-25f5-4d1d-b89a-b078ef8e1a94",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -1309,8 +1484,13 @@
                   "temperature": 0.4,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "a053c281-c438-4080-b55d-6ba5cb1b1323",
               "metavars": {
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
@@ -1394,7 +1574,783 @@
         "data": {
           "code": "function evaluate(response) {\n  const txt = response.text;  \n  return { \n    'Number of entities': \n      txt.split(',').length\n  };\n}",
           "language": "javascript",
-          "refresh": false
+          "refresh": false,
+          "fields": [
+            {
+              "text": "Andreas Stihl, Stihl",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.\"",
+              "fill_history": {
+                "tool": "chainsaw",
+                "text": "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "47bc3bee-9f58-435a-9f4f-dc5c7f0b7d80"
+            },
+            {
+              "text": "Andreas Stihl, James Shand.",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.\"",
+              "fill_history": {
+                "tool": "chainsaw",
+                "text": "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "678e4b5a-55f9-4b30-975f-4f905318e419"
+            },
+            {
+              "text": "Scottish, John Aitken, James Jeffray, early 1900s, gasoline-powered, Andreas Stihl.",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.\"",
+              "fill_history": {
+                "tool": "chainsaw",
+                "text": "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "96131260-55cd-47b7-8f91-cc63849bfd46"
+            },
+            {
+              "text": "Thomas Edison",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.\"",
+              "fill_history": {
+                "tool": "lightbulb",
+                "text": "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "06bf2f9f-3435-45ba-b1df-4089994ba818"
+            },
+            {
+              "text": "Thomas Edison",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.\"",
+              "fill_history": {
+                "tool": "lightbulb",
+                "text": "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "ad2d9d03-185a-480f-9f30-60d35c9a5e84"
+            },
+            {
+              "text": "Thomas Edison.",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.\"",
+              "fill_history": {
+                "tool": "lightbulb",
+                "text": "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "3482814f-1b9c-4525-beff-777b820da731"
+            },
+            {
+              "text": "Hubert Cecil Booth.",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
+              "fill_history": {
+                "tool": "vacuum cleaner",
+                "text": "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "9c5fe679-d2eb-4c95-87b3-0b6a22329155"
+            },
+            {
+              "text": "Hubert Cecil Booth.",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
+              "fill_history": {
+                "tool": "vacuum cleaner",
+                "text": "The vacuum cleaner was invented by Hubert Cecil Booth in 1901."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "6a800fff-0256-4edf-96d0-1bed80aee4a3"
+            },
+            {
+              "text": "British, Hubert Cecil Booth",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.\"",
+              "fill_history": {
+                "tool": "vacuum cleaner",
+                "text": "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "d90a3905-34da-41ae-a731-d0a2ba133120"
+            },
+            {
+              "text": "Willis Carrier",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioner in 1902.\"",
+              "fill_history": {
+                "tool": "air conditioner",
+                "text": "Willis Carrier is credited with inventing the modern air conditioner in 1902."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "2fc1b9fb-e086-463e-a9d4-b1a1595d94ab"
+            },
+            {
+              "text": "Willis Carrier",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioning system in 1902.\"",
+              "fill_history": {
+                "tool": "air conditioner",
+                "text": "Willis Carrier is credited with inventing the modern air conditioning system in 1902."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "7876f414-1219-43b3-b05d-b8d8c4436f94"
+            },
+            {
+              "text": "Willis Carrier.",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The air conditioner was invented by Willis Carrier in 1902.\"",
+              "fill_history": {
+                "tool": "air conditioner",
+                "text": "The air conditioner was invented by Willis Carrier in 1902."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "1ece4e52-5fc4-4d3c-a12e-e915c9442095"
+            },
+            {
+              "text": "Paul Werbos, David Rumelhart, Jay McClelland, Geoffrey Hinton.",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.\"",
+              "fill_history": {
+                "tool": "back-propagation algorithm",
+                "text": "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "cf5e3ea6-dd33-45c6-916b-7cf2878df494"
+            },
+            {
+              "text": "Paul Werbos, David Rumelhart, Geoffrey Hinton, Ronald Williams.",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.\"",
+              "fill_history": {
+                "tool": "back-propagation algorithm",
+                "text": "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "7f8498e0-320c-4517-b0c5-c7f8ce47d639"
+            },
+            {
+              "text": "David Rumelhart, Geoffrey Hinton, Ronald Williams.",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.\"",
+              "fill_history": {
+                "tool": "back-propagation algorithm",
+                "text": "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "6ca663c7-cfb1-4407-961e-0ace91167983"
+            },
+            {
+              "text": "Louis Bernard Rabaut, Frenchman, Melitta Bentz.",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.\"",
+              "fill_history": {
+                "tool": "coffee maker",
+                "text": "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "5e52cf75-758e-4a02-bed7-42c762ddca94"
+            },
+            {
+              "text": "Frenchman, Melitta Bentz",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.\"",
+              "fill_history": {
+                "tool": "coffee maker",
+                "text": "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "b5583aff-25f5-4d1d-b89a-b078ef8e1a94"
+            },
+            {
+              "text": "Melitta Bentz, German",
+              "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.\"",
+              "fill_history": {
+                "tool": "coffee maker",
+                "text": "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today."
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5",
+                "LLM_1": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "frequency_penalty": 0,
+                  "model": "gpt-3.5-turbo",
+                  "presence_penalty": 0,
+                  "shortname": "GPT3.5",
+                  "stop": "",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.4,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "a053c281-c438-4080-b55d-6ba5cb1b1323"
+            }
+          ]
         },
         "dragging": false,
         "id": "evalNode-1688055313296",
@@ -1947,7 +2903,8 @@
             "completion_tokens": 181,
             "prompt_tokens": 25,
             "total_tokens": 206
-          }
+          },
+          "uid": "4d3e646f-c799-46ec-88f8-3494f6577877"
         },
         {
           "vars": {
@@ -1967,7 +2924,8 @@
             "completion_tokens": 96,
             "prompt_tokens": 26,
             "total_tokens": 122
-          }
+          },
+          "uid": "99dd71d3-fe8c-4207-a77d-944368aba873"
         },
         {
           "vars": {
@@ -1987,7 +2945,8 @@
             "completion_tokens": 66,
             "prompt_tokens": 25,
             "total_tokens": 91
-          }
+          },
+          "uid": "3c182dab-6ccd-46c8-97fb-dadaeba0c53c"
         },
         {
           "vars": {
@@ -2007,7 +2966,8 @@
             "completion_tokens": 48,
             "prompt_tokens": 25,
             "total_tokens": 73
-          }
+          },
+          "uid": "740459d8-f968-4efe-9448-376e20834d4d"
         },
         {
           "vars": {
@@ -2027,7 +2987,8 @@
             "completion_tokens": 188,
             "prompt_tokens": 27,
             "total_tokens": 215
-          }
+          },
+          "uid": "80f88757-3b99-4e82-913e-c39e70e50de7"
         },
         {
           "vars": {
@@ -2047,7 +3008,8 @@
             "completion_tokens": 208,
             "prompt_tokens": 25,
             "total_tokens": 233
-          }
+          },
+          "uid": "a2aa2b9f-ed78-4a10-a5c1-92bbd23fd19b"
         }
       ]
     },
@@ -3007,7 +3969,8 @@
             "completion_tokens": 9,
             "prompt_tokens": 93,
             "total_tokens": 102
-          }
+          },
+          "uid": "47bc3bee-9f58-435a-9f4f-dc5c7f0b7d80"
         },
         {
           "vars": {
@@ -3027,7 +3990,8 @@
             "completion_tokens": 10,
             "prompt_tokens": 93,
             "total_tokens": 103
-          }
+          },
+          "uid": "678e4b5a-55f9-4b30-975f-4f905318e419"
         },
         {
           "vars": {
@@ -3047,7 +4011,8 @@
             "completion_tokens": 26,
             "prompt_tokens": 103,
             "total_tokens": 129
-          }
+          },
+          "uid": "96131260-55cd-47b7-8f91-cc63849bfd46"
         },
         {
           "vars": {
@@ -3067,7 +4032,8 @@
             "completion_tokens": 2,
             "prompt_tokens": 57,
             "total_tokens": 59
-          }
+          },
+          "uid": "06bf2f9f-3435-45ba-b1df-4089994ba818"
         },
         {
           "vars": {
@@ -3087,7 +4053,8 @@
             "completion_tokens": 2,
             "prompt_tokens": 57,
             "total_tokens": 59
-          }
+          },
+          "uid": "ad2d9d03-185a-480f-9f30-60d35c9a5e84"
         },
         {
           "vars": {
@@ -3107,7 +4074,8 @@
             "completion_tokens": 3,
             "prompt_tokens": 90,
             "total_tokens": 93
-          }
+          },
+          "uid": "3482814f-1b9c-4525-beff-777b820da731"
         },
         {
           "vars": {
@@ -3127,7 +4095,8 @@
             "completion_tokens": 5,
             "prompt_tokens": 53,
             "total_tokens": 58
-          }
+          },
+          "uid": "9c5fe679-d2eb-4c95-87b3-0b6a22329155"
         },
         {
           "vars": {
@@ -3147,7 +4116,8 @@
             "completion_tokens": 5,
             "prompt_tokens": 51,
             "total_tokens": 56
-          }
+          },
+          "uid": "6a800fff-0256-4edf-96d0-1bed80aee4a3"
         },
         {
           "vars": {
@@ -3167,7 +4137,8 @@
             "completion_tokens": 6,
             "prompt_tokens": 70,
             "total_tokens": 76
-          }
+          },
+          "uid": "d90a3905-34da-41ae-a731-d0a2ba133120"
         },
         {
           "vars": {
@@ -3187,7 +4158,8 @@
             "completion_tokens": 3,
             "prompt_tokens": 53,
             "total_tokens": 56
-          }
+          },
+          "uid": "2fc1b9fb-e086-463e-a9d4-b1a1595d94ab"
         },
         {
           "vars": {
@@ -3207,7 +4179,8 @@
             "completion_tokens": 3,
             "prompt_tokens": 54,
             "total_tokens": 57
-          }
+          },
+          "uid": "7876f414-1219-43b3-b05d-b8d8c4436f94"
         },
         {
           "vars": {
@@ -3227,7 +4200,8 @@
             "completion_tokens": 4,
             "prompt_tokens": 49,
             "total_tokens": 53
-          }
+          },
+          "uid": "1ece4e52-5fc4-4d3c-a12e-e915c9442095"
         },
         {
           "vars": {
@@ -3247,7 +4221,8 @@
             "completion_tokens": 18,
             "prompt_tokens": 84,
             "total_tokens": 102
-          }
+          },
+          "uid": "cf5e3ea6-dd33-45c6-916b-7cf2878df494"
         },
         {
           "vars": {
@@ -3267,7 +4242,8 @@
             "completion_tokens": 16,
             "prompt_tokens": 114,
             "total_tokens": 130
-          }
+          },
+          "uid": "7f8498e0-320c-4517-b0c5-c7f8ce47d639"
         },
         {
           "vars": {
@@ -3287,7 +4263,8 @@
             "completion_tokens": 12,
             "prompt_tokens": 98,
             "total_tokens": 110
-          }
+          },
+          "uid": "6ca663c7-cfb1-4407-961e-0ace91167983"
         },
         {
           "vars": {
@@ -3307,7 +4284,8 @@
             "completion_tokens": 13,
             "prompt_tokens": 82,
             "total_tokens": 95
-          }
+          },
+          "uid": "5e52cf75-758e-4a02-bed7-42c762ddca94"
         },
         {
           "vars": {
@@ -3327,7 +4305,8 @@
             "completion_tokens": 7,
             "prompt_tokens": 108,
             "total_tokens": 115
-          }
+          },
+          "uid": "b5583aff-25f5-4d1d-b89a-b078ef8e1a94"
         },
         {
           "vars": {
@@ -3347,7 +4326,8 @@
             "completion_tokens": 6,
             "prompt_tokens": 126,
             "total_tokens": 132
-          }
+          },
+          "uid": "a053c281-c438-4080-b55d-6ba5cb1b1323"
         }
       ]
     },
@@ -3362,16 +4342,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "47bc3bee-9f58-435a-9f4f-dc5c7f0b7d80",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.\"",
         "responses": [
           "Andreas Stihl, Stihl"
         ],
-        "tokens": {
-          "completion_tokens": 9,
-          "prompt_tokens": 93,
-          "total_tokens": 102
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3390,16 +4396,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "678e4b5a-55f9-4b30-975f-4f905318e419",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.\"",
         "responses": [
           "Andreas Stihl, James Shand."
         ],
-        "tokens": {
-          "completion_tokens": 10,
-          "prompt_tokens": 93,
-          "total_tokens": 103
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3418,16 +4450,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "96131260-55cd-47b7-8f91-cc63849bfd46",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.\"",
         "responses": [
           "Scottish, John Aitken, James Jeffray, early 1900s, gasoline-powered, Andreas Stihl."
         ],
-        "tokens": {
-          "completion_tokens": 26,
-          "prompt_tokens": 103,
-          "total_tokens": 129
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3446,16 +4504,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "06bf2f9f-3435-45ba-b1df-4089994ba818",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.\"",
         "responses": [
           "Thomas Edison"
         ],
-        "tokens": {
-          "completion_tokens": 2,
-          "prompt_tokens": 57,
-          "total_tokens": 59
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3474,16 +4558,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "ad2d9d03-185a-480f-9f30-60d35c9a5e84",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.\"",
         "responses": [
           "Thomas Edison"
         ],
-        "tokens": {
-          "completion_tokens": 2,
-          "prompt_tokens": 57,
-          "total_tokens": 59
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3502,16 +4612,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "3482814f-1b9c-4525-beff-777b820da731",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.\"",
         "responses": [
           "Thomas Edison."
         ],
-        "tokens": {
-          "completion_tokens": 3,
-          "prompt_tokens": 90,
-          "total_tokens": 93
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3530,16 +4666,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "9c5fe679-d2eb-4c95-87b3-0b6a22329155",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
         "responses": [
           "Hubert Cecil Booth."
         ],
-        "tokens": {
-          "completion_tokens": 5,
-          "prompt_tokens": 53,
-          "total_tokens": 58
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3558,16 +4720,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "6a800fff-0256-4edf-96d0-1bed80aee4a3",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"",
         "responses": [
           "Hubert Cecil Booth."
         ],
-        "tokens": {
-          "completion_tokens": 5,
-          "prompt_tokens": 51,
-          "total_tokens": 56
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3586,16 +4774,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "d90a3905-34da-41ae-a731-d0a2ba133120",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.\"",
         "responses": [
           "British, Hubert Cecil Booth"
         ],
-        "tokens": {
-          "completion_tokens": 6,
-          "prompt_tokens": 70,
-          "total_tokens": 76
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3614,16 +4828,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "2fc1b9fb-e086-463e-a9d4-b1a1595d94ab",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioner in 1902.\"",
         "responses": [
           "Willis Carrier"
         ],
-        "tokens": {
-          "completion_tokens": 3,
-          "prompt_tokens": 53,
-          "total_tokens": 56
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3642,16 +4882,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "7876f414-1219-43b3-b05d-b8d8c4436f94",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioning system in 1902.\"",
         "responses": [
           "Willis Carrier"
         ],
-        "tokens": {
-          "completion_tokens": 3,
-          "prompt_tokens": 54,
-          "total_tokens": 57
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3670,16 +4936,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "1ece4e52-5fc4-4d3c-a12e-e915c9442095",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The air conditioner was invented by Willis Carrier in 1902.\"",
         "responses": [
           "Willis Carrier."
         ],
-        "tokens": {
-          "completion_tokens": 4,
-          "prompt_tokens": 49,
-          "total_tokens": 53
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3698,16 +4990,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "cf5e3ea6-dd33-45c6-916b-7cf2878df494",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.\"",
         "responses": [
           "Paul Werbos, David Rumelhart, Jay McClelland, Geoffrey Hinton."
         ],
-        "tokens": {
-          "completion_tokens": 18,
-          "prompt_tokens": 84,
-          "total_tokens": 102
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3726,16 +5044,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "7f8498e0-320c-4517-b0c5-c7f8ce47d639",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.\"",
         "responses": [
           "Paul Werbos, David Rumelhart, Geoffrey Hinton, Ronald Williams."
         ],
-        "tokens": {
-          "completion_tokens": 16,
-          "prompt_tokens": 114,
-          "total_tokens": 130
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3754,16 +5098,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "6ca663c7-cfb1-4407-961e-0ace91167983",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.\"",
         "responses": [
           "David Rumelhart, Geoffrey Hinton, Ronald Williams."
         ],
-        "tokens": {
-          "completion_tokens": 12,
-          "prompt_tokens": 98,
-          "total_tokens": 110
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3782,16 +5152,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "5e52cf75-758e-4a02-bed7-42c762ddca94",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.\"",
         "responses": [
           "Louis Bernard Rabaut, Frenchman, Melitta Bentz."
         ],
-        "tokens": {
-          "completion_tokens": 13,
-          "prompt_tokens": 82,
-          "total_tokens": 95
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3810,16 +5206,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "b5583aff-25f5-4d1d-b89a-b078ef8e1a94",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.\"",
         "responses": [
           "Frenchman, Melitta Bentz"
         ],
-        "tokens": {
-          "completion_tokens": 7,
-          "prompt_tokens": 108,
-          "total_tokens": 115
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {
@@ -3838,16 +5260,42 @@
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "a053c281-c438-4080-b55d-6ba5cb1b1323",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "frequency_penalty": 0,
+            "model": "gpt-3.5-turbo",
+            "presence_penalty": 0,
+            "shortname": "GPT3.5",
+            "stop": "",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "key": "2e5359e6-b1ad-4eaf-bfc7-9cdc75682240",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.4,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.\"",
         "responses": [
           "Melitta Bentz, German"
         ],
-        "tokens": {
-          "completion_tokens": 6,
-          "prompt_tokens": 126,
-          "total_tokens": 132
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
             {

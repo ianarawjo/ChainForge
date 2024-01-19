@@ -121,7 +121,6 @@ function process(response) {
  */
 const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
 
-  const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
   const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
@@ -288,7 +287,8 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
                       prompt: resp_obj['prompt'],
                       fill_history: resp_obj['vars'],
                       metavars: resp_obj['metavars'] || {},
-                      llm: resp_obj['llm'] };
+                      llm: resp_obj['llm'],
+                      batch_id: resp_obj['uid'] };
 
             // Carry over any chat history
             if (resp_obj['chat_history']) 

@@ -1,5 +1,5 @@
 import markdownIt from "markdown-it";
-
+import { v4 as uuid } from 'uuid';
 import { Dict, StringDict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse, ChatHistoryInfo, isEqualChatHistory } from "./typing";
 import { LLM, getEnumName } from "./models";
 import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
@@ -8,6 +8,7 @@ import { PromptPipeline } from "./query";
 import { PromptPermutationGenerator, PromptTemplate } from "./template";
 import { UserForcedPrematureExit } from "./errors";
 import CancelTracker from "./canceler";
+
 
 // """ =================
 //     SETUP AND GLOBALS
@@ -115,11 +116,12 @@ export class ResponseInfo {
 function to_standard_format(r: LLMResponseObject | Dict): StandardizedLLMResponse {
   let resp_obj: StandardizedLLMResponse = {
     vars: r['info'],
-    metavars: r['metavars'] || {},
+    metavars: r['metavars'] ?? {},
     llm: r['llm'],
     prompt: r['prompt'],
     responses: r['responses'],
-    tokens: r.raw_response?.usage || {},
+    tokens: r.raw_response?.usage ?? {},
+    uid: r['uid'] ?? uuid(),
   };
   if ('eval_res' in r)
     resp_obj.eval_res = r.eval_res;

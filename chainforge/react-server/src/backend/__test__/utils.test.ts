@@ -16,6 +16,7 @@ test('merge response objects', () => {
     llm: NativeLLM.OpenAI_ChatGPT,
     info: { var1: 'value1', var2: 'value2' },
     metavars: { meta1: 'meta1' },
+    uid: "A",
   };
   const B: LLMResponseObject = {
     responses: ['a', 'b', 'c'],
@@ -25,6 +26,7 @@ test('merge response objects', () => {
     llm: NativeLLM.OpenAI_ChatGPT,
     info: { varB1: 'valueB1', varB2: 'valueB2' },
     metavars: { metaB1: 'metaB1' },
+    uid: "B",
   };
   const C = merge_response_objs(A, B) as LLMResponseObject;
   expect(C.responses).toHaveLength(6);

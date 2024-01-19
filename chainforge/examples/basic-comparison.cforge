@@ -29,8 +29,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "cc9963f4-c7f7-4ec4-8932-279603d9338c",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -58,8 +63,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "cc9963f4-c7f7-4ec4-8932-279603d9338c",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -87,269 +97,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
-              "metavars": {
-                "LLM_0": "GPT3.5"
-              }
-            },
-            {
-              "text": "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES) console. It was simply titled \"The Legend of Zelda\" and was developed and published by Nintendo.",
-              "prompt": "What was the first Legend of Zelda game?",
-              "fill_history": {
-                "game": "Legend of Zelda"
-              },
-              "llm": {
-                "base_model": "gpt-3.5-turbo",
-                "emoji": "🙂",
-                "formData": {
-                  "shortname": "GPT3.5"
-                },
-                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
-                "model": "gpt-3.5-turbo",
-                "name": "GPT3.5",
-                "settings": {
-                  "frequency_penalty": 0,
-                  "presence_penalty": 0,
-                  "stop": [],
-                  "system_msg": "You are a helpful assistant.",
-                  "temperature": 1,
-                  "top_p": 1
-                },
-                "temp": 1
-              },
-              "metavars": {
-                "LLM_0": "GPT3.5"
-              }
-            },
-            {
-              "text": "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was simply titled \"The Legend of Zelda.\"",
-              "prompt": "What was the first Legend of Zelda game?",
-              "fill_history": {
-                "game": "Legend of Zelda"
-              },
-              "llm": {
-                "base_model": "gpt-3.5-turbo",
-                "emoji": "🙂",
-                "formData": {
-                  "shortname": "GPT3.5"
-                },
-                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
-                "model": "gpt-3.5-turbo",
-                "name": "GPT3.5",
-                "settings": {
-                  "frequency_penalty": 0,
-                  "presence_penalty": 0,
-                  "stop": [],
-                  "system_msg": "You are a helpful assistant.",
-                  "temperature": 1,
-                  "top_p": 1
-                },
-                "temp": 1
-              },
-              "metavars": {
-                "LLM_0": "GPT3.5"
-              }
-            },
-            {
-              "text": "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was called \"The Legend of Zelda\" and was created by Nintendo's legendary game designer, Shigeru Miyamoto.",
-              "prompt": "What was the first Legend of Zelda game?",
-              "fill_history": {
-                "game": "Legend of Zelda"
-              },
-              "llm": {
-                "base_model": "gpt-3.5-turbo",
-                "emoji": "🙂",
-                "formData": {
-                  "shortname": "GPT3.5"
-                },
-                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
-                "model": "gpt-3.5-turbo",
-                "name": "GPT3.5",
-                "settings": {
-                  "frequency_penalty": 0,
-                  "presence_penalty": 0,
-                  "stop": [],
-                  "system_msg": "You are a helpful assistant.",
-                  "temperature": 1,
-                  "top_p": 1
-                },
-                "temp": 1
-              },
-              "metavars": {
-                "LLM_0": "GPT3.5"
-              }
-            },
-            {
-              "text": "The first Kirby game is called Kirby's Dream Land, and it was released for the Game Boy in 1992.",
-              "prompt": "What was the first Kirby game?",
-              "fill_history": {
-                "game": "Kirby"
-              },
-              "llm": {
-                "base_model": "gpt-3.5-turbo",
-                "emoji": "🙂",
-                "formData": {
-                  "shortname": "GPT3.5"
-                },
-                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
-                "model": "gpt-3.5-turbo",
-                "name": "GPT3.5",
-                "settings": {
-                  "frequency_penalty": 0,
-                  "presence_penalty": 0,
-                  "stop": [],
-                  "system_msg": "You are a helpful assistant.",
-                  "temperature": 1,
-                  "top_p": 1
-                },
-                "temp": 1
-              },
-              "metavars": {
-                "LLM_0": "GPT3.5"
-              }
-            },
-            {
-              "text": "The first Kirby game is called Kirby's Dream Land. It was released in 1992 for the Game Boy console.",
-              "prompt": "What was the first Kirby game?",
-              "fill_history": {
-                "game": "Kirby"
-              },
-              "llm": {
-                "base_model": "gpt-3.5-turbo",
-                "emoji": "🙂",
-                "formData": {
-                  "shortname": "GPT3.5"
-                },
-                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
-                "model": "gpt-3.5-turbo",
-                "name": "GPT3.5",
-                "settings": {
-                  "frequency_penalty": 0,
-                  "presence_penalty": 0,
-                  "stop": [],
-                  "system_msg": "You are a helpful assistant.",
-                  "temperature": 1,
-                  "top_p": 1
-                },
-                "temp": 1
-              },
-              "metavars": {
-                "LLM_0": "GPT3.5"
-              }
-            },
-            {
-              "text": "The first Kirby game was called \"Kirby's Dream Land,\" and it was released by Nintendo for the Game Boy in 1992.",
-              "prompt": "What was the first Kirby game?",
-              "fill_history": {
-                "game": "Kirby"
-              },
-              "llm": {
-                "base_model": "gpt-3.5-turbo",
-                "emoji": "🙂",
-                "formData": {
-                  "shortname": "GPT3.5"
-                },
-                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
-                "model": "gpt-3.5-turbo",
-                "name": "GPT3.5",
-                "settings": {
-                  "frequency_penalty": 0,
-                  "presence_penalty": 0,
-                  "stop": [],
-                  "system_msg": "You are a helpful assistant.",
-                  "temperature": 1,
-                  "top_p": 1
-                },
-                "temp": 1
-              },
-              "metavars": {
-                "LLM_0": "GPT3.5"
-              }
-            },
-            {
-              "text": "The first Super Mario Bros game was titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in 1985.",
-              "prompt": "What was the first Super Mario Bros game?",
-              "fill_history": {
-                "game": "Super Mario Bros"
-              },
-              "llm": {
-                "base_model": "gpt-3.5-turbo",
-                "emoji": "🙂",
-                "formData": {
-                  "shortname": "GPT3.5"
-                },
-                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
-                "model": "gpt-3.5-turbo",
-                "name": "GPT3.5",
-                "settings": {
-                  "frequency_penalty": 0,
-                  "presence_penalty": 0,
-                  "stop": [],
-                  "system_msg": "You are a helpful assistant.",
-                  "temperature": 1,
-                  "top_p": 1
-                },
-                "temp": 1
-              },
-              "metavars": {
-                "LLM_0": "GPT3.5"
-              }
-            },
-            {
-              "text": "The first Super Mario Bros game was released in 1985 for the Nintendo Entertainment System (NES). It is a platform video game developed and published by Nintendo.",
-              "prompt": "What was the first Super Mario Bros game?",
-              "fill_history": {
-                "game": "Super Mario Bros"
-              },
-              "llm": {
-                "base_model": "gpt-3.5-turbo",
-                "emoji": "🙂",
-                "formData": {
-                  "shortname": "GPT3.5"
-                },
-                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
-                "model": "gpt-3.5-turbo",
-                "name": "GPT3.5",
-                "settings": {
-                  "frequency_penalty": 0,
-                  "presence_penalty": 0,
-                  "stop": [],
-                  "system_msg": "You are a helpful assistant.",
-                  "temperature": 1,
-                  "top_p": 1
-                },
-                "temp": 1
-              },
-              "metavars": {
-                "LLM_0": "GPT3.5"
-              }
-            },
-            {
-              "text": "The first Super Mario Bros game was simply titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in Japan in 1985 and became a worldwide phenomenon.",
-              "prompt": "What was the first Super Mario Bros game?",
-              "fill_history": {
-                "game": "Super Mario Bros"
-              },
-              "llm": {
-                "base_model": "gpt-3.5-turbo",
-                "emoji": "🙂",
-                "formData": {
-                  "shortname": "GPT3.5"
-                },
-                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
-                "model": "gpt-3.5-turbo",
-                "name": "GPT3.5",
-                "settings": {
-                  "frequency_penalty": 0,
-                  "presence_penalty": 0,
-                  "stop": [],
-                  "system_msg": "You are a helpful assistant.",
-                  "temperature": 1,
-                  "top_p": 1
-                },
-                "temp": 1
-              },
+              "batch_id": "cc9963f4-c7f7-4ec4-8932-279603d9338c",
               "metavars": {
                 "LLM_0": "GPT3.5"
               }
@@ -377,8 +131,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "03fb8475-c8aa-4e57-8546-0c5fe02f9c69",
               "metavars": {
                 "LLM_0": "GPT4"
               }
@@ -406,8 +165,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "03fb8475-c8aa-4e57-8546-0c5fe02f9c69",
               "metavars": {
                 "LLM_0": "GPT4"
               }
@@ -435,10 +199,117 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "03fb8475-c8aa-4e57-8546-0c5fe02f9c69",
               "metavars": {
                 "LLM_0": "GPT4"
+              }
+            },
+            {
+              "text": "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES) console. It was simply titled \"The Legend of Zelda\" and was developed and published by Nintendo.",
+              "prompt": "What was the first Legend of Zelda game?",
+              "fill_history": {
+                "game": "Legend of Zelda"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "d2ac35ef-2f7b-44e5-adc7-95ba7b11bd8e",
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              }
+            },
+            {
+              "text": "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was simply titled \"The Legend of Zelda.\"",
+              "prompt": "What was the first Legend of Zelda game?",
+              "fill_history": {
+                "game": "Legend of Zelda"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "d2ac35ef-2f7b-44e5-adc7-95ba7b11bd8e",
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              }
+            },
+            {
+              "text": "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was called \"The Legend of Zelda\" and was created by Nintendo's legendary game designer, Shigeru Miyamoto.",
+              "prompt": "What was the first Legend of Zelda game?",
+              "fill_history": {
+                "game": "Legend of Zelda"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "d2ac35ef-2f7b-44e5-adc7-95ba7b11bd8e",
+              "metavars": {
+                "LLM_0": "GPT3.5"
               }
             },
             {
@@ -464,8 +335,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "49d17c2a-4a51-4554-958c-330405920173",
               "metavars": {
                 "LLM_0": "GPT4"
               }
@@ -493,8 +369,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "49d17c2a-4a51-4554-958c-330405920173",
               "metavars": {
                 "LLM_0": "GPT4"
               }
@@ -522,10 +403,117 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "49d17c2a-4a51-4554-958c-330405920173",
               "metavars": {
                 "LLM_0": "GPT4"
+              }
+            },
+            {
+              "text": "The first Kirby game is called Kirby's Dream Land, and it was released for the Game Boy in 1992.",
+              "prompt": "What was the first Kirby game?",
+              "fill_history": {
+                "game": "Kirby"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "a37998f1-5383-4517-a830-9393137316a3",
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              }
+            },
+            {
+              "text": "The first Kirby game is called Kirby's Dream Land. It was released in 1992 for the Game Boy console.",
+              "prompt": "What was the first Kirby game?",
+              "fill_history": {
+                "game": "Kirby"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "a37998f1-5383-4517-a830-9393137316a3",
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              }
+            },
+            {
+              "text": "The first Kirby game was called \"Kirby's Dream Land,\" and it was released by Nintendo for the Game Boy in 1992.",
+              "prompt": "What was the first Kirby game?",
+              "fill_history": {
+                "game": "Kirby"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "a37998f1-5383-4517-a830-9393137316a3",
+              "metavars": {
+                "LLM_0": "GPT3.5"
               }
             },
             {
@@ -551,8 +539,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "074b7eb0-0d82-4439-a4ba-8eb44c88f09e",
               "metavars": {
                 "LLM_0": "GPT4"
               }
@@ -580,8 +573,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "074b7eb0-0d82-4439-a4ba-8eb44c88f09e",
               "metavars": {
                 "LLM_0": "GPT4"
               }
@@ -609,10 +607,117 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "074b7eb0-0d82-4439-a4ba-8eb44c88f09e",
               "metavars": {
                 "LLM_0": "GPT4"
+              }
+            },
+            {
+              "text": "The first Super Mario Bros game was titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in 1985.",
+              "prompt": "What was the first Super Mario Bros game?",
+              "fill_history": {
+                "game": "Super Mario Bros"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "828ea833-33e3-4a00-ad7d-508aef219d12",
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              }
+            },
+            {
+              "text": "The first Super Mario Bros game was released in 1985 for the Nintendo Entertainment System (NES). It is a platform video game developed and published by Nintendo.",
+              "prompt": "What was the first Super Mario Bros game?",
+              "fill_history": {
+                "game": "Super Mario Bros"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "828ea833-33e3-4a00-ad7d-508aef219d12",
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              }
+            },
+            {
+              "text": "The first Super Mario Bros game was simply titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in Japan in 1985 and became a worldwide phenomenon.",
+              "prompt": "What was the first Super Mario Bros game?",
+              "fill_history": {
+                "game": "Super Mario Bros"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "828ea833-33e3-4a00-ad7d-508aef219d12",
+              "metavars": {
+                "LLM_0": "GPT3.5"
               }
             },
             {
@@ -638,8 +743,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "69b43e1d-3b0b-412a-8078-0a287331365d",
               "metavars": {
                 "LLM_0": "GPT4"
               }
@@ -667,8 +777,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "69b43e1d-3b0b-412a-8078-0a287331365d",
               "metavars": {
                 "LLM_0": "GPT4"
               }
@@ -696,8 +811,13 @@
                   "temperature": 1,
                   "top_p": 1
                 },
-                "temp": 1
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
               },
+              "batch_id": "69b43e1d-3b0b-412a-8078-0a287331365d",
               "metavars": {
                 "LLM_0": "GPT4"
               }
@@ -759,7 +879,7 @@
         "type": "prompt"
       },
       {
-        "width": 332,
+        "width": 312,
         "height": 283,
         "data": {
           "fields": {
@@ -787,23 +907,23 @@
         "height": 557,
         "data": {
           "input": "evalNode-1688054984836",
+          "llm_groups": [
+            {
+              "label": "LLMs (last)",
+              "value": "LLM"
+            },
+            {
+              "label": "LLMs #1",
+              "value": "LLM_0"
+            }
+          ],
           "refresh": false,
           "selected_vars": [],
           "vars": [
             "LLM (default)",
             {
-              "value": "game",
-              "label": "game"
-            }
-          ],
-          "llm_groups": [
-            {
-              "value": "LLM",
-              "label": "LLMs (last)"
-            },
-            {
-              "value": "LLM_0",
-              "label": "LLMs #1"
+              "label": "game",
+              "value": "game"
             }
           ]
         },
@@ -822,7 +942,7 @@
       },
       {
         "width": 302,
-        "height": 260,
+        "height": 319,
         "data": {
           "input": "prompt-1684348622333",
           "refresh": false
@@ -846,7 +966,825 @@
         "data": {
           "code": "function evaluate(response) {\n  return response.text.length;\n}",
           "language": "javascript",
-          "refresh": false
+          "refresh": false,
+          "fields": [
+            {
+              "text": "The first Pokemon game was released in Japan in 1996 for the Game Boy and was called \"Pocket Monsters Red\" and \"Pocket Monsters Green.\" The English version, \"Pokemon Red\" and \"Pokemon Blue,\" was released in 1998 for the Game Boy in North America.",
+              "prompt": "What was the first Pokemon game?",
+              "fill_history": {
+                "game": "Pokemon"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "cc9963f4-c7f7-4ec4-8932-279603d9338c"
+            },
+            {
+              "text": "The first Pokemon game was called \"Pocket Monsters Red\" and \"Pocket Monsters Green\" and was released in Japan in 1996 for the Game Boy console. The first games released in North America were \"Pokemon Red\" and \"Pokemon Blue\" in 1998.",
+              "prompt": "What was the first Pokemon game?",
+              "fill_history": {
+                "game": "Pokemon"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "cc9963f4-c7f7-4ec4-8932-279603d9338c"
+            },
+            {
+              "text": "The first Pokemon game was Pokemon Red and Green, which were released in Japan for the Game Boy in 1996. The first Pokemon game released outside of Japan was Pokemon Red and Blue, which were released for the Game Boy in North America in 1998.",
+              "prompt": "What was the first Pokemon game?",
+              "fill_history": {
+                "game": "Pokemon"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "cc9963f4-c7f7-4ec4-8932-279603d9338c"
+            },
+            {
+              "text": "The first Pokémon games were Pokémon Red and Pokémon Green, released in Japan in 1996 for the Game Boy. Pokémon Red and Blue were later released in North America in 1998.",
+              "prompt": "What was the first Pokemon game?",
+              "fill_history": {
+                "game": "Pokemon"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "03fb8475-c8aa-4e57-8546-0c5fe02f9c69"
+            },
+            {
+              "text": "The first Pokémon games were Pokémon Red and Pokémon Green, developed by Game Freak and published by Nintendo. They were released in Japan in 1996 for the Game Boy. Pokémon Red and Green later inspired the international Pokémon Red and Blue versions that were released in 1998.",
+              "prompt": "What was the first Pokemon game?",
+              "fill_history": {
+                "game": "Pokemon"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "03fb8475-c8aa-4e57-8546-0c5fe02f9c69"
+            },
+            {
+              "text": "The first Pokémon games were Pokémon Red and Pokémon Green, released in Japan on February 27, 1996, for the Game Boy. These games were later released as Pokémon Red and Pokémon Blue in North America and other regions.",
+              "prompt": "What was the first Pokemon game?",
+              "fill_history": {
+                "game": "Pokemon"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "03fb8475-c8aa-4e57-8546-0c5fe02f9c69"
+            },
+            {
+              "text": "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES) console. It was simply titled \"The Legend of Zelda\" and was developed and published by Nintendo.",
+              "prompt": "What was the first Legend of Zelda game?",
+              "fill_history": {
+                "game": "Legend of Zelda"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "d2ac35ef-2f7b-44e5-adc7-95ba7b11bd8e"
+            },
+            {
+              "text": "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was simply titled \"The Legend of Zelda.\"",
+              "prompt": "What was the first Legend of Zelda game?",
+              "fill_history": {
+                "game": "Legend of Zelda"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "d2ac35ef-2f7b-44e5-adc7-95ba7b11bd8e"
+            },
+            {
+              "text": "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was called \"The Legend of Zelda\" and was created by Nintendo's legendary game designer, Shigeru Miyamoto.",
+              "prompt": "What was the first Legend of Zelda game?",
+              "fill_history": {
+                "game": "Legend of Zelda"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "d2ac35ef-2f7b-44e5-adc7-95ba7b11bd8e"
+            },
+            {
+              "text": "The first Legend of Zelda game, titled \"The Legend of Zelda,\" was released in Japan on February 21, 1986, for the Nintendo Entertainment System (NES) and was later released in North America on August 22, 1987. The game was developed and published by Nintendo and designed by Shigeru Miyamoto and Takashi Tezuka.",
+              "prompt": "What was the first Legend of Zelda game?",
+              "fill_history": {
+                "game": "Legend of Zelda"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "49d17c2a-4a51-4554-958c-330405920173"
+            },
+            {
+              "text": "The first Legend of Zelda game, titled \"The Legend of Zelda,\" was released in 1986 for the Nintendo Entertainment System (NES). It was developed and published by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka.",
+              "prompt": "What was the first Legend of Zelda game?",
+              "fill_history": {
+                "game": "Legend of Zelda"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "49d17c2a-4a51-4554-958c-330405920173"
+            },
+            {
+              "text": "The first Legend of Zelda game, titled \"The Legend of Zelda,\" was released on February 21, 1986, for the Nintendo Entertainment System (NES) in Japan. It was developed and published by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka.",
+              "prompt": "What was the first Legend of Zelda game?",
+              "fill_history": {
+                "game": "Legend of Zelda"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "49d17c2a-4a51-4554-958c-330405920173"
+            },
+            {
+              "text": "The first Kirby game is called Kirby's Dream Land, and it was released for the Game Boy in 1992.",
+              "prompt": "What was the first Kirby game?",
+              "fill_history": {
+                "game": "Kirby"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "a37998f1-5383-4517-a830-9393137316a3"
+            },
+            {
+              "text": "The first Kirby game is called Kirby's Dream Land. It was released in 1992 for the Game Boy console.",
+              "prompt": "What was the first Kirby game?",
+              "fill_history": {
+                "game": "Kirby"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "a37998f1-5383-4517-a830-9393137316a3"
+            },
+            {
+              "text": "The first Kirby game was called \"Kirby's Dream Land,\" and it was released by Nintendo for the Game Boy in 1992.",
+              "prompt": "What was the first Kirby game?",
+              "fill_history": {
+                "game": "Kirby"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "a37998f1-5383-4517-a830-9393137316a3"
+            },
+            {
+              "text": "The first Kirby game was \"Kirby's Dream Land,\" released on the Nintendo Game Boy in 1992. It introduced the character Kirby and was developed by HAL Laboratory and published by Nintendo.",
+              "prompt": "What was the first Kirby game?",
+              "fill_history": {
+                "game": "Kirby"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "074b7eb0-0d82-4439-a4ba-8eb44c88f09e"
+            },
+            {
+              "text": "The first Kirby game was \"Kirby's Dream Land,\" which was released on April 27, 1992, for the Nintendo Game Boy.",
+              "prompt": "What was the first Kirby game?",
+              "fill_history": {
+                "game": "Kirby"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "074b7eb0-0d82-4439-a4ba-8eb44c88f09e"
+            },
+            {
+              "text": "The first Kirby game is titled \"Kirby's Dream Land,\" which was released for the Nintendo Game Boy in 1992. The character Kirby was created by Masahiro Sakurai, and the game was developed by HAL Laboratory.",
+              "prompt": "What was the first Kirby game?",
+              "fill_history": {
+                "game": "Kirby"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "074b7eb0-0d82-4439-a4ba-8eb44c88f09e"
+            },
+            {
+              "text": "The first Super Mario Bros game was titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in 1985.",
+              "prompt": "What was the first Super Mario Bros game?",
+              "fill_history": {
+                "game": "Super Mario Bros"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "828ea833-33e3-4a00-ad7d-508aef219d12"
+            },
+            {
+              "text": "The first Super Mario Bros game was released in 1985 for the Nintendo Entertainment System (NES). It is a platform video game developed and published by Nintendo.",
+              "prompt": "What was the first Super Mario Bros game?",
+              "fill_history": {
+                "game": "Super Mario Bros"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "828ea833-33e3-4a00-ad7d-508aef219d12"
+            },
+            {
+              "text": "The first Super Mario Bros game was simply titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in Japan in 1985 and became a worldwide phenomenon.",
+              "prompt": "What was the first Super Mario Bros game?",
+              "fill_history": {
+                "game": "Super Mario Bros"
+              },
+              "metavars": {
+                "LLM_0": "GPT3.5"
+              },
+              "llm": {
+                "base_model": "gpt-3.5-turbo",
+                "emoji": "🙂",
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+                "model": "gpt-3.5-turbo",
+                "name": "GPT3.5",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "828ea833-33e3-4a00-ad7d-508aef219d12"
+            },
+            {
+              "text": "The first Super Mario Bros game, titled \"Super Mario Bros.,\" was released in 1985 for the Nintendo Entertainment System (NES). It was created by Shigeru Miyamoto and Takashi Tezuka and developed by Nintendo. The game followed the adventures of Mario (and his brother Luigi in multiplayer mode) as they tried to rescue Princess Toadstool from the villainous Bowser.",
+              "prompt": "What was the first Super Mario Bros game?",
+              "fill_history": {
+                "game": "Super Mario Bros"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "69b43e1d-3b0b-412a-8078-0a287331365d"
+            },
+            {
+              "text": "The first Super Mario Bros. game was released on September 13, 1985, for the Nintendo Entertainment System (NES). It was developed by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka. This iconic game introduced the world to Mario and his brother Luigi as they navigate through the Mushroom Kingdom to rescue Princess Peach from the antagonist Bowser.",
+              "prompt": "What was the first Super Mario Bros game?",
+              "fill_history": {
+                "game": "Super Mario Bros"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "69b43e1d-3b0b-412a-8078-0a287331365d"
+            },
+            {
+              "text": "The first Super Mario Bros. game was released in 1985 for the Nintendo Entertainment System (NES). It was developed and published by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka. The game marked the debut of the now-iconic characters Mario and Luigi, and it is considered one of the most influential and important video games in history.",
+              "prompt": "What was the first Super Mario Bros game?",
+              "fill_history": {
+                "game": "Super Mario Bros"
+              },
+              "metavars": {
+                "LLM_0": "GPT4"
+              },
+              "llm": {
+                "base_model": "gpt-4",
+                "emoji": "🥵",
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+                "model": "gpt-4",
+                "name": "GPT4",
+                "settings": {
+                  "frequency_penalty": 0,
+                  "presence_penalty": 0,
+                  "stop": [],
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "top_p": 1
+                },
+                "temp": 1,
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "batch_id": "69b43e1d-3b0b-412a-8078-0a287331365d"
+            }
+          ]
         },
         "dragging": false,
         "id": "evalNode-1688054984836",
@@ -1560,67 +2498,8 @@
             "completion_tokens": 164,
             "prompt_tokens": 26,
             "total_tokens": 190
-          }
-        },
-        {
-          "vars": {
-            "game": "Legend of Zelda"
           },
-          "metavars": {
-            "LLM_0": "GPT3.5"
-          },
-          "llm": "GPT3.5",
-          "prompt": "What was the first Legend of Zelda game?",
-          "responses": [
-            "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES) console. It was simply titled \"The Legend of Zelda\" and was developed and published by Nintendo.",
-            "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was simply titled \"The Legend of Zelda.\"",
-            "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was called \"The Legend of Zelda\" and was created by Nintendo's legendary game designer, Shigeru Miyamoto."
-          ],
-          "tokens": {
-            "completion_tokens": 115,
-            "prompt_tokens": 28,
-            "total_tokens": 143
-          }
-        },
-        {
-          "vars": {
-            "game": "Kirby"
-          },
-          "metavars": {
-            "LLM_0": "GPT3.5"
-          },
-          "llm": "GPT3.5",
-          "prompt": "What was the first Kirby game?",
-          "responses": [
-            "The first Kirby game is called Kirby's Dream Land, and it was released for the Game Boy in 1992.",
-            "The first Kirby game is called Kirby's Dream Land. It was released in 1992 for the Game Boy console.",
-            "The first Kirby game was called \"Kirby's Dream Land,\" and it was released by Nintendo for the Game Boy in 1992."
-          ],
-          "tokens": {
-            "completion_tokens": 76,
-            "prompt_tokens": 26,
-            "total_tokens": 102
-          }
-        },
-        {
-          "vars": {
-            "game": "Super Mario Bros"
-          },
-          "metavars": {
-            "LLM_0": "GPT3.5"
-          },
-          "llm": "GPT3.5",
-          "prompt": "What was the first Super Mario Bros game?",
-          "responses": [
-            "The first Super Mario Bros game was titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in 1985.",
-            "The first Super Mario Bros game was released in 1985 for the Nintendo Entertainment System (NES). It is a platform video game developed and published by Nintendo.",
-            "The first Super Mario Bros game was simply titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in Japan in 1985 and became a worldwide phenomenon."
-          ],
-          "tokens": {
-            "completion_tokens": 98,
-            "prompt_tokens": 28,
-            "total_tokens": 126
-          }
+          "uid": "cc9963f4-c7f7-4ec4-8932-279603d9338c"
         },
         {
           "vars": {
@@ -1640,7 +2519,29 @@
             "completion_tokens": 139,
             "prompt_tokens": 24,
             "total_tokens": 163
-          }
+          },
+          "uid": "03fb8475-c8aa-4e57-8546-0c5fe02f9c69"
+        },
+        {
+          "vars": {
+            "game": "Legend of Zelda"
+          },
+          "metavars": {
+            "LLM_0": "GPT3.5"
+          },
+          "llm": "GPT3.5",
+          "prompt": "What was the first Legend of Zelda game?",
+          "responses": [
+            "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES) console. It was simply titled \"The Legend of Zelda\" and was developed and published by Nintendo.",
+            "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was simply titled \"The Legend of Zelda.\"",
+            "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was called \"The Legend of Zelda\" and was created by Nintendo's legendary game designer, Shigeru Miyamoto."
+          ],
+          "tokens": {
+            "completion_tokens": 115,
+            "prompt_tokens": 28,
+            "total_tokens": 143
+          },
+          "uid": "d2ac35ef-2f7b-44e5-adc7-95ba7b11bd8e"
         },
         {
           "vars": {
@@ -1660,7 +2561,29 @@
             "completion_tokens": 182,
             "prompt_tokens": 26,
             "total_tokens": 208
-          }
+          },
+          "uid": "49d17c2a-4a51-4554-958c-330405920173"
+        },
+        {
+          "vars": {
+            "game": "Kirby"
+          },
+          "metavars": {
+            "LLM_0": "GPT3.5"
+          },
+          "llm": "GPT3.5",
+          "prompt": "What was the first Kirby game?",
+          "responses": [
+            "The first Kirby game is called Kirby's Dream Land, and it was released for the Game Boy in 1992.",
+            "The first Kirby game is called Kirby's Dream Land. It was released in 1992 for the Game Boy console.",
+            "The first Kirby game was called \"Kirby's Dream Land,\" and it was released by Nintendo for the Game Boy in 1992."
+          ],
+          "tokens": {
+            "completion_tokens": 76,
+            "prompt_tokens": 26,
+            "total_tokens": 102
+          },
+          "uid": "a37998f1-5383-4517-a830-9393137316a3"
         },
         {
           "vars": {
@@ -1680,7 +2603,29 @@
             "completion_tokens": 116,
             "prompt_tokens": 24,
             "total_tokens": 140
-          }
+          },
+          "uid": "074b7eb0-0d82-4439-a4ba-8eb44c88f09e"
+        },
+        {
+          "vars": {
+            "game": "Super Mario Bros"
+          },
+          "metavars": {
+            "LLM_0": "GPT3.5"
+          },
+          "llm": "GPT3.5",
+          "prompt": "What was the first Super Mario Bros game?",
+          "responses": [
+            "The first Super Mario Bros game was titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in 1985.",
+            "The first Super Mario Bros game was released in 1985 for the Nintendo Entertainment System (NES). It is a platform video game developed and published by Nintendo.",
+            "The first Super Mario Bros game was simply titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in Japan in 1985 and became a worldwide phenomenon."
+          ],
+          "tokens": {
+            "completion_tokens": 98,
+            "prompt_tokens": 28,
+            "total_tokens": 126
+          },
+          "uid": "828ea833-33e3-4a00-ad7d-508aef219d12"
         },
         {
           "vars": {
@@ -1700,7 +2645,8 @@
             "completion_tokens": 230,
             "prompt_tokens": 26,
             "total_tokens": 256
-          }
+          },
+          "uid": "69b43e1d-3b0b-412a-8078-0a287331365d"
         }
       ]
     },
@@ -1715,107 +2661,124 @@
         "metavars": {
           "LLM_0": "GPT3.5"
         },
-        "llm": "GPT3.5",
+        "uid": "cc9963f4-c7f7-4ec4-8932-279603d9338c",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "What was the first Pokemon game?",
         "responses": [
-          "The first Pokemon game was released in Japan in 1996 for the Game Boy and was called \"Pocket Monsters Red\" and \"Pocket Monsters Green.\" The English version, \"Pokemon Red\" and \"Pokemon Blue,\" was released in 1998 for the Game Boy in North America.",
-          "The first Pokemon game was called \"Pocket Monsters Red\" and \"Pocket Monsters Green\" and was released in Japan in 1996 for the Game Boy console. The first games released in North America were \"Pokemon Red\" and \"Pokemon Blue\" in 1998.",
+          "The first Pokemon game was released in Japan in 1996 for the Game Boy and was called \"Pocket Monsters Red\" and \"Pocket Monsters Green.\" The English version, \"Pokemon Red\" and \"Pokemon Blue,\" was released in 1998 for the Game Boy in North America."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            246
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Pokemon"
+        },
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "cc9963f4-c7f7-4ec4-8932-279603d9338c",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Pokemon game?",
+        "responses": [
+          "The first Pokemon game was called \"Pocket Monsters Red\" and \"Pocket Monsters Green\" and was released in Japan in 1996 for the Game Boy console. The first games released in North America were \"Pokemon Red\" and \"Pokemon Blue\" in 1998."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            232
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Pokemon"
+        },
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "cc9963f4-c7f7-4ec4-8932-279603d9338c",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Pokemon game?",
+        "responses": [
           "The first Pokemon game was Pokemon Red and Green, which were released in Japan for the Game Boy in 1996. The first Pokemon game released outside of Japan was Pokemon Red and Blue, which were released for the Game Boy in North America in 1998."
         ],
-        "tokens": {
-          "completion_tokens": 164,
-          "prompt_tokens": 26,
-          "total_tokens": 190
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
-            246,
-            232,
             242
-          ],
-          "dtype": "Numeric"
-        }
-      },
-      {
-        "vars": {
-          "game": "Legend of Zelda"
-        },
-        "metavars": {
-          "LLM_0": "GPT3.5"
-        },
-        "llm": "GPT3.5",
-        "prompt": "What was the first Legend of Zelda game?",
-        "responses": [
-          "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES) console. It was simply titled \"The Legend of Zelda\" and was developed and published by Nintendo.",
-          "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was simply titled \"The Legend of Zelda.\"",
-          "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was called \"The Legend of Zelda\" and was created by Nintendo's legendary game designer, Shigeru Miyamoto."
-        ],
-        "tokens": {
-          "completion_tokens": 115,
-          "prompt_tokens": 28,
-          "total_tokens": 143
-        },
-        "eval_res": {
-          "items": [
-            192,
-            140,
-            205
-          ],
-          "dtype": "Numeric"
-        }
-      },
-      {
-        "vars": {
-          "game": "Kirby"
-        },
-        "metavars": {
-          "LLM_0": "GPT3.5"
-        },
-        "llm": "GPT3.5",
-        "prompt": "What was the first Kirby game?",
-        "responses": [
-          "The first Kirby game is called Kirby's Dream Land, and it was released for the Game Boy in 1992.",
-          "The first Kirby game is called Kirby's Dream Land. It was released in 1992 for the Game Boy console.",
-          "The first Kirby game was called \"Kirby's Dream Land,\" and it was released by Nintendo for the Game Boy in 1992."
-        ],
-        "tokens": {
-          "completion_tokens": 76,
-          "prompt_tokens": 26,
-          "total_tokens": 102
-        },
-        "eval_res": {
-          "items": [
-            96,
-            100,
-            111
-          ],
-          "dtype": "Numeric"
-        }
-      },
-      {
-        "vars": {
-          "game": "Super Mario Bros"
-        },
-        "metavars": {
-          "LLM_0": "GPT3.5"
-        },
-        "llm": "GPT3.5",
-        "prompt": "What was the first Super Mario Bros game?",
-        "responses": [
-          "The first Super Mario Bros game was titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in 1985.",
-          "The first Super Mario Bros game was released in 1985 for the Nintendo Entertainment System (NES). It is a platform video game developed and published by Nintendo.",
-          "The first Super Mario Bros game was simply titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in Japan in 1985 and became a worldwide phenomenon."
-        ],
-        "tokens": {
-          "completion_tokens": 98,
-          "prompt_tokens": 28,
-          "total_tokens": 126
-        },
-        "eval_res": {
-          "items": [
-            131,
-            162,
-            181
           ],
           "dtype": "Numeric"
         }
@@ -1827,23 +2790,253 @@
         "metavars": {
           "LLM_0": "GPT4"
         },
-        "llm": "GPT4",
+        "uid": "03fb8475-c8aa-4e57-8546-0c5fe02f9c69",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "What was the first Pokemon game?",
         "responses": [
-          "The first Pokémon games were Pokémon Red and Pokémon Green, released in Japan in 1996 for the Game Boy. Pokémon Red and Blue were later released in North America in 1998.",
-          "The first Pokémon games were Pokémon Red and Pokémon Green, developed by Game Freak and published by Nintendo. They were released in Japan in 1996 for the Game Boy. Pokémon Red and Green later inspired the international Pokémon Red and Blue versions that were released in 1998.",
-          "The first Pokémon games were Pokémon Red and Pokémon Green, released in Japan on February 27, 1996, for the Game Boy. These games were later released as Pokémon Red and Pokémon Blue in North America and other regions."
+          "The first Pokémon games were Pokémon Red and Pokémon Green, released in Japan in 1996 for the Game Boy. Pokémon Red and Blue were later released in North America in 1998."
         ],
-        "tokens": {
-          "completion_tokens": 139,
-          "prompt_tokens": 24,
-          "total_tokens": 163
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
-            170,
-            277,
+            170
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Pokemon"
+        },
+        "metavars": {
+          "LLM_0": "GPT4"
+        },
+        "uid": "03fb8475-c8aa-4e57-8546-0c5fe02f9c69",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Pokemon game?",
+        "responses": [
+          "The first Pokémon games were Pokémon Red and Pokémon Green, developed by Game Freak and published by Nintendo. They were released in Japan in 1996 for the Game Boy. Pokémon Red and Green later inspired the international Pokémon Red and Blue versions that were released in 1998."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            277
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Pokemon"
+        },
+        "metavars": {
+          "LLM_0": "GPT4"
+        },
+        "uid": "03fb8475-c8aa-4e57-8546-0c5fe02f9c69",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Pokemon game?",
+        "responses": [
+          "The first Pokémon games were Pokémon Red and Pokémon Green, released in Japan on February 27, 1996, for the Game Boy. These games were later released as Pokémon Red and Pokémon Blue in North America and other regions."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
             217
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Legend of Zelda"
+        },
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "d2ac35ef-2f7b-44e5-adc7-95ba7b11bd8e",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Legend of Zelda game?",
+        "responses": [
+          "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES) console. It was simply titled \"The Legend of Zelda\" and was developed and published by Nintendo."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            192
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Legend of Zelda"
+        },
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "d2ac35ef-2f7b-44e5-adc7-95ba7b11bd8e",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Legend of Zelda game?",
+        "responses": [
+          "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was simply titled \"The Legend of Zelda.\""
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            140
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Legend of Zelda"
+        },
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "d2ac35ef-2f7b-44e5-adc7-95ba7b11bd8e",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Legend of Zelda game?",
+        "responses": [
+          "The first Legend of Zelda game was released in 1986 for the Nintendo Entertainment System (NES). It was called \"The Legend of Zelda\" and was created by Nintendo's legendary game designer, Shigeru Miyamoto."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            205
           ],
           "dtype": "Numeric"
         }
@@ -1855,23 +3048,253 @@
         "metavars": {
           "LLM_0": "GPT4"
         },
-        "llm": "GPT4",
+        "uid": "49d17c2a-4a51-4554-958c-330405920173",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "What was the first Legend of Zelda game?",
         "responses": [
-          "The first Legend of Zelda game, titled \"The Legend of Zelda,\" was released in Japan on February 21, 1986, for the Nintendo Entertainment System (NES) and was later released in North America on August 22, 1987. The game was developed and published by Nintendo and designed by Shigeru Miyamoto and Takashi Tezuka.",
-          "The first Legend of Zelda game, titled \"The Legend of Zelda,\" was released in 1986 for the Nintendo Entertainment System (NES). It was developed and published by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka.",
-          "The first Legend of Zelda game, titled \"The Legend of Zelda,\" was released on February 21, 1986, for the Nintendo Entertainment System (NES) in Japan. It was developed and published by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka."
+          "The first Legend of Zelda game, titled \"The Legend of Zelda,\" was released in Japan on February 21, 1986, for the Nintendo Entertainment System (NES) and was later released in North America on August 22, 1987. The game was developed and published by Nintendo and designed by Shigeru Miyamoto and Takashi Tezuka."
         ],
-        "tokens": {
-          "completion_tokens": 182,
-          "prompt_tokens": 26,
-          "total_tokens": 208
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
-            311,
-            222,
+            311
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Legend of Zelda"
+        },
+        "metavars": {
+          "LLM_0": "GPT4"
+        },
+        "uid": "49d17c2a-4a51-4554-958c-330405920173",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Legend of Zelda game?",
+        "responses": [
+          "The first Legend of Zelda game, titled \"The Legend of Zelda,\" was released in 1986 for the Nintendo Entertainment System (NES). It was developed and published by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            222
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Legend of Zelda"
+        },
+        "metavars": {
+          "LLM_0": "GPT4"
+        },
+        "uid": "49d17c2a-4a51-4554-958c-330405920173",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Legend of Zelda game?",
+        "responses": [
+          "The first Legend of Zelda game, titled \"The Legend of Zelda,\" was released on February 21, 1986, for the Nintendo Entertainment System (NES) in Japan. It was developed and published by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
             245
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Kirby"
+        },
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "a37998f1-5383-4517-a830-9393137316a3",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Kirby game?",
+        "responses": [
+          "The first Kirby game is called Kirby's Dream Land, and it was released for the Game Boy in 1992."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            96
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Kirby"
+        },
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "a37998f1-5383-4517-a830-9393137316a3",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Kirby game?",
+        "responses": [
+          "The first Kirby game is called Kirby's Dream Land. It was released in 1992 for the Game Boy console."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            100
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Kirby"
+        },
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "a37998f1-5383-4517-a830-9393137316a3",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Kirby game?",
+        "responses": [
+          "The first Kirby game was called \"Kirby's Dream Land,\" and it was released by Nintendo for the Game Boy in 1992."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            111
           ],
           "dtype": "Numeric"
         }
@@ -1883,23 +3306,253 @@
         "metavars": {
           "LLM_0": "GPT4"
         },
-        "llm": "GPT4",
+        "uid": "074b7eb0-0d82-4439-a4ba-8eb44c88f09e",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "What was the first Kirby game?",
         "responses": [
-          "The first Kirby game was \"Kirby's Dream Land,\" released on the Nintendo Game Boy in 1992. It introduced the character Kirby and was developed by HAL Laboratory and published by Nintendo.",
-          "The first Kirby game was \"Kirby's Dream Land,\" which was released on April 27, 1992, for the Nintendo Game Boy.",
-          "The first Kirby game is titled \"Kirby's Dream Land,\" which was released for the Nintendo Game Boy in 1992. The character Kirby was created by Masahiro Sakurai, and the game was developed by HAL Laboratory."
+          "The first Kirby game was \"Kirby's Dream Land,\" released on the Nintendo Game Boy in 1992. It introduced the character Kirby and was developed by HAL Laboratory and published by Nintendo."
         ],
-        "tokens": {
-          "completion_tokens": 116,
-          "prompt_tokens": 24,
-          "total_tokens": 140
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
-            186,
-            111,
+            186
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Kirby"
+        },
+        "metavars": {
+          "LLM_0": "GPT4"
+        },
+        "uid": "074b7eb0-0d82-4439-a4ba-8eb44c88f09e",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Kirby game?",
+        "responses": [
+          "The first Kirby game was \"Kirby's Dream Land,\" which was released on April 27, 1992, for the Nintendo Game Boy."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            111
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Kirby"
+        },
+        "metavars": {
+          "LLM_0": "GPT4"
+        },
+        "uid": "074b7eb0-0d82-4439-a4ba-8eb44c88f09e",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Kirby game?",
+        "responses": [
+          "The first Kirby game is titled \"Kirby's Dream Land,\" which was released for the Nintendo Game Boy in 1992. The character Kirby was created by Masahiro Sakurai, and the game was developed by HAL Laboratory."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
             205
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Super Mario Bros"
+        },
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "828ea833-33e3-4a00-ad7d-508aef219d12",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Super Mario Bros game?",
+        "responses": [
+          "The first Super Mario Bros game was titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in 1985."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            131
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Super Mario Bros"
+        },
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "828ea833-33e3-4a00-ad7d-508aef219d12",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Super Mario Bros game?",
+        "responses": [
+          "The first Super Mario Bros game was released in 1985 for the Nintendo Entertainment System (NES). It is a platform video game developed and published by Nintendo."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            162
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Super Mario Bros"
+        },
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "828ea833-33e3-4a00-ad7d-508aef219d12",
+        "llm": {
+          "base_model": "gpt-3.5-turbo",
+          "emoji": "🙂",
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "key": "708e22ff-a0ac-4860-9455-eaa84fc614bf",
+          "model": "gpt-3.5-turbo",
+          "name": "GPT3.5",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Super Mario Bros game?",
+        "responses": [
+          "The first Super Mario Bros game was simply titled \"Super Mario Bros.\" It was released for the Nintendo Entertainment System (NES) in Japan in 1985 and became a worldwide phenomenon."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            181
           ],
           "dtype": "Numeric"
         }
@@ -1911,22 +3564,123 @@
         "metavars": {
           "LLM_0": "GPT4"
         },
-        "llm": "GPT4",
+        "uid": "69b43e1d-3b0b-412a-8078-0a287331365d",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
         "prompt": "What was the first Super Mario Bros game?",
         "responses": [
-          "The first Super Mario Bros game, titled \"Super Mario Bros.,\" was released in 1985 for the Nintendo Entertainment System (NES). It was created by Shigeru Miyamoto and Takashi Tezuka and developed by Nintendo. The game followed the adventures of Mario (and his brother Luigi in multiplayer mode) as they tried to rescue Princess Toadstool from the villainous Bowser.",
-          "The first Super Mario Bros. game was released on September 13, 1985, for the Nintendo Entertainment System (NES). It was developed by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka. This iconic game introduced the world to Mario and his brother Luigi as they navigate through the Mushroom Kingdom to rescue Princess Peach from the antagonist Bowser.",
-          "The first Super Mario Bros. game was released in 1985 for the Nintendo Entertainment System (NES). It was developed and published by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka. The game marked the debut of the now-iconic characters Mario and Luigi, and it is considered one of the most influential and important video games in history."
+          "The first Super Mario Bros game, titled \"Super Mario Bros.,\" was released in 1985 for the Nintendo Entertainment System (NES). It was created by Shigeru Miyamoto and Takashi Tezuka and developed by Nintendo. The game followed the adventures of Mario (and his brother Luigi in multiplayer mode) as they tried to rescue Princess Toadstool from the villainous Bowser."
         ],
-        "tokens": {
-          "completion_tokens": 230,
-          "prompt_tokens": 26,
-          "total_tokens": 256
-        },
+        "tokens": {},
         "eval_res": {
           "items": [
-            364,
-            362,
+            364
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Super Mario Bros"
+        },
+        "metavars": {
+          "LLM_0": "GPT4"
+        },
+        "uid": "69b43e1d-3b0b-412a-8078-0a287331365d",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Super Mario Bros game?",
+        "responses": [
+          "The first Super Mario Bros. game was released on September 13, 1985, for the Nintendo Entertainment System (NES). It was developed by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka. This iconic game introduced the world to Mario and his brother Luigi as they navigate through the Mushroom Kingdom to rescue Princess Peach from the antagonist Bowser."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            362
+          ],
+          "dtype": "Numeric"
+        }
+      },
+      {
+        "vars": {
+          "game": "Super Mario Bros"
+        },
+        "metavars": {
+          "LLM_0": "GPT4"
+        },
+        "uid": "69b43e1d-3b0b-412a-8078-0a287331365d",
+        "llm": {
+          "base_model": "gpt-4",
+          "emoji": "🥵",
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "key": "4bb76fa3-2e3d-4a98-b8ca-5f05f47cc8e5",
+          "model": "gpt-4",
+          "name": "GPT4",
+          "settings": {
+            "frequency_penalty": 0,
+            "presence_penalty": 0,
+            "stop": [],
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "top_p": 1
+          },
+          "temp": 1,
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt": "What was the first Super Mario Bros game?",
+        "responses": [
+          "The first Super Mario Bros. game was released in 1985 for the Nintendo Entertainment System (NES). It was developed and published by Nintendo and created by Shigeru Miyamoto and Takashi Tezuka. The game marked the debut of the now-iconic characters Mario and Luigi, and it is considered one of the most influential and important video games in history."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
             352
           ],
           "dtype": "Numeric"

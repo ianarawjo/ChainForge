@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Handle } from 'reactflow';
+import { v4 as uuid } from 'uuid';
 import { Switch, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconList } from '@tabler/icons-react';
@@ -300,7 +301,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             updated_chat_hist = [{ role: 'system', content: info.llm.settings.system_msg }].concat(updated_chat_hist);
 
         // ChatHistoryInfo format (see typing.ts)
-        return {messages: updated_chat_hist, fill_history: info.fill_history, metavars: info.metavars, llm: llm_name};
+        return {messages: updated_chat_hist, fill_history: info.fill_history, metavars: info.metavars, llm: llm_name, batch_id: uuid()};
     });
 
     // Returns [list of LLM specs, list of ChatHistoryInfo]
@@ -637,7 +638,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
                             let o = { text: escapeBraces(r), 
                                     prompt: resp_obj['prompt'],
                                     fill_history: resp_obj['vars'],
-                                    llm: _llmItemsCurrState.find((item) => item.name === resp_obj.llm) };
+                                    llm: _llmItemsCurrState.find((item) => item.name === resp_obj.llm),
+                                    batch_id: resp_obj['uid'] };
 
                             // Carry over any metavars
                             o.metavars = resp_obj['metavars'] || {};

@@ -3,8 +3,8 @@ import { LLM, NativeLLM, RATE_LIMITS } from './models';
 import { Dict, LLMResponseError, LLMResponseObject, isEqualChatHistory, ChatHistoryInfo } from "./typing";
 import { extract_responses, merge_response_objs, call_llm, mergeDicts } from "./utils";
 import StorageCache from "./cache";
-import CancelTracker from "./canceler";
 import { UserForcedPrematureExit } from "./errors";
+import { v4 as uuid } from 'uuid';
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
@@ -71,6 +71,7 @@ export class PromptPipeline {
     let resp_obj: LLMResponseObject = {
       "prompt": prompt.toString(), 
       "query": query, 
+      "uid": uuid(),
       "responses": extract_responses(response, llm),
       "raw_response": response,
       "llm": llm,
@@ -192,6 +193,7 @@ export class PromptPipeline {
           let resp: LLMResponseObject = {
             "prompt": prompt_str,
             "query": cached_resp["query"],
+            "uid": cached_resp["uid"] ?? uuid(),
             "responses": extracted_resps.slice(0, n),
             "raw_response": cached_resp["raw_response"],
             "llm": cached_resp["llm"] || NativeLLM.OpenAI_ChatGPT,

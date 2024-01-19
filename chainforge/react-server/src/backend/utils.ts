@@ -6,6 +6,7 @@
 import { LLM, LLMProvider, NativeLLM, getProvider } from './models';
 import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory, ChatMessage, PaLMChatMessage, PaLMChatContext, HuggingFaceChatHistory, GeminiChatContext, GeminiChatMessage } from './typing';
 import { env as process_env } from 'process';
+import { v4 as uuid } from 'uuid';
 import { StringTemplate } from './template';
 
 /* LLM API SDKs */
@@ -1091,6 +1092,7 @@ export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, r
     llm: resp_obj_B.llm,
     info: resp_obj_B.info,
     metavars: resp_obj_B.metavars,
+    uid: resp_obj_B.uid,
   };
   if (resp_obj_B.chat_history !== undefined)
     res.chat_history = resp_obj_B.chat_history;
@@ -1173,6 +1175,7 @@ export const toStandardResponseFormat = (r) => {
   let resp_obj: Dict = {
     vars: r?.fill_history ?? {},
     metavars: r?.metavars ?? {},
+    uid: r?.batch_id ?? (r?.uid ?? uuid()),
     llm: r?.llm ?? undefined,
     prompt: r?.prompt ?? "",
     responses: [typeof r === 'string' ? r : r?.text],
@@ -1240,12 +1243,32 @@ export const groupResponsesBy = (responses, keyFunc) => {
   let responses_by_key = {};
   let unspecified_group = [];
   responses.forEach(item => {
-      const key = keyFunc(item);
-      const d = key !== null ? responses_by_key : unspecified_group;
-      if (key in d)
-          d[key].push(item);
-      else
-          d[key] = [item];
+    const key = keyFunc(item);
+    if (key === null || key === undefined) {
+      unspecified_group.push(item);
+      return;
+    }
+    if (key in responses_by_key)
+      responses_by_key[key].push(item);
+    else
+      responses_by_key[key] = [item];
   });
   return [responses_by_key, unspecified_group];
+};
+
+export const batchResponsesByUID = (responses) => {
+  let [batches, unspecified_id_group] = groupResponsesBy(responses, resp_obj => resp_obj.uid);
+  return Object.values(batches).map((resp_objs: Dict[]) => {
+    if (resp_objs.length === 1) {
+      return resp_objs[0];
+    } else {
+      let batched = deepcopy_and_modify(resp_objs[0], {
+        responses: resp_objs.map(resp_obj => resp_obj.responses).flat()
+      });
+      if (batched.eval_res !== undefined) {
+        batched.eval_res.items = resp_objs.map(resp_obj => resp_obj.eval_res.items).flat()
+      }
+      return batched;
+    }
+  }).concat(unspecified_id_group);
 };
