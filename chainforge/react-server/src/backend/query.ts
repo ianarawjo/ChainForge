@@ -5,6 +5,7 @@ import { extract_responses, merge_response_objs, call_llm, mergeDicts, deepcopy,
 import StorageCache from "./cache";
 import { UserForcedPrematureExit } from "./errors";
 import { v4 as uuid } from 'uuid';
+import { typecastSettingsDict } from "../ModelSettingSchemas";
 
 interface _IntermediateLLMResponseType {
   prompt: PromptTemplate,
@@ -223,7 +224,7 @@ export class PromptPipeline {
                                       num_queries_sent, 
                                       max_req, 
                                       wait_secs, 
-                                      {...llm_params, ...settings_params},
+                                      {...llm_params, ...typecastSettingsDict(settings_params, llm)},
                                       chat_history,
                                       should_cancel));
         } else {
@@ -231,7 +232,7 @@ export class PromptPipeline {
           let result = await this._prompt_llm(llm, prompt, n, temperature, 
                                               cached_resp, cached_resp_idx, 
                                               undefined, undefined, undefined, 
-                                              {...llm_params, ...settings_params}, 
+                                              {...llm_params, ...typecastSettingsDict(settings_params, llm)}, 
                                               chat_history, 
                                               should_cancel);
           yield this.collect_LLM_response(result, llm, responses);
@@ -283,6 +284,10 @@ export class PromptPipeline {
       // NOTE: The check n > len(past_resp_obj["responses"]) should occur prior to calling this function. 
       n = n - past_resp_obj["responses"].length;
     }
+
+    // Fix temperature if it's provided in llm_params:
+    if (llm_params?.temperature !== undefined)
+      temperature = llm_params.temperature;
     
     // Block asynchronously when we exceed rate limits
     if (query_number !== undefined && rate_limit_batch_size !== undefined && rate_limit_wait_secs !== undefined && 

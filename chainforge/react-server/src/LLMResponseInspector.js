@@ -10,7 +10,7 @@ import { useDisclosure, useToggle } from '@mantine/hooks';
 import { IconTable, IconLayoutList, IconLetterCaseToggle, IconFilter } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 import useStore from './store';
-import { filterDict, truncStr, groupResponsesBy, batchResponsesByUID } from './backend/utils';
+import { transformDict, truncStr, groupResponsesBy, batchResponsesByUID } from './backend/utils';
 
 // Helper funcs
 const countResponsesBy = (responses, keyFunc) => {
@@ -320,7 +320,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         // At the deepest level, there may still be some vars left over. We want to display these
         // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
         // (e.g., the vars that weren't part of the initial 'varnames' list that form the groupings)
-        const unused_vars = filterDict(res_obj.vars, v => !eatenvars.includes(v));
+        const unused_vars = transformDict(res_obj.vars, v => !eatenvars.includes(v));
         const var_tags = Object.keys(unused_vars).map((varname) => {
             const v = truncStr(unused_vars[varname].trim(), wideFormat ? 72 : 18);
             return (<div key={varname} className="response-var-inline" >

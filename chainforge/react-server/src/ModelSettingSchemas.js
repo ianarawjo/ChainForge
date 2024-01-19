@@ -11,7 +11,7 @@
  */
 
 import { LLMProvider, RATE_LIMITS, getProvider } from "./backend/models";
-import { filterDict } from './backend/utils';
+import { transformDict } from './backend/utils';
 import useStore from "./store";
 
 const UI_SUBMIT_BUTTON_SPEC = {
@@ -46,7 +46,7 @@ const ChatGPTSettings = {
       },
       "system_msg": {
                 "type": "string",
-                "title": "system_msg (chat models only)",
+                "title": "system_msg",
                 "description": "Many conversations begin with a system message to gently instruct the assistant. By default, ChainForge includes the suggested 'You are a helpful assistant.'",
                 "default": "You are a helpful assistant.",
                 "allow_empty_str": true,
@@ -616,7 +616,7 @@ const AzureOpenAISettings = {
         "description": "Used when calling the OpenAI API through Azure services. Normally you don't need to change this setting.",
         "default": "2023-05-15"
       },
-      ...filterDict(ChatGPTSettings.schema.properties, (key) => key !== 'model'),
+      ...transformDict(ChatGPTSettings.schema.properties, (key) => key !== 'model'),
     }
   },
   uiSchema: {
@@ -1112,8 +1112,9 @@ export let ModelSettings = {
   "ollama": OllamaSettings,
 };
 
-export function getSettingsSchemaForLLM(llm_name) {
-  let llm_provider = getProvider(llm_name);
+
+export function getSettingsSchemaForLLM(llm) {
+  let llm_provider = getProvider(llm);
 
   const provider_to_settings_schema = {
     [LLMProvider.OpenAI]: GPT4Settings,
@@ -1127,13 +1128,43 @@ export function getSettingsSchemaForLLM(llm_name) {
   };
 
   if (llm_provider === LLMProvider.Custom)
-    return ModelSettings[llm_name];
+    return ModelSettings[llm];
   else if (llm_provider in provider_to_settings_schema)
     return provider_to_settings_schema[llm_provider];
   else {
-    console.error(`Could not find provider for llm ${llm_name}`);
+    console.error(`Could not find provider for llm ${llm}`);
     return {};
   }
+}
+
+/**
+ * Processes settings values to the correct types according to schema for the model 'llm'.
+ * @param {*} settings_dict A dict of form setting_name: value (string: string)
+ * @param {*} llm A string of the name of the model to query. 
+ */
+export function typecastSettingsDict(settings_dict, llm) {
+  let settings = getSettingsSchemaForLLM(llm);
+  let schema = settings?.schema?.properties ?? {};
+  let postprocessors = settings?.postprocessors ?? {};
+
+  // Return a clone of settings dict but with its values correctly typecast and postprocessed
+  return transformDict(settings_dict, undefined, undefined, (key, val) => {
+    if (key in schema) {
+      // Check for postprocessing for this key; if so, its 'type' is determined by the processor:
+      if (key in postprocessors)
+        return postprocessors[key](val);
+
+      // For other cases, use 'type' to typecast it:
+      const typeof_setting = schema[key].type ?? "string";
+      if (typeof_setting === "number") // process numbers (floats)
+        return parseFloat(val);
+      else if (typeof_setting === "integer") // process integers
+        return parseInt(val);
+      else if (typeof_setting === "boolean") // process booleans
+        return val.trim().toLowerCase() === "true";
+    }
+    return val; // process strings
+  });
 }
 
 /**

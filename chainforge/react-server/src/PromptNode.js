@@ -243,7 +243,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         setStatus('warning');
 
     // Debounce refreshing the template hooks so we don't annoy the user
-    debounce((_value) => refreshTemplateHooks(_value), 400)(value);
+    debounce((_value) => refreshTemplateHooks(_value), 500)(value);
   };
 
   // On initialization

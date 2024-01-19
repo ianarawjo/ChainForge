@@ -2,7 +2,7 @@ import markdownIt from "markdown-it";
 import { v4 as uuid } from 'uuid';
 import { Dict, StringDict, LLMResponseError, LLMResponseObject, StandardizedLLMResponse, ChatHistoryInfo, isEqualChatHistory } from "./typing";
 import { LLM, getEnumName } from "./models";
-import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend } from "./utils";
+import { APP_IS_RUNNING_LOCALLY, set_api_keys, FLASK_BASE_URL, call_flask_backend, extractSettingsVars, areEqualVarsDicts } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
 import { PromptPermutationGenerator, PromptTemplate } from "./template";
@@ -474,6 +474,7 @@ export async function countQueries(prompt: string,
         // Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
         _all_prompt_perms.forEach(prompt => {
           let prompt_str = prompt.toString();
+          const settings_params = extractSettingsVars(prompt.fill_history);
 
           add_to_num_responses_req(llm_key, n * chat_hists.length);
 
@@ -493,7 +494,8 @@ export async function countQueries(prompt: string,
 
             let found_resp = false;
             for (const cached_resp of cached_resps) {
-              if (isEqualChatHistory(cached_resp.chat_history, chat_hist?.messages)) {
+              if (isEqualChatHistory(cached_resp.chat_history, chat_hist?.messages) 
+                && areEqualVarsDicts(settings_params, extractSettingsVars(cached_resp.info))) {
                 // Match found. Note it and count response length: 
                 found_resp = true;
                 const num_resps = cached_resp.responses.length;

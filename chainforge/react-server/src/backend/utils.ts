@@ -1109,28 +1109,36 @@ export function mergeDicts(A?: Dict, B?: Dict): Dict | undefined {
   return d; // gives priority to B
 }
 
-export const filterDict = (dict: Dict, keyFilterFunc: (key: string) => boolean, keyTransformFunc?: (key: string) => string) => {
+/**
+ * Filters and transforms the dictionary 'dict'. Returns a new dictionary with the transformed keys/values. 
+ * @param dict Dict to process
+ * @param keyFilterFunc Optional. Filter function on whether to include the given key.
+ * @param keyTransformFunc Optional. Function to transform the keys.
+ * @param valTransformFunc Optional. Function to transform values for each key.
+ * @returns 
+ */
+export const transformDict = (dict: Dict, 
+                              keyFilterFunc?: (key: string) => boolean, 
+                              keyTransformFunc?: (key: string) => string,
+                              valTransformFunc?: (key:string, val: any) => any) => {
   return Object.keys(dict).reduce((acc, key) => {
-      if (keyFilterFunc(key) === true)
-          acc[keyTransformFunc ? keyTransformFunc(key) : key] = dict[key];
+      if (!keyFilterFunc || keyFilterFunc(key) === true)
+          acc[keyTransformFunc ? keyTransformFunc(key) : key] = valTransformFunc ? valTransformFunc(key, dict[key]) : dict[key];
       return acc;
   }, {});
 };
 
 /** Extracts only the settings vars (of form like "=system_msg", starts with =) from a vars dict. 
  * (This also removes the = at the start of the keys.)
+ * NOTE: This does not typecast the values yet; that should be performed later on right before they are passed to the call_llm API call.
  * 
  * Returns empty dict {} if no settings vars found.
 */
-export const extractSettingsVars = (vars: Dict, llm?: LLM) => {
+export const extractSettingsVars = (vars: Dict) => {
   if (Object.keys(vars).some(k => k.charAt(0) === '=')) {
-
-    // TODO: We need to type-cast correctly here by looking up the llm schema
-    // d = typecast_settings_vars(getSettingsSchemaForLLM(llm));
-
-    return filterDict(deepcopy(vars), 
-                      k => k.charAt(0) === '=', 
-                      k => k.substring(1));
+    return transformDict(deepcopy(vars), 
+                         k => k.charAt(0) === '=', 
+                         k => k.substring(1));
   } else return {};
 }
 
