@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Handle } from 'reactflow';
+import { v4 as uuid } from 'uuid';
 import { Switch, Progress, Textarea, Text, Popover, Center, Modal, Box, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconList } from '@tabler/icons-react';
@@ -13,7 +14,7 @@ import fetch_from_backend from './fetch_from_backend';
 import { escapeBraces } from './backend/template';
 import ChatHistoryView from './ChatHistoryView';
 import InspectFooter from './InspectFooter';
-import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData } from './backend/utils';
+import { countNumLLMs, setsAreEqual, getLLMsInPulledInputData, extractSettingsVars, truncStr } from './backend/utils';
 import LLMResponseInspectorDrawer from './LLMResponseInspectorDrawer';
 import CancelTracker from './backend/canceler';
 import { UserForcedPrematureExit } from './backend/errors';
@@ -38,16 +39,25 @@ const bucketChatHistoryInfosByLLM = (chat_hist_infos) => {
 
 class PromptInfo {
     prompt; // string
+    settings; // dict for any settings vars
 
-    constructor(prompt) {
+    constructor(prompt, settings) {
         this.prompt = prompt;
+        this.settings = settings;
     }
 }
 
-const displayPromptInfos = (promptInfos) => 
+const displayPromptInfos = (promptInfos, wideFormat) => 
     promptInfos.map((info, idx) => (
         <div key={idx}>
-            <pre className='prompt-preview'>{info.prompt}</pre>
+            <div className='prompt-preview'>
+                {info.prompt}
+            </div>
+            {info.settings ? Object.entries(info.settings).map(([key, val]) => {
+                return (<div key={key} className="settings-var-inline response-var-inline" >
+                            <span className="response-var-name">{key}&nbsp;=&nbsp;</span><span className="response-var-value wrap-line">{truncStr(val, wideFormat ? 512 : 72)}</span>
+                </div>);
+            }) : <></>}
         </div>
     ));
 
@@ -70,7 +80,7 @@ const PromptListPopover = ({ promptInfos, onHover, onClick }) => {
             </Popover.Target>
             <Popover.Dropdown sx={{ pointerEvents: 'none' }}>
                 <Center><Text size='xs' fw={500} color='#666'>Preview of generated prompts ({promptInfos.length} total)</Text></Center>
-                {displayPromptInfos(promptInfos)}
+                {displayPromptInfos(promptInfos, false)}
             </Popover.Dropdown>
         </Popover>
     );
@@ -232,7 +242,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
     if (promptTextOnLastRun !== null && status !== 'warning' && value !== promptTextOnLastRun) 
         setStatus('warning');
 
-    refreshTemplateHooks(value);
+    // Debounce refreshing the template hooks so we don't annoy the user
+    debounce((_value) => refreshTemplateHooks(_value), 500)(value);
   };
 
   // On initialization
@@ -300,7 +311,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             updated_chat_hist = [{ role: 'system', content: info.llm.settings.system_msg }].concat(updated_chat_hist);
 
         // ChatHistoryInfo format (see typing.ts)
-        return {messages: updated_chat_hist, fill_history: info.fill_history, metavars: info.metavars, llm: llm_name};
+        return {messages: updated_chat_hist, fill_history: info.fill_history, metavars: info.metavars, llm: llm_name, batch_id: uuid()};
     });
 
     // Returns [list of LLM specs, list of ChatHistoryInfo]
@@ -337,7 +348,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             prompt: promptText,
             vars: pulled_vars,
         }).then(prompts => {
-            setPromptPreviews(prompts.map(p => (new PromptInfo(p.toString()))));
+            setPromptPreviews(prompts.map(p => (new PromptInfo(p.toString(), extractSettingsVars(p.fill_history)))));
         });
 
         pullInputChats();
@@ -637,7 +648,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
                             let o = { text: escapeBraces(r), 
                                     prompt: resp_obj['prompt'],
                                     fill_history: resp_obj['vars'],
-                                    llm: _llmItemsCurrState.find((item) => item.name === resp_obj.llm) };
+                                    llm: _llmItemsCurrState.find((item) => item.name === resp_obj.llm),
+                                    batch_id: resp_obj['uid'] };
 
                             // Carry over any metavars
                             o.metavars = resp_obj['metavars'] || {};
@@ -790,7 +802,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     <LLMResponseInspectorModal ref={inspectModal} jsonResponses={jsonResponses} prompt={promptText} />
     <Modal title={'List of prompts that will be sent to LLMs (' + promptPreviews.length + ' total)'} size='xl' opened={infoModalOpened} onClose={closeInfoModal} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-5%'}}}>
         <Box size={600} m='lg' mt='xl'>
-            {displayPromptInfos(promptPreviews)}
+            {displayPromptInfos(promptPreviews, true)}
         </Box>
     </Modal>
 
@@ -872,8 +884,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         : <></>}
 
         { jsonResponses && jsonResponses.length > 0 && status !== 'loading' ? 
-            (<InspectFooter onClick={showResponseInspector} 
-                showNotificationDot={uninspectedResponses} 
+            (<InspectFooter onClick={showResponseInspector}  
                        isDrawerOpen={showDrawer}
                    showDrawerButton={true} 
                       onDrawerClick={() => {

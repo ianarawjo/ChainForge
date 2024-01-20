@@ -10,7 +10,7 @@ import { useDisclosure, useToggle } from '@mantine/hooks';
 import { IconTable, IconLayoutList, IconLetterCaseToggle, IconFilter } from '@tabler/icons-react';
 import * as XLSX from 'xlsx';
 import useStore from './store';
-import { filterDict, truncStr, groupResponsesBy } from './backend/utils';
+import { transformDict, truncStr, groupResponsesBy, batchResponsesByUID } from './backend/utils';
 
 // Helper funcs
 const countResponsesBy = (responses, keyFunc) => {
@@ -114,7 +114,7 @@ export const exportToExcel = (jsonResponses, filename) => {
     const vars = res_obj.vars;
     const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
     return res_obj.responses.map((r, r_idx) => {
-      let row = { 'LLM': llm, 'Prompt': prompt, 'Response': r, 'Response Batch Id': res_obj_idx };
+      let row = { 'LLM': llm, 'Prompt': prompt, 'Response': r, 'Response Batch Id': (res_obj.uid ?? res_obj_idx) };
       Object.keys(vars).forEach(varname => {
         row[`Param: ${varname}`] = vars[varname];
       });
@@ -172,12 +172,19 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   const [caseSensitive, toggleCaseSensitivity] = useToggle([false, true]);
   const [filterBySearchValue, toggleFilterBySearchValue] = useToggle([true, false]);
   const [numMatches, setNumMatches] = useState(-1);
+
+  // Count number of response texts wehenever jsonResponses changes
   const numResponses = useMemo(() => {
     if (jsonResponses && Array.isArray(jsonResponses) && jsonResponses.length > 0) 
       return jsonResponses.reduce((acc, resp_obj) => (acc + resp_obj["responses"].length), 0);
     else 
       return 0;
   }, [jsonResponses]);
+
+  // Regroup input responses by batch UID, whenever jsonResponses changes
+  const batchedResponses = useMemo(() => 
+    jsonResponses ? batchResponsesByUID(jsonResponses) : []
+  , [jsonResponses]);
 
   // The var name to use for columns in the table view
   const [tableColVar, setTableColVar] = useState("LLM");
@@ -192,14 +199,14 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
 
   // Update the visualization whenever the jsonResponses or MultiSelect values change:
   useEffect(() => {
-    if (!jsonResponses || (Array.isArray(jsonResponses) && jsonResponses.length === 0))
+    if (!batchedResponses || (Array.isArray(batchedResponses) && batchedResponses.length === 0))
       return;
-    
+
     // Find all vars in responses
     let found_vars = new Set();
     let found_metavars = new Set();
     let found_llms = new Set();
-    jsonResponses.forEach(res_obj => {
+    batchedResponses.forEach(res_obj => {
       Object.keys(res_obj.vars).forEach(v => found_vars.add(v));
       Object.keys(res_obj.metavars).forEach(v => found_metavars.add(v));
       found_llms.add(getLLMName(res_obj));
@@ -209,7 +216,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     found_llms = Array.from(found_llms);
 
     // Whether there's some evaluation scores in the responses
-    const contains_eval_res = jsonResponses.some(res_obj => res_obj.eval_res !== undefined);
+    const contains_eval_res = batchedResponses.some(res_obj => res_obj.eval_res !== undefined);
     setShowEvalScoreOptions(contains_eval_res);
 
     // Set the variables accessible in the MultiSelect for 'group by'
@@ -240,7 +247,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       return; // useEffect will replot with the new values
     }
 
-    let responses = jsonResponses;
+    // Regroup responses by batch ID
+    let responses = batchedResponses;
     let numResponsesDisplayed = 0;
     const selected_vars = multiSelectValue;
     const empty_cell_text = searchValue.length > 0 ? "(no match)" : "(no data)";
@@ -312,7 +320,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         // At the deepest level, there may still be some vars left over. We want to display these
         // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
         // (e.g., the vars that weren't part of the initial 'varnames' list that form the groupings)
-        const unused_vars = filterDict(res_obj.vars, v => !eatenvars.includes(v));
+        const unused_vars = transformDict(res_obj.vars, v => !eatenvars.includes(v));
         const var_tags = Object.keys(unused_vars).map((varname) => {
             const v = truncStr(unused_vars[varname].trim(), wideFormat ? 72 : 18);
             return (<div key={varname} className="response-var-inline" >
@@ -342,7 +350,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       // Generate a table, with default columns for: input vars, LLMs queried
       // First get column names as input vars + LLMs:
       let var_cols, colnames, getColVal, found_sel_var_vals; 
-      let metavar_cols = found_metavars;
+      let metavar_cols = []; // found_metavars; -- Disabling this functionality for now, since it is usually annoying. 
       if (tableColVar === 'LLM') {
         var_cols = found_vars;
         getColVal = getLLMName;
@@ -486,7 +494,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
 
     setNumMatches(numResponsesDisplayed);
 
-  }, [multiSelectValue, jsonResponses, wideFormat, viewFormat, tableColVar, onlyShowScores, searchValue, caseSensitive, filterBySearchValue]);
+  }, [multiSelectValue, batchedResponses, wideFormat, viewFormat, tableColVar, onlyShowScores, searchValue, caseSensitive, filterBySearchValue]);
 
   // When the user clicks an item in the drop-down,
   // we want to autoclose the multiselect drop-down:

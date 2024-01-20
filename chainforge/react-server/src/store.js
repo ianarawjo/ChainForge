@@ -5,7 +5,7 @@ import {
   applyEdgeChanges,
 } from 'reactflow';
 import { escapeBraces } from './backend/template';
-import { deepcopy, filterDict } from './backend/utils';
+import { deepcopy, transformDict } from './backend/utils';
 import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
 import { DuplicateVariableNameError } from './backend/errors';
 
@@ -62,7 +62,7 @@ const useStore = create((set, get) => ({
   apiKeys: initialAPIKeys,
   setAPIKeys: (apiKeys) => {
     // Filter out any empty or incorrectly formatted API key values:
-    const new_keys = filterDict(apiKeys, (key) => typeof apiKeys[key] === "string" && apiKeys[key].length > 0);
+    const new_keys = transformDict(apiKeys, (key) => typeof apiKeys[key] === "string" && apiKeys[key].length > 0);
     // Only update API keys present in the new array; don't delete existing ones:
     set({apiKeys: {...get().apiKeys, ...new_keys}});
   },
@@ -159,8 +159,8 @@ const useStore = create((set, get) => ({
 
       // If the source node has tabular data, use that:
       if (src_node.type === 'table') {
-        if ("rows" in src_node.data && "columns" in src_node.data) {
-          const rows = src_node.data.rows;
+        if (("sel_rows" in src_node.data || "rows" in src_node.data) && "columns" in src_node.data) {
+          let rows = src_node.data.sel_rows ?? src_node.data.rows;
           const columns = src_node.data.columns;
 
           // The sourceHandleKey is the key of the column in the table that we're interested in:
@@ -209,8 +209,8 @@ const useStore = create((set, get) => ({
             // We have to filter over a special 'fields_visibility' prop, which
             // can select what fields get output:
             if ("fields_visibility" in src_node.data)
-              return Object.values(filterDict(src_node.data["fields"],
-                                              fid => src_node.data["fields_visibility"][fid] !== false));
+              return Object.values(transformDict(src_node.data["fields"],
+                                                fid => src_node.data["fields_visibility"][fid] !== false));
             else  // return all field values
               return Object.values(src_node.data["fields"]);
           }

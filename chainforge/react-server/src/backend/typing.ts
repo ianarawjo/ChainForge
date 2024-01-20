@@ -91,6 +91,7 @@ export interface LLMResponseObject {
   llm: LLM;
   info: Dict;
   metavars: Dict;
+  uid: string;
   chat_history?: ChatHistory;
 }
 
@@ -111,6 +112,7 @@ export interface StandardizedLLMResponse {
   responses: Array<string>,
   vars: Dict,
   metavars: Dict,
+  uid: string,
   tokens: Dict,
   eval_res?: Dict,
   chat_history?: ChatHistory,

@@ -6,6 +6,7 @@
 import { LLM, LLMProvider, NativeLLM, getProvider } from './models';
 import { Dict, StringDict, LLMAPICall, LLMResponseObject, ChatHistory, ChatMessage, PaLMChatMessage, PaLMChatContext, HuggingFaceChatHistory, GeminiChatContext, GeminiChatMessage } from './typing';
 import { env as process_env } from 'process';
+import { v4 as uuid } from 'uuid';
 import { StringTemplate } from './template';
 
 /* LLM API SDKs */
@@ -1091,6 +1092,7 @@ export function merge_response_objs(resp_obj_A: LLMResponseObject | undefined, r
     llm: resp_obj_B.llm,
     info: resp_obj_B.info,
     metavars: resp_obj_B.metavars,
+    uid: resp_obj_B.uid,
   };
   if (resp_obj_B.chat_history !== undefined)
     res.chat_history = resp_obj_B.chat_history;
@@ -1107,13 +1109,58 @@ export function mergeDicts(A?: Dict, B?: Dict): Dict | undefined {
   return d; // gives priority to B
 }
 
-export const filterDict = (dict: Dict, keyFilterFunc: (key: string) => boolean) => {
+/**
+ * Filters and transforms the dictionary 'dict'. Returns a new dictionary with the transformed keys/values. 
+ * @param dict Dict to process
+ * @param keyFilterFunc Optional. Filter function on whether to include the given key.
+ * @param keyTransformFunc Optional. Function to transform the keys.
+ * @param valTransformFunc Optional. Function to transform values for each key.
+ * @returns 
+ */
+export const transformDict = (dict: Dict, 
+                              keyFilterFunc?: (key: string) => boolean, 
+                              keyTransformFunc?: (key: string) => string,
+                              valTransformFunc?: (key:string, val: any) => any) => {
   return Object.keys(dict).reduce((acc, key) => {
-      if (keyFilterFunc(key) === true)
-          acc[key] = dict[key];
+      if (!keyFilterFunc || keyFilterFunc(key) === true)
+          acc[keyTransformFunc ? keyTransformFunc(key) : key] = valTransformFunc ? valTransformFunc(key, dict[key]) : dict[key];
       return acc;
   }, {});
 };
+
+/** Extracts only the settings vars (of form like "=system_msg", starts with =) from a vars dict. 
+ * (This also removes the = at the start of the keys.)
+ * NOTE: This does not typecast the values yet; that should be performed later on right before they are passed to the call_llm API call.
+ * 
+ * Returns empty dict {} if no settings vars found.
+*/
+export const extractSettingsVars = (vars: Dict) => {
+  if (Object.keys(vars).some(k => k.charAt(0) === '=')) {
+    return transformDict(deepcopy(vars), 
+                         k => k.charAt(0) === '=', 
+                         k => k.substring(1));
+  } else return {};
+}
+
+/**
+ * Given two info vars dicts, detects whether any + all vars (keys) match values. 
+ */
+export const areEqualVarsDicts = (A: Dict | undefined, B: Dict | undefined): boolean => {
+  if (A === undefined) {
+    if (B === undefined) return true;
+    return false; 
+  }
+  const keys_A = Object.keys(A);
+  const keys_B = Object.keys(B);
+  if (keys_A.length !== keys_B.length) return false;
+  else if (keys_A.length === 0) return true;
+  const all_vars = new Set(keys_A.concat(keys_B));
+  for (const v of all_vars) {
+    if (!(v in B) || !(v in A) || B[v] !== A[v])
+      return false;
+  }
+  return true; 
+}
 
 export const processCSV = (csv: string): string[] => {
   let matches = csv.match(/(\s*"[^"]+"\s*|\s*[^,]+|,)(?=,|$)/g);
@@ -1173,6 +1220,7 @@ export const toStandardResponseFormat = (r) => {
   let resp_obj: Dict = {
     vars: r?.fill_history ?? {},
     metavars: r?.metavars ?? {},
+    uid: r?.batch_id ?? (r?.uid ?? uuid()),
     llm: r?.llm ?? undefined,
     prompt: r?.prompt ?? "",
     responses: [typeof r === 'string' ? r : r?.text],
@@ -1240,12 +1288,59 @@ export const groupResponsesBy = (responses, keyFunc) => {
   let responses_by_key = {};
   let unspecified_group = [];
   responses.forEach(item => {
-      const key = keyFunc(item);
-      const d = key !== null ? responses_by_key : unspecified_group;
-      if (key in d)
-          d[key].push(item);
-      else
-          d[key] = [item];
+    const key = keyFunc(item);
+    if (key === null || key === undefined) {
+      unspecified_group.push(item);
+      return;
+    }
+    if (key in responses_by_key)
+      responses_by_key[key].push(item);
+    else
+      responses_by_key[key] = [item];
   });
   return [responses_by_key, unspecified_group];
 };
+
+export const batchResponsesByUID = (responses) => {
+  let [batches, unspecified_id_group] = groupResponsesBy(responses, resp_obj => resp_obj.uid);
+  return Object.values(batches).map((resp_objs: Dict[]) => {
+    if (resp_objs.length === 1) {
+      return resp_objs[0];
+    } else {
+      let batched = deepcopy_and_modify(resp_objs[0], {
+        responses: resp_objs.map(resp_obj => resp_obj.responses).flat()
+      });
+      if (batched.eval_res !== undefined) {
+        batched.eval_res.items = resp_objs.map(resp_obj => resp_obj.eval_res.items).flat()
+      }
+      return batched;
+    }
+  }).concat(unspecified_id_group);
+};
+
+/**
+ * Naive method to sample N items at random from an array. 
+ * @param arr an array of items
+ * @param num_sample the number of items to sample
+ * @returns The sampled elements of the array (unmodified).
+ */
+export function sampleRandomElements(arr: any[], num_sample: number): any[] {
+  if (num_sample >= arr.length)
+    return arr; // nothing to do
+
+  // Find num_sample unique indexes
+  const idxs: Set<number> = new Set();
+  while (idxs.size < num_sample) {
+    // Pick an index at random
+    const idx = Math.floor(Math.random() * arr.length);
+
+    // If it's already chosen, continue
+    if (idxs.has(idx)) continue;
+
+    // Otherwise, add to sample
+    idxs.add(idx);
+  }
+
+  // Return the items at the sampled indexes
+  return Array.from(idxs).map(idx => arr[idx]);
+}

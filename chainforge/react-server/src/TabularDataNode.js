@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Menu, Tooltip } from '@mantine/core';
+import { Menu, NumberInput, Switch, Text, Tooltip } from '@mantine/core';
 import EditableTable from './EditableTable';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
@@ -11,6 +11,7 @@ import NodeLabel from './NodeLabelComponent';
 import AlertModal from './AlertModal';
 import RenameValueModal from './RenameValueModal';
 import useStore from './store';
+import { sampleRandomElements } from './backend/utils';
 
 const defaultRows = [
   {
@@ -50,6 +51,14 @@ const TabularDataNode = ({ data, id }) => {
   const [selectedRow, setSelectedRow] = useState(undefined);
 
   const [scrollToBottom, setScrollToBottom] = useState(false);
+
+  // Whether to randomly sample N outputs, versus all outputs
+  const [shouldSample, setShouldSample] = useState(data.sample ?? false);
+  const [sampleNum, setSampleNum] = useState(data.sampleNum ?? 1);
+  const handleChangeSampleNum = useCallback((n) => {
+    setSampleNum(n);
+    setDataPropsForNode(id, {sampleNum: n} );
+  }, [setSampleNum, id]);
 
   // Dynamically update the position of the template hooks
   const ref = useRef(null);
@@ -361,8 +370,16 @@ const TabularDataNode = ({ data, id }) => {
 
   // Updates the internal data store whenever the table data changes
   useEffect(() => {
-    setDataPropsForNode(id, { rows: tableData, columns: tableColumns });
-  }, [tableData, tableColumns]);
+    let sel_rows = null;
+
+    // Check for sampling
+    if (shouldSample && sampleNum !== undefined) {
+      // If sampling is enabled, randomly choose only sampleNum rows:
+      sel_rows = sampleRandomElements(tableData, sampleNum);
+    }
+
+    setDataPropsForNode(id, { rows: tableData, columns: tableColumns, sel_rows: sel_rows });
+  }, [tableData, tableColumns, shouldSample, sampleNum]);
 
   const handleError = (err) => {
     if (alertModal.current)
@@ -431,8 +448,28 @@ const TabularDataNode = ({ data, id }) => {
         <div className="add-table-row-btn">
           <button onClick={handleAddRow}>add row +</button>
         </div>
-        
+
         <TemplateHooks vars={tableColumns.map(col => col.header)} nodeId={id} startY={hooksY} position='right' />
+
+        <Switch label={<Tooltip label='Toggle Random Sampling' position='bottom' withArrow>
+                        <Text color={shouldSample ? 'indigo' : 'gray'}>Sample</Text>
+                      </Tooltip>}
+                defaultChecked={true}
+                checked={shouldSample}
+                onChange={(event) => {
+                  setShouldSample(event.currentTarget.checked);
+                  setDataPropsForNode(id, { sample: event.currentTarget.checked });
+                }}
+                color='indigo'
+                size='xs'
+                mt={shouldSample && tableColumns.length >= 2 ? '-50px' : '-16px'}
+        />
+        {shouldSample ? 
+          <Tooltip label='Number of table rows to sample. Outputs will only draw from this many rows.' width={200} position='left' withArrow multiline>
+            <NumberInput size='xs' mt='6px' maw='100px' value={sampleNum} onChange={handleChangeSampleNum} min={1} /> 
+          </Tooltip>
+        : <></>}
+        
       </div>
       
     </BaseNode>

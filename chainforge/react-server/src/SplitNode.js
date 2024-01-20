@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Handle } from 'reactflow';
+import { v4 as uuid } from 'uuid';
 import useStore from './store';
 import BaseNode from './BaseNode';
 import NodeLabel from './NodeLabelComponent';
@@ -174,6 +175,7 @@ const SplitNode = ({ data, id }) => {
         fill_history: dict_excluding_key(p.fill_history, "__input"),
         llm: "__LLM_key" in p.metavars ? llm_lookup[p.metavars['__LLM_key']] : undefined,
         metavars: removeLLMTagFromMetadata(p.metavars),
+        batch_id: uuid(),
       }));
 
       // The naive splitter is just to look at every

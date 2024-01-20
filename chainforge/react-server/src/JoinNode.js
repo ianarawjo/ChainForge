@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Handle } from 'reactflow';
+import { v4 as uuid } from 'uuid';
 import useStore from './store';
 import BaseNode from './BaseNode';
 import NodeLabel from './NodeLabelComponent';
@@ -187,6 +188,7 @@ const JoinNode = ({ data, id }) => {
           fill_history: isMetavar ? {} : vars,
           metavars: isMetavar ? vars : {},
           llm: llm,
+          batch_id: uuid(),
           // NOTE: We lose all other metadata here, because we could've joined across other vars or metavars values.
         };
       });
@@ -199,6 +201,7 @@ const JoinNode = ({ data, id }) => {
           fill_history: {},
           metavars: {},
           llm: llm,
+          batch_id: uuid(),
         });
       }
 
@@ -219,6 +222,7 @@ const JoinNode = ({ data, id }) => {
         fill_history: p.fill_history,
         llm: "__LLM_key" in p.metavars ? llm_lookup[p.metavars['__LLM_key']] : undefined,
         metavars: removeLLMTagFromMetadata(p.metavars),
+        batch_id: uuid(),
       }));
 
       // If there's multiple LLMs and groupByLLM is 'within', we need to
@@ -248,7 +252,7 @@ const JoinNode = ({ data, id }) => {
 
           // If there is exactly 1 LLM and it's present across all inputs, keep track of it:
           if (numLLMs === 1 && resp_objs.every((r) => r.llm !== undefined))
-            joined_texts = {text: joined_texts, fill_history: {}, llm: resp_objs[0].llm};
+            joined_texts = {text: joined_texts, fill_history: {}, llm: resp_objs[0].llm, batch_id: uuid()};
 
           setJoinedTexts([joined_texts]);
           setDataPropsForNode(id, { fields: [joined_texts] });

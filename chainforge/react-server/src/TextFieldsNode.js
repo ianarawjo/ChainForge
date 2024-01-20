@@ -45,7 +45,7 @@ const TextFieldsNode = ({ data, id }) => {
   ));
 
   // Placeholders to show in the textareas. Object keyed by textarea index.
-  let [placeholders, setPlaceholders] = useState({});
+  const [placeholders, setPlaceholders] = useState({});
 
   // Debounce helpers
   const debounceTimeoutRef = useRef(null);

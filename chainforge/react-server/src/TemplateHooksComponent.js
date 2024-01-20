@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Handle, useUpdateNodeInternals } from 'reactflow';
-import { Badge } from '@mantine/core';
+import { Badge, Text } from '@mantine/core';
 import useStore from './store'
+import { IconSettings } from '@tabler/icons-react';
+
+const SETTINGS_ICON = <IconSettings size='14px' style={{paddingTop: '2px', marginLeft: '2px', marginRight: '0px'}} />;
 
 export const extractBracketedSubstrings = (text) => {
     /** Given some text in template format:
@@ -55,10 +58,12 @@ export default function TemplateHooks({ vars, nodeId, startY, position, ignoreHa
         const pos = position !== undefined ? position : 'left';
         const handle_type = pos === 'left' ? "target" : "source";
         return temp_var_names.map((name, idx) => {
+            const is_settings_var = name.charAt(0) === '=';
+            const badge_name = is_settings_var ? <Text display='flex' align='center'>{name.substring(1)} {SETTINGS_ICON}</Text> : name;
             const className = (names_to_blink.includes(name)) ? 'hook-tag text-blink' : 'hook-tag';
             const style = { top: ((idx * 28) + startY + 'px'),  background: '#555' };
             return (<div key={name} className={className} style={{display: 'flex', justifyContent: pos}} >
-                <Badge color="indigo" size="md" radius="sm" style={{textTransform: 'none'}}>{name}</Badge>
+                <Badge color={is_settings_var ? "orange" : "indigo"} size="md" radius="sm" style={{textTransform: 'none'}}>{badge_name}</Badge>
                 <Handle type={handle_type} position={pos} id={name} key={name} style={style} />
             </div>);
         });

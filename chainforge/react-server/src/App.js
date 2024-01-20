@@ -340,11 +340,23 @@ const App = () => {
           rf_inst.setViewport({x:0, y:0, zoom:1});
       }
       resetLLMColors();
-      setNodes(flow.nodes || []);
-      setEdges(flow.edges || []); 
 
-      // Save flow that user loaded to autosave cache, in case they refresh the browser
-      StorageCache.saveToLocalStorage('chainforge-flow', flow);
+      // First, clear the ReactFlow state entirely
+      // NOTE: We need to do this so it forgets any node/edge ids, which might have cross-over in the loaded flow. 
+      setNodes([]);
+      setEdges([]);
+
+      // After a delay, load in the new state. 
+      setTimeout(() => {
+        setNodes(flow.nodes || []);
+        setEdges(flow.edges || []); 
+  
+        // Save flow that user loaded to autosave cache, in case they refresh the browser
+        StorageCache.saveToLocalStorage('chainforge-flow', flow);
+
+        // Cancel loading spinner
+        setIsLoading(false);
+      }, 10);
       
       // Start auto-saving, if it's not already enabled
       if (rf_inst) initAutosaving(rf_inst);
@@ -403,6 +415,8 @@ const App = () => {
   const importFlowFromJSON = useCallback((flowJSON, rf_inst) => {
     const rf = rf_inst || rfInstance;
 
+    setIsLoading(true);
+
     // Detect if there's no cache data
     if (!flowJSON.cache) {
       // Support for loading old flows w/o cache data:
@@ -436,6 +450,9 @@ const App = () => {
     // Handle file selection
     input.addEventListener("change", function(event) {
 
+      // Start loading spinner 
+      setIsLoading(false);
+
       const file = event.target.files[0];
       const reader = new FileReader();
 
@@ -463,12 +480,11 @@ const App = () => {
 
   // Downloads the selected OpenAI eval file (preconverted to a .cforge flow)
   const importFlowFromOpenAIEval = (evalname) => {
+    setIsLoading(true);
+
     fetch_from_backend('fetchOpenAIEval', {
       name: evalname,
     }, handleError).then(function(json) {
-      // Close the loading modal
-      setIsLoading(false);
-
       // Detect any issues with the response
       if (!json) {
         handleError('Request was sent and received by backend server, but there was no response.');
@@ -498,9 +514,6 @@ const App = () => {
     fetch_from_backend('fetchExampleFlow', {
       'name': name,
     }, handleError).then(function(json) {
-        // Close the loading modal
-        setIsLoading(false);
-
         if (!json)
           throw new Error('Request to fetch example flow was sent to backend server, but there was no response.');
         else if (json.error || !json.data)
@@ -679,7 +692,6 @@ const App = () => {
             try {
               const cforge_json = JSON.parse(LZString.decompressFromUTF16(response));
               importFlowFromJSON(cforge_json, rf_inst);
-              setIsLoading(false);
             } catch (err) {
               handleError(err);
             }
