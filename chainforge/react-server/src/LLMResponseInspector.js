@@ -350,7 +350,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       // Generate a table, with default columns for: input vars, LLMs queried
       // First get column names as input vars + LLMs:
       let var_cols, colnames, getColVal, found_sel_var_vals; 
-      let metavar_cols = found_metavars;
+      let metavar_cols = []; // found_metavars; -- Disabling this functionality for now, since it is usually annoying. 
       if (tableColVar === 'LLM') {
         var_cols = found_vars;
         getColVal = getLLMName;
