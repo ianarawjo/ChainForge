@@ -43,8 +43,9 @@ const getVarsAndMetavars = (input_data) => {
   Object.entries(input_data).forEach(([key, obj]) => {
     if (key !== '__input') varnames.add(key); // A "var" can also be other properties on input_data
     obj.forEach(resp_obj => {
+      console.log(resp_obj);
       if (typeof resp_obj === "string") return;
-      Object.keys(resp_obj.fill_history).forEach(v => varnames.add(v));
+      if (resp_obj.fill_history) Object.keys(resp_obj.fill_history).forEach(v => varnames.add(v));
       if (resp_obj.metavars) Object.keys(resp_obj.metavars).forEach(v => metavars.add(v));
     });
   });
