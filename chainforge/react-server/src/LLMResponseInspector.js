@@ -112,12 +112,17 @@ export const exportToExcel = (jsonResponses, filename) => {
     const llm = getLLMName(res_obj);
     const prompt = res_obj.prompt;
     const vars = res_obj.vars;
+    const metavars = res_obj.metavars ?? {};
     const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
     return res_obj.responses.map((r, r_idx) => {
       let row = { 'LLM': llm, 'Prompt': prompt, 'Response': r, 'Response Batch Id': (res_obj.uid ?? res_obj_idx) };
-      Object.keys(vars).forEach(varname => {
-        row[`Param: ${varname}`] = vars[varname];
+
+      // Add columns for vars
+      Object.entries(vars).forEach(([varname, val]) => {
+        row[`Var: ${varname}`] = val;
       });
+
+      // Add column(s) for evaluation results, if present
       if (eval_res_items && eval_res_items.length > r_idx) {
         const item = eval_res_items[r_idx];
         if (Array.isArray(item)) {
@@ -131,6 +136,13 @@ export const exportToExcel = (jsonResponses, filename) => {
         else 
           row['Eval result'] = item;
       }
+
+      // Add columns for metavars, if present
+      Object.entries(metavars).forEach(([varname, val]) => {
+        if (varname.startsWith("LLM_")) return; // skip llm group metavars
+        row[`Metavar: ${varname}`] = val;
+      });
+
       return row;
     });
   }).flat();
