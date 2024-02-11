@@ -42,13 +42,11 @@ import AreYouSureModal from "./AreYouSureModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
 import SimpleEvalNode from './SimpleEvalNode';
 import MultiEvalNode from './MultiEvalNode';
-import {
-  getDefaultModelFormData,
-  getDefaultModelSettings,
-} from "./ModelSettingSchemas";
-import { v4 as uuid } from "uuid";
-import LZString from "lz-string";
-import { EXAMPLEFLOW_1 } from "./example_flows";
+import { getDefaultModelFormData, getDefaultModelSettings } from './ModelSettingSchemas';
+import { v4 as uuid } from 'uuid';
+import LZString from 'lz-string';
+import { EXAMPLEFLOW_1 } from './example_flows';
+import { GradeResponsesModal, PickCriteriaModal } from './GradeResponsesModal';
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
@@ -710,6 +708,16 @@ const App = () => {
       .catch(handleError);
   };
 
+  // DEBUG: For testing a new pop-up window
+  const testRef = useRef(null);
+  const onClickTest = useCallback(() => {
+    testRef?.current?.trigger();
+  }, []);
+  const testRef2 = useRef(null);
+  const onClickTest2 = useCallback(() => {
+    testRef2?.current?.trigger();
+  }, []);
+
   // When the user clicks the 'New Flow' button
   const onClickNewFlow = useCallback(() => {
     setConfirmationDialogProps({
@@ -987,21 +995,18 @@ const App = () => {
         </Text>
       </Box>
     );
-  } else
-    return (
-      <div>
-        <GlobalSettingsModal ref={settingsModal} alertModal={alertModal} />
-        <AlertModal ref={alertModal} />
-        <LoadingOverlay visible={isLoading} overlayBlur={1} />
-        <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
-        <AreYouSureModal
-          ref={confirmationModal}
-          title={confirmationDialogProps.title}
-          message={confirmationDialogProps.message}
-          onConfirm={confirmationDialogProps.onConfirm}
-        />
-
-        {/* <Modal title={'Welcome to ChainForge'} size='400px' opened={welcomeModalOpened} onClose={closeWelcomeModal} yOffset={'6vh'} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
+  }
+  else return (
+    <div>
+      <GlobalSettingsModal ref={settingsModal} alertModal={alertModal} />
+      <AlertModal ref={alertModal} />
+      <PickCriteriaModal ref={testRef} />
+      <GradeResponsesModal ref={testRef2} />
+      <LoadingOverlay visible={isLoading} overlayBlur={1} />
+      <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
+      <AreYouSureModal ref={confirmationModal} title={confirmationDialogProps.title} message={confirmationDialogProps.message} onConfirm={confirmationDialogProps.onConfirm} />
+      
+      {/* <Modal title={'Welcome to ChainForge'} size='400px' opened={welcomeModalOpened} onClose={closeWelcomeModal} yOffset={'6vh'} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
         <Box m='lg' mt='xl'>
           <Text>To get started, click the Settings icon in the top-right corner.</Text>
         </Box>
@@ -1267,6 +1272,8 @@ const App = () => {
                   : "Share"}
             </Button>
           )}
+          <Button onClick={onClickTest} size="sm" variant="outline" bg="#eee" compact mr='xs' style={{float: 'left'}}> Test Stuff </Button>
+          <Button onClick={onClickTest2} size="sm" variant="outline" bg="#eee" compact mr='xs' style={{float: 'left'}}> Test More Stuff </Button>
           <Button
             onClick={onClickNewFlow}
             size="sm"
