@@ -34,6 +34,6 @@ export function isExtensionIgnoreEmpty(a: string[], b: string[], c: string[]) {
   return isExtension(
     new Set(a.filter(emptyStringFilter)),
     new Set(b.filter(emptyStringFilter)),
-    new Set(c.filter(emptyStringFilter))
+    new Set(c.filter(emptyStringFilter)),
   );
 }
