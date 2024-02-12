@@ -1,46 +1,123 @@
-import { create } from 'zustand';
-import {
-  addEdge,
-  applyNodeChanges,
-  applyEdgeChanges,
-} from 'reactflow';
-import { escapeBraces } from './backend/template';
-import { deepcopy, transformDict } from './backend/utils';
-import { APP_IS_RUNNING_LOCALLY } from './backend/utils';
-import { DuplicateVariableNameError } from './backend/errors';
+import { create } from "zustand";
+import { addEdge, applyNodeChanges, applyEdgeChanges } from "reactflow";
+import { escapeBraces } from "./backend/template";
+import { deepcopy, transformDict } from "./backend/utils";
+import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
+import { DuplicateVariableNameError } from "./backend/errors";
 
 // Initial project settings
 const initialAPIKeys = {};
-const initialFlags = { "aiSupport": true };
+const initialFlags = { aiSupport: true };
 const initialLLMColors = {};
 
 /** The color palette used for displaying info about different LLMs. */
-const llmColorPalette = ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#f7ee45', '#f955cd', '#26e080', '#2654e0', '#7d8191', '#bea5d1'];
+const llmColorPalette = [
+  "#44d044",
+  "#f1b933",
+  "#e46161",
+  "#8888f9",
+  "#33bef0",
+  "#bb55f9",
+  "#f7ee45",
+  "#f955cd",
+  "#26e080",
+  "#2654e0",
+  "#7d8191",
+  "#bea5d1",
+];
 
 /** The color palette used for displaying variations of prompts and prompt variables (non-LLM differences).
  * Distinct from the LLM color palette in order to avoid confusion around what the data means.
  * Palette adapted from https://lospec.com/palette-list/sness by Space Sandwich */
-const varColorPalette = ['#0bdb52', '#e71861', '#7161de', '#f6d714', '#80bedb', '#ffa995', '#a9b399', '#dc6f0f', '#8d022e', '#138e7d', '#c6924f', '#885818', '#616b6d'];
+const varColorPalette = [
+  "#0bdb52",
+  "#e71861",
+  "#7161de",
+  "#f6d714",
+  "#80bedb",
+  "#ffa995",
+  "#a9b399",
+  "#dc6f0f",
+  "#8d022e",
+  "#138e7d",
+  "#c6924f",
+  "#885818",
+  "#616b6d",
+];
 
 /** All color palettes in ChainForge. Import to use elsewhere. */
 export const colorPalettes = {
   llm: llmColorPalette,
   var: varColorPalette,
-}
+};
 
-const refreshableOutputNodeTypes = new Set(['evaluator', 'processor', 'prompt', 'inspect', 'vis', 'llmeval', 'textfields', 'chat', 'simpleval', 'join', 'split']);
+const refreshableOutputNodeTypes = new Set([
+  "evaluator",
+  "processor",
+  "prompt",
+  "inspect",
+  "vis",
+  "llmeval",
+  "textfields",
+  "chat",
+  "simpleval",
+  "join",
+  "split",
+]);
 
 export let initLLMProviders = [
-  { name: "GPT3.5", emoji: "🤖", model: "gpt-3.5-turbo", base_model: "gpt-3.5-turbo", temp: 1.0 },  // The base_model designates what settings form will be used, and must be unique.
+  {
+    name: "GPT3.5",
+    emoji: "🤖",
+    model: "gpt-3.5-turbo",
+    base_model: "gpt-3.5-turbo",
+    temp: 1.0,
+  }, // The base_model designates what settings form will be used, and must be unique.
   { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
-  { name: "Claude", emoji: "📚", model: "claude-2", base_model: "claude-v1", temp: 0.5 },
-  { name: "Gemini", emoji: "♊", model: "gemini-pro", base_model: "palm2-bison", temp: 0.7 },
-  { name: "HuggingFace", emoji: "🤗", model: "tiiuae/falcon-7b-instruct", base_model: "hf", temp: 1.0 },
-  { name: "Aleph Alpha", emoji: "💡", model: "luminous-base", base_model: "luminous-base", temp: 0.0 },
-  { name: "Azure OpenAI", emoji: "🔷", model: "azure-openai", base_model: "azure-openai", temp: 1.0 },
+  {
+    name: "Claude",
+    emoji: "📚",
+    model: "claude-2",
+    base_model: "claude-v1",
+    temp: 0.5,
+  },
+  {
+    name: "Gemini",
+    emoji: "♊",
+    model: "gemini-pro",
+    base_model: "palm2-bison",
+    temp: 0.7,
+  },
+  {
+    name: "HuggingFace",
+    emoji: "🤗",
+    model: "tiiuae/falcon-7b-instruct",
+    base_model: "hf",
+    temp: 1.0,
+  },
+  {
+    name: "Aleph Alpha",
+    emoji: "💡",
+    model: "luminous-base",
+    base_model: "luminous-base",
+    temp: 0.0,
+  },
+  {
+    name: "Azure OpenAI",
+    emoji: "🔷",
+    model: "azure-openai",
+    base_model: "azure-openai",
+    temp: 1.0,
+  },
 ];
 if (APP_IS_RUNNING_LOCALLY()) {
-  initLLMProviders.push({ name: "Ollama", emoji: "🦙", model: "ollama", base_model: "ollama", temp: 1.0 });
+  initLLMProviders.push({
+    name: "Ollama",
+    emoji: "🦙",
+    model: "ollama",
+    base_model: "ollama",
+    temp: 1.0,
+  });
   // -- Deprecated provider --
   // initLLMProviders.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
   // -------------------------
@@ -55,16 +132,19 @@ const useStore = create((set, get) => ({
   // Available LLMs in ChainForge, in the format expected by LLMListItems.
   AvailableLLMs: [...initLLMProviders],
   setAvailableLLMs: (llmProviderList) => {
-    set({AvailableLLMs: llmProviderList});
+    set({ AvailableLLMs: llmProviderList });
   },
 
   // Keeping track of LLM API keys
   apiKeys: initialAPIKeys,
   setAPIKeys: (apiKeys) => {
     // Filter out any empty or incorrectly formatted API key values:
-    const new_keys = transformDict(apiKeys, (key) => typeof apiKeys[key] === "string" && apiKeys[key].length > 0);
+    const new_keys = transformDict(
+      apiKeys,
+      (key) => typeof apiKeys[key] === "string" && apiKeys[key].length > 0,
+    );
     // Only update API keys present in the new array; don't delete existing ones:
-    set({apiKeys: {...get().apiKeys, ...new_keys}});
+    set({ apiKeys: { ...get().apiKeys, ...new_keys } });
   },
 
   // Flags to toggle on or off features across the application
@@ -73,9 +153,9 @@ const useStore = create((set, get) => ({
     return get().flags[flagName] ?? false;
   },
   setFlag: (flagName, flagValue) => {
-    let flags = {...get().flags};
+    let flags = { ...get().flags };
     flags[flagName] = flagValue;
-    set({flags: flags});
+    set({ flags: flags });
   },
 
   // Keep track of LLM colors, to ensure color consistency across various plots and displays
@@ -84,8 +164,7 @@ const useStore = create((set, get) => ({
   // Gets the color for the model named 'llm_name' in llmColors; returns undefined if not found.
   getColorForLLM: (llm_name) => {
     const colors = get().llmColors;
-    if (llm_name in colors)
-      return colors[llm_name];
+    if (llm_name in colors) return colors[llm_name];
     return undefined;
   },
 
@@ -105,8 +184,7 @@ const useStore = create((set, get) => ({
     const get_unused_color = (all_colors) => {
       for (let i = 0; i < all_colors.length; i++) {
         const color = all_colors[i];
-        if (!used_colors.has(color))
-          return color;
+        if (!used_colors.has(color)) return color;
       }
       return undefined;
     };
@@ -133,70 +211,87 @@ const useStore = create((set, get) => ({
   // Resets (removes) all LLM colors
   resetLLMColors: () => {
     set({
-      llmColors: []
+      llmColors: [],
     });
   },
 
   inputEdgesForNode: (sourceNodeId) => {
-    return get().edges.filter(e => e.target == sourceNodeId);
+    return get().edges.filter((e) => e.target == sourceNodeId);
   },
   outputEdgesForNode: (sourceNodeId) => {
-    return get().edges.filter(e => e.source == sourceNodeId);
+    return get().edges.filter((e) => e.source == sourceNodeId);
   },
   pingOutputNodes: (sourceNodeId) => {
-    const out_nodes = get().outputEdgesForNode(sourceNodeId).map(e => e.target);
-    out_nodes.forEach(n => {
-        const node = get().getNode(n);
-        if (node && refreshableOutputNodeTypes.has(node.type)) {
-            get().setDataPropsForNode(node.id, { refresh: true });
-        }
+    const out_nodes = get()
+      .outputEdgesForNode(sourceNodeId)
+      .map((e) => e.target);
+    out_nodes.forEach((n) => {
+      const node = get().getNode(n);
+      if (node && refreshableOutputNodeTypes.has(node.type)) {
+        get().setDataPropsForNode(node.id, { refresh: true });
+      }
     });
   },
   output: (sourceNodeId, sourceHandleKey) => {
     // Get the source node
     const src_node = get().getNode(sourceNodeId);
     if (src_node) {
-
       // If the source node has tabular data, use that:
-      if (src_node.type === 'table') {
-        if (("sel_rows" in src_node.data || "rows" in src_node.data) && "columns" in src_node.data) {
+      if (src_node.type === "table") {
+        if (
+          ("sel_rows" in src_node.data || "rows" in src_node.data) &&
+          "columns" in src_node.data
+        ) {
           let rows = src_node.data.sel_rows ?? src_node.data.rows;
           const columns = src_node.data.columns;
 
           // The sourceHandleKey is the key of the column in the table that we're interested in:
-          const src_col = columns.find(c => c.header === sourceHandleKey);
+          const src_col = columns.find((c) => c.header === sourceHandleKey);
           if (src_col !== undefined) {
-
             // Construct a lookup table from column key to header name,
             // as the 'metavars' dict should be keyed by column *header*, not internal key:
             let col_header_lookup = {};
-            columns.forEach(c => {
+            columns.forEach((c) => {
               col_header_lookup[c.key] = c.header;
             });
 
             // Extract all the data for every row of the source column, appending the other values as 'meta-vars':
-            return rows.map(row => {
-              const row_keys = Object.keys(row);
+            return rows
+              .map((row) => {
+                const row_keys = Object.keys(row);
 
-              // Check if this is an 'empty' row (with all empty strings); if so, skip it:
-              if (row_keys.every(key => key === '__uid' || !row[key] || (typeof row[key] === "string" && row[key].trim() === "")))
-                return undefined;
+                // Check if this is an 'empty' row (with all empty strings); if so, skip it:
+                if (
+                  row_keys.every(
+                    (key) =>
+                      key === "__uid" ||
+                      !row[key] ||
+                      (typeof row[key] === "string" && row[key].trim() === ""),
+                  )
+                )
+                  return undefined;
 
-              const row_excluding_col = {};
-              row_keys.forEach(key => {
-                if (key !== src_col.key && key !== '__uid')
-                  row_excluding_col[col_header_lookup[key]] = row[key].toString();
-              });
-              return {
-                // We escape any braces in the source text before they're passed downstream.
-                // This is a special property of tabular data nodes: we don't want their text to be treated as prompt templates.
-                text: escapeBraces((src_col.key in row) ? row[src_col.key].toString() : ""),
-                metavars: row_excluding_col,
-                associate_id: row.__uid, // this is used by the backend to 'carry' certain values together
-              }
-            }).filter(r => r !== undefined);
+                const row_excluding_col = {};
+                row_keys.forEach((key) => {
+                  if (key !== src_col.key && key !== "__uid")
+                    row_excluding_col[col_header_lookup[key]] =
+                      row[key].toString();
+                });
+                return {
+                  // We escape any braces in the source text before they're passed downstream.
+                  // This is a special property of tabular data nodes: we don't want their text to be treated as prompt templates.
+                  text: escapeBraces(
+                    src_col.key in row ? row[src_col.key].toString() : "",
+                  ),
+                  metavars: row_excluding_col,
+                  associate_id: row.__uid, // this is used by the backend to 'carry' certain values together
+                };
+              })
+              .filter((r) => r !== undefined);
           } else {
-            console.error(`Could not find table column with source handle name ${sourceHandleKey}`);
+            console.error(
+              `Could not find table column with source handle name ${sourceHandleKey}`,
+            );
             return null;
           }
         }
@@ -209,10 +304,14 @@ const useStore = create((set, get) => ({
             // We have to filter over a special 'fields_visibility' prop, which
             // can select what fields get output:
             if ("fields_visibility" in src_node.data)
-              return Object.values(transformDict(src_node.data["fields"],
-                                                fid => src_node.data["fields_visibility"][fid] !== false));
-            else  // return all field values
-              return Object.values(src_node.data["fields"]);
+              return Object.values(
+                transformDict(
+                  src_node.data["fields"],
+                  (fid) => src_node.data["fields_visibility"][fid] !== false,
+                ),
+              );
+            // return all field values
+            else return Object.values(src_node.data["fields"]);
           }
         }
         // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:
@@ -229,7 +328,7 @@ const useStore = create((set, get) => ({
     const getNode = get().getNode;
     const edges = get().edges;
     let inputNodeTypes = [];
-    edges.forEach(e => {
+    edges.forEach((e) => {
       if (e.target == node_id && _targetHandles.includes(e.targetHandle)) {
         const src_node = getNode(e.source);
         if (src_node && src_node.type !== undefined)
@@ -249,16 +348,14 @@ const useStore = create((set, get) => ({
 
     // Helper function to store collected data in dict:
     const store_data = (_texts, _varname, _data) => {
-      if (_varname in _data)
-        _data[_varname] = _data[_varname].concat(_texts);
-      else
-        _data[_varname] = _texts;
+      if (_varname in _data) _data[_varname] = _data[_varname].concat(_texts);
+      else _data[_varname] = _texts;
     };
 
     // Pull data from each source recursively:
     const pulled_data = {};
     const get_outputs = (varnames, nodeId, var_history) => {
-      varnames.forEach(varname => {
+      varnames.forEach((varname) => {
         // Check for duplicate variable names
         if (var_history.has(String(varname).toLowerCase()))
           throw new DuplicateVariableNameError(varname);
@@ -267,17 +364,16 @@ const useStore = create((set, get) => ({
         var_history.add(String(varname).toLowerCase());
 
         // Find the relevant edge(s):
-        edges.forEach(e => {
+        edges.forEach((e) => {
           if (e.target == nodeId && e.targetHandle == varname) {
             // Get the immediate output:
             let out = output(e.source, e.sourceHandle);
             if (!out || !Array.isArray(out) || out.length === 0) return;
 
             // Check the format of the output. Can be str or dict with 'text' and more attrs:
-            if (typeof out[0] === 'object') {
-              out.forEach(obj => store_data([obj], varname, pulled_data));
-            }
-            else {
+            if (typeof out[0] === "object") {
+              out.forEach((obj) => store_data([obj], varname, pulled_data));
+            } else {
               // Save the list of strings from the pulled output under the var 'varname'
               store_data(out, varname, pulled_data);
             }
@@ -302,19 +398,18 @@ const useStore = create((set, get) => ({
    */
   setDataPropsForNode: (id, data_props) => {
     set({
-      nodes: (nds =>
-        nds.map(n => {
+      nodes: ((nds) =>
+        nds.map((n) => {
           if (n.id === id) {
             for (const key of Object.keys(data_props))
               n.data[key] = data_props[key];
             n.data = deepcopy(n.data);
           }
           return n;
-        })
-      )(get().nodes)
+        }))(get().nodes),
     });
   },
-  getNode: (id) => get().nodes.find(n => n.id === id),
+  getNode: (id) => get().nodes.find((n) => n.id === id),
   addNode: (newnode) => {
     // Make sure we select the added node.
     // This will float it to the top.
@@ -323,12 +418,12 @@ const useStore = create((set, get) => ({
 
     // Add the node to the internal state
     set({
-      nodes: get().nodes.concat(newnode)
+      nodes: get().nodes.concat(newnode),
     });
   },
   removeNode: (id) => {
     set({
-      nodes: get().nodes.filter(n => n.id !== id)
+      nodes: get().nodes.filter((n) => n.id !== id),
     });
   },
   deselectAllNodes: () => {
@@ -337,7 +432,7 @@ const useStore = create((set, get) => ({
       nodes: get().nodes.map((n) => {
         n.selected = false;
         return n;
-      })
+      }),
     });
   },
   bringNodeToFront: (id) => {
@@ -345,12 +440,12 @@ const useStore = create((set, get) => ({
       nodes: get().nodes.map((n) => {
         n.selected = n.id === id;
         return n;
-      })
+      }),
     });
   },
   duplicateNode: (id, offset) => {
     const nodes = get().nodes;
-    const node = nodes.find(n => n.id === id);
+    const node = nodes.find((n) => n.id === id);
     if (!node) {
       console.error(`Could not duplicate node: No node found with id ${id}`);
       return undefined;
@@ -372,17 +467,17 @@ const useStore = create((set, get) => ({
   },
   setNodes: (newnodes) => {
     set({
-      nodes: newnodes
+      nodes: newnodes,
     });
   },
   setEdges: (newedges) => {
     set({
-      edges: newedges
+      edges: newedges,
     });
   },
   removeEdge: (id) => {
     set({
-      edges: applyEdgeChanges([{id: id, type: 'remove'}], get().edges),
+      edges: applyEdgeChanges([{ id: id, type: "remove" }], get().edges),
     });
   },
   onNodesChange: (changes) => {
@@ -396,11 +491,14 @@ const useStore = create((set, get) => ({
     });
   },
   onConnect: (connection) => {
-
     // Get the target node information
     const target = get().getNode(connection.target);
 
-    if (target.type === 'vis' || target.type === 'inspect' || target.type === 'simpleval') {
+    if (
+      target.type === "vis" ||
+      target.type === "inspect" ||
+      target.type === "simpleval"
+    ) {
       get().setDataPropsForNode(target.id, { input: connection.source });
     }
 
@@ -410,11 +508,11 @@ const useStore = create((set, get) => ({
     }
 
     connection.interactionWidth = 40;
-    connection.markerEnd = {type: 'arrow', width: '22px', height: '22px'};
-    connection.type = 'default';
+    connection.markerEnd = { type: "arrow", width: "22px", height: "22px" };
+    connection.type = "default";
 
     set({
-      edges: addEdge(connection, get().edges) // get().edges.concat(connection)
+      edges: addEdge(connection, get().edges), // get().edges.concat(connection)
     });
   },
 }));
