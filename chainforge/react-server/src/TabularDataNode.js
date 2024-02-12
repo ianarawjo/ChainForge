@@ -238,7 +238,7 @@ const TabularDataNode = ({ data, id }) => {
       });
 
       // Adds the row to the table at the requested position
-      let new_rows = tableData
+      const new_rows = tableData
         .slice(0, insertIdx)
         .concat([blank_row], tableData.slice(insertIdx));
 
@@ -286,24 +286,24 @@ const TabularDataNode = ({ data, id }) => {
     }
 
     // Extract unique column names
-    let headers = new Set();
+    const headers = new Set();
     jsonl.forEach((o) => Object.keys(o).forEach((key) => headers.add(key)));
 
     // Create new columns with unique ids c0, c1 etc
-    let cols = Array.from(headers).map((h, idx) => ({
+    const cols = Array.from(headers).map((h, idx) => ({
       header: h,
       key: `c${idx.toString()}`,
     }));
 
     // Construct a lookup table from header name to our new key uid
-    let col_key_lookup = {};
+    const col_key_lookup = {};
     cols.forEach((c) => {
       col_key_lookup[c.header] = c.key;
     });
 
     // Construct the table rows by swapping the header names for our new columm keys
-    let rows = jsonl.map((o) => {
-      let row = { __uid: uuidv4() };
+    const rows = jsonl.map((o) => {
+      const row = { __uid: uuidv4() };
       Object.keys(o).forEach((header) => {
         const raw_val = o[header];
         const val =
@@ -337,7 +337,7 @@ const TabularDataNode = ({ data, id }) => {
     // Handle file selection
     input.addEventListener("change", function (event) {
       const file = event.target.files[0];
-      const reader = new FileReader();
+      const reader = new window.FileReader();
 
       // Extract the file extension from the file name
       const extension = file.name.split(".").pop();
@@ -369,21 +369,25 @@ const TabularDataNode = ({ data, id }) => {
 
             case "xlsx":
               // Parse data using XLSX
-              const wb = XLSX.read(reader.result, { type: "binary" });
-              // Extract the first worksheet
-              const wsname = wb.SheetNames[0];
-              const ws = wb.Sheets[wsname];
-              // Convert to JSON list format, assuming the first row is a 'header':
-              jsonl = XLSX.utils.sheet_to_json(ws);
-              // Load the JSON list into the table
-              importJSONList(jsonl);
+              {
+                const wb = XLSX.read(reader.result, { type: "binary" });
+                // Extract the first worksheet
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                // Convert to JSON list format, assuming the first row is a 'header':
+                jsonl = XLSX.utils.sheet_to_json(ws);
+                // Load the JSON list into the table
+                importJSONList(jsonl);
+              }
               break;
 
             case "csv":
               // Parse the CSV string to a list,
               // assuming the first row is a header
-              const papa_parsed = Papa.parse(reader.result, { header: true });
-              importJSONList(papa_parsed.data);
+              {
+                const papa_parsed = Papa.parse(reader.result, { header: true });
+                importJSONList(papa_parsed.data);
+              }
               break;
 
             default:
@@ -425,7 +429,7 @@ const TabularDataNode = ({ data, id }) => {
     setDataPropsForNode(id, {
       rows: tableData,
       columns: tableColumns,
-      sel_rows: sel_rows,
+      sel_rows,
     });
   }, [tableData, tableColumns, shouldSample, sampleNum]);
 
@@ -440,7 +444,7 @@ const TabularDataNode = ({ data, id }) => {
     (elem) => {
       if (!ref.current && elem && window.ResizeObserver) {
         let past_hooks_y = 120;
-        const observer = new ResizeObserver(() => {
+        const observer = new window.ResizeObserver(() => {
           if (!ref || !ref.current) return;
           const new_hooks_y = ref.current.clientHeight + 68;
           if (past_hooks_y !== new_hooks_y) {
@@ -467,7 +471,10 @@ const TabularDataNode = ({ data, id }) => {
         nodeId={id}
         icon={"🗂️"}
         customButtons={[
-          <Tooltip label="Accepts xlsx, jsonl, and csv files with a header row">
+          <Tooltip
+            key={0}
+            label="Accepts xlsx, jsonl, and csv files with a header row"
+          >
             <button
               className="custom-button"
               key="import-data"

@@ -6,7 +6,6 @@ import { IconForms } from "@tabler/icons-react";
 import { Handle } from "reactflow";
 import BaseNode from "./BaseNode";
 import { processCSV } from "./backend/utils";
-import AISuggestionsManager from "./backend/aiSuggestionsManager";
 import AIPopover from "./AiPopover";
 import { cleanEscapedBraces, escapeBraces } from "./backend/template";
 
@@ -90,16 +89,13 @@ const ItemsNode = ({ data, id }) => {
   }, []);
 
   // handling Div Click
-  const handleDivOnClick = useCallback((event) => {
+  const handleDivOnClick = useCallback(() => {
     setIsEditing(true);
   }, []);
 
-  const handleOnBlur = useCallback(
-    (event) => {
-      if (data.text && data.text.trim().length > 0) setIsEditing(false);
-    },
-    [data.text],
-  );
+  const handleOnBlur = useCallback(() => {
+    if (data.text && data.text.trim().length > 0) setIsEditing(false);
+  }, [data.text]);
 
   // render csv div
   const renderCsvDiv = useCallback(() => {
@@ -144,7 +140,7 @@ const ItemsNode = ({ data, id }) => {
       return;
     }
 
-    var text_val = data.text || "";
+    const text_val = data.text || "";
     setCsvInput(
       <div className="input-field" key={id}>
         <textarea
@@ -181,7 +177,7 @@ const ItemsNode = ({ data, id }) => {
         nodeId={id}
         icon={<IconForms size="16px" />}
         customButtons={
-          flags["aiSupport"]
+          flags.aiSupport
             ? [
                 <AIPopover
                   key="ai-popover"

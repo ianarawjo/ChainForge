@@ -36,7 +36,8 @@ const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
 const fetch = require("node-fetch");
 
 /** Where the ChainForge Flask server is being hosted, if any. */
-export const FLASK_BASE_URL = // @ts-ignore
+// @ts-ignore
+export const FLASK_BASE_URL =
   window.__CF_HOSTNAME !== undefined && window.__CF_PORT !== undefined
     ? "/"
     : "http://localhost:8000/";
@@ -58,7 +59,7 @@ export async function call_flask_backend(
 }
 
 // We only calculate whether the app is running locally once upon load, and store it here:
-let _APP_IS_RUNNING_LOCALLY: boolean | undefined = undefined;
+let _APP_IS_RUNNING_LOCALLY: boolean | undefined;
 
 /**
  * Tries to determine if the ChainForge front-end is running on user's local machine (and hence has access to Flask backend).
@@ -74,7 +75,7 @@ export function APP_IS_RUNNING_LOCALLY(): boolean {
         location.hostname === "localhost" ||
         location.hostname === "127.0.0.1" ||
         location.hostname === "0.0.0.0" ||
-        location.hostname === "" || // @ts-ignore
+        location.hostname === "" ||
         window.__CF_HOSTNAME !== undefined;
     } catch (e) {
       // ReferenceError --window or location does not exist.
@@ -125,6 +126,9 @@ function get_environ(key: string): string | undefined {
 function appendEndSlashIfMissing(path: string) {
   return path + (path[path.length - 1] === "/" ? "" : "/");
 }
+
+let DALAI_MODEL: string | undefined;
+let DALAI_RESPONSE: Dict | undefined;
 
 let OPENAI_API_KEY = get_environ("OPENAI_API_KEY");
 let ANTHROPIC_API_KEY = get_environ("ANTHROPIC_API_KEY");
@@ -240,7 +244,7 @@ export async function call_chatgpt(
   delete params?.system_msg;
   delete params?.chat_history;
 
-  let query: Dict = {
+  const query: Dict = {
     model: modelname,
     n: n,
     temperature: temperature,
@@ -433,7 +437,7 @@ export async function call_anthropic(
   // :: See https://docs.anthropic.com/claude/docs/human-and-assistant-formatting#use-human-and-assistant-to-put-words-in-claudes-mouth
   if (params?.chat_history !== undefined) {
     const chat_history: ChatHistory = params.chat_history as ChatHistory;
-    let anthr_chat_context: string = "";
+    let anthr_chat_context = "";
     for (const chat_msg of chat_history) {
       if (chat_msg.role === "user")
         anthr_chat_context += ANTHROPIC_HUMAN_PROMPT;
@@ -447,12 +451,12 @@ export async function call_anthropic(
   }
 
   // Format query
-  let query = {
-    model: model,
+  const query = {
+    model,
     prompt: wrapped_prompt,
-    max_tokens_to_sample: max_tokens_to_sample,
-    stop_sequences: stop_sequences,
-    temperature: temperature,
+    max_tokens_to_sample,
+    stop_sequences,
+    temperature,
     ...params,
   };
 
@@ -462,7 +466,7 @@ export async function call_anthropic(
 
   // Make a REST call to Anthropic
   // Repeat call n times, waiting for each response to come in:
-  let responses: Array<Dict> = [];
+  const responses: Array<Dict> = [];
   while (responses.length < n) {
     // Abort if canceled
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
@@ -597,8 +601,8 @@ export async function call_google_palm(
     // Chat completions
     if (chat_history !== undefined && chat_history.length > 0) {
       // Carry over any chat history, converting OpenAI formatted chat history to Google PaLM:
-      let palm_chat_context: PaLMChatContext = { messages: [] };
-      let palm_messages: PaLMChatMessage[] = [];
+      const palm_chat_context: PaLMChatContext = { messages: [] };
+      const palm_messages: PaLMChatMessage[] = [];
       for (const chat_msg of chat_history) {
         if (chat_msg.role === "system") {
           // Carry the system message over as PaLM's chat 'context':
@@ -631,7 +635,7 @@ export async function call_google_palm(
     headers,
     body: JSON.stringify(query),
   });
-  let completion: Dict = await res.json();
+  const completion: Dict = await res.json();
 
   // Sometimes the REST call will give us an error; bubble this up the chain:
   if (completion.error !== undefined) {
@@ -706,7 +710,7 @@ export async function call_google_gemini(
     top_k: "topK",
   };
 
-  let gen_Config = {};
+  const gen_Config = { candidateCount: 1 };
 
   Object.entries(casemap).forEach(([key, val]) => {
     if (key in query) {
@@ -727,13 +731,13 @@ export async function call_google_gemini(
     gen_Config["topP"] = 1.0;
   }
 
-  let gemini_chat_context: GeminiChatContext = { history: [] };
+  const gemini_chat_context: GeminiChatContext = { history: [] };
 
   // Chat completions
   if (chat_history !== undefined && chat_history.length > 0) {
     // Carry over any chat history, converting OpenAI formatted chat history to Google PaLM:
 
-    let gemini_messages: GeminiChatMessage[] = [];
+    const gemini_messages: GeminiChatMessage[] = [];
     for (const chat_msg of chat_history) {
       if (chat_msg.role === "system") {
         // Carry the system message over as PaLM's chat 'context':
@@ -749,7 +753,7 @@ export async function call_google_gemini(
     `Calling Google Gemini model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`,
   );
 
-  let responses: Array<Dict> = [];
+  const responses: Array<Dict> = [];
 
   while (responses.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
@@ -831,14 +835,14 @@ export async function call_huggingface(
   )
     num_continuations = params.num_continuations;
 
-  let query: Dict = {
-    temperature: temperature,
+  const query: Dict = {
+    temperature,
   };
   set_param_if_exists("top_k", query);
   set_param_if_exists("top_p", query);
   set_param_if_exists("repetition_penalty", query);
 
-  let options = {
+  const options = {
     use_cache: false, // we want it generating fresh each time
   };
   set_param_if_exists("use_cache", options);
@@ -886,7 +890,7 @@ export async function call_huggingface(
       ? params.custom_model
       : `https://api-inference.huggingface.co/models/${using_custom_model_endpoint ? params.custom_model.trim() : model}`;
 
-  let responses: Array<Dict> = [];
+  const responses: Array<Dict> = [];
   while (responses.length < n) {
     let continued_response: Dict = { generated_text: "" };
     let curr_cont = 0;
@@ -907,7 +911,7 @@ export async function call_huggingface(
 
       // Call HuggingFace inference API
       const response = await fetch(url, {
-        headers: headers,
+        headers,
         method: "POST",
         body: JSON.stringify({
           inputs: inputs,
@@ -980,7 +984,7 @@ export async function call_alephalpha(
   });
 
   // Setup the args for the query
-  let query: Dict = {
+  const query: Dict = {
     model: model.toString(),
     n: n,
     temperature: temperature,
@@ -988,7 +992,7 @@ export async function call_alephalpha(
   };
 
   const response = await fetch(url, {
-    headers: headers,
+    headers,
     method: "POST",
     body: data,
   });
@@ -1024,10 +1028,10 @@ export async function call_ollama_provider(
 
   // FIXME: Ollama doesn't support batch inference, but llama.cpp does so it will eventually
   // For now, we send n requests and then wait for all of them to finish
-  let query: Dict = {
+  const query: Dict = {
     model: ollama_model,
     stream: false,
-    temperature: temperature,
+    temperature,
     ...params, // 'the rest' of the settings, passed from the front-end settings
   };
 
@@ -1107,7 +1111,7 @@ async function call_custom_provider(
       ? undefined
       : provider_path.substring(provider_path.lastIndexOf("/") + 1);
 
-  let responses = [];
+  const responses = [];
   const query = { prompt, model, temperature, ...params };
 
   // Call the custom provider n times
@@ -1147,7 +1151,7 @@ export async function call_llm(
 ): Promise<[Dict, Dict]> {
   // Get the correct API call for the given LLM:
   let call_api: LLMAPICall | undefined;
-  let llm_provider: LLMProvider = getProvider(llm);
+  const llm_provider: LLMProvider = getProvider(llm);
 
   if (llm_provider === undefined)
     throw new Error(`Language model ${llm} is not supported.`);
@@ -1181,7 +1185,7 @@ function _extract_openai_chat_choice_content(choice: Dict): string {
     const func = choice["message"]["function_call"];
     return "[[FUNCTION]] " + func["name"] + func["arguments"].toString();
   } else {
-    return choice["message"]["content"];
+    return choice.message.content;
   }
 }
 
@@ -1191,7 +1195,7 @@ function _extract_openai_chat_choice_content(choice: Dict): string {
  * this produces a list of all returned responses.
  */
 function _extract_chatgpt_responses(response: Dict): Array<string> {
-  return response["choices"].map(_extract_openai_chat_choice_content);
+  return response.choices.map(_extract_openai_chat_choice_content);
 }
 
 /**
@@ -1200,7 +1204,7 @@ function _extract_chatgpt_responses(response: Dict): Array<string> {
  * this produces a list of all returned responses.
  */
 function _extract_openai_completion_responses(response: Dict): Array<string> {
-  return response["choices"].map((c: Dict) => c.text.trim());
+  return response.choices.map((c: Dict) => c.text.trim());
 }
 
 /**
@@ -1268,7 +1272,7 @@ function _extract_alephalpha_responses(response: Dict): Array<string> {
  * Extracts the text part of a Ollama text completion.
  */
 function _extract_ollama_responses(response: Array<Dict>): Array<string> {
-  return response.map((r: Object) => r["generated_text"].trim());
+  return response.map((r: any) => r.generated_text.trim());
 }
 
 /**
@@ -1426,7 +1430,7 @@ export const areEqualVarsDicts = (
 };
 
 export const processCSV = (csv: string): string[] => {
-  let matches = csv.match(/(\s*"[^"]+"\s*|\s*[^,]+|,)(?=,|$)/g);
+  const matches = csv.match(/(\s*"[^"]+"\s*|\s*[^,]+|,)(?=,|$)/g);
   if (!matches) return;
   for (let n = 0; n < matches.length; ++n) {
     matches[n] = matches[n].trim();
@@ -1450,7 +1454,7 @@ export const countNumLLMs = (
 
 export const setsAreEqual = (setA: Set<any>, setB: Set<any>): boolean => {
   if (setA.size !== setB.size) return false;
-  let equal = true;
+  const equal = true;
   for (const item of setA) {
     if (!setB.has(item)) return false;
   }
@@ -1459,7 +1463,7 @@ export const setsAreEqual = (setA: Set<any>, setB: Set<any>): boolean => {
 
 export const deepcopy = (v) => JSON.parse(JSON.stringify(v));
 export const deepcopy_and_modify = (v, new_val_dict) => {
-  let new_v = deepcopy(v);
+  const new_v = deepcopy(v);
   Object.entries(new_val_dict).forEach(([key, val]) => {
     new_v[key] = val;
   });
@@ -1491,7 +1495,7 @@ export const stripLLMDetailsFromResponses = (resps) =>
   }));
 
 export const toStandardResponseFormat = (r) => {
-  let resp_obj: Dict = {
+  const resp_obj: Dict = {
     vars: r?.fill_history ?? {},
     metavars: r?.metavars ?? {},
     uid: r?.batch_id ?? r?.uid ?? uuid(),
@@ -1517,7 +1521,7 @@ export const browserTabIsActive = () => {
 };
 
 export const tagMetadataWithLLM = (input_data) => {
-  let new_data = {};
+  const new_data = {};
   Object.entries(input_data).forEach(([varname, resp_objs]) => {
     new_data[varname] = (resp_objs as any[]).map((r) => {
       if (!r || typeof r === "string" || !r?.llm?.key) return r;
@@ -1530,7 +1534,7 @@ export const tagMetadataWithLLM = (input_data) => {
 };
 
 export const extractLLMLookup = (input_data) => {
-  let llm_lookup = {};
+  const llm_lookup = {};
   Object.values(input_data).forEach((resp_objs) => {
     (resp_objs as any[]).forEach((r) => {
       if (typeof r === "string" || !r?.llm?.key || r.llm.key in llm_lookup)

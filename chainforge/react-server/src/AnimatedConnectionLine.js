@@ -1,15 +1,15 @@
 import React from "react";
 
-export default ({
+export default function AnimatedConnectionLine({
   fromX,
   fromY,
-  fromPosition,
+  // fromPosition,
   toX,
   toY,
-  toPosition,
-  connectionLineType,
-  connectionLineStyle,
-}) => {
+  // toPosition,
+  // connectionLineType,
+  // connectionLineStyle,
+}) {
   return (
     <g>
       <path
@@ -29,4 +29,4 @@ export default ({
       />
     </g>
   );
-};
+}

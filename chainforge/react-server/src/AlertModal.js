@@ -3,7 +3,7 @@ import React, { useState, forwardRef, useImperativeHandle } from "react";
 import { useDisclosure } from "@mantine/hooks";
 import { Modal } from "@mantine/core";
 
-const AlertModal = forwardRef((props, ref) => {
+const AlertModal = forwardRef(function AlertModal(props, ref) {
   // Mantine modal popover for alerts
   const [opened, { open, close }] = useDisclosure(false);
   const [alertMsg, setAlertMsg] = useState("");

@@ -7,7 +7,7 @@ import { IconSettingsAutomation } from "@tabler/icons-react";
 const ScriptNode = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const delButtonId = "del-";
-  var [idCounter, setIDCounter] = useState(0);
+  const [idCounter, setIDCounter] = useState(0);
   const get_id = () => {
     setIDCounter(idCounter + 1);
     return "f" + idCounter.toString();
@@ -17,7 +17,7 @@ const ScriptNode = ({ data, id }) => {
   const handleInputChange = useCallback(
     (event) => {
       // Update the data for this script node's id.
-      let new_data = { scriptFiles: { ...data.scriptFiles } };
+      const new_data = { scriptFiles: { ...data.scriptFiles } };
       new_data.scriptFiles[event.target.id] = event.target.value;
       setDataPropsForNode(id, new_data);
     },
@@ -28,8 +28,8 @@ const ScriptNode = ({ data, id }) => {
   const handleDelete = useCallback(
     (event) => {
       // Update the data for this script node's id.
-      let new_data = { scriptFiles: { ...data.scriptFiles } };
-      var item_id = event.target.id.substring(delButtonId.length);
+      const new_data = { scriptFiles: { ...data.scriptFiles } };
+      const item_id = event.target.id.substring(delButtonId.length);
       delete new_data.scriptFiles[item_id];
       // if the new_data is empty, initialize it with one empty field
       if (Object.keys(new_data.scriptFiles).length === 0) {
@@ -79,7 +79,7 @@ const ScriptNode = ({ data, id }) => {
   // Add a field
   const handleAddField = useCallback(() => {
     // Update the data for this script node's id.
-    let new_data = { scriptFiles: { ...data.scriptFiles } };
+    const new_data = { scriptFiles: { ...data.scriptFiles } };
     new_data.scriptFiles[get_id()] = "";
     setDataPropsForNode(id, new_data);
   }, [data, id, setDataPropsForNode]);

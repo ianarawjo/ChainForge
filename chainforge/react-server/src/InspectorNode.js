@@ -42,7 +42,7 @@ const InspectorNode = ({ data, id }) => {
 
   if (data.input) {
     // If there's a change in inputs...
-    if (data.input != pastInputs) {
+    if (data.input !== pastInputs) {
       setPastInputs(data.input);
       handleOnConnect();
     }

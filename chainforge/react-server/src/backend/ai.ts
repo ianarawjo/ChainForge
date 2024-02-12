@@ -1,7 +1,6 @@
 /**
  * Business logic for the AI-generated features.
  */
-import { ConsoleView } from "react-device-detect";
 import { queryLLM } from "./backend";
 import {
   StringTemplate,
@@ -141,15 +140,15 @@ export async function autofill(
   apiKeys?: Dict,
 ): Promise<Row[]> {
   // hash the arguments to get a unique id
-  let id = JSON.stringify([input, n]);
-  let encoded = encode(input);
-  let templateVariables = [
+  const id = JSON.stringify([input, n]);
+  const encoded = encode(input);
+  const templateVariables = [
     ...new Set(new StringTemplate(input.join("\n")).get_vars()),
   ];
 
   console.log("System message: ", autofillSystemMessage(n, templateVariables));
 
-  let history: ChatHistoryInfo[] = [
+  const history: ChatHistoryInfo[] = [
     {
       messages: [
         {
@@ -161,15 +160,15 @@ export async function autofill(
     },
   ];
 
-  let result = await queryLLM(
-    /*id=*/ id,
-    /*llm=*/ LLM,
-    /*n=*/ 1,
-    /*prompt=*/ encoded,
-    /*vars=*/ {},
-    /*chat_history=*/ history,
-    /*api_keys=*/ apiKeys,
-    /*no_cache=*/ true,
+  const result = await queryLLM(
+    /* id= */ id,
+    /* llm= */ LLM,
+    /* n= */ 1,
+    /* prompt= */ encoded,
+    /* vars= */ {},
+    /* chat_history= */ history,
+    /* api_keys= */ apiKeys,
+    /* no_cache= */ true,
   );
 
   if (result.errors && Object.keys(result.errors).length > 0)
@@ -201,12 +200,12 @@ export async function generateAndReplace(
   apiKeys?: Dict,
 ): Promise<Row[]> {
   // hash the arguments to get a unique id
-  let id = JSON.stringify([prompt, n]);
+  const id = JSON.stringify([prompt, n]);
 
   // True if `prompt` contains the word 'prompt'
-  let generatePrompts = prompt.toLowerCase().includes("prompt");
+  const generatePrompts = prompt.toLowerCase().includes("prompt");
 
-  let history: ChatHistoryInfo[] = [
+  const history: ChatHistoryInfo[] = [
     {
       messages: [
         {
@@ -218,17 +217,17 @@ export async function generateAndReplace(
     },
   ];
 
-  let input = `Generate a list of ${escapeBraces(prompt)}`;
+  const input = `Generate a list of ${escapeBraces(prompt)}`;
 
   const result = await queryLLM(
-    /*id=*/ id,
-    /*llm=*/ LLM,
-    /*n=*/ 1,
-    /*prompt=*/ input,
-    /*vars=*/ {},
-    /*chat_history=*/ history,
-    /*api_keys=*/ apiKeys,
-    /*no_cache=*/ true,
+    /* id= */ id,
+    /* llm= */ LLM,
+    /* n= */ 1,
+    /* prompt= */ input,
+    /* vars= */ {},
+    /* chat_history= */ history,
+    /* api_keys= */ apiKeys,
+    /* no_cache= */ true,
   );
 
   if (result.errors && Object.keys(result.errors).length > 0)

@@ -333,8 +333,8 @@ const ClaudeSettings = {
         type: "string",
         title: "Prompt Wrapper (ChainForge)",
         description:
-          'Anthropic models expect prompts in the form "\\n\\nHuman: ${prompt}\\n\\nAssistant:". ChainForge wraps all prompts in this template by default. If you wish to \
-                explore custom prompt wrappers that deviate, write a Python template here with a single variable, ${prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)',
+          // eslint-disable-next-line
+          'Anthropic models expect prompts in the form "\\n\\nHuman: ${prompt}\\n\\nAssistant:". ChainForge wraps all prompts in this template by default. If you wish to explore custom prompt wrappers that deviate, write a Python template here with a single variable, ${prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)',
         default: "",
       },
       stop_sequences: {
@@ -859,9 +859,6 @@ const HuggingFaceTextInferenceSettings = {
       "ui:help": "Defaults to 1.0.",
       "ui:widget": "range",
     },
-    max_new_tokens: {
-      "ui:help": "Defaults to unspecified (-1)",
-    },
     top_k: {
       "ui:help": "Defaults to unspecified (-1)",
     },
@@ -1226,7 +1223,7 @@ const OllamaSettings = {
 };
 
 // A lookup table indexed by base_model.
-export let ModelSettings = {
+export const ModelSettings = {
   "gpt-3.5-turbo": ChatGPTSettings,
   "gpt-4": GPT4Settings,
   "claude-v1": ClaudeSettings,
@@ -1239,7 +1236,7 @@ export let ModelSettings = {
 };
 
 export function getSettingsSchemaForLLM(llm) {
-  let llm_provider = getProvider(llm);
+  const llm_provider = getProvider(llm);
 
   const provider_to_settings_schema = {
     [LLMProvider.OpenAI]: GPT4Settings,
@@ -1267,9 +1264,9 @@ export function getSettingsSchemaForLLM(llm) {
  * @param {*} llm A string of the name of the model to query.
  */
 export function typecastSettingsDict(settings_dict, llm) {
-  let settings = getSettingsSchemaForLLM(llm);
-  let schema = settings?.schema?.properties ?? {};
-  let postprocessors = settings?.postprocessors ?? {};
+  const settings = getSettingsSchemaForLLM(llm);
+  const schema = settings?.schema?.properties ?? {};
+  const postprocessors = settings?.postprocessors ?? {};
 
   // Return a clone of settings dict but with its values correctly typecast and postprocessed
   return transformDict(settings_dict, undefined, undefined, (key, val) => {
@@ -1307,12 +1304,11 @@ export const setCustomProvider = (
   models,
   rate_limit,
   settings_schema,
-  llmProviderList,
 ) => {
   if (typeof emoji === "string" && (emoji.length === 0 || emoji.length > 2))
     throw new Error(`Emoji for a custom provider must have a character.`);
 
-  let new_provider = { name };
+  const new_provider = { name };
   new_provider.emoji = emoji || "✨";
 
   // Each LLM *model* must have a unique name. To avoid name collisions, for custom providers,
@@ -1325,7 +1321,7 @@ export const setCustomProvider = (
     (Array.isArray(models) && models.length > 0 ? `${models[0]}` : "");
 
   // Build the settings form schema for this new custom provider
-  let compiled_schema = {
+  const compiled_schema = {
     fullName: `${name} (custom provider)`,
     schema: {
       type: "object",
@@ -1350,22 +1346,22 @@ export const setCustomProvider = (
 
   // Add a models selector if there's multiple models
   if (Array.isArray(models) && models.length > 0) {
-    compiled_schema.schema["properties"]["model"] = {
+    compiled_schema.schema.properties.model = {
       type: "string",
       title: "Model",
       description: `Select a ${name} model to query.`,
       enum: models,
       default: models[0],
     };
-    compiled_schema.uiSchema["model"] = {
+    compiled_schema.uiSchema.model = {
       "ui:help": `Defaults to ${models[0]}`,
     };
   }
 
   // Add the rest of the settings window if there's one
   if (settings_schema) {
-    compiled_schema.schema["properties"] = {
-      ...compiled_schema.schema["properties"],
+    compiled_schema.schema.properties = {
+      ...compiled_schema.schema.properties,
       ...settings_schema.settings,
     };
     compiled_schema.uiSchema = {
@@ -1380,7 +1376,7 @@ export const setCustomProvider = (
   if (default_temp !== undefined) new_provider.temp = default_temp;
 
   // Add the built provider and its settings to the global lookups:
-  let AvailableLLMs = useStore.getState().AvailableLLMs;
+  const AvailableLLMs = useStore.getState().AvailableLLMs;
   const prev_provider_idx = AvailableLLMs.findIndex((d) => d.name === name);
   if (prev_provider_idx > -1) AvailableLLMs[prev_provider_idx] = new_provider;
   else AvailableLLMs.push(new_provider);
@@ -1431,8 +1427,8 @@ export const postProcessFormData = (settingsSpec, formData) => {
   // Strip all 'model' and 'shortname' props in the submitted form, as these are passed elsewhere or unecessary for the backend
   const skip_keys = { model: true, shortname: true };
 
-  let new_data = {};
-  let postprocessors = settingsSpec?.postprocessors
+  const new_data = {};
+  const postprocessors = settingsSpec?.postprocessors
     ? settingsSpec.postprocessors
     : {};
 
@@ -1449,12 +1445,12 @@ export const postProcessFormData = (settingsSpec, formData) => {
 export const getDefaultModelFormData = (settingsSpec) => {
   if (typeof settingsSpec === "string")
     settingsSpec = ModelSettings[settingsSpec];
-  let default_formdata = {};
+  const default_formdata = {};
   const schema = settingsSpec.schema;
   Object.keys(schema.properties).forEach((key) => {
     default_formdata[key] =
       "default" in schema.properties[key]
-        ? schema.properties[key]["default"]
+        ? schema.properties[key].default
         : undefined;
   });
   return default_formdata;

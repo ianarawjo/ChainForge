@@ -52,7 +52,7 @@ const getUniqueLLMMetavarKey = (responses) => {
   return `LLM_${i}`;
 };
 const bucketChatHistoryInfosByLLM = (chat_hist_infos) => {
-  let chats_by_llm = {};
+  const chats_by_llm = {};
   chat_hist_infos.forEach((chat_hist_info) => {
     if (chat_hist_info.llm in chats_by_llm)
       chats_by_llm[chat_hist_info.llm].push(chat_hist_info);
@@ -188,17 +188,14 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
+  // eslint-disable-next-line
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [responsesWillChange, setResponsesWillChange] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
 
   // For continuing with prior LLMs toggle
   const [contWithPriorLLMs, setContWithPriorLLMs] = useState(
-    data.contChat !== undefined
-      ? data.contChat
-      : node_type === "chat"
-        ? true
-        : false,
+    data.contChat !== undefined ? data.contChat : node_type === "chat",
   );
   const [showContToggle, setShowContToggle] = useState(node_type === "chat");
   const [contToggleDisabled, setContChatToggleDisabled] = useState(false);
@@ -344,7 +341,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
     // Store prompt text
     setPromptText(value);
-    data["prompt"] = value;
+    data.prompt = value;
 
     // Update status icon, if need be:
     if (
@@ -398,14 +395,14 @@ const PromptNode = ({ data, id, type: node_type }) => {
     if (!("__past_chats" in pulled_data)) return [undefined, undefined];
 
     // For storing the unique LLMs in past_chats:
-    let llm_names = new Set();
-    let past_chat_llms = [];
+    const llm_names = new Set();
+    const past_chat_llms = [];
 
     // We need to calculate the conversation history from the pulled responses.
     // Note that TemplateVarInfo might have a 'chat_history' component, but this does not
     // include the most recent prompt and response --for that, we need to use the 'prompt' and 'text' items.
     // We need to create a revised chat history that concatenates the past history with the last AI + human turns:
-    const past_chats = pulled_data["__past_chats"].map((info) => {
+    const past_chats = pulled_data.__past_chats.map((info) => {
       // Add to unique LLMs list, if necessary
       const llm_name = info?.llm?.name;
       if (llm_name !== undefined && !llm_names.has(llm_name)) {
@@ -415,7 +412,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
       // Create revised chat_history on the TemplateVarInfo object,
       // with the prompt and text of the pulled data as the 2nd-to-last, and last, messages:
-      let last_messages = [
+      const last_messages = [
         { role: "user", content: info.prompt },
         { role: "assistant", content: info.text },
       ];
@@ -458,11 +455,11 @@ const PromptNode = ({ data, id, type: node_type }) => {
     return fetch_from_backend(
       "countQueriesRequired",
       {
-        prompt: prompt,
-        vars: vars,
-        llms: llms,
-        id: id,
-        chat_histories: chat_histories,
+        prompt,
+        vars,
+        llms,
+        id,
+        chat_histories,
         n: numGenerations,
         cont_only_w_prior_llms:
           node_type !== "chat"
@@ -547,7 +544,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     }
 
     // Check if there's at least one model in the list; if not, nothing to run on.
-    if (!_llmItemsCurrState || _llmItemsCurrState.length == 0) {
+    if (!_llmItemsCurrState || _llmItemsCurrState.length === 0) {
       setRunTooltip("No LLMs to query.");
       return;
     }
@@ -565,7 +562,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         console.warn(err.message); // soft fail
       },
     )
-      .then(([counts, total_num_responses]) => {
+      .then(([counts]) => {
         // Check for empty counts (means no requests will be sent!)
         const num_llms_missing = Object.keys(counts).length;
         if (num_llms_missing === 0) {
@@ -577,7 +574,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         setResponsesWillChange(true);
 
         // Tally how many queries per LLM:
-        let queries_per_llm = {};
+        const queries_per_llm = {};
         Object.keys(counts).forEach((llm_key) => {
           queries_per_llm[llm_key] = Object.keys(counts[llm_key]).reduce(
             (acc, prompt) => acc + counts[llm_key][prompt],
@@ -635,11 +632,11 @@ const PromptNode = ({ data, id, type: node_type }) => {
       });
   };
 
-  const handleRunClick = (event) => {
+  const handleRunClick = () => {
     // Go through all template hooks (if any) and check they're connected:
     const is_fully_connected = templateVars.every((varname) => {
       // Check that some edge has, as its target, this node and its template hook:
-      return edges.some((e) => e.target == id && e.targetHandle == varname);
+      return edges.some((e) => e.target === id && e.targetHandle === varname);
     });
 
     if (!is_fully_connected) {
@@ -661,9 +658,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
       // If there's nothing attached to past conversations, we can't continue the chat:
       if (past_chat_llms === undefined) {
         triggerAlert(
-          "You need to attach an input to the Past Conversation message first. For instance, you might query \
-                          multiple chat LLMs with a prompt node, and then attach the Prompt Node output to the \
-                          Past Conversation input of this Chat Turn node in order to continue the chat.",
+          `You need to attach an input to the Past Conversation message first. For instance, you might query 
+multiple chat LLMs with a prompt node, and then attach the Prompt Node output to the
+Past Conversation input of this Chat Turn node in order to continue the chat.`,
         );
         return;
       }
@@ -678,9 +675,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
         )
       ) {
         console.warn(
-          "Chat history contains undefined content. This can happen if a Join Node was used, \
-                         as there is no longer a single prompt as the provenance of the conversation. \
-                         Soft failing by replacing undefined with empty strings.",
+          `Chat history contains undefined content. This can happen if a Join Node was used, 
+as there is no longer a single prompt as the provenance of the conversation. 
+Soft failing by replacing undefined with empty strings.`,
         );
         pulled_chats.forEach((c) => {
           c.messages = c.messages.map((m) => {
@@ -718,7 +715,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
     // Check that there is at least one LLM selected:
     if (_llmItemsCurrState.length === 0) {
-      alert("Please select at least one LLM to prompt.");
+      window.alert("Please select at least one LLM to prompt.");
       return;
     }
 
@@ -757,7 +754,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
     llmListContainer?.current?.setZeroPercProgress();
 
     // Create a callback to listen for progress
-    let onProgressChange = () => {};
     const open_progress_listener = ([response_counts, total_num_responses]) => {
       setResponsesWillChange(
         !response_counts || Object.keys(response_counts).length === 0,
@@ -768,7 +764,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         0,
       );
 
-      onProgressChange = (progress_by_llm_key) => {
+      window.onProgressChange = (progress_by_llm_key) => {
         if (!progress_by_llm_key || CancelTracker.has(cancelId)) return;
 
         // Update individual progress bars
@@ -778,13 +774,13 @@ const PromptNode = ({ data, id, type: node_type }) => {
         // Update total progress bar
         const total_num_success = Object.keys(progress_by_llm_key).reduce(
           (acc, llm_key) => {
-            return acc + progress_by_llm_key[llm_key]["success"];
+            return acc + progress_by_llm_key[llm_key].success;
           },
           0,
         );
         const total_num_error = Object.keys(progress_by_llm_key).reduce(
           (acc, llm_key) => {
-            return acc + progress_by_llm_key[llm_key]["error"];
+            return acc + progress_by_llm_key[llm_key].error;
           },
           0,
         );
@@ -795,11 +791,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
             if (item.key in progress_by_llm_key) {
               item.progress = {
                 success:
-                  (progress_by_llm_key[item.key]["success"] /
-                    num_resp_per_llm) *
+                  (progress_by_llm_key[item.key].success / num_resp_per_llm) *
                   100,
                 error:
-                  (progress_by_llm_key[item.key]["error"] / num_resp_per_llm) *
+                  (progress_by_llm_key[item.key].error / num_resp_per_llm) *
                   100,
               };
             }
@@ -819,15 +814,15 @@ const PromptNode = ({ data, id, type: node_type }) => {
       return fetch_from_backend(
         "queryllm",
         {
-          id: id,
+          id,
           llm: _llmItemsCurrState, // deep clone it first
           prompt: prompt_template,
           vars: pulled_data,
           chat_histories: pulled_chats,
           n: numGenerations,
-          api_keys: apiKeys ? apiKeys : {},
+          api_keys: apiKeys || {},
           no_cache: false,
-          progress_listener: onProgressChange,
+          progress_listener: window.onProgressChange,
           cont_only_w_prior_llms:
             node_type !== "chat"
               ? showContToggle && contWithPriorLLMs
@@ -842,6 +837,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         // Remove progress bars
         setProgress(undefined);
         setProgressAnimated(false);
+        // eslint-disable-next-line
         debounce(() => {}, 1)(); // erase any pending debounces
 
         // Store and log responses (if any)
@@ -859,27 +855,27 @@ const PromptNode = ({ data, id, type: node_type }) => {
           setDataPropsForNode(id, {
             fields: json.responses
               .map((resp_obj) =>
-                resp_obj["responses"].map((r) => {
+                resp_obj.responses.map((r) => {
                   // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
-                  let o = {
+                  const o = {
                     text: escapeBraces(r),
-                    prompt: resp_obj["prompt"],
-                    fill_history: resp_obj["vars"],
+                    prompt: resp_obj.prompt,
+                    fill_history: resp_obj.vars,
                     llm: _llmItemsCurrState.find(
                       (item) => item.name === resp_obj.llm,
                     ),
-                    batch_id: resp_obj["uid"],
+                    batch_id: resp_obj.uid,
                   };
 
                   // Carry over any metavars
-                  o.metavars = resp_obj["metavars"] || {};
+                  o.metavars = resp_obj.metavars || {};
 
                   // Carry over any chat history
-                  if (resp_obj["chat_history"])
-                    o.chat_history = resp_obj["chat_history"];
+                  if (resp_obj.chat_history)
+                    o.chat_history = resp_obj.chat_history;
 
                   // Add a meta var to keep track of which LLM produced this response
-                  o.metavars[llm_metavar_key] = resp_obj["llm"];
+                  o.metavars[llm_metavar_key] = resp_obj.llm;
                   return o;
                 }),
               )
@@ -966,6 +962,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     // Remove progress bars
     setProgress(undefined);
     setProgressAnimated(false);
+    // eslint-disable-next-line
     debounce(() => {}, 1)(); // erase any pending debounces
 
     // Set error status
@@ -983,7 +980,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         if (n !== numGenerationsLastRun && status === "ready")
           setStatus("warning");
         setNumGenerations(n);
-        setDataPropsForNode(id, { n: n });
+        setDataPropsForNode(id, { n });
       }
     },
     [numGenerationsLastRun, status],
@@ -1004,7 +1001,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
       if (!textAreaRef.current && elem && window.ResizeObserver) {
         let past_hooks_y = 138;
         const incr = 68 + (node_type === "chat" ? -6 : 0);
-        const observer = new ResizeObserver(() => {
+        const observer = new window.ResizeObserver(() => {
           if (!textAreaRef || !textAreaRef.current) return;
           const new_hooks_y = textAreaRef.current.clientHeight + incr;
           if (past_hooks_y !== new_hooks_y) {
@@ -1074,6 +1071,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
             messages={[
               "(Past conversation)",
               <Textarea
+                key={0}
                 className="prompt-field-fixed nodrag nowheel"
                 minRows="4"
                 defaultValue={data.prompt}

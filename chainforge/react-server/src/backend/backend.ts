@@ -1,7 +1,8 @@
-import markdownIt from "markdown-it";
+import MarkdownIt from "markdown-it";
 import { v4 as uuid } from "uuid";
 import {
   Dict,
+  StringDict,
   LLMResponseError,
   LLMResponseObject,
   StandardizedLLMResponse,
@@ -54,7 +55,7 @@ const ORIGINAL_CONSOLE_LOG_FUNCS: Dict = console.log
       error: console.error,
     }
   : {};
-let HIJACKED_CONSOLE_LOGS: Dict = {};
+const HIJACKED_CONSOLE_LOGS: Dict = {};
 
 function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
   // This function body is adapted from designbyadrian
@@ -62,29 +63,29 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
   HIJACKED_CONSOLE_LOGS[id] = [];
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.log) {
-    let cl = ORIGINAL_CONSOLE_LOG_FUNCS.log;
-    base_window.console.log = function () {
-      const a = Array.from(arguments).map((s) => s.toString());
+    const cl = ORIGINAL_CONSOLE_LOG_FUNCS.log;
+    base_window.console.log = function (...args) {
+      const a = args.map((s) => s.toString());
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
-      cl.apply(this, arguments);
+      cl.apply(this, args);
     };
   }
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.warn) {
-    let cw = ORIGINAL_CONSOLE_LOG_FUNCS.warn;
-    base_window.console.warn = function () {
-      const a = Array.from(arguments).map((s) => `warn: ${s.toString()}`);
+    const cw = ORIGINAL_CONSOLE_LOG_FUNCS.warn;
+    base_window.console.warn = function (...args) {
+      const a = args.map((s) => `warn: ${s.toString()}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
-      cw.apply(this, arguments);
+      cw.apply(this, args);
     };
   }
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.error) {
-    let ce = ORIGINAL_CONSOLE_LOG_FUNCS.error;
-    base_window.console.error = function () {
-      const a = Array.from(arguments).map((s) => `error: ${s.toString()}`);
+    const ce = ORIGINAL_CONSOLE_LOG_FUNCS.error;
+    base_window.console.error = function (...args) {
+      const a = args.map((s) => `error: ${s.toString()}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
-      ce.apply(this, arguments);
+      ce.apply(this, args);
     };
   }
 }
@@ -129,7 +130,7 @@ export class ResponseInfo {
   }
 
   asMarkdownAST() {
-    const md = new markdownIt();
+    const md = new MarkdownIt();
     return md.parse(this.text, {});
   }
 }
@@ -137,14 +138,14 @@ export class ResponseInfo {
 function to_standard_format(
   r: LLMResponseObject | Dict,
 ): StandardizedLLMResponse {
-  let resp_obj: StandardizedLLMResponse = {
-    vars: r["info"],
-    metavars: r["metavars"] ?? {},
-    llm: r["llm"],
-    prompt: r["prompt"],
-    responses: r["responses"],
+  const resp_obj: StandardizedLLMResponse = {
+    vars: r.info,
+    metavars: r.metavars ?? {},
+    llm: r.llm,
+    prompt: r.prompt,
+    responses: r.responses,
     tokens: r.raw_response?.usage ?? {},
-    uid: r["uid"] ?? uuid(),
+    uid: r.uid ?? uuid(),
   };
   if ("eval_res" in r) resp_obj.eval_res = r.eval_res;
   if ("chat_history" in r) resp_obj.chat_history = r.chat_history;
@@ -153,7 +154,7 @@ function to_standard_format(
 
 function get_cache_keys_related_to_id(
   cache_id: string,
-  include_basefile: boolean = true,
+  include_basefile = true,
 ): string[] {
   // Load the base cache 'file' for cache_id
   const base_file = `${cache_id}.json`;
@@ -163,6 +164,10 @@ function get_cache_keys_related_to_id(
       include_basefile ? [base_file] : [],
     );
   else return include_basefile ? [base_file] : [];
+}
+// eslint-disable-next-line
+async function setAPIKeys(api_keys: StringDict): Promise<void> {
+  if (api_keys !== undefined) set_api_keys(api_keys);
 }
 
 /**
@@ -221,7 +226,7 @@ function extract_llm_params(llm_spec: Dict | string): Dict {
 }
 
 function filterVarsByLLM(vars: Dict, llm_key: string): Dict {
-  let _vars = {};
+  const _vars = {};
   Object.entries(vars).forEach(([key, val]) => {
     const vs = Array.isArray(val) ? val : [val];
     _vars[key] = vs.filter(
@@ -325,7 +330,7 @@ function check_typeof_vals(arr: Array<any>): MetricType {
     )
       // Mix of numeric and categorical types
       return MetricType.Mixed;
-    //Mix of types beyond basic ones
+    // Mix of types beyond basic ones
     else return MetricType.Unknown;
   };
 
@@ -373,7 +378,7 @@ function run_over_responses(
 ): StandardizedLLMResponse[] {
   return responses.map((_resp_obj: StandardizedLLMResponse) => {
     // Deep clone the response object
-    let resp_obj = JSON.parse(JSON.stringify(_resp_obj));
+    const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
 
     // Map the processor func over every individual response text in each response object
     const res = resp_obj.responses;
@@ -493,8 +498,8 @@ export async function countQueries(
     cache_file_lookup = cache_data?.cache_files || {};
   }
 
-  let missing_queries = {};
-  let num_responses_req = {};
+  const missing_queries = {};
+  const num_responses_req = {};
   const add_to_missing_queries = (
     llm_key: string,
     prompt: string,
@@ -514,7 +519,7 @@ export async function countQueries(
     const llm_key = extract_llm_key(llm_spec);
 
     // Get only the relevant prompt permutations
-    let _all_prompt_perms = cont_only_w_prior_llms
+    const _all_prompt_perms = cont_only_w_prior_llms
       ? all_prompt_permutations[llm_key]
       : all_prompt_permutations;
 
@@ -557,7 +562,9 @@ export async function countQueries(
 
             // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
             const cache_bucket = cache_llm_responses[prompt_str];
-            let cached_resps: LLMResponseObject[] = Array.isArray(cache_bucket)
+            const cached_resps: LLMResponseObject[] = Array.isArray(
+              cache_bucket,
+            )
               ? cache_bucket
               : cache_bucket === undefined
                 ? []
@@ -676,11 +683,11 @@ export async function queryLLM(
   // Ignore cache if no_cache is present
   if (no_cache) cache = {};
 
-  let llm_to_cache_filename = {};
-  let past_cache_files = {};
+  const llm_to_cache_filename = {};
+  const past_cache_files = {};
   if (typeof cache === "object" && cache.cache_files !== undefined) {
     const past_cache_files: Dict = cache.cache_files;
-    let past_cache_filenames: Array<string> = Object.keys(past_cache_files);
+    const past_cache_filenames: Array<string> = Object.keys(past_cache_files);
     llms.forEach((llm_spec) => {
       let found_cache = false;
       for (const [filename, cache_llm_spec] of Object.entries(
@@ -705,7 +712,7 @@ export async function queryLLM(
   } else {
     // Create a new cache JSON object
     cache = { cache_files: {}, responses_last_run: [] };
-    let prev_filenames: Array<string> = [];
+    const prev_filenames: Array<string> = [];
     llms.forEach((llm_spec: string | Dict) => {
       const fname = gen_unique_cache_filename(id, prev_filenames);
       llm_to_cache_filename[extract_llm_key(llm_spec)] = fname;
@@ -719,8 +726,8 @@ export async function queryLLM(
 
   // Create a Proxy object to 'listen' for changes to a variable (see https://stackoverflow.com/a/50862441)
   // and then stream those changes back to a provided callback used to update progress bars.
-  let progress = {};
-  let progressProxy = new Proxy(progress, {
+  const progress = {};
+  const progressProxy = new Proxy(progress, {
     set: function (target, key, value) {
       target[key] = value;
 
@@ -736,16 +743,16 @@ export async function queryLLM(
   const should_cancel = () => CancelTracker.has(cancel_id);
 
   // For each LLM, generate and cache responses:
-  let responses: { [key: string]: Array<LLMResponseObject> } = {};
-  let all_errors = {};
-  let num_generations = n !== undefined ? n : 1;
+  const responses: { [key: string]: Array<LLMResponseObject> } = {};
+  const all_errors = {};
+  const num_generations = n !== undefined ? n : 1;
   async function query(llm_spec: string | Dict): Promise<LLMPrompterResults> {
     // Get LLM model name and any params
-    let llm_str = extract_llm_name(llm_spec);
-    let llm_nickname = extract_llm_nickname(llm_spec);
-    let llm_params = extract_llm_params(llm_spec);
-    let llm_key = extract_llm_key(llm_spec);
-    let temperature: number =
+    const llm_str = extract_llm_name(llm_spec);
+    const llm_nickname = extract_llm_nickname(llm_spec);
+    const llm_params = extract_llm_params(llm_spec);
+    const llm_key = extract_llm_key(llm_spec);
+    const temperature: number =
       llm_params?.temperature !== undefined ? llm_params.temperature : 1.0;
     let _vars = vars;
 
@@ -754,7 +761,7 @@ export async function queryLLM(
       _vars = filterVarsByLLM(vars, llm_key);
     }
 
-    let chat_hists = (
+    const chat_hists = (
       chat_histories !== undefined && !Array.isArray(chat_histories)
         ? chat_histories[llm_nickname]
         : chat_histories
@@ -769,8 +776,8 @@ export async function queryLLM(
 
     // Prompt the LLM with all permutations of the input prompt template:
     // NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
-    let resps: Array<LLMResponseObject> = [];
-    let errors: Array<string> = [];
+    const resps: Array<LLMResponseObject> = [];
+    const errors: Array<string> = [];
     let num_resps = 0;
     let num_errors = 0;
 
@@ -823,15 +830,15 @@ export async function queryLLM(
     }
 
     return {
-      llm_key: llm_key,
+      llm_key,
       responses: resps,
-      errors: errors,
+      errors,
     };
   }
 
   try {
     // Request responses simultaneously across LLMs
-    let tasks: Array<Promise<LLMPrompterResults>> = llms.map(query);
+    const tasks: Array<Promise<LLMPrompterResults>> = llms.map(query);
 
     // Await the responses from all queried LLMs
     const llm_results = await Promise.all(tasks);
@@ -846,12 +853,12 @@ export async function queryLLM(
   }
 
   // Convert the responses into a more standardized format with less information
-  let res = Object.values(responses).flatMap((rs) =>
+  const res = Object.values(responses).flatMap((rs) =>
     rs.map(to_standard_format),
   );
 
   // Reorder the responses to match the original vars dict ordering of keys and values
-  let vars_lookup = {}; // we create a lookup table for faster sort
+  const vars_lookup = {}; // we create a lookup table for faster sort
   Object.entries(vars).forEach(([varname, vals]) => {
     vars_lookup[varname] = {};
     vals.forEach((vobj: Dict | string, i: number) => {
@@ -873,7 +880,7 @@ export async function queryLLM(
   });
 
   // Save the responses *of this run* to the storage cache, for further recall:
-  let cache_filenames = past_cache_files;
+  const cache_filenames = past_cache_files;
   llms.forEach((llm_spec: string | Dict) => {
     const filename = llm_to_cache_filename[extract_llm_key(llm_spec)];
     cache_filenames[filename] = llm_spec;
@@ -936,16 +943,18 @@ export async function executejs(
         throw new Error("Could not find iframe sandbox for evaluator node.");
 
       // Now run eval() on the 'window' of the iframe:
-      // @ts-ignore
+      // @ts-expect-error undefined
       iframe.contentWindow.eval(code);
 
       // Now check that there is an 'evaluate' method in the iframe's scope.
       // NOTE: We need to tell Typescript to ignore this, since it's a dynamic type check.
 
       process_func =
-        !process_type || process_type === "evaluator" // @ts-ignore
-          ? iframe.contentWindow.evaluate // @ts-ignore
-          : iframe.contentWindow.process;
+        !process_type || process_type === "evaluator"
+          ? // @ts-expect-error undefined
+            iframe.contentWindow.evaluate
+          : // @ts-expect-error undefined
+            iframe.contentWindow.process;
       if (process_func === undefined)
         throw new Error(`${req_func_name}() function is undefined.`);
     } catch (err) {
@@ -961,12 +970,11 @@ export async function executejs(
   try {
     // Intercept any calls to console.log, .warn, or .error, so we can store the calls
     // and print them in the 'output' footer of the Evaluator Node:
-    // @ts-ignore
+    // @ts-expect-error undefined
     HIJACK_CONSOLE_LOGGING(id, iframe.contentWindow);
 
     // Run the user-defined 'evaluate' function over the responses:
     // NOTE: 'evaluate' here was defined dynamically from 'eval' above. We've already checked that it exists.
-    // @ts-ignore
     processed_resps = run_over_responses(
       iframe ? process_func : code,
       responses,
@@ -974,13 +982,14 @@ export async function executejs(
     );
 
     // Revert the console.log, .warn, .error back to browser default:
+
     all_logs = all_logs.concat(
-      // @ts-ignore
+      // @ts-expect-error undefined
       REVERT_CONSOLE_LOGGING(id, iframe.contentWindow),
     );
   } catch (err) {
     all_logs = all_logs.concat(
-      // @ts-ignore
+      // @ts-expect-error undefined
       REVERT_CONSOLE_LOGGING(id, iframe.contentWindow),
     );
     return {
@@ -1025,12 +1034,12 @@ export async function executepy(
 
   // All responses loaded; call our Python server to execute the evaluation code across all responses:
   const flask_response = await call_flask_backend("executepy", {
-    id: id,
-    code: code,
-    responses: responses,
-    scope: scope,
-    process_type: process_type,
-    script_paths: script_paths,
+    id,
+    code,
+    responses,
+    scope,
+    process_type,
+    script_paths,
   }).catch((err) => {
     throw new Error(err.message);
   });
@@ -1090,7 +1099,7 @@ export async function evalWithLLM(
 
     // We need to keep track of the index of each response in the response object.
     // We can generate var dicts with metadata to store the indices:
-    let inputs = resp_objs
+    const inputs = resp_objs
       .map((obj, __i) =>
         obj.responses.map((r: string, __j: number) => ({
           text: r,
@@ -1119,7 +1128,7 @@ export async function evalWithLLM(
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
     responses.forEach((r: StandardizedLLMResponse) => {
-      let resp_obj = resp_objs[r.metavars.__i];
+      const resp_obj = resp_objs[r.metavars.__i];
       if (resp_obj.eval_res !== undefined)
         resp_obj.eval_res.items[r.metavars.__j] = r.responses[0];
       else {
@@ -1136,7 +1145,7 @@ export async function evalWithLLM(
 
   // Do additional processing to check if all evaluations are
   // boolean-ish (e.g., 'true' and 'false') or all numeric-ish (parseable as numbers)
-  let all_eval_res: Set<string> = new Set();
+  const all_eval_res: Set<string> = new Set();
   for (const resp_obj of all_evald_responses) {
     if (!resp_obj.eval_res) continue;
     for (const score of resp_obj.eval_res.items) {
@@ -1192,11 +1201,11 @@ export async function grabResponses(responses: Array<string>): Promise<Dict> {
     if (!StorageCache.has(storageKey))
       return { error: `Did not find cache data for id ${cache_id}` };
 
-    let res: Dict[] = load_cache_responses(storageKey);
+    const res: Dict[] = load_cache_responses(storageKey);
     if (typeof res === "object" && !Array.isArray(res)) {
       // Convert to standard response format
       Object.entries(res).map(([prompt, res_obj]: [string, Dict]) =>
-        to_standard_format({ prompt: prompt, ...res_obj }),
+        to_standard_format({ prompt, ...res_obj }),
       );
     }
     grabbed_resps = grabbed_resps.concat(res);
@@ -1213,7 +1222,7 @@ export async function grabResponses(responses: Array<string>): Promise<Dict> {
  */
 export async function exportCache(ids: string[]) {
   // For each id, extract relevant cache file data
-  let export_data = {};
+  const export_data = {};
   for (let i = 0; i < ids.length; i++) {
     const cache_id = ids[i];
     const cache_keys = get_cache_keys_related_to_id(cache_id);

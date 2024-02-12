@@ -1,7 +1,7 @@
 /**
  * A list of all model APIs natively supported by ChainForge.
  */
-export type LLM = string | NativeLLM;
+
 export enum NativeLLM {
   // OpenAI Chat
   OpenAI_ChatGPT = "gpt-3.5-turbo",
@@ -78,6 +78,8 @@ export enum NativeLLM {
   Ollama = "ollama",
 }
 
+export type LLM = string | NativeLLM;
+
 /**
  * A list of model providers
  */
@@ -120,7 +122,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
 #   This 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
 #   If a model is missing from below, it means we must send and receive only 1 request at a time (synchronous).
 #   The following is only a guideline, and a bit on the conservative side.  */
-export let RATE_LIMITS: { [key in LLM]?: [number, number] } = {
+export const RATE_LIMITS: { [key in LLM]?: [number, number] } = {
   [NativeLLM.OpenAI_ChatGPT]: [30, 10], // max 30 requests a batch; wait 10 seconds between
   [NativeLLM.OpenAI_ChatGPT_0301]: [30, 10],
   [NativeLLM.OpenAI_ChatGPT_0613]: [30, 10],

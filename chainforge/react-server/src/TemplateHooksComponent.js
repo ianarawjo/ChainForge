@@ -111,30 +111,29 @@ export default function TemplateHooks({
 
   const [templateHooks, setTemplateHooks] = useState([]);
 
-  const blinkTemplateVars = (vars_to_blink) => {
-    setTemplateHooks(genTemplateHooks(vars, vars_to_blink));
-    setTimeout(() => {
-      // Set timeout to turn off blinking:
-      blinkTemplateVars([]);
-    }, 750 * 2);
-  };
+  // const blinkTemplateVars = (vars_to_blink) => {
+  //   setTemplateHooks(genTemplateHooks(vars, vars_to_blink));
+  //   setTimeout(() => {
+  //     // Set timeout to turn off blinking:
+  //     blinkTemplateVars([]);
+  //   }, 750 * 2);
+  // };
 
   useEffect(() => {
     // Determine if there's any handles that were deleted in temp_var_names,
     // and manually remove them as edges:
     if (templateHooks.length > 0) {
-      let deleted_edges = [];
+      const deleted_edges = [];
       edges.forEach((e) => {
         if (
-          e.target !== nodeId ||
-          vars.includes(e.targetHandle) ||
-          (Array.isArray(ignoreHandles) &&
-            ignoreHandles.includes(e.targetHandle))
+          !(
+            e.target !== nodeId ||
+            vars.includes(e.targetHandle) ||
+            (Array.isArray(ignoreHandles) &&
+              ignoreHandles.includes(e.targetHandle))
+          )
         )
-          return;
-        else {
           deleted_edges.push(e);
-        }
       });
 
       if (deleted_edges.length > 0) setEdgesToRemove(deleted_edges);

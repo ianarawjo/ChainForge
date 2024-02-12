@@ -75,6 +75,7 @@ async function prompt_model(model: LLM): Promise<void> {
   });
 
   cache = pipeline._load_cached_responses();
+  // eslint-disable-next-line
   Object.entries(cache).forEach(([prompt, response]) => {
     const resp_obj = Array.isArray(response) ? response[0] : response;
     expect(resp_obj.responses).toHaveLength(2);

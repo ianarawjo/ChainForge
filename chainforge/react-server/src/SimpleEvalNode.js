@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Handle } from "reactflow";
 import {
   NativeSelect,
@@ -6,7 +6,6 @@ import {
   Flex,
   Text,
   Box,
-  Select,
   ActionIcon,
   Menu,
   Tooltip,
@@ -83,6 +82,7 @@ const SimpleEvalNode = ({ data, id }) => {
   const alertModal = useRef(null);
 
   const inspectModal = useRef(null);
+  // eslint-disable-next-line
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
@@ -136,18 +136,18 @@ const SimpleEvalNode = ({ data, id }) => {
 
   const handlePullInputs = useCallback(() => {
     // Pull input data
-    let pulled_inputs = pullInputData(["responseBatch"], id);
-    if (!pulled_inputs || !pulled_inputs["responseBatch"]) {
+    const pulled_inputs = pullInputData(["responseBatch"], id);
+    if (!pulled_inputs || !pulled_inputs.responseBatch) {
       console.warn(`No inputs to the Simple Evaluator node.`);
       return [];
     }
     // Convert to standard response format (StandardLLMResponseFormat)
-    return pulled_inputs["responseBatch"].map(toStandardResponseFormat);
+    return pulled_inputs.responseBatch.map(toStandardResponseFormat);
   }, [pullInputData, id, toStandardResponseFormat]);
 
   const handleRunClick = useCallback(() => {
     // Pull inputs to the node
-    let pulled_inputs = handlePullInputs();
+    const pulled_inputs = handlePullInputs();
 
     // Set status and created rejection callback
     setStatus("loading");
@@ -165,8 +165,8 @@ const SimpleEvalNode = ({ data, id }) => {
 
     // Run evaluator in backend
     fetch_from_backend("executejs", {
-      id: id,
-      code: code,
+      id,
+      code,
       responses: pulled_inputs,
       scope: "response",
       process_type: "evaluator",
@@ -218,11 +218,11 @@ const SimpleEvalNode = ({ data, id }) => {
 
   const handleOnConnect = useCallback(() => {
     // Pull inputs to the node
-    let pulled_inputs = handlePullInputs();
+    const pulled_inputs = handlePullInputs();
     if (pulled_inputs && pulled_inputs.length > 0) {
       // Find all vars and metavars in responses
-      let varnames = new Set();
-      let metavars = new Set();
+      const varnames = new Set();
+      const metavars = new Set();
       pulled_inputs.forEach((resp_obj) => {
         Object.keys(resp_obj.vars).forEach((v) => varnames.add(v));
         if (resp_obj.metavars)
@@ -238,7 +238,7 @@ const SimpleEvalNode = ({ data, id }) => {
 
   if (data.input) {
     // If there's a change in inputs...
-    if (data.input != pastInputs) {
+    if (data.input !== pastInputs) {
       setPastInputs(data.input);
       handleOnConnect();
     }

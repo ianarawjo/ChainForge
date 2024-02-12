@@ -92,9 +92,9 @@ const TextFieldsNode = ({ data, id }) => {
   const handleDelete = useCallback(
     (event) => {
       // Update the data for this text field's id.
-      let new_fields = { ...textfieldsValues };
-      let new_vis = { ...fieldVisibility };
-      var item_id = event.target.id.substring(delButtonId.length);
+      const new_fields = { ...textfieldsValues };
+      const new_vis = { ...fieldVisibility };
+      const item_id = event.target.id.substring(delButtonId.length);
       delete new_fields[item_id];
       delete new_vis[item_id];
       // if the new_data is empty, initialize it with one empty field
@@ -122,7 +122,7 @@ const TextFieldsNode = ({ data, id }) => {
   // Initialize fields (run once at init)
   useEffect(() => {
     if (!textfieldsValues || Object.keys(textfieldsValues).length === 0) {
-      let init_fields = {};
+      const init_fields = {};
       init_fields[getUID(textfieldsValues)] = "";
       setTextfieldsValues(init_fields);
       setDataPropsForNode(id, { fields: init_fields });
@@ -131,24 +131,24 @@ const TextFieldsNode = ({ data, id }) => {
 
   // Add a text field
   const handleAddField = useCallback(() => {
-    let new_fields = { ...textfieldsValues };
+    const new_fields = { ...textfieldsValues };
     new_fields[getUID(textfieldsValues)] = "";
     setTextfieldsValues(new_fields);
     setDataPropsForNode(id, { fields: new_fields });
     pingOutputNodes(id);
 
     // Cycle suggestions when new field is created
-    //aiSuggestionsManager.cycleSuggestions();
+    // aiSuggestionsManager.cycleSuggestions();
 
     // Ping AI suggestions to generate autocomplete options
-    if (flags["aiAutocomplete"])
+    if (flags.aiAutocomplete)
       aiSuggestionsManager.update(Object.values(textfieldsValues));
   }, [textfieldsValues, id, flags, setDataPropsForNode, pingOutputNodes]);
 
   // Disable/hide a text field temporarily
   const handleDisableField = useCallback(
     (field_id) => {
-      let vis = { ...fieldVisibility };
+      const vis = { ...fieldVisibility };
       vis[field_id] = fieldVisibility[field_id] === false; // toggles it
       setFieldVisibility(vis);
       setDataPropsForNode(id, { fields_visibility: vis });
@@ -163,7 +163,7 @@ const TextFieldsNode = ({ data, id }) => {
       let all_found_vars = new Set();
       const new_field_ids = Object.keys(new_data.fields);
       new_field_ids.forEach((fid) => {
-        let found_vars = extractBracketedSubstrings(new_data["fields"][fid]);
+        const found_vars = extractBracketedSubstrings(new_data.fields[fid]);
         if (found_vars && found_vars.length > 0) {
           all_found_vars = union(all_found_vars, new Set(found_vars));
         }
@@ -185,12 +185,12 @@ const TextFieldsNode = ({ data, id }) => {
   const handleTextFieldChange = useCallback(
     (field_id, val, shouldDebounce) => {
       // Update the value of the controlled Textarea component
-      let new_fields = { ...textfieldsValues };
+      const new_fields = { ...textfieldsValues };
       new_fields[field_id] = val;
       setTextfieldsValues(new_fields);
 
       // Update the data for the ReactFlow node
-      let new_data = updateTemplateVars({ fields: new_fields });
+      const new_data = updateTemplateVars({ fields: new_fields });
       if (new_data.vars) setTemplateVars(new_data.vars);
 
       // Debounce the global state change to happen only after 300ms, as it forces a costly rerender:
@@ -229,7 +229,7 @@ const TextFieldsNode = ({ data, id }) => {
       // NOTE: This won't work on older browsers, but there's no alternative solution.
       if (!ref.current && elem && window.ResizeObserver) {
         let past_hooks_y = 120;
-        const observer = new ResizeObserver(() => {
+        const observer = new window.ResizeObserver(() => {
           if (!ref || !ref.current) return;
           const new_hooks_y = ref.current.clientHeight + 68;
           if (past_hooks_y !== new_hooks_y) {
@@ -294,7 +294,7 @@ const TextFieldsNode = ({ data, id }) => {
         buffer[uid] = field;
       }
       setTextfieldsValues(buffer);
-      let new_data = updateTemplateVars({ fields: buffer });
+      const new_data = updateTemplateVars({ fields: buffer });
       if (new_data.vars !== undefined) setTemplateVars(new_data.vars);
       setDataPropsForNode(id, new_data);
       pingOutputNodes(id);
@@ -312,7 +312,7 @@ const TextFieldsNode = ({ data, id }) => {
 
   // Whether a placeholder is needed for the text field with id `i`.
   function placeholderNeeded(i) {
-    return !textfieldsValues[i] && !placeholders[i] && flags["aiAutocomplete"];
+    return !textfieldsValues[i] && !placeholders[i] && flags.aiAutocomplete;
   }
 
   // Load a placeholder into placeholders for the text field with id `i` if needed.
@@ -338,7 +338,7 @@ const TextFieldsNode = ({ data, id }) => {
               minRows="2"
               maxRows="8"
               value={textfieldsValues[i]}
-              placeholder={flags["aiAutocomplete"] ? placeholder : undefined}
+              placeholder={flags.aiAutocomplete ? placeholder : undefined}
               disabled={fieldVisibility[i] === false}
               onChange={(event) =>
                 handleTextFieldChange(i, event.currentTarget.value, true)
@@ -406,7 +406,7 @@ const TextFieldsNode = ({ data, id }) => {
         nodeId={id}
         icon={<IconTextPlus size="16px" />}
         customButtons={
-          flags["aiSupport"]
+          flags.aiSupport
             ? [
                 <AIPopover
                   key="ai-popover"

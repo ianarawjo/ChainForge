@@ -1,5 +1,3 @@
-import { UserForcedPrematureExit } from "./errors";
-
 /**
  * A CancelTracker allows ids to be added, to signal
  * any associated processes should be 'canceled'. The tracker
@@ -9,6 +7,7 @@ import { UserForcedPrematureExit } from "./errors";
  * checks (through .has(id)) and then performs the cancellation.
  */
 export default class CancelTracker {
+  // eslint-disable-next-line no-use-before-define
   private static instance: CancelTracker;
   private data: Set<string>;
 
@@ -26,6 +25,7 @@ export default class CancelTracker {
   private addId(id: string): void {
     this.data.add(id);
   }
+
   public static add(id: string): void {
     CancelTracker.getInstance().addId(id);
   }
@@ -34,6 +34,7 @@ export default class CancelTracker {
   private hasId(id: string): boolean {
     return this.data.has(id);
   }
+
   public static has(id: string): boolean {
     return CancelTracker.getInstance().hasId(id);
   }
@@ -42,12 +43,15 @@ export default class CancelTracker {
   private clearId(id: string): void {
     if (CancelTracker.has(id)) this.data.delete(id);
   }
+
   public static clear(id: string): void {
     CancelTracker.getInstance().clearId(id);
   }
+
   private clearTracker(): void {
     this.data.clear();
   }
+
   public static clearAll(): void {
     CancelTracker.getInstance().clearTracker();
   }

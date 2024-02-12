@@ -1,3 +1,5 @@
+import React from "react";
+
 export default function StatusIndicator({ status }) {
   switch (status) {
     case "warning": // Display mustard 'warning' icon
