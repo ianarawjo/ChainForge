@@ -40,6 +40,20 @@ const CriteriaCard = ({ title, description, buttonText }) => {
 // Pop-up to ask user to pick criterias for evaluation
 export const PickCriteriaModal = forwardRef((props, ref) => {
   const [opened, { open, close }] = useDisclosure(false);
+  const [addCriteriaValue, setAddCriteriaValue] = useState('');
+
+  const [criteria, setCriteria] = useState([
+    {title: "Grammaticality", description: "The text is grammatically correct."},
+    {title: "Length", description: "The text is 144 characters or less."},
+    {title: "Clickbait potential", description: "How likely the text is to drive attention as a Tweet."},
+    {title: "Informality", description: "Whether the response sounds informal, like a real human tweeted it."},
+    {title: "Toxicity", description: "Whether the response sounds overly harmful or toxic."},
+  ])
+
+  const addCriteria = () => {
+    // TODO: Make async LLM call to expand criteria. For now, just dummy func:
+    setCriteria(criteria.concat([{title: 'New Criteria', description: addCriteriaValue}]))
+  };
 
   // This gives the parent access to triggering the modal alert
   const trigger = () => {
@@ -56,26 +70,24 @@ export const PickCriteriaModal = forwardRef((props, ref) => {
         Afterwards, an optional human scoring pass can better align these implementations with your expectations. 
       </Text>
       <SimpleGrid cols={3} spacing='sm' verticalSpacing='sm' mb='lg'>
-        <CriteriaCard title="Grammaticality"
-                      description="The text is grammatically correct." 
-        />
-        <CriteriaCard title="Length"
-                        description="The text is 144 characters or less." 
-        />
-        <CriteriaCard title="Clickbait potential"
-                        description="How likely the text is to drive attention as a Tweet." 
-        />
-        <CriteriaCard title="Informality"
-                        description="Whether the response sounds informal, like a real human tweeted it."
-        />
-        <CriteriaCard title="Toxicity"
-                        description="Whether the response sounds overly harmful or toxic."
-        />
+        {criteria.map((c) => 
+          <CriteriaCard title={c.title}
+                        description={c.description}
+          />
+        )}
       </SimpleGrid> 
 
       <TextInput  label="Suggest a criteria to add:"
+                  value={addCriteriaValue}
+                  onChange={(evt) => setAddCriteriaValue(evt.currentTarget.value)}
                   placeholder="the response is valid JSON"
-                  mb='lg' />
+                  mb='lg'
+                  onKeyDown={(evt) => {
+                    if (evt.key === "Enter") {
+                      evt.preventDefault();
+                      addCriteria();
+                    }
+                  }} />
       <Flex justify="center">
         <Button variant='gradient'><IconSparkles />&nbsp;Generate!</Button>
       </Flex> 
