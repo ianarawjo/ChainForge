@@ -46,7 +46,7 @@ import { getDefaultModelFormData, getDefaultModelSettings } from './ModelSetting
 import { v4 as uuid } from 'uuid';
 import LZString from 'lz-string';
 import { EXAMPLEFLOW_1 } from './example_flows';
-import { GradeResponsesModal, PickCriteriaModal } from './GradeResponsesModal';
+import { PickCriteriaModal } from './GradeResponsesModal';
 
 // Styling
 import 'reactflow/dist/style.css'; // reactflow
@@ -714,10 +714,6 @@ const App = () => {
   const onClickTest = useCallback(() => {
     testRef?.current?.trigger();
   }, []);
-  const testRef2 = useRef(null);
-  const onClickTest2 = useCallback(() => {
-    testRef2?.current?.trigger();
-  }, []);
 
   // When the user clicks the 'New Flow' button
   const onClickNewFlow = useCallback(() => {
@@ -1002,7 +998,6 @@ const App = () => {
       <GlobalSettingsModal ref={settingsModal} alertModal={alertModal} />
       <AlertModal ref={alertModal} />
       <PickCriteriaModal ref={testRef} />
-      <GradeResponsesModal ref={testRef2} />
       <LoadingOverlay visible={isLoading} overlayBlur={1} />
       <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
       <AreYouSureModal ref={confirmationModal} title={confirmationDialogProps.title} message={confirmationDialogProps.message} onConfirm={confirmationDialogProps.onConfirm} />
@@ -1274,7 +1269,6 @@ const App = () => {
             </Button>
           )}
           <Button onClick={onClickTest} size="sm" variant="outline" bg="#eee" compact mr='xs' style={{float: 'left'}}> Test Stuff </Button>
-          <Button onClick={onClickTest2} size="sm" variant="outline" bg="#eee" compact mr='xs' style={{float: 'left'}}> Test More Stuff </Button>
           <Button
             onClick={onClickNewFlow}
             size="sm"

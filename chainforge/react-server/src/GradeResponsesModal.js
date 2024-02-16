@@ -1,11 +1,19 @@
-import React, { forwardRef, useImperativeHandle, useState, useMemo } from 'react';
-import { SimpleGrid, Card, Modal, Text, Button, Checkbox, UnstyledButton, Textarea, TextInput, Flex, Progress, ScrollArea, useMantineTheme, Loader, Switch, Stack } from '@mantine/core';
+import React, { forwardRef, useImperativeHandle, useState, useMemo, useEffect } from 'react';
+import { SimpleGrid, Card, Modal, Text, Button, Checkbox, UnstyledButton, Textarea, TextInput, Flex, Progress, ScrollArea, useMantineTheme, Loader, Switch, Stack, Box, Center, Space } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconCheck, IconChevronLeft, IconChevronRight, IconCode, IconRobot, IconSparkles, IconThumbDown, IconThumbUp, IconX } from '@tabler/icons-react';
 import ConfettiExplosion from 'react-confetti-explosion';
 import { sampleRandomElements, transformDict } from './backend/utils';
 
 const MANTINE_GREEN = '#40c057';
+
+const HeaderText = ({children}) => {
+  return (
+    <Text size='xl' fw={500} pl='sm' mb='lg'>
+      {children}
+    </Text>
+  );
+};
 
 /** Example flows to help users get started and see what CF can do */
 const CriteriaCard = ({ title, description, onTitleChange, onDescriptionChange }) => {
@@ -62,7 +70,16 @@ const CriteriaCard = ({ title, description, onTitleChange, onDescriptionChange }
 // Pop-up to ask user to pick criterias for evaluation
 export const PickCriteriaModal = forwardRef((props, ref) => {
   const [opened, { open, close }] = useDisclosure(false);
-  const [addCriteriaValue, setAddCriteriaValue] = useState('');
+  const [responses, setResponses] = useState([]);
+
+  // Which stage of picking + generating criteria we are in. Screens are:
+  // pick, wait, grade
+  const [screen, setScreen] = useState('pick'); 
+  const modalTitle = useMemo(() => {
+    if (screen === 'pick') return 'Pick Criteria';
+    else if (screen === 'wait') return 'Collecting implementations...';
+    else return 'Grading Responses';
+  }, [screen]);
 
   const [criteria, setCriteria] = useState([
     {title: "Grammaticality", description: "The text is grammatically correct."},
@@ -71,6 +88,7 @@ export const PickCriteriaModal = forwardRef((props, ref) => {
     {title: "Informality", description: "Whether the response sounds informal, like a real human tweeted it."},
     {title: "Toxicity", description: "Whether the response sounds overly harmful or toxic."},
   ])
+  const [addCriteriaValue, setAddCriteriaValue] = useState('');
 
   const addCriteria = () => {
     // TODO: Make async LLM call to expand criteria. For now, just dummy func:
@@ -86,62 +104,89 @@ export const PickCriteriaModal = forwardRef((props, ref) => {
   };
 
   // This gives the parent access to triggering the modal alert
-  const trigger = () => {
+  const trigger = (inputs) => {
+    setResponses(inputs);
+    setScreen('pick');
     open();
   };
   useImperativeHandle(ref, () => ({
     trigger,
   }));
 
-  return (
-    <Modal size='900px' opened={opened} onClose={close} title={<div><span style={{fontSize: '14pt'}}>Pick Criteria</span></div>} closeOnClickOutside={true} style={{position: 'relative', 'left': '-5%'}}>      
-      <Text size='sm' pl='sm' mb='lg'>
-        Select criteria that you would like to evaluate responses on. Based on your chosen criteria, LLM will generate implementations of assertions. 
-        Afterwards, an optional human scoring pass can better align these implementations with your expectations. 
-      </Text>
-      <ScrollArea mih={300} h={500} mah={500}>
-        <SimpleGrid cols={3} spacing='sm' verticalSpacing='sm' mb='lg'>
-          {criteria.map((c, idx) => 
-            <CriteriaCard title={c.title}
-                          description={c.description}
-                          onTitleChange={(title) => setCriteriaTitle(title, idx)}
-                          onDescriptionChange={(desc) => setCriteriaDesc(desc, idx)}
-            />
-          )}
-        </SimpleGrid> 
-      </ScrollArea>
+  const gradeResponsesWindow = useMemo(() => <GradeResponsesWindow responses={responses} />, [responses]);
 
-      <TextInput  label="Suggest a criteria to add, then press Enter:"
-                  value={addCriteriaValue}
-                  onChange={(evt) => setAddCriteriaValue(evt.currentTarget.value)}
-                  placeholder="the response is valid JSON"
-                  mb='lg'
-                  onKeyDown={(evt) => {
-                    if (evt.key === "Enter") {
-                      evt.preventDefault();
-                      addCriteria();
-                    }
-                  }} />
-      <Flex justify="center" gap={12}>
-        <Button variant='gradient'><IconSparkles />&nbsp;Generate!</Button>
-        <Button disabled variant='gradient' gradient={{ from: 'teal', to: 'lime', deg: 105 }}><IconSparkles />&nbsp;Validate</Button>
-      </Flex> 
+  return (
+    <Modal size='900px' 
+           opened={opened} 
+           onClose={close} 
+           title={<div><span style={{fontSize: '14pt'}}>{modalTitle}</span></div>} 
+           closeOnClickOutside={true} 
+           style={{position: 'relative', 'left': '-5%'}}>      
+      {screen === 'pick' ? 
+        <div>
+          <Text size='sm' pl='sm' mb='lg'>
+            Select criteria that you would like to evaluate responses on. Based on your chosen criteria, LLM will generate implementations of assertions. 
+            Afterwards, an optional human scoring pass can better align these implementations with your expectations. 
+          </Text>
+          <ScrollArea mih={300} h={500} mah={500}>
+            <SimpleGrid cols={3} spacing='sm' verticalSpacing='sm' mb='lg'>
+              {criteria.map((c, idx) => 
+                <CriteriaCard title={c.title}
+                              description={c.description}
+                              onTitleChange={(title) => setCriteriaTitle(title, idx)}
+                              onDescriptionChange={(desc) => setCriteriaDesc(desc, idx)}
+                />
+              )}
+            </SimpleGrid> 
+          </ScrollArea>
+
+          <TextInput  label="Suggest a criteria to add, then press Enter:"
+                      value={addCriteriaValue}
+                      onChange={(evt) => setAddCriteriaValue(evt.currentTarget.value)}
+                      placeholder="the response is valid JSON"
+                      mb='lg'
+                      onKeyDown={(evt) => {
+                        if (evt.key === "Enter") {
+                          evt.preventDefault();
+                          addCriteria();
+                        }
+                      }} />
+          <Flex justify="center" gap={12}>
+            <Button onClick={() => {
+              setScreen('wait');
+              // setTimeout(() => {
+              //   setScreen('grade');
+              // }, 1000000);
+            }} 
+                    variant='gradient'>
+              <IconSparkles />&nbsp;Generate!
+            </Button>
+            {/* <Button disabled variant='gradient' gradient={{ from: 'teal', to: 'lime', deg: 105 }}><IconSparkles />&nbsp;Validate</Button> */}
+          </Flex> 
+        </div> : <></>}
+
+      {screen === 'wait' ?
+        <div>
+          <Stack justify='center' align='center' h={500}>
+            <Text mb={0}>Collecting...</Text>
+            <Loader size='lg' />
+            <Text color='gray' size='sm'>This may take a while.</Text>
+
+            <Space h='lg' />
+            <Button onClick={() => setScreen('grade')} size='lg' variant='gradient' gradient={{ from: 'teal', to: 'lime', deg: 105 }}><IconSparkles />&nbsp;Grade Responses While You Wait</Button>
+            <Text ml='lg' lh={1.2} w={380} color='gray'>Grading helps us choose implementations that better align with your expectations. 📈</Text>
+          </Stack>
+        </div> : <></>}
+      
+      {screen === 'grade' ? gradeResponsesWindow: <></>}
     </Modal>
   );
 });
 
-const HeaderText = ({children}) => {
-  return (
-    <Text size='xl' fw={500} pl='sm' mb='lg'>
-      {children}
-    </Text>
-  );
-};
+
 
 // Pop-up where user grades responses.
-export const GradeResponsesModal = forwardRef((props, ref) => {
-  // Mantine modal popover for alerts
-  const [opened, { open, close }] = useDisclosure(false);
+export const GradeResponsesWindow = forwardRef((props, ref) => {
 
   // Confetti effects
   const [isGreenExploding, setIsGreenExploding] = React.useState(false);
@@ -189,8 +234,10 @@ export const GradeResponsesModal = forwardRef((props, ref) => {
     setShownResponseIdx(shownResponseIdx - 1); // decrement shown resp idx
   };
 
-  // This gives the parent access to triggering the modal alert
-  const trigger = (inputs) => {
+  // Update responses to draw from, when passed by external source
+  const updateResponsePool = (inputs) => {
+    if (!inputs) return; 
+
     setResponses(inputs);
     console.warn(inputs);
 
@@ -202,15 +249,16 @@ export const GradeResponsesModal = forwardRef((props, ref) => {
       setShownResponseIdx(0);
       setGrades({});
     }
-
-    open();
   };
-  useImperativeHandle(ref, () => ({
-    trigger,
-  }));
+
+  // Update responses whenever upstream changes
+  useEffect(() => {
+    updateResponsePool(props.responses);
+  }, [props?.responses]);
 
   return (
-    <Modal size='900px' opened={opened} onClose={close} title={<div><span style={{fontSize: '14pt'}}>Grade Responses</span></div>} closeOnClickOutside={true} style={{position: 'relative', 'left': '-5%'}}>      
+    <Stack justify='space-between' mih={500}>
+    <Box>
       <Flex justify='center'>
         {
           (shownResponseIdx in grades) 
@@ -286,6 +334,7 @@ export const GradeResponsesModal = forwardRef((props, ref) => {
           <>{isGreenExploding && <ConfettiExplosion zIndex={1000} colors={[MANTINE_GREEN]} force={0.9} height={300} width={300} particleCount={10} duration={2200} onComplete={() => setIsGreenExploding(false)} style={{position: 'absolute', left: '50%', top: '20%'}} />}</>
         </Button>
       </Flex> 
+    </Box>
 
       <Flex justify='left' align='center' gap='md'>
         {/* <Progress size={18} w='100%' sections={[{ value: 30, color: 'blue', label: '3/10 graded', tooltip: 'Samples graded' }]} /> */}
@@ -298,6 +347,6 @@ export const GradeResponsesModal = forwardRef((props, ref) => {
         <Button variant='outline'>I'm tired 😴</Button>
       </Flex>
       
-    </Modal>
+    </Stack>
   );
 });
