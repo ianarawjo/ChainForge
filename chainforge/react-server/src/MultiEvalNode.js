@@ -13,7 +13,7 @@ import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { CodeEvaluatorComponent } from "./CodeEvaluatorNode";
 import { LLMEvaluatorComponent } from "./LLMEvalNode";
 import { GatheringResponsesRingProgress } from "./LLMItemButtonGroup";
-import { GradeResponsesModal } from "./GradeResponsesModal";
+import { GradeResponsesModal, PickCriteriaModal } from "./GradeResponsesModal";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
@@ -98,10 +98,10 @@ const MultiEvalNode = ({data, id}) => {
   const alertModal = useRef(null);
   const inspectModal = useRef(null);
 
-  const gradeRespModalRef = useRef(null);
-  const onClickGradeResponses = () => {
+  const pickCriteriaModalRef = useRef(null);
+  const onClickPickCriteria = () => {
     const inputs = handlePullInputs();
-    gradeRespModalRef?.current?.trigger(inputs);
+    pickCriteriaModalRef?.current?.trigger(inputs);
   };
 
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
@@ -212,7 +212,7 @@ const MultiEvalNode = ({data, id}) => {
                   runButtonTooltip="Run all evaluators over inputs" />
 
       <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
-      <GradeResponsesModal ref={gradeRespModalRef} />
+      <PickCriteriaModal ref={pickCriteriaModalRef} />
       <iframe style={{display: 'none'}} id={`${id}-iframe`}></iframe>
 
       {evaluatorComponents}
@@ -258,7 +258,7 @@ const MultiEvalNode = ({data, id}) => {
         </Menu>
       </div>
 
-      <button onClick={onClickGradeResponses}>Grade Responses</button>
+      <button onClick={onClickPickCriteria}>Pick Criteria</button>
 
       { lastRunSuccess && lastResponses && lastResponses.length > 0 ? 
         (<InspectFooter label={<>Inspect scores&nbsp;<IconSearch size='12pt'/></>}
