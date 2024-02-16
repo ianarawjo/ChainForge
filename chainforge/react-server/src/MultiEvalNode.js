@@ -13,6 +13,7 @@ import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { CodeEvaluatorComponent } from "./CodeEvaluatorNode";
 import { LLMEvaluatorComponent } from "./LLMEvalNode";
 import { GatheringResponsesRingProgress } from "./LLMItemButtonGroup";
+import { GradeResponsesModal } from "./GradeResponsesModal";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
@@ -97,6 +98,12 @@ const MultiEvalNode = ({data, id}) => {
   const alertModal = useRef(null);
   const inspectModal = useRef(null);
 
+  const gradeRespModalRef = useRef(null);
+  const onClickGradeResponses = () => {
+    const inputs = handlePullInputs();
+    gradeRespModalRef?.current?.trigger(inputs);
+  };
+
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
@@ -153,7 +160,7 @@ const MultiEvalNode = ({data, id}) => {
     try {
       let pulled_inputs = pullInputData(["responseBatch"], id);
       if (!pulled_inputs || !pulled_inputs["responseBatch"]) {
-        console.warn(`No inputs to the Simple Evaluator node.`);
+        console.warn(`No inputs to the Multi-Evaluator node.`);
         return [];
       }
       // Convert to standard response format (StandardLLMResponseFormat)
@@ -205,6 +212,7 @@ const MultiEvalNode = ({data, id}) => {
                   runButtonTooltip="Run all evaluators over inputs" />
 
       <LLMResponseInspectorModal ref={inspectModal} jsonResponses={lastResponses} />
+      <GradeResponsesModal ref={gradeRespModalRef} />
       <iframe style={{display: 'none'}} id={`${id}-iframe`}></iframe>
 
       {evaluatorComponents}
@@ -249,6 +257,8 @@ const MultiEvalNode = ({data, id}) => {
           </Menu.Dropdown>
         </Menu>
       </div>
+
+      <button onClick={onClickGradeResponses}>Grade Responses</button>
 
       { lastRunSuccess && lastResponses && lastResponses.length > 0 ? 
         (<InspectFooter label={<>Inspect scores&nbsp;<IconSearch size='12pt'/></>}
