@@ -1,39 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Textarea, Menu } from '@mantine/core';
-import { IconDots, IconPencil, IconArrowLeft, IconArrowRight, IconX } from '@tabler/icons-react';
+import React, { useState, useEffect } from "react";
+import { Table, Textarea, Menu } from "@mantine/core";
+import {
+  IconDots,
+  IconPencil,
+  IconArrowLeft,
+  IconArrowRight,
+  IconX,
+} from "@tabler/icons-react";
 
 const cellTextareaStyle = {
   input: {
-    border: '0',
-    fontFamily: 'monospace',
-    fontSize: '10pt',
-    padding: '2px !important',
-    minHeight: '10pt',
-    lineHeight: '1.2',
-    whiteSpace: 'pre-wrap',
-    background: 'transparent',
-  }, 
+    border: "0",
+    fontFamily: "monospace",
+    fontSize: "10pt",
+    padding: "2px !important",
+    minHeight: "10pt",
+    lineHeight: "1.2",
+    whiteSpace: "pre-wrap",
+    background: "transparent",
+  },
   root: {
-    width: 'inherit'
-  }
+    width: "inherit",
+  },
 };
 const headerTextareaStyle = {
   input: {
-    border: '0',
-    fontSize: '10pt',
-    fontWeight: '600',
-    padding: '2px !important',
-    minHeight: '10pt',
-    lineHeight: '1.2',
-    whiteSpace: 'pre-wrap',
-    background: 'transparent',
+    border: "0",
+    fontSize: "10pt",
+    fontWeight: "600",
+    padding: "2px !important",
+    minHeight: "10pt",
+    lineHeight: "1.2",
+    whiteSpace: "pre-wrap",
+    background: "transparent",
   },
   root: {
-    width: 'inherit'
-  }
+    width: "inherit",
+  },
 };
 const tableHeaderStyle = {
-  paddingBottom: '4px'
+  paddingBottom: "4px",
 };
 
 /* Set the cursor position to start of innerText in a content editable div. */
@@ -54,32 +60,48 @@ const forceFocusContentEditable = (e) => {
   }
 };
 
-const CellTextarea = ({ initialValue, rowIdx, column, handleSaveCell, onContextMenu }) => {
+const CellTextarea = ({
+  initialValue,
+  rowIdx,
+  column,
+  handleSaveCell,
+  onContextMenu,
+}) => {
   const [value, setValue] = useState(initialValue);
 
   useEffect(() => {
     setValue(initialValue);
   }, [initialValue]);
 
-  return <Textarea autosize={true} 
-                   autoComplete='off'
-                   autoCapitalize='off'
-                   autoCorrect='off'
-                   aria-autocomplete='none'
-                   value={value}
-                   placeholder={column.header}
-                   onChange={(e) => setValue(e.currentTarget.value)}
-                   onBlur={(e) => handleSaveCell(rowIdx, column.key, e.currentTarget.value)}
-                   minRows={1} 
-                   maxRows={6} 
-                   styles={rowIdx > -1 ? cellTextareaStyle : headerTextareaStyle} />;
+  return (
+    <Textarea
+      autosize={true}
+      autoComplete="off"
+      autoCapitalize="off"
+      autoCorrect="off"
+      aria-autocomplete="none"
+      value={value}
+      placeholder={column.header}
+      onChange={(e) => setValue(e.currentTarget.value)}
+      onBlur={(e) => handleSaveCell(rowIdx, column.key, e.currentTarget.value)}
+      minRows={1}
+      maxRows={6}
+      styles={rowIdx > -1 ? cellTextareaStyle : headerTextareaStyle}
+    />
+  );
 };
 
 /**
  * A table with multi-line textareas that is always editable and relatively fast.
  */
-const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, handleRemoveColumn, handleRenameColumn }) => {
-
+const EditableTable = ({
+  rows,
+  columns,
+  handleSaveCell,
+  handleInsertColumn,
+  handleRemoveColumn,
+  handleRenameColumn,
+}) => {
   const [trows, setTrows] = useState([]);
   const [thead, setThead] = useState([]);
 
@@ -87,56 +109,118 @@ const EditableTable = ({ rows, columns, handleSaveCell, handleInsertColumn, hand
   useEffect(() => {
     const cols = columns || [];
 
-    setTrows(rows.map((row, rowIdx) => ( // For some reason, table autosizing is broken by textareas. We'll live with it for now, but flagged to fix in the future.
-      <tr key={row.__uid}>
-        {cols.map(c => {
-          const txt = (c.key in row) ? row[c.key] : "";
-          return (<td key={`${row.__uid}-${c.key}`} style={{position: 'relative'}}>
-            {/* We use contenteditable because it loads *much* faster than textareas, which is important for big tables. */}
-            <p placeholder={c.header} 
-               onClick={forceFocusContentEditable}
-               onBlur={(e) => handleSaveCell(rowIdx, c.key, e.currentTarget.innerText)} 
-               className='content-editable-div' 
-               contentEditable 
-               suppressContentEditableWarning={true}>{txt}</p>
-            {/* <CellTextarea initialValue={txt} rowIdx={rowIdx} column={c} handleSaveCell={handleSaveCell} /> */}
-          </td>);
-        })}
-      </tr>
-    )));
+    setTrows(
+      rows.map(
+        (
+          row,
+          rowIdx, // For some reason, table autosizing is broken by textareas. We'll live with it for now, but flagged to fix in the future.
+        ) => (
+          <tr key={row.__uid}>
+            {cols.map((c) => {
+              const txt = c.key in row ? row[c.key] : "";
+              return (
+                <td
+                  key={`${row.__uid}-${c.key}`}
+                  style={{ position: "relative" }}
+                >
+                  {/* We use contenteditable because it loads *much* faster than textareas, which is important for big tables. */}
+                  <p
+                    placeholder={c.header}
+                    onClick={forceFocusContentEditable}
+                    onBlur={(e) =>
+                      handleSaveCell(rowIdx, c.key, e.currentTarget.innerText)
+                    }
+                    className="content-editable-div"
+                    contentEditable
+                    suppressContentEditableWarning={true}
+                  >
+                    {txt}
+                  </p>
+                  {/* <CellTextarea initialValue={txt} rowIdx={rowIdx} column={c} handleSaveCell={handleSaveCell} /> */}
+                </td>
+              );
+            })}
+          </tr>
+        ),
+      ),
+    );
 
     setThead(
       <tr>
-        {columns.map(c => (
+        {columns.map((c) => (
           <th key={c.key} style={tableHeaderStyle}>
-            <div style={{display: 'flex', justifyContent: 'space-between'}}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
               {/* <CellTextarea initialValue={c.header} rowIdx={-1} column={c} handleSaveCell={handleSaveCell} /> */}
-              <p onClick={forceFocusContentEditable}
-                 onBlur={(e) => handleSaveCell(-1, c.key, e.currentTarget.innerText)} 
-                 className='content-editable-div' 
-                 contentEditable 
-                 suppressContentEditableWarning={true}>{c.header}</p>
-              <Menu closeOnClickOutside styles={{dropdown: {boxShadow: '1px 1px 4px #ccc'}}}>
+              <p
+                onClick={forceFocusContentEditable}
+                onBlur={(e) =>
+                  handleSaveCell(-1, c.key, e.currentTarget.innerText)
+                }
+                className="content-editable-div"
+                contentEditable
+                suppressContentEditableWarning={true}
+              >
+                {c.header}
+              </p>
+              <Menu
+                closeOnClickOutside
+                styles={{ dropdown: { boxShadow: "1px 1px 4px #ccc" } }}
+              >
                 <Menu.Target>
-                  <IconDots size='12pt' style={{padding: '0px', marginTop: '3pt', marginLeft: '2pt'}} className='table-col-edit-btn' />
+                  <IconDots
+                    size="12pt"
+                    style={{
+                      padding: "0px",
+                      marginTop: "3pt",
+                      marginLeft: "2pt",
+                    }}
+                    className="table-col-edit-btn"
+                  />
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Item key='rename_col' onClick={() => handleRenameColumn(c)}><IconPencil size='10pt' />&nbsp;Rename column</Menu.Item>
-                  <Menu.Item key='insert_left' onClick={() => handleInsertColumn(c.key, -1)}><IconArrowLeft size='10pt' />&nbsp;Insert column to left</Menu.Item>
-                  <Menu.Item key='insert_right' onClick={() => handleInsertColumn(c.key, 1)}><IconArrowRight size='10pt' />&nbsp;Insert column to right</Menu.Item>
-                  <Menu.Item key='remove_col' onClick={() => handleRemoveColumn(c.key)}><IconX size='8pt' /> Remove column</Menu.Item>
+                  <Menu.Item
+                    key="rename_col"
+                    onClick={() => handleRenameColumn(c)}
+                  >
+                    <IconPencil size="10pt" />
+                    &nbsp;Rename column
+                  </Menu.Item>
+                  <Menu.Item
+                    key="insert_left"
+                    onClick={() => handleInsertColumn(c.key, -1)}
+                  >
+                    <IconArrowLeft size="10pt" />
+                    &nbsp;Insert column to left
+                  </Menu.Item>
+                  <Menu.Item
+                    key="insert_right"
+                    onClick={() => handleInsertColumn(c.key, 1)}
+                  >
+                    <IconArrowRight size="10pt" />
+                    &nbsp;Insert column to right
+                  </Menu.Item>
+                  <Menu.Item
+                    key="remove_col"
+                    onClick={() => handleRemoveColumn(c.key)}
+                  >
+                    <IconX size="8pt" /> Remove column
+                  </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
             </div>
           </th>
         ))}
-      </tr>
+      </tr>,
     );
-
   }, [rows, columns]);
 
   return (
-    <Table verticalSpacing={'0px'} striped highlightOnHover className='editable-table'>
+    <Table
+      verticalSpacing={"0px"}
+      striped
+      highlightOnHover
+      className="editable-table"
+    >
       <thead>{thead}</thead>
       <tbody>{trows}</tbody>
     </Table>
