@@ -41,7 +41,7 @@ const ChatGPTSettings = {
                 "type": "string",
                 "title": "Model Version",
                 "description": "Select an OpenAI model to query. For more details on the differences, see the OpenAI API documentation.",
-                "enum": ["gpt-3.5-turbo", "gpt-3.5-turbo-1106", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-0301", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613", "gpt-4", "gpt-4-1106-preview","gpt-4-32k", "gpt-4-0613", "gpt-4-0314", "gpt-4-32k-0613", "gpt-4-32k-0314", "gpt-3.5-turbo-instruct", "text-davinci-003", "text-davinci-002", "code-davinci-002"],
+                "enum": ["gpt-3.5-turbo", "gpt-3.5-turbo-0125", "gpt-3.5-turbo-1106", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-0301", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613", "gpt-4", "gpt-4-turbo-preview", "gpt-4-0125-preview", "gpt-4-1106-preview","gpt-4-32k", "gpt-4-0613", "gpt-4-0314", "gpt-4-32k-0613", "gpt-4-32k-0314", "gpt-3.5-turbo-instruct", "text-davinci-003", "text-davinci-002", "code-davinci-002"],
                 "default": "gpt-3.5-turbo",
       },
       "system_msg": {
