@@ -33,11 +33,10 @@ import { UserForcedPrematureExit } from "./errors";
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
 
-const fetch = require("node-fetch");
-
 /** Where the ChainForge Flask server is being hosted, if any. */
-// @ts-ignore
+
 export const FLASK_BASE_URL =
+  // @ts-expect-error undefined
   window.__CF_HOSTNAME !== undefined && window.__CF_PORT !== undefined
     ? "/"
     : "http://localhost:8000/";
@@ -70,12 +69,12 @@ export function APP_IS_RUNNING_LOCALLY(): boolean {
     // Calculate whether we're running the app locally or not, and save the result
     try {
       const location = window.location;
-      // @ts-ignore
+
       _APP_IS_RUNNING_LOCALLY =
         location.hostname === "localhost" ||
         location.hostname === "127.0.0.1" ||
         location.hostname === "0.0.0.0" ||
-        location.hostname === "" ||
+        location.hostname === "" || // @ts-expect-error undefined
         window.__CF_HOSTNAME !== undefined;
     } catch (e) {
       // ReferenceError --window or location does not exist.
@@ -98,10 +97,10 @@ async function route_fetch(
 ) {
   if (APP_IS_RUNNING_LOCALLY()) {
     return call_flask_backend("makeFetchCall", {
-      url: url,
-      method: method,
-      headers: headers,
-      body: body,
+      url,
+      method,
+      headers,
+      body,
     }).then((res) => {
       if (!res || res.error) throw new Error(res.error);
       return res.response;
@@ -127,9 +126,6 @@ function appendEndSlashIfMissing(path: string) {
   return path + (path[path.length - 1] === "/" ? "" : "/");
 }
 
-let DALAI_MODEL: string | undefined;
-let DALAI_RESPONSE: Dict | undefined;
-
 let OPENAI_API_KEY = get_environ("OPENAI_API_KEY");
 let ANTHROPIC_API_KEY = get_environ("ANTHROPIC_API_KEY");
 let GOOGLE_PALM_API_KEY = get_environ("PALM_API_KEY");
@@ -147,17 +143,14 @@ export function set_api_keys(api_keys: StringDict): void {
       name in api_keys && api_keys[name] && api_keys[name].trim().length > 0
     );
   }
-  if (key_is_present("OpenAI")) OPENAI_API_KEY = api_keys["OpenAI"];
-  if (key_is_present("HuggingFace"))
-    HUGGINGFACE_API_KEY = api_keys["HuggingFace"];
-  if (key_is_present("Anthropic")) ANTHROPIC_API_KEY = api_keys["Anthropic"];
-  if (key_is_present("Google")) GOOGLE_PALM_API_KEY = api_keys["Google"];
-  if (key_is_present("Azure_OpenAI"))
-    AZURE_OPENAI_KEY = api_keys["Azure_OpenAI"];
+  if (key_is_present("OpenAI")) OPENAI_API_KEY = api_keys.OpenAI;
+  if (key_is_present("HuggingFace")) HUGGINGFACE_API_KEY = api_keys.HuggingFace;
+  if (key_is_present("Anthropic")) ANTHROPIC_API_KEY = api_keys.Anthropic;
+  if (key_is_present("Google")) GOOGLE_PALM_API_KEY = api_keys.Google;
+  if (key_is_present("Azure_OpenAI")) AZURE_OPENAI_KEY = api_keys.Azure_OpenAI;
   if (key_is_present("Azure_OpenAI_Endpoint"))
-    AZURE_OPENAI_ENDPOINT = api_keys["Azure_OpenAI_Endpoint"];
-  if (key_is_present("AlephAlpha"))
-    ALEPH_ALPHA_API_KEY = api_keys["AlephAlpha"];
+    AZURE_OPENAI_ENDPOINT = api_keys.Azure_OpenAI_Endpoint;
+  if (key_is_present("AlephAlpha")) ALEPH_ALPHA_API_KEY = api_keys.AlephAlpha;
   // Soft fail for non-present keys
 }
 
@@ -194,8 +187,8 @@ function construct_openai_chat_history(
 export async function call_chatgpt(
   prompt: string,
   model: LLM,
-  n: number = 1,
-  temperature: number = 1.0,
+  n = 1,
+  temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
@@ -213,7 +206,7 @@ export async function call_chatgpt(
 
   const openai = new OpenAIApi(configuration);
 
-  let modelname: string = model.toString();
+  const modelname: string = model.toString();
   if (
     params?.stop !== undefined &&
     (!Array.isArray(params.stop) || params.stop.length === 0)
@@ -246,8 +239,8 @@ export async function call_chatgpt(
 
   const query: Dict = {
     model: modelname,
-    n: n,
-    temperature: temperature,
+    n,
+    temperature,
     ...params, // 'the rest' of the settings, passed from the front-end settings
   };
 
@@ -257,13 +250,13 @@ export async function call_chatgpt(
     if ("response_format" in query) delete query.response_format;
     // Create call to text completions model
     openai_call = openai.createCompletion.bind(openai);
-    query["prompt"] = prompt;
+    query.prompt = prompt;
   } else {
     // Create call to chat model
     openai_call = openai.createChatCompletion.bind(openai);
 
     // Carry over chat history, if present:
-    query["messages"] = construct_openai_chat_history(
+    query.messages = construct_openai_chat_history(
       prompt,
       chat_history,
       system_msg,
@@ -297,8 +290,8 @@ export async function call_chatgpt(
 export async function call_azure_openai(
   prompt: string,
   model: LLM,
-  n: number = 1,
-  temperature: number = 1.0,
+  n = 1,
+  temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
@@ -358,9 +351,9 @@ export async function call_azure_openai(
   delete params?.deployment_name;
 
   // Setup the args for the query
-  let query: Dict = {
-    n: n,
-    temperature: temperature,
+  const query: Dict = {
+    n,
+    temperature,
     ...params, // 'the rest' of the settings, passed from the front-end settings
   };
   let arg2: Array<Dict | string>;
@@ -403,8 +396,8 @@ export async function call_azure_openai(
 export async function call_anthropic(
   prompt: string,
   model: LLM,
-  n: number = 1,
-  temperature: number = 1.0,
+  n = 1,
+  temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
@@ -423,7 +416,7 @@ export async function call_anthropic(
     );
   const prompt_wrapper_template = new StringTemplate(custom_prompt_wrapper);
   let wrapped_prompt = prompt_wrapper_template.safe_substitute({
-    prompt: prompt,
+    prompt,
   });
 
   if (params?.custom_prompt_wrapper !== undefined)
@@ -514,8 +507,8 @@ export async function call_anthropic(
 export async function call_google_ai(
   prompt: string,
   model: LLM,
-  n: number = 1,
-  temperature: number = 0.7,
+  n = 1,
+  temperature = 0.7,
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
@@ -548,8 +541,8 @@ export async function call_google_ai(
 export async function call_google_palm(
   prompt: string,
   model: LLM,
-  n: number = 1,
-  temperature: number = 0.7,
+  n = 1,
+  temperature = 0.7,
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
@@ -564,11 +557,11 @@ export async function call_google_palm(
   const chat_history = params?.chat_history;
   delete params?.chat_history;
 
-  let query: Dict = {
+  const query: Dict = {
     model: `models/${model}`,
     candidate_count: n,
-    temperature: temperature,
-    max_output_tokens: max_output_tokens,
+    temperature,
+    max_output_tokens,
     ...params,
   };
 
@@ -630,7 +623,7 @@ export async function call_google_palm(
   const method = is_chat_model ? "generateMessage" : "generateText";
   const url = `https://generativelanguage.googleapis.com/v1beta2/models/${model}:${method}?key=${GOOGLE_PALM_API_KEY}`;
   const headers = { "Content-Type": "application/json" };
-  let res = await fetch(url, {
+  const res = await fetch(url, {
     method: "POST",
     headers,
     body: JSON.stringify(query),
@@ -668,8 +661,8 @@ export async function call_google_palm(
 export async function call_google_gemini(
   prompt: string,
   model: LLM,
-  n: number = 1,
-  temperature: number = 0.7,
+  n = 1,
+  temperature = 0.7,
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
@@ -691,11 +684,11 @@ export async function call_google_gemini(
   const chat_history = params?.chat_history;
   delete params?.chat_history;
 
-  let query: Dict = {
+  const query: Dict = {
     model: `models/${model}`,
     candidate_count: n,
-    temperature: temperature,
-    max_output_tokens: max_output_tokens,
+    temperature,
+    max_output_tokens,
     ...params,
   };
 
@@ -721,14 +714,14 @@ export async function call_google_gemini(
   });
 
   // Gemini only supports candidate_count of 1
-  gen_Config["candidateCount"] = 1;
+  gen_Config.candidateCount = 1;
 
   // By default for topK is none, and topP is 1.0
-  if ("topK" in gen_Config && gen_Config["topK"] === -1) {
-    delete gen_Config["topK"];
+  if ("topK" in gen_Config && gen_Config.topK === -1) {
+    delete gen_Config.topK;
   }
-  if ("topP" in gen_Config && gen_Config["topP"] === -1) {
-    gen_Config["topP"] = 1.0;
+  if ("topP" in gen_Config && gen_Config.topP === -1) {
+    gen_Config.topP = 1.0;
   }
 
   const gemini_chat_context: GeminiChatContext = { history: [] };
@@ -779,14 +772,14 @@ export async function call_google_gemini(
 export async function call_dalai(
   prompt: string,
   model: LLM,
-  n: number = 1,
-  temperature: number = 0.7,
+  n = 1,
+  temperature = 0.7,
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
   if (APP_IS_RUNNING_LOCALLY()) {
     // Try to call Dalai server, through Flask:
-    let { query, response, error } = await call_flask_backend("callDalai", {
+    const { query, response, error } = await call_flask_backend("callDalai", {
       prompt,
       model,
       n,
@@ -797,8 +790,8 @@ export async function call_dalai(
     return [query, response];
   } else {
     throw new Error(
-      "Cannot call Dalai: The ChainForge app does not appear to be running locally. You can only call Dalai-hosted models if \
-                    you are running a server with the Dalai Node.js package and have installed ChainForge on your local machine.",
+      "Cannot call Dalai: The ChainForge app does not appear to be running locally. You can only call Dalai-hosted models if" +
+        "you are running a server with the Dalai Node.js package and have installed ChainForge on your local machine.",
     );
   }
 }
@@ -806,8 +799,8 @@ export async function call_dalai(
 export async function call_huggingface(
   prompt: string,
   model: LLM,
-  n: number = 1,
-  temperature: number = 1.0,
+  n = 1,
+  temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
@@ -825,7 +818,7 @@ export async function call_huggingface(
     if (exists) {
       // Set the param on the query dict
       query[name] = p;
-    } else return;
+    }
   };
 
   let num_continuations = 0;
@@ -850,7 +843,7 @@ export async function call_huggingface(
   // Carry over chat history if (a) we're using a chat model and (b) if it exists, converting to HF format.
   // :: See https://huggingface.co/docs/api-inference/detailed_parameters#conversational-task
   const model_type: string = params?.model_type;
-  let hf_chat_hist: HuggingFaceChatHistory = {
+  const hf_chat_hist: HuggingFaceChatHistory = {
     past_user_inputs: [],
     generated_responses: [],
   };
@@ -878,7 +871,7 @@ export async function call_huggingface(
     params?.custom_model,
   );
 
-  let headers: StringDict = { "Content-Type": "application/json" };
+  const headers: StringDict = { "Content-Type": "application/json" };
   // For HuggingFace, technically, the API keys are optional.
   if (HUGGINGFACE_API_KEY !== undefined)
     headers.Authorization = `Bearer ${HUGGINGFACE_API_KEY}`;
@@ -892,7 +885,7 @@ export async function call_huggingface(
 
   const responses: Array<Dict> = [];
   while (responses.length < n) {
-    let continued_response: Dict = { generated_text: "" };
+    const continued_response: Dict = { generated_text: "" };
     let curr_cont = 0;
     let curr_text = prompt;
 
@@ -914,9 +907,9 @@ export async function call_huggingface(
         headers,
         method: "POST",
         body: JSON.stringify({
-          inputs: inputs,
+          inputs,
           parameters: query,
-          options: options,
+          options,
         }),
       });
       const result = await response.json();
@@ -958,8 +951,8 @@ export async function call_huggingface(
 export async function call_alephalpha(
   prompt: string,
   model: LLM,
-  n: number = 1,
-  temperature: number = 1.0,
+  n = 1,
+  temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
@@ -968,26 +961,26 @@ export async function call_alephalpha(
       "Could not find an API key for Aleph Alpha models. Double-check that your API key is set in Settings or in your local environment.",
     );
 
-  const url: string = "https://api.aleph-alpha.com/complete";
-  let headers: StringDict = {
+  const url = "https://api.aleph-alpha.com/complete";
+  const headers: StringDict = {
     "Content-Type": "application/json",
     Accept: "application/json",
   };
   if (ALEPH_ALPHA_API_KEY !== undefined)
     headers.Authorization = `Bearer ${ALEPH_ALPHA_API_KEY}`;
 
-  let data = JSON.stringify({
+  const data = JSON.stringify({
     model: model.toString(),
-    prompt: prompt,
-    n: n,
+    prompt,
+    n,
     ...params,
   });
 
   // Setup the args for the query
   const query: Dict = {
     model: model.toString(),
-    n: n,
-    temperature: temperature,
+    n,
+    temperature,
     ...params, // 'the rest' of the settings, passed from the front-end settings
   };
 
@@ -1005,8 +998,8 @@ export async function call_alephalpha(
 export async function call_ollama_provider(
   prompt: string,
   model: LLM,
-  n: number = 1,
-  temperature: number = 1.0,
+  n = 1,
+  temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
@@ -1055,7 +1048,7 @@ export async function call_ollama_provider(
   );
 
   // Call Ollama API
-  let resps: Response[] = [];
+  const resps: Response[] = [];
   for (let i = 0; i < n; i++) {
     // Abort if the user canceled
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
@@ -1090,8 +1083,8 @@ export async function call_ollama_provider(
 async function call_custom_provider(
   prompt: string,
   model: LLM,
-  n: number = 1,
-  temperature: number = 1.0,
+  n = 1,
+  temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
@@ -1120,7 +1113,7 @@ async function call_custom_provider(
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
     // Collect response from the custom provider
-    let { response, error } = await call_flask_backend("callCustomProvider", {
+    const { response, error } = await call_flask_backend("callCustomProvider", {
       name: provider_name,
       params: {
         prompt,
@@ -1178,12 +1171,12 @@ export async function call_llm(
  */
 function _extract_openai_chat_choice_content(choice: Dict): string {
   if (
-    choice["finish_reason"] === "function_call" ||
-    ("function_call" in choice["message"] &&
-      choice["message"]["function_call"].length > 0)
+    choice.finish_reason === "function_call" ||
+    ("function_call" in choice.message &&
+      choice.message.function_call.length > 0)
   ) {
-    const func = choice["message"]["function_call"];
-    return "[[FUNCTION]] " + func["name"] + func["arguments"].toString();
+    const func = choice.message.function_call;
+    return "[[FUNCTION]] " + func.name + func.arguments.toString();
   } else {
     return choice.message.content;
   }
@@ -1212,8 +1205,8 @@ function _extract_openai_completion_responses(response: Dict): Array<string> {
  * and extracts the response text using the appropriate method.
  */
 function _extract_openai_responses(response: Dict): Array<string> {
-  if (response["choices"].length === 0) return [];
-  const first_choice = response["choices"][0];
+  if (response.choices.length === 0) return [];
+  const first_choice = response.choices[0];
   if ("message" in first_choice) return _extract_chatgpt_responses(response);
   else return _extract_openai_completion_responses(response);
 }
@@ -1237,7 +1230,7 @@ function _extract_google_ai_responses(
  * while the `chat` API uses a key 'content'. This checks for either.
  */
 function _extract_palm_responses(completion: Dict): Array<string> {
-  return completion["candidates"].map((c: Dict) => c.output || c.content);
+  return completion.candidates.map((c: Dict) => c.output || c.content);
 }
 
 /**
@@ -1283,7 +1276,7 @@ export function extract_responses(
   response: Array<string | Dict> | Dict,
   llm: LLM | string,
 ): Array<string> {
-  let llm_provider: LLMProvider = getProvider(llm as LLM);
+  const llm_provider: LLMProvider = getProvider(llm as LLM);
   const llm_name = llm.toString().toLowerCase();
   switch (llm_provider) {
     case LLMProvider.OpenAI:
@@ -1339,7 +1332,7 @@ export function merge_response_objs(
   let raw_resp_B = resp_obj_B.raw_response;
   if (!Array.isArray(raw_resp_A)) raw_resp_A = [raw_resp_A];
   if (!Array.isArray(raw_resp_B)) raw_resp_B = [raw_resp_B];
-  let res: LLMResponseObject = {
+  const res: LLMResponseObject = {
     responses: resp_obj_A.responses.concat(resp_obj_B.responses),
     raw_response: raw_resp_A.concat(raw_resp_B),
     prompt: resp_obj_B.prompt,
@@ -1358,7 +1351,7 @@ export function mergeDicts(A?: Dict, B?: Dict): Dict | undefined {
   if (A === undefined && B === undefined) return undefined;
   else if (A === undefined) return B;
   else if (B === undefined) return A;
-  let d: Dict = {};
+  const d: Dict = {};
   Object.entries(A).forEach(([key, val]) => {
     d[key] = val;
   });
@@ -1477,9 +1470,9 @@ export const dict_excluding_key = (d, key) => {
 };
 
 export const getLLMsInPulledInputData = (pulled_data: Dict) => {
-  let found_llms = {};
-  Object.values(pulled_data).filter((_vs) => {
-    let vs = Array.isArray(_vs) ? _vs : [_vs];
+  const found_llms = {};
+  Object.values(pulled_data).forEach((_vs) => {
+    const vs = Array.isArray(_vs) ? _vs : [_vs];
     vs.forEach((v) => {
       if (v?.llm !== undefined && !(v.llm.key in found_llms))
         found_llms[v.llm.key] = v.llm;
@@ -1525,8 +1518,8 @@ export const tagMetadataWithLLM = (input_data) => {
   Object.entries(input_data).forEach(([varname, resp_objs]) => {
     new_data[varname] = (resp_objs as any[]).map((r) => {
       if (!r || typeof r === "string" || !r?.llm?.key) return r;
-      let r_copy = JSON.parse(JSON.stringify(r));
-      r_copy.metavars["__LLM_key"] = r.llm.key;
+      const r_copy = JSON.parse(JSON.stringify(r));
+      r_copy.metavars.__LLM_key = r.llm.key;
       return r_copy;
     });
   });
@@ -1547,8 +1540,8 @@ export const extractLLMLookup = (input_data) => {
 
 export const removeLLMTagFromMetadata = (metavars) => {
   if (!("__LLM_key" in metavars)) return metavars;
-  let mcopy = JSON.parse(JSON.stringify(metavars));
-  delete mcopy["__LLM_key"];
+  const mcopy = JSON.parse(JSON.stringify(metavars));
+  delete mcopy.__LLM_key;
   return mcopy;
 };
 
@@ -1561,8 +1554,8 @@ export const truncStr = (s, maxLen) => {
 };
 
 export const groupResponsesBy = (responses, keyFunc) => {
-  let responses_by_key = {};
-  let unspecified_group = [];
+  const responses_by_key = {};
+  const unspecified_group = [];
   responses.forEach((item) => {
     const key = keyFunc(item);
     if (key === null || key === undefined) {
@@ -1576,7 +1569,7 @@ export const groupResponsesBy = (responses, keyFunc) => {
 };
 
 export const batchResponsesByUID = (responses) => {
-  let [batches, unspecified_id_group] = groupResponsesBy(
+  const [batches, unspecified_id_group] = groupResponsesBy(
     responses,
     (resp_obj) => resp_obj.uid,
   );
@@ -1585,7 +1578,7 @@ export const batchResponsesByUID = (responses) => {
       if (resp_objs.length === 1) {
         return resp_objs[0];
       } else {
-        let batched = deepcopy_and_modify(resp_objs[0], {
+        const batched = deepcopy_and_modify(resp_objs[0], {
           responses: resp_objs.map((resp_obj) => resp_obj.responses).flat(),
         });
         if (batched.eval_res !== undefined) {
