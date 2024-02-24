@@ -15,8 +15,8 @@ import StorageCache from "../cache";
 
 test("count queries required", async () => {
   // Setup params to call
-  let prompt = "What is the {timeframe} when {person} was born?";
-  let vars: { [key: string]: any } = {
+  const prompt = "What is the {timeframe} when {person} was born?";
+  const vars: { [key: string]: any } = {
     timeframe: ["year", "decade", "century"],
     person: ["Howard Hughes", "Toni Morrison", "Otis Redding"],
   };
@@ -74,7 +74,7 @@ test("call three LLMs with a single prompt", async () => {
   };
 
   // Call all three LLMs with the same prompt, n=1, and listen to progress
-  const { responses, errors } = await queryLLM(
+  const { responses } = await queryLLM(
     "testid",
     llms,
     n,

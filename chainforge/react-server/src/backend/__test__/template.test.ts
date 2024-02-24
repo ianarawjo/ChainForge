@@ -45,10 +45,10 @@ test("string template escaped group", () => {
 });
 
 test("single template", () => {
-  let prompt_gen = new PromptPermutationGenerator(
+  const prompt_gen = new PromptPermutationGenerator(
     "What is the {timeframe} when {person} was born?",
   );
-  let vars: { [key: string]: any } = {
+  const vars: { [key: string]: any } = {
     timeframe: ["year", "decade", "century"],
     person: ["Howard Hughes", "Toni Morrison", "Otis Redding"],
   };
@@ -63,8 +63,8 @@ test("single template", () => {
 });
 
 test("nested templates", () => {
-  let prompt_gen = new PromptPermutationGenerator("{prefix}... {suffix}");
-  let vars = {
+  const prompt_gen = new PromptPermutationGenerator("{prefix}... {suffix}");
+  const vars = {
     prefix: [
       "Who invented {tool}?",
       "When was {tool} invented?",
@@ -95,10 +95,10 @@ test("carry together vars", () => {
   //          like 'inventor' with 'tool', 'carry together' when being filled into the prompt template.
   //          In addition, 'metavars' may be attached which are, commonly, the values of other columns for that row, but
   //          columns which weren't used to fill in the prompt template explcitly.
-  let prompt_gen = new PromptPermutationGenerator(
+  const prompt_gen = new PromptPermutationGenerator(
     "What {timeframe} did {inventor} invent the {tool}?",
   );
-  let vars = {
+  const vars = {
     inventor: [
       {
         text: "Thomas Edison",
@@ -145,10 +145,10 @@ test("carry together vars", () => {
 test("escaped braces", () => {
   // Escaped braces \{ and \} should not be treated as real variables, one, and two, should be
   // removed when calling the 'toString' method on a PromptTemplate:
-  let promptTemplate = new PromptTemplate(
+  const promptTemplate = new PromptTemplate(
     "For what show did \\{person\\} get a Netflix deal?",
   );
-  let filledTemplate = promptTemplate.fill({ person: "Meghan Markle" });
+  const filledTemplate = promptTemplate.fill({ person: "Meghan Markle" });
   expect(promptTemplate.toString()).toBe(
     "For what show did {person} get a Netflix deal?",
   );

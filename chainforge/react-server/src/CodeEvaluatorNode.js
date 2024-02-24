@@ -6,7 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import { Handle } from "reactflow";
-import { Button, Code, Modal, Tooltip, Box, Text } from "@mantine/core";
+import { Code, Modal, Tooltip, Box, Text } from "@mantine/core";
 import { Prism } from "@mantine/prism";
 import { useDisclosure } from "@mantine/hooks";
 import useStore from "./store";
@@ -146,11 +146,13 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
+  // eslint-disable-next-line
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
 
   // The programming language for the editor. Also determines what 'execute'
   // function will ultimately be called.
+  // eslint-disable-next-line
   const [progLang, setProgLang] = useState(data.language || "python");
 
   // The text in the code editor.
@@ -171,10 +173,10 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
         "Loaded a Python evaluator node without access to Flask backend on localhost.",
       );
       alertModal.current.trigger(
-        "This flow contains a Python evaluator node, yet ChainForge does not appear to be running locally on your machine. \
-        You will not be able to run Python code in the evaluator. If you want to write an evaluator to score responses, \
-        we recommend that you use a JavaScript evaluator node instead. If you'd like to run the Python evaluator, \
-        consider installing ChainForge locally.",
+        `This flow contains a Python evaluator node, yet ChainForge does not appear to be running locally on your machine. 
+You will not be able to run Python code in the evaluator. If you want to write an evaluator to score responses, 
+we recommend that you use a JavaScript evaluator node instead. If you'd like to run the Python evaluator, 
+consider installing ChainForge locally.`,
       );
     }
 
@@ -205,30 +207,28 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
       else if (!code_changed && status === "warning") setStatus("ready");
     }
     setCodeText(code);
-    setDataPropsForNode(id, { code: code });
+    setDataPropsForNode(id, { code });
   };
 
   const handleRunClick = () => {
     // Disallow running a Python evaluator node when not on localhost:
     if (!IS_RUNNING_LOCALLY && progLang === "python") {
       alertModal.current.trigger(
-        "Python code can only be evaluated when ChainForge is running locally on your machine (on localhost). \
-        If you want to run an evaluator to score responses, we recommend that you use a JavaScript evaluator node \
-        instead. If you'd like to run the Python evaluator, consider installing ChainForge locally.",
+        `Python code can only be evaluated when ChainForge is running locally on your machine (on localhost). 
+If you want to run an evaluator to score responses, we recommend that you use a JavaScript evaluator node 
+instead. If you'd like to run the Python evaluator, consider installing ChainForge locally.`,
       );
       return;
     }
 
     // Pull input data
     let pulled_inputs = pullInputData(["responseBatch"], id);
-    if (!pulled_inputs || !pulled_inputs["responseBatch"]) {
+    if (!pulled_inputs || !pulled_inputs.responseBatch) {
       console.warn(`No inputs for code ${node_type} node.`);
       return;
     }
     // Convert to standard response format (StandardLLMResponseFormat)
-    pulled_inputs = pulled_inputs["responseBatch"].map(
-      toStandardResponseFormat,
-    );
+    pulled_inputs = pulled_inputs.responseBatch.map(toStandardResponseFormat);
 
     // Double-check that the code includes an 'evaluate' function:
     const find_func_regex =
@@ -272,17 +272,17 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
     const codeTextOnRun = codeText + "";
     const execute_route = progLang === "python" ? "executepy" : "executejs";
     fetch_from_backend(execute_route, {
-      id: id,
+      id,
       code: codeTextOnRun,
       responses: pulled_inputs,
       scope: "response",
       process_type: node_type,
-      script_paths: script_paths,
+      script_paths,
     })
       .then(function (json) {
         // Store any Python print output
         if (json?.logs) {
-          let logs = json.logs;
+          const logs = json.logs;
           if (json.error) logs.push(json.error);
           setLastRunLogs(logs.join("\n   > "));
         }
@@ -308,20 +308,20 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
         setDataPropsForNode(id, {
           fields: json.responses
             .map((resp_obj) =>
-              resp_obj["responses"].map((r) => {
+              resp_obj.responses.map((r) => {
                 // Carry over the response text, prompt, prompt fill history (vars), and llm data
-                let o = {
+                const o = {
                   text: escapeBraces(r),
-                  prompt: resp_obj["prompt"],
-                  fill_history: resp_obj["vars"],
-                  metavars: resp_obj["metavars"] || {},
-                  llm: resp_obj["llm"],
-                  batch_id: resp_obj["uid"],
+                  prompt: resp_obj.prompt,
+                  fill_history: resp_obj.vars,
+                  metavars: resp_obj.metavars || {},
+                  llm: resp_obj.llm,
+                  batch_id: resp_obj.uid,
                 };
 
                 // Carry over any chat history
-                if (resp_obj["chat_history"])
-                  o.chat_history = resp_obj["chat_history"];
+                if (resp_obj.chat_history)
+                  o.chat_history = resp_obj.chat_history;
 
                 return o;
               }),
@@ -382,8 +382,8 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
           <Text mb="sm">
             To use a {default_header}, write a function <Code>evaluate</Code>{" "}
             that takes a single argument of class <Code>ResponseInfo</Code>. The
-            function should return a \'score\' for that response, which usually
-            is a number or a boolean value (strings as categoricals are
+            function should return a &apos;score&apos; for that response, which
+            usually is a number or a boolean value (strings as categoricals are
             supported, but experimental).
           </Text>
           <Text mt="sm" mb="sm">
@@ -405,8 +405,8 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
           <Text mt="md" mb="sm">
             For instance, say you have a prompt template{" "}
             <Code>What is the capital of &#123;country&#125;?</Code> on a Prompt
-            Node. You want to get the input variable 'country', which filled the
-            prompt that led to the current response. You can use
+            Node. You want to get the input variable &apos;country&apos;, which
+            filled the prompt that led to the current response. You can use
             <Code>response.var</Code>:
           </Text>
           <Prism language={progLang === "python" ? "py" : "ts"}>
@@ -417,9 +417,13 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
           <Text mt="md">
             Note that you are allowed to define variables outside of the
             function, or define more functions, as long as a function called{" "}
-            <Code>evaluate</Code> is defined. For more information on what's
-            possible, see the{" "}
-            <a href="https://chainforge.ai/docs/" target="_blank">
+            <Code>evaluate</Code> is defined. For more information on
+            what&apos;s possible, see the{" "}
+            <a
+              href="https://chainforge.ai/docs/"
+              target="_blank"
+              rel="noreferrer"
+            >
               documentation
             </a>{" "}
             or load some Example Flows.
@@ -454,10 +458,10 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
             {progLang === "python" ? _info_codeblock_py : _info_codeblock_js}
           </Prism>
           <Text mt="md" mb="sm">
-            For another example, say you have a prompt that requests the LLM
+            {`For another example, say you have a prompt that requests the LLM
             output in a consistent format, with "ANSWER:" at the end like
             Chain-of-Thought. You want to get just the part after 'ANSWER:'
-            Here's how you can do this:
+            Here's how you can do this:`}
           </Text>
           <Prism language={progLang === "python" ? "py" : "ts"}>
             {progLang === "python"
@@ -467,9 +471,13 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
           <Text mt="md">
             Note that you are allowed to define variables outside of the
             function, or define more functions, as long as a function called{" "}
-            <Code>process</Code> is defined. For more information on what's
+            <Code>process</Code> is defined. For more information on what&apos;s
             possible, see the{" "}
-            <a href="https://chainforge.ai/docs/" target="_blank">
+            <a
+              href="https://chainforge.ai/docs/"
+              target="_blank"
+              rel="noreferrer"
+            >
               documentation
             </a>
             . Finally, note that currently you cannot change the response
@@ -556,7 +564,7 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
             onLoad={(editorInstance) => {
               // Make Ace Editor div resizeable.
               editorInstance.container.style.resize = "both";
-              document.addEventListener("mouseup", (e) =>
+              document.addEventListener("mouseup", () =>
                 editorInstance.resize(),
               );
             }}

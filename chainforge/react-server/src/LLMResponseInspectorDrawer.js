@@ -1,6 +1,10 @@
+import React from "react";
 import LLMResponseInspector from "./LLMResponseInspector";
 
-const LLMResponseInspectorDrawer = ({ jsonResponses, showDrawer }) => {
+export default function LLMResponseInspectorDrawer({
+  jsonResponses,
+  showDrawer,
+}) {
   return (
     <div
       className="inspect-responses-drawer"
@@ -14,6 +18,4 @@ const LLMResponseInspectorDrawer = ({ jsonResponses, showDrawer }) => {
       </div>
     </div>
   );
-};
-
-export default LLMResponseInspectorDrawer;
+}

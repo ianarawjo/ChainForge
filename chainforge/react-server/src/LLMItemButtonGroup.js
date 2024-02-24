@@ -1,4 +1,4 @@
-import { Button, Group, RingProgress } from "@mantine/core";
+import React, { Button, Group, RingProgress } from "@mantine/core";
 import { IconSettings, IconTrash } from "@tabler/icons-react";
 
 export default function LLMItemButtonGroup({

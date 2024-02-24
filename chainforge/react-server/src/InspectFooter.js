@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Button, Tooltip } from "@mantine/core";
 import {
   IconSearch,
@@ -18,6 +18,7 @@ const InspectFooter = ({
   onDrawerClick,
   isDrawerOpen,
 }) => {
+  // eslint-disable-next-line
   const [text, setText] = useState(
     label || (
       <>

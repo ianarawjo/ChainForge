@@ -1,13 +1,18 @@
-import { useMemo, useRef } from "react";
+import React, {
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import useStore from "./store";
 import { EditText } from "react-edit-text";
 import "react-edit-text/dist/index.css";
 import StatusIndicator from "./StatusIndicatorComponent";
 import AlertModal from "./AlertModal";
 import AreYouSureModal from "./AreYouSureModal";
-import { useState, useEffect, useCallback } from "react";
-import { Tooltip, Popover, Badge, Stack } from "@mantine/core";
-import { IconSparkles } from "@tabler/icons-react";
+
+import { Tooltip } from "@mantine/core";
 
 export default function NodeLabel({
   title,
@@ -35,7 +40,6 @@ export default function NodeLabel({
   const [deleteConfirmProps, setDeleteConfirmProps] = useState({
     title: "Delete node",
     message: "Are you sure?",
-    onConfirm: () => {},
   });
   const stopButton = useMemo(
     () => (
@@ -98,8 +102,6 @@ export default function NodeLabel({
     }
   }, [handleRunClick, runButtonTooltip]);
 
-  useEffect(() => {}, [stopButton]);
-
   const handleCloseButtonClick = useCallback(() => {
     setDeleteConfirmProps({
       title: "Delete node",
@@ -141,7 +143,7 @@ export default function NodeLabel({
         {statusIndicator}
         <AlertModal ref={alertModal} />
         <div className="node-header-btns-container">
-          {customButtons ? customButtons : <></>}
+          {customButtons ?? <></>}
           {isRunning ? stopButton : runButton}
           <button
             className="close-button nodrag"

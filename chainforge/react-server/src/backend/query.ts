@@ -76,7 +76,7 @@ export class PromptPipeline {
     llm: LLM,
     cached_responses: Dict,
   ): LLMResponseObject | LLMResponseError {
-    let {
+    const {
       prompt,
       chat_history,
       query,
@@ -90,17 +90,17 @@ export class PromptPipeline {
 
     // Each prompt has a history of what was filled in from its base template.
     // This data --like, "class", "language", "library" etc --can be useful when parsing responses.
-    let info = prompt.fill_history;
-    let metavars = prompt.metavars;
+    const info = prompt.fill_history;
+    const metavars = prompt.metavars;
 
     // Create a response obj to represent the response
     let resp_obj: LLMResponseObject = {
       prompt: prompt.toString(),
-      query: query,
+      query,
       uid: uuid(),
       responses: extract_responses(response, llm),
       raw_response: response,
-      llm: llm,
+      llm,
       info: mergeDicts(info, chat_history?.fill_history),
       metavars: mergeDicts(metavars, chat_history?.metavars),
     };
@@ -163,14 +163,14 @@ export class PromptPipeline {
   async *gen_responses(
     vars: Dict,
     llm: LLM,
-    n: number = 1,
-    temperature: number = 1.0,
+    n = 1,
+    temperature = 1.0,
     llm_params?: Dict,
     chat_histories?: ChatHistoryInfo[],
     should_cancel?: () => boolean,
   ): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
     // Load any cache'd responses
-    let responses = this._load_cached_responses();
+    const responses = this._load_cached_responses();
 
     // Normalize the chat history var such that there's always at least one element.
     const _chat_histories =
@@ -179,13 +179,13 @@ export class PromptPipeline {
         : [undefined];
 
     // Query LLM with each prompt, yield + cache the responses
-    let tasks: Array<Promise<_IntermediateLLMResponseType>> = [];
+    const tasks: Array<Promise<_IntermediateLLMResponseType>> = [];
     const rate_limit = RATE_LIMITS[llm] || [1, 0];
-    let [max_req, wait_secs] = rate_limit ? rate_limit : [1, 0];
+    const [max_req, wait_secs] = rate_limit || [1, 0];
     let num_queries_sent = -1;
 
     // Generate concrete prompts one by one. Yield response from the cache or make async call to LLM.
-    for (let prompt of this.gen_prompts(vars)) {
+    for (const prompt of this.gen_prompts(vars)) {
       let prompt_str = prompt.toString();
       const info = prompt.fill_history;
       const metavars = prompt.metavars;
@@ -213,15 +213,15 @@ export class PromptPipeline {
 
         // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
         const cache_bucket = responses[prompt_str];
-        let cached_resps: LLMResponseObject[] = Array.isArray(cache_bucket)
+        const cached_resps: LLMResponseObject[] = Array.isArray(cache_bucket)
           ? cache_bucket
           : cache_bucket === undefined
             ? []
             : [cache_bucket];
 
         // Check if there's a cached response with the same prompt + (if present) chat history and settings vars:
-        let cached_resp: LLMResponseObject | undefined = undefined;
-        let cached_resp_idx: number = -1;
+        let cached_resp: LLMResponseObject | undefined;
+        let cached_resp_idx = -1;
         // Find an indivdual response obj that matches the chat history + (if present) settings vars:
         for (let i = 0; i < cached_resps.length; i++) {
           if (
@@ -239,20 +239,20 @@ export class PromptPipeline {
             break;
           }
         }
-        let extracted_resps: Array<any> = cached_resp
-          ? cached_resp["responses"]
+        const extracted_resps: Array<any> = cached_resp
+          ? cached_resp.responses
           : [];
 
         // First check if there is already a response for this item under these settings. If so, we can save an LLM call:
         if (cached_resp && extracted_resps.length >= n) {
           // console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
-          let resp: LLMResponseObject = {
+          const resp: LLMResponseObject = {
             prompt: prompt_str,
-            query: cached_resp["query"],
-            uid: cached_resp["uid"] ?? uuid(),
+            query: cached_resp.query,
+            uid: cached_resp.uid ?? uuid(),
             responses: extracted_resps.slice(0, n),
-            raw_response: cached_resp["raw_response"],
-            llm: cached_resp["llm"] || NativeLLM.OpenAI_ChatGPT,
+            raw_response: cached_resp.raw_response,
+            llm: cached_resp.llm || NativeLLM.OpenAI_ChatGPT,
             // We want to use the new info, since 'vars' could have changed even though
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
             info: mergeDicts(info, chat_history?.fill_history),
@@ -287,7 +287,7 @@ export class PromptPipeline {
           );
         } else {
           // Block. Await + yield a single LLM call.
-          let result = await this._prompt_llm(
+          const result = await this._prompt_llm(
             llm,
             prompt,
             n,
@@ -337,8 +337,8 @@ export class PromptPipeline {
   async _prompt_llm(
     llm: LLM,
     prompt: PromptTemplate,
-    n: number = 1,
-    temperature: number = 1.0,
+    n = 1,
+    temperature = 1.0,
     past_resp_obj?: LLMResponseObject,
     past_resp_obj_cache_idx?: number,
     query_number?: number,
@@ -352,7 +352,7 @@ export class PromptPipeline {
     if (past_resp_obj) {
       // How many *new* queries we need to send:
       // NOTE: The check n > len(past_resp_obj["responses"]) should occur prior to calling this function.
-      n = n - past_resp_obj["responses"].length;
+      n = n - past_resp_obj.responses.length;
     }
 
     // Fix temperature if it's provided in llm_params:
@@ -367,7 +367,7 @@ export class PromptPipeline {
       rate_limit_batch_size >= 1 &&
       rate_limit_wait_secs > 0
     ) {
-      let batch_num = Math.floor(query_number / rate_limit_batch_size);
+      const batch_num = Math.floor(query_number / rate_limit_batch_size);
       if (batch_num > 0) {
         // We've exceeded the estimated batch rate limit and need to wait the appropriate seconds before sending off new API calls:
         const wait_secs = rate_limit_wait_secs * batch_num;
@@ -382,7 +382,7 @@ export class PromptPipeline {
 
     // Now try to call the API. If it fails for whatever reason, 'soft fail' by returning
     // an LLMResponseException object as the 'response'.
-    let params = deepcopy(llm_params);
+    const params = deepcopy(llm_params);
     if (chat_history !== undefined) params.chat_history = chat_history.messages;
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;
@@ -406,7 +406,7 @@ export class PromptPipeline {
       if (err instanceof UserForcedPrematureExit) throw err; // bubble cancels up
 
       return {
-        prompt: prompt,
+        prompt,
         query: undefined,
         response: new LLMResponseError(err.message),
         past_resp_obj: undefined,

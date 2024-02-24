@@ -12,7 +12,7 @@ import { truncStr } from "./backend/utils";
 // Helper funcs
 const splitAndAddBreaks = (s, chunkSize) => {
   // Split the input string into chunks of specified size
-  let chunks = [];
+  const chunks = [];
   for (let i = 0; i < s.length; i += chunkSize) {
     chunks.push(s.slice(i, i + chunkSize));
   }
@@ -38,7 +38,7 @@ const createHoverTexts = (responses) => {
     .flat();
 };
 const getUniqueKeysInResponses = (responses, keyFunc) => {
-  let ukeys = new Set();
+  const ukeys = new Set();
   responses.forEach((res_obj) => ukeys.add(keyFunc(res_obj)));
   return Array.from(ukeys);
 };
@@ -54,7 +54,7 @@ function addLineBreaks(str, max_line_len) {
   if (!str || typeof str !== "string" || str.length === 0) return "";
   let result = "";
   const is_alphabetical = (s) => /^[A-Za-z]$/.test(s);
-  for (var i = 0; i < str.length; i++) {
+  for (let i = 0; i < str.length; i++) {
     result += str[i];
     if ((i + 1) % max_line_len === 0) {
       const next_char = i + 1 < str.length ? str[i + 1] : "";
@@ -67,8 +67,8 @@ function addLineBreaks(str, max_line_len) {
 }
 const genUniqueShortnames = (names, max_chars_per_line = 32) => {
   // Generate unique 'shortnames' to refer to each name:
-  let past_shortnames_counts = {};
-  let shortnames = {};
+  const past_shortnames_counts = {};
+  const shortnames = {};
   const max_lines = 8;
   for (const name of names) {
     // Truncate string up to maximum num of chars
@@ -210,7 +210,7 @@ const VisNode = ({ data, id }) => {
         : [];
     const varcolors = colorPalettes.var; // ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#cadefc', '#f8f398'];
     let spec = [];
-    let layout = {
+    const layout = {
       autosize: true,
       dragmode: "pan",
       title: "",
@@ -225,7 +225,7 @@ const VisNode = ({ data, id }) => {
     };
 
     // Bucket responses by LLM:
-    let responses_by_llm = {};
+    const responses_by_llm = {};
     responses.forEach((item) => {
       const llm = get_llm(item);
       if (llm in responses_by_llm) responses_by_llm[llm].push(item);
@@ -236,7 +236,7 @@ const VisNode = ({ data, id }) => {
     // (This is assumed to be consistent across response batches)
     let typeof_eval_res =
       responses[0].eval_res && "dtype" in responses[0].eval_res
-        ? responses[0].eval_res["dtype"]
+        ? responses[0].eval_res.dtype
         : "Numeric";
 
     // If categorical type, check if all binary:
@@ -298,11 +298,11 @@ const VisNode = ({ data, id }) => {
     const plot_accuracy = (resp_to_x, group_type) => {
       // Plots the percentage of 'true' evaluations out of the total number of evaluations,
       // per category of 'resp_to_x', as a horizontal bar chart, with different colors per category.
-      let names = new Set(responses.map(resp_to_x));
+      const names = new Set(responses.map(resp_to_x));
       const shortnames = genUniqueShortnames(names);
-      let x_items = [];
-      let y_items = [];
-      let marker_colors = [];
+      const x_items = [];
+      const y_items = [];
+      const marker_colors = [];
       for (const name of names) {
         // Add a shortened version of the name as the y-tick
         y_items.push(shortnames[name]);
@@ -419,7 +419,7 @@ const VisNode = ({ data, id }) => {
         const color =
           group_type === "llm"
             ? getColorForLLMAndSetIfNotFound(name)
-            : //:   varcolors[name_idx % varcolors.length];
+            : // :   varcolors[name_idx % varcolors.length];
               getColorForLLMAndSetIfNotFound(get_llm(responses[0]));
 
         if (
@@ -431,7 +431,7 @@ const VisNode = ({ data, id }) => {
             type: "histogram",
             histfunc: "sum",
             name: shortnames[name],
-            marker: { color: color },
+            marker: { color },
             y: x_items,
             orientation: "h",
           });
@@ -449,13 +449,13 @@ const VisNode = ({ data, id }) => {
         } else {
           // Plot a boxplot for all other cases.
           // x_items = [x_items.reduce((val, acc) => val + acc, 0)];
-          let d = {
+          const d = {
             name: shortnames[name],
             x: x_items,
             text: text_items,
             hovertemplate: "%{text}",
             orientation: "h",
-            marker: { color: color },
+            marker: { color },
           };
 
           // If only one result, plot a bar chart:
@@ -490,7 +490,7 @@ const VisNode = ({ data, id }) => {
       const names = new Set(responses.map(resp_to_x));
       const shortnames = genUniqueShortnames(names);
 
-      llm_names.forEach((llm, idx) => {
+      llm_names.forEach((llm) => {
         // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
         const rs = responses_by_llm[llm];
 
@@ -530,7 +530,7 @@ const VisNode = ({ data, id }) => {
           };
         } else {
           // Plot a boxplot or bar chart for other cases.
-          let d = {
+          const d = {
             name: llm,
             marker: { color: getColorForLLMAndSetIfNotFound(llm) },
             x: x_items,
@@ -574,12 +574,12 @@ const VisNode = ({ data, id }) => {
       // For 2 or more metrics, display a parallel coordinates plot.
       // :: For instance, if evaluator produces { height: 32, weight: 120 } plot responses with 2 metrics, 'height' and 'weight'
       if (varnames.length === 1) {
-        let unique_vals = getUniqueKeysInResponses(responses, (resp_obj) =>
+        const unique_vals = getUniqueKeysInResponses(responses, (resp_obj) =>
           get_var(resp_obj, varnames[0]),
         );
         // const response_txts = responses.map(res_obj => res_obj.responses).flat();
 
-        let group_colors = varcolors;
+        const group_colors = varcolors;
         const unselected_line_color = "#ddd";
         const spec_colors = responses
           .map((resp_obj) => {
@@ -588,7 +588,7 @@ const VisNode = ({ data, id }) => {
           })
           .flat();
 
-        let colorscale = [];
+        const colorscale = [];
         for (let i = 0; i < unique_vals.length; i++) {
           if (
             !selectedLegendItems ||
@@ -605,7 +605,7 @@ const VisNode = ({ data, id }) => {
             ]);
         }
 
-        let dimensions = [];
+        const dimensions = [];
         metric_axes_labels.forEach((metric) => {
           const evals = extractEvalResultsForMetric(metric, responses);
           dimensions.push({
@@ -620,9 +620,9 @@ const VisNode = ({ data, id }) => {
           pad: [10, 10, 10, 10],
           line: {
             color: spec_colors,
-            colorscale: colorscale,
+            colorscale,
           },
-          dimensions: dimensions,
+          dimensions,
         });
         layout.margin = { l: 40, r: 40, b: 40, t: 50, pad: 0 };
         layout.paper_bgcolor = "white";
@@ -630,7 +630,7 @@ const VisNode = ({ data, id }) => {
         layout.selectedpoints = [];
 
         // There's no built-in legend for parallel coords, unfortunately, so we need to construct our own:
-        let legend_labels = {};
+        const legend_labels = {};
         unique_vals.forEach((v, idx) => {
           if (!selectedLegendItems || selectedLegendItems.indexOf(v) > -1)
             legend_labels[v] = group_colors[idx % group_colors.length];
@@ -812,7 +812,7 @@ const VisNode = ({ data, id }) => {
             );
 
           // Find all the special 'LLM group' metavars and put them in the 'group by' dropdown:
-          let available_llm_groups = [{ value: "LLM", label: "LLM" }].concat(
+          const available_llm_groups = [{ value: "LLM", label: "LLM" }].concat(
             metavars
               .filter((name) => name.startsWith("LLM_"))
               .map((name) => ({
@@ -849,7 +849,7 @@ const VisNode = ({ data, id }) => {
 
   if (data.input) {
     // If there's a change in inputs...
-    if (data.input != pastInputs) {
+    if (data.input !== pastInputs) {
       setPastInputs(data.input);
       handleOnConnect();
     }
@@ -869,7 +869,7 @@ const VisNode = ({ data, id }) => {
       // To listen for resize events of the textarea, we need to use a ResizeObserver.
       // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div wrapping the Plotly vis.
       if (!plotDivRef.current && window.ResizeObserver) {
-        const observer = new ResizeObserver(() => {
+        const observer = new window.ResizeObserver(() => {
           if (
             !plotlyRef ||
             !plotlyRef.current ||
@@ -995,7 +995,7 @@ const VisNode = ({ data, id }) => {
             display: plotlySpec && plotlySpec.length > 0 ? "block" : "none",
           }}
         />
-        {plotLegend ? plotLegend : <></>}
+        {plotLegend || <></>}
       </div>
       <Handle
         type="target"

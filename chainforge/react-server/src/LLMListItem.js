@@ -23,7 +23,7 @@ const perc2color = (perc) => {
     r = 255;
     b = Math.round(510 - 5.1 * perc);
   }
-  var h = r * 0x10000 + g * 0x100 + b * 0x1;
+  const h = r * 0x10000 + g * 0x100 + b * 0x1;
   return "#" + ("000000" + h.toString(16)).slice(-6);
 };
 

@@ -48,25 +48,25 @@ const forceFocusContentEditable = (e) => {
   // properly the first time they are clicked. Instead we (a) detect an empty div and (b) force the cursor to focus on it:
   if (e.target.innerText.length === 0) {
     const node = e.target;
-    let range = document.createRange();
+    const range = document.createRange();
     range.selectNode(node);
     range.setStart(node, 0);
     range.setEnd(node, 0);
 
-    let selection = window.getSelection();
+    const selection = window.getSelection();
     range.collapse(false);
     selection.removeAllRanges();
     selection.addRange(range);
   }
 };
 
-const CellTextarea = ({
+export function CellTextarea({
   initialValue,
   rowIdx,
   column,
   handleSaveCell,
-  onContextMenu,
-}) => {
+  // onContextMenu,
+}) {
   const [value, setValue] = useState(initialValue);
 
   useEffect(() => {
@@ -89,7 +89,7 @@ const CellTextarea = ({
       styles={rowIdx > -1 ? cellTextareaStyle : headerTextareaStyle}
     />
   );
-};
+}
 
 /**
  * A table with multi-line textareas that is always editable and relatively fast.

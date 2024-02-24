@@ -9,7 +9,7 @@ import {
   extract_responses,
   merge_response_objs,
 } from "../utils";
-import { LLM, NativeLLM } from "../models";
+import { NativeLLM } from "../models";
 import { expect, test } from "@jest/globals";
 import { LLMResponseObject } from "../typing";
 
@@ -159,6 +159,7 @@ test("aleph alpha model", async () => {
   console.log(JSON.stringify(resps));
 
   // Call Google's PaLM Text Completions API with a basic question
+  // eslint-disable-next-line
   [query, response] = await call_alephalpha(
     "Who invented modern playing cards? The answer ",
     NativeLLM.Aleph_Alpha_Luminous_Base,

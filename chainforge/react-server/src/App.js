@@ -1,6 +1,3 @@
-// import logo from './logo.svg';
-// import './App.css';
-
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import ReactFlow, { Controls, Background } from "reactflow";
 import {
@@ -94,7 +91,7 @@ const selector = (state) => ({
 
 // The initial LLM to use when new flows are created, or upon first load
 const INITIAL_LLM = () => {
-  let falcon7b = {
+  const falcon7b = {
     key: uuid(),
     name: "Falcon.7B.Instruct",
     emoji: "🤗",
@@ -211,7 +208,6 @@ const App = () => {
   const [confirmationDialogProps, setConfirmationDialogProps] = useState({
     title: "Confirm action",
     message: "Are you sure?",
-    onConfirm: () => {},
   });
 
   // For displaying error messages to user
@@ -282,7 +278,7 @@ const App = () => {
     addNode({
       id: "evalNode-" + Date.now(),
       type: "evaluator",
-      data: { language: progLang, code: code },
+      data: { language: progLang, code },
       position: { x: x - 200, y: y - 100 },
     });
   };
@@ -377,7 +373,7 @@ const App = () => {
     addNode({
       id: "process-" + Date.now(),
       type: "processor",
-      data: { language: progLang, code: code },
+      data: { language: progLang, code },
       position: { x: x - 200, y: y - 100 },
     });
   };
@@ -507,7 +503,7 @@ const App = () => {
     }
   };
   const autosavedFlowExists = () => {
-    return localStorage.getItem("chainforge-flow") !== null;
+    return window.localStorage.getItem("chainforge-flow") !== null;
   };
   const loadFlowFromAutosave = async (rf_inst) => {
     const saved_flow = StorageCache.loadFromLocalStorage(
@@ -540,7 +536,7 @@ const App = () => {
 
         // Now we append the cache file data to the flow
         const flow_and_cache = {
-          flow: flow,
+          flow,
           cache: json.files,
         };
 
@@ -620,7 +616,7 @@ const App = () => {
       setIsLoading(false);
 
       const file = event.target.files[0];
-      const reader = new FileReader();
+      const reader = new window.FileReader();
 
       // Handle file load event
       reader.addEventListener("load", function () {
@@ -690,7 +686,7 @@ const App = () => {
     fetch_from_backend(
       "fetchExampleFlow",
       {
-        name: name,
+        name,
       },
       handleError,
     )
@@ -763,7 +759,7 @@ const App = () => {
 
         // Now we append the cache file data to the flow
         return {
-          flow: flow,
+          flow,
           cache: json.files,
         };
       })
@@ -802,10 +798,10 @@ const App = () => {
 
         // The response should be a uid we can put in a GET request.
         // Generate the link:
-        let base_url = new URL(
+        const base_url = new URL(
           window.location.origin + window.location.pathname,
         ); // the current address e.g., https://chainforge.ai/play
-        let get_params = new URLSearchParams(base_url.search);
+        const get_params = new URLSearchParams(base_url.search);
         // Add the 'f' parameter
         get_params.set("f", uid); // set f=uid
         // Update the URL with the modified search parameters
@@ -949,7 +945,7 @@ const App = () => {
     return (
       <Box maw={600} mx="auto" mt="40px">
         <Text m="xl" size={"11pt"}>
-          We're sorry, but it seems like{" "}
+          {"We're sorry, but it seems like "}
           {isMobile
             ? "you are viewing ChainForge on a mobile device"
             : "your current browser isn't supported by the current version of ChainForge"}{" "}
@@ -965,19 +961,19 @@ const App = () => {
         </List>
 
         <Text m="xl" size={"11pt"}>
-          These browsers offer enhanced compatibility with ChainForge's
-          features. Don't worry, though! We're working to expand our browser
-          support to ensure everyone can enjoy our platform. 😊
+          These browsers offer enhanced compatibility with ChainForge&apos;s
+          features. Don&apos;t worry, though! We&apos;re working to expand our
+          browser support to ensure everyone can enjoy our platform. 😊
         </Text>
         <Text m="xl" size={"11pt"}>
-          If you have any questions or need assistance, please don't hesitate to
-          reach out on our{" "}
+          If you have any questions or need assistance, please don&apos;t
+          hesitate to reach out on our{" "}
           <a href="https://github.com/ianarawjo/ChainForge/issues">GitHub</a> by{" "}
           <a href="https://github.com/ianarawjo/ChainForge/issues">
             opening an Issue.
           </a>
-          &nbsp; (If you're a web developer, consider forking our repository and
-          making a{" "}
+          &nbsp; (If you&apos;re a web developer, consider forking our
+          repository and making a{" "}
           <a href="https://github.com/ianarawjo/ChainForge/pulls">
             Pull Request
           </a>{" "}
@@ -1306,6 +1302,7 @@ const App = () => {
             href="https://forms.gle/AA82Rbn1X8zztcbj8"
             target="_blank"
             style={{ color: "#666", fontSize: "11pt" }}
+            rel="noreferrer"
           >
             Send us feedback
           </a>

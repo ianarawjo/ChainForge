@@ -265,6 +265,7 @@ const OAIEVALS = {
   "south-african-bands":
     "Test the model's ability to understand that we are providing the name of a South African band, find the supplied band, and if the band has a lead vocalist provide the stage name or real name of the vocalist.",
   spanish_feminine_noun_masculine_article:
+    // eslint-disable-next-line
     'In Spanish there are are a number of nouns like "agua" which are feminine but use the masculine article, "El agua" is correct and "La agua" is incorrect',
   split_chinese_characters: null,
   "squares-gpt":
@@ -347,13 +348,14 @@ const ExampleFlowCard = ({
         mt="md"
         radius="md"
       >
-        {buttonText ? buttonText : "Try me"}
+        {buttonText ?? "Try me"}
       </Button>
     </Card>
   );
 };
 
-const ExampleFlowsModal = forwardRef((props, ref) => {
+// es-lint-ignore-next-line
+const ExampleFlowsModal = forwardRef(function ExampleFlowsModal(props, ref) {
   // Mantine modal popover for alerts
   const [opened, { open, close }] = useDisclosure(false);
 
@@ -446,13 +448,17 @@ const ExampleFlowsModal = forwardRef((props, ref) => {
         <Tabs.Panel value="openai-evals" pt="xs">
           <Text size="sm" pl="sm">
             These flows are generated from the{" "}
-            <a href="https://github.com/openai/evals" target="_blank">
+            <a
+              href="https://github.com/openai/evals"
+              target="_blank"
+              rel="noreferrer"
+            >
               OpenAI evals
-            </a>{" "}
-            benchmarking package. We currently load evals with a common system
+            </a>
+            {`benchmarking package. We currently load evals with a common system
             message, a single 'turn' (prompt), and evaluation types of
             'includes', 'match', and 'fuzzy match', and a reasonable number of
-            prompts. &nbsp;
+            prompts. &nbsp;`}
             <i>
               Warning: some evals include tables with 1000 prompts or more.{" "}
             </i>

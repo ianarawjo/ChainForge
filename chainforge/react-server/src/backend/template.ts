@@ -108,7 +108,7 @@ export class StringTemplate {
    *   - has at least one varname in passed varnames
    */
   has_vars(varnames?: Array<string>): boolean {
-    let template = this.val;
+    const template = this.val;
     let prev_c = "";
     let group_start_idx = -1;
     for (let i = 0; i < template.length; i += 1) {
@@ -145,8 +145,8 @@ export class StringTemplate {
    * then ["place", "food"] will be returned.
    */
   get_vars(): Array<string> {
-    let template = this.val;
-    let varnames: Array<string> = [];
+    const template = this.val;
+    const varnames: Array<string> = [];
     let prev_c = "";
     let group_start_idx = -1;
     for (let i = 0; i < template.length; i += 1) {
@@ -204,6 +204,7 @@ export class PromptTemplate {
             NOTE: ChainForge only supports placeholders with braces {} without \ escape before them.
         */
     try {
+      // eslint-disable-next-line
       new StringTemplate(templateStr);
     } catch (err) {
       throw new Error(`Invalid template formatting for string: ${templateStr}`);
@@ -251,21 +252,21 @@ export class PromptTemplate {
     // Check for special 'past fill history' format:
     let past_fill_history = {};
     let past_metavars = {};
-    let some_key = Object.keys(paramDict).pop();
-    let some_val = some_key ? paramDict[some_key] : undefined;
+    const some_key = Object.keys(paramDict).pop();
+    const some_val = some_key ? paramDict[some_key] : undefined;
     if (len(paramDict) > 0 && isDict(some_val)) {
       // Transfer over the fill history and metavars
       Object.values(paramDict).forEach((obj) => {
         if ("fill_history" in obj)
-          past_fill_history = { ...obj["fill_history"], ...past_fill_history };
+          past_fill_history = { ...obj.fill_history, ...past_fill_history };
         if ("metavars" in obj)
-          past_metavars = { ...obj["metavars"], ...past_metavars };
+          past_metavars = { ...obj.metavars, ...past_metavars };
       });
 
       // Recreate the param dict from just the 'text' property of the fill object
-      let newParamDict: { [key: string]: any } = {};
+      const newParamDict: { [key: string]: any } = {};
       Object.entries(paramDict).forEach(([param, obj]) => {
-        newParamDict[param] = obj["text"];
+        newParamDict[param] = obj.text;
       });
       paramDict = newParamDict;
     }
@@ -283,7 +284,7 @@ export class PromptTemplate {
       });
     }
 
-    let filled_pt = new PromptTemplate(
+    const filled_pt = new PromptTemplate(
       new StringTemplate(this.template).safe_substitute(params_wo_settings),
     );
 
@@ -326,7 +327,7 @@ export class PromptTemplate {
     // Special variables {#...} denotes filling a variable from a matching var in fill_history or metavars.
     // Find any special variables:
     const unfilled_vars = new StringTemplate(this.template).get_vars();
-    let special_vars_to_fill: { [key: string]: string } = {};
+    const special_vars_to_fill: { [key: string]: string } = {};
     for (const v of unfilled_vars) {
       if (v.length > 0 && v[0] === "#") {
         // special template variables must begin with #
@@ -375,7 +376,7 @@ export class PromptPermutationGenerator {
     if (len(params_to_fill) === 0) return true;
 
     // Extract the first param that occurs in the current template
-    let param: string | undefined = undefined;
+    let param: string | undefined;
     let params_left: Array<string> = params_to_fill;
     for (let i = 0; i < params_to_fill.length; i++) {
       const p = params_to_fill[i];
@@ -392,13 +393,13 @@ export class PromptPermutationGenerator {
     }
 
     // Generate new prompts by filling in its value(s) into the PromptTemplate
-    let val = paramDict[param];
+    const val = paramDict[param];
     let new_prompt_temps: Array<PromptTemplate> = [];
     if (Array.isArray(val)) {
       val.forEach((v) => {
         if (param === undefined) return;
 
-        let param_fill_dict: { [key: string]: any } = {};
+        const param_fill_dict: { [key: string]: any } = {};
         param_fill_dict[param] = v;
 
         /* If this var has an "associate_id", then it wants to "carry with"
@@ -406,7 +407,7 @@ export class PromptPermutationGenerator {
                    We have to find any parameters with values of the same id, 
                    and fill them in alongside the initial parameter v: */
         if (isDict(v) && "associate_id" in v) {
-          let v_associate_id = v["associate_id"];
+          const v_associate_id = v.associate_id;
           params_left.forEach((other_param) => {
             if (
               template.has_var(other_param) &&
@@ -414,7 +415,7 @@ export class PromptPermutationGenerator {
             ) {
               for (let i = 0; i < paramDict[other_param].length; i++) {
                 const ov = paramDict[other_param][i];
-                if (isDict(ov) && ov["associate_id"] === v_associate_id) {
+                if (isDict(ov) && ov.associate_id === v_associate_id) {
                   // This is a match. We should add the val to our param_fill_dict:
                   param_fill_dict[other_param] = ov;
                   break;
@@ -428,7 +429,7 @@ export class PromptPermutationGenerator {
         new_prompt_temps.push(template.fill(param_fill_dict));
       });
     } else if (typeof val === "string") {
-      let sub_dict: { [key: string]: any } = {};
+      const sub_dict: { [key: string]: any } = {};
       sub_dict[param] = val;
       new_prompt_temps = [template.fill(sub_dict)];
     } else
@@ -453,7 +454,7 @@ export class PromptPermutationGenerator {
   *generate(paramDict: {
     [key: string]: any;
   }): Generator<PromptTemplate, boolean, undefined> {
-    let template =
+    const template =
       typeof this.template === "string"
         ? new PromptTemplate(this.template)
         : this.template;
@@ -463,7 +464,11 @@ export class PromptPermutationGenerator {
       return true; // done
     }
 
-    for (let p of this._gen_perm(template, Object.keys(paramDict), paramDict)) {
+    for (const p of this._gen_perm(
+      template,
+      Object.keys(paramDict),
+      paramDict,
+    )) {
       p.fill_special_vars({ ...p.fill_history, ...p.metavars });
 
       // Yield the final prompt template

@@ -21,7 +21,7 @@ import {
   postProcessFormData,
 } from "./ModelSettingSchemas";
 
-const ModelSettingsModal = forwardRef((props, ref) => {
+const ModelSettingsModal = forwardRef(function ModelSettingsModal(props, ref) {
   const [opened, { open, close }] = useDisclosure(false);
 
   const [formData, setFormData] = useState(undefined);
@@ -64,11 +64,11 @@ const ModelSettingsModal = forwardRef((props, ref) => {
         setInitModelName(props.model.formData.model);
       } else {
         // Create settings from schema
-        let default_settings = {};
+        const default_settings = {};
         Object.keys(schema.properties).forEach((key) => {
           default_settings[key] =
             "default" in schema.properties[key]
-              ? schema.properties[key]["default"]
+              ? schema.properties[key].default
               : undefined;
         });
         setInitShortname(default_settings.shortname);
@@ -91,7 +91,7 @@ const ModelSettingsModal = forwardRef((props, ref) => {
       // For some reason react-json-form-schema returns 'undefined' on empty strings.
       // We need to (1) detect undefined values for keys in formData and (2) if they are of type string, replace with "",
       // if that property is marked with a special "allow_empty_str" property.
-      let patched_fdata = {};
+      const patched_fdata = {};
       Object.entries(fdata).forEach(([key, val]) => {
         if (
           val === undefined &&

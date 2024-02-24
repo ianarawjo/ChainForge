@@ -5,9 +5,8 @@ import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import fetch_from_backend from "./fetch_from_backend";
-import { IconArrowMerge, IconArrowsSplit, IconList } from "@tabler/icons-react";
+import { IconArrowsSplit, IconList } from "@tabler/icons-react";
 import {
-  Divider,
   NativeSelect,
   Text,
   Popover,
@@ -102,7 +101,7 @@ const displaySplitTexts = (textInfos, getColorForLLM) => {
   const color_for_llm = (llm) => getColorForLLM(llm) + "99";
   return textInfos.map((info, idx) => {
     const vars = info.fill_history;
-    let var_tags =
+    const var_tags =
       vars === undefined
         ? []
         : Object.keys(vars).map((varname) => {
@@ -239,12 +238,12 @@ const SplitNode = ({ data, id }) => {
       vars: input_data,
     }).then((promptTemplates) => {
       // Convert the templates into response objects
-      let resp_objs = promptTemplates.map((p) => ({
+      const resp_objs = promptTemplates.map((p) => ({
         text: p.toString(),
         fill_history: dict_excluding_key(p.fill_history, "__input"),
         llm:
           "__LLM_key" in p.metavars
-            ? llm_lookup[p.metavars["__LLM_key"]]
+            ? llm_lookup[p.metavars.__LLM_key]
             : undefined,
         metavars: removeLLMTagFromMetadata(p.metavars),
         batch_id: uuid(),

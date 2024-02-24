@@ -6,6 +6,7 @@ import LZString from "lz-string";
  * but where 'storageKeys' are used in place of filepaths.
  */
 export default class StorageCache {
+  // eslint-disable-next-line no-use-before-define
   private static instance: StorageCache;
   private data: Dict;
 
@@ -25,6 +26,7 @@ export default class StorageCache {
   private getCacheData(key: string): Dict | undefined {
     return this.data[key] || undefined;
   }
+
   public static get(key: string): Dict | undefined {
     return StorageCache.getInstance().getCacheData(key);
   }
@@ -32,6 +34,7 @@ export default class StorageCache {
   private hasKey(key: string): boolean {
     return key in this.data;
   }
+
   public static has(key: string): boolean {
     return StorageCache.getInstance().hasKey(key);
   }
@@ -39,6 +42,7 @@ export default class StorageCache {
   private storeCacheData(key: string, _data: any): void {
     this.data[key] = _data;
   }
+
   public static store(key: string, data: any): void {
     StorageCache.getInstance().storeCacheData(key, data);
   }
@@ -46,6 +50,7 @@ export default class StorageCache {
   private clearCache(): void {
     this.data = {};
   }
+
   public static clear(): void {
     StorageCache.getInstance().clearCache();
   }
@@ -62,7 +67,7 @@ export default class StorageCache {
    * @returns True if succeeded, false if failure (e.g., too big for localStorage).
    */
   public static saveToLocalStorage(
-    localStorageKey: string = "chainforge",
+    localStorageKey = "chainforge",
     data?: Dict,
   ): boolean {
     data = data ?? StorageCache.getInstance().data;
@@ -93,8 +98,8 @@ export default class StorageCache {
    * @returns Loaded data if succeeded, undefined if failure (e.g., key not found).
    */
   public static loadFromLocalStorage(
-    localStorageKey: string = "chainforge",
-    setStorageCacheData: boolean = true,
+    localStorageKey = "chainforge",
+    setStorageCacheData = true,
   ): boolean {
     const compressed = localStorage.getItem(localStorageKey);
     if (!compressed) {
@@ -104,7 +109,7 @@ export default class StorageCache {
       return undefined;
     }
     try {
-      let data = JSON.parse(LZString.decompressFromUTF16(compressed));
+      const data = JSON.parse(LZString.decompressFromUTF16(compressed));
       if (setStorageCacheData) StorageCache.getInstance().data = data;
       console.log("loaded", data);
       return data;

@@ -3,7 +3,7 @@ import { Handle } from "reactflow";
 import { Alert, Progress, Textarea } from "@mantine/core";
 import { IconAlertTriangle, IconRobot, IconSearch } from "@tabler/icons-react";
 import { v4 as uuid } from "uuid";
-import useStore from "./store";
+import useStore, { initLLMProviders } from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import fetch_from_backend from "./fetch_from_backend";
@@ -11,7 +11,6 @@ import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import { LLMListContainer } from "./LLMListComponent";
 import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 import InspectFooter from "./InspectFooter";
-import { initLLMProviders } from "./store";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
@@ -20,7 +19,7 @@ const PLACEHOLDER_PROMPT =
 
 // The default LLM annotator is GPT-4 at temperature 0.
 const DEFAULT_LLM_ITEM = (() => {
-  let item = [initLLMProviders.find((i) => i.base_model === "gpt-4")].map(
+  const item = [initLLMProviders.find((i) => i.base_model === "gpt-4")].map(
     (i) => ({
       key: uuid(),
       settings: getDefaultModelSettings(i.base_model),
@@ -37,6 +36,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
   const alertModal = useRef(null);
 
   const inspectModal = useRef(null);
+  // eslint-disable-next-line
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
 
@@ -97,12 +97,12 @@ const LLMEvaluatorNode = ({ data, id }) => {
 
       // Run LLM as evaluator
       fetch_from_backend("evalWithLLM", {
-        id: id,
+        id,
         llm: llmScorers[0],
         root_prompt: promptText + "\n```\n{input}\n```",
         responses: input_node_ids,
-        api_keys: apiKeys ? apiKeys : {},
-        progress_listener: progress_listener,
+        api_keys: apiKeys || {},
+        progress_listener,
       })
         .then(function (json) {
           // Check if there's an error; if so, bubble it up to user and exit:
@@ -204,7 +204,6 @@ const LLMEvaluatorNode = ({ data, id }) => {
         description="Model to use as scorer:"
         modelSelectButtonText="Change"
         selectModelAction="replace"
-        onAddModel={() => {}}
         onItemsChange={onLLMListItemsChange}
       />
 

@@ -1,8 +1,11 @@
 import { create } from "zustand";
 import { addEdge, applyNodeChanges, applyEdgeChanges } from "reactflow";
 import { escapeBraces } from "./backend/template";
-import { deepcopy, transformDict } from "./backend/utils";
-import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
+import {
+  deepcopy,
+  transformDict,
+  APP_IS_RUNNING_LOCALLY,
+} from "./backend/utils";
 import { DuplicateVariableNameError } from "./backend/errors";
 
 // Initial project settings
@@ -65,7 +68,7 @@ const refreshableOutputNodeTypes = new Set([
   "split",
 ]);
 
-export let initLLMProviders = [
+export const initLLMProviders = [
   {
     name: "GPT3.5",
     emoji: "🤖",
@@ -153,9 +156,9 @@ const useStore = create((set, get) => ({
     return get().flags[flagName] ?? false;
   },
   setFlag: (flagName, flagValue) => {
-    let flags = { ...get().flags };
+    const flags = { ...get().flags };
     flags[flagName] = flagValue;
-    set({ flags: flags });
+    set({ flags });
   },
 
   // Keep track of LLM colors, to ensure color consistency across various plots and displays
@@ -216,10 +219,10 @@ const useStore = create((set, get) => ({
   },
 
   inputEdgesForNode: (sourceNodeId) => {
-    return get().edges.filter((e) => e.target == sourceNodeId);
+    return get().edges.filter((e) => e.target === sourceNodeId);
   },
   outputEdgesForNode: (sourceNodeId) => {
-    return get().edges.filter((e) => e.source == sourceNodeId);
+    return get().edges.filter((e) => e.source === sourceNodeId);
   },
   pingOutputNodes: (sourceNodeId) => {
     const out_nodes = get()
@@ -242,7 +245,7 @@ const useStore = create((set, get) => ({
           ("sel_rows" in src_node.data || "rows" in src_node.data) &&
           "columns" in src_node.data
         ) {
-          let rows = src_node.data.sel_rows ?? src_node.data.rows;
+          const rows = src_node.data.sel_rows ?? src_node.data.rows;
           const columns = src_node.data.columns;
 
           // The sourceHandleKey is the key of the column in the table that we're interested in:
@@ -250,7 +253,7 @@ const useStore = create((set, get) => ({
           if (src_col !== undefined) {
             // Construct a lookup table from column key to header name,
             // as the 'metavars' dict should be keyed by column *header*, not internal key:
-            let col_header_lookup = {};
+            const col_header_lookup = {};
             columns.forEach((c) => {
               col_header_lookup[c.key] = c.header;
             });
@@ -298,20 +301,20 @@ const useStore = create((set, get) => ({
       } else {
         // Get the data related to that handle:
         if ("fields" in src_node.data) {
-          if (Array.isArray(src_node.data["fields"]))
-            return src_node.data["fields"];
+          if (Array.isArray(src_node.data.fields)) return src_node.data.fields;
           else {
             // We have to filter over a special 'fields_visibility' prop, which
             // can select what fields get output:
             if ("fields_visibility" in src_node.data)
               return Object.values(
                 transformDict(
-                  src_node.data["fields"],
-                  (fid) => src_node.data["fields_visibility"][fid] !== false,
+                  src_node.data.fields,
+                  // eslint-disable-next-line
+                  (fid) => src_node.data.fields_visibility.fid !== false,
                 ),
               );
             // return all field values
-            else return Object.values(src_node.data["fields"]);
+            else return Object.values(src_node.data.fields);
           }
         }
         // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:
@@ -327,9 +330,9 @@ const useStore = create((set, get) => ({
   getImmediateInputNodeTypes: (_targetHandles, node_id) => {
     const getNode = get().getNode;
     const edges = get().edges;
-    let inputNodeTypes = [];
+    const inputNodeTypes = [];
     edges.forEach((e) => {
-      if (e.target == node_id && _targetHandles.includes(e.targetHandle)) {
+      if (e.target === node_id && _targetHandles.includes(e.targetHandle)) {
         const src_node = getNode(e.source);
         if (src_node && src_node.type !== undefined)
           inputNodeTypes.push(src_node.type);
@@ -365,9 +368,9 @@ const useStore = create((set, get) => ({
 
         // Find the relevant edge(s):
         edges.forEach((e) => {
-          if (e.target == nodeId && e.targetHandle == varname) {
+          if (e.target === nodeId && e.targetHandle === varname) {
             // Get the immediate output:
-            let out = output(e.source, e.sourceHandle);
+            const out = output(e.source, e.sourceHandle);
             if (!out || !Array.isArray(out) || out.length === 0) return;
 
             // Check the format of the output. Can be str or dict with 'text' and more attrs:
@@ -451,7 +454,7 @@ const useStore = create((set, get) => ({
       return undefined;
     }
     // Deep copy node data
-    let dup = JSON.parse(JSON.stringify(node));
+    const dup = JSON.parse(JSON.stringify(node));
     // Shift position
     dup.position.x += offset && offset.x !== undefined ? offset.x : 0;
     dup.position.y += offset && offset.y !== undefined ? offset.y : 0;
@@ -477,7 +480,7 @@ const useStore = create((set, get) => ({
   },
   removeEdge: (id) => {
     set({
-      edges: applyEdgeChanges([{ id: id, type: "remove" }], get().edges),
+      edges: applyEdgeChanges([{ id, type: "remove" }], get().edges),
     });
   },
   onNodesChange: (changes) => {

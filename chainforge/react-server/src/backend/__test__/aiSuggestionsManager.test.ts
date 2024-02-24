@@ -1,13 +1,11 @@
 import AISuggestionsManager from "../aiSuggestionsManager";
-import { Row } from "../ai";
-import * as AI from "../ai";
 
 describe("AISuggestionsManager", () => {
   let suggestionsManager: AISuggestionsManager;
   let mockRows: string[];
 
   beforeEach(() => {
-    suggestionsManager = new AISuggestionsManager((suggestions: Row[]) => {});
+    suggestionsManager = new AISuggestionsManager();
     mockRows = ["one", "two", "three"];
   });
 

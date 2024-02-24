@@ -35,8 +35,8 @@ import {
 
 // Helper funcs
 const countResponsesBy = (responses, keyFunc) => {
-  let responses_by_key = {};
-  let unspecified_group = [];
+  const responses_by_key = {};
+  const unspecified_group = [];
   responses.forEach((item) => {
     const key = keyFunc(item);
     const d = key !== null ? responses_by_key : unspecified_group;
@@ -72,30 +72,30 @@ const getEvalResultStr = (eval_item) => {
     return (
       <>
         <span style={{ color: "gray" }}>{"score: "}</span>
-        <span style={{ color: color }}>{eval_str}</span>
+        <span style={{ color }}>{eval_str}</span>
       </>
     );
   }
 };
 
 function getIndicesOfSubstringMatches(s, substr, caseSensitive) {
-  let regex = new RegExp(
+  const regex = new RegExp(
     escapeRegExp(substr),
     "g" + (caseSensitive ? "" : "i"),
   );
   let result;
-  let indices = [];
+  const indices = [];
   while ((result = regex.exec(s))) indices.push(result.index);
   return indices;
 }
 
 // Splits a string by a substring or regex, but includes the delimiter (substring/regex match) elements in the returned array.
 function splitAndIncludeDelimiter(s, substr, caseSensitive) {
-  let indices = getIndicesOfSubstringMatches(s, substr, caseSensitive);
+  const indices = getIndicesOfSubstringMatches(s, substr, caseSensitive);
   if (indices.length === 0) return [s];
 
   const len_sub = substr.length;
-  let results = [];
+  const results = [];
   let prev_idx = 0;
   indices.forEach((idx) => {
     const pre_delim = s.substring(prev_idx, idx);
@@ -153,7 +153,7 @@ export const exportToExcel = (jsonResponses, filename) => {
       const metavars = res_obj.metavars ?? {};
       const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
       return res_obj.responses.map((r, r_idx) => {
-        let row = {
+        const row = {
           LLM: llm,
           Prompt: prompt,
           Response: r,
@@ -253,7 +253,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       jsonResponses.length > 0
     )
       return jsonResponses.reduce(
-        (acc, resp_obj) => acc + resp_obj["responses"].length,
+        (acc, resp_obj) => acc + resp_obj.responses.length,
         0,
       );
     else return 0;
@@ -308,7 +308,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     setShowEvalScoreOptions(contains_eval_res);
 
     // Set the variables accessible in the MultiSelect for 'group by'
-    let msvars = found_vars
+    const msvars = found_vars
       .map((name) =>
         // We add a $ prefix to mark this as a prompt parameter, and so
         // in the future we can add special types of variables without name collisions
@@ -359,7 +359,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     // Filter responses by search value, if user has searched
     if (searchValue.length > 0 && filterBySearchValue)
       responses = responses.filter((res_obj) =>
-        res_obj["responses"].some(search_regex.test.bind(search_regex)),
+        res_obj.responses.some(search_regex.test.bind(search_regex)),
       );
 
     // Functions to associate a color to each LLM in responses
@@ -389,7 +389,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             }}
           >
             <span className="response-var-name">{key}&nbsp;=&nbsp;</span>
-            <span className="response-var-value">"{s}"</span>
+            <span className="response-var-value">{`"${s}"`}</span>
           </div>
         );
       } else {
@@ -417,14 +417,14 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         }
 
         // We need to keep track of the original evaluation result per response str:
-        let resp_str_to_eval_res = {};
+        const resp_str_to_eval_res = {};
         if (eval_res_items)
           responses.forEach((r, idx) => {
             resp_str_to_eval_res[r] = eval_res_items[idx];
           });
 
         const same_resp_text_counts = countResponsesBy(responses, (r) => r)[0];
-        let same_resp_keys = Object.keys(same_resp_text_counts).sort(
+        const same_resp_keys = Object.keys(same_resp_text_counts).sort(
           (key1, key2) =>
             same_resp_text_counts[key2] - same_resp_text_counts[key1],
         );
@@ -532,11 +532,12 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       const getVar = (r, v) => (v === "LLM" ? getLLMName(r) : r.vars[v]);
 
       // Then group responses by prompts. Each prompt will become a separate row of the table (will be treated as unique)
-      let responses_by_prompt = groupResponsesBy(responses, (r) =>
+      const responses_by_prompt = groupResponsesBy(responses, (r) =>
         var_cols.map((v) => getVar(r, v)).join("|"),
       )[0];
 
       const rows = Object.entries(responses_by_prompt).map(
+        // eslint-disable-next-line
         ([prompt, resp_objs], idx) => {
           // We assume here that prompt input vars will be the same across all responses in this bundle,
           // so we just take the value of the first one per each varname:
@@ -553,13 +554,15 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             resp_objs,
             getColVal,
           )[0];
-          const sel_var_cols = found_sel_var_vals.map((val) => {
+          const sel_var_cols = found_sel_var_vals.map((val, idx) => {
             if (val in resp_objs_by_col_var) {
               const rs = resp_objs_by_col_var[val];
               // Return response divs as response box here:
-              return <div>{generateResponseBoxes(rs, var_cols, 100)}</div>;
+              return (
+                <div key={idx}>{generateResponseBoxes(rs, var_cols, 100)}</div>
+              );
             } else {
-              return <i>{empty_cell_text}</i>;
+              return <i key={idx}>{empty_cell_text}</i>;
             }
           });
 
@@ -610,7 +613,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
         if (varnames.length === 0) {
           // Base case. Display n response(s) to each single prompt, back-to-back:
           let fixed_width = 100;
-          let side_by_side_resps = wideFormat;
+          const side_by_side_resps = wideFormat;
           if (side_by_side_resps && eatenvars.length > 0) {
             const num_llms = Array.from(new Set(resps.map(getLLMName))).length;
             fixed_width = Math.max(20, Math.trunc(100 / num_llms)) - 1; // 20% width is lowest we will go (5 LLM response boxes max)

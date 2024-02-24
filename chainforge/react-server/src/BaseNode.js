@@ -3,7 +3,7 @@
  * Used to wrap common behavior like right-click context menu.
  */
 
-import { useCallback, useMemo, useState, useRef } from "react";
+import React, { useCallback, useMemo, useState, useRef } from "react";
 import { Menu } from "@mantine/core";
 import { IconCopy, IconX } from "@tabler/icons-react";
 import AreYouSureModal from "./AreYouSureModal";

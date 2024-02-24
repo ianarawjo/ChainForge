@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Stack,
   NumberInput,
@@ -11,7 +11,6 @@ import {
   Textarea,
   Alert,
 } from "@mantine/core";
-import { useState } from "react";
 import { autofill, generateAndReplace, AIError } from "./backend/ai";
 import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
 import AlertModal from "./AlertModal";
@@ -55,7 +54,7 @@ function AIPopover({
 
   // To check for OpenAI API key
   const noOpenAIKeyMessage = useMemo(() => {
-    if (apiKeys && apiKeys["OpenAI"]) return undefined;
+    if (apiKeys && apiKeys.OpenAI) return undefined;
     else
       return (
         <Alert
@@ -282,10 +281,10 @@ function AIPopover({
               <Tabs.Tab value="extend">Extend</Tabs.Tab>
             </Tabs.List>
             <Tabs.Panel value="extend" pb="xs">
-              {noOpenAIKeyMessage ? noOpenAIKeyMessage : extendUI}
+              {noOpenAIKeyMessage || extendUI}
             </Tabs.Panel>
             <Tabs.Panel value="replace" pb="xs">
-              {noOpenAIKeyMessage ? noOpenAIKeyMessage : replaceUI}
+              {noOpenAIKeyMessage || replaceUI}
             </Tabs.Panel>
           </Tabs>
         </Stack>

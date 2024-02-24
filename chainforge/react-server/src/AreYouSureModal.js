@@ -3,9 +3,12 @@ import { Modal, Button, Box, Text, Flex } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 
 /** Modal that lets user rename a single value, using a TextInput field. */
-const AreYouSureModal = forwardRef(({ title, message, onConfirm }, ref) => {
+const AreYouSureModal = forwardRef(function AreYouSureModal(
+  { title, message, onConfirm },
+  ref,
+) {
   const [opened, { open, close }] = useDisclosure(false);
-  const description = message ? message : "Are you sure?";
+  const description = message || "Are you sure?";
 
   // This gives the parent access to triggering the modal alert
   const trigger = () => {

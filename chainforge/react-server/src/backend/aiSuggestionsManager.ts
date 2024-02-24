@@ -45,25 +45,21 @@ class AISuggestionsManager {
   // Suggestions that should now be in the base if the user accepts the suggestions.
   expectedSuggestions: Row[] = [];
   // Callback to call when the suggestions change.
-  onSuggestionsChanged: (suggestions: Row[]) => void;
+  onSuggestionsChanged?: (suggestions: Row[]) => void;
   // Callback to call when the suggestions are completely refreshed.
-  onSuggestionsRefreshed: (suggestions: Row[]) => void;
+  onSuggestionsRefreshed?: (suggestions: Row[]) => void;
   // Fetches API keys from front-end
   getAPIKeys: () => Dict;
   // Whether the suggestions are loading.
-  isLoading: boolean = false;
+  isLoading = false;
 
   constructor(
     onSuggestionsChanged?: (suggestions: Row[]) => void,
     onSuggestionsRefreshed?: (suggestions: Row[]) => void,
     getAPIKeys?: () => Dict,
   ) {
-    this.onSuggestionsChanged = onSuggestionsChanged
-      ? onSuggestionsChanged
-      : () => {};
-    this.onSuggestionsRefreshed = onSuggestionsRefreshed
-      ? onSuggestionsRefreshed
-      : () => {};
+    this.onSuggestionsChanged = onSuggestionsChanged;
+    this.onSuggestionsRefreshed = onSuggestionsRefreshed;
     this.getAPIKeys = getAPIKeys;
   }
 
@@ -148,7 +144,7 @@ class AISuggestionsManager {
 
   // Returns the suggestion and removes it from the list. Defaults to the first one if no index.
   popSuggestion(index?: number): Row {
-    const i = index ? index : 0;
+    const i = index || 0;
     const popped = this.suggestions[i];
     const leftHalf = this.suggestions.slice(0, i);
     const rightHalf = this.suggestions.slice(i + 1);

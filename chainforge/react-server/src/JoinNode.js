@@ -69,7 +69,7 @@ const getVarsAndMetavars = (input_data) => {
   metavars = Array.from(metavars);
   return {
     vars: varnames,
-    metavars: metavars,
+    metavars,
   };
 };
 
@@ -79,7 +79,7 @@ const displayJoinedTexts = (textInfos, getColorForLLM) => {
   const color_for_llm = (llm) => getColorForLLM(llm) + "99";
   return textInfos.map((info, idx) => {
     const vars = info.fill_history;
-    let var_tags =
+    const var_tags =
       vars === undefined
         ? []
         : Object.keys(vars).map((varname) => {
@@ -210,7 +210,7 @@ const JoinNode = ({ data, id }) => {
     }
 
     // Find all vars and metavars in the input data (if any):
-    let { vars, metavars } = getVarsAndMetavars(input_data);
+    const { vars, metavars } = getVarsAndMetavars(input_data);
 
     // Create lookup table for LLMs in input, indexed by llm key
     const llm_lookup = extractLLMLookup(input_data);
@@ -255,12 +255,12 @@ const JoinNode = ({ data, id }) => {
 
       // Now join texts within each group:
       // (NOTE: We can do this directly here as response texts can't be templates themselves)
-      let joined_texts = Object.entries(groupedResps).map(
+      const joined_texts = Object.entries(groupedResps).map(
         ([var_val, resp_objs]) => {
           if (resp_objs.length === 0) return "";
           const llm =
             countNumLLMs(resp_objs) > 1 ? undefined : resp_objs[0].llm;
-          let vars = {};
+          const vars = {};
           if (groupByVar !== "A") vars[varname] = var_val;
           return {
             text: joinTexts(
@@ -269,7 +269,7 @@ const JoinNode = ({ data, id }) => {
             ),
             fill_history: isMetavar ? {} : vars,
             metavars: isMetavar ? vars : {},
-            llm: llm,
+            llm,
             batch_id: uuid(),
             // NOTE: We lose all other metadata here, because we could've joined across other vars or metavars values.
           };
@@ -287,7 +287,7 @@ const JoinNode = ({ data, id }) => {
           ),
           fill_history: {},
           metavars: {},
-          llm: llm,
+          llm,
           batch_id: uuid(),
         });
       }
@@ -303,12 +303,12 @@ const JoinNode = ({ data, id }) => {
       vars: input_data,
     }).then((promptTemplates) => {
       // Convert the templates into response objects
-      let resp_objs = promptTemplates.map((p) => ({
+      const resp_objs = promptTemplates.map((p) => ({
         text: p.toString(),
         fill_history: p.fill_history,
         llm:
           "__LLM_key" in p.metavars
-            ? llm_lookup[p.metavars["__LLM_key"]]
+            ? llm_lookup[p.metavars.__LLM_key]
             : undefined,
         metavars: removeLLMTagFromMetadata(p.metavars),
         batch_id: uuid(),
@@ -322,7 +322,8 @@ const JoinNode = ({ data, id }) => {
           resp_objs,
           (r) => r.llm?.key || r.llm,
         );
-        Object.entries(groupedRespsByLLM).map(([llm_key, resp_objs]) => {
+        // eslint-disable-next-line
+        Object.entries(groupedRespsByLLM).forEach(([llm_key, resp_objs]) => {
           // Group only within the LLM
           joined_texts = joined_texts.concat(joinByVar(resp_objs));
         });
@@ -363,7 +364,7 @@ const JoinNode = ({ data, id }) => {
 
   if (data.input) {
     // If there's a change in inputs...
-    if (data.input != pastInputs) {
+    if (data.input !== pastInputs) {
       setPastInputs(data.input);
       handleOnConnect();
     }

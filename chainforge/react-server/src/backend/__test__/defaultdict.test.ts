@@ -1,3 +1,4 @@
+/* eslint dot-notation: "off" */
 import DefaultDict from "../defaultdict";
 
 describe("DefaultDict", () => {
