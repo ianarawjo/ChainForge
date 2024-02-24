@@ -8,12 +8,25 @@ import { Menu } from "@mantine/core";
 import { IconCopy, IconX } from "@tabler/icons-react";
 import AreYouSureModal from "./AreYouSureModal";
 import useStore from "./store";
+import { Dict } from "./backend/typing";
 
-export const BaseNode = ({ children, classNames, nodeId, style }) => {
+interface BaseNodeProps {
+  children: React.ReactNode; // For components, HTML elements, text, etc.
+  classNames: string;
+  nodeId: string;
+  style?: React.CSSProperties; // Optional prop for inline styles
+}
+
+export const BaseNode: React.FC<BaseNodeProps> = ({
+  children,
+  classNames,
+  nodeId,
+  style,
+}) => {
   const removeNode = useStore((state) => state.removeNode);
   const duplicateNode = useStore((state) => state.duplicateNode);
 
-  const [contextMenuStyle, setContextMenuStyle] = useState({
+  const [contextMenuStyle, setContextMenuStyle] = useState<Dict>({
     left: -100,
     top: 0,
   });
