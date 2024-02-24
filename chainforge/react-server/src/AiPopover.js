@@ -29,8 +29,8 @@ const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
 
 const ROW_CONSTANTS = {
-  "beginAutofilling": 1,
-  "warnIfBelow": 2,
+  beginAutofilling: 1,
+  warnIfBelow: 2,
 };
 
 const changeFourSpaceTabsToTwo = (code) => {
