@@ -1,23 +1,17 @@
 import AISuggestionsManager from "../aiSuggestionsManager";
-import { Row } from "../ai";
-import * as AI from "../ai";
 
 describe("AISuggestionsManager", () => {
   let suggestionsManager: AISuggestionsManager;
   let mockRows: string[];
 
   beforeEach(() => {
-    suggestionsManager = new AISuggestionsManager((suggestions: Row[]) => {});
-    mockRows = [
-      'one',
-      'two',
-      'three',
-    ];
+    suggestionsManager = new AISuggestionsManager();
+    mockRows = ["one", "two", "three"];
   });
 
   describe("update", () => {
     it("should clear suggestions if necessary", () => {
-      jest.useFakeTimers()
+      jest.useFakeTimers();
       suggestionsManager.suggestions = [...mockRows];
       suggestionsManager.update(["one", "", ""]);
       jest.runAllTimers();
@@ -45,7 +39,7 @@ describe("AISuggestionsManager", () => {
       const secondSuggestion = mockRows[1];
       expect(suggestionsManager.popSuggestion(1)).toEqual(secondSuggestion);
       expect(suggestionsManager.suggestions).toEqual(
-        mockRows.slice(0, 1).concat(mockRows.slice(2))
+        mockRows.slice(0, 1).concat(mockRows.slice(2)),
       );
     });
   });
@@ -56,7 +50,7 @@ describe("AISuggestionsManager", () => {
       const secondSuggestion = mockRows[1];
       suggestionsManager.removeSuggestion(secondSuggestion);
       expect(suggestionsManager.suggestions).toEqual(
-        mockRows.slice(0, 1).concat(mockRows.slice(2))
+        mockRows.slice(0, 1).concat(mockRows.slice(2)),
       );
     });
   });
@@ -76,7 +70,9 @@ describe("AISuggestionsManager", () => {
       suggestionsManager.cycleSuggestions();
       // Except to be a recombination: not equal but set-equal
       expect(suggestionsManager.peekSuggestions()).not.toEqual(mockRows);
-      expect(new Set(suggestionsManager.peekSuggestions())).toEqual(new Set(mockRows));
+      expect(new Set(suggestionsManager.peekSuggestions())).toEqual(
+        new Set(mockRows),
+      );
     });
   });
 });

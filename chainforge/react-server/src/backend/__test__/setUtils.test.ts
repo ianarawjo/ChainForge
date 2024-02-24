@@ -1,4 +1,10 @@
-import { union, isSubset, isExtension, isExtensionIgnoreEmpty, isEqual } from "../setUtils";
+import {
+  union,
+  isSubset,
+  isExtension,
+  isExtensionIgnoreEmpty,
+  isEqual,
+} from "../setUtils";
 
 describe("setUtils", () => {
   describe("isEqual", () => {
@@ -69,37 +75,37 @@ describe("setUtils", () => {
       expect(isExtensionIgnoreEmpty(setA, setB, setC)).toBe(false);
     });
 
-    it(("return true on this real-life color example"), () => {
+    it("return true on this real-life color example", () => {
       const setA = [
-          "Red",
-          "Sky Blue",
-          "Deep Purple",
-          "Sunshine Yellow",
-          "Midnight Black",
-          "Emerald Green",
-          "Electric Pink",
-          "Arctic White",
-          "",
-          ""
+        "Red",
+        "Sky Blue",
+        "Deep Purple",
+        "Sunshine Yellow",
+        "Midnight Black",
+        "Emerald Green",
+        "Electric Pink",
+        "Arctic White",
+        "",
+        "",
       ];
       const setB = [
-          "Red",
-          "Sky Blue",
-          "Deep Purple",
-          "Sunshine Yellow",
-          "Midnight Black",
-          "Emerald Green",
-          "Electric Pink",
-          "",
-          "",
-          ""
+        "Red",
+        "Sky Blue",
+        "Deep Purple",
+        "Sunshine Yellow",
+        "Midnight Black",
+        "Emerald Green",
+        "Electric Pink",
+        "",
+        "",
+        "",
       ];
       const setC = [
-          "Arctic White",
-          "Ocean Blue",
-          "Fiery Orange",
-          "Lavender Purple",
-          "Goldenrod Yellow"
+        "Arctic White",
+        "Ocean Blue",
+        "Fiery Orange",
+        "Lavender Purple",
+        "Goldenrod Yellow",
       ];
       expect(isExtensionIgnoreEmpty(setA, setB, setC)).toBe(true);
     });

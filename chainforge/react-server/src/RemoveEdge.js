@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
-import styled from 'styled-components';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@reactflow/core';
-import useStore from './store';  
+import React, { useState } from "react";
+import styled from "styled-components";
+import { BaseEdge, EdgeLabelRenderer, getBezierPath } from "@reactflow/core";
+import useStore from "./store";
 
 const EdgePathContainer = styled.g`
   path:nth-child(2) {
-    pointer-events: all; 
+    pointer-events: all;
     &:hover {
-        & + .edgebutton {
-            // Make add node button visible
-            visibility: visible;
-        }
+      & + .edgebutton {
+        // Make add node button visible
+        visibility: visible;
+      }
     }
-}`;
+  }
+`;
 
 export default function CustomEdge({
   id,
@@ -25,7 +26,6 @@ export default function CustomEdge({
   style = {},
   markerEnd,
 }) {
-
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -45,20 +45,30 @@ export default function CustomEdge({
 
   // Thanks in part to oshanley https://github.com/wbkd/react-flow/issues/1211#issuecomment-1585032930
   return (
-    <EdgePathContainer onPointerEnter={()=>setHovering(true)} onPointerLeave={()=>setHovering(false)}>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{...style, stroke: (hovering ? '#000' : '#999')}} />
+    <EdgePathContainer
+      onPointerEnter={() => setHovering(true)}
+      onPointerLeave={() => setHovering(false)}
+    >
+      <BaseEdge
+        path={edgePath}
+        markerEnd={markerEnd}
+        style={{ ...style, stroke: hovering ? "#000" : "#999" }}
+      />
       <EdgeLabelRenderer>
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             fontSize: 12,
-            pointerEvents: 'all',
-            visibility: hovering ? 'inherit' : 'hidden',
+            pointerEvents: "all",
+            visibility: hovering ? "inherit" : "hidden",
           }}
           className="nodrag nopan"
         >
-          <button className="remove-edge-btn" onClick={(event) => onEdgeClick(event, id)}>
+          <button
+            className="remove-edge-btn"
+            onClick={(event) => onEdgeClick(event, id)}
+          >
             ×
           </button>
         </div>

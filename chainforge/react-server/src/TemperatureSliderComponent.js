@@ -1,9 +1,10 @@
-import { Slider, RangeSlider } from '@mantine/core';
-import { IconTemperature, IconTemperatureOff } from '@tabler/icons-react';
+import React from "react";
+import { Slider } from "@mantine/core";
+import { IconTemperature } from "@tabler/icons-react";
 
 const styles = { thumb: { borderWidth: 2, height: 24, width: 24, padding: 3 } };
 
-export default function TemperatureSlider({style}) {
+export default function TemperatureSlider({ style }) {
   return (
     <div style={style}>
       <Slider

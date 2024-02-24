@@ -1,6 +1,6 @@
 /**
  * A dictionary that uses a default value when a key is not found.
- * 
+ *
  * Example usage:
  * const dict = new DefaultDict(() => 0);
  * dict["a"] = 1;
@@ -10,9 +10,15 @@
 
 class DefaultDict {
   constructor(defaultFactory) {
-    return new Proxy({}, {
-      get: (target, name) => (name in target && target[name] != null) ? target[name] : defaultFactory()
-    })
+    return new Proxy(
+      {},
+      {
+        get: (target, name) =>
+          name in target && target[name] != null
+            ? target[name]
+            : defaultFactory(),
+      },
+    );
   }
 }
 
