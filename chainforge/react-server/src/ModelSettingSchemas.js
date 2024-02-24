@@ -28,105 +28,140 @@ const ChatGPTSettings = {
   schema: {
     type: "object",
     required: ["shortname"],
-        "properties": {
-            "shortname": {
-                "type": "string",
-                "title": "Nickname",
-                "description": "Unique identifier to appear in ChainForge. Keep it short.",
-                "default": "GPT3.5"
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "GPT3.5",
       },
-      "model": {
-                "type": "string",
-                "title": "Model Version",
-                "description": "Select an OpenAI model to query. For more details on the differences, see the OpenAI API documentation.",
-                "enum": ["gpt-3.5-turbo", "gpt-3.5-turbo-0125", "gpt-3.5-turbo-1106", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-0301", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613", "gpt-4", "gpt-4-turbo-preview", "gpt-4-0125-preview", "gpt-4-1106-preview","gpt-4-32k", "gpt-4-0613", "gpt-4-0314", "gpt-4-32k-0613", "gpt-4-32k-0314", "gpt-3.5-turbo-instruct", "text-davinci-003", "text-davinci-002", "code-davinci-002"],
-                "default": "gpt-3.5-turbo",
+      model: {
+        type: "string",
+        title: "Model Version",
+        description:
+          "Select an OpenAI model to query. For more details on the differences, see the OpenAI API documentation.",
+        enum: [
+          "gpt-3.5-turbo",
+          "gpt-3.5-turbo-0125",
+          "gpt-3.5-turbo-1106",
+          "gpt-3.5-turbo-0613",
+          "gpt-3.5-turbo-0301",
+          "gpt-3.5-turbo-16k",
+          "gpt-3.5-turbo-16k-0613",
+          "gpt-4",
+          "gpt-4-turbo-preview",
+          "gpt-4-0125-preview",
+          "gpt-4-1106-preview",
+          "gpt-4-32k",
+          "gpt-4-0613",
+          "gpt-4-0314",
+          "gpt-4-32k-0613",
+          "gpt-4-32k-0314",
+          "gpt-3.5-turbo-instruct",
+          "text-davinci-003",
+          "text-davinci-002",
+          "code-davinci-002",
+        ],
+        default: "gpt-3.5-turbo",
       },
-      "system_msg": {
-                "type": "string",
-                "title": "system_msg",
-                "description": "Many conversations begin with a system message to gently instruct the assistant. By default, ChainForge includes the suggested 'You are a helpful assistant.'",
-                "default": "You are a helpful assistant.",
-                "allow_empty_str": true,
+      system_msg: {
+        type: "string",
+        title: "system_msg",
+        description:
+          "Many conversations begin with a system message to gently instruct the assistant. By default, ChainForge includes the suggested 'You are a helpful assistant.'",
+        default: "You are a helpful assistant.",
+        allow_empty_str: true,
       },
-      "temperature": {
-                "type": "number",
-                "title": "temperature",
-                "description": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
-                "default": 1,
-                "minimum": 0,
-                "maximum": 2,
-                "multipleOf": 0.01
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+        default: 1,
+        minimum: 0,
+        maximum: 2,
+        multipleOf: 0.01,
       },
-      "response_format": {
-                "type": "string",
-                "title": "response_format",
-                "enum": ["text", "json_object"],
-                "description": "An object specifying the format that the model must output. Currently, can only be text or JSON. Only works with newest GPT models. IMPORTANT: when using JSON mode, you must also instruct the model to produce JSON yourself via a system or user message. Without this, the model may generate an unending stream of whitespace until the generation reaches the token limit, resulting in a long-running and seemingly 'stuck' request.",
-                "default": "text",
+      response_format: {
+        type: "string",
+        title: "response_format",
+        enum: ["text", "json_object"],
+        description:
+          "An object specifying the format that the model must output. Currently, can only be text or JSON. Only works with newest GPT models. IMPORTANT: when using JSON mode, you must also instruct the model to produce JSON yourself via a system or user message. Without this, the model may generate an unending stream of whitespace until the generation reaches the token limit, resulting in a long-running and seemingly 'stuck' request.",
+        default: "text",
       },
-      "functions": {
-              "type": "string",
-              "title": "functions",
-              "description": "A list of JSON schema objects, each with 'name', 'description', and 'parameters' keys, which describe functions the model may generate JSON inputs for. For more info, see https://github.com/openai/openai-cookbook/blob/main/examples/How_to_call_functions_with_chat_models.ipynb",
-              "default": "",
+      functions: {
+        type: "string",
+        title: "functions",
+        description:
+          "A list of JSON schema objects, each with 'name', 'description', and 'parameters' keys, which describe functions the model may generate JSON inputs for. For more info, see https://github.com/openai/openai-cookbook/blob/main/examples/How_to_call_functions_with_chat_models.ipynb",
+        default: "",
       },
-      "function_call": {
-        "type": "string",
-              "title": "function_call",
-              "description": "Controls how the model responds to function calls. 'none' means the model does not call a function, and responds to the end-user. 'auto' means the model can pick between an end-user or calling a function. Specifying a particular function name forces the model to call only that function. Leave blank for default behavior.",
-              "default": "",
+      function_call: {
+        type: "string",
+        title: "function_call",
+        description:
+          "Controls how the model responds to function calls. 'none' means the model does not call a function, and responds to the end-user. 'auto' means the model can pick between an end-user or calling a function. Specifying a particular function name forces the model to call only that function. Leave blank for default behavior.",
+        default: "",
       },
-      "top_p": {
-                "type": "number",
-                "title": "top_p",
-                "description": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
-                "default": 1,
-                "minimum": 0,
-                "maximum": 1,
-                "multipleOf": 0.005
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description:
+          "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.005,
       },
-      "stop": {
-                "type": "string",
-                "title": "stop sequences",
-                "description": "Up to 4 sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes \"\" and use whitespace to separate them.",
-                "default": ""
+      stop: {
+        type: "string",
+        title: "stop sequences",
+        description:
+          'Up to 4 sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: "",
       },
-      "seed": {
-                "type": "integer",
-                "title": "seed",
-                "description": "If specified, the OpenAI API will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed.",
-                "allow_empty_str": true,
+      seed: {
+        type: "integer",
+        title: "seed",
+        description:
+          "If specified, the OpenAI API will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed.",
+        allow_empty_str: true,
       },
-      "max_tokens": {
-                "type": "integer",
-                "title": "max_tokens",
-                "description": "The maximum number of tokens to generate in the chat completion. (The total length of input tokens and generated tokens is limited by the model's context length.)"
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The maximum number of tokens to generate in the chat completion. (The total length of input tokens and generated tokens is limited by the model's context length.)",
       },
-      "presence_penalty": {
-        "type": "number",
-        "title": "presence_penalty",
-        "description": "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
-        "default": 0,
-        "minimum": -2,
-        "maximum": 2,
-        "multipleOf": 0.005
+      presence_penalty: {
+        type: "number",
+        title: "presence_penalty",
+        description:
+          "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
+        multipleOf: 0.005,
       },
-      "frequency_penalty": {
-                "type": "number",
-                "title": "frequency_penalty",
-                "description": "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
-                "default": 0,
-                "minimum": -2,
-                "maximum": 2,
-                "multipleOf": 0.005
+      frequency_penalty: {
+        type: "number",
+        title: "frequency_penalty",
+        description:
+          "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
+        multipleOf: 0.005,
       },
-      "logit_bias": {
-                "type": "string",
-                "title": "logit_bias",
-                "description": "Modify the likelihood of specified tokens appearing in the completion. Accepts a json object that maps tokens (specified by their token ID in the tokenizer) to an associated bias value from -100 to 100. Mathematically, the bias is added to the logits generated by the model prior to sampling. The exact effect will vary per model, but values between -1 and 1 should decrease or increase likelihood of selection; values like -100 or 100 should result in a ban or exclusive selection of the relevant token."
-            }
-        }
+      logit_bias: {
+        type: "string",
+        title: "logit_bias",
+        description:
+          "Modify the likelihood of specified tokens appearing in the completion. Accepts a json object that maps tokens (specified by their token ID in the tokenizer) to an associated bias value from -100 to 100. Mathematically, the bias is added to the logits generated by the model prior to sampling. The exact effect will vary per model, but values between -1 and 1 should decrease or increase likelihood of selection; values like -100 or 100 should result in a ban or exclusive selection of the relevant token.",
+      },
+    },
   },
 
   uiSchema: {
