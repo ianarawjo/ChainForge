@@ -1624,30 +1624,29 @@ export function sampleRandomElements(arr: any[], num_sample: number): any[] {
 }
 export const getVarsAndMetavars = (input_data) => {
   // Find all vars and metavars in the input data (if any):
-  let varnames = new Set();
-  let metavars = new Set();
+  const varnames = new Set();
+  const metavars = new Set();
 
   const add_from_resp_obj = (resp_obj) => {
     if (typeof resp_obj === "string") return;
     if (resp_obj?.fill_history)
-      Object.keys(resp_obj.fill_history).forEach(v => varnames.add(v));
+      Object.keys(resp_obj.fill_history).forEach((v) => varnames.add(v));
     else if (resp_obj?.vars)
-      Object.keys(resp_obj.vars).forEach(v => varnames.add(v));
-    if (resp_obj.metavars) 
-      Object.keys(resp_obj.metavars).forEach(v => metavars.add(v));
-    else if (resp_obj.meta) 
-      Object.keys(resp_obj.meta).forEach(v => metavars.add(v));
-  }
-  
-  if (Array.isArray(input_data))
-    input_data.forEach(add_from_resp_obj);
+      Object.keys(resp_obj.vars).forEach((v) => varnames.add(v));
+    if (resp_obj.metavars)
+      Object.keys(resp_obj.metavars).forEach((v) => metavars.add(v));
+    else if (resp_obj.meta)
+      Object.keys(resp_obj.meta).forEach((v) => metavars.add(v));
+  };
+
+  if (Array.isArray(input_data)) input_data.forEach(add_from_resp_obj);
   else {
     Object.entries(input_data).forEach(([key, obj]: [string, Dict[]]) => {
-      if (key !== '__input') varnames.add(key); // A "var" can also be other properties on input_data
+      if (key !== "__input") varnames.add(key); // A "var" can also be other properties on input_data
       obj.forEach(add_from_resp_obj);
     });
   }
-  
+
   return {
     vars: Array.from(varnames),
     metavars: Array.from(metavars),

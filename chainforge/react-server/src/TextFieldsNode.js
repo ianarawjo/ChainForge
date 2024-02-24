@@ -1,14 +1,22 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Handle } from 'reactflow';
-import { Textarea, Tooltip, Skeleton } from '@mantine/core';
-import { IconTextPlus, IconEye, IconEyeOff } from '@tabler/icons-react';
-import useStore from './store';
-import NodeLabel from './NodeLabelComponent';
-import TemplateHooks, { extractBracketedSubstrings } from './TemplateHooksComponent';
-import BaseNode from './BaseNode';
-import { setsAreEqual } from './backend/utils';
-import { AIGenReplaceItemsPopover } from './AiPopover';
-import AISuggestionsManager from './backend/aiSuggestionsManager';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
+import { Handle } from "reactflow";
+import { Textarea, Tooltip, Skeleton } from "@mantine/core";
+import { IconTextPlus, IconEye, IconEyeOff } from "@tabler/icons-react";
+import useStore from "./store";
+import NodeLabel from "./NodeLabelComponent";
+import TemplateHooks, {
+  extractBracketedSubstrings,
+} from "./TemplateHooksComponent";
+import BaseNode from "./BaseNode";
+import { setsAreEqual } from "./backend/utils";
+import { AIGenReplaceItemsPopover } from "./AiPopover";
+import AISuggestionsManager from "./backend/aiSuggestionsManager";
 
 // Helper funcs
 const union = (setA, setB) => {
@@ -393,20 +401,25 @@ const TextFieldsNode = ({ data, id }) => {
 
   return (
     <BaseNode classNames="text-fields-node" nodeId={id}>
-      <NodeLabel title={data.title || 'TextFields Node'} 
-                 nodeId={id} 
-                 icon={<IconTextPlus size="16px" />} 
-                 customButtons={
-                  (flags["aiSupport"] ? 
-                    [<AIGenReplaceItemsPopover 
-                              key='ai-popover'
-                              values={textfieldsValues}
-                              onAddValues={addMultipleFields}
-                              onReplaceValues={replaceFields}
-                              areValuesLoading={isLoading}
-                              setValuesLoading={setIsLoading} />]
-                   : [])
-                 } />
+      <NodeLabel
+        title={data.title || "TextFields Node"}
+        nodeId={id}
+        icon={<IconTextPlus size="16px" />}
+        customButtons={
+          flags.aiSupport
+            ? [
+                <AIGenReplaceItemsPopover
+                  key="ai-popover"
+                  values={textfieldsValues}
+                  onAddValues={addMultipleFields}
+                  onReplaceValues={replaceFields}
+                  areValuesLoading={isLoading}
+                  setValuesLoading={setIsLoading}
+                />,
+              ]
+            : []
+        }
+      />
       <Skeleton visible={isLoading}>
         <div ref={setRef}>{textFields}</div>
       </Skeleton>

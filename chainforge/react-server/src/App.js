@@ -22,6 +22,7 @@ import {
   IconArrowMerge,
   IconArrowsSplit,
   IconForms,
+  IconAbacus,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -40,18 +41,21 @@ import GlobalSettingsModal from "./GlobalSettingsModal";
 import ExampleFlowsModal from "./ExampleFlowsModal";
 import AreYouSureModal from "./AreYouSureModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
-import SimpleEvalNode from './SimpleEvalNode';
-import MultiEvalNode from './MultiEvalNode';
-import { getDefaultModelFormData, getDefaultModelSettings } from './ModelSettingSchemas';
-import { v4 as uuid } from 'uuid';
-import LZString from 'lz-string';
-import { EXAMPLEFLOW_1 } from './example_flows';
-import { PickCriteriaModal } from './GradeResponsesModal';
+import SimpleEvalNode from "./SimpleEvalNode";
+import MultiEvalNode from "./MultiEvalNode";
+import {
+  getDefaultModelFormData,
+  getDefaultModelSettings,
+} from "./ModelSettingSchemas";
+import { v4 as uuid } from "uuid";
+import LZString from "lz-string";
+import { EXAMPLEFLOW_1 } from "./example_flows";
+import { PickCriteriaModal } from "./GradeResponsesModal";
 
 // Styling
-import 'reactflow/dist/style.css'; // reactflow
-import './text-fields-node.css'; // project
-import '@fontsource/geist-mono'; // custom monospace font
+import "reactflow/dist/style.css"; // reactflow
+import "./text-fields-node.css"; // project
+import "@fontsource/geist-mono"; // custom monospace font
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from "zustand/shallow";
@@ -91,16 +95,16 @@ const selector = (state) => ({
 
 // The initial LLM to use when new flows are created, or upon first load
 const INITIAL_LLM = () => {
-  let falcon7b = { 
-    key: uuid(), 
-    name: "Mistral-7B", 
-    emoji: "🤗", 
-    model: "mistralai/Mistral-7B-Instruct-v0.1", 
-    base_model: "hf", 
-    temp: 1.0, 
-    settings: getDefaultModelSettings('hf'),
-    formData: getDefaultModelFormData('hf'), 
-  }; 
+  const falcon7b = {
+    key: uuid(),
+    name: "Mistral-7B",
+    emoji: "🤗",
+    model: "mistralai/Mistral-7B-Instruct-v0.1",
+    base_model: "hf",
+    temp: 1.0,
+    settings: getDefaultModelSettings("hf"),
+    formData: getDefaultModelFormData("hf"),
+  };
   falcon7b.formData.shortname = falcon7b.name;
   falcon7b.formData.model = falcon7b.model;
   return falcon7b;
@@ -348,7 +352,12 @@ const App = () => {
   };
   const addMultiEvalNode = () => {
     const { x, y } = getViewportCenter();
-    addNode({ id: 'multieval-'+Date.now(), type: 'multieval', data: {}, position: {x: x-200, y:y-100} });
+    addNode({
+      id: "multieval-" + Date.now(),
+      type: "multieval",
+      data: {},
+      position: { x: x - 200, y: y - 100 },
+    });
   };
   const addJoinNode = () => {
     const { x, y } = getViewportCenter();
@@ -992,17 +1001,22 @@ const App = () => {
         </Text>
       </Box>
     );
-  }
-  else return (
-    <div>
-      <GlobalSettingsModal ref={settingsModal} alertModal={alertModal} />
-      <AlertModal ref={alertModal} />
-      <PickCriteriaModal ref={testRef} />
-      <LoadingOverlay visible={isLoading} overlayBlur={1} />
-      <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
-      <AreYouSureModal ref={confirmationModal} title={confirmationDialogProps.title} message={confirmationDialogProps.message} onConfirm={confirmationDialogProps.onConfirm} />
-      
-      {/* <Modal title={'Welcome to ChainForge'} size='400px' opened={welcomeModalOpened} onClose={closeWelcomeModal} yOffset={'6vh'} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
+  } else
+    return (
+      <div>
+        <GlobalSettingsModal ref={settingsModal} alertModal={alertModal} />
+        <AlertModal ref={alertModal} />
+        <PickCriteriaModal ref={testRef} />
+        <LoadingOverlay visible={isLoading} overlayBlur={1} />
+        <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
+        <AreYouSureModal
+          ref={confirmationModal}
+          title={confirmationDialogProps.title}
+          message={confirmationDialogProps.message}
+          onConfirm={confirmationDialogProps.onConfirm}
+        />
+
+        {/* <Modal title={'Welcome to ChainForge'} size='400px' opened={welcomeModalOpened} onClose={closeWelcomeModal} yOffset={'6vh'} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
         <Box m='lg' mt='xl'>
           <Text>To get started, click the Settings icon in the top-right corner.</Text>
         </Box>
@@ -1140,7 +1154,13 @@ const App = () => {
                 </Menu.Item>
               </MenuTooltip>
               <MenuTooltip label="Define multiple criteria to evaluate responses by. Supports mix of code and LLM-based scorers.">
-                <Menu.Item onClick={addMultiEvalNode} icon={<IconAbacus size="16px" />}> Multi-Evaluator </Menu.Item>
+                <Menu.Item
+                  onClick={addMultiEvalNode}
+                  icon={<IconAbacus size="16px" />}
+                >
+                  {" "}
+                  Multi-Evaluator{" "}
+                </Menu.Item>
               </MenuTooltip>
               <Menu.Divider />
               <Menu.Label>Visualizers</Menu.Label>
@@ -1268,7 +1288,18 @@ const App = () => {
                   : "Share"}
             </Button>
           )}
-          <Button onClick={onClickTest} size="sm" variant="outline" bg="#eee" compact mr='xs' style={{float: 'left'}}> Test Stuff </Button>
+          <Button
+            onClick={onClickTest}
+            size="sm"
+            variant="outline"
+            bg="#eee"
+            compact
+            mr="xs"
+            style={{ float: "left" }}
+          >
+            {" "}
+            Test Stuff{" "}
+          </Button>
           <Button
             onClick={onClickNewFlow}
             size="sm"

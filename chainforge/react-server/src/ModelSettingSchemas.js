@@ -11,7 +11,7 @@
  */
 
 import { LLMProvider, RATE_LIMITS, getProvider } from "./backend/models";
-import { transformDict } from './backend/utils';
+import { transformDict } from "./backend/utils";
 import useStore from "./store";
 
 const UI_SUBMIT_BUTTON_SPEC = {
@@ -1239,7 +1239,7 @@ export const ModelSettings = {
 };
 
 export function getSettingsSchemaForLLM(llm_name) {
-  let llm_provider = getProvider(llm_name);
+  const llm_provider = getProvider(llm_name);
 
   const provider_to_settings_schema = {
     [LLMProvider.OpenAI]: GPT4Settings,
@@ -1252,8 +1252,7 @@ export function getSettingsSchemaForLLM(llm_name) {
     [LLMProvider.Ollama]: OllamaSettings,
   };
 
-  if (llm_provider === LLMProvider.Custom)
-    return ModelSettings[llm_name];
+  if (llm_provider === LLMProvider.Custom) return ModelSettings[llm_name];
   else if (llm_provider in provider_to_settings_schema)
     return provider_to_settings_schema[llm_provider];
   else {
