@@ -2,11 +2,21 @@ import React, { forwardRef, useImperativeHandle } from "react";
 import { Modal, Button, Box, Text, Flex } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 
+interface AreYouSureModalProps {
+  title: string;
+  message: string;
+  onConfirm: () => void;
+}
+
+interface AreYouSureModalHandles {
+  trigger: () => void;
+}
+
 /** Modal that lets user rename a single value, using a TextInput field. */
-const AreYouSureModal = forwardRef(function AreYouSureModal(
-  { title, message, onConfirm },
-  ref,
-) {
+const AreYouSureModal = forwardRef<
+  AreYouSureModalHandles,
+  AreYouSureModalProps
+>(function AreYouSureModal({ title, message, onConfirm }, ref) {
   const [opened, { open, close }] = useDisclosure(false);
   const description = message || "Are you sure?";
 
