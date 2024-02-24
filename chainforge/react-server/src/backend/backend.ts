@@ -525,7 +525,7 @@ export async function countQueries(
 
     // Get the relevant chat histories for this LLM:
     const chat_hists = (
-      !Array.isArray(chat_histories)
+      !Array.isArray(chat_histories) && chat_histories !== undefined
         ? chat_histories[extract_llm_nickname(llm_spec)]
         : chat_histories
     ) as ChatHistoryInfo[];
@@ -740,7 +740,8 @@ export async function queryLLM(
   });
 
   // Helper function to check whether this process has been canceled
-  const should_cancel = () => CancelTracker.has(cancel_id);
+  const should_cancel = () =>
+    cancel_id !== undefined && CancelTracker.has(cancel_id);
 
   // For each LLM, generate and cache responses:
   const responses: { [key: string]: Array<LLMResponseObject> } = {};
@@ -858,7 +859,7 @@ export async function queryLLM(
   );
 
   // Reorder the responses to match the original vars dict ordering of keys and values
-  const vars_lookup = {}; // we create a lookup table for faster sort
+  const vars_lookup: { [key: string]: Dict } = {}; // we create a lookup table for faster sort
   Object.entries(vars).forEach(([varname, vals]) => {
     vars_lookup[varname] = {};
     vals.forEach((vobj: Dict | string, i: number) => {
@@ -925,7 +926,7 @@ export async function executejs(
 
   // Instantiate the evaluator function by eval'ing the passed code
   // DANGER DANGER!!
-  let iframe: HTMLElement | undefined;
+  let iframe: HTMLElement | null | undefined;
   let process_func: any;
   if (typeof code === "string") {
     try {
@@ -1163,6 +1164,7 @@ export async function evalWithLLM(
   ) {
     // Convert all eval results to boolean datatypes:
     all_evald_responses.forEach((resp_obj) => {
+      if (!resp_obj.eval_res) return;
       resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) => {
         const li = i.toLowerCase();
         return li === "true" || li === "yes";
@@ -1173,6 +1175,7 @@ export async function evalWithLLM(
   } else if (allStringsAreNumeric(Array.from(all_eval_res))) {
     // Convert all eval results to numeric datatypes:
     all_evald_responses.forEach((resp_obj) => {
+      if (!resp_obj.eval_res) return;
       resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) =>
         parseFloat(i),
       );
@@ -1194,17 +1197,18 @@ export async function evalWithLLM(
  */
 export async function grabResponses(responses: Array<string>): Promise<Dict> {
   // Grab all responses with the given ID:
-  let grabbed_resps = [];
+  let grabbed_resps: Dict[] = [];
   for (let i = 0; i < responses.length; i++) {
     const cache_id = responses[i];
     const storageKey = `${cache_id}.json`;
     if (!StorageCache.has(storageKey))
       return { error: `Did not find cache data for id ${cache_id}` };
 
-    const res: Dict[] = load_cache_responses(storageKey);
+    let res: Dict | Array<{ [key: string]: Dict }> =
+      load_cache_responses(storageKey);
     if (typeof res === "object" && !Array.isArray(res)) {
       // Convert to standard response format
-      Object.entries(res).map(([prompt, res_obj]: [string, Dict]) =>
+      res = Object.entries(res).map(([prompt, res_obj]: [string, Dict]) =>
         to_standard_format({ prompt, ...res_obj }),
       );
     }

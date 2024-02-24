@@ -49,7 +49,7 @@ class AISuggestionsManager {
   // Callback to call when the suggestions are completely refreshed.
   onSuggestionsRefreshed?: (suggestions: Row[]) => void;
   // Fetches API keys from front-end
-  getAPIKeys: () => Dict;
+  getAPIKeys?: () => Dict;
   // Whether the suggestions are loading.
   isLoading = false;
 
@@ -70,7 +70,7 @@ class AISuggestionsManager {
   // Helper to set the suggestions and previousSuggestions together and notify the callback.
   private setSuggestions(suggestions: Row[]) {
     this.suggestions = suggestions;
-    this.onSuggestionsChanged(this.suggestions);
+    if (this.onSuggestionsChanged) this.onSuggestionsChanged(this.suggestions);
   }
 
   // Returns whether suggestions should be updated based on the current state and the new base.
@@ -102,12 +102,17 @@ class AISuggestionsManager {
   private updateSuggestions() {
     this.isLoading = true;
     // Query LLM.
-    autofill(this.base, NUM_SUGGESTIONS_TO_CACHE, this.getAPIKeys())
+    autofill(
+      this.base,
+      NUM_SUGGESTIONS_TO_CACHE,
+      this.getAPIKeys ? this.getAPIKeys() : undefined,
+    )
       // Update suggestions.
       .then((suggestions) => {
         this.setSuggestions(suggestions);
         this.expectedSuggestions = suggestions;
-        this.onSuggestionsRefreshed(this.suggestions);
+        if (this.onSuggestionsRefreshed)
+          this.onSuggestionsRefreshed(this.suggestions);
       })
       .catch(consumeAIErrors)
       .finally(() => {

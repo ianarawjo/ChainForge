@@ -140,7 +140,9 @@ let ALEPH_ALPHA_API_KEY = get_environ("ALEPH_ALPHA_API_KEY");
 export function set_api_keys(api_keys: StringDict): void {
   function key_is_present(name: string): boolean {
     return (
-      name in api_keys && api_keys[name] && api_keys[name].trim().length > 0
+      name in api_keys &&
+      api_keys[name] !== undefined &&
+      api_keys[name].trim().length > 0
     );
   }
   if (key_is_present("OpenAI")) OPENAI_API_KEY = api_keys.OpenAI;
@@ -879,9 +881,9 @@ export async function call_huggingface(
   // Inference Endpoints for text completion models has the same call,
   // except the endpoint is an entire URL. Detect this:
   const url =
-    using_custom_model_endpoint && params.custom_model.startsWith("https:")
-      ? params.custom_model
-      : `https://api-inference.huggingface.co/models/${using_custom_model_endpoint ? params.custom_model.trim() : model}`;
+    using_custom_model_endpoint && params?.custom_model?.startsWith("https:")
+      ? params?.custom_model
+      : `https://api-inference.huggingface.co/models/${using_custom_model_endpoint ? params?.custom_model?.trim() : model}`;
 
   const responses: Array<Dict> = [];
   while (responses.length < n) {
@@ -1017,7 +1019,7 @@ export async function call_ollama_provider(
     "system_msg",
     "chat_history",
   ])
-    if (name in params) delete params[name];
+    if (params && name in params) delete params[name];
 
   // FIXME: Ollama doesn't support batch inference, but llama.cpp does so it will eventually
   // For now, we send n requests and then wait for all of them to finish
@@ -1087,7 +1089,7 @@ async function call_custom_provider(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
-): Promise<[Dict, Dict]> {
+): Promise<[Dict, Dict[]]> {
   if (!APP_IS_RUNNING_LOCALLY())
     throw new Error(
       "The ChainForge app does not appear to be running locally. You can only call custom model providers if you are running ChainForge on your local machine, from a Flask app.",
@@ -1104,7 +1106,7 @@ async function call_custom_provider(
       ? undefined
       : provider_path.substring(provider_path.lastIndexOf("/") + 1);
 
-  const responses = [];
+  const responses: Dict[] = [];
   const query = { prompt, model, temperature, ...params };
 
   // Call the custom provider n times
@@ -1144,7 +1146,7 @@ export async function call_llm(
 ): Promise<[Dict, Dict]> {
   // Get the correct API call for the given LLM:
   let call_api: LLMAPICall | undefined;
-  const llm_provider: LLMProvider = getProvider(llm);
+  const llm_provider: LLMProvider | undefined = getProvider(llm);
 
   if (llm_provider === undefined)
     throw new Error(`Language model ${llm} is not supported.`);
@@ -1160,6 +1162,9 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.Aleph_Alpha) call_api = call_alephalpha;
   else if (llm_provider === LLMProvider.Ollama) call_api = call_ollama_provider;
   else if (llm_provider === LLMProvider.Custom) call_api = call_custom_provider;
+
+  if (call_api === undefined)
+    throw new Error(`Could not find an API hook for model ${llm}.`);
 
   return call_api(prompt, llm, n, temperature, params, should_cancel);
 }
@@ -1276,7 +1281,7 @@ export function extract_responses(
   response: Array<string | Dict> | Dict,
   llm: LLM | string,
 ): Array<string> {
-  const llm_provider: LLMProvider = getProvider(llm as LLM);
+  const llm_provider: LLMProvider | undefined = getProvider(llm as LLM);
   const llm_name = llm.toString().toLowerCase();
   switch (llm_provider) {
     case LLMProvider.OpenAI:
@@ -1407,8 +1412,8 @@ export const areEqualVarsDicts = (
   A: Dict | undefined,
   B: Dict | undefined,
 ): boolean => {
-  if (A === undefined) {
-    if (B === undefined) return true;
+  if (A === undefined || B === undefined) {
+    if (A === undefined && B === undefined) return true;
     return false;
   }
   const keys_A = Object.keys(A);
@@ -1424,7 +1429,7 @@ export const areEqualVarsDicts = (
 
 export const processCSV = (csv: string): string[] => {
   const matches = csv.match(/(\s*"[^"]+"\s*|\s*[^,]+|,)(?=,|$)/g);
-  if (!matches) return;
+  if (!matches) return [csv];
   for (let n = 0; n < matches.length; ++n) {
     matches[n] = matches[n].trim();
     if (matches[n] === ",") matches[n] = "";
@@ -1553,9 +1558,9 @@ export const truncStr = (s, maxLen) => {
   else return s;
 };
 
-export const groupResponsesBy = (responses, keyFunc) => {
-  const responses_by_key = {};
-  const unspecified_group = [];
+export const groupResponsesBy = (responses: Dict[], keyFunc) => {
+  const responses_by_key: Dict = {};
+  const unspecified_group: Dict[] = [];
   responses.forEach((item) => {
     const key = keyFunc(item);
     if (key === null || key === undefined) {
