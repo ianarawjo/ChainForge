@@ -1,12 +1,12 @@
 /** An alert popup for displaying errors */
-import React, { useState, forwardRef, useImperativeHandle } from 'react';
-import { useDisclosure } from '@mantine/hooks';
-import { Modal } from '@mantine/core';
+import React, { useState, forwardRef, useImperativeHandle } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { Modal } from "@mantine/core";
 
-const AlertModal = forwardRef((props, ref) => {
+const AlertModal = forwardRef(function AlertModal(props, ref) {
   // Mantine modal popover for alerts
   const [opened, { open, close }] = useDisclosure(false);
-  const [alertMsg, setAlertMsg] = useState('');
+  const [alertMsg, setAlertMsg] = useState("");
 
   // This gives the parent access to triggering the modal alert
   const trigger = (msg) => {
@@ -20,8 +20,16 @@ const AlertModal = forwardRef((props, ref) => {
   }));
 
   return (
-    <Modal opened={opened} onClose={close} title="Error" styles={{header: {backgroundColor: '#E52A2A', color: 'white'}, root: {position: 'relative', left: '-5%'}}}>
-      <p style={{whiteSpace: 'pre-line'}}>{alertMsg}</p>
+    <Modal
+      opened={opened}
+      onClose={close}
+      title="Error"
+      styles={{
+        header: { backgroundColor: "#E52A2A", color: "white" },
+        root: { position: "relative", left: "-5%" },
+      }}
+    >
+      <p style={{ whiteSpace: "pre-line" }}>{alertMsg}</p>
     </Modal>
   );
 });

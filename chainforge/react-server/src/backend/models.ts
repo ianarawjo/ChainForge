@@ -1,7 +1,7 @@
 /**
  * A list of all model APIs natively supported by ChainForge.
  */
-export type LLM = string | NativeLLM;
+
 export enum NativeLLM {
   // OpenAI Chat
   OpenAI_ChatGPT = "gpt-3.5-turbo",
@@ -51,11 +51,11 @@ export enum NativeLLM {
   Claude_v1_instant = "claude-instant-v1",
 
   // Google models
-  PaLM2_Text_Bison = "text-bison-001",  // it's really models/text-bison-001, but that's confusing
+  PaLM2_Text_Bison = "text-bison-001", // it's really models/text-bison-001, but that's confusing
   PaLM2_Chat_Bison = "chat-bison-001",
   GEMINI_PRO = "gemini-pro",
 
- // Aleph Alpha
+  // Aleph Alpha
   Aleph_Alpha_Luminous_Extended = "luminous-extended",
   Aleph_Alpha_Luminous_ExtendedControl = "luminous-extended-control",
   Aleph_Alpha_Luminous_BaseControl = "luminous-base-control",
@@ -81,6 +81,8 @@ export enum NativeLLM {
   Ollama = "ollama",
 }
 
+export type LLM = string | NativeLLM;
+
 /**
  * A list of model providers
  */
@@ -103,28 +105,19 @@ export enum LLMProvider {
  */
 export function getProvider(llm: LLM): LLMProvider | undefined {
   const llm_name = getEnumName(NativeLLM, llm.toString());
-  if (llm_name?.startsWith('OpenAI'))
-    return LLMProvider.OpenAI;
-  else if (llm_name?.startsWith('Azure'))
-    return LLMProvider.Azure_OpenAI;
-  else if (llm_name?.startsWith('PaLM2') || llm_name?.startsWith('GEMINI'))
+  if (llm_name?.startsWith("OpenAI")) return LLMProvider.OpenAI;
+  else if (llm_name?.startsWith("Azure")) return LLMProvider.Azure_OpenAI;
+  else if (llm_name?.startsWith("PaLM2") || llm_name?.startsWith("GEMINI"))
     return LLMProvider.Google;
-  else if (llm_name?.startsWith('Dalai'))
-    return LLMProvider.Dalai;
-  else if (llm_name?.startsWith('HF_'))
-    return LLMProvider.HuggingFace;
-  else if (llm.toString().startsWith('claude'))
-    return LLMProvider.Anthropic;
-  else if (llm_name?.startsWith('Aleph_Alpha'))
-    return LLMProvider.Aleph_Alpha;
-  else if (llm_name?.startsWith('Ollama'))
-    return LLMProvider.Ollama;
-  else if (llm.toString().startsWith('__custom/'))
-    return LLMProvider.Custom;
+  else if (llm_name?.startsWith("Dalai")) return LLMProvider.Dalai;
+  else if (llm_name?.startsWith("HF_")) return LLMProvider.HuggingFace;
+  else if (llm.toString().startsWith("claude")) return LLMProvider.Anthropic;
+  else if (llm_name?.startsWith("Aleph_Alpha")) return LLMProvider.Aleph_Alpha;
+  else if (llm_name?.startsWith("Ollama")) return LLMProvider.Ollama;
+  else if (llm.toString().startsWith("__custom/")) return LLMProvider.Custom;
 
   return undefined;
 }
-
 
 /** LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
 #   For a basic organization in OpenAI, GPT3.5 is currently 3500 and GPT4 is 200 RPM (requests per minute).
@@ -132,28 +125,28 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
 #   This 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
 #   If a model is missing from below, it means we must send and receive only 1 request at a time (synchronous).
 #   The following is only a guideline, and a bit on the conservative side.  */
-export let RATE_LIMITS: { [key in LLM]?: [number, number] } = {
-  [NativeLLM.OpenAI_ChatGPT]: [30, 10],  // max 30 requests a batch; wait 10 seconds between
+export const RATE_LIMITS: { [key in LLM]?: [number, number] } = {
+  [NativeLLM.OpenAI_ChatGPT]: [30, 10], // max 30 requests a batch; wait 10 seconds between
   [NativeLLM.OpenAI_ChatGPT_0301]: [30, 10],
   [NativeLLM.OpenAI_ChatGPT_0613]: [30, 10],
   [NativeLLM.OpenAI_ChatGPT_16k]: [30, 10],
   [NativeLLM.OpenAI_ChatGPT_16k_0613]: [30, 10],
-  [NativeLLM.OpenAI_GPT4]: [4, 15],  // max 4 requests a batch; wait 15 seconds between
+  [NativeLLM.OpenAI_GPT4]: [4, 15], // max 4 requests a batch; wait 15 seconds between
   [NativeLLM.OpenAI_GPT4_0314]: [4, 15],
   [NativeLLM.OpenAI_GPT4_0613]: [4, 15],
   [NativeLLM.OpenAI_GPT4_32k]: [4, 15],
   [NativeLLM.OpenAI_GPT4_32k_0314]: [4, 15],
   [NativeLLM.OpenAI_GPT4_32k_0613]: [4, 15],
   [NativeLLM.Azure_OpenAI]: [30, 10],
-  [NativeLLM.PaLM2_Text_Bison]: [4, 10],  // max 30 requests per minute; so do 4 per batch, 10 seconds between (conservative)
+  [NativeLLM.PaLM2_Text_Bison]: [4, 10], // max 30 requests per minute; so do 4 per batch, 10 seconds between (conservative)
   [NativeLLM.PaLM2_Chat_Bison]: [4, 10],
 };
 
-
 /** Equivalent to a Python enum's .name property */
-export function getEnumName(enumObject: any, enumValue: any): string | undefined {
-  for (const key in enumObject)
-    if (enumObject[key] === enumValue)
-      return key;
+export function getEnumName(
+  enumObject: any,
+  enumValue: any,
+): string | undefined {
+  for (const key in enumObject) if (enumObject[key] === enumValue) return key;
   return undefined;
 }
