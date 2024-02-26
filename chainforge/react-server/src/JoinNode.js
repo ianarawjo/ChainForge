@@ -24,7 +24,6 @@ import {
   tagMetadataWithLLM,
   extractLLMLookup,
   removeLLMTagFromMetadata,
-  truncStr,
   groupResponsesBy,
   getVarsAndMetavars,
   cleanMetavarsFilterFunc,

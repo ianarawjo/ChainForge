@@ -1741,7 +1741,7 @@ export const removeLLMTagFromMetadata = (metavars) => {
   return mcopy;
 };
 
-export const truncStr = (s, maxLen) => {
+export const truncStr = (s: string | undefined, maxLen: number): string => {
   if (s === undefined) return s;
   if (s.length > maxLen)
     // Cut the name short if it's long

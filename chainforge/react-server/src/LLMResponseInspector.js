@@ -44,6 +44,7 @@ import {
   ResponseGroup,
   genResponseTextsDisplay,
 } from "./ResponseBoxes";
+import { getLabelForResponse } from "./ResponseRatingToolbar";
 
 // Helper funcs
 const getLLMName = (resp_obj) =>
@@ -366,17 +367,17 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           else return responses;
         };
 
-        const innerTextsDisplay = genResponseTextsDisplay({
-          res_obj: res_obj,
-          onlyShowScores: contains_eval_res && onlyShowScores,
-          filterFunc: respsFilterFunc,
-          customTextDisplay: (txt) =>
+        const innerTextsDisplay = genResponseTextsDisplay(
+          res_obj,
+          respsFilterFunc,
+          (txt) =>
             searchValue
               ? genSpansForHighlightedValue(txt, searchValue, caseSensitive)
               : txt,
-          hideLLMName: hide_llm_name,
-          wideFormat: wideFormat,
-        });
+          contains_eval_res && onlyShowScores,
+          hide_llm_name ? undefined : getLLMName(res_obj),
+          wideFormat,
+        );
 
         // At the deepest level, there may still be some vars left over. We want to display these
         // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
