@@ -26,7 +26,6 @@ import {
   tagMetadataWithLLM,
   extractLLMLookup,
   removeLLMTagFromMetadata,
-  truncStr,
 } from "./backend/utils";
 
 import { fromMarkdown } from "mdast-util-from-markdown";

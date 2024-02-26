@@ -14,6 +14,9 @@ export interface Dict {
 export interface StringDict {
   [key: string]: string;
 }
+export interface NumberDict {
+  [key: string]: number;
+}
 
 /** OpenAI function call format */
 export interface OpenAIFunctionCall {

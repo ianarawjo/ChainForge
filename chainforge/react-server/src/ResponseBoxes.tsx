@@ -1,7 +1,13 @@
-import React, { Suspense, useMemo, useState } from "react";
-import { Collapse } from "@mantine/core";
+import React, { Suspense, useMemo, lazy } from "react";
+import { Collapse, Flex } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { truncStr } from "./backend/utils";
+import {
+  Dict,
+  NumberDict,
+  StandardizedLLMResponse,
+  StringDict,
+} from "./backend/typing";
 import { getLabelForResponse } from "./ResponseRatingToolbar";
 
 // Lazy load the response toolbars
@@ -10,7 +16,9 @@ const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar.js"));
 /* HELPER FUNCTIONS */
 const SUCCESS_EVAL_SCORES = new Set(["true", "yes"]);
 const FAILURE_EVAL_SCORES = new Set(["false", "no"]);
-const getEvalResultStr = (eval_item) => {
+const getEvalResultStr = (
+  eval_item: string[] | Dict | string | number | boolean,
+) => {
   if (Array.isArray(eval_item)) {
     return "scores: " + eval_item.join(", ");
   } else if (typeof eval_item === "object") {
@@ -36,16 +44,19 @@ const getEvalResultStr = (eval_item) => {
     );
   }
 };
-const countResponsesBy = (responses, keyFunc) => {
-  const responses_by_key = {};
-  const unspecified_group = [];
+
+const countResponsesBy = (
+  responses: string[],
+  keyFunc: (item: string) => string,
+): NumberDict => {
+  const counts_by_key = {};
   responses.forEach((item) => {
     const key = keyFunc(item);
-    const d = key !== null ? responses_by_key : unspecified_group;
-    if (key in d) d[key] += 1;
-    else d[key] = 1;
+    if (key === null) return;
+    if (key in counts_by_key) counts_by_key[key] += 1;
+    else counts_by_key[key] = 1;
   });
-  return [responses_by_key, unspecified_group];
+  return counts_by_key;
 };
 
 /**
@@ -88,7 +99,16 @@ export const ResponseGroup = ({
  * It is the colored boxes that appear in the response inspector when you are inspecting responses.
  * Note that a ResponseBox could list multiple textual responses if num responses per prompt > 1.
  */
-export const ResponseBox = ({
+interface ResponseBoxProps {
+  children: React.ReactNode; // For components, HTML elements, text, etc.
+  vars?: StringDict;
+  truncLenForVars?: number;
+  llmName?: string;
+  boxColor?: string;
+  width?: number;
+}
+
+export const ResponseBox: React.FC<ResponseBoxProps> = ({
   children,
   boxColor,
   width,
@@ -132,14 +152,14 @@ export const ResponseBox = ({
  * Given a response object, generates the inner divs to put inside a ResponseBox.
  * This is the lowest level display for response texts in ChainForge.
  */
-export const genResponseTextsDisplay = ({
-  res_obj,
-  filterFunc,
-  customTextDisplay,
-  onlyShowScores,
-  hideLLMName,
-  wideFormat,
-}) => {
+export const genResponseTextsDisplay = (
+  res_obj: StandardizedLLMResponse,
+  filterFunc?: (txts: string[]) => string[],
+  customTextDisplay?: (txt: string) => React.ReactNode,
+  onlyShowScores?: boolean,
+  llmName?: string,
+  wideFormat?:boolean,
+): React.ReactNode[] | React.ReactNode => {
   if (!res_obj) return <></>;
 
   const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
@@ -161,7 +181,7 @@ export const genResponseTextsDisplay = ({
       resp_str_to_eval_res[r] = eval_res_items[idx];
     });
 
-  const same_resp_text_counts = countResponsesBy(responses, (r) => r)[0];
+  const same_resp_text_counts = countResponsesBy(responses, (r) => r);
   const same_resp_keys = Object.keys(same_resp_text_counts).sort(
     (key1, key2) => same_resp_text_counts[key2] - same_resp_text_counts[key1],
   );
@@ -172,11 +192,11 @@ export const genResponseTextsDisplay = ({
     return (
       <div key={idx}>
         <Flex justify="right" gap="xs" align="center">
-          {!hideLLMName &&
+          {llmName !== undefined &&
           idx === 0 &&
           same_resp_keys.length > 1 &&
           wideFormat === true ? (
-            <h1>{getLLMName(res_obj)}</h1>
+            <h1>{llmName}</h1>
           ) : (
             <></>
           )}
@@ -185,12 +205,13 @@ export const genResponseTextsDisplay = ({
               uid={res_obj.uid}
               innerIdxs={origIdxs}
               wideFormat={wideFormat}
+              onUpdateResponses={undefined}
             />
           </Suspense>
-          {!hideLLMName &&
+          {llmName !== undefined &&
           idx === 0 &&
           (same_resp_keys.length === 1 || !wideFormat) ? (
-            <h1>{getLLMName(res_obj)}</h1>
+            <h1>{llmName}</h1>
           ) : (
             <></>
           )}
