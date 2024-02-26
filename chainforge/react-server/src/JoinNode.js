@@ -30,6 +30,7 @@ import {
   cleanMetavarsFilterFunc,
 } from "./backend/utils";
 import StorageCache from "./backend/cache";
+import { ResponseBox } from "./ResponseBoxes";
 
 const formattingOptions = [
   { value: "\n\n", label: "double newline \\n\\n" },
@@ -57,43 +58,19 @@ const DEFAULT_GROUPBY_VAR_ALL = { label: "all text", value: "A" };
 const displayJoinedTexts = (textInfos, getColorForLLM) => {
   const color_for_llm = (llm) => getColorForLLM(llm) + "99";
   return textInfos.map((info, idx) => {
-    const vars = info.fill_history;
-    const var_tags =
-      vars === undefined
-        ? []
-        : Object.keys(vars).map((varname) => {
-            const v = truncStr(vars[varname].trim(), 72);
-            return (
-              <div key={varname} className="response-var-inline">
-                <span className="response-var-name">
-                  {varname}&nbsp;=&nbsp;
-                </span>
-                <span className="response-var-value">{v}</span>
-              </div>
-            );
-          });
-
     const ps = <pre className="small-response">{info.text || info}</pre>;
 
     return (
-      <div
+      <ResponseBox
         key={"r" + idx}
-        className="response-box"
-        style={{
-          backgroundColor: info.llm ? color_for_llm(info.llm?.name) : "#ddd",
-          width: `100%`,
-        }}
+        boxColor={info.llm ? color_for_llm(info.llm?.name) : "#ddd"}
+        width="100%"
+        vars={info.fill_history ?? {}}
+        truncLenForVars={72}
+        llmName={info.llm?.name ?? ""}
       >
-        <div className="response-var-inline-container">{var_tags}</div>
-        {info.llm === undefined ? (
-          ps
-        ) : (
-          <div className="response-item-llm-name-wrapper">
-            <h1>{info.llm?.name}</h1>
-            {ps}
-          </div>
-        )}
-      </div>
+        {ps}
+      </ResponseBox>
     );
   });
 };

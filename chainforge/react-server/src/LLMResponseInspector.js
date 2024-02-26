@@ -13,7 +13,6 @@ import React, {
   Suspense,
 } from "react";
 import {
-  Collapse,
   MultiSelect,
   Table,
   NativeSelect,
@@ -24,7 +23,7 @@ import {
   Tooltip,
   TextInput,
 } from "@mantine/core";
-import { useDisclosure, useToggle } from "@mantine/hooks";
+import { useToggle } from "@mantine/hooks";
 import {
   IconTable,
   IconLayoutList,
@@ -40,55 +39,16 @@ import {
   batchResponsesByUID,
   cleanMetavarsFilterFunc,
 } from "./backend/utils";
-import { getLabelForResponse } from "./ResponseRatingToolbar";
-
-// Lazy load the response toolbars
-const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar.js"));
+import {
+  ResponseBox,
+  ResponseGroup,
+  genResponseTextsDisplay,
+} from "./ResponseBoxes";
 
 // Helper funcs
-const countResponsesBy = (responses, keyFunc) => {
-  const responses_by_key = {};
-  const unspecified_group = [];
-  responses.forEach((item, idx) => {
-    const key = keyFunc(item);
-    const d = key !== null ? responses_by_key : unspecified_group;
-    if (key in d) d[key].push(idx);
-    else d[key] = [idx];
-  });
-  return [responses_by_key, unspecified_group];
-};
 const getLLMName = (resp_obj) =>
   typeof resp_obj?.llm === "string" ? resp_obj.llm : resp_obj?.llm?.name;
 const escapeRegExp = (txt) => txt.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
-
-const SUCCESS_EVAL_SCORES = new Set(["true", "yes"]);
-const FAILURE_EVAL_SCORES = new Set(["false", "no"]);
-const getEvalResultStr = (eval_item) => {
-  if (Array.isArray(eval_item)) {
-    return "scores: " + eval_item.join(", ");
-  } else if (typeof eval_item === "object") {
-    const strs = Object.keys(eval_item).map((key) => {
-      let val = eval_item[key];
-      if (typeof val === "number" && val.toString().indexOf(".") > -1)
-        val = val.toFixed(4); // truncate floats to 4 decimal places
-      return `${key}: ${val}`;
-    });
-    return strs.join(", ");
-  } else {
-    const eval_str = eval_item.toString().trim().toLowerCase();
-    const color = SUCCESS_EVAL_SCORES.has(eval_str)
-      ? "black"
-      : FAILURE_EVAL_SCORES.has(eval_str)
-        ? "red"
-        : "black";
-    return (
-      <>
-        <span style={{ color: "gray" }}>{"score: "}</span>
-        <span style={{ color }}>{eval_str}</span>
-      </>
-    );
-  }
-};
 
 function getIndicesOfSubstringMatches(s, substr, caseSensitive) {
   const regex = new RegExp(
@@ -217,37 +177,6 @@ export const exportToExcel = (jsonResponses, filename) => {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
   XLSX.writeFile(wb, filename);
-};
-
-const ResponseGroup = ({
-  header,
-  responseBoxes,
-  responseBoxesWrapperClass,
-  displayStyle,
-  defaultState,
-}) => {
-  const [opened, { toggle }] = useDisclosure(defaultState);
-
-  return (
-    <div>
-      <div className="response-group-component-header" onClick={toggle}>
-        {header}
-      </div>
-      <Collapse
-        in={opened}
-        transitionDuration={500}
-        transitionTimingFunction="ease-in"
-        animateOpacity={true}
-      >
-        <div
-          className={responseBoxesWrapperClass}
-          style={{ display: displayStyle, flexWrap: "wrap" }}
-        >
-          {responseBoxes}
-        </div>
-      </Collapse>
-    </div>
-  );
 };
 
 const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
@@ -426,88 +355,27 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     const generateResponseBoxes = (resps, eatenvars, fixed_width) => {
       const hide_llm_name = eatenvars.includes("LLM");
       return resps.map((res_obj, res_idx) => {
-        const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
-
-        // Bucket responses that have the same text, and sort by the
-        // number of same responses so that the top div is the most prevalent response.
-        let responses = res_obj.responses;
-
         // If user has searched for something, further filter the response texts by only those that contain the search term
-        if (searchValue.length > 0) {
+        const respsFilterFunc = (responses) => {
+          if (searchValue.length === 0) return responses;
           const filtered_resps = responses.filter(
             search_regex.test.bind(search_regex),
           );
           numResponsesDisplayed += filtered_resps.length;
-          if (filterBySearchValue) responses = filtered_resps;
-        }
+          if (filterBySearchValue) return filtered_resps;
+          else return responses;
+        };
 
-        // We need to keep track of the original evaluation result per response str:
-        const resp_str_to_eval_res = {};
-        if (eval_res_items)
-          responses.forEach((r, idx) => {
-            resp_str_to_eval_res[r] = eval_res_items[idx];
-          });
-
-        // Counts the responses with the same keys
-        const same_resp_text_counts = countResponsesBy(responses, (r) => r)[0];
-        const same_resp_keys = Object.keys(same_resp_text_counts).sort(
-          (key1, key2) =>
-            same_resp_text_counts[key2].length -
-            same_resp_text_counts[key1].length,
-        );
-
-        const ps = same_resp_keys.map((r, idx) => {
-          const origIdxs = same_resp_text_counts[r];
-          const textToShow = searchValue
-            ? genSpansForHighlightedValue(r, searchValue, caseSensitive)
-            : r;
-          return (
-            <div key={idx}>
-              <Flex justify="right" gap="xs" align="center">
-                {!hide_llm_name &&
-                idx === 0 &&
-                same_resp_keys.length > 1 &&
-                wideFormat === true ? (
-                  <h1>{getLLMName(res_obj)}</h1>
-                ) : (
-                  <></>
-                )}
-                <Suspense>
-                  <ResponseRatingToolbar
-                    uid={res_obj.uid}
-                    innerIdxs={origIdxs}
-                    wideFormat={wideFormat}
-                  />
-                </Suspense>
-                {!hide_llm_name &&
-                idx === 0 &&
-                (same_resp_keys.length === 1 || !wideFormat) ? (
-                  <h1>{getLLMName(res_obj)}</h1>
-                ) : (
-                  <></>
-                )}
-              </Flex>
-              {same_resp_text_counts[r].length > 1 ? (
-                <span className="num-same-responses">
-                  {same_resp_text_counts[r].length} times
-                </span>
-              ) : (
-                <></>
-              )}
-              {eval_res_items ? (
-                <p className="small-response-metrics">
-                  {getEvalResultStr(resp_str_to_eval_res[r])}
-                </p>
-              ) : (
-                <></>
-              )}
-              {contains_eval_res && onlyShowScores ? (
-                <pre>{}</pre>
-              ) : (
-                <div className="small-response">{textToShow}</div>
-              )}
-            </div>
-          );
+        const innerTextsDisplay = genResponseTextsDisplay({
+          res_obj: res_obj,
+          onlyShowScores: contains_eval_res && onlyShowScores,
+          filterFunc: respsFilterFunc,
+          customTextDisplay: (txt) =>
+            searchValue
+              ? genSpansForHighlightedValue(txt, searchValue, caseSensitive)
+              : txt,
+          hideLLMName: hide_llm_name,
+          wideFormat: wideFormat,
         });
 
         // At the deepest level, there may still be some vars left over. We want to display these
@@ -517,31 +385,18 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           res_obj.vars,
           (v) => !eatenvars.includes(v),
         );
-        const var_tags = Object.keys(unused_vars).map((varname) => {
-          const v = truncStr(unused_vars[varname].trim(), wideFormat ? 72 : 18);
-          return (
-            <div key={varname} className="response-var-inline">
-              <span className="response-var-name">{varname}&nbsp;=&nbsp;</span>
-              <span className="response-var-value">{v}</span>
-            </div>
-          );
-        });
+        const llmName = getLLMName(res_obj);
         return (
-          <div
+          <ResponseBox
             key={"r" + res_idx}
-            className="response-box"
-            style={{
-              backgroundColor: color_for_llm(getLLMName(res_obj)),
-              width: `${fixed_width}%`,
-            }}
+            boxColor={color_for_llm(llmName)}
+            width={`${fixed_width}%`}
+            vars={unused_vars}
+            truncLenForVars={wideFormat ? 72 : 18}
+            llmName={hide_llm_name ? undefined : llmName}
           >
-            <div className="response-var-inline-container">{var_tags}</div>
-            {hide_llm_name ? (
-              ps
-            ) : (
-              <div className="response-item-llm-name-wrapper">{ps}</div>
-            )}
-          </div>
+            {innerTextsDisplay}
+          </ResponseBox>
         );
       });
     };

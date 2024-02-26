@@ -4,11 +4,10 @@
  */
 
 import React, { useCallback, useMemo, useState, useRef } from "react";
-import { Menu } from "@mantine/core";
+import { Menu, MenuStylesNames, Styles } from "@mantine/core";
 import { IconCopy, IconX } from "@tabler/icons-react";
 import AreYouSureModal from "./AreYouSureModal";
 import useStore from "./store";
-import { Dict } from "./backend/typing";
 
 interface BaseNodeProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
@@ -26,10 +25,9 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   const removeNode = useStore((state) => state.removeNode);
   const duplicateNode = useStore((state) => state.duplicateNode);
 
-  const [contextMenuStyle, setContextMenuStyle] = useState<Dict>({
-    left: -100,
-    top: 0,
-  });
+  const [contextMenuStyle, setContextMenuStyle] = useState<
+    Styles<MenuStylesNames>
+  >({});
   const [contextMenuOpened, setContextMenuOpened] = useState(false);
 
   // For 'delete node' confirmation popup
