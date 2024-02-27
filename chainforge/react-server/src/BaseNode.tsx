@@ -11,8 +11,8 @@ import useStore from "./store";
 
 interface BaseNodeProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
-  classNames: string;
   nodeId: string;
+  classNames?: string;
   style?: React.CSSProperties; // Optional prop for inline styles
 }
 

@@ -1,8 +1,20 @@
 import React from "react";
 
-export default function StatusIndicator({ status }) {
+export enum Status {
+  WARNING = "warning",
+  READY = "ready",
+  ERROR = "error",
+  LOADING = "loading",
+}
+interface StatusIndicatorProps {
+  status: Status;
+}
+
+export default function StatusIndicator({
+  status,
+}: StatusIndicatorProps): React.ReactElement {
   switch (status) {
-    case "warning": // Display mustard 'warning' icon
+    case Status.WARNING: // Display mustard 'warning' icon
       return (
         <div className="status-icon warning-status">
           &#9888;
@@ -12,21 +24,21 @@ export default function StatusIndicator({ status }) {
           </span>
         </div>
       );
-    case "ready": // Display green checkmark 'ready' icon
+    case Status.READY: // Display green checkmark 'ready' icon
       return (
         <div className="status-icon ready-status">
           &#10004;
           <span className="status-tooltip">Responses collected and ready.</span>
         </div>
       );
-    case "error": // Display red 'error' icon
+    case Status.ERROR: // Display red 'error' icon
       return (
         <div className="status-icon error-status">
           &#10006;
           <span className="status-tooltip">Error collecting responses.</span>
         </div>
       );
-    case "loading": // Display animated 'loading' spinner icon
+    case Status.LOADING: // Display animated 'loading' spinner icon
       return (
         <div className="lds-ring">
           <div></div>
@@ -36,6 +48,6 @@ export default function StatusIndicator({ status }) {
         </div>
       );
     default:
-      return [];
+      return <></>;
   }
 }

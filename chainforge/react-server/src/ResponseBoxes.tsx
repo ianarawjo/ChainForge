@@ -7,7 +7,6 @@ import {
   StandardizedLLMResponse,
   TypedDict,
 } from "./backend/typing";
-import { getLabelForResponse } from "./ResponseRatingToolbar";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar.js"));
