@@ -2,9 +2,9 @@ import MarkdownIt from "markdown-it";
 import { v4 as uuid } from "uuid";
 import {
   Dict,
-  StringDict,
+  TypedDict,
   LLMResponseError,
-  LLMResponseObject,
+  RawLLMResponseObject,
   StandardizedLLMResponse,
   ChatHistoryInfo,
   isEqualChatHistory,
@@ -142,15 +142,14 @@ export class ResponseInfo {
 }
 
 function to_standard_format(
-  r: LLMResponseObject | Dict,
+  r: RawLLMResponseObject | Dict,
 ): StandardizedLLMResponse {
   const resp_obj: StandardizedLLMResponse = {
-    vars: r.info,
+    vars: r.vars,
     metavars: r.metavars ?? {},
     llm: r.llm,
     prompt: r.prompt,
     responses: r.responses,
-    tokens: r.raw_response?.usage ?? {},
     uid: r.uid ?? uuid(),
   };
   if ("eval_res" in r) resp_obj.eval_res = r.eval_res;
@@ -171,8 +170,8 @@ function get_cache_keys_related_to_id(
     );
   else return include_basefile ? [base_file] : [];
 }
-
-export async function setAPIKeys(api_keys: StringDict): Promise<void> {
+// eslint-disable-next-line
+async function setAPIKeys(api_keys: TypedDict<string>): Promise<void> {
   if (api_keys !== undefined) set_api_keys(api_keys);
 }
 
@@ -600,7 +599,7 @@ export async function countQueries(
 
             // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
             const cache_bucket = cache_llm_responses[prompt_str];
-            const cached_resps: LLMResponseObject[] = Array.isArray(
+            const cached_resps: RawLLMResponseObject[] = Array.isArray(
               cache_bucket,
             )
               ? cache_bucket
@@ -617,7 +616,7 @@ export async function countQueries(
                 ) &&
                 areEqualVarsDicts(
                   settings_params,
-                  extractSettingsVars(cached_resp.info),
+                  extractSettingsVars(cached_resp.vars),
                 )
               ) {
                 // Match found. Note it and count response length:
@@ -651,7 +650,7 @@ export async function countQueries(
 
 interface LLMPrompterResults {
   llm_key: string;
-  responses: Array<LLMResponseObject>;
+  responses: Array<RawLLMResponseObject>;
   errors: Array<string>;
 }
 
@@ -782,7 +781,7 @@ export async function queryLLM(
     cancel_id !== undefined && CancelTracker.has(cancel_id);
 
   // For each LLM, generate and cache responses:
-  const responses: { [key: string]: Array<LLMResponseObject> } = {};
+  const responses: { [key: string]: Array<RawLLMResponseObject> } = {};
   const all_errors = {};
   const num_generations = n ?? 1;
   async function query(llm_spec: string | Dict): Promise<LLMPrompterResults> {
@@ -815,7 +814,7 @@ export async function queryLLM(
 
     // Prompt the LLM with all permutations of the input prompt template:
     // NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
-    const resps: Array<LLMResponseObject> = [];
+    const resps: Array<RawLLMResponseObject> = [];
     const errors: Array<string> = [];
     let num_resps = 0;
     let num_errors = 0;
@@ -1286,7 +1285,7 @@ export async function evalWithLLM(
   for (const resp_obj of all_evald_responses) {
     if (!resp_obj.eval_res) continue;
     for (const score of resp_obj.eval_res.items) {
-      if (score !== undefined) all_eval_res.add(score.trim().toLowerCase());
+      if (score !== undefined) all_eval_res.add(score.toString().trim().toLowerCase());
     }
   }
 

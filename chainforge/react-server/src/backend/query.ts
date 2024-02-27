@@ -3,7 +3,7 @@ import { LLM, NativeLLM, RATE_LIMITS } from "./models";
 import {
   Dict,
   LLMResponseError,
-  LLMResponseObject,
+  RawLLMResponseObject,
   isEqualChatHistory,
   ChatHistoryInfo,
 } from "./typing";
@@ -27,7 +27,7 @@ interface _IntermediateLLMResponseType {
   chat_history?: ChatHistoryInfo;
   query?: Dict;
   response?: Dict | LLMResponseError;
-  past_resp_obj?: LLMResponseObject;
+  past_resp_obj?: RawLLMResponseObject;
   past_resp_obj_cache_idx?: number;
 }
 
@@ -76,7 +76,7 @@ export class PromptPipeline {
     result: _IntermediateLLMResponseType,
     llm: LLM,
     cached_responses: Dict,
-  ): LLMResponseObject | LLMResponseError {
+  ): RawLLMResponseObject | LLMResponseError {
     const {
       prompt,
       chat_history,
@@ -95,14 +95,14 @@ export class PromptPipeline {
     const metavars = prompt.metavars;
 
     // Create a response obj to represent the response
-    let resp_obj: LLMResponseObject = {
+    let resp_obj: RawLLMResponseObject = {
       prompt: prompt.toString(),
       query,
       uid: uuid(),
       responses: extract_responses(response, llm),
       raw_response: response,
       llm,
-      info: mergeDicts(info, chat_history?.fill_history),
+      vars: mergeDicts(info, chat_history?.fill_history),
       metavars: mergeDicts(metavars, chat_history?.metavars),
     };
 
@@ -115,7 +115,7 @@ export class PromptPipeline {
       resp_obj = merge_response_objs(
         resp_obj,
         past_resp_obj,
-      ) as LLMResponseObject;
+      ) as RawLLMResponseObject;
 
     // Save the current state of cache'd responses to a JSON file
     // NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
@@ -169,7 +169,7 @@ export class PromptPipeline {
     llm_params?: Dict,
     chat_histories?: ChatHistoryInfo[],
     should_cancel?: () => boolean,
-  ): AsyncGenerator<LLMResponseObject | LLMResponseError, boolean, undefined> {
+  ): AsyncGenerator<RawLLMResponseObject | LLMResponseError, boolean, undefined> {
     // Load any cache'd responses
     const responses = this._load_cached_responses();
 
@@ -214,14 +214,14 @@ export class PromptPipeline {
 
         // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
         const cache_bucket = responses[prompt_str];
-        const cached_resps: LLMResponseObject[] = Array.isArray(cache_bucket)
+        const cached_resps: RawLLMResponseObject[] = Array.isArray(cache_bucket)
           ? cache_bucket
           : cache_bucket === undefined
             ? []
             : [cache_bucket];
 
         // Check if there's a cached response with the same prompt + (if present) chat history and settings vars:
-        let cached_resp: LLMResponseObject | undefined;
+        let cached_resp: RawLLMResponseObject | undefined;
         let cached_resp_idx = -1;
         // Find an indivdual response obj that matches the chat history + (if present) settings vars:
         for (let i = 0; i < cached_resps.length; i++) {
@@ -232,7 +232,7 @@ export class PromptPipeline {
             ) &&
             areEqualVarsDicts(
               settings_params,
-              extractSettingsVars(cached_resps[i].info),
+              extractSettingsVars(cached_resps[i].vars),
             )
           ) {
             cached_resp = cached_resps[i];
@@ -247,7 +247,7 @@ export class PromptPipeline {
         // First check if there is already a response for this item under these settings. If so, we can save an LLM call:
         if (cached_resp && extracted_resps.length >= n) {
           // console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
-          const resp: LLMResponseObject = {
+          const resp: RawLLMResponseObject = {
             prompt: prompt_str,
             query: cached_resp.query,
             uid: cached_resp.uid ?? uuid(),
@@ -256,7 +256,7 @@ export class PromptPipeline {
             llm: cached_resp.llm || NativeLLM.OpenAI_ChatGPT,
             // We want to use the new info, since 'vars' could have changed even though
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
-            info: mergeDicts(info, chat_history?.fill_history),
+            vars: mergeDicts(info, chat_history?.fill_history),
             metavars: mergeDicts(metavars, chat_history?.metavars),
           };
           if (chat_history !== undefined)
@@ -320,7 +320,7 @@ export class PromptPipeline {
    * Useful for continuing if computation was interrupted halfway through.
    */
   _load_cached_responses(): {
-    [key: string]: LLMResponseObject | LLMResponseObject[];
+    [key: string]: RawLLMResponseObject | RawLLMResponseObject[];
   } {
     if (this._storageKey === undefined) return {};
     const data: Record<string, LLMResponseObject | LLMResponseObject[]> =
@@ -344,7 +344,7 @@ export class PromptPipeline {
     prompt: PromptTemplate,
     n = 1,
     temperature = 1.0,
-    past_resp_obj?: LLMResponseObject,
+    past_resp_obj?: RawLLMResponseObject,
     past_resp_obj_cache_idx?: number,
     query_number?: number,
     rate_limit_batch_size?: number,

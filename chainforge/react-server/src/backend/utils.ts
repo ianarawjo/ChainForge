@@ -6,9 +6,8 @@
 import { LLM, LLMProvider, NativeLLM, getProvider } from "./models";
 import {
   Dict,
-  StringDict,
   LLMAPICall,
-  LLMResponseObject,
+  RawLLMResponseObject,
   ChatHistory,
   ChatMessage,
   PaLMChatMessage,
@@ -16,6 +15,7 @@ import {
   HuggingFaceChatHistory,
   GeminiChatContext,
   GeminiChatMessage,
+  TypedDict,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
@@ -142,7 +142,7 @@ let AWS_REGION = get_environ("AWS_REGION");
 /**
  * Sets the local API keys for the revelant LLM API(s).
  */
-export function set_api_keys(api_keys: StringDict): void {
+export function set_api_keys(api_keys: TypedDict<string>): void {
   function key_is_present(name: string): boolean {
     return (
       name in api_keys &&
@@ -929,7 +929,7 @@ export async function call_huggingface(
     params?.custom_model,
   );
 
-  const headers: StringDict = { "Content-Type": "application/json" };
+  const headers: TypedDict<string> = { "Content-Type": "application/json" };
   // For HuggingFace, technically, the API keys are optional.
   if (HUGGINGFACE_API_KEY !== undefined)
     headers.Authorization = `Bearer ${HUGGINGFACE_API_KEY}`;
@@ -1022,7 +1022,7 @@ export async function call_alephalpha(
     );
 
   const url = "https://api.aleph-alpha.com/complete";
-  const headers: StringDict = {
+  const headers: TypedDict<string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
   };
@@ -1514,27 +1514,27 @@ export function extract_responses(
  * If one object is undefined or null, returns the object that is defined, unaltered.
  */
 export function merge_response_objs(
-  resp_obj_A: LLMResponseObject | undefined,
-  resp_obj_B: LLMResponseObject | undefined,
-): LLMResponseObject | undefined {
+  resp_obj_A: RawLLMResponseObject | undefined,
+  resp_obj_B: RawLLMResponseObject | undefined,
+): RawLLMResponseObject | undefined {
   if (!resp_obj_A && !resp_obj_B) {
     console.warn("Warning: Merging two undefined response objects.");
     return undefined;
   } else if (!resp_obj_B && resp_obj_A) return resp_obj_A;
   else if (!resp_obj_A && resp_obj_B) return resp_obj_B;
-  resp_obj_A = resp_obj_A as LLMResponseObject; // required by typescript
-  resp_obj_B = resp_obj_B as LLMResponseObject;
+  resp_obj_A = resp_obj_A as RawLLMResponseObject; // required by typescript
+  resp_obj_B = resp_obj_B as RawLLMResponseObject;
   let raw_resp_A = resp_obj_A.raw_response;
   let raw_resp_B = resp_obj_B.raw_response;
   if (!Array.isArray(raw_resp_A)) raw_resp_A = [raw_resp_A];
   if (!Array.isArray(raw_resp_B)) raw_resp_B = [raw_resp_B];
-  const res: LLMResponseObject = {
+  const res: RawLLMResponseObject = {
     responses: resp_obj_A.responses.concat(resp_obj_B.responses),
     raw_response: raw_resp_A.concat(raw_resp_B),
     prompt: resp_obj_B.prompt,
     query: resp_obj_B.query,
     llm: resp_obj_B.llm,
-    info: resp_obj_B.info,
+    vars: resp_obj_B.vars,
     metavars: resp_obj_B.metavars,
     uid: resp_obj_B.uid,
   };
@@ -1629,7 +1629,7 @@ export const processCSV = (csv: string): string[] => {
 };
 
 export const countNumLLMs = (
-  resp_objs_or_dict: LLMResponseObject[] | Dict,
+  resp_objs_or_dict: RawLLMResponseObject[] | Dict,
 ): number => {
   const resp_objs = Array.isArray(resp_objs_or_dict)
     ? resp_objs_or_dict

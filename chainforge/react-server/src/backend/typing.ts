@@ -8,14 +8,12 @@ export class LLMResponseError extends Error {
   }
 }
 
+// Dictionary types
 export interface Dict {
   [key: string]: any;
 }
-export interface StringDict {
-  [key: string]: string;
-}
-export interface NumberDict {
-  [key: string]: number;
+export interface TypedDict<T> {
+  [key: string]: T;
 }
 
 /** OpenAI function call format */
@@ -25,12 +23,17 @@ export interface OpenAIFunctionCall {
   description?: string;
 }
 
-/** The outputs of prompt nodes, text fields or other data passed internally in the front-end.
+/** The outputs of prompt nodes, text fields or other data passed internally in the front-end and to the PromptTemplate backend.
  * Used to populate prompt templates and carry variables/metavariables along the chain. */
 export interface TemplateVarInfo {
   text: string;
-  fill_history: Dict;
-  metavars?: Dict;
+  fill_history: TypedDict<string>;
+  metavars?: TypedDict<string>;
+  associate_id?: string;
+}
+
+export interface PromptVarType {
+  [key: string]: Array<string | TemplateVarInfo>
 }
 
 /** OpenAI chat message format */
@@ -97,17 +100,45 @@ export function isEqualChatHistory(
 
 export type ResponseUID = string;
 
-/** A JSON object describing an LLM response for the same prompt, with n responses (n>=1) */
-export interface LLMResponseObject {
-  prompt: string;
-  query: Dict;
-  responses: string[];
-  raw_response: Dict;
-  llm: LLM;
-  info: Dict;
-  metavars: Dict;
+/** Standard properties that every LLM response object must have. */
+export interface BaseLLMResponseObject {
+  /** A unique ID to refer to this response */
   uid: ResponseUID;
+  /** The concrete prompt that led to this response. */
+  prompt: string;
+  /** The variables fed into the prompt. */
+  vars: Dict;
+  /** Any associated metavariables. */
+  metavars: Dict;
+  /** The LLM to query (usually a dict of settings) */
+  llm: string | LLMSpec;
+  /** Optional: The chat history to pass the LLM */
   chat_history?: ChatHistory;
+}
+
+/** A JSON object describing an LLM response for the same prompt, with n responses (n>=1) */
+export interface RawLLMResponseObject extends BaseLLMResponseObject {
+  // A snapshot of the exact query (payload) sent to the LLM's API
+  query: Dict;
+  // The raw JSON response from the LLM
+  raw_response: Dict;
+  // Extracted responses (1 or more) from raw_response
+  responses: string[];
+  // Token lengths (if given)
+  tokens?: Dict;
+}
+
+export type EvaluationResults = {
+  items: (boolean | number | string)[],
+  dtype: "KeyValue" | "KeyValue_Numeric" | "KeyValue_Categorical" | "KeyValue_Mixed" | "Numeric" | "Categorical" | "Mixed" | "Unknown" | "Empty",
+};
+
+/** A standard response format expected by the front-end. */
+export interface StandardizedLLMResponse extends BaseLLMResponseObject {
+  // Extracted responses (1 or more) from raw_response
+  responses: string[];
+  // Evaluation results
+  eval_res?: EvaluationResults;
 }
 
 /** A standard async function interface for calling an LLM. */
@@ -122,15 +153,15 @@ export interface LLMAPICall {
   ): Promise<[Dict, Dict]>;
 }
 
-/** A standard response format expected by the front-end. */
-export interface StandardizedLLMResponse {
-  llm: string | Dict;
-  prompt: string;
-  responses: Array<string>;
-  vars: Dict;
-  metavars: Dict;
-  uid: ResponseUID;
-  tokens: Dict;
-  eval_res?: Dict;
-  chat_history?: ChatHistory;
-}
+/** What LLM to call, at what settings. */
+export type LLMSpec = {
+  name: string,
+  emoji: string,
+  base_model: string,
+  model: string,
+  temp: number,
+  key?: string,
+  formData?: Dict,
+  settings?: Dict,
+  progress?: TypedDict<number>, // only used for front-end to display progress collecting responses for this LLM
+};

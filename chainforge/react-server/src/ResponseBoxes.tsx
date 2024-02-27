@@ -4,9 +4,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { truncStr } from "./backend/utils";
 import {
   Dict,
-  NumberDict,
   StandardizedLLMResponse,
-  StringDict,
+  TypedDict,
 } from "./backend/typing";
 import { getLabelForResponse } from "./ResponseRatingToolbar";
 
@@ -48,7 +47,7 @@ const getEvalResultStr = (
 const countResponsesBy = (
   responses: string[],
   keyFunc: (item: string) => string,
-): NumberDict => {
+): TypedDict<number> => {
   const counts_by_key = {};
   responses.forEach((item) => {
     const key = keyFunc(item);
@@ -101,7 +100,7 @@ export const ResponseGroup = ({
  */
 interface ResponseBoxProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
-  vars?: StringDict;
+  vars?: TypedDict<string>;
   truncLenForVars?: number;
   llmName?: string;
   boxColor?: string;
