@@ -12,7 +12,7 @@ interface GPTResponse<T> {
   data: T;
 }
 
-interface AssertionCriteria {
+interface EvaluationCriteria {
   criteria: string;
   category: string;
   eval_method: "code" | "manual";
@@ -34,35 +34,35 @@ interface FunctionResult {
   response: string;
 }
 
-async function generateLLMAssertions(
+async function generateLLMEvaluations(
   prompt: string,
-): Promise<AssertionCriteria[]> {
+): Promise<EvaluationCriteria[]> {
   // Construct the detailed prompt for the LLM
   const detailedPrompt = `Here is my LLM prompt: ${prompt}
   
-  Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Here are some categories of assertion criteria I want to check for:
+  Based on the content in the prompt, I want to write evaluations for my LLM pipeline to run on all pipeline responses. Here are some categories of evaluation criteria I want to check for:
   
   - Presentation Format: Is there a specific format for the response, like a comma-separated list or a JSON object?
   - Example Demonstration: Does the prompt template include any examples of good responses that demonstrate any specific headers, keys, or structures?
-  - Workflow Description: Does the prompt template include any descriptions of the workflow that the LLM should follow, indicating possible assertion criteria?
+  - Workflow Description: Does the prompt template include any descriptions of the workflow that the LLM should follow, indicating possible evaluation criteria?
   - Count: Are there any instructions regarding the number of items of a certain type in the response, such as “at least”, “at most”, or an exact number?
   - Inclusion: Are there keywords that every LLM response should include?
   - Exclusion: Are there keywords that every LLM response should never mention?
   - Qualitative Assessment: Are there qualitative criteria for assessing good responses, including specific requirements for length, tone, or style?
-  - Other: Based on the prompt template, are there any other criteria to check in assertions that are not covered by the above categories, such as correctness, completeness, or consistency?
+  - Other: Based on the prompt template, are there any other criteria to check in evaluations that are not covered by the above categories, such as correctness, completeness, or consistency?
   
-  Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, its corresponding category, whether it should be evaluated with code or manually by an expert, and the source, or phrase in the prompt template that triggered the criteria. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following fields: "criteria", "category", "eval_method" (code or LLM), and "source". This list should contain as many assertion criteria as you can think of, as long are specific and reasonable.`;
+  Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, its corresponding category, whether it should be evaluated with code or manually by an expert, and the source, or phrase in the prompt template that triggered the criteria. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following fields: "criteria", "category", "eval_method" (code or LLM), and "source". This list should contain as many evaluation criteria as you can think of, as long are specific and reasonable.`;
 
   // TODO: Call the LLM appropriately
   const response = await askGPT4<string>(detailedPrompt);
 
   // Assuming the response is a JSON string that we need to parse into an object
   try {
-    const assertionCriteria: AssertionCriteria[] = JSON.parse(response.data);
-    return assertionCriteria;
+    const evaluationCriteria: EvaluationCriteria[] = JSON.parse(response.data);
+    return evaluationCriteria;
   } catch (error) {
     console.error("Error parsing GPT-4 response:", error);
-    throw new Error("Failed to parse GPT-4 response into assertion criteria.");
+    throw new Error("Failed to parse GPT-4 response into evaluation criteria.");
   }
 }
 
@@ -88,7 +88,7 @@ async function executeFunction(
   return response.json();
 }
 
-class AssertionFunctionExecutor {
+class EvaluationFunctionExecutor {
   private scores: Map<ExampleId, number>;
   private outcomes: Map<string, { successes: number; failures: number }>; // Track successes and failures for each function to compute failure rates
 
@@ -97,13 +97,13 @@ class AssertionFunctionExecutor {
     this.outcomes = new Map<string, { successes: number; failures: number }>();
   }
 
-  // Method to execute assertion functions and update scores
-  async generateAndExecuteAssertionFunctions(
-    assertionCriteria: AssertionCriteria[],
+  // Method to execute evaluation functions and update scores
+  async generateAndExecuteEvaluationFunctions(
+    evaluationCriteria: EvaluationCriteria[],
     promptTemplate: string,
     examples: Example[],
   ): Promise<void> {
-    const allExecutionPromises = assertionCriteria.map(async (criteria) => {
+    const allExecutionPromises = evaluationCriteria.map(async (criteria) => {
       const functionString = await generateFunctionForCriteria(
         criteria,
         promptTemplate,
@@ -197,7 +197,7 @@ class AssertionFunctionExecutor {
 }
 
 async function generateFunctionForCriteria(
-  criteria: AssertionCriteria,
+  criteria: EvaluationCriteria,
   promptTemplate: string,
   example: Example,
 ): Promise<string> {
