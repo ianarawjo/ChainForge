@@ -33,7 +33,7 @@ export interface TemplateVarInfo {
 }
 
 export interface PromptVarType {
-  [key: string]: Array<string | TemplateVarInfo>
+  [key: string]: Array<string | TemplateVarInfo>;
 }
 
 /** OpenAI chat message format */
@@ -129,8 +129,17 @@ export interface RawLLMResponseObject extends BaseLLMResponseObject {
 }
 
 export type EvaluationResults = {
-  items: (boolean | number | string)[],
-  dtype: "KeyValue" | "KeyValue_Numeric" | "KeyValue_Categorical" | "KeyValue_Mixed" | "Numeric" | "Categorical" | "Mixed" | "Unknown" | "Empty",
+  items: (boolean | number | string)[];
+  dtype:
+    | "KeyValue"
+    | "KeyValue_Numeric"
+    | "KeyValue_Categorical"
+    | "KeyValue_Mixed"
+    | "Numeric"
+    | "Categorical"
+    | "Mixed"
+    | "Unknown"
+    | "Empty";
 };
 
 /** A standard response format expected by the front-end. */
@@ -155,13 +164,13 @@ export interface LLMAPICall {
 
 /** What LLM to call, at what settings. */
 export type LLMSpec = {
-  name: string,
-  emoji: string,
-  base_model: string,
-  model: string,
-  temp: number,
-  key?: string,
-  formData?: Dict,
-  settings?: Dict,
-  progress?: TypedDict<number>, // only used for front-end to display progress collecting responses for this LLM
+  name: string;
+  emoji: string;
+  base_model: string;
+  model: string;
+  temp: number;
+  key?: string;
+  formData?: Dict;
+  settings?: Dict;
+  progress?: TypedDict<number>; // only used for front-end to display progress collecting responses for this LLM
 };

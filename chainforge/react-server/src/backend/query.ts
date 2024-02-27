@@ -169,7 +169,11 @@ export class PromptPipeline {
     llm_params?: Dict,
     chat_histories?: ChatHistoryInfo[],
     should_cancel?: () => boolean,
-  ): AsyncGenerator<RawLLMResponseObject | LLMResponseError, boolean, undefined> {
+  ): AsyncGenerator<
+    RawLLMResponseObject | LLMResponseError,
+    boolean,
+    undefined
+  > {
     // Load any cache'd responses
     const responses = this._load_cached_responses();
 
@@ -323,7 +327,7 @@ export class PromptPipeline {
     [key: string]: RawLLMResponseObject | RawLLMResponseObject[];
   } {
     if (this._storageKey === undefined) return {};
-    const data: Record<string, LLMResponseObject | LLMResponseObject[]> =
+    const data: Record<string, RawLLMResponseObject | RawLLMResponseObject[]> =
       StorageCache.get(this._storageKey) ?? {};
 
     // Before retuning, verify data integrity: check that uids are present for all responses.

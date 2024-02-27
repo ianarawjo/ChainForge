@@ -5,16 +5,32 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import useStore from "./store";
+import { Tooltip } from "@mantine/core";
 import { EditText } from "react-edit-text";
 import "react-edit-text/dist/index.css";
-import StatusIndicator from "./StatusIndicatorComponent";
-import AlertModal from "./AlertModal";
+import useStore from "./store";
+import StatusIndicator, { Status } from "./StatusIndicatorComponent";
+import AlertModal, { AlertModalHandles } from "./AlertModal";
 import AreYouSureModal from "./AreYouSureModal";
 
-import { Tooltip } from "@mantine/core";
+interface NodeLabelProps {
+  title: string;
+  nodeId: string;
+  icon: string;
+  onEdit?: () => void;
+  onSave?: () => void;
+  editable?: boolean;
+  status?: Status;
+  isRunning?: boolean;
+  alertModal?: React.Ref<AlertModalHandles>;
+  customButtons?: React.ReactElement[];
+  handleRunClick?: () => void;
+  handleStopClick?: (nodeId: string) => void;
+  handleRunHover?: () => void;
+  runButtonTooltip?: string;
+}
 
-export default function NodeLabel({
+export const NodeLabel: React.FC<NodeLabelProps> = ({
   title,
   nodeId,
   icon,
@@ -29,10 +45,10 @@ export default function NodeLabel({
   handleStopClick,
   handleRunHover,
   runButtonTooltip,
-}) {
+}) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
-  const [statusIndicator, setStatusIndicator] = useState("none");
-  const [runButton, setRunButton] = useState("none");
+  const [statusIndicator, setStatusIndicator] = useState(<></>);
+  const [runButton, setRunButton] = useState(<></>);
   const removeNode = useStore((state) => state.removeNode);
 
   // For 'delete node' confirmation popup
@@ -40,6 +56,7 @@ export default function NodeLabel({
   const [deleteConfirmProps, setDeleteConfirmProps] = useState({
     title: "Delete node",
     message: "Are you sure?",
+    onConfirm: undefined,
   });
   const stopButton = useMemo(
     () => (
@@ -153,8 +170,9 @@ export default function NodeLabel({
           </button>
           <br />
         </div>
-        {/* <button className="AmitSahoo45-button-3 nodrag" onClick={handleRunClick}><div className="play-button"></div></button> */}
       </div>
     </>
   );
-}
+};
+
+export default NodeLabel;

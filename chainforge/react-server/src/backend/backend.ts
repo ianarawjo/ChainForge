@@ -1285,7 +1285,8 @@ export async function evalWithLLM(
   for (const resp_obj of all_evald_responses) {
     if (!resp_obj.eval_res) continue;
     for (const score of resp_obj.eval_res.items) {
-      if (score !== undefined) all_eval_res.add(score.toString().trim().toLowerCase());
+      if (score !== undefined)
+        all_eval_res.add(score.toString().trim().toLowerCase());
     }
   }
 

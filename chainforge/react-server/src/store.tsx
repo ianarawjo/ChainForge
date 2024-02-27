@@ -1,5 +1,14 @@
 import { create } from "zustand";
-import { addEdge, applyNodeChanges, applyEdgeChanges, Edge, Node, NodeChange, EdgeChange, Connection, MarkerType } from "reactflow";
+import {
+  addEdge,
+  applyNodeChanges,
+  applyEdgeChanges,
+  Edge,
+  Node,
+  NodeChange,
+  EdgeChange,
+  MarkerType,
+} from "reactflow";
 import { escapeBraces } from "./backend/template";
 import {
   deepcopy,
@@ -213,60 +222,75 @@ export const initLLMProviders = initLLMProviderMenu
 
 interface StoreHandles {
   // Nodes and edges
-  nodes: Node[],
-  edges: Edge[],
+  nodes: Node[];
+  edges: Edge[];
 
   // Helper functions for nodes and edges
-  getNode: (id: string) => Node,
-  addNode: (newnode: Node) => void,
-  removeNode: (id: string) => void,
-  deselectAllNodes: () => void,
-  bringNodeToFront: (id: string) => void,
-  duplicateNode: (id: string, offset: undefined | {x?: number, y?: number}) => Node,
-  setNodes: (newnodes: Node[]) => void,
-  setEdges: (newedges: Edge[]) => void,
-  removeEdge: (id: string) => void,
-  onNodesChange: (changes: NodeChange[]) => void,
-  onEdgesChange: (changes: EdgeChange[]) => void,
-  onConnect: (connection: Edge) => void,
+  getNode: (id: string) => Node;
+  addNode: (newnode: Node) => void;
+  removeNode: (id: string) => void;
+  deselectAllNodes: () => void;
+  bringNodeToFront: (id: string) => void;
+  duplicateNode: (
+    id: string,
+    offset: undefined | { x?: number; y?: number },
+  ) => Node;
+  setNodes: (newnodes: Node[]) => void;
+  setEdges: (newedges: Edge[]) => void;
+  removeEdge: (id: string) => void;
+  onNodesChange: (changes: NodeChange[]) => void;
+  onEdgesChange: (changes: EdgeChange[]) => void;
+  onConnect: (connection: Edge) => void;
 
   // The LLM providers available in the drop-down list
-  AvailableLLMs: LLMSpec[],
-  setAvailableLLMs: (specs: LLMSpec[]) => void
+  AvailableLLMs: LLMSpec[];
+  setAvailableLLMs: (specs: LLMSpec[]) => void;
 
   // API keys to LLM providers
-  apiKeys: TypedDict<string>,
-  setAPIKeys: (apiKeys: TypedDict<string>) => void,
+  apiKeys: TypedDict<string>;
+  setAPIKeys: (apiKeys: TypedDict<string>) => void;
 
   // Provider for genAI features
   aiFeaturesProvider: string,
   setAIFeaturesProvider: (llmProvider: string) => void;
 
   // Global flags
-  flags: TypedDict<boolean | string>,
-  getFlag: (flag: string) => (boolean | string),
-  setFlag: (flag: string, val: boolean | string) => void,
+  flags: TypedDict<boolean | string>;
+  getFlag: (flag: string) => boolean | string;
+  setFlag: (flag: string, val: boolean | string) => void;
 
   // The color to represent a specific LLM, to be globally consistent
-  llmColors: TypedDict<string>,
-  getColorForLLM: (llm_name: string) => string | undefined,
-  getColorForLLMAndSetIfNotFound: (llm_name: string) => string,
-  genUniqueLLMColor: () => string,
-  setColorForLLM: (llm_name: string, color: string) => void,
-  resetLLMColors: () => void,
+  llmColors: TypedDict<string>;
+  getColorForLLM: (llm_name: string) => string | undefined;
+  getColorForLLMAndSetIfNotFound: (llm_name: string) => string;
+  genUniqueLLMColor: () => string;
+  setColorForLLM: (llm_name: string, color: string) => void;
+  resetLLMColors: () => void;
 
   // Getting inputs and outputs of nodes
-  inputEdgesForNode: (sourceNodeId: string) => Edge[],
-  outputEdgesForNode: (sourceNodeId: string) => Edge[],
-  pingOutputNodes: (sourceNodeId: string) => void,
-  getImmediateInputNodeTypes: (targetHandles: string[], node_id: string) => string[],
+  inputEdgesForNode: (sourceNodeId: string) => Edge[];
+  outputEdgesForNode: (sourceNodeId: string) => Edge[];
+  pingOutputNodes: (sourceNodeId: string) => void;
+  getImmediateInputNodeTypes: (
+    targetHandles: string[],
+    node_id: string,
+  ) => string[];
 
   // Set data for a specific node
-  setDataPropsForNode: (id: string, data_props: TypedDict<string | boolean | number | Dict>) => void,
+  setDataPropsForNode: (
+    id: string,
+    data_props: TypedDict<string | boolean | number | Dict>,
+  ) => void;
 
   // Rasterize data output from nodes ("pull" the data out)
-  output: (sourceNodeId: string, sourceHandleKey: string) => (string | TemplateVarInfo)[] | null,
-  pullInputData: (_targetHandles: string[], node_id: string) => TypedDict<string[] | TemplateVarInfo[]>,
+  output: (
+    sourceNodeId: string,
+    sourceHandleKey: string,
+  ) => (string | TemplateVarInfo)[] | null;
+  pullInputData: (
+    _targetHandles: string[],
+    node_id: string,
+  ) => TypedDict<string[] | TemplateVarInfo[]>;
 }
 
 // A global store of variables, used for maintaining state
