@@ -4,14 +4,14 @@
 import { PromptPipeline } from "../query";
 import { LLM, NativeLLM } from "../models";
 import { expect, test } from "@jest/globals";
-import { LLMResponseError, LLMResponseObject } from "../typing";
+import { LLMResponseError, RawLLMResponseObject } from "../typing";
 
 async function prompt_model(model: LLM): Promise<void> {
   const pipeline = new PromptPipeline(
     "What is the oldest {thing} in the world? Keep your answer brief.",
     model.toString(),
   );
-  let responses: Array<LLMResponseObject | LLMResponseError> = [];
+  let responses: Array<RawLLMResponseObject | LLMResponseError> = [];
   for await (const response of pipeline.gen_responses(
     { thing: ["bar", "tree", "book"] },
     model,
