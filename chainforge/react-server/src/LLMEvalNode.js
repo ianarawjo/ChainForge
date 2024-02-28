@@ -19,6 +19,7 @@ import { LLMListContainer } from "./LLMListComponent";
 import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
+import { stripLLMDetailsFromResponses } from "./backend/utils";
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
 const PLACEHOLDER_PROMPT =
@@ -311,6 +312,20 @@ const LLMEvaluatorNode = ({ data, id }) => {
       setStatus("warning");
     }
   }, [data]);
+
+  // On initialization
+  useEffect(() => {
+    // Attempt to grab cache'd responses
+    fetch_from_backend("grabResponses", {
+      responses: [id],
+    }).then(function (json) {
+      if (json.responses && json.responses.length > 0) {
+        // Store responses and set status to green checkmark
+        setLastResponses(stripLLMDetailsFromResponses(json.responses));
+        setStatus("ready");
+      }
+    });
+  }, []);
 
   return (
     <BaseNode classNames="evaluator-node" nodeId={id}>
