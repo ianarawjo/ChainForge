@@ -5,7 +5,7 @@ export interface GPTResponse<T> {
   data: T;
 }
 
-export interface EvaluationCriteria {
+export interface EvalCriteria {
   criteria: string;
   category: string;
   eval_method: "code" | "manual";
@@ -21,16 +21,14 @@ export interface Example {
   response: string;
 }
 
-export interface FunctionResult {
-  function: string;
-  result: boolean;
-  prompt: string;
-  response: string;
+export interface EvalFunction {
+  evalCriteria: EvalCriteria;
+  code: string;
 }
 
 export async function generateLLMEvaluations(
   prompt: string,
-): Promise<EvaluationCriteria[]> {
+): Promise<EvalCriteria[]> {
   // Construct the detailed prompt for the LLM
   const detailedPrompt = `Here is my LLM prompt: ${prompt}
     
@@ -52,8 +50,8 @@ export async function generateLLMEvaluations(
 
   // Assuming the response is a JSON string that we need to parse into an object
   try {
-    const evaluationCriteria: EvaluationCriteria[] = JSON.parse(response.data);
-    return evaluationCriteria;
+    const EvalCriteria: EvalCriteria[] = JSON.parse(response.data);
+    return EvalCriteria;
   } catch (error) {
     console.error("Error parsing GPT-4 response:", error);
     throw new Error("Failed to parse GPT-4 response into evaluation criteria.");
@@ -61,7 +59,7 @@ export async function generateLLMEvaluations(
 }
 
 export async function executeFunction(
-  functionString: string,
+  evalFunction: EvalFunction,
   example: Example,
 ): Promise<boolean> {
   // Replace with call to Python backend to execute the function
@@ -72,8 +70,8 @@ export async function executeFunction(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      functionString,
-      example,
+      code: evalFunction.code,
+      example: example,
     }),
   });
   if (!response.ok) {
@@ -82,11 +80,11 @@ export async function executeFunction(
   return response.json();
 }
 
-export async function generateFunctionForCriteria(
-  criteria: EvaluationCriteria,
+export async function generateFunctionsForCriteria(
+  criteria: EvalCriteria,
   promptTemplate: string,
   example: Example,
-): Promise<string> {
+): Promise<EvalFunction[]> {
   const functionGenPrompt = `Here is my prompt template:
       
     "${promptTemplate}"
@@ -107,7 +105,14 @@ export async function generateFunctionForCriteria(
   // TODO: Replace with actual call to GPT-4
   try {
     const response = await askGPT4<string>(functionGenPrompt);
-    return response.data; // TODO: convert this into an executable function
+
+    const src_array = response.data;
+    return src_array.map((src: string) => {
+      return {
+        evalCriteria: criteria,
+        code: src,
+      };
+    });
   } catch (error) {
     console.error("Error generating function for criteria:", error);
     throw new Error(
