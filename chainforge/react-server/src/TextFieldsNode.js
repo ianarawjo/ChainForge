@@ -15,7 +15,7 @@ import TemplateHooks, {
 } from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
 import { setsAreEqual } from "./backend/utils";
-import AIPopover from "./AiPopover";
+import { AIGenReplaceItemsPopover } from "./AiPopover";
 import AISuggestionsManager from "./backend/aiSuggestionsManager";
 
 // Helper funcs
@@ -408,14 +408,13 @@ const TextFieldsNode = ({ data, id }) => {
         customButtons={
           flags.aiSupport
             ? [
-                <AIPopover
+                <AIGenReplaceItemsPopover
                   key="ai-popover"
                   values={textfieldsValues}
                   onAddValues={addMultipleFields}
                   onReplaceValues={replaceFields}
                   areValuesLoading={isLoading}
                   setValuesLoading={setIsLoading}
-                  apiKeys={apiKeys}
                 />,
               ]
             : []

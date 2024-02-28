@@ -1164,7 +1164,7 @@ export async function evalWithLLM(
   ) {
     // Convert all eval results to boolean datatypes:
     all_evald_responses.forEach((resp_obj) => {
-      if (!resp_obj.eval_res) return;
+      if (!resp_obj.eval_res?.items) return;
       resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) => {
         const li = i.toLowerCase();
         return li === "true" || li === "yes";
@@ -1175,7 +1175,7 @@ export async function evalWithLLM(
   } else if (allStringsAreNumeric(Array.from(all_eval_res))) {
     // Convert all eval results to numeric datatypes:
     all_evald_responses.forEach((resp_obj) => {
-      if (!resp_obj.eval_res) return;
+      if (!resp_obj.eval_res?.items) return;
       resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) =>
         parseFloat(i),
       );

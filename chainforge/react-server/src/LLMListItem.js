@@ -81,6 +81,7 @@ const LLMListItem = ({
   removeCallback,
   onClickSettings,
   progress,
+  hideTrashIcon,
 }) => {
   // Set color by temperature only on item change (not every render)
   const [tempColor, setTempColor] = useState(perc2color(50));
@@ -125,13 +126,19 @@ const LLMListItem = ({
           onClickTrash={() => removeCallback(item.key)}
           ringProgress={progress}
           onClickSettings={onClickSettings}
+          hideTrashIcon={hideTrashIcon}
         />
       </div>
     </DragItem>
   );
 };
 
-export const LLMListItemClone = ({ item, provided, snapshot }) => {
+export const LLMListItemClone = ({
+  item,
+  provided,
+  snapshot,
+  hideTrashIcon,
+}) => {
   // Set color by temperature only on item change (not every render)
   const [tempColor, setTempColor] = useState(perc2color(50));
   const temperature = item.settings?.temperature;
@@ -169,7 +176,7 @@ export const LLMListItemClone = ({ item, provided, snapshot }) => {
             <></>
           )}
         </CardHeader>
-        <LLMItemButtonGroup />
+        <LLMItemButtonGroup hideTrashIcon={hideTrashIcon} />
       </div>
     </DragItem>
   );

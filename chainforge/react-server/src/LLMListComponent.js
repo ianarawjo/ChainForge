@@ -6,6 +6,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useReducer,
+  useMemo,
 } from "react";
 import { DragDropContext, Draggable } from "react-beautiful-dnd";
 import { Menu } from "@mantine/core";
@@ -40,7 +41,7 @@ const ensureUniqueName = (_name, _prev_names) => {
   return new_name;
 };
 
-export function LLMList({ llms, onItemsChange }) {
+export function LLMList({ llms, onItemsChange, hideTrashIcon }) {
   const [items, setItems] = useState(llms);
   const settingsModal = useRef(null);
   const [selectedModel, setSelectedModel] = useState(undefined);
@@ -174,6 +175,7 @@ export function LLMList({ llms, onItemsChange }) {
               provided={provided}
               snapshot={snapshot}
               item={items[rubric.source.index]}
+              hideTrashIcon={hideTrashIcon}
             />
           )}
         >
@@ -189,6 +191,7 @@ export function LLMList({ llms, onItemsChange }) {
                       removeCallback={removeItem}
                       progress={item.progress}
                       onClickSettings={() => onClickSettings(item)}
+                      hideTrashIcon={hideTrashIcon}
                     />
                   )}
                 </Draggable>
@@ -210,6 +213,8 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
     onSelectModel,
     selectModelAction,
     onItemsChange,
+    hideTrashIcon,
+    bgColor,
   },
   ref,
 ) {
@@ -345,9 +350,14 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
     refreshLLMProviderList,
   }));
 
+  const _bgStyle = useMemo(
+    () => (bgColor ? { backgroundColor: bgColor } : {}),
+    [bgColor],
+  );
+
   return (
-    <div className="llm-list-container nowheel">
-      <div className="llm-list-backdrop">
+    <div className="llm-list-container nowheel" style={_bgStyle}>
+      <div className="llm-list-backdrop" style={_bgStyle}>
         {description || "Models to query:"}
         <div className="add-llm-model-btn nodrag">
           <Menu
@@ -357,7 +367,9 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
             withinPortal={true}
           >
             <Menu.Target>
-              <button>{modelSelectButtonText || "Add +"}</button>
+              <button style={_bgStyle}>
+                {modelSelectButtonText || "Add +"}
+              </button>
             </Menu.Target>
             <Menu.Dropdown>
               {AvailableLLMs.map((item) => (
@@ -373,9 +385,12 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
           </Menu>
         </div>
       </div>
-
       <div className="nodrag">
-        <LLMList llms={llmItems} onItemsChange={onLLMListItemsChange} />
+        <LLMList
+          llms={llmItems}
+          onItemsChange={onLLMListItemsChange}
+          hideTrashIcon={hideTrashIcon}
+        />
       </div>
     </div>
   );

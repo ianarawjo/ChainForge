@@ -249,15 +249,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
       setStatus("warning");
   }, [promptTextOnLastRun, status]);
 
-  const addModel = useCallback(
-    (new_model, all_items) => {
-      setLLMItemsCurrState(all_items);
-      setDataPropsForNode(id, { llms: all_items });
-      signalDirty();
-    },
-    [signalDirty],
-  );
-
   const onLLMListItemsChange = useCallback(
     (new_items, old_items) => {
       // Update the local and global state, with some debounce to limit re-rendering:
@@ -1164,7 +1155,6 @@ Soft failing by replacing undefined with empty strings.`,
           <LLMListContainer
             ref={llmListContainer}
             initLLMItems={data.llms}
-            onAddModel={addModel}
             onItemsChange={onLLMListItemsChange}
           />
         ) : (

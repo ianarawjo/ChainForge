@@ -6,7 +6,7 @@ import { IconForms } from "@tabler/icons-react";
 import { Handle } from "reactflow";
 import BaseNode from "./BaseNode";
 import { processCSV } from "./backend/utils";
-import AIPopover from "./AiPopover";
+import { AIGenReplaceItemsPopover } from "./AiPopover";
 import { cleanEscapedBraces, escapeBraces } from "./backend/template";
 
 const replaceDoubleQuotesWithSingle = (str) => str.replaceAll('"', "'");
@@ -28,7 +28,6 @@ const stripWrappingQuotes = (str) => {
 const ItemsNode = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
-  const apiKeys = useStore((state) => state.apiKeys);
   const flags = useStore((state) => state.flags);
 
   const [contentDiv, setContentDiv] = useState(null);
@@ -179,7 +178,7 @@ const ItemsNode = ({ data, id }) => {
         customButtons={
           flags.aiSupport
             ? [
-                <AIPopover
+                <AIGenReplaceItemsPopover
                   key="ai-popover"
                   values={data.fields ?? []}
                   onAddValues={(vals) =>
@@ -198,7 +197,6 @@ const ItemsNode = ({ data, id }) => {
                   }
                   areValuesLoading={isLoading}
                   setValuesLoading={setIsLoading}
-                  apiKeys={apiKeys}
                 />,
               ]
             : []

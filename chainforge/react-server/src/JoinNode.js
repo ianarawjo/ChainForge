@@ -26,6 +26,7 @@ import {
   removeLLMTagFromMetadata,
   truncStr,
   groupResponsesBy,
+  getVarsAndMetavars,
 } from "./backend/utils";
 import StorageCache from "./backend/cache";
 
@@ -48,29 +49,6 @@ const joinTexts = (texts, format) => {
 
   console.error(`Could not join: Unknown formatting option: ${format}`);
   return escaped_texts;
-};
-
-const getVarsAndMetavars = (input_data) => {
-  // Find all vars and metavars in the input data (if any):
-  let varnames = new Set();
-  let metavars = new Set();
-  Object.entries(input_data).forEach(([key, obj]) => {
-    if (key !== "__input") varnames.add(key); // A "var" can also be other properties on input_data
-    obj.forEach((resp_obj) => {
-      console.log(resp_obj);
-      if (typeof resp_obj === "string") return;
-      if (resp_obj.fill_history)
-        Object.keys(resp_obj.fill_history).forEach((v) => varnames.add(v));
-      if (resp_obj.metavars)
-        Object.keys(resp_obj.metavars).forEach((v) => metavars.add(v));
-    });
-  });
-  varnames = Array.from(varnames);
-  metavars = Array.from(metavars);
-  return {
-    vars: varnames,
-    metavars,
-  };
 };
 
 const DEFAULT_GROUPBY_VAR_ALL = { label: "all text", value: "A" };

@@ -1,7 +1,14 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { Handle } from "reactflow";
-import { Alert, Progress, Textarea } from "@mantine/core";
-import { IconAlertTriangle, IconRobot, IconSearch } from "@tabler/icons-react";
+import { Group, NativeSelect, Progress, Text, Textarea } from "@mantine/core";
+import { IconRobot, IconSearch } from "@tabler/icons-react";
 import { v4 as uuid } from "uuid";
 import useStore, { initLLMProviders } from "./store";
 import BaseNode from "./BaseNode";
@@ -12,10 +19,24 @@ import { LLMListContainer } from "./LLMListComponent";
 import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
+import { stripLLMDetailsFromResponses } from "./backend/utils";
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
 const PLACEHOLDER_PROMPT =
-  "Respond with 'true' if the text below has a positive sentiment, and 'false' if not. Do not reply with anything else.";
+  "Respond with 'true' if the text has a positive sentiment, 'false' if not.";
+
+const OUTPUT_FORMATS = [
+  { value: "bin", label: "binary (true/false)" },
+  { value: "cat", label: "categorical" },
+  { value: "num", label: "numeric" },
+  { value: "open", label: "open-ended" },
+];
+const OUTPUT_FORMAT_PROMPTS = {
+  bin: "Only reply with boolean values true or false, nothing else.",
+  cat: "Only reply with your categorization, nothing else.",
+  num: "Only reply with a numeric value (a number), nothing else.",
+  open: "",
+};
 
 // The default LLM annotator is GPT-4 at temperature 0.
 const DEFAULT_LLM_ITEM = (() => {
@@ -30,8 +51,165 @@ const DEFAULT_LLM_ITEM = (() => {
   return item;
 })();
 
+/**
+ * Inner component for LLM evaluators, storing the body of the UI (outside of the header and footers).
+ */
+export const LLMEvaluatorComponent = forwardRef(function LLMEvaluatorComponent(
+  {
+    prompt,
+    grader,
+    format,
+    id,
+    showUserInstruction,
+    onPromptEdit,
+    onLLMGraderChange,
+    onFormatChange,
+    modelContainerBgColor,
+  },
+  ref,
+) {
+  const [promptText, setPromptText] = useState(prompt ?? "");
+  const [llmScorers, setLLMScorers] = useState([grader ?? DEFAULT_LLM_ITEM]);
+  const [expectedFormat, setExpectedFormat] = useState(format ?? "bin");
+  const apiKeys = useStore((state) => state.apiKeys);
+
+  const handlePromptChange = useCallback(
+    (e) => {
+      // Store prompt text
+      setPromptText(e.target.value);
+      if (onPromptEdit) onPromptEdit(e.target.value);
+    },
+    [setPromptText, onPromptEdit],
+  );
+
+  const handleLLMListItemsChange = useCallback(
+    (new_items) => {
+      setLLMScorers(new_items);
+
+      if (new_items.length > 0 && onLLMGraderChange)
+        onLLMGraderChange(new_items[0]);
+    },
+    [setLLMScorers, onLLMGraderChange],
+  );
+
+  const handleFormatChange = useCallback(
+    (e) => {
+      setExpectedFormat(e.target.value);
+      if (onFormatChange) onFormatChange(e.target.value);
+    },
+    [setExpectedFormat, onFormatChange],
+  );
+
+  // Runs the LLM evaluator over the inputs, returning the results in a Promise.
+  // Errors are raised as a rejected Promise.
+  const run = (input_node_ids, onProgressChange) => {
+    // Create prompt template to wrap user-specified scorer prompt and input data
+    const formatting_instr = OUTPUT_FORMAT_PROMPTS[expectedFormat] ?? "";
+    const template =
+      "You are evaluating text that will be pasted below. " +
+      promptText +
+      " " +
+      formatting_instr +
+      "\n```\n{input}\n```";
+
+    // Keeping track of progress (unpacking the progress state since there's only a single LLM)
+    const llm_key = llmScorers[0].key;
+    const _progress_listener = (progress_by_llm) =>
+      onProgressChange({
+        success: progress_by_llm[llm_key].success,
+        error: progress_by_llm[llm_key].error,
+      });
+
+    // Run LLM as evaluator
+    return fetch_from_backend("evalWithLLM", {
+      id,
+      llm: llmScorers[0],
+      root_prompt: template,
+      responses: input_node_ids,
+      api_keys: apiKeys ?? {},
+      progress_listener: onProgressChange ? _progress_listener : undefined,
+    }).then(function (json) {
+      // Check if there's an error; if so, bubble it up to user and exit:
+      if (!json || json.error || json.responses === undefined)
+        throw new Error(
+          json?.error ||
+            "Unknown error encountered when requesting evaluations: empty response returned.",
+        );
+      else if (json.errors && json.errors.length > 0)
+        throw new Error(Object.values(json.errors[0])[0]);
+
+      // Success!
+      return json;
+    });
+  };
+
+  // Export the current internal state as JSON
+  const serialize = () => ({
+    prompt: promptText,
+    grader: llmScorers.length > 0 ? llmScorers[0] : undefined,
+    format: expectedFormat,
+  });
+
+  // Define functions accessible from the parent component
+  useImperativeHandle(ref, () => ({
+    run,
+    serialize,
+  }));
+
+  return (
+    <>
+      <Textarea
+        autosize
+        label={
+          showUserInstruction
+            ? "Describe how to 'score' a single response."
+            : undefined
+        }
+        placeholder={PLACEHOLDER_PROMPT}
+        description={
+          showUserInstruction
+            ? "The text of the response will be pasted directly below your rubric."
+            : undefined
+        }
+        className="prompt-field-fixed nodrag nowheel"
+        minRows="4"
+        maxRows="12"
+        w="100%"
+        mb="sm"
+        value={promptText}
+        onChange={handlePromptChange}
+      />
+
+      <Group spacing="xs">
+        <Text size="sm" fw="500" pl="2px" mb="14px">
+          Expected format:
+        </Text>
+        <NativeSelect
+          size="xs"
+          data={OUTPUT_FORMATS}
+          value={expectedFormat}
+          onChange={handleFormatChange}
+          mb="sm"
+        />
+      </Group>
+
+      <LLMListContainer
+        initLLMItems={llmScorers}
+        description="Model to use as scorer:"
+        modelSelectButtonText="Change"
+        selectModelAction="replace"
+        onItemsChange={handleLLMListItemsChange}
+        hideTrashIcon={true}
+        bgColor={modelContainerBgColor}
+      />
+    </>
+  );
+});
+
 const LLMEvaluatorNode = ({ data, id }) => {
-  const [promptText, setPromptText] = useState(data.prompt || "");
+  // The inner component storing the UI and logic for running the LLM-based evaluation
+  const llmEvaluatorRef = useRef(null);
+
   const [status, setStatus] = useState("none");
   const alertModal = useRef(null);
 
@@ -44,13 +222,8 @@ const LLMEvaluatorNode = ({ data, id }) => {
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
-  const apiKeys = useStore((state) => state.apiKeys);
 
   const [lastResponses, setLastResponses] = useState([]);
-
-  const [llmScorers, setLLMScorers] = useState([
-    data.grader || DEFAULT_LLM_ITEM,
-  ]);
 
   // Progress when querying responses
   const [progress, setProgress] = useState(undefined);
@@ -66,11 +239,11 @@ const LLMEvaluatorNode = ({ data, id }) => {
     setStatus("loading");
     setProgress({ success: 2, error: 0 });
 
-    const llm_key = llmScorers[0].key;
     const handleError = (err) => {
       setStatus("error");
       setProgress(undefined);
-      alertModal.current.trigger(err?.error || err);
+      if (typeof err !== "string") console.error(err);
+      alertModal.current.trigger(typeof err === "string" ? err : err?.message);
     };
 
     // Fetch info about the number of queries we'll need to make
@@ -87,33 +260,20 @@ const LLMEvaluatorNode = ({ data, id }) => {
         (acc, resp_obj) => acc + resp_obj.responses.length,
         0,
       );
-      const progress_listener = (progress_by_llm) => {
+      const onProgressChange = (prog) => {
         setProgress({
-          success:
-            (100 * progress_by_llm[llm_key].success) / num_resps_required,
-          error: (100 * progress_by_llm[llm_key].error) / num_resps_required,
+          success: (100 * prog.success) / num_resps_required,
+          error: (100 * prog.error) / num_resps_required,
         });
       };
 
-      // Run LLM as evaluator
-      fetch_from_backend("evalWithLLM", {
-        id,
-        llm: llmScorers[0],
-        root_prompt: promptText + "\n```\n{input}\n```",
-        responses: input_node_ids,
-        api_keys: apiKeys || {},
-        progress_listener,
-      })
+      // Run LLM evaluator
+      llmEvaluatorRef?.current
+        ?.run(input_node_ids, onProgressChange)
         .then(function (json) {
-          // Check if there's an error; if so, bubble it up to user and exit:
-          if (!json || json.error) {
-            handleError(
-              json?.error ||
-                "Unknown error encountered when requesting evaluations: empty response returned.",
-            );
-            return;
-          } else if (json.errors && json.errors.length > 0) {
-            handleError(Object.values(json.errors[0])[0]);
+          if (json?.responses === undefined) {
+            // We shouldn't be able to reach here, but just in case:
+            handleError("Unknown error encounted when running LLM evaluator.");
             return;
           }
 
@@ -122,7 +282,9 @@ const LLMEvaluatorNode = ({ data, id }) => {
 
           console.log(json.responses);
           setLastResponses(json.responses);
+
           if (!showDrawer) setUninspectedResponses(true);
+
           setStatus("ready");
           setProgress(undefined);
         })
@@ -130,30 +292,12 @@ const LLMEvaluatorNode = ({ data, id }) => {
     });
   }, [
     inputEdgesForNode,
-    promptText,
-    llmScorers,
-    apiKeys,
+    llmEvaluatorRef,
     pingOutputNodes,
     setStatus,
     showDrawer,
     alertModal,
   ]);
-
-  const handlePromptChange = useCallback(
-    (event) => {
-      // Store prompt text
-      setPromptText(event.target.value);
-      setDataPropsForNode(id, { prompt: event.target.value });
-      setStatus("warning");
-    },
-    [setPromptText, setDataPropsForNode, setStatus, id],
-  );
-
-  const onLLMListItemsChange = useCallback((new_items) => {
-    setLLMScorers(new_items);
-
-    if (new_items.length > 0) setDataPropsForNode(id, { grader: new_items[0] });
-  }, []);
 
   const showResponseInspector = useCallback(() => {
     if (inspectModal && inspectModal.current && lastResponses) {
@@ -168,6 +312,20 @@ const LLMEvaluatorNode = ({ data, id }) => {
       setStatus("warning");
     }
   }, [data]);
+
+  // On initialization
+  useEffect(() => {
+    // Attempt to grab cache'd responses
+    fetch_from_backend("grabResponses", {
+      responses: [id],
+    }).then(function (json) {
+      if (json.responses && json.responses.length > 0) {
+        // Store responses and set status to green checkmark
+        setLastResponses(stripLLMDetailsFromResponses(json.responses));
+        setStatus("ready");
+      }
+    });
+  }, []);
 
   return (
     <BaseNode classNames="evaluator-node" nodeId={id}>
@@ -185,27 +343,26 @@ const LLMEvaluatorNode = ({ data, id }) => {
         jsonResponses={lastResponses}
       />
 
-      <Textarea
-        autosize
-        label="Describe how to 'score' a single response."
-        placeholder={PLACEHOLDER_PROMPT}
-        description="The text of the response will be pasted directly below your rubric."
-        className="prompt-field-fixed nodrag nowheel"
-        minRows="4"
-        maxRows="12"
-        maw="290px"
-        mb="lg"
-        value={promptText}
-        onChange={handlePromptChange}
-      />
-
-      <LLMListContainer
-        initLLMItems={llmScorers}
-        description="Model to use as scorer:"
-        modelSelectButtonText="Change"
-        selectModelAction="replace"
-        onItemsChange={onLLMListItemsChange}
-      />
+      <div className="llm-scorer-container">
+        <LLMEvaluatorComponent
+          ref={llmEvaluatorRef}
+          prompt={data.prompt}
+          onPromptEdit={(prompt) => {
+            setDataPropsForNode(id, { prompt });
+            setStatus("warning");
+          }}
+          onLLMGraderChange={(new_grader) =>
+            setDataPropsForNode(id, { grader: new_grader })
+          }
+          onFormatChange={(new_format) =>
+            setDataPropsForNode(id, { format: new_format })
+          }
+          grader={data.grader}
+          format={data.format}
+          id={id}
+          showUserInstruction={true}
+        />
+      </div>
 
       {progress !== undefined ? (
         <Progress
@@ -227,22 +384,9 @@ const LLMEvaluatorNode = ({ data, id }) => {
         <></>
       )}
 
-      <Alert
-        icon={<IconAlertTriangle size="1rem" />}
-        p="10px"
-        radius="xs"
-        title="Caution"
-        color="yellow"
-        maw="270px"
-        mt="xs"
-        styles={{
-          title: { margin: "0px" },
-          icon: { marginRight: "4px" },
-          message: { fontSize: "10pt" },
-        }}
-      >
+      {/* <Alert icon={<IconAlertTriangle size="1rem" />} p='10px' radius='xs' title="Caution" color="yellow" maw='270px' mt='xs' styles={{title: {margin: '0px'}, icon: {marginRight: '4px'}, message: {fontSize: '10pt'}}}>
         AI scores are not 100% accurate.
-      </Alert>
+      </Alert>  */}
 
       <Handle
         type="target"

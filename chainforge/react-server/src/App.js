@@ -40,6 +40,7 @@ import GlobalSettingsModal from "./GlobalSettingsModal";
 import ExampleFlowsModal from "./ExampleFlowsModal";
 import AreYouSureModal from "./AreYouSureModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
+import SimpleEvalNode from "./SimpleEvalNode";
 import {
   getDefaultModelFormData,
   getDefaultModelSettings,
@@ -67,7 +68,6 @@ import {
   isEdgeChromium,
   isChromium,
 } from "react-device-detect";
-import SimpleEvalNode from "./SimpleEvalNode";
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
     isChromium ||
@@ -93,9 +93,9 @@ const selector = (state) => ({
 const INITIAL_LLM = () => {
   const falcon7b = {
     key: uuid(),
-    name: "Falcon.7B.Instruct",
+    name: "Mistral-7B",
     emoji: "🤗",
-    model: "tiiuae/falcon-7b-instruct",
+    model: "mistralai/Mistral-7B-Instruct-v0.1",
     base_model: "hf",
     temp: 1.0,
     settings: getDefaultModelSettings("hf"),

@@ -49,16 +49,18 @@ function compileTextFromMdAST(md) {
   return "";
 }
 
-const splitText = (s, format) => {
+export const splitText = (s, format, shouldEscapeBraces) => {
+  const _escapeBraces = shouldEscapeBraces ? escapeBraces : (x) => x;
+
   // If format is newline separators, we can just split:
   if (format === "\n\n" || format === "\n")
     return s
       .split(format)
-      .map((s) => escapeBraces(s.trim()))
+      .map((s) => _escapeBraces(s.trim()))
       .filter((s) => s.length > 0);
   else if (format === ",")
     return processCSV(s)
-      .map((s) => escapeBraces(s))
+      .map((s) => _escapeBraces(s))
       .filter((s) => s.length > 0);
 
   // Other formatting rules require markdown parsing:
@@ -90,7 +92,7 @@ const splitText = (s, format) => {
   };
 
   extract_md_blocks(format);
-  results = results.filter((s) => s.length > 0).map(escapeBraces);
+  results = results.filter((s) => s.length > 0).map(_escapeBraces);
 
   // NOTE: It is possible to have an empty [] results after split.
   // This happens if the splitter is a markdown separator, and none were found in the input(s).
@@ -255,8 +257,8 @@ const SplitNode = ({ data, id }) => {
       const split_objs = resp_objs
         .map((resp_obj) => {
           if (typeof resp_obj === "string")
-            return splitText(resp_obj, formatting);
-          const texts = splitText(resp_obj?.text, formatting);
+            return splitText(resp_obj, formatting, true);
+          const texts = splitText(resp_obj?.text, formatting, true);
           if (texts !== undefined && texts.length >= 1)
             return texts.map((t) => deepcopy_and_modify(resp_obj, { text: t }));
           else if (texts?.length === 0) return [];

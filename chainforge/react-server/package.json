@@ -104,7 +104,8 @@
     "start": "craco start",
     "build": "npx prettier -w . && npx eslint . && craco build",
     "test": "npx prettier -w . && npx eslint . && craco test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "clean": "npx prettier -w . && npx eslint ."
   },
   "eslintConfig": {
     "extends": [
