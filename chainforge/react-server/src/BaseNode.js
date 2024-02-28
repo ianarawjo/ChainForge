@@ -40,9 +40,23 @@ export const BaseNode = ({ children, classNames, nodeId, style }) => {
   }, [deleteConfirmModal]);
 
   const handleOpenContextMenu = (e) => {
-    // Ignore all right-clicked elements that aren't divs:
-    // (for instance, textfields should still have normal right-click)
-    if (e.target.localName !== "div") return;
+    // Ignore all right-clicked elements that aren't children of the parent,
+    // and that aren't divs (for instance, textfields should still have normal right-click)
+    if (e.target?.localName !== "div") return;
+
+    let parent = e.target.parentElement;
+    let found_cfnode = false;
+    while (parent) {
+      if (parent.className.startsWith("cfnode")) {
+        found_cfnode = true;
+        break;
+      }
+      parent = parent.parentElement;
+    }
+
+    // This effectively quits if the user is right-clicking in a pop-up Modal view,
+    // since the pop-up Modals are not children of the BaseNode:
+    if (!found_cfnode) return;
 
     e.preventDefault();
     setContextMenuStyle({

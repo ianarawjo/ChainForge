@@ -1,8 +1,8 @@
 :root {
-  --monofont: "Geist Mono";
+  --monofont: monospace;
 }
 .monofont {
-  font-family: var(--monofont), monospace;
+  font-family: var(--monofont);
 }
 
 .text-fields-node {
