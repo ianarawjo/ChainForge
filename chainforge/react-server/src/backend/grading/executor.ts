@@ -51,7 +51,7 @@ import {
  *    or check the grading status by using methods like `getScore`,
  *    `getAllScores`, or `getNextExampleToScore`.
  */
-class EvaluationFunctionExecutor {
+export default class EvaluationFunctionExecutor {
   private scores: Map<ExampleId, number>;
   private outcomes: Map<EvalFunction, { successes: number; failures: number }>; // Track successes and failures for each function to compute failure rates
   // Cache function results for each example
@@ -314,6 +314,11 @@ class EvaluationFunctionExecutor {
       let bestAccuracy = 0;
 
       for (const evalFunction of this.evalFunctions) {
+        // Skip functions that don't match the criteria
+        if (evalFunction.evalCriteria.criteria !== criteria.criteria) {
+          continue;
+        }
+
         // Calculate accuracy for this function based on the graded examples
         let successes = 0;
         let failures = 0;

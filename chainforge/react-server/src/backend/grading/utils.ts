@@ -1,6 +1,11 @@
 // Interfaces and utility functions
 // TODO: Replace GPTResponse and askGPT4 with actual GPT-4 API calls
 
+// Import top-level utils
+const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");
+// const { DefaultAzureCredential } = require("@azure/identity");
+import { env as process_env } from "process";
+
 export interface GPTResponse<T> {
   data: T;
 }
@@ -8,7 +13,7 @@ export interface GPTResponse<T> {
 export interface EvalCriteria {
   criteria: string;
   category: string;
-  eval_method: "code" | "manual";
+  eval_method: "code" | "expert";
   source?: string;
 }
 
@@ -26,35 +31,73 @@ export interface EvalFunction {
   code: string;
 }
 
-export async function generateLLMEvaluations(
+async function call_azure_openai(
+  prompt: string,
+  model: string,
+): Promise<GPTResponse<string>> {
+  // Create a new client and endpoint
+  const client = new OpenAIClient(
+    process_env.AZURE_OPENAI_ENDPOINT,
+    new AzureKeyCredential(process_env.AZURE_OPENAI_KEY),
+  );
+
+  // Call the model
+  const messages = [
+    {
+      content:
+        "You are an expert Python programmer and helping me write assertions for my LLM pipeline. An LLM pipeline accepts an example and prompt template, fills the template's placeholders with the example, and generates a response.",
+      role: "system",
+    },
+    { role: "user", content: prompt },
+  ];
+
+  const events = await client.listChatCompletions(model, messages, {});
+
+  let response = "";
+
+  for await (const event of events) {
+    for (const choice of event.choices) {
+      const delta = choice.delta?.content;
+      if (delta !== undefined) {
+        // console.log(delta);
+        response += delta;
+      }
+    }
+  }
+
+  console.log("Azure OpenAI response:", response);
+
+  return { data: response };
+}
+
+export async function generateLLMEvaluationCriteria(
   prompt: string,
 ): Promise<EvalCriteria[]> {
   // Construct the detailed prompt for the LLM
-  const detailedPrompt = `Here is my LLM prompt: ${prompt}
+  const detailedPrompt = `Here is my LLM prompt template:
+  
+  \`${prompt}\`
     
-    Based on the content in the prompt, I want to write evaluations for my LLM pipeline to run on all pipeline responses. Here are some categories of evaluation criteria I want to check for:
-    
-    - Presentation Format: Is there a specific format for the response, like a comma-separated list or a JSON object?
-    - Example Demonstration: Does the prompt template include any examples of good responses that demonstrate any specific headers, keys, or structures?
-    - Workflow Description: Does the prompt template include any descriptions of the workflow that the LLM should follow, indicating possible evaluation criteria?
-    - Count: Are there any instructions regarding the number of items of a certain type in the response, such as “at least”, “at most”, or an exact number?
-    - Inclusion: Are there keywords that every LLM response should include?
-    - Exclusion: Are there keywords that every LLM response should never mention?
-    - Qualitative Assessment: Are there qualitative criteria for assessing good responses, including specific requirements for length, tone, or style?
-    - Other: Based on the prompt template, are there any other criteria to check in evaluations that are not covered by the above categories, such as correctness, completeness, or consistency?
-    
-    Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, its corresponding category, whether it should be evaluated with code or manually by an expert, and the source, or phrase in the prompt template that triggered the criteria. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following fields: "criteria", "category", "eval_method" (code or LLM), and "source". This list should contain as many evaluation criteria as you can think of, as long are specific and reasonable.`;
+    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or manually by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following fields: "criteria" and "eval_method" (code or expert). The criteria should be short, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept.`;
 
   // TODO: Call the LLM appropriately
-  const response = await askGPT4<string>(detailedPrompt);
+  const response = await call_azure_openai(detailedPrompt, "gpt-35-turbo");
 
   // Assuming the response is a JSON string that we need to parse into an object
   try {
-    const EvalCriteria: EvalCriteria[] = JSON.parse(response.data);
-    return EvalCriteria;
+    let data = response.data;
+    // Strip everything not in `````` markers
+    const jsonStart = data.indexOf("```json");
+    const jsonEnd = data.indexOf("```", jsonStart + 6);
+    data = data.slice(jsonStart + 8, jsonEnd);
+
+    // Trim whitespace
+    data = data.trim();
+
+    return JSON.parse(data);
   } catch (error) {
-    console.error("Error parsing GPT-4 response:", error);
-    throw new Error("Failed to parse GPT-4 response into evaluation criteria.");
+    console.error("Error parsing GPT response:", error);
+    throw new Error("Failed to parse GPT response into evaluation criteria.");
   }
 }
 
@@ -85,34 +128,46 @@ export async function generateFunctionsForCriteria(
   promptTemplate: string,
   example: Example,
 ): Promise<EvalFunction[]> {
-  const functionGenPrompt = `Here is my prompt template:
-      
-    "${promptTemplate}"
-    
-    Here is an example and its corresponding LLM response:
-    
-    Example formatted LLM prompt: ${example.prompt}
-    LLM Response: ${example.response}
-    
-    I want to check for a concept in LLM responses based on this criteria:
-    
-    - Criteria: ${criteria.criteria}
-    - Category: ${criteria.category}
-    - Evaluation Method: ${criteria.eval_method}
-    
-    Give me a Python function that can be used to check for this concept in LLM responses. If the evaluation method is "LLM", the function should leverage the external function \`ask_llm\`; otherwise it should only rely on code and Python libraries. Each function should take in 3 args: an example (dict with string keys), prompt formatted on that example (string), and LLM response (string), and return a boolean indicating whether the response satisfies the concept covered by the function.`;
+  const functionGenPrompt = `Given a prompt template and an example with its LLM response, your task is to devise multiple Python functions to evaluate LLM responses based on specific criteria. Aim to create as many implementations as possible to ensure a comprehensive evaluation that aligns with developer expectations.
 
-  // TODO: Replace with actual call to GPT-4
+  Prompt Template:
+  "${promptTemplate}"
+  
+  Example Details:
+  - Prompt: ${example.prompt}
+  - LLM Response: ${example.response}
+  
+  Evaluation Criteria:
+  - Criteria: ${criteria.criteria}
+  - Evaluation Method: ${criteria.eval_method}
+  
+  Function Requirements:
+  - Develop as many Python functions as possible to assess the concept outlined in the criteria.
+  - Each function must accept three arguments:
+    1. An example, represented as a dictionary with string keys.
+    2. A string representing the prompt based on the example.
+    3. The LLM response as a string.
+  - The function should return a boolean value indicating whether the LLM response meets the set criteria.
+  - For evaluation methods labeled 'expert', functions should incorporate the external function \`ask_llm\`, which should ask a True or False question to an expert. Try different variations/wordings in the ask_llm question. For all other methods, base the implementations on standard coding practices and Python libraries.
+  
+  We encourage creativity in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively, and we'll select the functions that best align with developer expectations.
+  `;
+
+  // TODO: figure out how to make this faster
   try {
-    const response = await askGPT4<string>(functionGenPrompt);
+    const response = await call_azure_openai(functionGenPrompt, "gpt-4-2");
 
-    const src_array = response.data;
-    return src_array.map((src: string) => {
-      return {
-        evalCriteria: criteria,
-        code: src,
-      };
-    });
+    console.log("GPT-4 response:", response);
+
+    return [];
+
+    // const src_array = response.data;
+    // return src_array.map((src: string) => {
+    //   return {
+    //     evalCriteria: criteria,
+    //     code: src,
+    //   };
+    // });
   } catch (error) {
     console.error("Error generating function for criteria:", error);
     throw new Error(
