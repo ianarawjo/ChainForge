@@ -241,9 +241,13 @@ export default class EvaluationFunctionExecutor {
    * This method aims to balance attention across examples of varying difficulty or quality. Ideally, in grading, we get a sample of good and bad
    * responses.
    *
+   * @param policy The policy to use for selecting the next example to grade. Currently, the only supported policies are "random" and "priority".
+   *
    * @returns The unique ID of the next example to be graded, or null if all examples have been graded.
    */
-  public getNextExampleToGrade(): ExampleId | null {
+  public getNextExampleToGrade(
+    policy: "random" | "priority" = "priority",
+  ): ExampleId | null {
     const ungraded = Array.from(this.scores.entries())
       .filter(([id]) => !this.grades.has(id)) // Filter out graded examples
       .map(([id, score]) => ({ id, score, rand: Math.random() })) // Add random key for tie-breaking
@@ -260,7 +264,12 @@ export default class EvaluationFunctionExecutor {
       return null; // No ungraded examples left
     }
 
-    // Decide whether to pick the highest or lowest ungraded score
+    // If the policy is random, return a random ungraded example
+    if (policy === "random") {
+      return ungraded[Math.floor(Math.random() * ungraded.length)];
+    }
+
+    // Otherwise whether to pick the highest or lowest ungraded score
     const pickIndex = this.lastPickedHighScore ? ungraded.length - 1 : 0;
     this.lastPickedHighScore = !this.lastPickedHighScore; // Alternate for next time
 

@@ -1,9 +1,8 @@
 // Interfaces and utility functions
-// TODO: Replace GPTResponse and askGPT4 with actual GPT-4 API calls
+// TODO: Use ChainForge's openai utils (I tried but got errors)
 
 // Import top-level utils
 const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");
-// const { DefaultAzureCredential } = require("@azure/identity");
 import { env as process_env } from "process";
 
 export interface GPTResponse<T> {
@@ -80,8 +79,7 @@ export async function generateLLMEvaluationCriteria(
     
     Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or manually by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following fields: "criteria" and "eval_method" (code or expert). The criteria should be short, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept.`;
 
-  // TODO: Call the LLM appropriately
-  const response = await call_azure_openai(detailedPrompt, "gpt-35-turbo");
+  const response = await call_azure_openai(detailedPrompt, "gpt-4");
 
   // Assuming the response is a JSON string that we need to parse into an object
   try {
@@ -142,7 +140,7 @@ export async function generateFunctionsForCriteria(
   - Evaluation Method: ${criteria.eval_method}
   
   Function Requirements:
-  - Develop as many Python functions as possible to assess the concept outlined in the criteria.
+  - Develop as many Python functions as possible (at least 5) to assess the concept outlined in the criteria.
   - Each function must accept three arguments:
     1. An example, represented as a dictionary with string keys.
     2. A string representing the prompt based on the example.
@@ -155,7 +153,7 @@ export async function generateFunctionsForCriteria(
 
   // TODO: figure out how to make this faster
   try {
-    const response = await call_azure_openai(functionGenPrompt, "gpt-4-2");
+    const response = await call_azure_openai(functionGenPrompt, "gpt-4");
 
     console.log("GPT-4 response:", response);
 
