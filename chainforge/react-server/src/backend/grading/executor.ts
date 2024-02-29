@@ -6,7 +6,6 @@ import {
   executeFunction,
   generateFunctionsForCriteria,
 } from "./utils";
-import { Solver, Model } from "javascript-lp-solver";
 
 /**
  * The EvaluationFunctionExecutor class is designed to asynchronously
@@ -270,47 +269,17 @@ class EvaluationFunctionExecutor {
 
   /**
    * Filters out evaluation functions that are incorrect based on the grades provided by the developer.
-   * TODO: Test this!!
-   * TODO: write out this ILP formulation (since it differs from SPADE's)
+   * TODO: Actually use an ILP solver to do this
    *
    * @param falseFailureRateThreshold The threshold for the failure rate of the selected evaluation functions. The returned function set will only contain functions with a combined false failure rate below this threshold.
+   * @param failureCoverageThreshold The threshold for the coverage of the bad examples by the selected evaluation functions.
    *
    * @returns A filtered set of evaluation functions that have a combined false failure rate below the specified threshold and cover all evaluation criteria.
    */
   public async filterEvaluationFunctions(
     falseFailureRateThreshold: number,
+    failureCoverageThreshold: number,
   ): Promise<EvalFunction[]> {
-    // Initialize LP model
-    let model: Model = {
-      optimize: "selected",
-      opType: "min",
-      constraints: { FFR: { max: 0 } }, // Placeholder for FFR constraint value, will be updated later
-      variables: {},
-      ints: {},
-    };
-
-    // Ensure each criterion is covered at least once
-    this.evalCriteria.forEach((criteria) => {
-      model.constraints[criteria.criteria] = { min: 1 };
-    });
-
-    // Define variables for each evaluation function
-    this.evalFunctions.forEach((fn) => {
-      model.variables[fn.code] = { selected: 1 }; // Cost of selecting this function
-
-      // Add coverage for the associated criteria
-      const criteriaConstraint = {};
-      criteriaConstraint[fn.evalCriteria.criteria] = 1;
-      model.variables[fn.code] = {
-        ...model.variables[fn.code],
-        ...criteriaConstraint,
-      };
-
-      // Mark the variable as integer
-      model.ints[fn.code] = 1;
-    });
-
-    // Create helper map of function outcomes, of dimensionality num_graded x num_functions
     const gradedExamples = this.examples.filter((example) =>
       this.grades.has(example.id),
     );
@@ -336,61 +305,46 @@ class EvaluationFunctionExecutor {
       gradedResultMap.set(example.id, row);
     }
 
-    // Initialize FFR calculation variables
-    let totalPositiveGrades = 0;
-    let ffrConstraintValue = 0;
+    let bestEvalFunctions: EvalFunction[] = [];
 
-    // Setup constraints based on gradedResultMap and grades
-    gradedResultMap.forEach((functionResults, exampleId) => {
-      const grade = this.grades.get(exampleId);
+    // Iterate through each criteria
+    // For each criteria, select the function with the highest accuracy rate
+    for (const criteria of this.evalCriteria) {
+      let bestFunction: EvalFunction | null = null;
+      let bestAccuracy = 0;
 
-      if (grade) {
-        // Only consider examples graded as true (successful)
-        totalPositiveGrades += 1;
-        let exampleContributions = [];
-
-        this.evalFunctions.forEach((fn, j) => {
-          const result = functionResults.get(fn);
-          if (result === false) {
-            // If function fails the example
-            let varName = `w_${exampleId}_${j}`;
-            model.variables[varName] = { FFR: 1 }; // Contributes to FFR if this function is selected
-            model.ints[varName] = 1; // Ensure binary
-            exampleContributions.push(varName);
-
-            // Bind w_ij to x_j (if function j fails example i, and function j is selected)
-            model.constraints[`${varName}_bind`] = {
-              equal: model.variables[fn.code],
-            };
+      for (const evalFunction of this.evalFunctions) {
+        // Calculate accuracy for this function based on the graded examples
+        let successes = 0;
+        let failures = 0;
+        for (const example of gradedExamples) {
+          const result = gradedResultMap.get(example.id)?.get(evalFunction);
+          if (result !== undefined) {
+            if (result) {
+              successes++;
+            } else {
+              failures++;
+            }
+          } else {
+            console.error("No result found for example and function:", example);
+            failures++;
           }
-        });
+        }
 
-        // For each positive example, sum contributions of failing functions if selected
-        if (exampleContributions.length > 0) {
-          model.constraints[`ffr_${exampleId}`] = { max: 1 }; // Ensure at least one failing function contributes to FFR if selected
-          exampleContributions.forEach((varName) => {
-            model.constraints[`ffr_${exampleId}`][varName] = 1;
-          });
+        // Calculate accuracy
+        const accuracy = successes / (successes + failures);
+        if (accuracy > bestAccuracy) {
+          bestFunction = evalFunction;
+          bestAccuracy = accuracy;
         }
       }
-    });
 
-    // Update FFR constraint value based on total positive grades
-    if (totalPositiveGrades > 0) {
-      model.constraints.FFR = {
-        max: falseFailureRateThreshold * totalPositiveGrades,
-      };
+      // Save the best function for this criteria
+      if (bestFunction) {
+        bestEvalFunctions.push(bestFunction);
+      }
     }
 
-    // Create a solver instance and solve the model
-    const solver = new Solver();
-    const results = solver.Solve(model);
-
-    // Filter and return the selected functions based on the solver's results
-    const selectedFunctions = this.evalFunctions.filter(
-      (fn) => results[fn.code] === 1,
-    );
-
-    return selectedFunctions;
+    return bestEvalFunctions;
   }
 }
