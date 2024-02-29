@@ -55,7 +55,6 @@ import { PickCriteriaModal } from "./GradeResponsesModal";
 // Styling
 import "reactflow/dist/style.css"; // reactflow
 import "./text-fields-node.css"; // project
-import "@fontsource/geist-mono"; // custom monospace font
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from "zustand/shallow";

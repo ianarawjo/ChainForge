@@ -1,32 +1,15 @@
 {
   "files": {
-<<<<<<< HEAD
     "main.css": "/static/css/main.85149714.css",
-    "main.js": "/static/js/main.19a7c43a.js",
-=======
-    "main.css": "/static/css/main.30958a41.css",
-    "main.js": "/static/js/main.849f3878.js",
->>>>>>> 67c5cf1 (Run prettier and eslint, fix issues)
+    "main.js": "/static/js/main.14cc915e.js",
     "static/js/787.4c72bb55.chunk.js": "/static/js/787.4c72bb55.chunk.js",
-    "static/media/geist-mono-latin-400-normal.woff": "/static/media/geist-mono-latin-400-normal.6d7e8c16d2c06a35430c.woff",
-    "static/media/geist-mono-latin-400-normal.woff2": "/static/media/geist-mono-latin-400-normal.e63235dd2617b0973393.woff2",
     "index.html": "/index.html",
-<<<<<<< HEAD
     "main.85149714.css.map": "/static/css/main.85149714.css.map",
-    "main.19a7c43a.js.map": "/static/js/main.19a7c43a.js.map",
+    "main.14cc915e.js.map": "/static/js/main.14cc915e.js.map",
     "787.4c72bb55.chunk.js.map": "/static/js/787.4c72bb55.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.85149714.css",
-    "static/js/main.19a7c43a.js"
-=======
-    "main.30958a41.css.map": "/static/css/main.30958a41.css.map",
-    "main.849f3878.js.map": "/static/js/main.849f3878.js.map",
-    "787.4c72bb55.chunk.js.map": "/static/js/787.4c72bb55.chunk.js.map"
-  },
-  "entrypoints": [
-    "static/css/main.30958a41.css",
-    "static/js/main.849f3878.js"
->>>>>>> 67c5cf1 (Run prettier and eslint, fix issues)
+    "static/js/main.14cc915e.js"
   ]
 }
