@@ -90,6 +90,12 @@ export default class EvaluationFunctionExecutor {
 
     // Set scores and grades to default values of 0
     this.scores = new Map<ExampleId, number>();
+
+    // Set scores to 0 for each example id
+    for (const example of examples) {
+      this.scores.set(example.id, 0);
+    }
+
     this.grades = new Map<ExampleId, boolean>();
     this.evalFunctions = [];
   }
@@ -132,6 +138,9 @@ export default class EvaluationFunctionExecutor {
     emitter.on("functionGenerated", (evalFunction) => {
       // Capture the execution promise of each function
       const executionPromise = (async () => {
+        // Add the eval function to the list of functions
+        this.evalFunctions.push(evalFunction);
+
         this.outcomes.set(evalFunction, { successes: 0, failures: 0 });
         const executionPromises = this.examples.map(async (example) => {
           try {
@@ -166,7 +175,7 @@ export default class EvaluationFunctionExecutor {
         });
 
         await Promise.all(executionPromises);
-        console.log(`Function ${evalFunction.name} executed on all examples.`);
+        // console.log(`Function ${evalFunction.name} executed on all examples.`);
       })();
 
       functionExecutionPromises.push(executionPromise);
@@ -245,6 +254,15 @@ export default class EvaluationFunctionExecutor {
   }
 
   /**
+   * Retrieves the grades set by the developer for all examples.
+   *
+   * @returns A map of example IDs to their grades.
+   */
+  public getGrades(): Map<ExampleId, boolean> {
+    return new Map(this.grades);
+  }
+
+  /**
    * Sets a grade for an example based on external input from the developer.
    * This will be used for filtering out incorrect evaluation functions.
    *
@@ -253,6 +271,31 @@ export default class EvaluationFunctionExecutor {
    */
   public setGradeForExample(exampleId: ExampleId, grade: boolean): void {
     this.grades.set(exampleId, grade);
+  }
+
+  /**
+   * Gets a map of ungraded example ids and their scores, sorted by score.
+   * @return A map of ungraded example ids and their scores, sorted by score.
+   */
+  public getUngradedScores(): Map<ExampleId, number> {
+    // Step 1: Convert the scores Map to an array and filter out graded examples
+    const ungradedEntries = Array.from(this.scores.entries())
+      .filter(([id]) => !this.grades.has(id))
+      .map(([id, score]) => ({ id, score, rand: Math.random() })) // Add a random value for tie-breaking
+
+      // Step 2: Sort the ungraded entries first by score, then randomly for tie-breaking
+      .sort((a, b) => {
+        if (a.score === b.score) {
+          return a.rand - b.rand; // Tie-breaking by random value
+        }
+        return b.score - a.score; // Sort by score descending
+      })
+
+      // Step 3: Convert the sorted objects back into the format expected by the Map constructor
+      .map(({ id, score }) => [id, score] as [ExampleId, number]);
+
+    // Step 4: Convert the array of key-value pairs back into a Map and return
+    return new Map(ungradedEntries);
   }
 
   /**
@@ -267,17 +310,7 @@ export default class EvaluationFunctionExecutor {
   public getNextExampleToGrade(
     policy: "random" | "priority" = "priority",
   ): ExampleId | null {
-    const ungraded = Array.from(this.scores.entries())
-      .filter(([id]) => !this.grades.has(id)) // Filter out graded examples
-      .map(([id, score]) => ({ id, score, rand: Math.random() })) // Add random key for tie-breaking
-      .sort((a, b) => {
-        // Sort by score, then randomly for tie-breaking
-        if (a.score === b.score) {
-          return a.rand - b.rand;
-        }
-        return a.score - b.score;
-      })
-      .map(({ id }) => id); // Extract sorted ids
+    const ungraded = Array.from(this.getUngradedScores().keys());
 
     if (ungraded.length === 0) {
       return null; // No ungraded examples left
@@ -338,6 +371,7 @@ export default class EvaluationFunctionExecutor {
     }
 
     let bestEvalFunctions: EvalFunction[] = [];
+    let coveredFailures = new Set<ExampleId>();
 
     // Iterate through each criteria
     // For each criteria, select the function with the highest accuracy rate
@@ -357,7 +391,7 @@ export default class EvaluationFunctionExecutor {
         for (const example of gradedExamples) {
           const result = gradedResultMap.get(example.id)?.get(evalFunction);
           if (result !== undefined) {
-            if (result) {
+            if (result === this.grades.get(example.id)) {
               successes++;
             } else {
               failures++;
@@ -365,6 +399,11 @@ export default class EvaluationFunctionExecutor {
           } else {
             console.error("No result found for example and function:", example);
             failures++;
+          }
+
+          // If the example failed and is covered, add it to the set of covered failures
+          if (!result && !this.grades.get(example.id)) {
+            coveredFailures.add(example.id);
           }
         }
 
@@ -380,6 +419,22 @@ export default class EvaluationFunctionExecutor {
       if (bestFunction) {
         bestEvalFunctions.push(bestFunction);
       }
+    }
+
+    // Print out failure coverage
+    const numFailures = gradedExamples.filter(
+      (example) => !this.grades.get(example.id),
+    ).length;
+    const coverage = coveredFailures.size / numFailures;
+    console.log(`Failure coverage: ${coverage}`);
+
+    // Print out missed failures
+    const missedFailures = gradedExamples.filter(
+      (example) =>
+        !this.grades.get(example.id) && !coveredFailures.has(example.id),
+    );
+    if (missedFailures.length > 0) {
+      console.log(`Missed failures: ${missedFailures}`);
     }
 
     return bestEvalFunctions;

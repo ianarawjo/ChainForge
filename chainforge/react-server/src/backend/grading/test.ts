@@ -96,48 +96,46 @@ const main = async () => {
   // Step 2: Start background task
   executor.start();
 
-  await executor.waitForCompletion();
-
-  // Pause the timer
-  timeElapsed += Date.now() - start;
-
-  console.log(`Execution took ${timeElapsed}ms`);
-
-  // Print out the results
-  const outcomes = executor.getOutcomes();
-  console.log("Outcomes: ", outcomes);
-
-  //   // Step 3: Present examples to grade
-  //   while (true) {
-  //     const nextExampleId = executor.getNextExampleToGrade();
-  //     if (!nextExampleId) {
-  //       console.log("All examples graded or no examples available.");
-  //       break;
-  //     }
-
-  //     const example = examples.find((e) => e.id === nextExampleId);
-  //     if (!example) continue;
-
-  //     console.log(
-  //       `Example ID: ${example.id}, Prompt: ${example.prompt}, Response: ${example.response}`,
-  //     );
-  //     const grade = await askQuestion(
-  //       "Is this response acceptable? (y/n/finish) ",
-  //     );
-
-  //     if (grade === "finish") {
-  //       break;
-  //     }
-
-  //     executor.setGradeForExample(example.id, grade.toLowerCase() === "y");
-  //   }
-
-  //   // Step 4: Filtering and results
   //   await executor.waitForCompletion();
-  //   const filteredFunctions = await executor.filterEvaluationFunctions(0.1, 0.9);
-  //   console.log("Filtered Functions: ", filteredFunctions);
 
-  //   rl.close();
+  //   Step 3: Present examples to grade
+  while (true) {
+    // Get ungraded scores
+    const ungradedScores = executor.getUngradedScores();
+    console.log("Ungraded Scores: ", ungradedScores);
+
+    const nextExampleId = executor.getNextExampleToGrade();
+    if (!nextExampleId) {
+      console.log("All examples graded or no examples available.");
+      break;
+    }
+
+    const example = examples.find((e) => e.id === nextExampleId);
+    if (!example) continue;
+
+    console.log(
+      `Example ID: ${example.id}, Prompt: ${example.prompt}, Response: ${example.response}`,
+    );
+    const grade = await askQuestion(
+      "Is this response acceptable? (y/n/finish) ",
+    );
+
+    if (grade === "finish") {
+      break;
+    }
+
+    executor.setGradeForExample(example.id, grade.toLowerCase() === "y");
+  }
+
+  // Print grades
+  console.log("Grades: ", executor.getGrades());
+
+  // Step 4: Filtering and results
+  //   await executor.waitForCompletion();
+  const filteredFunctions = await executor.filterEvaluationFunctions(0.1, 0.9);
+  console.log("Filtered Functions: ", filteredFunctions);
+
+  rl.close();
 };
 
 main().catch(console.error);

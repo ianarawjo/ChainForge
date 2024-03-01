@@ -94,9 +94,9 @@ ${evalFunction.code}? Return "yes" or "no".`;
   } else if (response.choices[0].message.content.toLowerCase().includes("no")) {
     return false;
   } else {
-    console.error(
-      `Unexpected response from LLM: ${response.choices[0].message.content}`,
-    );
+    // console.error(
+    //   `Unexpected response from LLM: ${response.choices[0].message.content}`,
+    // );
     return false;
   }
 }
@@ -130,9 +130,9 @@ result`;
     // Determine the boolean value to return based on your actual use case
     return result;
   } catch (error) {
-    console.error(
-      `Error executing Python function ${evalFunction.name} with Pyodide`,
-    );
+    // console.error(
+    //   `Error executing Python function ${evalFunction.name} with Pyodide`,
+    // );
     return false;
   }
 }
@@ -147,19 +147,9 @@ export async function generateFunctionsForCriteria(
   let functionGenPrompt = "";
 
   if (criteria.eval_method === "expert") {
-    functionGenPrompt = `Given a prompt template for an LLM pipeline, your task is to devise a prompt for an expert to to evaluate the pipeline's responses based on the following criteria. Write as many prompts as possible.
+    functionGenPrompt = `Given a prompt template for an LLM pipeline, your task is to devise a prompt for an expert to to evaluate the pipeline's responses based on the following criteria: ${criteria.criteria}
 
-    Prompt Template:
-    "${promptTemplate}"
-    
-    Example inputs and outputs of the LLM pipeline:
-    - Prompt: ${example.prompt}
-    - LLM Response: ${example.response}
-    
-    Evaluation Criteria:
-    - ${criteria.criteria}
-
-    Each answer should be a question that an expert can answer with a "yes" or "no" to evaluate the LLM response based on the criteria. Be creative in your prompts. Try different variations/wordings in the question. Return your answers in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
+    Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate the LLM response based on the criteria. Be creative in your prompts. Try different variations/wordings in the question. Return your answers in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
     `;
   } else {
     functionGenPrompt = `Given a prompt template for an LLM pipeline, your task is to devise multiple Python functions to evaluate LLM responses based on specific criteria. Create as many implementations as possible.
@@ -192,9 +182,9 @@ export async function generateFunctionsForCriteria(
     const streamer = new AzureOpenAIStreamer();
 
     streamer.on("function", (functionDefinition) => {
-      console.log(functionDefinition);
+      //   console.log(functionDefinition);
       // Log a delimiter to separate functions
-      console.log("--------------------------------------------------");
+      //   console.log("--------------------------------------------------");
 
       // If the criteria is expert-based, we don't need to extract the function name
       if (criteria.eval_method === "expert") {
@@ -203,6 +193,7 @@ export async function generateFunctionsForCriteria(
           code: functionDefinition,
           name: functionDefinition,
         };
+
         emitter.emit("functionGenerated", evalFunction);
       } else {
         // Extract the function name from the function definition
