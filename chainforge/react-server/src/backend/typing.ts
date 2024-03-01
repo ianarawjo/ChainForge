@@ -125,7 +125,7 @@ export interface RawLLMResponseObject extends BaseLLMResponseObject {
   // Extracted responses (1 or more) from raw_response
   responses: string[];
   // Token lengths (if given)
-  tokens?: Dict;
+  tokens?: TypedDict<number>;
 }
 
 export type EvaluationResults = {
@@ -148,7 +148,11 @@ export interface StandardizedLLMResponse extends BaseLLMResponseObject {
   responses: string[];
   // Evaluation results
   eval_res?: EvaluationResults;
+  // Token lengths (if given)
+  tokens?: TypedDict<number>;
 }
+
+export type LLMResponsesByVarDict = TypedDict<(BaseLLMResponseObject | StandardizedLLMResponse)[]>;
 
 /** A standard async function interface for calling an LLM. */
 export interface LLMAPICall {

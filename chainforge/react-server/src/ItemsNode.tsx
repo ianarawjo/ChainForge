@@ -1,20 +1,20 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, KeyboardEventHandler } from "react";
 import { Skeleton, Text } from "@mantine/core";
 import useStore from "./store";
 import NodeLabel from "./NodeLabelComponent";
 import { IconForms } from "@tabler/icons-react";
-import { Handle } from "reactflow";
+import { Handle, Position } from "reactflow";
 import BaseNode from "./BaseNode";
 import { processCSV } from "./backend/utils";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import { cleanEscapedBraces, escapeBraces } from "./backend/template";
 
-const replaceDoubleQuotesWithSingle = (str) => str.replaceAll('"', "'");
-const wrapInQuotesIfContainsComma = (str) =>
+const replaceDoubleQuotesWithSingle = (str: string) => str.replaceAll('"', "'");
+const wrapInQuotesIfContainsComma = (str: string) =>
   str.includes(",") ? `"${str}"` : str;
-const makeSafeForCSLFormat = (str) =>
+const makeSafeForCSLFormat = (str: string) =>
   wrapInQuotesIfContainsComma(replaceDoubleQuotesWithSingle(str));
-const stripWrappingQuotes = (str) => {
+const stripWrappingQuotes = (str: string) => {
   if (
     typeof str === "string" &&
     str.length >= 2 &&
@@ -25,7 +25,16 @@ const stripWrappingQuotes = (str) => {
   else return str;
 };
 
-const ItemsNode = ({ data, id }) => {
+interface ItemsNodeProps {
+  data: {
+    title?: string,
+    text?: string,
+    fields?: string[],
+  };
+  id: string;
+}
+
+const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const flags = useStore((state) => state.flags);
@@ -60,7 +69,7 @@ const ItemsNode = ({ data, id }) => {
 
   // Handle a change in a text fields' input.
   const setFieldsFromText = useCallback(
-    (text_val, no_debounce) => {
+    (text_val: string, no_debounce: boolean) => {
       const _update = (_text_val) => {
         // Update the data for this text fields' id.
         const new_data = {
@@ -80,7 +89,7 @@ const ItemsNode = ({ data, id }) => {
     [id, pingOutputNodes, setDataPropsForNode],
   );
 
-  const handKeyDown = useCallback((event) => {
+  const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && data.text && data.text.trim().length > 0) {
       setIsEditing(false);
       setCsvInput(null);
@@ -99,7 +108,7 @@ const ItemsNode = ({ data, id }) => {
   // render csv div
   const renderCsvDiv = useCallback(() => {
     // Take the data.text as csv (only 1 row), and get individual elements
-    const elements = data.fields || [];
+    const elements = data.fields ?? [];
 
     // generate a HTML code that highlights the elements
     const html = [];
@@ -146,12 +155,12 @@ const ItemsNode = ({ data, id }) => {
           id={id}
           name={id}
           className="text-field-fixed nodrag csv-input"
-          rows="2"
-          cols="40"
+          rows={2}
+          cols={40}
           defaultValue={text_val}
           placeholder="Put your comma-separated list here"
-          onKeyDown={handKeyDown}
-          onChange={(event) => setFieldsFromText(event.target.value)}
+          onKeyDown={handleKeyDown}
+          onChange={(event) => setFieldsFromText(event.target.value, false)}
           onBlur={handleOnBlur}
           autoFocus={true}
         />
@@ -159,7 +168,7 @@ const ItemsNode = ({ data, id }) => {
     );
     setContentDiv(null);
     setCountText(null);
-  }, [isEditing, setFieldsFromText, handleOnBlur, handKeyDown]);
+  }, [isEditing, setFieldsFromText, handleOnBlur, handleKeyDown]);
 
   // when data.text changes, update the content div
   useEffect(() => {
@@ -209,7 +218,7 @@ const ItemsNode = ({ data, id }) => {
       </Skeleton>
       <Handle
         type="source"
-        position="right"
+        position={Position.Right}
         id="output"
         className="grouped-handle"
         style={{ top: "50%" }}

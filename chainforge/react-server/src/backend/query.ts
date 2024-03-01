@@ -88,6 +88,7 @@ export class PromptPipeline {
 
     // Check for selective failure
     if (!query && response instanceof LLMResponseError) return response; // yield the LLMResponseException
+    else if (response === undefined) return new LLMResponseError("Unknown");
 
     // Each prompt has a history of what was filled in from its base template.
     // This data --like, "class", "language", "library" etc --can be useful when parsing responses.
@@ -97,13 +98,13 @@ export class PromptPipeline {
     // Create a response obj to represent the response
     let resp_obj: RawLLMResponseObject = {
       prompt: prompt.toString(),
-      query,
+      query: query ?? {},
       uid: uuid(),
       responses: extract_responses(response, llm),
-      raw_response: response,
+      raw_response: response ?? {},
       llm,
-      vars: mergeDicts(info, chat_history?.fill_history),
-      metavars: mergeDicts(metavars, chat_history?.metavars),
+      vars: mergeDicts(info, chat_history?.fill_history) ?? {},
+      metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
     };
 
     // Carry over the chat history if present:
@@ -124,9 +125,10 @@ export class PromptPipeline {
     else if (!Array.isArray(cached_responses[resp_obj.prompt]))
       cached_responses[resp_obj.prompt] = [cached_responses[resp_obj.prompt]];
 
-    if (past_resp_obj_cache_idx > -1)
+    if (past_resp_obj_cache_idx !== undefined && past_resp_obj_cache_idx > -1)
       cached_responses[resp_obj.prompt][past_resp_obj_cache_idx] = resp_obj;
     else cached_responses[resp_obj.prompt].push(resp_obj);
+    
     this._cache_responses(cached_responses);
 
     // console.log(` - collected response from ${llm} for prompt: ${resp_obj['prompt']}`);
@@ -260,8 +262,8 @@ export class PromptPipeline {
             llm: cached_resp.llm || NativeLLM.OpenAI_ChatGPT,
             // We want to use the new info, since 'vars' could have changed even though
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
-            vars: mergeDicts(info, chat_history?.fill_history),
-            metavars: mergeDicts(metavars, chat_history?.metavars),
+            vars: mergeDicts(info, chat_history?.fill_history) ?? {},
+            metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
           };
           if (chat_history !== undefined)
             resp.chat_history = chat_history.messages;
@@ -416,7 +418,7 @@ export class PromptPipeline {
       return {
         prompt,
         query: undefined,
-        response: new LLMResponseError(err.message),
+        response: new LLMResponseError((err as Error).message),
         past_resp_obj: undefined,
         past_resp_obj_cache_idx: -1,
       };
