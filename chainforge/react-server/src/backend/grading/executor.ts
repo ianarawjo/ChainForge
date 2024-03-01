@@ -121,6 +121,7 @@ export default class EvaluationFunctionExecutor {
     const emitter = new EventEmitter();
     let criteriaProcessed = 0; // Track the number of criteria processed
     let resolveAllFunctionsGenerated; // To be called when all functions are generated and executed
+    let functionExecutionPromises: Promise<any>[] = []; // Track execution promises for function executions
 
     // This promise resolves when the 'allFunctionsGenerated' event is emitted
     const allFunctionsGeneratedPromise = new Promise<void>((resolve) => {
@@ -128,47 +129,47 @@ export default class EvaluationFunctionExecutor {
     });
 
     // Listen for generated functions and execute them as they come in
-    emitter.on("functionGenerated", async (evalFunction) => {
-      // Initialize outcome tracking for this function
-      this.outcomes.set(evalFunction, { successes: 0, failures: 0 });
+    emitter.on("functionGenerated", (evalFunction) => {
+      // Capture the execution promise of each function
+      const executionPromise = (async () => {
+        this.outcomes.set(evalFunction, { successes: 0, failures: 0 });
+        const executionPromises = this.examples.map(async (example) => {
+          try {
+            const funcToExecute =
+              evalFunction.evalCriteria.eval_method === "code"
+                ? executeFunction
+                : executeLLMEval;
+            const result = await funcToExecute(evalFunction, example);
 
-      // Execute the generated function on all examples
-      const executionPromises = this.examples.map(async (example) => {
-        try {
-          const funcToExecute =
-            evalFunction.evalCriteria.eval_method === "code"
-              ? executeFunction
-              : executeLLMEval;
+            if (!this.resultsCache.has(evalFunction)) {
+              this.resultsCache.set(evalFunction, new Map());
+            }
+            this.resultsCache.get(evalFunction)?.set(example.id, result);
 
-          const result = await funcToExecute(evalFunction, example);
+            const outcome = this.outcomes.get(evalFunction);
+            if (outcome) {
+              result ? outcome.successes++ : outcome.failures++;
+              this.outcomes.set(evalFunction, outcome);
+            }
 
-          // Cache the result
-          if (!this.resultsCache.has(evalFunction)) {
-            this.resultsCache.set(evalFunction, new Map());
+            if (!result) {
+              this.updateScore(example.id, evalFunction);
+            }
+          } catch (error) {
+            console.error("Error executing function on example:", error);
+            const outcome = this.outcomes.get(evalFunction);
+            if (outcome) {
+              outcome.failures++;
+              this.outcomes.set(evalFunction, outcome);
+            }
           }
-          this.resultsCache.get(evalFunction)?.set(example.id, result);
+        });
 
-          // Update outcome tracking
-          const outcome = this.outcomes.get(evalFunction);
-          if (outcome) {
-            if (result) outcome.successes++;
-            else outcome.failures++;
-            this.outcomes.set(evalFunction, outcome);
-          }
+        await Promise.all(executionPromises);
+        console.log(`Function ${evalFunction.name} executed on all examples.`);
+      })();
 
-          // Update score if necessary
-          if (!result) {
-            this.updateScore(example.id, evalFunction);
-          }
-        } catch (error) {
-          console.error("Error executing function on example:", error);
-          // Error handling logic here
-        }
-      });
-
-      // Wait for all executions to complete for this function
-      await Promise.all(executionPromises);
-      console.log(`Function ${evalFunction.name} executed on all examples.`);
+      functionExecutionPromises.push(executionPromise);
     });
 
     // Generate functions for each criterion
@@ -179,7 +180,6 @@ export default class EvaluationFunctionExecutor {
         this.examples[Math.floor(Math.random() * this.examples.length)],
         emitter, // Pass the EventEmitter instance
       ).then(() => {
-        // Once generateFunctionsForCriteria resolves for a criterion, emit 'criteriaProcessed'
         emitter.emit("criteriaProcessed");
       });
     });
@@ -188,20 +188,19 @@ export default class EvaluationFunctionExecutor {
     emitter.on("criteriaProcessed", () => {
       criteriaProcessed++;
       if (criteriaProcessed === this.evalCriteria.length) {
-        // All criteria have been processed, and all functions generated
-        emitter.emit("allFunctionsGenerated");
+        // Ensure all function executions have completed before emitting 'allFunctionsGenerated'
+        Promise.all(functionExecutionPromises).then(() => {
+          console.log(
+            "All evaluation functions have been generated and executed.",
+          );
+          if (resolveAllFunctionsGenerated) {
+            resolveAllFunctionsGenerated(); // Resolve the promise when all functions have been generated and executed
+          }
+        });
       }
     });
 
-    // Handle completion (optional)
-    emitter.on("allFunctionsGenerated", () => {
-      console.log("All evaluation functions have been generated and executed.");
-      if (resolveAllFunctionsGenerated) {
-        resolveAllFunctionsGenerated(); // Resolve the promise when all functions have been generated and executed
-      }
-    });
-
-    // Wait for all functions to be generated and executed
+    // Wait for the 'allFunctionsGenerated' event, which now waits for all executions
     await allFunctionsGeneratedPromise;
   }
 

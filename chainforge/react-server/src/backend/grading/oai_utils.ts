@@ -105,7 +105,7 @@ export class AzureOpenAIStreamer extends EventEmitter {
   async genLLMEvalPrompts(prompt: string, model: string): Promise<void> {
     // Clear buffer and reset state
     this.buffer = "";
-    this.isInJsonContext = false;
+    this.isJsonContentStarted = false;
 
     const client = new OpenAIClient(
       process.env.AZURE_OPENAI_ENDPOINT,
