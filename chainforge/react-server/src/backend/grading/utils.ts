@@ -30,6 +30,15 @@ export interface EvalFunction {
   name: string;
 }
 
+export interface EvalFunctionReport {
+  evalFunction: EvalFunction;
+  true_pass: number;
+  true_fail: number;
+  false_pass: number;
+  false_fail: number;
+  skipped: number;
+}
+
 export async function generateLLMEvaluationCriteria(
   prompt: string,
 ): Promise<EvalCriteria[]> {
@@ -49,7 +58,7 @@ export async function generateLLMEvaluationCriteria(
     data.push(evalCriteria);
   });
 
-  await streamer.genCriteria(detailedPrompt, "gpt-35-turbo");
+  await streamer.generate(detailedPrompt, "gpt-35-turbo", "criteria");
 
   // Assuming the response is a JSON string that we need to parse into an object
   try {
@@ -143,93 +152,91 @@ export async function generateFunctionsForCriteria(
   example: Example,
   emitter: EventEmitter,
 ): Promise<void> {
-  // Separate prompt for expert eval_method
-  let functionGenPrompt = "";
-
-  if (criteria.eval_method === "expert") {
-    functionGenPrompt = `Given a prompt template for an LLM pipeline, your task is to devise a prompt for an expert to to evaluate the pipeline's responses based on the following criteria: ${criteria.criteria}
-
-    Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate the LLM response based on the criteria. Be creative in your prompts. Try different variations/wordings in the question. Return your answers in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
-    `;
-  } else {
-    functionGenPrompt = `Given a prompt template for an LLM pipeline, your task is to devise multiple Python functions to evaluate LLM responses based on specific criteria. Create as many implementations as possible.
-
-    Prompt Template:
-    "${promptTemplate}"
-    
-    Example inputs and outputs of the LLM pipeline:
-    - Prompt: ${example.prompt}
-    - LLM Response: ${example.response}
-    
-    Evaluation Criteria:
-    - ${criteria.criteria}
-    
-    Function Requirements:
-    - Develop multiple (at least 3) to assess the concept outlined in the criteria.
-    - Each function must accept three arguments:
-      1. \`variables\`: A string representation of the variables for this LLM call.
-      2. \`prompt\`: A string representing the input prompt based on the variables.
-      3. \`response\`: The LLM response as a string.
-    - The function should return a boolean value indicating whether the LLM response meets the set criteria.
-    - Base the implementations on standard coding practices and common Python libraries.
-    
-    Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Feel free to use external libraries for code-based evaluation methods, but all imports (e.g., import re, import nltk) should be done within the function definitions. Include the full implementation of each function.
-    `;
-  }
+  const functionGenPrompt = buildFunctionGenPrompt(
+    criteria,
+    promptTemplate,
+    example,
+  );
 
   try {
-    // let data: EvalFunction[] = [];
     const streamer = new AzureOpenAIStreamer();
 
-    streamer.on("function", (functionDefinition) => {
-      //   console.log(functionDefinition);
-      // Log a delimiter to separate functions
-      //   console.log("--------------------------------------------------");
-
-      // If the criteria is expert-based, we don't need to extract the function name
-      if (criteria.eval_method === "expert") {
-        const evalFunction = {
-          evalCriteria: criteria,
-          code: functionDefinition,
-          name: functionDefinition,
-        };
-
-        emitter.emit("functionGenerated", evalFunction);
-      } else {
-        // Extract the function name from the function definition
-        const functionNameMatch = functionDefinition.match(
-          /def\s+([a-zA-Z_]\w*)\s*\(/,
-        );
-        if (functionNameMatch) {
-          const functionName = functionNameMatch[1];
-
-          const evalFunction = {
-            evalCriteria: criteria,
-            code: functionDefinition,
-            name: functionName,
-          };
-
-          // Emit the function
-          emitter.emit("functionGenerated", evalFunction);
-        } else {
-          console.error(
-            "Could not extract the function name from the provided code.",
-          );
-        }
-      }
+    streamer.on("function", (functionDefinition: string) => {
+      processAndEmitFunction(criteria, functionDefinition, emitter);
     });
 
-    if (criteria.eval_method === "expert") {
-      await streamer.genLLMEvalPrompts(functionGenPrompt, "gpt-35-turbo");
-    } else {
-      await streamer.genFunctions(functionGenPrompt, "gpt-35-turbo");
-    }
-
-    // return data;
+    const modelType =
+      criteria.eval_method === "expert" ? "llm_eval" : "python_fn";
+    await streamer.generate(functionGenPrompt, "gpt-35-turbo", modelType);
   } catch (error) {
     console.error("Error generating function for criteria:", error);
     throw new Error(
       `Failed to generate function for criteria: ${criteria.criteria}`,
     );
   }
+}
+
+function buildFunctionGenPrompt(
+  criteria: EvalCriteria,
+  promptTemplate: string,
+  example: Example,
+): string {
+  if (criteria.eval_method === "expert") {
+    return `Given a prompt template for an LLM pipeline, your task is to devise a prompt for an expert to evaluate the pipeline's responses based on the following criteria: ${criteria.criteria}
+  
+  Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate the LLM response based on the criteria. Be creative in your prompts. Try different variations/wordings in the question. Return your answers in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
+  `;
+  } else {
+    return `Given a prompt template for an LLM pipeline, your task is to devise multiple Python functions to evaluate LLM responses based on specific criteria. Create as many implementations as possible.
+  
+  Prompt Template:
+  "${promptTemplate}"
+  
+  Example inputs and outputs of the LLM pipeline:
+  - Prompt: ${example.prompt}
+  - LLM Response: ${example.response}
+  
+  Evaluation Criteria:
+  - ${criteria.criteria}
+  
+  Function Requirements:
+  - Develop multiple (at least 3) to assess the concept outlined in the criteria.
+  - Each function must accept three arguments:
+    1. \`variables\`: A string representation of the variables for this LLM call.
+    2. \`prompt\`: A string representing the input prompt based on the variables.
+    3. \`response\`: The LLM response as a string.
+  - The function should return a boolean value indicating whether the LLM response meets the set criteria.
+  - Base the implementations on standard coding practices and common Python libraries.
+  
+  Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Feel free to use external libraries for code-based evaluation methods, but all imports (e.g., import re, import nltk) should be done within the function definitions. Include the full implementation of each function.
+  `;
+  }
+}
+
+function processAndEmitFunction(
+  criteria: EvalCriteria,
+  functionDefinition: string,
+  emitter: EventEmitter,
+): void {
+  let evalFunction: EvalFunction = {
+    evalCriteria: criteria,
+    code: functionDefinition,
+    name: functionDefinition,
+  };
+
+  if (criteria.eval_method === "code") {
+    const functionNameMatch = functionDefinition.match(
+      /def\s+([a-zA-Z_]\w*)\s*\(/,
+    );
+    if (functionNameMatch) {
+      evalFunction.name = functionNameMatch[1];
+    } else {
+      console.error(
+        "Could not extract the function name from the provided code.",
+      );
+      return; // Skip emitting if no function name could be extracted
+    }
+  }
+
+  emitter.emit("functionGenerated", evalFunction);
 }

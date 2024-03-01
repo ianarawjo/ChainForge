@@ -14,7 +14,6 @@ const readCSV = async (filePath: string): Promise<Example[]> => {
       .pipe(csvParser(["prompt", "example", "response", "model"]))
       .on("data", (data) => {
         try {
-          //   const variables = eval("(" + data.example + ")"); // TODO: don't productionize this
           examples.push({
             id: `example_${++counter}`, // Generating a unique ID
             variables: data.example,
@@ -58,7 +57,7 @@ const main = async () => {
 
   let examples: Example[] = await readCSV("./codereviews.csv");
 
-  // Slice to only the first 10 examples
+  // Get a sample of 10 examples
   examples = examples.slice(0, 10);
 
   // Print number of examples

@@ -1,24 +1,26 @@
-const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");
+const { AzureKeyCredential, OpenAIClient } = require("@azure/openai");
 import { env as process_env } from "process";
 import { EventEmitter } from "events";
+
+type ContentType = "criteria" | "python_fn" | "llm_eval";
 
 export class AzureOpenAIStreamer extends EventEmitter {
   private buffer: string = "";
   private isJsonContentStarted: boolean = false;
   private isPythonContentStarted: boolean = false;
   private pythonBlockBuffer: string = "";
+  private client: typeof OpenAIClient;
 
-  async genCriteria(prompt: string, model: string): Promise<void> {
-    // Clear buffer and reset state
-    this.buffer = "";
-    this.isJsonContentStarted = false;
-
-    const client = new OpenAIClient(
-      process.env.AZURE_OPENAI_ENDPOINT,
-      new AzureKeyCredential(process.env.AZURE_OPENAI_KEY),
+  constructor() {
+    super();
+    this.client = new OpenAIClient(
+      process.env.AZURE_OPENAI_ENDPOINT || "",
+      new AzureKeyCredential(process.env.AZURE_OPENAI_KEY || ""),
     );
+  }
 
-    const messages = [
+  private buildMessages(prompt: string): any[] {
+    return [
       {
         content:
           "You are an expert Python programmer and helping me write assertions for my LLM pipeline. An LLM pipeline accepts an example and prompt template, fills the template's placeholders with the example, and generates a response.",
@@ -26,15 +28,37 @@ export class AzureOpenAIStreamer extends EventEmitter {
       },
       { role: "user", content: prompt },
     ];
+  }
+  private resetBuffer(): void {
+    this.buffer = "";
+    this.isJsonContentStarted = false;
+    this.isPythonContentStarted = false;
+    this.pythonBlockBuffer = "";
+  }
 
-    const events = await client.listChatCompletions(model, messages, {});
+  async generate(
+    prompt: string,
+    model: string,
+    type: ContentType,
+  ): Promise<void> {
+    this.resetBuffer();
+    const messages = this.buildMessages(prompt);
+
+    const events = await this.client.listChatCompletions(model, messages, {});
 
     for await (const event of events) {
       for (const choice of event.choices) {
         const delta = choice.delta?.content;
         if (delta !== undefined) {
-          //   console.log("Received delta:", delta);
-          this.processCriteriaDelta(delta);
+          if (type === "criteria") {
+            this.processCriteriaDelta(delta);
+          } else if (type === "llm_eval") {
+            this.processStringDelta(delta);
+          } else if (type === "python_fn") {
+            this.processFunctionDelta(delta);
+          } else {
+            throw new Error("Invalid type");
+          }
         }
       }
     }
@@ -102,37 +126,37 @@ export class AzureOpenAIStreamer extends EventEmitter {
     this.buffer = this.buffer.substring(lastIndex).trim();
   }
 
-  async genLLMEvalPrompts(prompt: string, model: string): Promise<void> {
-    // Clear buffer and reset state
-    this.buffer = "";
-    this.isJsonContentStarted = false;
+  //   async genLLMEvalPrompts(prompt: string, model: string): Promise<void> {
+  //     // Clear buffer and reset state
+  //     this.buffer = "";
+  //     this.isJsonContentStarted = false;
 
-    const client = new OpenAIClient(
-      process.env.AZURE_OPENAI_ENDPOINT,
-      new AzureKeyCredential(process.env.AZURE_OPENAI_KEY),
-    );
+  //     const client = new OpenAIClient(
+  //       process.env.AZURE_OPENAI_ENDPOINT,
+  //       new AzureKeyCredential(process.env.AZURE_OPENAI_KEY),
+  //     );
 
-    const messages = [
-      {
-        content:
-          "You are an expert Python programmer and helping me write assertions for my LLM pipeline. An LLM pipeline accepts an example and prompt template, fills the template's placeholders with the example, and generates a response.",
-        role: "system",
-      },
-      { role: "user", content: prompt },
-    ];
-    const events = await client.listChatCompletions(model, messages, {});
+  //     const messages = [
+  //       {
+  //         content:
+  //           "You are an expert Python programmer and helping me write assertions for my LLM pipeline. An LLM pipeline accepts an example and prompt template, fills the template's placeholders with the example, and generates a response.",
+  //         role: "system",
+  //       },
+  //       { role: "user", content: prompt },
+  //     ];
+  //     const events = await client.listChatCompletions(model, messages, {});
 
-    for await (const event of events) {
-      for (const choice of event.choices) {
-        const delta = choice.delta?.content;
-        if (delta !== undefined) {
-          this.processStringDelta(delta);
-        }
-      }
-    }
+  //     for await (const event of events) {
+  //       for (const choice of event.choices) {
+  //         const delta = choice.delta?.content;
+  //         if (delta !== undefined) {
+  //           this.processStringDelta(delta);
+  //         }
+  //       }
+  //     }
 
-    this.emit("end"); // Signal that streaming is complete
-  }
+  //     this.emit("end"); // Signal that streaming is complete
+  //   }
 
   private processStringDelta(delta: string): void {
     this.buffer += delta;
@@ -195,39 +219,39 @@ export class AzureOpenAIStreamer extends EventEmitter {
     this.buffer = this.buffer.substring(lastIndex).trim();
   }
 
-  async genFunctions(prompt: string, model: string): Promise<void> {
-    // Clear buffer and reset state
-    this.buffer = "";
-    this.isPythonContentStarted = false;
-    this.pythonBlockBuffer = "";
+  //   async genFunctions(prompt: string, model: string): Promise<void> {
+  //     // Clear buffer and reset state
+  //     this.buffer = "";
+  //     this.isPythonContentStarted = false;
+  //     this.pythonBlockBuffer = "";
 
-    const client = new OpenAIClient(
-      process.env.AZURE_OPENAI_ENDPOINT,
-      new AzureKeyCredential(process.env.AZURE_OPENAI_KEY),
-    );
+  //     const client = new OpenAIClient(
+  //       process.env.AZURE_OPENAI_ENDPOINT,
+  //       new AzureKeyCredential(process.env.AZURE_OPENAI_KEY),
+  //     );
 
-    const messages = [
-      {
-        content:
-          "You are an expert Python programmer and helping me write assertions for my LLM pipeline. An LLM pipeline accepts an example and prompt template, fills the template's placeholders with the example, and generates a response.",
-        role: "system",
-      },
-      { role: "user", content: prompt },
-    ];
+  //     const messages = [
+  //       {
+  //         content:
+  //           "You are an expert Python programmer and helping me write assertions for my LLM pipeline. An LLM pipeline accepts an example and prompt template, fills the template's placeholders with the example, and generates a response.",
+  //         role: "system",
+  //       },
+  //       { role: "user", content: prompt },
+  //     ];
 
-    const events = await client.listChatCompletions(model, messages, {});
+  //     const events = await client.listChatCompletions(model, messages, {});
 
-    for await (const event of events) {
-      for (const choice of event.choices) {
-        const delta = choice.delta?.content;
-        if (delta !== undefined) {
-          this.processFunctionDelta(delta);
-        }
-      }
-    }
+  //     for await (const event of events) {
+  //       for (const choice of event.choices) {
+  //         const delta = choice.delta?.content;
+  //         if (delta !== undefined) {
+  //           this.processFunctionDelta(delta);
+  //         }
+  //       }
+  //     }
 
-    this.emit("end"); // Signal that streaming is complete
-  }
+  //     this.emit("end"); // Signal that streaming is complete
+  //   }
 
   private processFunctionDelta(delta: string): void {
     this.buffer += delta;

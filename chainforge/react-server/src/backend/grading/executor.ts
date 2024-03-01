@@ -3,6 +3,7 @@ import {
   EvalFunction,
   Example,
   ExampleId,
+  EvalFunctionReport,
   executeFunction,
   executeLLMEval,
   generateFunctionsForCriteria,
@@ -55,7 +56,7 @@ import { EventEmitter } from "events";
  */
 export default class EvaluationFunctionExecutor {
   private scores: Map<ExampleId, number>;
-  private outcomes: Map<EvalFunction, { successes: number; failures: number }>; // Track successes and failures for each function to compute failure rates
+  private outcomes: Map<EvalFunction, { passes: number; failures: number }>; // Track passes and failures for each function to compute failure rates
   // Cache function results for each example
   private resultsCache: Map<EvalFunction, Map<ExampleId, boolean>>;
   private grades: Map<ExampleId, boolean>; // Grades for all examples
@@ -80,7 +81,7 @@ export default class EvaluationFunctionExecutor {
   ) {
     this.outcomes = new Map<
       EvalFunction,
-      { successes: number; failures: number }
+      { passes: number; failures: number }
     >();
     this.resultsCache = new Map<EvalFunction, Map<ExampleId, boolean>>();
     this.lastPickedHighScore = false; // Start off picking the highest score
@@ -141,7 +142,7 @@ export default class EvaluationFunctionExecutor {
         // Add the eval function to the list of functions
         this.evalFunctions.push(evalFunction);
 
-        this.outcomes.set(evalFunction, { successes: 0, failures: 0 });
+        this.outcomes.set(evalFunction, { passes: 0, failures: 0 });
         const executionPromises = this.examples.map(async (example) => {
           try {
             const funcToExecute =
@@ -157,7 +158,7 @@ export default class EvaluationFunctionExecutor {
 
             const outcome = this.outcomes.get(evalFunction);
             if (outcome) {
-              result ? outcome.successes++ : outcome.failures++;
+              result ? outcome.passes++ : outcome.failures++;
               this.outcomes.set(evalFunction, outcome);
             }
 
@@ -224,7 +225,7 @@ export default class EvaluationFunctionExecutor {
     const outcome = this.outcomes.get(evalFunction);
     if (outcome) {
       const failureRate =
-        outcome.failures / (outcome.successes + outcome.failures);
+        outcome.failures / (outcome.passes + outcome.failures);
       /* TODO: experiment if it's ok to do streaming failure rate calculation like this, or if we need to store the total count and calculate the rate at the end */
       const scoreIncrement = 1 - failureRate;
       const currentScore = this.scores.get(exampleId) || 0;
@@ -371,6 +372,7 @@ export default class EvaluationFunctionExecutor {
     }
 
     let bestEvalFunctions: EvalFunction[] = [];
+    let evalFunctionReport: EvalFunctionReport[] = [];
     let coveredFailures = new Set<ExampleId>();
 
     // Iterate through each criteria
@@ -385,20 +387,38 @@ export default class EvaluationFunctionExecutor {
           continue;
         }
 
+        // Create a report for this function
+        let report: EvalFunctionReport = {
+          evalFunction: evalFunction,
+          true_pass: 0,
+          true_fail: 0,
+          false_pass: 0,
+          false_fail: 0,
+          skipped: 0,
+        };
+
         // Calculate accuracy for this function based on the graded examples
-        let successes = 0;
-        let failures = 0;
         for (const example of gradedExamples) {
           const result = gradedResultMap.get(example.id)?.get(evalFunction);
+
           if (result !== undefined) {
+            // Handle true positives and true negatives
             if (result === this.grades.get(example.id)) {
-              successes++;
+              if (result) {
+                report.true_pass++;
+              } else {
+                report.true_fail++;
+              }
             } else {
-              failures++;
+              if (result) {
+                report.false_pass++;
+              } else {
+                report.false_fail++;
+              }
             }
           } else {
             console.error("No result found for example and function:", example);
-            failures++;
+            report.skipped++;
           }
 
           // If the example failed and is covered, add it to the set of covered failures
@@ -408,11 +428,19 @@ export default class EvaluationFunctionExecutor {
         }
 
         // Calculate accuracy
-        const accuracy = successes / (successes + failures);
+        const accuracy =
+          (report.true_pass + report.true_fail) /
+          (report.true_pass +
+            report.true_fail +
+            report.false_pass +
+            report.false_fail);
         if (accuracy > bestAccuracy) {
           bestFunction = evalFunction;
           bestAccuracy = accuracy;
         }
+
+        // Save the report for this function
+        evalFunctionReport.push(report);
       }
 
       // Save the best function for this criteria
@@ -437,6 +465,8 @@ export default class EvaluationFunctionExecutor {
       console.log(`Missed failures: ${missedFailures}`);
     }
 
+    // Create report of each function's failure rate, accuracy
+
     return bestEvalFunctions;
   }
 
@@ -448,7 +478,7 @@ export default class EvaluationFunctionExecutor {
    */
   public getOutcomes(): Map<
     EvalFunction,
-    { successes: number; failures: number }
+    { passes: number; failures: number }
   > {
     return new Map(this.outcomes);
   }
