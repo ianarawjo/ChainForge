@@ -14,10 +14,10 @@ const readCSV = async (filePath: string): Promise<Example[]> => {
       .pipe(csvParser(["prompt", "example", "response", "model"]))
       .on("data", (data) => {
         try {
-          const variables = eval("(" + data.example + ")"); // TODO: don't productionize this
+          //   const variables = eval("(" + data.example + ")"); // TODO: don't productionize this
           examples.push({
             id: `example_${++counter}`, // Generating a unique ID
-            variables,
+            variables: data.example,
             prompt: data.prompt,
             response: data.response,
           });
@@ -58,15 +58,20 @@ const main = async () => {
 
   let examples: Example[] = await readCSV("./codereviews.csv");
 
+  // Slice to only the first 10 examples
+  examples = examples.slice(0, 10);
+
   // Print number of examples
   console.log(`Loaded ${examples.length} examples.`);
 
+  // Start a timer
+  let start = Date.now();
+  let timeElapsed = 0;
+
   // Step 1: Suggest eval criteria and solicit approval
   const evalCriteria = await generateLLMEvaluationCriteria(promptTemplate);
-  console.log(
-    "Suggested Evaluation Criteria: ",
-    JSON.stringify(evalCriteria, null, 2),
-  );
+  // Pause the timer
+  timeElapsed += Date.now() - start;
 
   let approval = await askQuestion(
     "Do you approve the suggested criteria? (y/n) ",
@@ -85,10 +90,22 @@ const main = async () => {
     examples,
   );
 
+  // Resume the timer
+  start = Date.now();
+
   // Step 2: Start background task
   executor.start();
 
   await executor.waitForCompletion();
+
+  // Pause the timer
+  timeElapsed += Date.now() - start;
+
+  console.log(`Execution took ${timeElapsed}ms`);
+
+  // Print out the results
+  const outcomes = executor.getOutcomes();
+  console.log("Outcomes: ", outcomes);
 
   //   // Step 3: Present examples to grade
   //   while (true) {

@@ -4,8 +4,10 @@ import {
   Example,
   ExampleId,
   executeFunction,
+  executeLLMEval,
   generateFunctionsForCriteria,
 } from "./utils";
+import { EventEmitter } from "events";
 
 /**
  * The EvaluationFunctionExecutor class is designed to asynchronously
@@ -116,29 +118,31 @@ export default class EvaluationFunctionExecutor {
    * This method is responsible for initializing the evaluation process and managing the asynchronous execution of functions.
    */
   public async generateAndExecuteEvaluationFunctions(): Promise<void> {
-    // Step 1: Concurrently generate all evaluation functions for each criterion
-    const evalFunctionsPromises = this.evalCriteria.map(async (criteria) => {
-      return generateFunctionsForCriteria(
-        criteria,
-        this.promptTemplate,
-        this.examples[Math.floor(Math.random() * this.examples.length)],
-      );
+    const emitter = new EventEmitter();
+    let criteriaProcessed = 0; // Track the number of criteria processed
+    let resolveAllFunctionsGenerated; // To be called when all functions are generated and executed
+
+    // This promise resolves when the 'allFunctionsGenerated' event is emitted
+    const allFunctionsGeneratedPromise = new Promise<void>((resolve) => {
+      resolveAllFunctionsGenerated = resolve;
     });
 
-    // Wait for all function generation promises to resolve
-    const allEvalFunctions = await Promise.all(evalFunctionsPromises);
-    this.evalFunctions = allEvalFunctions.flat(); // Flatten the array of arrays
-
-    // Step 2: Concurrently execute all generated evaluation functions on all examples
-    const executionPromises = this.evalFunctions.map((evalFunction) => {
+    // Listen for generated functions and execute them as they come in
+    emitter.on("functionGenerated", async (evalFunction) => {
       // Initialize outcome tracking for this function
       this.outcomes.set(evalFunction, { successes: 0, failures: 0 });
 
-      return this.examples.map(async (example) => {
+      // Execute the generated function on all examples
+      const executionPromises = this.examples.map(async (example) => {
         try {
-          const result = await executeFunction(evalFunction, example);
+          const funcToExecute =
+            evalFunction.evalCriteria.eval_method === "code"
+              ? executeFunction
+              : executeLLMEval;
 
-          // Put the result in the cache
+          const result = await funcToExecute(evalFunction, example);
+
+          // Cache the result
           if (!this.resultsCache.has(evalFunction)) {
             this.resultsCache.set(evalFunction, new Map());
           }
@@ -146,43 +150,59 @@ export default class EvaluationFunctionExecutor {
 
           // Update outcome tracking
           const outcome = this.outcomes.get(evalFunction);
-
           if (outcome) {
-            if (result) {
-              outcome.successes++;
-            } else {
-              outcome.failures++;
-            }
+            if (result) outcome.successes++;
+            else outcome.failures++;
             this.outcomes.set(evalFunction, outcome);
           }
 
-          // Update the score if the function failed the example
+          // Update score if necessary
           if (!result) {
             this.updateScore(example.id, evalFunction);
           }
-
-          return {
-            function: evalFunction,
-            result,
-            prompt: example.prompt,
-            response: example.response,
-          };
         } catch (error) {
           console.error("Error executing function on example:", error);
-          // Handle error, possibly continue with the next execution
-          // TODO: figure out good defaults for this
-          return {
-            function: evalFunction,
-            result: false,
-            prompt: example.prompt,
-            response: example.response,
-          };
+          // Error handling logic here
         }
+      });
+
+      // Wait for all executions to complete for this function
+      await Promise.all(executionPromises);
+      console.log(`Function ${evalFunction.name} executed on all examples.`);
+    });
+
+    // Generate functions for each criterion
+    this.evalCriteria.forEach((criteria) => {
+      generateFunctionsForCriteria(
+        criteria,
+        this.promptTemplate,
+        this.examples[Math.floor(Math.random() * this.examples.length)],
+        emitter, // Pass the EventEmitter instance
+      ).then(() => {
+        // Once generateFunctionsForCriteria resolves for a criterion, emit 'criteriaProcessed'
+        emitter.emit("criteriaProcessed");
       });
     });
 
-    // Flatten the array of arrays of promises and wait for all executions to complete
-    await Promise.all(executionPromises.flat());
+    // Listen for a custom 'criteriaProcessed' event to track when each criterion's functions have been generated
+    emitter.on("criteriaProcessed", () => {
+      criteriaProcessed++;
+      if (criteriaProcessed === this.evalCriteria.length) {
+        // All criteria have been processed, and all functions generated
+        emitter.emit("allFunctionsGenerated");
+      }
+    });
+
+    // Handle completion (optional)
+    emitter.on("allFunctionsGenerated", () => {
+      console.log("All evaluation functions have been generated and executed.");
+      if (resolveAllFunctionsGenerated) {
+        resolveAllFunctionsGenerated(); // Resolve the promise when all functions have been generated and executed
+      }
+    });
+
+    // Wait for all functions to be generated and executed
+    await allFunctionsGeneratedPromise;
   }
 
   /**
@@ -308,7 +328,11 @@ export default class EvaluationFunctionExecutor {
         }
 
         // If not, execute the function and store the result in the cache
-        const result = await executeFunction(evalFunction, example);
+        const funcToExecute =
+          evalFunction.evalCriteria.eval_method === "code"
+            ? executeFunction
+            : executeLLMEval;
+        const result = await funcToExecute(evalFunction, example);
         row.set(evalFunction, result);
       }
       gradedResultMap.set(example.id, row);
@@ -360,5 +384,18 @@ export default class EvaluationFunctionExecutor {
     }
 
     return bestEvalFunctions;
+  }
+
+  /**
+   * Retrieves the current outcomes of the evaluation functions.
+   * This method provides a snapshot of the current outcomes of the evaluation functions.
+   *
+   * @returns A map of evaluation functions to their current outcomes.
+   */
+  public getOutcomes(): Map<
+    EvalFunction,
+    { successes: number; failures: number }
+  > {
+    return new Map(this.outcomes);
   }
 }

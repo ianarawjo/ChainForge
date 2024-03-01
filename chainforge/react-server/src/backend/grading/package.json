@@ -12,7 +12,8 @@
   "dependencies": {
     "@azure/identity": "^4.0.1",
     "csv-parser": "^3.0.0",
-    "openai": "^4.28.4"
+    "openai": "^4.28.4",
+    "pyodide": "^0.25.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.22"
