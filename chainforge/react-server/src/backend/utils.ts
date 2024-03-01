@@ -16,6 +16,9 @@ import {
   GeminiChatContext,
   GeminiChatMessage,
   TypedDict,
+  StandardizedLLMResponse,
+  BaseLLMResponseObject,
+  LLMResponsesByVarDict,
 } from "./typing";
 import { env as process_env } from "process";
 import { v4 as uuid } from "uuid";
@@ -379,7 +382,7 @@ export async function call_azure_openai(
   let response: Dict = {};
   try {
     response = await openai_call(deployment_name, arg2, query);
-  } catch (error) {
+  } catch (error: any) {
     if (error?.response) {
       throw new Error(error.response.data?.error?.message);
     } else {
@@ -748,7 +751,7 @@ export async function call_google_gemini(
     top_k: "topK",
   };
 
-  const gen_Config = { candidateCount: 1 };
+  const gen_Config: Dict = { candidateCount: 1 };
 
   Object.entries(casemap).forEach(([key, val]) => {
     if (key in query) {
@@ -1442,7 +1445,7 @@ export const transformDict = (
         ? valTransformFunc(key, dict[key])
         : dict[key];
     return acc;
-  }, {});
+  }, {} as Dict);
 };
 
 /** Extracts only the settings vars (of form like "=system_msg", starts with =) from a vars dict.
@@ -1515,15 +1518,15 @@ export const setsAreEqual = (setA: Set<any>, setB: Set<any>): boolean => {
   return equal;
 };
 
-export const deepcopy = (v) => JSON.parse(JSON.stringify(v));
-export const deepcopy_and_modify = (v, new_val_dict) => {
+export const deepcopy = (v: any) => JSON.parse(JSON.stringify(v));
+export const deepcopy_and_modify = (v: Dict, new_val_dict: Dict) => {
   const new_v = deepcopy(v);
   Object.entries(new_val_dict).forEach(([key, val]) => {
     new_v[key] = val;
   });
   return new_v;
 };
-export const dict_excluding_key = (d, key) => {
+export const dict_excluding_key = (d: Dict, key: string) => {
   if (!(key in d)) return d;
   const copy_d = { ...d };
   delete copy_d[key];
@@ -1531,7 +1534,7 @@ export const dict_excluding_key = (d, key) => {
 };
 
 export const getLLMsInPulledInputData = (pulled_data: Dict) => {
-  const found_llms = {};
+  const found_llms: Dict = {};
   Object.values(pulled_data).forEach((_vs) => {
     const vs = Array.isArray(_vs) ? _vs : [_vs];
     vs.forEach((v) => {
@@ -1542,14 +1545,15 @@ export const getLLMsInPulledInputData = (pulled_data: Dict) => {
   return Object.values(found_llms);
 };
 
-export const stripLLMDetailsFromResponses = (resps) =>
+export const stripLLMDetailsFromResponses = (resps: (StandardizedLLMResponse | BaseLLMResponseObject)[]) =>
   resps.map((r) => ({
     ...r,
     llm: typeof r?.llm === "string" ? r?.llm : r?.llm?.name ?? "undefined",
   }));
 
-export const toStandardResponseFormat = (r) => {
-  const resp_obj: Dict = {
+// NOTE: The typing is purposefully general since we are trying to cast to an expected format. 
+export const toStandardResponseFormat = (r: Dict) => {
+  const resp_obj: StandardizedLLMResponse = {
     vars: r?.fill_history ?? {},
     metavars: r?.metavars ?? {},
     uid: r?.batch_id ?? r?.uid ?? uuid(),
@@ -1574,11 +1578,11 @@ export const browserTabIsActive = () => {
   }
 };
 
-export const tagMetadataWithLLM = (input_data) => {
-  const new_data = {};
+export const tagMetadataWithLLM = (input_data: LLMResponsesByVarDict) => {
+  const new_data: LLMResponsesByVarDict = {};
   Object.entries(input_data).forEach(([varname, resp_objs]) => {
-    new_data[varname] = (resp_objs as any[]).map((r) => {
-      if (!r || typeof r === "string" || !r?.llm?.key) return r;
+    new_data[varname] = resp_objs.map((r) => {
+      if (!r || typeof r === "string" || !r?.llm || typeof r.llm === "string" || !r.llm.key) return r;
       const r_copy = JSON.parse(JSON.stringify(r));
       r_copy.metavars.__LLM_key = r.llm.key;
       return r_copy;
@@ -1587,8 +1591,8 @@ export const tagMetadataWithLLM = (input_data) => {
   return new_data;
 };
 
-export const extractLLMLookup = (input_data) => {
-  const llm_lookup = {};
+export const extractLLMLookup = (input_data: LLMResponsesByVarDict) => {
+  const llm_lookup: Dict = {};
   Object.values(input_data).forEach((resp_objs) => {
     (resp_objs as any[]).forEach((r) => {
       if (typeof r === "string" || !r?.llm?.key || r.llm.key in llm_lookup)
@@ -1599,14 +1603,14 @@ export const extractLLMLookup = (input_data) => {
   return llm_lookup;
 };
 
-export const removeLLMTagFromMetadata = (metavars) => {
+export const removeLLMTagFromMetadata = (metavars: Dict) => {
   if (!("__LLM_key" in metavars)) return metavars;
   const mcopy = JSON.parse(JSON.stringify(metavars));
   delete mcopy.__LLM_key;
   return mcopy;
 };
 
-export const truncStr = (s: string | undefined, maxLen: number): string => {
+export const truncStr = (s: string | undefined, maxLen: number): string | undefined => {
   if (s === undefined) return s;
   if (s.length > maxLen)
     // Cut the name short if it's long
@@ -1614,7 +1618,7 @@ export const truncStr = (s: string | undefined, maxLen: number): string => {
   else return s;
 };
 
-export const groupResponsesBy = (responses: Dict[], keyFunc) => {
+export const groupResponsesBy = (responses: StandardizedLLMResponse[], keyFunc: ((item: StandardizedLLMResponse) => string | null | undefined)) => {
   const responses_by_key: Dict = {};
   const unspecified_group: Dict[] = [];
   responses.forEach((item) => {
@@ -1629,7 +1633,7 @@ export const groupResponsesBy = (responses: Dict[], keyFunc) => {
   return [responses_by_key, unspecified_group];
 };
 
-export const batchResponsesByUID = (responses) => {
+export const batchResponsesByUID = (responses: StandardizedLLMResponse[]) => {
   const [batches, unspecified_id_group] = groupResponsesBy(
     responses,
     (resp_obj) => resp_obj.uid,
@@ -1678,12 +1682,14 @@ export function sampleRandomElements(arr: any[], num_sample: number): any[] {
   // Return the items at the sampled indexes
   return Array.from(idxs).map((idx) => arr[idx]);
 }
-export const getVarsAndMetavars = (input_data) => {
+
+export const getVarsAndMetavars = (input_data: Dict) => {
   // Find all vars and metavars in the input data (if any):
+  // NOTE: The typing is purposefully general for some backwards compatibility concenrs. 
   const varnames = new Set();
   const metavars = new Set();
 
-  const add_from_resp_obj = (resp_obj) => {
+  const add_from_resp_obj = (resp_obj: Dict) => {
     if (typeof resp_obj === "string") return;
     if (resp_obj?.fill_history)
       Object.keys(resp_obj.fill_history).forEach((v) => varnames.add(v));

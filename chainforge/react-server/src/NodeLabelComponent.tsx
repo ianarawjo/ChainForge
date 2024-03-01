@@ -16,7 +16,7 @@ import AreYouSureModal from "./AreYouSureModal";
 interface NodeLabelProps {
   title: string;
   nodeId: string;
-  icon: string;
+  icon: string | JSX.Element;
   onEdit?: () => void;
   onSave?: () => void;
   editable?: boolean;
