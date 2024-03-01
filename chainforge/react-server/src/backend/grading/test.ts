@@ -131,7 +131,7 @@ const main = async () => {
 
   // Step 4: Filtering and results
   //   await executor.waitForCompletion();
-  const filteredFunctions = await executor.filterEvaluationFunctions(0.1, 0.9);
+  const filteredFunctions = await executor.filterEvaluationFunctions(0.2);
   console.log("Filtered Functions: ", filteredFunctions);
 
   rl.close();

@@ -15,6 +15,12 @@ export interface EvalCriteria {
   source?: string;
 }
 
+export enum EvalFunctionResult {
+  PASS = "pass",
+  FAIL = "fail",
+  SKIP = "skip",
+}
+
 export type ExampleId = string;
 
 export interface Example {
@@ -37,6 +43,21 @@ export interface EvalFunctionReport {
   false_pass: number;
   false_fail: number;
   skipped: number;
+}
+
+export interface EvalFunctionSetReport {
+  failureCoverage: number;
+  missedFailures: Example[];
+  selectedEvalFunctions: EvalFunction[];
+  allEvalFunctionReports: Map<EvalCriteria, EvalFunctionReport[]>; // Map from criteria to function reports
+}
+
+class EvalExecutionError extends Error {
+  constructor(message: string) {
+    super(message); // Call the parent constructor with the message
+    this.name = "EvalExecutionError"; // Set the error name to the class name
+    Object.setPrototypeOf(this, EvalExecutionError.prototype);
+  }
 }
 
 export async function generateLLMEvaluationCriteria(
@@ -72,7 +93,7 @@ export async function generateLLMEvaluationCriteria(
 export async function executeLLMEval(
   evalFunction: EvalFunction,
   example: Example,
-): Promise<boolean> {
+): Promise<EvalFunctionResult> {
   // Construct call to an LLM to evaluate the example
 
   const client = new OpenAIClient(
@@ -99,21 +120,21 @@ ${evalFunction.code}? Return "yes" or "no".`;
 
   // Parse the response to determine the boolean value to return
   if (response.choices[0].message.content.toLowerCase().includes("yes")) {
-    return true;
+    return EvalFunctionResult.PASS;
   } else if (response.choices[0].message.content.toLowerCase().includes("no")) {
-    return false;
+    return EvalFunctionResult.FAIL;
   } else {
-    // console.error(
-    //   `Unexpected response from LLM: ${response.choices[0].message.content}`,
+    // throw new EvalExecutionError(
+    //   `Error executing function ${evalFunction.name}: could not parse ${response.choices[0].message.content}`,
     // );
-    return false;
+    return EvalFunctionResult.SKIP;
   }
 }
 
 export async function executeFunction(
   evalFunction: EvalFunction,
   example: Example,
-): Promise<boolean> {
+): Promise<EvalFunctionResult> {
   // Load Pyodide only if it hasn't been loaded before
   if (!pyodideInstance) {
     const pyodidePath = path.join(__dirname, "pyodide");
@@ -134,15 +155,14 @@ result = ${evalFunction.name}(${example.variables}, '${example.prompt}', '${exam
 
 result`;
 
-    // This example simply runs "1+1" to demonstrate usage
     const result = await pyodideInstance.runPythonAsync(pythonCode);
-    // Determine the boolean value to return based on your actual use case
-    return result;
+    return result ? EvalFunctionResult.PASS : EvalFunctionResult.FAIL;
   } catch (error) {
-    // console.error(
-    //   `Error executing Python function ${evalFunction.name} with Pyodide`,
+    // Raise error
+    // throw new EvalExecutionError(
+    //   `Error executing function ${evalFunction.name}: ${error}`,
     // );
-    return false;
+    return EvalFunctionResult.SKIP;
   }
 }
 

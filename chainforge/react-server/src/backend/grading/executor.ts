@@ -3,7 +3,9 @@ import {
   EvalFunction,
   Example,
   ExampleId,
+  EvalFunctionResult,
   EvalFunctionReport,
+  EvalFunctionSetReport,
   executeFunction,
   executeLLMEval,
   generateFunctionsForCriteria,
@@ -56,9 +58,8 @@ import { EventEmitter } from "events";
  */
 export default class EvaluationFunctionExecutor {
   private scores: Map<ExampleId, number>;
-  private outcomes: Map<EvalFunction, { passes: number; failures: number }>; // Track passes and failures for each function to compute failure rates
   // Cache function results for each example
-  private resultsCache: Map<EvalFunction, Map<ExampleId, boolean>>;
+  private resultsCache: Map<EvalFunction, Map<ExampleId, EvalFunctionResult>>;
   private grades: Map<ExampleId, boolean>; // Grades for all examples
   private lastPickedHighScore; // To alternate between highest and lowest scores when sampling examples to grade
   private examples: Example[]; // The set of examples being evaluated and graded
@@ -79,11 +80,10 @@ export default class EvaluationFunctionExecutor {
     promptTemplate: string,
     examples: Example[],
   ) {
-    this.outcomes = new Map<
+    this.resultsCache = new Map<
       EvalFunction,
-      { passes: number; failures: number }
+      Map<ExampleId, EvalFunctionResult>
     >();
-    this.resultsCache = new Map<EvalFunction, Map<ExampleId, boolean>>();
     this.lastPickedHighScore = false; // Start off picking the highest score
     this.examples = examples;
     this.evalCriteria = evalCriteria;
@@ -142,37 +142,31 @@ export default class EvaluationFunctionExecutor {
         // Add the eval function to the list of functions
         this.evalFunctions.push(evalFunction);
 
-        this.outcomes.set(evalFunction, { passes: 0, failures: 0 });
         const executionPromises = this.examples.map(async (example) => {
-          try {
-            const funcToExecute =
-              evalFunction.evalCriteria.eval_method === "code"
-                ? executeFunction
-                : executeLLMEval;
-            const result = await funcToExecute(evalFunction, example);
+          const funcToExecute =
+            evalFunction.evalCriteria.eval_method === "code"
+              ? executeFunction
+              : executeLLMEval;
 
-            if (!this.resultsCache.has(evalFunction)) {
-              this.resultsCache.set(evalFunction, new Map());
-            }
-            this.resultsCache.get(evalFunction)?.set(example.id, result);
+          // Run the function on the example and if there's an error, increment skipped
+          const result = await funcToExecute(evalFunction, example);
 
-            const outcome = this.outcomes.get(evalFunction);
-            if (outcome) {
-              result ? outcome.passes++ : outcome.failures++;
-              this.outcomes.set(evalFunction, outcome);
-            }
-
-            if (!result) {
-              this.updateScore(example.id, evalFunction);
-            }
-          } catch (error) {
-            console.error("Error executing function on example:", error);
-            const outcome = this.outcomes.get(evalFunction);
-            if (outcome) {
-              outcome.failures++;
-              this.outcomes.set(evalFunction, outcome);
-            }
+          // Put result in cache
+          if (!this.resultsCache.has(evalFunction)) {
+            this.resultsCache.set(evalFunction, new Map());
           }
+          this.resultsCache.get(evalFunction)?.set(example.id, result);
+
+          // Update the score if the result is false
+          if (result === EvalFunctionResult.FAIL) {
+            this.updateScore(example.id, evalFunction);
+          }
+
+          // Put result in cache
+          if (!this.resultsCache.has(evalFunction)) {
+            this.resultsCache.set(evalFunction, new Map());
+          }
+          this.resultsCache.get(evalFunction)?.set(example.id, result);
         });
 
         await Promise.all(executionPromises);
@@ -219,18 +213,32 @@ export default class EvaluationFunctionExecutor {
    * This method calculates the failure rate of a function and adjusts the example's score accordingly. Functions with higher failure rates will result in lower scores for the example.
    *
    * @param exampleId The unique ID of the example being scored.
-   * @param functionString The string representation of the function used for evaluation. TODO: have better function IDs instead of passing in the code here.
+   * @param evalFunction The eval function used for evaluation.
    */
   private updateScore(exampleId: ExampleId, evalFunction: EvalFunction): void {
-    const outcome = this.outcomes.get(evalFunction);
-    if (outcome) {
-      const failureRate =
-        outcome.failures / (outcome.passes + outcome.failures);
-      /* TODO: experiment if it's ok to do streaming failure rate calculation like this, or if we need to store the total count and calculate the rate at the end */
-      const scoreIncrement = 1 - failureRate;
-      const currentScore = this.scores.get(exampleId) || 0;
-      this.scores.set(exampleId, currentScore + scoreIncrement);
+    // const outcome = this.outcomes.get(evalFunction);
+
+    // Get all the results for this function
+    const results = this.resultsCache.get(evalFunction);
+
+    if (results === undefined) {
+      return;
     }
+
+    // Compute pass rate
+    const passed = Array.from(results.values()).filter(
+      (result) => result === EvalFunctionResult.PASS,
+    ).length;
+
+    // Compute failure rate
+    const failed = Array.from(results.values()).filter(
+      (result) => result === EvalFunctionResult.FAIL,
+    ).length;
+
+    const passRate = passed / (passed + failed);
+
+    const currentScore = this.scores.get(exampleId) || 0;
+    this.scores.set(exampleId, currentScore + passRate);
   }
 
   /**
@@ -333,23 +341,24 @@ export default class EvaluationFunctionExecutor {
    * Filters out evaluation functions that are incorrect based on the grades provided by the developer.
    * TODO: Actually use an ILP solver to do this
    *
-   * @param falseFailureRateThreshold The threshold for the failure rate of the selected evaluation functions. The returned function set will only contain functions with a combined false failure rate below this threshold.
-   * @param failureCoverageThreshold The threshold for the coverage of the bad examples by the selected evaluation functions.
+   * @param falseFailureRateThreshold The threshold for the failure rate of each selected evaluation functions. The returned function set will only contain functions with a false failure rate below this threshold.
    *
-   * @returns A filtered set of evaluation functions that have a combined false failure rate below the specified threshold and cover all evaluation criteria.
+   * @returns A filtered set of evaluation functions that each have a false failure rate below the specified threshold and cover as much evaluation criteria as possible.
    */
   public async filterEvaluationFunctions(
     falseFailureRateThreshold: number,
-    failureCoverageThreshold: number,
-  ): Promise<EvalFunction[]> {
+  ): Promise<EvalFunctionSetReport> {
     const gradedExamples = this.examples.filter((example) =>
       this.grades.has(example.id),
     );
-    let gradedResultMap: Map<ExampleId, Map<EvalFunction, boolean>> = new Map();
+    let gradedResultMap: Map<
+      ExampleId,
+      Map<EvalFunction, EvalFunctionResult>
+    > = new Map();
 
     // Iterate over graded examples and evaluation functions to fill the matrix
     for (const example of gradedExamples) {
-      let row = new Map<EvalFunction, boolean>();
+      let row = new Map<EvalFunction, EvalFunctionResult>();
       for (const evalFunction of this.evalFunctions) {
         // Check if the result is in the cache
         if (this.resultsCache.has(evalFunction)) {
@@ -366,20 +375,30 @@ export default class EvaluationFunctionExecutor {
             ? executeFunction
             : executeLLMEval;
         const result = await funcToExecute(evalFunction, example);
+
+        // Put result in cache
+        if (!this.resultsCache.has(evalFunction)) {
+          this.resultsCache.set(evalFunction, new Map());
+        }
+        this.resultsCache.get(evalFunction)?.set(example.id, result);
+
         row.set(evalFunction, result);
       }
       gradedResultMap.set(example.id, row);
     }
 
+    const numFailGrades = gradedExamples.filter(
+      (example) => !this.grades.get(example.id),
+    ).length;
     let bestEvalFunctions: EvalFunction[] = [];
-    let evalFunctionReport: EvalFunctionReport[] = [];
+    let evalFunctionReport: Map<EvalCriteria, EvalFunctionReport[]> = new Map();
     let coveredFailures = new Set<ExampleId>();
 
     // Iterate through each criteria
     // For each criteria, select the function with the highest accuracy rate
     for (const criteria of this.evalCriteria) {
       let bestFunction: EvalFunction | null = null;
-      let bestAccuracy = 0;
+      let bestCoverage = 0;
 
       for (const evalFunction of this.evalFunctions) {
         // Skip functions that don't match the criteria
@@ -400,47 +419,55 @@ export default class EvaluationFunctionExecutor {
         // Calculate accuracy for this function based on the graded examples
         for (const example of gradedExamples) {
           const result = gradedResultMap.get(example.id)?.get(evalFunction);
+          const grade = this.grades.get(example.id)
+            ? EvalFunctionResult.PASS
+            : EvalFunctionResult.FAIL;
 
           if (result !== undefined) {
             // Handle true positives and true negatives
-            if (result === this.grades.get(example.id)) {
-              if (result) {
+            if (result === grade) {
+              if (result === EvalFunctionResult.PASS) {
                 report.true_pass++;
-              } else {
+              } else if (result === EvalFunctionResult.FAIL) {
                 report.true_fail++;
               }
             } else {
-              if (result) {
+              if (result === EvalFunctionResult.PASS) {
                 report.false_pass++;
-              } else {
+              } else if (result === EvalFunctionResult.FAIL) {
                 report.false_fail++;
+              } else {
+                report.skipped++;
               }
             }
-          } else {
-            console.error("No result found for example and function:", example);
-            report.skipped++;
           }
 
           // If the example failed and is covered, add it to the set of covered failures
-          if (!result && !this.grades.get(example.id)) {
+          if (result === EvalFunctionResult.FAIL && result === grade) {
             coveredFailures.add(example.id);
           }
         }
 
-        // Calculate accuracy
-        const accuracy =
-          (report.true_pass + report.true_fail) /
-          (report.true_pass +
-            report.true_fail +
-            report.false_pass +
-            report.false_fail);
-        if (accuracy > bestAccuracy) {
-          bestFunction = evalFunction;
-          bestAccuracy = accuracy;
+        // Save the report for this function
+        if (!evalFunctionReport.has(criteria)) {
+          evalFunctionReport.set(criteria, []);
+        }
+        evalFunctionReport.get(criteria)?.push(report);
+
+        // IF false failure rate is above the threshold, skip this function
+        const falseFailureRate =
+          report.false_fail / (report.false_fail + report.true_pass);
+        if (falseFailureRate > falseFailureRateThreshold) {
+          continue;
         }
 
-        // Save the report for this function
-        evalFunctionReport.push(report);
+        // Calculate coverage
+        const failureCoverage = report.true_fail / numFailGrades;
+
+        if (failureCoverage > bestCoverage) {
+          bestFunction = evalFunction;
+          bestCoverage = failureCoverage;
+        }
       }
 
       // Save the best function for this criteria
@@ -465,9 +492,15 @@ export default class EvaluationFunctionExecutor {
       console.log(`Missed failures: ${missedFailures}`);
     }
 
-    // Create report of each function's failure rate, accuracy
+    // Create report of coverage, missed failures, selected functions, and all eval function reports
+    const report = {
+      failureCoverage: coverage,
+      missedFailures: missedFailures,
+      selectedEvalFunctions: bestEvalFunctions,
+      allEvalFunctionReports: evalFunctionReport,
+    };
 
-    return bestEvalFunctions;
+    return report;
   }
 
   /**
@@ -478,8 +511,32 @@ export default class EvaluationFunctionExecutor {
    */
   public getOutcomes(): Map<
     EvalFunction,
-    { passes: number; failures: number }
+    { passed: number; failed: number; skipped: number }
   > {
-    return new Map(this.outcomes);
+    // Compute based on the results cache
+    let outcomes = new Map<
+      EvalFunction,
+      { passed: number; failed: number; skipped: number }
+    >();
+
+    for (const [evalFunction, results] of this.resultsCache) {
+      let passed = 0;
+      let failed = 0;
+      let skipped = 0;
+
+      for (const result of results.values()) {
+        if (result === EvalFunctionResult.PASS) {
+          passed++;
+        } else if (result === EvalFunctionResult.FAIL) {
+          failed++;
+        } else {
+          skipped++;
+        }
+      }
+
+      outcomes.set(evalFunction, { passed, failed, skipped });
+    }
+
+    return outcomes;
   }
 }

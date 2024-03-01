@@ -126,38 +126,6 @@ export class AzureOpenAIStreamer extends EventEmitter {
     this.buffer = this.buffer.substring(lastIndex).trim();
   }
 
-  //   async genLLMEvalPrompts(prompt: string, model: string): Promise<void> {
-  //     // Clear buffer and reset state
-  //     this.buffer = "";
-  //     this.isJsonContentStarted = false;
-
-  //     const client = new OpenAIClient(
-  //       process.env.AZURE_OPENAI_ENDPOINT,
-  //       new AzureKeyCredential(process.env.AZURE_OPENAI_KEY),
-  //     );
-
-  //     const messages = [
-  //       {
-  //         content:
-  //           "You are an expert Python programmer and helping me write assertions for my LLM pipeline. An LLM pipeline accepts an example and prompt template, fills the template's placeholders with the example, and generates a response.",
-  //         role: "system",
-  //       },
-  //       { role: "user", content: prompt },
-  //     ];
-  //     const events = await client.listChatCompletions(model, messages, {});
-
-  //     for await (const event of events) {
-  //       for (const choice of event.choices) {
-  //         const delta = choice.delta?.content;
-  //         if (delta !== undefined) {
-  //           this.processStringDelta(delta);
-  //         }
-  //       }
-  //     }
-
-  //     this.emit("end"); // Signal that streaming is complete
-  //   }
-
   private processStringDelta(delta: string): void {
     this.buffer += delta;
     if (!this.isJsonContentStarted) {
@@ -218,40 +186,6 @@ export class AzureOpenAIStreamer extends EventEmitter {
     // Keep any incomplete JSON string for the next delta
     this.buffer = this.buffer.substring(lastIndex).trim();
   }
-
-  //   async genFunctions(prompt: string, model: string): Promise<void> {
-  //     // Clear buffer and reset state
-  //     this.buffer = "";
-  //     this.isPythonContentStarted = false;
-  //     this.pythonBlockBuffer = "";
-
-  //     const client = new OpenAIClient(
-  //       process.env.AZURE_OPENAI_ENDPOINT,
-  //       new AzureKeyCredential(process.env.AZURE_OPENAI_KEY),
-  //     );
-
-  //     const messages = [
-  //       {
-  //         content:
-  //           "You are an expert Python programmer and helping me write assertions for my LLM pipeline. An LLM pipeline accepts an example and prompt template, fills the template's placeholders with the example, and generates a response.",
-  //         role: "system",
-  //       },
-  //       { role: "user", content: prompt },
-  //     ];
-
-  //     const events = await client.listChatCompletions(model, messages, {});
-
-  //     for await (const event of events) {
-  //       for (const choice of event.choices) {
-  //         const delta = choice.delta?.content;
-  //         if (delta !== undefined) {
-  //           this.processFunctionDelta(delta);
-  //         }
-  //       }
-  //     }
-
-  //     this.emit("end"); // Signal that streaming is complete
-  //   }
 
   private processFunctionDelta(delta: string): void {
     this.buffer += delta;
