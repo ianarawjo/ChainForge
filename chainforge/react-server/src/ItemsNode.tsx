@@ -5,7 +5,7 @@ import NodeLabel from "./NodeLabelComponent";
 import { IconForms } from "@tabler/icons-react";
 import { Handle, Position } from "reactflow";
 import BaseNode from "./BaseNode";
-import { processCSV } from "./backend/utils";
+import { DebounceRef, genDebounceFunc, processCSV } from "./backend/utils";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import { cleanEscapedBraces, escapeBraces } from "./backend/template";
 
@@ -39,26 +39,17 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const flags = useStore((state) => state.flags);
 
-  const [contentDiv, setContentDiv] = useState(null);
+  const [contentDiv, setContentDiv] = useState<React.ReactNode | null>(null);
   const [isEditing, setIsEditing] = useState(true);
-  const [csvInput, setCsvInput] = useState(null);
-  const [countText, setCountText] = useState(null);
+  const [csvInput, setCsvInput] = useState<React.ReactNode | null>(null);
+  const [countText, setCountText] = useState<React.ReactNode | null>(null);
 
   // Whether text field is in a loading state
   const [isLoading, setIsLoading] = useState(false);
 
   // Debounce helpers
-  const debounceTimeoutRef = useRef(null);
-  const debounce = (func, delay) => {
-    return (...args) => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-      debounceTimeoutRef.current = setTimeout(() => {
-        func(...args);
-      }, delay);
-    };
-  };
+  const debounceTimeoutRef: DebounceRef = useRef(null);
+  const debounce = genDebounceFunc(debounceTimeoutRef);
 
   // initializing
   useEffect(() => {
@@ -70,7 +61,7 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
   // Handle a change in a text fields' input.
   const setFieldsFromText = useCallback(
     (text_val: string, no_debounce: boolean) => {
-      const _update = (_text_val) => {
+      const _update = (_text_val: string) => {
         // Update the data for this text fields' id.
         const new_data = {
           text: _text_val,
@@ -111,7 +102,7 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
     const elements = data.fields ?? [];
 
     // generate a HTML code that highlights the elements
-    const html = [];
+    const html: JSX.Element[] = [];
     elements.forEach((e, idx) => {
       // html.push(<Badge color="orange" size="lg" radius="sm">{e}</Badge>)
       html.push(
@@ -190,7 +181,7 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
                 <AIGenReplaceItemsPopover
                   key="ai-popover"
                   values={data.fields ?? []}
-                  onAddValues={(vals) =>
+                  onAddValues={(vals: string[]) =>
                     setFieldsFromText(
                       data.text +
                         ", " +
@@ -198,7 +189,7 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
                       true,
                     )
                   }
-                  onReplaceValues={(vals) =>
+                  onReplaceValues={(vals: string[]) =>
                     setFieldsFromText(
                       vals.map(makeSafeForCSLFormat).join(", "),
                       true,

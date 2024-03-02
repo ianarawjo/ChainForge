@@ -14,7 +14,7 @@ export interface Dict<T = any> {
 }
 
 // Function types
-export type Func = (...args: any[]) => void;
+export type Func<T = void> = (...args: any[]) => T;
 
 /** OpenAI function call format */
 export interface OpenAIFunctionCall {
@@ -30,6 +30,7 @@ export interface TemplateVarInfo {
   fill_history: Dict<string>;
   metavars?: Dict<string>;
   associate_id?: string;
+  llm?: string | Dict;
 }
 
 export interface PromptVarType {

@@ -6,14 +6,14 @@ import React, {
   useCallback,
 } from "react";
 import { Tooltip } from "@mantine/core";
-import { EditText } from "react-edit-text";
+import { EditText, onSaveProps } from "react-edit-text";
 import "react-edit-text/dist/index.css";
 import useStore from "./store";
 import StatusIndicator, { Status } from "./StatusIndicatorComponent";
 import AlertModal, { AlertModalHandles } from "./AlertModal";
-import AreYouSureModal from "./AreYouSureModal";
+import AreYouSureModal, { AreYouSureModalHandles } from "./AreYouSureModal";
 
-interface NodeLabelProps {
+export interface NodeLabelProps {
   title: string;
   nodeId: string;
   icon: string | JSX.Element;
@@ -28,6 +28,12 @@ interface NodeLabelProps {
   handleStopClick?: (nodeId: string) => void;
   handleRunHover?: () => void;
   runButtonTooltip?: string;
+}
+
+interface DeleteConfirmProps {
+  title: string;
+  message: string;
+  onConfirm: undefined | (() => void)
 }
 
 export const NodeLabel: React.FC<NodeLabelProps> = ({
@@ -52,8 +58,8 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
   const removeNode = useStore((state) => state.removeNode);
 
   // For 'delete node' confirmation popup
-  const deleteConfirmModal = useRef(null);
-  const [deleteConfirmProps, setDeleteConfirmProps] = useState({
+  const deleteConfirmModal = useRef<AreYouSureModalHandles>(null);
+  const [deleteConfirmProps, setDeleteConfirmProps] = useState<DeleteConfirmProps>({
     title: "Delete node",
     message: "Are you sure?",
     onConfirm: undefined,
@@ -63,7 +69,7 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
       <button
         className="AmitSahoo45-button-3 nodrag"
         style={{ padding: "0px 10px 0px 9px" }}
-        onClick={() => handleStopClick(nodeId)}
+        onClick={() => {if (handleStopClick) handleStopClick(nodeId);}}
       >
         &#9724;
       </button>
@@ -71,7 +77,7 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
     [handleStopClick, nodeId],
   );
 
-  const handleNodeLabelChange = (evt) => {
+  const handleNodeLabelChange = (evt: onSaveProps) => {
     const { value } = evt;
     title = value;
     setDataPropsForNode(nodeId, { title: value });
@@ -129,7 +135,7 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
 
     // Open the 'are you sure' modal:
     if (deleteConfirmModal && deleteConfirmModal.current)
-      deleteConfirmModal.current.trigger();
+      deleteConfirmModal.current?.trigger();
   }, [deleteConfirmModal]);
 
   return (

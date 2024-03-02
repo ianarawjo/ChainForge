@@ -2,13 +2,13 @@ import React, { forwardRef, useImperativeHandle } from "react";
 import { Modal, Button, Box, Text, Flex } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 
-interface AreYouSureModalProps {
+export interface AreYouSureModalProps {
   title: string;
   message: string;
-  onConfirm: () => void;
+  onConfirm?: () => void;
 }
 
-interface AreYouSureModalHandles {
+export interface AreYouSureModalHandles {
   trigger: () => void;
 }
 
