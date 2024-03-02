@@ -16,7 +16,7 @@ import {
   APP_IS_RUNNING_LOCALLY,
 } from "./backend/utils";
 import { DuplicateVariableNameError } from "./backend/errors";
-import { Dict, LLMSpec, TemplateVarInfo, TypedDict } from "./backend/typing";
+import { Dict, LLMSpec, TemplateVarInfo, Dict } from "./backend/typing";
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -164,16 +164,16 @@ interface StoreHandles {
   setAvailableLLMs: (specs: LLMSpec[]) => void;
 
   // API keys to LLM providers
-  apiKeys: TypedDict<string>;
-  setAPIKeys: (apiKeys: TypedDict<string>) => void;
+  apiKeys: Dict<string>;
+  setAPIKeys: (apiKeys: Dict<string>) => void;
 
   // Global flags
-  flags: TypedDict<boolean | string>;
+  flags: Dict<boolean | string>;
   getFlag: (flag: string) => boolean | string;
   setFlag: (flag: string, val: boolean | string) => void;
 
   // The color to represent a specific LLM, to be globally consistent
-  llmColors: TypedDict<string>;
+  llmColors: Dict<string>;
   getColorForLLM: (llm_name: string) => string | undefined;
   getColorForLLMAndSetIfNotFound: (llm_name: string) => string;
   genUniqueLLMColor: () => string;
@@ -192,7 +192,7 @@ interface StoreHandles {
   // Set data for a specific node
   setDataPropsForNode: (
     id: string,
-    data_props: TypedDict<string | boolean | number | Dict>,
+    data_props: Dict<string | boolean | number | Dict>,
   ) => void;
 
   // Rasterize data output from nodes ("pull" the data out)
@@ -203,7 +203,7 @@ interface StoreHandles {
   pullInputData: (
     _targetHandles: string[],
     node_id: string,
-  ) => TypedDict<string[] | TemplateVarInfo[]>;
+  ) => Dict<string[] | TemplateVarInfo[]>;
 }
 
 // A global store of variables, used for maintaining state

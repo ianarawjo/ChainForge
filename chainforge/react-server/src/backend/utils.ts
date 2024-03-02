@@ -15,7 +15,6 @@ import {
   HuggingFaceChatHistory,
   GeminiChatContext,
   GeminiChatMessage,
-  TypedDict,
   StandardizedLLMResponse,
   BaseLLMResponseObject,
   LLMResponsesByVarDict,
@@ -141,7 +140,7 @@ let ALEPH_ALPHA_API_KEY = get_environ("ALEPH_ALPHA_API_KEY");
 /**
  * Sets the local API keys for the revelant LLM API(s).
  */
-export function set_api_keys(api_keys: TypedDict<string>): void {
+export function set_api_keys(api_keys: Dict<string>): void {
   function key_is_present(name: string): boolean {
     return (
       name in api_keys &&
@@ -453,7 +452,7 @@ export async function call_anthropic(
 
   // Carry chat history
   // :: See https://docs.anthropic.com/claude/docs/human-and-assistant-formatting#use-human-and-assistant-to-put-words-in-claudes-mouth
-  const chat_history: ChatHistory | undefined = params.chat_history;
+  const chat_history: ChatHistory | undefined = params?.chat_history;
   if (chat_history !== undefined) {
     // FOR OLD TEXT COMPLETIONS API ONLY: Carry chat history by prepending it to the prompt
     if (!use_messages_api) {
@@ -470,7 +469,7 @@ export async function call_anthropic(
     }
 
     // For newer models Claude 2.1 and Claude 3, we carry chat history directly below; no need to do anything else.
-    delete params.chat_history;
+    delete params?.chat_history;
   }
 
   // Format query
@@ -919,7 +918,7 @@ export async function call_huggingface(
     params?.custom_model,
   );
 
-  const headers: TypedDict<string> = { "Content-Type": "application/json" };
+  const headers: Dict<string> = { "Content-Type": "application/json" };
   // For HuggingFace, technically, the API keys are optional.
   if (HUGGINGFACE_API_KEY !== undefined)
     headers.Authorization = `Bearer ${HUGGINGFACE_API_KEY}`;
@@ -1010,7 +1009,7 @@ export async function call_alephalpha(
     );
 
   const url = "https://api.aleph-alpha.com/complete";
-  const headers: TypedDict<string> = {
+  const headers: Dict<string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
   };

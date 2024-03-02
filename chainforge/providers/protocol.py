@@ -1,10 +1,10 @@
-from typing import Protocol, Optional, TypedDict, Dict, List, Literal, Union, Any
+from typing import Protocol, Optional, Dict, Dict, List, Literal, Union, Any
 import time
 
 """
     OpenAI chat message format typing
 """
-class ChatMessage(TypedDict):
+class ChatMessage(Dict):
     """ A single message, in OpenAI chat message format. """
     role: str
     content: str
