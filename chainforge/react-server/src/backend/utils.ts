@@ -15,7 +15,6 @@ import {
   HuggingFaceChatHistory,
   GeminiChatContext,
   GeminiChatMessage,
-  TypedDict,
   StandardizedLLMResponse,
   BaseLLMResponseObject,
   LLMResponsesByVarDict,
@@ -145,7 +144,7 @@ let AWS_REGION = get_environ("AWS_REGION");
 /**
  * Sets the local API keys for the revelant LLM API(s).
  */
-export function set_api_keys(api_keys: TypedDict<string>): void {
+export function set_api_keys(api_keys: Dict<string>): void {
   function key_is_present(name: string): boolean {
     return (
       name in api_keys &&
@@ -932,7 +931,7 @@ export async function call_huggingface(
     params?.custom_model,
   );
 
-  const headers: TypedDict<string> = { "Content-Type": "application/json" };
+  const headers: Dict<string> = { "Content-Type": "application/json" };
   // For HuggingFace, technically, the API keys are optional.
   if (HUGGINGFACE_API_KEY !== undefined)
     headers.Authorization = `Bearer ${HUGGINGFACE_API_KEY}`;
@@ -1025,7 +1024,7 @@ export async function call_alephalpha(
     );
 
   const url = "https://api.aleph-alpha.com/complete";
-  const headers: TypedDict<string> = {
+  const headers: Dict<string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
   };

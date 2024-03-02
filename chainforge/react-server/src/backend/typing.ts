@@ -9,12 +9,12 @@ export class LLMResponseError extends Error {
 }
 
 // Dictionary types
-export interface Dict {
-  [key: string]: any;
-}
-export interface TypedDict<T> {
+export interface Dict<T = any> {
   [key: string]: T;
 }
+
+// Function types
+export type Func = (...args: any[]) => void;
 
 /** OpenAI function call format */
 export interface OpenAIFunctionCall {
@@ -27,8 +27,8 @@ export interface OpenAIFunctionCall {
  * Used to populate prompt templates and carry variables/metavariables along the chain. */
 export interface TemplateVarInfo {
   text: string;
-  fill_history: TypedDict<string>;
-  metavars?: TypedDict<string>;
+  fill_history: Dict<string>;
+  metavars?: Dict<string>;
   associate_id?: string;
 }
 
@@ -125,11 +125,12 @@ export interface RawLLMResponseObject extends BaseLLMResponseObject {
   // Extracted responses (1 or more) from raw_response
   responses: string[];
   // Token lengths (if given)
-  tokens?: TypedDict<number>;
+  tokens?: Dict<number>;
 }
 
+export type EvaluationScore = (boolean | number | string);
 export type EvaluationResults = {
-  items: (boolean | number | string)[];
+  items: EvaluationScore[];
   dtype:
     | "KeyValue"
     | "KeyValue_Numeric"
@@ -149,10 +150,10 @@ export interface StandardizedLLMResponse extends BaseLLMResponseObject {
   // Evaluation results
   eval_res?: EvaluationResults;
   // Token lengths (if given)
-  tokens?: TypedDict<number>;
+  tokens?: Dict<number>;
 }
 
-export type LLMResponsesByVarDict = TypedDict<(BaseLLMResponseObject | StandardizedLLMResponse)[]>;
+export type LLMResponsesByVarDict = Dict<(BaseLLMResponseObject | StandardizedLLMResponse)[]>;
 
 /** A standard async function interface for calling an LLM. */
 export interface LLMAPICall {
@@ -176,5 +177,5 @@ export type LLMSpec = {
   key?: string;
   formData?: Dict;
   settings?: Dict;
-  progress?: TypedDict<number>; // only used for front-end to display progress collecting responses for this LLM
+  progress?: Dict<number>; // only used for front-end to display progress collecting responses for this LLM
 };

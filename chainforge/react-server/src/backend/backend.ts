@@ -2,7 +2,7 @@ import MarkdownIt from "markdown-it";
 import { v4 as uuid } from "uuid";
 import {
   Dict,
-  TypedDict,
+  Dict,
   LLMResponseError,
   RawLLMResponseObject,
   StandardizedLLMResponse,
@@ -171,7 +171,7 @@ function get_cache_keys_related_to_id(
   else return include_basefile ? [base_file] : [];
 }
 // eslint-disable-next-line
-async function setAPIKeys(api_keys: TypedDict<string>): Promise<void> {
+async function setAPIKeys(api_keys: Dict<string>): Promise<void> {
   if (api_keys !== undefined) set_api_keys(api_keys);
 }
 

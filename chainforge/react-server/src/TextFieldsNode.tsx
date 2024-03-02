@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { Handle } from "reactflow";
+import { Handle, Position } from "reactflow";
 import { Textarea, Tooltip, Skeleton } from "@mantine/core";
 import { IconTextPlus, IconEye, IconEyeOff } from "@tabler/icons-react";
 import useStore from "./store";
@@ -15,11 +15,12 @@ import TemplateHooks, {
 } from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
 import { setsAreEqual } from "./backend/utils";
+import { Func, Dict } from "./backend/typing";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import AISuggestionsManager from "./backend/aiSuggestionsManager";
 
 // Helper funcs
-const union = (setA, setB) => {
+const union = (setA: Set<any>, setB: Set<any>) => {
   const _union = new Set(setA);
   for (const elem of setB) {
     _union.add(elem);
@@ -30,7 +31,18 @@ const union = (setA, setB) => {
 const delButtonId = "del-";
 const visibleButtonId = "eye-";
 
-const TextFieldsNode = ({ data, id }) => {
+interface TextFieldsNodeProps {
+  data: {
+    vars?: string[],
+    title?: string,
+    text?: string,
+    fields?: Dict<String>,
+    fields_visibility?: boolean[]
+  };
+  id: string;
+}
+
+const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   const [templateVars, setTemplateVars] = useState(data.vars || []);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
@@ -38,7 +50,7 @@ const TextFieldsNode = ({ data, id }) => {
   const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
   const flags = useStore((state) => state.flags);
 
-  const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
+  const [textfieldsValues, setTextfieldsValues] = useState<Dict<String>>(data.fields || {});
   const [fieldVisibility, setFieldVisibility] = useState(
     data.fields_visibility || {},
   );
@@ -61,9 +73,9 @@ const TextFieldsNode = ({ data, id }) => {
   const [placeholders, setPlaceholders] = useState({});
 
   // Debounce helpers
-  const debounceTimeoutRef = useRef(null);
-  const debounce = (func, delay) => {
-    return (...args) => {
+  const debounceTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null> = useRef(null);
+  const debounce: Func = (func: Func, delay: number) => {
+    return (...args: any[]) => {
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
@@ -73,7 +85,7 @@ const TextFieldsNode = ({ data, id }) => {
     };
   };
 
-  const getUID = useCallback((textFields) => {
+  const getUID = useCallback((textFields: Dict<String>) => {
     if (textFields) {
       return (
         "f" +
@@ -124,7 +136,7 @@ const TextFieldsNode = ({ data, id }) => {
   // Initialize fields (run once at init)
   useEffect(() => {
     if (!textfieldsValues || Object.keys(textfieldsValues).length === 0) {
-      const init_fields = {};
+      const init_fields: Dict<string> = {};
       init_fields[getUID(textfieldsValues)] = "";
       setTextfieldsValues(init_fields);
       setDataPropsForNode(id, { fields: init_fields });
@@ -270,7 +282,7 @@ const TextFieldsNode = ({ data, id }) => {
       event.preventDefault();
       // Insert the suggestion corresponding to the text field that was tabbed into by index.
       aiSuggestionsManager.removeSuggestion(placeholder);
-      handleTextFieldChange(textareaIndex, placeholder);
+      handleTextFieldChange(textareaIndex, placeholder, false);
     }
   }
 
@@ -427,7 +439,7 @@ const TextFieldsNode = ({ data, id }) => {
       </Skeleton>
       <Handle
         type="source"
-        position="right"
+        position={Position.Right}
         id="output"
         className="grouped-handle"
         style={{ top: "50%" }}

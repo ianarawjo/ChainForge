@@ -5,7 +5,8 @@ import { truncStr } from "./backend/utils";
 import {
   Dict,
   StandardizedLLMResponse,
-  TypedDict,
+  EvaluationScore, 
+  PromptVarType,
 } from "./backend/typing";
 
 // Lazy load the response toolbars
@@ -46,8 +47,8 @@ const getEvalResultStr = (
 const countResponsesBy = (
   responses: string[],
   keyFunc: (item: string) => string,
-): TypedDict<number> => {
-  const counts_by_key = {};
+): Dict<number> => {
+  const counts_by_key: Dict<number> = {};
   responses.forEach((item) => {
     const key = keyFunc(item);
     if (key === null) return;
@@ -61,7 +62,15 @@ const countResponsesBy = (
  * A ResponseGroup is used in the Grouped List view to display clickable, collapseable groups of responses.
  * These groups may also be ResponseGroups (nested).
  */
-export const ResponseGroup = ({
+export interface ResponseGroupProps {
+  header: React.ReactNode;
+  responseBoxes: React.ReactNode[];
+  responseBoxesWrapperClass: string;
+  displayStyle: string;
+  defaultState: boolean;
+};
+
+export const ResponseGroup: React.FC<ResponseGroupProps> = ({
   header,
   responseBoxes,
   responseBoxesWrapperClass,
@@ -99,7 +108,7 @@ export const ResponseGroup = ({
  */
 interface ResponseBoxProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
-  vars?: TypedDict<string>;
+  vars?: Dict<string>;
   truncLenForVars?: number;
   llmName?: string;
   boxColor?: string;
@@ -115,6 +124,7 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
   llmName,
 }) => {
   const var_tags = useMemo(() => {
+    if (vars === undefined) return [];
     return Object.entries(vars).map(([varname, val]) => {
       const v = truncStr(val.trim(), truncLenForVars ?? 18);
       return (
@@ -173,7 +183,7 @@ export const genResponseTextsDisplay = (
 
   // Collapse responses with the same texts.
   // We need to keep track of the original evaluation result per response str:
-  const resp_str_to_eval_res = {};
+  const resp_str_to_eval_res: Dict<EvaluationScore> = {};
   if (eval_res_items)
     responses.forEach((r, idx) => {
       resp_str_to_eval_res[r] = eval_res_items[idx];
