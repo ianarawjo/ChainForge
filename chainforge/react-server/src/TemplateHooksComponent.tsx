@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Handle, useUpdateNodeInternals } from "reactflow";
+import { Edge, Handle, Position, useUpdateNodeInternals } from "reactflow";
 import { Badge, Text } from "@mantine/core";
 import useStore from "./store";
 import { IconSettings } from "@tabler/icons-react";
@@ -11,7 +11,7 @@ const SETTINGS_ICON = (
   />
 );
 
-export const extractBracketedSubstrings = (text) => {
+export const extractBracketedSubstrings = (text: string) => {
   /** Given some text in template format:
    *      This is a {test}
    *  extracts only the groups within braces, excluding
@@ -44,16 +44,25 @@ export const extractBracketedSubstrings = (text) => {
   return capture_groups;
 };
 
+
+export interface TemplateHooksProps {
+  vars: string[];
+  nodeId: string;
+  startY: number;
+  position: Position;
+  ignoreHandles?: string[];
+}
+
 export default function TemplateHooks({
   vars,
   nodeId,
   startY,
   position,
   ignoreHandles,
-}) {
+}: TemplateHooksProps) {
   const edges = useStore((state) => state.edges);
   const onEdgesChange = useStore((state) => state.onEdgesChange);
-  const [edgesToRemove, setEdgesToRemove] = useState([]);
+  const [edgesToRemove, setEdgesToRemove] = useState<Edge[]>([]);
 
   // For notifying the backend when we re-render Handles:
   const updateNodeInternals = useUpdateNodeInternals();
@@ -64,10 +73,10 @@ export default function TemplateHooks({
   }, [edgesToRemove]);
 
   const genTemplateHooks = useCallback(
-    (temp_var_names, names_to_blink) => {
+    (temp_var_names: string[], names_to_blink: string[]) => {
       // Generate handles
-      const pos = position !== undefined ? position : "left";
-      const handle_type = pos === "left" ? "target" : "source";
+      const pos = position !== undefined ? position : Position.Left;
+      const handle_type = pos === Position.Left ? "target" : "source";
       return temp_var_names.map((name, idx) => {
         const is_settings_var = name.charAt(0) === "=";
         const badge_name = is_settings_var ? (
@@ -109,7 +118,7 @@ export default function TemplateHooks({
     [startY, position],
   );
 
-  const [templateHooks, setTemplateHooks] = useState([]);
+  const [templateHooks, setTemplateHooks] = useState<React.ReactNode[]>([]);
 
   // const blinkTemplateVars = (vars_to_blink) => {
   //   setTemplateHooks(genTemplateHooks(vars, vars_to_blink));
@@ -123,15 +132,15 @@ export default function TemplateHooks({
     // Determine if there's any handles that were deleted in temp_var_names,
     // and manually remove them as edges:
     if (templateHooks.length > 0) {
-      const deleted_edges = [];
+      const deleted_edges: Edge[] = [];
       edges.forEach((e) => {
         if (
           !(
             e.target !== nodeId ||
-            vars.includes(e.targetHandle) ||
-            (Array.isArray(ignoreHandles) &&
-              ignoreHandles.includes(e.targetHandle))
-          )
+            (typeof e.targetHandle === "string" && (vars.includes(e.targetHandle) ||
+            (ignoreHandles && Array.isArray(ignoreHandles) &&
+              ignoreHandles.includes(e.targetHandle)))
+          ))
         )
           deleted_edges.push(e);
       });

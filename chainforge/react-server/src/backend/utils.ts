@@ -3,6 +3,7 @@
 // from string import Template
 
 // from chainforge.promptengine.models import LLM
+import React from "react";
 import { LLM, LLMProvider, NativeLLM, getProvider } from "./models";
 import {
   Dict,
@@ -18,6 +19,7 @@ import {
   StandardizedLLMResponse,
   BaseLLMResponseObject,
   LLMResponsesByVarDict,
+  Func,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
@@ -1908,3 +1910,24 @@ export function repairCachedResponses(
 
   return data;
 }
+
+/** 
+ * Generates a function that can be called to debounce another function,
+ * inside a React component. Note that it requires passing (and capturing) a React ref using useRef. 
+ * The ref is used so that when the function is called multiple times; it will 'debounce' --cancel any pending call.
+ * @param ref An empty React ref from useRef
+ * @returns A debounce function of signature (func: Func, delay: number), taking an arbitrary function and delay in milliseconds
+ */
+export const genDebounceFunc = (ref: React.MutableRefObject<null | NodeJS.Timeout>) => {
+  return (func: Func, delay: number) => {
+    return (...args: any[]) => {
+      if (ref?.current) {
+        clearTimeout(ref.current);
+      }
+      ref.current = setTimeout(() => {
+        func(...args);
+      }, delay);
+    };
+  };
+};
+export type DebounceRef = React.MutableRefObject<NodeJS.Timeout | null>;

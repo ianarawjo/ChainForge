@@ -2,12 +2,12 @@ import MarkdownIt from "markdown-it";
 import { v4 as uuid } from "uuid";
 import {
   Dict,
-  Dict,
   LLMResponseError,
   RawLLMResponseObject,
   StandardizedLLMResponse,
   ChatHistoryInfo,
   isEqualChatHistory,
+  PromptVarType,
 } from "./typing";
 import { LLM, getEnumName } from "./models";
 import {
@@ -70,7 +70,7 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.log) {
     const cl = ORIGINAL_CONSOLE_LOG_FUNCS.log;
-    base_window.console.log = function (...args) {
+    base_window.console.log = function (...args: any[]) {
       const a = args.map((s) => s.toString());
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       cl.apply(this, args);
@@ -79,7 +79,7 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.warn) {
     const cw = ORIGINAL_CONSOLE_LOG_FUNCS.warn;
-    base_window.console.warn = function (...args) {
+    base_window.console.warn = function (...args: any[]) {
       const a = args.map((s) => `warn: ${s.toString()}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       cw.apply(this, args);
@@ -88,7 +88,7 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.error) {
     const ce = ORIGINAL_CONSOLE_LOG_FUNCS.error;
-    base_window.console.error = function (...args) {
+    base_window.console.error = function (...args: any[]) {
       const a = args.map((s) => `error: ${s.toString()}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       ce.apply(this, args);
@@ -234,16 +234,16 @@ function extract_llm_params(llm_spec: Dict | string): Dict {
   else return {};
 }
 
-function filterVarsByLLM(vars: Dict, llm_key: string): Dict {
-  const _vars = {};
+function filterVarsByLLM(vars: PromptVarType, llm_key: string): Dict {
+  const _vars: PromptVarType = {};
   Object.entries(vars).forEach(([key, val]) => {
     const vs = Array.isArray(val) ? val : [val];
     _vars[key] = vs.filter(
       (v) =>
         typeof v === "string" ||
         v?.llm === undefined ||
-        v?.llm?.key === llm_key,
-    );
+        typeof v.llm === "string" ||
+        v.llm.key === llm_key);
   });
   return _vars;
 }

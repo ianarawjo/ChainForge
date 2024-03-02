@@ -130,6 +130,7 @@
   },
   "devDependencies": {
     "@craco/craco": "^7.1.0",
+    "@types/react-edit-text": "^5.0.4",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-config-semistandard": "^17.0.0",

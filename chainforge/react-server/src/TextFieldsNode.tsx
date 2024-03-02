@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  MouseEventHandler,
 } from "react";
 import { Handle, Position } from "reactflow";
 import { Textarea, Tooltip, Skeleton } from "@mantine/core";
@@ -14,7 +15,7 @@ import TemplateHooks, {
   extractBracketedSubstrings,
 } from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
-import { setsAreEqual } from "./backend/utils";
+import { DebounceRef, genDebounceFunc, setsAreEqual } from "./backend/utils";
 import { Func, Dict } from "./backend/typing";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import AISuggestionsManager from "./backend/aiSuggestionsManager";
@@ -31,14 +32,16 @@ const union = (setA: Set<any>, setB: Set<any>) => {
 const delButtonId = "del-";
 const visibleButtonId = "eye-";
 
+interface TextFieldsNodeData {
+  vars?: string[],
+  title?: string,
+  text?: string,
+  fields?: Dict<string>,
+  fields_visibility?: Dict<boolean>,
+  refresh?: boolean,
+}
 interface TextFieldsNodeProps {
-  data: {
-    vars?: string[],
-    title?: string,
-    text?: string,
-    fields?: Dict<String>,
-    fields_visibility?: boolean[]
-  };
+  data: TextFieldsNodeData;
   id: string;
 }
 
@@ -50,8 +53,8 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
   const flags = useStore((state) => state.flags);
 
-  const [textfieldsValues, setTextfieldsValues] = useState<Dict<String>>(data.fields || {});
-  const [fieldVisibility, setFieldVisibility] = useState(
+  const [textfieldsValues, setTextfieldsValues] = useState<Dict<string>>(data.fields ?? {});
+  const [fieldVisibility, setFieldVisibility] = useState<Dict<boolean>>(
     data.fields_visibility || {},
   );
 
@@ -70,22 +73,13 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   );
 
   // Placeholders to show in the textareas. Object keyed by textarea index.
-  const [placeholders, setPlaceholders] = useState({});
+  const [placeholders, setPlaceholders] = useState<Dict<string>>({});
 
   // Debounce helpers
-  const debounceTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null> = useRef(null);
-  const debounce: Func = (func: Func, delay: number) => {
-    return (...args: any[]) => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-      debounceTimeoutRef.current = setTimeout(() => {
-        func(...args);
-      }, delay);
-    };
-  };
+  const debounceTimeoutRef: DebounceRef = useRef(null);
+  const debounce: Func<Func> = genDebounceFunc(debounceTimeoutRef);
 
-  const getUID = useCallback((textFields: Dict<String>) => {
+  const getUID = useCallback((textFields: Dict<string>) => {
     if (textFields) {
       return (
         "f" +
@@ -103,12 +97,12 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   }, []);
 
   // Handle delete text field.
-  const handleDelete = useCallback(
-    (event) => {
+  const handleDelete: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
       // Update the data for this text field's id.
       const new_fields = { ...textfieldsValues };
       const new_vis = { ...fieldVisibility };
-      const item_id = event.target.id.substring(delButtonId.length);
+      const item_id = (event.target as HTMLButtonElement).id.substring(delButtonId.length);
       delete new_fields[item_id];
       delete new_vis[item_id];
       // if the new_data is empty, initialize it with one empty field
@@ -161,7 +155,7 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
 
   // Disable/hide a text field temporarily
   const handleDisableField = useCallback(
-    (field_id) => {
+    (field_id: string) => {
       const vis = { ...fieldVisibility };
       vis[field_id] = fieldVisibility[field_id] === false; // toggles it
       setFieldVisibility(vis);
@@ -172,12 +166,12 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   );
 
   const updateTemplateVars = useCallback(
-    (new_data) => {
+    (new_data: TextFieldsNodeData) => {
       // TODO: Optimize this check.
-      let all_found_vars = new Set();
-      const new_field_ids = Object.keys(new_data.fields);
-      new_field_ids.forEach((fid) => {
-        const found_vars = extractBracketedSubstrings(new_data.fields[fid]);
+      let all_found_vars = new Set<string>();
+      const new_field_ids = Object.keys(new_data.fields ?? {});
+      new_field_ids.forEach((fid: string) => {
+        const found_vars = extractBracketedSubstrings((new_data.fields as Dict<string>)[fid]);
         if (found_vars && found_vars.length > 0) {
           all_found_vars = union(all_found_vars, new Set(found_vars));
         }
@@ -197,7 +191,7 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
 
   // Save the state of a textfield when it changes and update hooks
   const handleTextFieldChange = useCallback(
-    (field_id, val, shouldDebounce) => {
+    (field_id: string, val: string, shouldDebounce: boolean) => {
       // Update the value of the controlled Textarea component
       const new_fields = { ...textfieldsValues };
       new_fields[field_id] = val;
@@ -209,8 +203,8 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
 
       // Debounce the global state change to happen only after 300ms, as it forces a costly rerender:
       debounce(
-        (_id, _new_data) => {
-          setDataPropsForNode(_id, _new_data);
+        (_id: string, _new_data: TextFieldsNodeData) => {
+          setDataPropsForNode(_id, _new_data as Dict);
           pingOutputNodes(_id);
         },
         shouldDebounce ? 300 : 1,
@@ -229,15 +223,15 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   );
 
   // Dynamically update the textareas and position of the template hooks
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement | null>(null);
   const [hooksY, setHooksY] = useState(120);
   useEffect(() => {
-    const node_height = ref.current.clientHeight;
+    const node_height = ref?.current?.clientHeight ?? 0;
     setHooksY(node_height + 68);
   }, [textfieldsValues]);
 
   const setRef = useCallback(
-    (elem) => {
+    (elem: HTMLDivElement) => {
       // To listen for resize events of the textarea, we need to use a ResizeObserver.
       // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div wrapping textfields.
       // NOTE: This won't work on older browsers, but there's no alternative solution.
@@ -269,28 +263,28 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   }, [refresh]);
 
   // Handle keydown events for the text fields
-  function handleTextAreaKeyDown(event, placeholder, textareaIndex) {
+  const handleTextAreaKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>, placeholder: string, fieldIdx: string) => {
     // Insert the AI suggested text if:
     // (1) the user presses the Tab key
     // (2) the user has not typed anything in the textarea
     // (3) the suggestions are loaded
     if (
       event.key === "Tab" &&
-      textfieldsValues[textareaIndex] === "" &&
+      textfieldsValues[fieldIdx] === "" &&
       !aiSuggestionsManager.areSuggestionsLoading()
     ) {
       event.preventDefault();
       // Insert the suggestion corresponding to the text field that was tabbed into by index.
       aiSuggestionsManager.removeSuggestion(placeholder);
-      handleTextFieldChange(textareaIndex, placeholder, false);
+      handleTextFieldChange(fieldIdx, placeholder, false);
     }
-  }
+  };
 
   // Add the entire list of `fields` to `textfieldsValues`
-  function addMultipleFields(fields) {
+  function addMultipleFields(strs: string[]) {
     // Unpack the object to force a re-render
     const buffer = { ...textfieldsValues };
-    for (const field of fields) {
+    for (const field of strs) {
       const uid = getUID(buffer);
       buffer[uid] = field;
     }
@@ -299,18 +293,18 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     pingOutputNodes(id);
   }
 
-  // Replace the entirety of `textfieldValues` with `newFields`
+  // Replace the entirety of `textfieldValues` with `new_vals`
   const replaceFields = useCallback(
-    (fields) => {
-      const buffer = {};
-      for (const field of fields) {
+    (new_vals: string[]) => {
+      const buffer: Dict<string> = {};
+      for (const field of new_vals) {
         const uid = getUID(buffer);
         buffer[uid] = field;
       }
       setTextfieldsValues(buffer);
       const new_data = updateTemplateVars({ fields: buffer });
       if (new_data.vars !== undefined) setTemplateVars(new_data.vars);
-      setDataPropsForNode(id, new_data);
+      setDataPropsForNode(id, new_data as Dict);
       pingOutputNodes(id);
     },
     [
@@ -325,12 +319,12 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   );
 
   // Whether a placeholder is needed for the text field with id `i`.
-  function placeholderNeeded(i) {
+  function placeholderNeeded(i: string) {
     return !textfieldsValues[i] && !placeholders[i] && flags.aiAutocomplete;
   }
 
   // Load a placeholder into placeholders for the text field with id `i` if needed.
-  function loadPlaceholderIfNeeded(i) {
+  function loadPlaceholderIfNeeded(i: string) {
     if (placeholderNeeded(i) && !aiSuggestionsManager.areSuggestionsLoading()) {
       placeholders[i] = aiSuggestionsManager.popSuggestion();
     }
@@ -349,8 +343,8 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
               name={i}
               className="text-field-fixed nodrag nowheel"
               autosize
-              minRows="2"
-              maxRows="8"
+              minRows={2}
+              maxRows={8}
               value={textfieldsValues[i]}
               placeholder={flags.aiAutocomplete ? placeholder : undefined}
               disabled={fieldVisibility[i] === false}
@@ -444,7 +438,7 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
         className="grouped-handle"
         style={{ top: "50%" }}
       />
-      <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} />
+      <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} position={Position.Left} />
       <div className="add-text-field-btn">
         <button onClick={handleAddField}>+</button>
       </div>
