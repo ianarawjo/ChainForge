@@ -6,7 +6,6 @@ import {
   Dict,
   StandardizedLLMResponse,
   EvaluationScore, 
-  PromptVarType,
 } from "./backend/typing";
 
 // Lazy load the response toolbars
@@ -68,7 +67,7 @@ export interface ResponseGroupProps {
   responseBoxesWrapperClass: string;
   displayStyle: string;
   defaultState: boolean;
-};
+}
 
 export const ResponseGroup: React.FC<ResponseGroupProps> = ({
   header,

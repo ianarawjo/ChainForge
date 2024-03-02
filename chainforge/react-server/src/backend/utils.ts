@@ -1681,13 +1681,15 @@ export const getLLMsInPulledInputData = (pulled_data: Dict) => {
   return Object.values(found_llms);
 };
 
-export const stripLLMDetailsFromResponses = (resps: (StandardizedLLMResponse | BaseLLMResponseObject)[]) =>
+export const stripLLMDetailsFromResponses = (
+  resps: (StandardizedLLMResponse | BaseLLMResponseObject)[],
+) =>
   resps.map((r) => ({
     ...r,
     llm: typeof r?.llm === "string" ? r?.llm : r?.llm?.name ?? "undefined",
   }));
 
-// NOTE: The typing is purposefully general since we are trying to cast to an expected format. 
+// NOTE: The typing is purposefully general since we are trying to cast to an expected format.
 export const toStandardResponseFormat = (r: Dict) => {
   const resp_obj: StandardizedLLMResponse = {
     vars: r?.fill_history ?? {},
@@ -1718,7 +1720,14 @@ export const tagMetadataWithLLM = (input_data: LLMResponsesByVarDict) => {
   const new_data: LLMResponsesByVarDict = {};
   Object.entries(input_data).forEach(([varname, resp_objs]) => {
     new_data[varname] = resp_objs.map((r) => {
-      if (!r || typeof r === "string" || !r?.llm || typeof r.llm === "string" || !r.llm.key) return r;
+      if (
+        !r ||
+        typeof r === "string" ||
+        !r?.llm ||
+        typeof r.llm === "string" ||
+        !r.llm.key
+      )
+        return r;
       const r_copy = JSON.parse(JSON.stringify(r));
       r_copy.metavars.__LLM_key = r.llm.key;
       return r_copy;
@@ -1746,7 +1755,10 @@ export const removeLLMTagFromMetadata = (metavars: Dict) => {
   return mcopy;
 };
 
-export const truncStr = (s: string | undefined, maxLen: number): string | undefined => {
+export const truncStr = (
+  s: string | undefined,
+  maxLen: number,
+): string | undefined => {
   if (s === undefined) return s;
   if (s.length > maxLen)
     // Cut the name short if it's long
@@ -1754,7 +1766,10 @@ export const truncStr = (s: string | undefined, maxLen: number): string | undefi
   else return s;
 };
 
-export const groupResponsesBy = (responses: StandardizedLLMResponse[], keyFunc: ((item: StandardizedLLMResponse) => string | null | undefined)) => {
+export const groupResponsesBy = (
+  responses: StandardizedLLMResponse[],
+  keyFunc: (item: StandardizedLLMResponse) => string | null | undefined,
+) => {
   const responses_by_key: Dict = {};
   const unspecified_group: Dict[] = [];
   responses.forEach((item) => {
@@ -1821,7 +1836,7 @@ export function sampleRandomElements(arr: any[], num_sample: number): any[] {
 
 export const getVarsAndMetavars = (input_data: Dict) => {
   // Find all vars and metavars in the input data (if any):
-  // NOTE: The typing is purposefully general for some backwards compatibility concenrs. 
+  // NOTE: The typing is purposefully general for some backwards compatibility concenrs.
   const varnames = new Set();
   const metavars = new Set();
 
@@ -1913,12 +1928,14 @@ export function repairCachedResponses(
 
 /** 
  * Generates a function that can be called to debounce another function,
- * inside a React component. Note that it requires passing (and capturing) a React ref using useRef. 
+ * inside a React component. Note that it requires passing (and capturing) a React ref using useRef.
  * The ref is used so that when the function is called multiple times; it will 'debounce' --cancel any pending call.
  * @param ref An empty React ref from useRef
  * @returns A debounce function of signature (func: Func, delay: number), taking an arbitrary function and delay in milliseconds
  */
-export const genDebounceFunc = (ref: React.MutableRefObject<null | NodeJS.Timeout>) => {
+export const genDebounceFunc = (
+  ref: React.MutableRefObject<null | NodeJS.Timeout>,
+) => {
   return (func: Func, delay: number) => {
     return (...args: any[]) => {
       if (ref?.current) {

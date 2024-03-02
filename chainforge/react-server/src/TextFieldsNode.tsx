@@ -33,12 +33,12 @@ const delButtonId = "del-";
 const visibleButtonId = "eye-";
 
 interface TextFieldsNodeData {
-  vars?: string[],
-  title?: string,
-  text?: string,
-  fields?: Dict<string>,
-  fields_visibility?: Dict<boolean>,
-  refresh?: boolean,
+  vars?: string[];
+  title?: string;
+  text?: string;
+  fields?: Dict<string>;
+  fields_visibility?: Dict<boolean>;
+  refresh?: boolean;
 }
 interface TextFieldsNodeProps {
   data: TextFieldsNodeData;
@@ -53,7 +53,9 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
   const flags = useStore((state) => state.flags);
 
-  const [textfieldsValues, setTextfieldsValues] = useState<Dict<string>>(data.fields ?? {});
+  const [textfieldsValues, setTextfieldsValues] = useState<Dict<string>>(
+    data.fields ?? {},
+  );
   const [fieldVisibility, setFieldVisibility] = useState<Dict<boolean>>(
     data.fields_visibility || {},
   );
@@ -102,7 +104,9 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
       // Update the data for this text field's id.
       const new_fields = { ...textfieldsValues };
       const new_vis = { ...fieldVisibility };
-      const item_id = (event.target as HTMLButtonElement).id.substring(delButtonId.length);
+      const item_id = (event.target as HTMLButtonElement).id.substring(
+        delButtonId.length,
+      );
       delete new_fields[item_id];
       delete new_vis[item_id];
       // if the new_data is empty, initialize it with one empty field
@@ -171,7 +175,9 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
       let all_found_vars = new Set<string>();
       const new_field_ids = Object.keys(new_data.fields ?? {});
       new_field_ids.forEach((fid: string) => {
-        const found_vars = extractBracketedSubstrings((new_data.fields as Dict<string>)[fid]);
+        const found_vars = extractBracketedSubstrings(
+          (new_data.fields as Dict<string>)[fid],
+        );
         if (found_vars && found_vars.length > 0) {
           all_found_vars = union(all_found_vars, new Set(found_vars));
         }
@@ -263,7 +269,11 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   }, [refresh]);
 
   // Handle keydown events for the text fields
-  const handleTextAreaKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>, placeholder: string, fieldIdx: string) => {
+  const handleTextAreaKeyDown = (
+    event: React.KeyboardEvent<HTMLTextAreaElement>,
+    placeholder: string,
+    fieldIdx: string,
+  ) => {
     // Insert the AI suggested text if:
     // (1) the user presses the Tab key
     // (2) the user has not typed anything in the textarea
@@ -438,7 +448,12 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
         className="grouped-handle"
         style={{ top: "50%" }}
       />
-      <TemplateHooks vars={templateVars} nodeId={id} startY={hooksY} position={Position.Left} />
+      <TemplateHooks
+        vars={templateVars}
+        nodeId={id}
+        startY={hooksY}
+        position={Position.Left}
+      />
       <div className="add-text-field-btn">
         <button onClick={handleAddField}>+</button>
       </div>

@@ -44,7 +44,6 @@ export const extractBracketedSubstrings = (text: string) => {
   return capture_groups;
 };
 
-
 export interface TemplateHooksProps {
   vars: string[];
   nodeId: string;
@@ -137,10 +136,12 @@ export default function TemplateHooks({
         if (
           !(
             e.target !== nodeId ||
-            (typeof e.targetHandle === "string" && (vars.includes(e.targetHandle) ||
-            (ignoreHandles && Array.isArray(ignoreHandles) &&
-              ignoreHandles.includes(e.targetHandle)))
-          ))
+            (typeof e.targetHandle === "string" &&
+              (vars.includes(e.targetHandle) ||
+                (ignoreHandles &&
+                  Array.isArray(ignoreHandles) &&
+                  ignoreHandles.includes(e.targetHandle))))
+          )
         )
           deleted_edges.push(e);
       });

@@ -243,7 +243,8 @@ function filterVarsByLLM(vars: PromptVarType, llm_key: string): Dict {
         typeof v === "string" ||
         v?.llm === undefined ||
         typeof v.llm === "string" ||
-        v.llm.key === llm_key);
+        v.llm.key === llm_key,
+    );
   });
   return _vars;
 }

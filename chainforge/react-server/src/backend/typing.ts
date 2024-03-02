@@ -129,7 +129,7 @@ export interface RawLLMResponseObject extends BaseLLMResponseObject {
   tokens?: Dict<number>;
 }
 
-export type EvaluationScore = (boolean | number | string);
+export type EvaluationScore = boolean | number | string;
 export type EvaluationResults = {
   items: EvaluationScore[];
   dtype:
@@ -154,7 +154,9 @@ export interface StandardizedLLMResponse extends BaseLLMResponseObject {
   tokens?: Dict<number>;
 }
 
-export type LLMResponsesByVarDict = Dict<(BaseLLMResponseObject | StandardizedLLMResponse)[]>;
+export type LLMResponsesByVarDict = Dict<
+  (BaseLLMResponseObject | StandardizedLLMResponse)[]
+>;
 
 /** A standard async function interface for calling an LLM. */
 export interface LLMAPICall {

@@ -16,7 +16,7 @@ import {
   APP_IS_RUNNING_LOCALLY,
 } from "./backend/utils";
 import { DuplicateVariableNameError } from "./backend/errors";
-import { Dict, LLMSpec, TemplateVarInfo, Dict } from "./backend/typing";
+import { Dict, LLMSpec, TemplateVarInfo } from "./backend/typing";
 
 // Initial project settings
 const initialAPIKeys = {};
