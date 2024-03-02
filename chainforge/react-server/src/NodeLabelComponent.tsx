@@ -33,7 +33,7 @@ export interface NodeLabelProps {
 interface DeleteConfirmProps {
   title: string;
   message: string;
-  onConfirm: undefined | (() => void)
+  onConfirm: undefined | (() => void);
 }
 
 export const NodeLabel: React.FC<NodeLabelProps> = ({
@@ -59,17 +59,20 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
 
   // For 'delete node' confirmation popup
   const deleteConfirmModal = useRef<AreYouSureModalHandles>(null);
-  const [deleteConfirmProps, setDeleteConfirmProps] = useState<DeleteConfirmProps>({
-    title: "Delete node",
-    message: "Are you sure?",
-    onConfirm: undefined,
-  });
+  const [deleteConfirmProps, setDeleteConfirmProps] =
+    useState<DeleteConfirmProps>({
+      title: "Delete node",
+      message: "Are you sure?",
+      onConfirm: undefined,
+    });
   const stopButton = useMemo(
     () => (
       <button
         className="AmitSahoo45-button-3 nodrag"
         style={{ padding: "0px 10px 0px 9px" }}
-        onClick={() => {if (handleStopClick) handleStopClick(nodeId);}}
+        onClick={() => {
+          if (handleStopClick) handleStopClick(nodeId);
+        }}
       >
         &#9724;
       </button>

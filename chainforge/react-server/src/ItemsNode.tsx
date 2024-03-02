@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef, KeyboardEventHandler } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  KeyboardEventHandler,
+} from "react";
 import { Skeleton, Text } from "@mantine/core";
 import useStore from "./store";
 import NodeLabel from "./NodeLabelComponent";
@@ -27,9 +33,9 @@ const stripWrappingQuotes = (str: string) => {
 
 interface ItemsNodeProps {
   data: {
-    title?: string,
-    text?: string,
-    fields?: string[],
+    title?: string;
+    text?: string;
+    fields?: string[];
   };
   id: string;
 }
@@ -80,12 +86,15 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
     [id, pingOutputNodes, setDataPropsForNode],
   );
 
-  const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && data.text && data.text.trim().length > 0) {
-      setIsEditing(false);
-      setCsvInput(null);
-    }
-  }, []);
+  const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === "Enter" && data.text && data.text.trim().length > 0) {
+        setIsEditing(false);
+        setCsvInput(null);
+      }
+    },
+    [],
+  );
 
   // handling Div Click
   const handleDivOnClick = useCallback(() => {

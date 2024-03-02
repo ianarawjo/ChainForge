@@ -87,7 +87,8 @@ export class PromptPipeline {
     } = result;
 
     // Check for selective failure
-    if (!query && response instanceof LLMResponseError) return response; // yield the LLMResponseException
+    if (!query && response instanceof LLMResponseError)
+      return response; // yield the LLMResponseException
     else if (response === undefined) return new LLMResponseError("Unknown");
 
     // Each prompt has a history of what was filled in from its base template.
@@ -128,7 +129,7 @@ export class PromptPipeline {
     if (past_resp_obj_cache_idx !== undefined && past_resp_obj_cache_idx > -1)
       cached_responses[resp_obj.prompt][past_resp_obj_cache_idx] = resp_obj;
     else cached_responses[resp_obj.prompt].push(resp_obj);
-    
+
     this._cache_responses(cached_responses);
 
     // console.log(` - collected response from ${llm} for prompt: ${resp_obj['prompt']}`);
