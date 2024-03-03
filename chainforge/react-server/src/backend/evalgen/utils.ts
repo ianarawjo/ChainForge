@@ -5,7 +5,13 @@ const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");
 const { loadPyodide } = require("pyodide");
 import path from "path";
 import { EventEmitter } from "events";
-import { AssertionWriterSystemMsg, EvalCriteria, EvalFunction, EvalFunctionResult, isValidEvalCriteriaFormat } from "./typing";
+import {
+  AssertionWriterSystemMsg,
+  EvalCriteria,
+  EvalFunction,
+  EvalFunctionResult,
+  isValidEvalCriteriaFormat,
+} from "./typing";
 import { Dict, StandardizedLLMResponse } from "../typing";
 import { executejs, simpleQueryLLM } from "../backend";
 import { retryAsyncFunc } from "../utils";
@@ -15,13 +21,14 @@ let pyodideInstance: any = null;
 
 /**
  * Extracts substrings within "```json" and "```" ticks. Excludes the ticks from return.
- * @param mdText 
- * @returns 
+ * @param mdText
+ * @returns
  */
 function extractJSONBlocks(mdText: string): string[] | undefined {
   const regex = /```json(.*?)```/g;
   const matches = mdText.match(regex);
-  if (matches) return matches.map(s => s.replace("```json", "").replace("```", ""));
+  if (matches)
+    return matches.map((s) => s.replace("```json", "").replace("```", ""));
 
   console.error("No JSON found in output.");
   return undefined;
@@ -29,11 +36,11 @@ function extractJSONBlocks(mdText: string): string[] | undefined {
 
 /**
  * Given the user's prompt, generates a list of criteria in JSON format.
- * 
+ *
  * FUTURE: One might consider giving more contextual information, e.g. input vars to the prompt or prompt history.
- * 
- * @param prompt 
- * @returns 
+ *
+ * @param prompt
+ * @returns
  */
 export async function generateLLMEvaluationCriteria(
   prompt: string,
@@ -65,17 +72,20 @@ export async function generateLLMEvaluationCriteria(
     // Attempt to extract JSON blocks (strings) from input
     const json_blocks = extractJSONBlocks(output);
     if (json_blocks === undefined || json_blocks.length === 0)
-      throw new Error("EvalGen: Could not parse LLM response into evaluation critera: No JSON detected in output.");
+      throw new Error(
+        "EvalGen: Could not parse LLM response into evaluation critera: No JSON detected in output.",
+      );
 
     // Attempt to parse all JSON blocks into objects
-    let data: EvalCriteria[] = json_blocks.map(s => JSON.parse(s));
+    let data: EvalCriteria[] = json_blocks.map((s) => JSON.parse(s));
 
     // Double-check the formatting
-    if (data.every(isValidEvalCriteriaFormat)) 
-      return data;
-    else 
-      // Incorrect formatting
-      throw new Error("EvalGen: At least one JSON block was not in expected EvalCriteria format.");
+    if (data.every(isValidEvalCriteriaFormat)) return data;
+    // Incorrect formatting
+    else
+      throw new Error(
+        "EvalGen: At least one JSON block was not in expected EvalCriteria format.",
+      );
   }
 
   // Retry up to 3 times; otherwise, we will throw the last encountered error.
@@ -87,11 +97,15 @@ export async function executeLLMEval(
   example: StandardizedLLMResponse,
 ): Promise<EvalFunctionResult> {
   // Construct call to an LLM to evaluate the example
-  const evalPrompt = "You are an expert evaluator. Evaluate the text below according to this criteria: " +
-    evalFunction.code + " Only return \"yes\" or \"no\", nothing else.\n\n```\n" + example.responses[0] + "\n```";
+  const evalPrompt =
+    "You are an expert evaluator. Evaluate the text below according to this criteria: " +
+    evalFunction.code +
+    ' Only return "yes" or "no", nothing else.\n\n```\n' +
+    example.responses[0] +
+    "\n```";
 
   // Query an LLM as an evaluator
-  const result =  await simpleQueryLLM(
+  const result = await simpleQueryLLM(
     evalPrompt, // prompt
     "gpt-3.5-turbo", // llm
     "You are an expert evaluator.", // system_msg
@@ -109,13 +123,17 @@ export async function executeLLMEval(
     // throw new EvalExecutionError(
     //   `Error executing function ${evalFunction.name}: could not parse ${response.choices[0].message.content}`,
     // );
-    console.warn("executeLLMEval: Warning: Could not find 'yes' or 'no' in response.", evalPrompt, output);
+    console.warn(
+      "executeLLMEval: Warning: Could not find 'yes' or 'no' in response.",
+      evalPrompt,
+      output,
+    );
     return EvalFunctionResult.SKIP;
   }
 }
 
 /**
- * Executes a JavaScript function, described by evalFunction, against the "example" LLM response object. 
+ * Executes a JavaScript function, described by evalFunction, against the "example" LLM response object.
  * @returns `EvalFunctionResult`
  */
 export async function execJSFunc(
@@ -124,19 +142,29 @@ export async function execJSFunc(
   iframe_id: string,
 ) {
   try {
-    const result = await executejs(iframe_id, evalFunction.code, [example], "response", "evaluator");
+    const result = await executejs(
+      iframe_id,
+      evalFunction.code,
+      [example],
+      "response",
+      "evaluator",
+    );
 
     // Check for errors
-    if (result.error !== undefined)
-      throw new Error(result.error);
+    if (result.error !== undefined) throw new Error(result.error);
 
     // Extract the evaluation result
-    const eval_res = result.responses ? (result.responses[0] as StandardizedLLMResponse).eval_res?.items[0] : undefined;
+    const eval_res = result.responses
+      ? (result.responses[0] as StandardizedLLMResponse).eval_res?.items[0]
+      : undefined;
 
     // Check that the evaluation result is a boolean value
     // NOTE: EvalGen only supports assertion functions at this time.
-    if ( typeof eval_res !== "boolean")
-      throw new Error("Non-boolean return value encountered when executing JS eval code. Value: ", eval_res);
+    if (typeof eval_res !== "boolean")
+      throw new Error(
+        "Non-boolean return value encountered when executing JS eval code. Value: ",
+        eval_res,
+      );
 
     return eval_res ? EvalFunctionResult.PASS : EvalFunctionResult.FAIL;
   } catch (err) {
@@ -153,7 +181,6 @@ export async function execPyFunc(
   evalFunction: EvalFunction,
   example: StandardizedLLMResponse,
 ): Promise<EvalFunctionResult> {
-
   // Load Pyodide only if it hasn't been loaded before
   if (!pyodideInstance) {
     const pyodidePath = path.join(__dirname, "pyodide");
@@ -170,7 +197,7 @@ import json
 ${evalFunction.code}
 
 # Execute the evaluation function with the example's prompt and response
-result = ${evalFunction.name}(${example.variables}, '${example.prompt}', '${example.response}')
+result = ${evalFunction.name}(${example.vars}, '${example.prompt}', '${example.responses[0]}')
 
 result`;
 

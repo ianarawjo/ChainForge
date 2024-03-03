@@ -7,7 +7,9 @@ export interface EvalCriteria {
 }
 
 export function validateEvalCriteriaFormat(json_obj: Dict) {
-  return "criteria" in json_obj && ["code", "expert"].includes(json_obj.eval_method);
+  return (
+    "criteria" in json_obj && ["code", "expert"].includes(json_obj.eval_method)
+  );
 }
 
 export enum EvalFunctionResult {
@@ -46,7 +48,8 @@ export class EvalExecutionError extends Error {
   }
 }
 
-export const AssertionWriterSystemMsg = "You are an expert Python programmer and helping me write assertions for my LLM pipeline. An LLM pipeline accepts an example and prompt template, fills the template's placeholders with the example, and generates a response.";
+export const AssertionWriterSystemMsg =
+  "You are an expert Python programmer and helping me write assertions for my LLM pipeline. An LLM pipeline accepts an example and prompt template, fills the template's placeholders with the example, and generates a response.";
 export const AssertionWriterSystemMsgChatHistory: ChatHistoryInfo[] = [
   {
     messages: [

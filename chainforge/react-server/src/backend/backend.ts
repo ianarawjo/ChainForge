@@ -907,20 +907,28 @@ export async function queryLLM(
  * @param llm The LLM(s) to query.
  * @param system_msg Any system message to set on the model (if supported).
  * @param apiKeys Any API keys to use (if needed).
- * @returns 
+ * @returns
  */
-export async function simpleQueryLLM(prompt: string, llm: string | string[] | Dict[], system_msg?: string, apiKeys?: Dict) {
-  const chat_history = system_msg === undefined ? [] : [
-    {
-      messages: [
-        {
-          role: "system",
-          content: system_msg,
-        },
-      ],
-      fill_history: {},
-    },
-  ];
+export async function simpleQueryLLM(
+  prompt: string,
+  llm: string | string[] | Dict[],
+  system_msg?: string,
+  apiKeys?: Dict,
+) {
+  const chat_history =
+    system_msg === undefined
+      ? []
+      : [
+          {
+            messages: [
+              {
+                role: "system",
+                content: system_msg,
+              },
+            ],
+            fill_history: {},
+          },
+        ];
 
   return await queryLLM(
     Date.now().toString(), // id to refer to this query

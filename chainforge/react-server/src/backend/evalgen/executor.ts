@@ -10,10 +10,7 @@ import {
   EvalFunctionReport,
   EvalFunctionSetReport,
 } from "./typing";
-import {
-  StandardizedLLMResponse,
-  ResponseUID
-} from "../typing";
+import { StandardizedLLMResponse, ResponseUID } from "../typing";
 import { EventEmitter } from "events";
 
 /**
@@ -219,7 +216,10 @@ export default class EvaluationFunctionExecutor {
    * @param exampleId The unique ID of the example being scored.
    * @param evalFunction The eval function used for evaluation.
    */
-  private updateScore(exampleId: ResponseUID, evalFunction: EvalFunction): void {
+  private updateScore(
+    exampleId: ResponseUID,
+    evalFunction: EvalFunction,
+  ): void {
     // const outcome = this.outcomes.get(evalFunction);
 
     // Get all the results for this function

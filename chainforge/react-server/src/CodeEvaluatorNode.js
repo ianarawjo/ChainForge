@@ -532,7 +532,9 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
             following properties and methods:
           </Text>
           <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python" ? INFO_CODEBLOCK_PY_FULL : INFO_CODEBLOCK_JS_FULL}
+            {progLang === "python"
+              ? INFO_CODEBLOCK_PY_FULL
+              : INFO_CODEBLOCK_JS_FULL}
           </Prism>
           <Text mt="md" mb="sm">
             For instance, say you have a prompt template{" "}
@@ -585,7 +587,9 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
             following properties and methods:
           </Text>
           <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python" ? INFO_CODEBLOCK_PY_FULL : INFO_CODEBLOCK_JS_FULL}
+            {progLang === "python"
+              ? INFO_CODEBLOCK_PY_FULL
+              : INFO_CODEBLOCK_JS_FULL}
           </Prism>
           <Text mt="md" mb="sm">
             For another example, say you have a prompt that requests the LLM
