@@ -1,4 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback, ChangeEvent } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+} from "react";
 import { Menu, NumberInput, Switch, Text, Tooltip } from "@mantine/core";
 import EditableTable from "./EditableTable";
 import * as XLSX from "xlsx";
@@ -101,7 +106,9 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
 
   // For renaming a column
   const renameColumnModal = useRef<RenameValueModalHandles>(null);
-  const [renameColumnInitialVal, setRenameColumnInitialVal] = useState<TabularDataColType | string>("");
+  const [renameColumnInitialVal, setRenameColumnInitialVal] = useState<
+    TabularDataColType | string
+  >("");
 
   const handleSaveCell = useCallback(
     (rowIdx: number, columnKey: string, value: string) => {
@@ -271,7 +278,9 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   // Opens a context window inside the table
   // Currently only opens if a row cell textarea was right-clicked.
   // TODO: Improve this to work on other parts of the table too (e.g., column headers and between rows)
-  const handleOpenTableContextMenu: React.MouseEventHandler<HTMLDivElement> = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleOpenTableContextMenu: React.MouseEventHandler<HTMLDivElement> = (
+    e: React.MouseEvent<HTMLDivElement>,
+  ) => {
     e.preventDefault();
 
     const target = e.target as HTMLDivElement;
@@ -302,7 +311,8 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   const importJSONList = (jsonl: unknown) => {
     if (!Array.isArray(jsonl)) {
       throw new Error(
-        "Imported tabular data is not in array format: " + ((jsonl !== undefined) ? (jsonl as Object).toString() : ""),
+        "Imported tabular data is not in array format: " +
+          (jsonl !== undefined ? (jsonl as object).toString() : ""),
       );
     }
 
@@ -373,7 +383,9 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
       reader.addEventListener("load", function () {
         try {
           if (reader.result === null)
-            throw new Error("Could not load tabular data file into file reader. Unknown error.");
+            throw new Error(
+              "Could not load tabular data file into file reader. Unknown error.",
+            );
 
           // Try to parse the file using the appropriate file reader
           let jsonl = null;
@@ -415,7 +427,9 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
               // Parse the CSV string to a list,
               // assuming the first row is a header
               {
-                const papa_parsed = Papa.parse(reader.result as string, { header: true });
+                const papa_parsed = Papa.parse(reader.result as string, {
+                  header: true,
+                });
                 importJSONList(papa_parsed.data);
               }
               break;
@@ -494,7 +508,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
     <BaseNode
       classNames="tabular-data-node"
       nodeId={id}
-      // @ts-ignore
+      // @ts-expect-error onPointerDown does exist here, on the base element, though TypeScript is not catching this.
       onPointerDown={() => setContextMenuOpened(false)}
     >
       <NodeLabel

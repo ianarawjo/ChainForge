@@ -16,7 +16,13 @@ import {
   APP_IS_RUNNING_LOCALLY,
 } from "./backend/utils";
 import { DuplicateVariableNameError } from "./backend/errors";
-import { Dict, LLMSpec, PromptVarType, PromptVarsDict, TemplateVarInfo } from "./backend/typing";
+import {
+  Dict,
+  LLMSpec,
+  PromptVarType,
+  PromptVarsDict,
+  TemplateVarInfo,
+} from "./backend/typing";
 import { TabularDataColType, TabularDataRowType } from "./TabularDataNode";
 
 // Initial project settings
@@ -425,7 +431,10 @@ const useStore = create<StoreHandles>((set, get) => ({
       .map((e) => e.target);
     out_nodes.forEach((n) => {
       const node = get().getNode(n);
-      if (node?.type !== undefined && refreshableOutputNodeTypes.has(node.type)) {
+      if (
+        node?.type !== undefined &&
+        refreshableOutputNodeTypes.has(node.type)
+      ) {
         get().setDataPropsForNode(node.id, { refresh: true });
       }
     });
@@ -444,7 +453,8 @@ const useStore = create<StoreHandles>((set, get) => ({
         ("sel_rows" in src_node.data || "rows" in src_node.data) &&
         "columns" in src_node.data
       ) {
-        const rows: TabularDataRowType[] = src_node.data.sel_rows ?? src_node.data.rows;
+        const rows: TabularDataRowType[] =
+          src_node.data.sel_rows ?? src_node.data.rows;
         const columns: TabularDataColType[] = src_node.data.columns;
 
         // The sourceHandleKey is the key of the column in the table that we're interested in:
@@ -527,7 +537,11 @@ const useStore = create<StoreHandles>((set, get) => ({
     const edges = get().edges;
     const inputNodeTypes: string[] = [];
     edges.forEach((e) => {
-      if (e.target === node_id && typeof e.targetHandle === "string" && _targetHandles.includes(e.targetHandle)) {
+      if (
+        e.target === node_id &&
+        typeof e.targetHandle === "string" &&
+        _targetHandles.includes(e.targetHandle)
+      ) {
         const src_node = getNode(e.source);
         if (src_node && src_node.type !== undefined)
           inputNodeTypes.push(src_node.type);
@@ -545,14 +559,22 @@ const useStore = create<StoreHandles>((set, get) => ({
     const edges = get().edges;
 
     // Helper function to store collected data in dict:
-    const store_data = (_texts: PromptVarType[], _varname: string, _data: PromptVarsDict) => {
+    const store_data = (
+      _texts: PromptVarType[],
+      _varname: string,
+      _data: PromptVarsDict,
+    ) => {
       if (_varname in _data) _data[_varname] = _data[_varname].concat(_texts);
       else _data[_varname] = _texts;
     };
 
     // Pull data from each source recursively:
     const pulled_data = {};
-    const get_outputs = (varnames: string[], nodeId: string, var_history: Set<string>) => {
+    const get_outputs = (
+      varnames: string[],
+      nodeId: string,
+      var_history: Set<string>,
+    ) => {
       varnames.forEach((varname) => {
         // Check for duplicate variable names
         if (var_history.has(String(varname).toLowerCase()))
@@ -565,7 +587,10 @@ const useStore = create<StoreHandles>((set, get) => ({
         edges.forEach((e) => {
           if (e.target === nodeId && e.targetHandle === varname) {
             // Get the immediate output:
-            const out = (e.sourceHandle != null) ? output(e.source, e.sourceHandle) : undefined;
+            const out =
+              e.sourceHandle != null
+                ? output(e.source, e.sourceHandle)
+                : undefined;
             if (!out || !Array.isArray(out) || out.length === 0) return;
 
             // Check the format of the output. Can be str or dict with 'text' and more attrs:
@@ -605,7 +630,7 @@ const useStore = create<StoreHandles>((set, get) => ({
         return n;
       });
     set({
-      nodes: (_set)(get().nodes),
+      nodes: _set(get().nodes),
     });
   },
   getNode: (id) => get().nodes.find((n) => n.id === id),
@@ -703,7 +728,10 @@ const useStore = create<StoreHandles>((set, get) => ({
     }
 
     // Ping target node to fresh if necessary
-    if (typeof target?.type === "string" && refreshableOutputNodeTypes.has(target.type)) {
+    if (
+      typeof target?.type === "string" &&
+      refreshableOutputNodeTypes.has(target.type)
+    ) {
       get().setDataPropsForNode(target.id, { refresh: true });
     }
 

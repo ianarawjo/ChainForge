@@ -15,10 +15,10 @@ export interface RenameValueModalHandles {
 }
 
 /** Modal that lets user rename a single value, using a TextInput field. */
-const RenameValueModal = forwardRef<RenameValueModalHandles, RenameValueModalProps>(function RenameValueModal(
-  { initialValue, title, label, onSubmit },
-  ref,
-) {
+const RenameValueModal = forwardRef<
+  RenameValueModalHandles,
+  RenameValueModalProps
+>(function RenameValueModal({ initialValue, title, label, onSubmit }, ref) {
   const [opened, { open, close }] = useDisclosure(false);
   const form = useForm({
     initialValues: {
