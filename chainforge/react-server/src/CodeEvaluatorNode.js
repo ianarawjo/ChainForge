@@ -39,27 +39,40 @@ import { AIGenCodeEvaluatorPopover } from "./AiPopover";
 // we have access to the Flask backend for, e.g., Python code evaluation.
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
-export const INFO_CODEBLOCK_JS = `
-class ResponseInfo {
+const INFO_CODEBLOCK_JS_PROPS = `
   text: string;  // The text of the LLM response
   prompt: string  // The text of the prompt using to query the LLM
   llm: string | LLM  // The name of the LLM queried (the nickname in ChainForge)
   var: Dict  // A dictionary of arguments that filled in the prompt template used to generate the final prompt
   meta: Dict  // A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
-
+`;
+const INFO_CODEBLOCK_JS_EXTS = `
   // Methods
   toString(): string // returns this.text
   asMarkdownAST(): Tokens[]  // runs markdown-it .parse; returns list of markdown nodes
+`;
+
+export const INFO_CODEBLOCK_JS = `
+class ResponseInfo {
+${INFO_CODEBLOCK_JS_PROPS}
 }`;
 
-export const INFO_CODEBLOCK_PY = `
-class ResponseInfo:
+export const INFO_CODEBLOCK_JS_FULL = `
+class ResponseInfo {
+${INFO_CODEBLOCK_JS_PROPS}
+
+${INFO_CODEBLOCK_JS_EXTS}
+}`;
+
+const INFO_CODEBLOCK_PY_PROPS = `
   text: str  # The text of the LLM response
   prompt: str  # The text of the prompt using to query the LLM
   llm: str  # The name of the LLM queried (the nickname in ChainForge)
   var: dict  # A dictionary of arguments that filled in the prompt template used to generate the final prompt
   meta: dict  # A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
+`;
 
+const INFO_CODEBLOCK_PY_EXTS = `
   # Methods
   def __str__(self):
     return self.text
@@ -67,6 +80,18 @@ class ResponseInfo:
   def asMarkdownAST(self):
     # Returns markdown AST parsed with mistune
     ...
+`;
+
+export const INFO_CODEBLOCK_PY = `
+class ResponseInfo:
+${INFO_CODEBLOCK_PY_PROPS}
+`;
+
+export const INFO_CODEBLOCK_PY_FULL = `
+class ResponseInfo:
+${INFO_CODEBLOCK_PY_PROPS}
+
+${INFO_CODEBLOCK_PY_EXTS}  
 `;
 
 // Code evaluator examples for info modal
@@ -507,7 +532,7 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
             following properties and methods:
           </Text>
           <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python" ? INFO_CODEBLOCK_PY : INFO_CODEBLOCK_JS}
+            {progLang === "python" ? INFO_CODEBLOCK_PY_FULL : INFO_CODEBLOCK_JS_FULL}
           </Prism>
           <Text mt="md" mb="sm">
             For instance, say you have a prompt template{" "}
@@ -560,7 +585,7 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
             following properties and methods:
           </Text>
           <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python" ? INFO_CODEBLOCK_PY : INFO_CODEBLOCK_JS}
+            {progLang === "python" ? INFO_CODEBLOCK_PY_FULL : INFO_CODEBLOCK_JS_FULL}
           </Prism>
           <Text mt="md" mb="sm">
             For another example, say you have a prompt that requests the LLM

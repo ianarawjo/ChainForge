@@ -5,9 +5,9 @@ const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");
 const { loadPyodide } = require("pyodide");
 import path from "path";
 import { EventEmitter } from "events";
-import { AssertionWriterSystemMsgChatHistory, EvalCriteria, EvalFunction, EvalFunctionResult, isValidEvalCriteriaFormat } from "./typing";
+import { AssertionWriterSystemMsg, EvalCriteria, EvalFunction, EvalFunctionResult, isValidEvalCriteriaFormat } from "./typing";
 import { Dict, StandardizedLLMResponse } from "../typing";
-import { queryLLM } from "../backend";
+import { executejs, simpleQueryLLM } from "../backend";
 import { retryAsyncFunc } from "../utils";
 
 // Define a global variable to store the Pyodide instance without an explicit type
@@ -48,15 +48,11 @@ export async function generateLLMEvaluationCriteria(
 
   // Query the LLM (below, we will try this up to 3 times)
   async function _query() {
-    const result = await queryLLM(
-      Date.now().toString(), // id to refer to this query
-      "gpt-3.5-turbo", // llm
-      1, // n
+    const result = await simpleQueryLLM(
       detailedPrompt, // prompt
-      {}, // vars
-      AssertionWriterSystemMsgChatHistory, // chat_history
+      "gpt-3.5-turbo", // llm
+      AssertionWriterSystemMsg, // system_msg
       apiKeys, // API keys (if any)
-      true, // no_cache mode on
     );
 
     if (result.errors && Object.keys(result.errors).length > 0)
@@ -91,46 +87,73 @@ export async function executeLLMEval(
   example: StandardizedLLMResponse,
 ): Promise<EvalFunctionResult> {
   // Construct call to an LLM to evaluate the example
+  const evalPrompt = "You are an expert evaluator. Evaluate the text below according to this criteria: " +
+    evalFunction.code + " Only return \"yes\" or \"no\", nothing else.\n\n```\n" + example.responses[0] + "\n```";
 
-  const client = new OpenAIClient(
-    process.env.AZURE_OPENAI_ENDPOINT,
-    new AzureKeyCredential(process.env.AZURE_OPENAI_KEY),
+  // Query an LLM as an evaluator
+  const result =  await simpleQueryLLM(
+    evalPrompt, // prompt
+    "gpt-3.5-turbo", // llm
+    "You are an expert evaluator.", // system_msg
   );
 
-  const evalPrompt = `You are an expert evaluator. Given the following example variables, prompt, and response:
-- Variables: ${example.variables}
-- Prompt: ${example.prompt}
-- Response: ${example.response}
-
-${evalFunction.code}? Return "yes" or "no".`;
-
-  const messages = [
-    {
-      content: "You are an expert evaluator.",
-      role: "system",
-    },
-    { role: "user", content: evalPrompt },
-  ];
-
-  const response = await client.getChatCompletions("gpt-35-turbo", messages);
+  // Get the output
+  const output = result.responses[0].responses[0];
 
   // Parse the response to determine the boolean value to return
-  if (response.choices[0].message.content.toLowerCase().includes("yes")) {
+  if (output.toLowerCase().includes("yes")) {
     return EvalFunctionResult.PASS;
-  } else if (response.choices[0].message.content.toLowerCase().includes("no")) {
+  } else if (output.toLowerCase().includes("no")) {
     return EvalFunctionResult.FAIL;
   } else {
     // throw new EvalExecutionError(
     //   `Error executing function ${evalFunction.name}: could not parse ${response.choices[0].message.content}`,
     // );
+    console.warn("executeLLMEval: Warning: Could not find 'yes' or 'no' in response.", evalPrompt, output);
     return EvalFunctionResult.SKIP;
   }
 }
 
-export async function executeFunction(
+/**
+ * Executes a JavaScript function, described by evalFunction, against the "example" LLM response object. 
+ * @returns `EvalFunctionResult`
+ */
+export async function execJSFunc(
+  evalFunction: EvalFunction,
+  example: StandardizedLLMResponse,
+  iframe_id: string,
+) {
+  try {
+    const result = await executejs(iframe_id, evalFunction.code, [example], "response", "evaluator");
+
+    // Check for errors
+    if (result.error !== undefined)
+      throw new Error(result.error);
+
+    // Extract the evaluation result
+    const eval_res = result.responses ? (result.responses[0] as StandardizedLLMResponse).eval_res?.items[0] : undefined;
+
+    // Check that the evaluation result is a boolean value
+    // NOTE: EvalGen only supports assertion functions at this time.
+    if ( typeof eval_res !== "boolean")
+      throw new Error("Non-boolean return value encountered when executing JS eval code. Value: ", eval_res);
+
+    return eval_res ? EvalFunctionResult.PASS : EvalFunctionResult.FAIL;
+  } catch (err) {
+    console.error(err);
+    return EvalFunctionResult.SKIP;
+  }
+}
+
+/**
+ * Executes a Python function, described by evalFunction, against the "example" LLM response object.
+ * @returns `EvalFunctionResult`
+ */
+export async function execPyFunc(
   evalFunction: EvalFunction,
   example: StandardizedLLMResponse,
 ): Promise<EvalFunctionResult> {
+
   // Load Pyodide only if it hasn't been loaded before
   if (!pyodideInstance) {
     const pyodidePath = path.join(__dirname, "pyodide");
@@ -165,7 +188,7 @@ result`;
 export async function generateFunctionsForCriteria(
   criteria: EvalCriteria,
   promptTemplate: string,
-  example: Example,
+  example: StandardizedLLMResponse,
   emitter: EventEmitter,
 ): Promise<void> {
   const functionGenPrompt = buildFunctionGenPrompt(
@@ -210,7 +233,7 @@ function buildFunctionGenPrompt(
   
   Example inputs and outputs of the LLM pipeline:
   - Prompt: ${example.prompt}
-  - LLM Response: ${example.response}
+  - LLM Response: ${example.responses[0]}
   
   Evaluation Criteria:
   - ${criteria.criteria}

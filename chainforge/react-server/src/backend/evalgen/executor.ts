@@ -1,5 +1,5 @@
 import {
-  executeFunction,
+  execPyFunc,
   executeLLMEval,
   generateFunctionsForCriteria,
 } from "./utils";
@@ -149,7 +149,7 @@ export default class EvaluationFunctionExecutor {
         const executionPromises = this.examples.map(async (example) => {
           const funcToExecute =
             evalFunction.evalCriteria.eval_method === "code"
-              ? executeFunction
+              ? execPyFunc
               : executeLLMEval;
 
           // Run the function on the example and if there's an error, increment skipped
@@ -376,7 +376,7 @@ export default class EvaluationFunctionExecutor {
         // If not, execute the function and store the result in the cache
         const funcToExecute =
           evalFunction.evalCriteria.eval_method === "code"
-            ? executeFunction
+            ? execPyFunc
             : executeLLMEval;
         const result = await funcToExecute(evalFunction, example);
 

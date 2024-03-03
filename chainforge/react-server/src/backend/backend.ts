@@ -901,6 +901,40 @@ export async function queryLLM(
 }
 
 /**
+ * A convenience function for a simpler call to queryLLM.
+ * This is queryLLM with "no_cache" turned on, no variables, and n=1 responses per prompt.
+ * @param prompt The prompt to send off
+ * @param llm The LLM(s) to query.
+ * @param system_msg Any system message to set on the model (if supported).
+ * @param apiKeys Any API keys to use (if needed).
+ * @returns 
+ */
+export async function simpleQueryLLM(prompt: string, llm: string | string[] | Dict[], system_msg?: string, apiKeys?: Dict) {
+  const chat_history = system_msg === undefined ? [] : [
+    {
+      messages: [
+        {
+          role: "system",
+          content: system_msg,
+        },
+      ],
+      fill_history: {},
+    },
+  ];
+
+  return await queryLLM(
+    Date.now().toString(), // id to refer to this query
+    llm, // llm
+    1, // n
+    prompt, // prompt
+    {}, // vars
+    chat_history, // chat_history
+    apiKeys, // API keys (if any)
+    true, // no_cache mode on
+  );
+}
+
+/**
  * Executes a Javascript 'evaluate' function over all cache'd responses with given id's.
  *
  * Similar to Flask backend's Python 'execute' function, except requires code to be in Javascript.
