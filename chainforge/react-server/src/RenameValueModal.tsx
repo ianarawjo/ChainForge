@@ -3,8 +3,19 @@ import { Modal, TextInput, Button, Box, Group } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 
+export interface RenameValueModalProps {
+  initialValue: string;
+  title: string;
+  label: string;
+  onSubmit?: (val: string) => void;
+}
+
+export interface RenameValueModalHandles {
+  trigger: (msg?: string) => void;
+}
+
 /** Modal that lets user rename a single value, using a TextInput field. */
-const RenameValueModal = forwardRef(function RenameValueModal(
+const RenameValueModal = forwardRef<RenameValueModalHandles, RenameValueModalProps>(function RenameValueModal(
   { initialValue, title, label, onSubmit },
   ref,
 ) {
@@ -38,7 +49,7 @@ const RenameValueModal = forwardRef(function RenameValueModal(
       <Box maw={300} mx="auto">
         <form
           onSubmit={form.onSubmit((values) => {
-            onSubmit(values.value);
+            if (onSubmit) onSubmit(values.value);
             close();
           })}
         >

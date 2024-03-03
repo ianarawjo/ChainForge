@@ -16,7 +16,8 @@ import {
   APP_IS_RUNNING_LOCALLY,
 } from "./backend/utils";
 import { DuplicateVariableNameError } from "./backend/errors";
-import { Dict, LLMSpec, TemplateVarInfo } from "./backend/typing";
+import { Dict, LLMSpec, PromptVarType, PromptVarsDict, TemplateVarInfo } from "./backend/typing";
+import { TabularDataColType, TabularDataRowType } from "./TabularDataNode";
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -226,7 +227,7 @@ interface StoreHandles {
   edges: Edge[];
 
   // Helper functions for nodes and edges
-  getNode: (id: string) => Node;
+  getNode: (id: string) => Node | undefined;
   addNode: (newnode: Node) => void;
   removeNode: (id: string) => void;
   deselectAllNodes: () => void;
@@ -259,6 +260,10 @@ interface StoreHandles {
   getFlag: (flag: string) => boolean | string;
   setFlag: (flag: string, val: boolean | string) => void;
 
+  // Global state
+  state: Dict;
+  setState: (key: string, val: any) => void;
+
   // The color to represent a specific LLM, to be globally consistent
   llmColors: Dict<string>;
   getColorForLLM: (llm_name: string) => string | undefined;
@@ -279,7 +284,7 @@ interface StoreHandles {
   // Set data for a specific node
   setDataPropsForNode: (
     id: string,
-    data_props: Dict<string | boolean | number | Dict>,
+    data_props: Dict<string | boolean | number | null | Dict>,
   ) => void;
 
   // Rasterize data output from nodes ("pull" the data out)
@@ -374,7 +379,7 @@ const useStore = create<StoreHandles>((set, get) => ({
   // Generates a unique color not yet used in llmColors (unless # colors is large)
   genUniqueLLMColor: () => {
     const used_colors = new Set(Object.values(get().llmColors));
-    const get_unused_color = (all_colors) => {
+    const get_unused_color = (all_colors: string[]) => {
       for (let i = 0; i < all_colors.length; i++) {
         const color = all_colors[i];
         if (!used_colors.has(color)) return color;
@@ -420,7 +425,7 @@ const useStore = create<StoreHandles>((set, get) => ({
       .map((e) => e.target);
     out_nodes.forEach((n) => {
       const node = get().getNode(n);
-      if (node && refreshableOutputNodeTypes.has(node.type)) {
+      if (node?.type !== undefined && refreshableOutputNodeTypes.has(node.type)) {
         get().setDataPropsForNode(node.id, { refresh: true });
       }
     });
@@ -428,91 +433,91 @@ const useStore = create<StoreHandles>((set, get) => ({
   output: (sourceNodeId, sourceHandleKey) => {
     // Get the source node
     const src_node = get().getNode(sourceNodeId);
-    if (src_node) {
-      // If the source node has tabular data, use that:
-      if (src_node.type === "table") {
-        if (
-          ("sel_rows" in src_node.data || "rows" in src_node.data) &&
-          "columns" in src_node.data
-        ) {
-          const rows = src_node.data.sel_rows ?? src_node.data.rows;
-          const columns = src_node.data.columns;
-
-          // The sourceHandleKey is the key of the column in the table that we're interested in:
-          const src_col = columns.find((c) => c.header === sourceHandleKey);
-          if (src_col !== undefined) {
-            // Construct a lookup table from column key to header name,
-            // as the 'metavars' dict should be keyed by column *header*, not internal key:
-            const col_header_lookup = {};
-            columns.forEach((c) => {
-              col_header_lookup[c.key] = c.header;
-            });
-
-            // Extract all the data for every row of the source column, appending the other values as 'meta-vars':
-            return rows
-              .map((row) => {
-                const row_keys = Object.keys(row);
-
-                // Check if this is an 'empty' row (with all empty strings); if so, skip it:
-                if (
-                  row_keys.every(
-                    (key) =>
-                      key === "__uid" ||
-                      !row[key] ||
-                      (typeof row[key] === "string" && row[key].trim() === ""),
-                  )
-                )
-                  return undefined;
-
-                const row_excluding_col = {};
-                row_keys.forEach((key) => {
-                  if (key !== src_col.key && key !== "__uid")
-                    row_excluding_col[col_header_lookup[key]] =
-                      row[key].toString();
-                });
-                return {
-                  // We escape any braces in the source text before they're passed downstream.
-                  // This is a special property of tabular data nodes: we don't want their text to be treated as prompt templates.
-                  text: escapeBraces(
-                    src_col.key in row ? row[src_col.key].toString() : "",
-                  ),
-                  metavars: row_excluding_col,
-                  associate_id: row.__uid, // this is used by the backend to 'carry' certain values together
-                };
-              })
-              .filter((r) => r !== undefined);
-          } else {
-            console.error(
-              `Could not find table column with source handle name ${sourceHandleKey}`,
-            );
-            return null;
-          }
-        }
-      } else {
-        // Get the data related to that handle:
-        if ("fields" in src_node.data) {
-          if (Array.isArray(src_node.data.fields)) return src_node.data.fields;
-          else {
-            // We have to filter over a special 'fields_visibility' prop, which
-            // can select what fields get output:
-            if ("fields_visibility" in src_node.data)
-              return Object.values(
-                transformDict(
-                  src_node.data.fields,
-                  // eslint-disable-next-line
-                  (fid) => src_node.data.fields_visibility[fid] !== false,
-                ),
-              );
-            // return all field values
-            else return Object.values(src_node.data.fields);
-          }
-        }
-        // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:
-        else return src_node.data[sourceHandleKey];
-      }
-    } else {
+    if (!src_node) {
       console.error("Could not find node with id", sourceNodeId);
       return null;
+    }
+
+    // If the source node has tabular data, use that:
+    if (src_node.type === "table") {
+      if (
+        ("sel_rows" in src_node.data || "rows" in src_node.data) &&
+        "columns" in src_node.data
+      ) {
+        const rows: TabularDataRowType[] = src_node.data.sel_rows ?? src_node.data.rows;
+        const columns: TabularDataColType[] = src_node.data.columns;
+
+        // The sourceHandleKey is the key of the column in the table that we're interested in:
+        const src_col = columns.find((c) => c.header === sourceHandleKey);
+        if (src_col !== undefined) {
+          // Construct a lookup table from column key to header name,
+          // as the 'metavars' dict should be keyed by column *header*, not internal key:
+          const col_header_lookup: Dict<string> = {};
+          columns.forEach((c) => {
+            col_header_lookup[c.key] = c.header;
+          });
+
+          // Extract all the data for every row of the source column, appending the other values as 'meta-vars':
+          return rows
+            .map((row) => {
+              const row_keys = Object.keys(row);
+
+              // Check if this is an 'empty' row (with all empty strings); if so, skip it:
+              if (
+                row_keys.every(
+                  (key) =>
+                    key === "__uid" ||
+                    !row[key] ||
+                    (typeof row[key] === "string" && row[key].trim() === ""),
+                )
+              )
+                return undefined;
+
+              const row_excluding_col: Dict<string> = {};
+              row_keys.forEach((key) => {
+                if (key !== src_col.key && key !== "__uid")
+                  row_excluding_col[col_header_lookup[key]] =
+                    row[key].toString();
+              });
+              return {
+                // We escape any braces in the source text before they're passed downstream.
+                // This is a special property of tabular data nodes: we don't want their text to be treated as prompt templates.
+                text: escapeBraces(
+                  src_col.key in row ? row[src_col.key].toString() : "",
+                ),
+                metavars: row_excluding_col,
+                associate_id: row.__uid, // this is used by the backend to 'carry' certain values together
+              };
+            })
+            .filter((r) => r !== undefined);
+        } else {
+          console.error(
+            `Could not find table column with source handle name ${sourceHandleKey}`,
+          );
+          return null;
+        }
+      }
+    } else {
+      // Get the data related to that handle:
+      if ("fields" in src_node.data) {
+        if (Array.isArray(src_node.data.fields)) return src_node.data.fields;
+        else {
+          // We have to filter over a special 'fields_visibility' prop, which
+          // can select what fields get output:
+          if ("fields_visibility" in src_node.data)
+            return Object.values(
+              transformDict(
+                src_node.data.fields,
+                // eslint-disable-next-line
+                (fid) => src_node.data.fields_visibility[fid] !== false,
+              ),
+            );
+          // return all field values
+          else return Object.values(src_node.data.fields);
+        }
+      }
+      // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:
+      else return src_node.data[sourceHandleKey];
     }
   },
 
@@ -520,9 +525,9 @@ const useStore = create<StoreHandles>((set, get) => ({
   getImmediateInputNodeTypes: (_targetHandles, node_id) => {
     const getNode = get().getNode;
     const edges = get().edges;
-    const inputNodeTypes = [];
+    const inputNodeTypes: string[] = [];
     edges.forEach((e) => {
-      if (e.target === node_id && _targetHandles.includes(e.targetHandle)) {
+      if (e.target === node_id && typeof e.targetHandle === "string" && _targetHandles.includes(e.targetHandle)) {
         const src_node = getNode(e.source);
         if (src_node && src_node.type !== undefined)
           inputNodeTypes.push(src_node.type);
@@ -540,14 +545,14 @@ const useStore = create<StoreHandles>((set, get) => ({
     const edges = get().edges;
 
     // Helper function to store collected data in dict:
-    const store_data = (_texts, _varname, _data) => {
+    const store_data = (_texts: PromptVarType[], _varname: string, _data: PromptVarsDict) => {
       if (_varname in _data) _data[_varname] = _data[_varname].concat(_texts);
       else _data[_varname] = _texts;
     };
 
     // Pull data from each source recursively:
     const pulled_data = {};
-    const get_outputs = (varnames, nodeId, var_history) => {
+    const get_outputs = (varnames: string[], nodeId: string, var_history: Set<string>) => {
       varnames.forEach((varname) => {
         // Check for duplicate variable names
         if (var_history.has(String(varname).toLowerCase()))
@@ -560,7 +565,7 @@ const useStore = create<StoreHandles>((set, get) => ({
         edges.forEach((e) => {
           if (e.target === nodeId && e.targetHandle === varname) {
             // Get the immediate output:
-            const out = output(e.source, e.sourceHandle);
+            const out = (e.sourceHandle != null) ? output(e.source, e.sourceHandle) : undefined;
             if (!out || !Array.isArray(out) || out.length === 0) return;
 
             // Check the format of the output. Can be str or dict with 'text' and more attrs:
@@ -572,14 +577,14 @@ const useStore = create<StoreHandles>((set, get) => ({
             }
 
             // Get any vars that the output depends on, and recursively collect those outputs as well:
-            const n_vars = getNode(e.source).data.vars;
+            const n_vars = getNode(e.source)?.data?.vars;
             if (n_vars && Array.isArray(n_vars) && n_vars.length > 0)
               get_outputs(n_vars, e.source, var_history);
           }
         });
       });
     };
-    get_outputs(_targetHandles, node_id, new Set());
+    get_outputs(_targetHandles, node_id, new Set<string>());
 
     return pulled_data;
   },
@@ -589,17 +594,18 @@ const useStore = create<StoreHandles>((set, get) => ({
    * @param {*} id The id of the node to set 'data' properties for.
    * @param {*} data_props The properties to set on the node's 'data'.
    */
-  setDataPropsForNode: (id, data_props) => {
+  setDataPropsForNode: (id: string, data_props: Dict) => {
+    const _set = (nds: Node[]) =>
+      nds.map((n) => {
+        if (n.id === id) {
+          for (const key of Object.keys(data_props))
+            n.data[key] = data_props[key];
+          n.data = deepcopy(n.data);
+        }
+        return n;
+      });
     set({
-      nodes: ((nds) =>
-        nds.map((n) => {
-          if (n.id === id) {
-            for (const key of Object.keys(data_props))
-              n.data[key] = data_props[key];
-            n.data = deepcopy(n.data);
-          }
-          return n;
-        }))(get().nodes),
+      nodes: (_set)(get().nodes),
     });
   },
   getNode: (id) => get().nodes.find((n) => n.id === id),
@@ -686,6 +692,7 @@ const useStore = create<StoreHandles>((set, get) => ({
   onConnect: (connection) => {
     // Get the target node information
     const target = get().getNode(connection.target);
+    if (target === undefined) return;
 
     if (
       target.type === "vis" ||
@@ -696,7 +703,7 @@ const useStore = create<StoreHandles>((set, get) => ({
     }
 
     // Ping target node to fresh if necessary
-    if (target && refreshableOutputNodeTypes.has(target.type)) {
+    if (typeof target?.type === "string" && refreshableOutputNodeTypes.has(target.type)) {
       get().setDataPropsForNode(target.id, { refresh: true });
     }
 

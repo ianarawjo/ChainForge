@@ -7,7 +7,7 @@ import {
   StandardizedLLMResponse,
   ChatHistoryInfo,
   isEqualChatHistory,
-  PromptVarType,
+  PromptVarsDict,
 } from "./typing";
 import { LLM, getEnumName } from "./models";
 import {
@@ -234,8 +234,8 @@ function extract_llm_params(llm_spec: Dict | string): Dict {
   else return {};
 }
 
-function filterVarsByLLM(vars: PromptVarType, llm_key: string): Dict {
-  const _vars: PromptVarType = {};
+function filterVarsByLLM(vars: PromptVarsDict, llm_key: string): Dict {
+  const _vars: PromptVarsDict = {};
   Object.entries(vars).forEach(([key, val]) => {
     const vs = Array.isArray(val) ? val : [val];
     _vars[key] = vs.filter(

@@ -33,9 +33,10 @@ export interface TemplateVarInfo {
   llm?: string | Dict;
 }
 
-export interface PromptVarType {
-  [key: string]: Array<string | TemplateVarInfo>;
-}
+export type PromptVarType = (string | TemplateVarInfo);
+export type PromptVarsDict = {
+  [key: string]: PromptVarType[];
+};
 
 /** OpenAI chat message format */
 export interface ChatMessage {
