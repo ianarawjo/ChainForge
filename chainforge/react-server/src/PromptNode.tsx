@@ -29,7 +29,7 @@ import TemplateHooks, {
 import { LLMListContainer } from "./LLMListComponent";
 import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 import fetch_from_backend from "./fetch_from_backend";
-import { escapeBraces } from "./backend/template";
+import { PromptTemplate, escapeBraces } from "./backend/template";
 import ChatHistoryView from "./ChatHistoryView";
 import InspectFooter from "./InspectFooter";
 import {
@@ -212,7 +212,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   // Progress when querying responses
   const [progress, setProgress] = useState<QueryProgress | undefined>(undefined);
   const [progressAnimated, setProgressAnimated] = useState(true);
-  const [runTooltip, setRunTooltip] = useState<string | null>(undefined);
+  const [runTooltip, setRunTooltip] = useState<string | undefined>(undefined);
 
   // Cancelation of pending queries
   const [cancelId, setCancelId] = useState(Date.now());
@@ -245,7 +245,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   }, [promptTextOnLastRun, status]);
 
   const onLLMListItemsChange = useCallback(
-    (new_items, old_items) => {
+    (new_items: LLMSpec[], old_items: LLMSpec[]) => {
       // Update the local and global state, with some debounce to limit re-rendering:
       debounce((_id, _new_items) => {
         setLLMItemsCurrState(_new_items);
@@ -273,7 +273,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   );
 
   const updateShowContToggle = useCallback(
-    (pulled_data) => {
+    (pulled_data: Dict<string[] | TemplateVarInfo[]>) => {
       if (node_type === "chat") return; // always show when chat node
       const hasPromptInput = getImmediateInputNodeTypes(templateVars, id).some(
         (t) => ["prompt", "chat"].includes(t),
@@ -332,10 +332,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
     // Update status icon, if need be:
     if (
       promptTextOnLastRun !== null &&
-      status !== "warning" &&
+      status !== Status.WARNING &&
       value !== promptTextOnLastRun
     )
-      setStatus("warning");
+      setStatus(Status.WARNING);
 
     // Debounce refreshing the template hooks so we don't annoy the user
     debounce((_value) => refreshTemplateHooks(_value), 500)(value);
@@ -462,7 +462,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   };
 
   // On hover over the 'info' button, to preview the prompts that will be sent out
-  const [promptPreviews, setPromptPreviews] = useState([]);
+  const [promptPreviews, setPromptPreviews] = useState<PromptInfo[]>([]);
   const handlePreviewHover = () => {
     // Pull input data and prompt
     try {
@@ -474,8 +474,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
         vars: pulled_vars,
       }).then((prompts) => {
         setPromptPreviews(
-          prompts.map(
-            (p: string) =>
+          (prompts as PromptTemplate[]).map(
+            (p: PromptTemplate) =>
               new PromptInfo(p.toString(), extractSettingsVars(p.fill_history)),
           ),
         );
@@ -686,7 +686,7 @@ Soft failing by replacing undefined with empty strings.`,
       // Try to pull inputs
       pulled_data = pullInputData(templateVars, id);
     } catch (err) {
-      alertModal.current?.trigger(err.message);
+      alertModal.current?.trigger((err as Error)?.message ?? err);
       console.error(err);
       return; // early exit
     }
@@ -740,6 +740,7 @@ Soft failing by replacing undefined with empty strings.`,
     llmListContainer?.current?.setZeroPercProgress();
 
     // Create a callback to listen for progress
+    let onProgressChange: ((progress_by_llm_key: Dict<QueryProgress>) => void) | undefined = undefined;
     const open_progress_listener = ([response_counts, total_num_responses]) => {
       setResponsesWillChange(
         !response_counts || Object.keys(response_counts).length === 0,
@@ -750,7 +751,7 @@ Soft failing by replacing undefined with empty strings.`,
         0,
       );
 
-      window.onProgressChange = (progress_by_llm_key) => {
+      onProgressChange = (progress_by_llm_key: Dict<QueryProgress>) => {
         if (!progress_by_llm_key || CancelTracker.has(cancelId)) return;
 
         // Update individual progress bars
@@ -808,7 +809,7 @@ Soft failing by replacing undefined with empty strings.`,
           n: numGenerations,
           api_keys: apiKeys || {},
           no_cache: false,
-          progress_listener: window.onProgressChange,
+          progress_listener: onProgressChange,
           cont_only_w_prior_llms:
             node_type !== "chat"
               ? showContToggle && contWithPriorLLMs
@@ -816,7 +817,7 @@ Soft failing by replacing undefined with empty strings.`,
           cancel_id: cancelId,
         },
         rejected,
-      ).then(function (json) {
+      ).then(function (json: unknown) {
         // We have to early exit explicitly because we will still enter this function even if 'rejected' is called
         if (!json && CancelTracker.has(cancelId)) return;
 
@@ -828,18 +829,19 @@ Soft failing by replacing undefined with empty strings.`,
 
         // Store and log responses (if any)
         if (json?.responses) {
-          setJSONResponses(json.responses);
+          const json_responses = json.responses as StandardizedLLMResponse[];
+          setJSONResponses(json_responses);
 
           // Log responses for debugging:
-          console.log(json.responses);
+          console.log(json_responses);
 
           // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
           // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
           // so we can keep track of 'upstream' LLMs (and plot against them) later on:
-          const llm_metavar_key = getUniqueLLMMetavarKey(json.responses);
+          const llm_metavar_key = getUniqueLLMMetavarKey(json_responses);
 
           setDataPropsForNode(id, {
-            fields: json.responses
+            fields: json_responses
               .map((resp_obj) =>
                 resp_obj.responses.map((r) => {
                   // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
