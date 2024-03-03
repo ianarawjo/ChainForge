@@ -1,15 +1,19 @@
 import {
-  EvalCriteria,
-  EvalFunction,
-  Example,
-  ExampleId,
-  EvalFunctionResult,
-  EvalFunctionReport,
-  EvalFunctionSetReport,
   executeFunction,
   executeLLMEval,
   generateFunctionsForCriteria,
 } from "./utils";
+import {
+  EvalCriteria,
+  EvalFunction,
+  EvalFunctionResult,
+  EvalFunctionReport,
+  EvalFunctionSetReport,
+} from "./typing";
+import {
+  StandardizedLLMResponse,
+  ResponseUID
+} from "../typing";
 import { EventEmitter } from "events";
 
 /**
@@ -57,12 +61,12 @@ import { EventEmitter } from "events";
  *    `getAllScores`, or `getNextExampleToScore`.
  */
 export default class EvaluationFunctionExecutor {
-  private scores: Map<ExampleId, number>;
+  private scores: Map<ResponseUID, number>;
   // Cache function results for each example
-  private resultsCache: Map<EvalFunction, Map<ExampleId, EvalFunctionResult>>;
-  private grades: Map<ExampleId, boolean>; // Grades for all examples
-  private lastPickedHighScore; // To alternate between highest and lowest scores when sampling examples to grade
-  private examples: Example[]; // The set of examples being evaluated and graded
+  private resultsCache: Map<EvalFunction, Map<ResponseUID, EvalFunctionResult>>;
+  private grades: Map<ResponseUID, boolean>; // Grades for all examples
+  private lastPickedHighScore: boolean; // To alternate between highest and lowest scores when sampling examples to grade
+  private examples: StandardizedLLMResponse[]; // The set of examples being evaluated and graded
   private evalCriteria: EvalCriteria[]; // The criteria used to generate evaluation functions
   private evalFunctions: EvalFunction[]; // The set of evaluation functions generated for the developer's LLM chain
   private promptTemplate: string; // The prompt template for the developer's LLM chain
@@ -78,11 +82,11 @@ export default class EvaluationFunctionExecutor {
   constructor(
     evalCriteria: EvalCriteria[],
     promptTemplate: string,
-    examples: Example[],
+    examples: StandardizedLLMResponse[],
   ) {
     this.resultsCache = new Map<
       EvalFunction,
-      Map<ExampleId, EvalFunctionResult>
+      Map<ResponseUID, EvalFunctionResult>
     >();
     this.lastPickedHighScore = false; // Start off picking the highest score
     this.examples = examples;
@@ -90,14 +94,14 @@ export default class EvaluationFunctionExecutor {
     this.promptTemplate = promptTemplate;
 
     // Set scores and grades to default values of 0
-    this.scores = new Map<ExampleId, number>();
+    this.scores = new Map<ResponseUID, number>();
 
     // Set scores to 0 for each example id
     for (const example of examples) {
-      this.scores.set(example.id, 0);
+      this.scores.set(example.uid, 0);
     }
 
-    this.grades = new Map<ExampleId, boolean>();
+    this.grades = new Map<ResponseUID, boolean>();
     this.evalFunctions = [];
   }
 
@@ -155,18 +159,18 @@ export default class EvaluationFunctionExecutor {
           if (!this.resultsCache.has(evalFunction)) {
             this.resultsCache.set(evalFunction, new Map());
           }
-          this.resultsCache.get(evalFunction)?.set(example.id, result);
+          this.resultsCache.get(evalFunction)?.set(example.uid, result);
 
           // Update the score if the result is false
           if (result === EvalFunctionResult.FAIL) {
-            this.updateScore(example.id, evalFunction);
+            this.updateScore(example.uid, evalFunction);
           }
 
           // Put result in cache
           if (!this.resultsCache.has(evalFunction)) {
             this.resultsCache.set(evalFunction, new Map());
           }
-          this.resultsCache.get(evalFunction)?.set(example.id, result);
+          this.resultsCache.get(evalFunction)?.set(example.uid, result);
         });
 
         await Promise.all(executionPromises);
@@ -215,7 +219,7 @@ export default class EvaluationFunctionExecutor {
    * @param exampleId The unique ID of the example being scored.
    * @param evalFunction The eval function used for evaluation.
    */
-  private updateScore(exampleId: ExampleId, evalFunction: EvalFunction): void {
+  private updateScore(exampleId: ResponseUID, evalFunction: EvalFunction): void {
     // const outcome = this.outcomes.get(evalFunction);
 
     // Get all the results for this function
@@ -248,7 +252,7 @@ export default class EvaluationFunctionExecutor {
    * @param exampleId The unique ID of the example whose score is being requested.
    * @returns The current response priority score of the example, if available.
    */
-  public getScore(exampleId: ExampleId): number | undefined {
+  public getScore(exampleId: ResponseUID): number | undefined {
     return this.scores.get(exampleId);
   }
 
@@ -258,7 +262,7 @@ export default class EvaluationFunctionExecutor {
    *
    * @returns A map of example IDs to their current scores.
    */
-  public getAllScores(): Map<ExampleId, number> {
+  public getAllScores(): Map<ResponseUID, number> {
     return new Map(this.scores);
   }
 
@@ -267,7 +271,7 @@ export default class EvaluationFunctionExecutor {
    *
    * @returns A map of example IDs to their grades.
    */
-  public getGrades(): Map<ExampleId, boolean> {
+  public getGrades(): Map<ResponseUID, boolean> {
     return new Map(this.grades);
   }
 
@@ -278,7 +282,7 @@ export default class EvaluationFunctionExecutor {
    * @param exampleId The unique ID of the example being graded.
    * @param grade The developer-provided grade assigned to the example.
    */
-  public setGradeForExample(exampleId: ExampleId, grade: boolean): void {
+  public setGradeForExample(exampleId: ResponseUID, grade: boolean): void {
     this.grades.set(exampleId, grade);
   }
 
@@ -286,7 +290,7 @@ export default class EvaluationFunctionExecutor {
    * Gets a map of ungraded example ids and their scores, sorted by score.
    * @return A map of ungraded example ids and their scores, sorted by score.
    */
-  public getUngradedScores(): Map<ExampleId, number> {
+  public getUngradedScores(): Map<ResponseUID, number> {
     // Step 1: Convert the scores Map to an array and filter out graded examples
     const ungradedEntries = Array.from(this.scores.entries())
       .filter(([id]) => !this.grades.has(id))
@@ -301,7 +305,7 @@ export default class EvaluationFunctionExecutor {
       })
 
       // Step 3: Convert the sorted objects back into the format expected by the Map constructor
-      .map(({ id, score }) => [id, score] as [ExampleId, number]);
+      .map(({ id, score }) => [id, score] as [ResponseUID, number]);
 
     // Step 4: Convert the array of key-value pairs back into a Map and return
     return new Map(ungradedEntries);
@@ -318,7 +322,7 @@ export default class EvaluationFunctionExecutor {
    */
   public getNextExampleToGrade(
     policy: "random" | "priority" = "priority",
-  ): ExampleId | null {
+  ): ResponseUID | null {
     const ungraded = Array.from(this.getUngradedScores().keys());
 
     if (ungraded.length === 0) {
@@ -349,10 +353,10 @@ export default class EvaluationFunctionExecutor {
     falseFailureRateThreshold: number,
   ): Promise<EvalFunctionSetReport> {
     const gradedExamples = this.examples.filter((example) =>
-      this.grades.has(example.id),
+      this.grades.has(example.uid),
     );
     let gradedResultMap: Map<
-      ExampleId,
+      ResponseUID,
       Map<EvalFunction, EvalFunctionResult>
     > = new Map();
 
@@ -362,7 +366,7 @@ export default class EvaluationFunctionExecutor {
       for (const evalFunction of this.evalFunctions) {
         // Check if the result is in the cache
         if (this.resultsCache.has(evalFunction)) {
-          const result = this.resultsCache.get(evalFunction)?.get(example.id);
+          const result = this.resultsCache.get(evalFunction)?.get(example.uid);
           if (result !== undefined) {
             row.set(evalFunction, result);
             continue;
@@ -380,19 +384,19 @@ export default class EvaluationFunctionExecutor {
         if (!this.resultsCache.has(evalFunction)) {
           this.resultsCache.set(evalFunction, new Map());
         }
-        this.resultsCache.get(evalFunction)?.set(example.id, result);
+        this.resultsCache.get(evalFunction)?.set(example.uid, result);
 
         row.set(evalFunction, result);
       }
-      gradedResultMap.set(example.id, row);
+      gradedResultMap.set(example.uid, row);
     }
 
     const numFailGrades = gradedExamples.filter(
-      (example) => !this.grades.get(example.id),
+      (example) => !this.grades.get(example.uid),
     ).length;
     let bestEvalFunctions: EvalFunction[] = [];
     let evalFunctionReport: Map<EvalCriteria, EvalFunctionReport[]> = new Map();
-    let coveredFailures = new Set<ExampleId>();
+    let coveredFailures = new Set<ResponseUID>();
 
     // Iterate through each criteria
     // For each criteria, select the function with the highest accuracy rate
@@ -418,8 +422,8 @@ export default class EvaluationFunctionExecutor {
 
         // Calculate accuracy for this function based on the graded examples
         for (const example of gradedExamples) {
-          const result = gradedResultMap.get(example.id)?.get(evalFunction);
-          const grade = this.grades.get(example.id)
+          const result = gradedResultMap.get(example.uid)?.get(evalFunction);
+          const grade = this.grades.get(example.uid)
             ? EvalFunctionResult.PASS
             : EvalFunctionResult.FAIL;
 
@@ -444,7 +448,7 @@ export default class EvaluationFunctionExecutor {
 
           // If the example failed and is covered, add it to the set of covered failures
           if (result === EvalFunctionResult.FAIL && result === grade) {
-            coveredFailures.add(example.id);
+            coveredFailures.add(example.uid);
           }
         }
 
@@ -478,7 +482,7 @@ export default class EvaluationFunctionExecutor {
 
     // Print out failure coverage
     const numFailures = gradedExamples.filter(
-      (example) => !this.grades.get(example.id),
+      (example) => !this.grades.get(example.uid),
     ).length;
     const coverage = coveredFailures.size / numFailures;
     console.log(`Failure coverage: ${coverage}`);
@@ -486,7 +490,7 @@ export default class EvaluationFunctionExecutor {
     // Print out missed failures
     const missedFailures = gradedExamples.filter(
       (example) =>
-        !this.grades.get(example.id) && !coveredFailures.has(example.id),
+        !this.grades.get(example.uid) && !coveredFailures.has(example.uid),
     );
     if (missedFailures.length > 0) {
       console.log(`Missed failures: ${missedFailures}`);

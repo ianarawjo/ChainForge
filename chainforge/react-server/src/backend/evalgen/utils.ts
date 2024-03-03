@@ -5,63 +5,39 @@ const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");
 const { loadPyodide } = require("pyodide");
 import path from "path";
 import { EventEmitter } from "events";
+import { AssertionWriterSystemMsgChatHistory, EvalCriteria, EvalFunction, EvalFunctionResult, isValidEvalCriteriaFormat } from "./typing";
+import { Dict, StandardizedLLMResponse } from "../typing";
+import { queryLLM } from "../backend";
+import { retryAsyncFunc } from "../utils";
 
 // Define a global variable to store the Pyodide instance without an explicit type
 let pyodideInstance: any = null;
 
-export interface EvalCriteria {
-  criteria: string;
-  eval_method: "code" | "expert";
-  source?: string;
+/**
+ * Extracts substrings within "```json" and "```" ticks. Excludes the ticks from return.
+ * @param mdText 
+ * @returns 
+ */
+function extractJSONBlocks(mdText: string): string[] | undefined {
+  const regex = /```json(.*?)```/g;
+  const matches = mdText.match(regex);
+  if (matches) return matches.map(s => s.replace("```json", "").replace("```", ""));
+
+  console.error("No JSON found in output.");
+  return undefined;
 }
 
-export enum EvalFunctionResult {
-  PASS = "pass",
-  FAIL = "fail",
-  SKIP = "skip",
-}
-
-export type ExampleId = string;
-
-export interface Example {
-  id: ExampleId;
-  variables: string; // Useful for converting to Python format
-  prompt: string;
-  response: string;
-}
-
-export interface EvalFunction {
-  evalCriteria: EvalCriteria;
-  code: string;
-  name: string;
-}
-
-export interface EvalFunctionReport {
-  evalFunction: EvalFunction;
-  true_pass: number;
-  true_fail: number;
-  false_pass: number;
-  false_fail: number;
-  skipped: number;
-}
-
-export interface EvalFunctionSetReport {
-  failureCoverage: number;
-  missedFailures: Example[];
-  selectedEvalFunctions: EvalFunction[];
-  allEvalFunctionReports: Map<EvalCriteria, EvalFunctionReport[]>; // Map from criteria to function reports
-}
-
-class EvalExecutionError extends Error {
-  constructor(message: string) {
-    super(message); // Call the parent constructor with the message
-    this.name = "EvalExecutionError"; // Set the error name to the class name
-    Object.setPrototypeOf(this, EvalExecutionError.prototype);
-  }
-}
-
+/**
+ * Given the user's prompt, generates a list of criteria in JSON format.
+ * 
+ * FUTURE: One might consider giving more contextual information, e.g. input vars to the prompt or prompt history.
+ * 
+ * @param prompt 
+ * @returns 
+ */
 export async function generateLLMEvaluationCriteria(
   prompt: string,
+  apiKeys?: Dict,
 ): Promise<EvalCriteria[]> {
   // Construct the detailed prompt for the LLM
   const detailedPrompt = `Here is my LLM prompt template:
@@ -70,29 +46,49 @@ export async function generateLLMEvaluationCriteria(
     
     Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following fields: "criteria" and "eval_method" (code or expert). The criteria should be short, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept.`;
 
-  // Usage example
+  // Query the LLM (below, we will try this up to 3 times)
+  async function _query() {
+    const result = await queryLLM(
+      Date.now().toString(), // id to refer to this query
+      "gpt-3.5-turbo", // llm
+      1, // n
+      detailedPrompt, // prompt
+      {}, // vars
+      AssertionWriterSystemMsgChatHistory, // chat_history
+      apiKeys, // API keys (if any)
+      true, // no_cache mode on
+    );
 
-  let data: EvalCriteria[] = [];
-  const streamer = new AzureOpenAIStreamer();
-  streamer.on("evalCriteria", (evalCriteria) => {
-    console.log(evalCriteria);
-    data.push(evalCriteria);
-  });
+    if (result.errors && Object.keys(result.errors).length > 0)
+      throw new Error(Object.values(result.errors)[0].toString());
 
-  await streamer.generate(detailedPrompt, "gpt-35-turbo", "criteria");
+    // Get output (text from LLM response)
+    const output = result.responses[0].responses[0];
+    console.log("LLM said: ", output); // for debuggging
 
-  // Assuming the response is a JSON string that we need to parse into an object
-  try {
-    return data;
-  } catch (error) {
-    console.error("Error parsing GPT response:", error);
-    throw new Error("Failed to parse GPT response into evaluation criteria.");
+    // Attempt to extract JSON blocks (strings) from input
+    const json_blocks = extractJSONBlocks(output);
+    if (json_blocks === undefined || json_blocks.length === 0)
+      throw new Error("EvalGen: Could not parse LLM response into evaluation critera: No JSON detected in output.");
+
+    // Attempt to parse all JSON blocks into objects
+    let data: EvalCriteria[] = json_blocks.map(s => JSON.parse(s));
+
+    // Double-check the formatting
+    if (data.every(isValidEvalCriteriaFormat)) 
+      return data;
+    else 
+      // Incorrect formatting
+      throw new Error("EvalGen: At least one JSON block was not in expected EvalCriteria format.");
   }
+
+  // Retry up to 3 times; otherwise, we will throw the last encountered error.
+  return retryAsyncFunc(_query, 3);
 }
 
 export async function executeLLMEval(
   evalFunction: EvalFunction,
-  example: Example,
+  example: StandardizedLLMResponse,
 ): Promise<EvalFunctionResult> {
   // Construct call to an LLM to evaluate the example
 
@@ -133,7 +129,7 @@ ${evalFunction.code}? Return "yes" or "no".`;
 
 export async function executeFunction(
   evalFunction: EvalFunction,
-  example: Example,
+  example: StandardizedLLMResponse,
 ): Promise<EvalFunctionResult> {
   // Load Pyodide only if it hasn't been loaded before
   if (!pyodideInstance) {
@@ -199,7 +195,7 @@ export async function generateFunctionsForCriteria(
 function buildFunctionGenPrompt(
   criteria: EvalCriteria,
   promptTemplate: string,
-  example: Example,
+  example: StandardizedLLMResponse,
 ): string {
   if (criteria.eval_method === "expert") {
     return `Given a prompt template for an LLM pipeline, your task is to devise a prompt for an expert to evaluate the pipeline's responses based on the following criteria: ${criteria.criteria}

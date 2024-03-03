@@ -1652,3 +1652,24 @@ export const getVarsAndMetavars = (input_data) => {
     metavars: Array.from(metavars),
   };
 };
+
+/**
+ * Retries a func 'func' N times. 
+ * @param func 
+ * @param numTimes 
+ */
+export async function retryAsyncFunc<T>(func: () => Promise<T>, numTimes: number): Promise<T> {
+  if (numTimes < 1) throw new Error("Negative numTimes encountered when calling 'retry'.");
+
+  try {
+    // Attempt to execute the function
+    return await func();
+  } catch (error) {
+    if (numTimes <= 1) {
+      // If no more retries are left, throw the last error
+      throw error;
+    }
+    // If there are retries left, retry the function:
+    return retryAsyncFunc(func, numTimes - 1);
+  }
+}
