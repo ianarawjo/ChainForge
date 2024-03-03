@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, ChangeEvent } from "react";
 import { Menu, NumberInput, Switch, Text, Tooltip } from "@mantine/core";
 import EditableTable from "./EditableTable";
 import * as XLSX from "xlsx";
@@ -12,12 +12,20 @@ import {
 import TemplateHooks from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
-import AlertModal from "./AlertModal";
-import RenameValueModal from "./RenameValueModal";
+import AlertModal, { AlertModalHandles } from "./AlertModal";
+import RenameValueModal, { RenameValueModalHandles } from "./RenameValueModal";
 import useStore from "./store";
 import { sampleRandomElements } from "./backend/utils";
+import { Dict } from "./backend/typing";
+import { Position } from "reactflow";
 
-const defaultRows = [
+export type TabularDataRowType = Dict<string>;
+export type TabularDataColType = {
+  key: string;
+  header: string;
+};
+
+const defaultRows: TabularDataRowType[] = [
   {
     question: "What is 2+2?",
     answer: "4",
@@ -28,7 +36,7 @@ const defaultRows = [
   },
 ];
 
-const defaultColumns = [
+const defaultColumns: TabularDataColType[] = [
   {
     key: "question",
     header: "Question",
@@ -39,14 +47,26 @@ const defaultColumns = [
   },
 ];
 
-const TabularDataNode = ({ data, id }) => {
-  const [tableData, setTableData] = useState(
+export interface TabularDataNodeData {
+  title?: string;
+  sample?: boolean;
+  sampleNum?: number;
+  rows?: TabularDataRowType[];
+  columns?: TabularDataColType[];
+}
+export interface TabularDataNodeProps {
+  data: TabularDataNodeData;
+  id: string;
+}
+
+const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
+  const [tableData, setTableData] = useState<TabularDataRowType[]>(
     data.rows ||
       [...defaultRows].map((row) => {
         return { __uid: uuidv4(), ...row };
       }),
   );
-  const [tableColumns, setTableColumns] = useState(
+  const [tableColumns, setTableColumns] = useState<TabularDataColType[]>(
     data.columns ||
       [...defaultColumns].map((col) => {
         return { ...col };
@@ -57,7 +77,7 @@ const TabularDataNode = ({ data, id }) => {
 
   const [contextMenuPos, setContextMenuPos] = useState({ left: -100, top: 0 });
   const [contextMenuOpened, setContextMenuOpened] = useState(false);
-  const [selectedRow, setSelectedRow] = useState(undefined);
+  const [selectedRow, setSelectedRow] = useState<number | undefined>(undefined);
 
   const [scrollToBottom, setScrollToBottom] = useState(false);
 
@@ -65,7 +85,7 @@ const TabularDataNode = ({ data, id }) => {
   const [shouldSample, setShouldSample] = useState(data.sample ?? false);
   const [sampleNum, setSampleNum] = useState(data.sampleNum ?? 1);
   const handleChangeSampleNum = useCallback(
-    (n) => {
+    (n: number) => {
       setSampleNum(n);
       setDataPropsForNode(id, { sampleNum: n });
     },
@@ -73,18 +93,18 @@ const TabularDataNode = ({ data, id }) => {
   );
 
   // Dynamically update the position of the template hooks
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement | null>(null);
   const [hooksY, setHooksY] = useState(120);
 
   // For displaying error messages to user
-  const alertModal = useRef(null);
+  const alertModal = useRef<AlertModalHandles>(null);
 
   // For renaming a column
-  const renameColumnModal = useRef(null);
-  const [renameColumnInitialVal, setRenameColumnInitialVal] = useState("");
+  const renameColumnModal = useRef<RenameValueModalHandles>(null);
+  const [renameColumnInitialVal, setRenameColumnInitialVal] = useState<TabularDataColType | string>("");
 
   const handleSaveCell = useCallback(
-    (rowIdx, columnKey, value) => {
+    (rowIdx: number, columnKey: string, value: string) => {
       pingOutputNodes(id);
       if (rowIdx === -1) {
         // Saving the column header
@@ -106,7 +126,7 @@ const TabularDataNode = ({ data, id }) => {
   // Adds a new row to the table
   const handleAddRow = useCallback(() => {
     // Creates a blank row with the same columns as the table
-    const blank_row = { __uid: uuidv4() };
+    const blank_row: TabularDataRowType = { __uid: uuidv4() };
     tableColumns.forEach((o) => {
       blank_row[o.key] = "";
     });
@@ -122,7 +142,7 @@ const TabularDataNode = ({ data, id }) => {
 
   // Inserts a column to left or right of existing one
   const handleInsertColumn = useCallback(
-    (startColKey, dir) => {
+    (startColKey: string, dir: 1 | -1) => {
       // Create a unique ID to refer to this new column
       const uid = `col-${Date.now()}`;
       const new_col = {
@@ -156,7 +176,7 @@ const TabularDataNode = ({ data, id }) => {
 
   // Removes a column
   const handleRemoveColumn = useCallback(
-    (colKey) => {
+    (colKey: string) => {
       // Find the index of the column
       const colIdx = tableColumns.findIndex((elem) => elem.key === colKey);
       if (colIdx === -1) {
@@ -183,7 +203,7 @@ const TabularDataNode = ({ data, id }) => {
 
   // Opens a modal popup to let user rename a column
   const openRenameColumnModal = useCallback(
-    (col) => {
+    (col: TabularDataColType) => {
       setRenameColumnInitialVal(col);
       if (renameColumnModal && renameColumnModal.current)
         renameColumnModal.current.trigger();
@@ -192,7 +212,7 @@ const TabularDataNode = ({ data, id }) => {
   );
 
   const handleRenameColumn = useCallback(
-    (new_header) => {
+    (new_header: string) => {
       if (typeof renameColumnInitialVal !== "object") {
         console.error("Initial column value was not set.");
         return;
@@ -223,7 +243,7 @@ const TabularDataNode = ({ data, id }) => {
 
   // Removes a row of the table, at <table> index 'selectedRow'
   const handleInsertRow = useCallback(
-    (offset) => {
+    (offset: 0 | -1) => {
       if (!selectedRow) {
         console.warn("No row selected to insert from.");
         return;
@@ -232,7 +252,7 @@ const TabularDataNode = ({ data, id }) => {
       const insertIdx = selectedRow + offset;
 
       // Creates a blank row with the same columns as the table
-      const blank_row = { __uid: uuidv4() };
+      const blank_row: TabularDataRowType = { __uid: uuidv4() };
       tableColumns.forEach((o) => {
         blank_row[o.key] = "";
       });
@@ -251,15 +271,16 @@ const TabularDataNode = ({ data, id }) => {
   // Opens a context window inside the table
   // Currently only opens if a row cell textarea was right-clicked.
   // TODO: Improve this to work on other parts of the table too (e.g., column headers and between rows)
-  const handleOpenTableContextMenu = (e) => {
+  const handleOpenTableContextMenu: React.MouseEventHandler<HTMLDivElement> = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
 
-    if (e.target.localName === "p") {
+    const target = e.target as HTMLDivElement;
+    if (target.localName === "p") {
       // Some really sketchy stuff to get the row index....
       // :: We've clicked on an 'input' element. We know that there is a 'td' element 1 level up, and a 'tr' 2 levels up.
-      const grandparent = e.target.parentNode?.parentNode;
-      const rowIndex = grandparent?.rowIndex;
-      const cellIndex = grandparent?.cellIndex;
+      const grandparent = target.parentNode?.parentNode;
+      const rowIndex = (grandparent as HTMLTableRowElement)?.rowIndex;
+      const cellIndex = (grandparent as HTMLTableCellElement)?.cellIndex;
       if (rowIndex !== undefined) {
         // A cell of the table was right-clicked on
         setSelectedRow(rowIndex);
@@ -278,15 +299,15 @@ const TabularDataNode = ({ data, id }) => {
   // Import list of JSON data to the table
   // NOTE: JSON objects should be in row format, with keys
   //       as the header names. The internal keys of the columns will use uids to be unique.
-  const importJSONList = (jsonl) => {
+  const importJSONList = (jsonl: unknown) => {
     if (!Array.isArray(jsonl)) {
       throw new Error(
-        "Imported tabular data is not in array format: " + jsonl.toString(),
+        "Imported tabular data is not in array format: " + ((jsonl !== undefined) ? (jsonl as Object).toString() : ""),
       );
     }
 
     // Extract unique column names
-    const headers = new Set();
+    const headers = new Set<string>();
     jsonl.forEach((o) => Object.keys(o).forEach((key) => headers.add(key)));
 
     // Create new columns with unique ids c0, c1 etc
@@ -296,19 +317,19 @@ const TabularDataNode = ({ data, id }) => {
     }));
 
     // Construct a lookup table from header name to our new key uid
-    const col_key_lookup = {};
+    const col_key_lookup: Dict<string> = {};
     cols.forEach((c) => {
       col_key_lookup[c.header] = c.key;
     });
 
     // Construct the table rows by swapping the header names for our new columm keys
     const rows = jsonl.map((o) => {
-      const row = { __uid: uuidv4() };
+      const row: TabularDataRowType = { __uid: uuidv4() };
       Object.keys(o).forEach((header) => {
         const raw_val = o[header];
         const val =
           typeof raw_val === "object" ? JSON.stringify(raw_val) : raw_val;
-        row[col_key_lookup[header]] = val;
+        row[col_key_lookup[header]] = val.toString();
       });
       return row;
     });
@@ -327,7 +348,7 @@ const TabularDataNode = ({ data, id }) => {
     input.type = "file";
     input.accept = ".json, .jsonl, .xlsx, .xls, .csv";
 
-    const parseJSONL = (txt) => {
+    const parseJSONL = (txt: string) => {
       return txt
         .trim()
         .split("\n")
@@ -335,9 +356,15 @@ const TabularDataNode = ({ data, id }) => {
     };
 
     // Handle file selection
-    input.addEventListener("change", function (event) {
-      const file = event.target.files[0];
+    input.addEventListener("change", function (event: Event) {
+      const target = event.target as HTMLInputElement;
+      const file = target.files ? target.files[0] : null;
       const reader = new window.FileReader();
+
+      if (!file) {
+        console.error("Could not load tabular data file. Unknown error.");
+        return;
+      }
 
       // Extract the file extension from the file name
       const extension = file.name.split(".").pop();
@@ -345,13 +372,16 @@ const TabularDataNode = ({ data, id }) => {
       // Handle file load event
       reader.addEventListener("load", function () {
         try {
+          if (reader.result === null)
+            throw new Error("Could not load tabular data file into file reader. Unknown error.");
+
           // Try to parse the file using the appropriate file reader
           let jsonl = null;
           switch (extension) {
             case "jsonl":
               // Should be a newline-separated list of JSON objects, e.g. {}\n{}\n{}
               // Split the result on newlines and JSON parse individual lines:
-              jsonl = parseJSONL(reader.result);
+              jsonl = parseJSONL(reader.result as string);
               // Load the JSON list into the table
               importJSONList(jsonl);
               break;
@@ -359,10 +389,10 @@ const TabularDataNode = ({ data, id }) => {
             case "json":
               // Should be a list of JSON objects, e.g. in format [{...}]
               try {
-                jsonl = JSON.parse(reader.result);
+                jsonl = JSON.parse(reader.result as string);
               } catch (error) {
                 // Just in case, try to parse it as a JSONL file instead...
-                jsonl = parseJSONL(reader.result);
+                jsonl = parseJSONL(reader.result as string);
               }
               importJSONList(jsonl);
               break;
@@ -385,7 +415,7 @@ const TabularDataNode = ({ data, id }) => {
               // Parse the CSV string to a list,
               // assuming the first row is a header
               {
-                const papa_parsed = Papa.parse(reader.result, { header: true });
+                const papa_parsed = Papa.parse(reader.result as string, { header: true });
                 importJSONList(papa_parsed.data);
               }
               break;
@@ -394,7 +424,7 @@ const TabularDataNode = ({ data, id }) => {
               throw new Error(`Unknown file extension: ${extension}`);
           }
         } catch (error) {
-          handleError(error);
+          handleError(error as Error);
         }
       });
 
@@ -418,7 +448,7 @@ const TabularDataNode = ({ data, id }) => {
 
   // Updates the internal data store whenever the table data changes
   useEffect(() => {
-    let sel_rows = null;
+    let sel_rows: TabularDataRowType[] | null = null;
 
     // Check for sampling
     if (shouldSample && sampleNum !== undefined) {
@@ -433,15 +463,15 @@ const TabularDataNode = ({ data, id }) => {
     });
   }, [tableData, tableColumns, shouldSample, sampleNum]);
 
-  const handleError = (err) => {
-    if (alertModal.current) alertModal.current.trigger(err.message);
+  const handleError = (err: Error) => {
+    if (alertModal.current) alertModal.current?.trigger(err.message);
     console.error(err.message);
   };
 
   // To listen for resize events of the table container, we need to use a ResizeObserver.
   // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div container.
   const setRef = useCallback(
-    (elem) => {
+    (elem: HTMLDivElement) => {
       if (!ref.current && elem && window.ResizeObserver) {
         let past_hooks_y = 120;
         const observer = new window.ResizeObserver(() => {
@@ -464,6 +494,7 @@ const TabularDataNode = ({ data, id }) => {
     <BaseNode
       classNames="tabular-data-node"
       nodeId={id}
+      // @ts-ignore
       onPointerDown={() => setContextMenuOpened(false)}
     >
       <NodeLabel
@@ -551,7 +582,7 @@ const TabularDataNode = ({ data, id }) => {
           vars={tableColumns.map((col) => col.header)}
           nodeId={id}
           startY={hooksY}
-          position="right"
+          position={Position.Right}
         />
 
         <Switch
