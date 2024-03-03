@@ -5,6 +5,7 @@ export enum Status {
   READY = "ready",
   ERROR = "error",
   LOADING = "loading",
+  NONE = "none",
 }
 interface StatusIndicatorProps {
   status: Status;
