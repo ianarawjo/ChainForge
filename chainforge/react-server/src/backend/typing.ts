@@ -23,21 +23,6 @@ export interface OpenAIFunctionCall {
   description?: string;
 }
 
-/** The outputs of prompt nodes, text fields or other data passed internally in the front-end and to the PromptTemplate backend.
- * Used to populate prompt templates and carry variables/metavariables along the chain. */
-export interface TemplateVarInfo {
-  text: string;
-  fill_history: Dict<string>;
-  metavars?: Dict<string>;
-  associate_id?: string;
-  llm?: string | Dict;
-}
-
-export type PromptVarType = string | TemplateVarInfo;
-export type PromptVarsDict = {
-  [key: string]: PromptVarType[];
-};
-
 /** OpenAI chat message format */
 export interface ChatMessage {
   role: string;
@@ -183,3 +168,24 @@ export type LLMSpec = {
   settings?: Dict;
   progress?: Dict<number>; // only used for front-end to display progress collecting responses for this LLM
 };
+
+/** The outputs of prompt nodes, text fields or other data passed internally in the front-end and to the PromptTemplate backend.
+ * Used to populate prompt templates and carry variables/metavariables along the chain. */
+ export interface TemplateVarInfo {
+  text: string;
+  fill_history: Dict<string>;
+  metavars?: Dict<string>;
+  associate_id?: string;
+  llm?: string | LLMSpec;
+  chat_history?: ChatHistory;
+}
+
+export type PromptVarType = string | TemplateVarInfo;
+export type PromptVarsDict = {
+  [key: string]: PromptVarType[];
+};
+
+export type QueryProgress = {
+  success: number;
+  error: number;
+}
