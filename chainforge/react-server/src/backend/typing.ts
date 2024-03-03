@@ -33,7 +33,7 @@ export interface TemplateVarInfo {
   llm?: string | Dict;
 }
 
-export type PromptVarType = (string | TemplateVarInfo);
+export type PromptVarType = string | TemplateVarInfo;
 export type PromptVarsDict = {
   [key: string]: PromptVarType[];
 };
