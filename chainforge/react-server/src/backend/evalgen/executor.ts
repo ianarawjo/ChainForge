@@ -145,7 +145,7 @@ export default class EvaluationFunctionExecutor {
 
         const executionPromises = this.examples.map(async (example) => {
           const funcToExecute =
-            evalFunction.evalCriteria.eval_method === "code"
+            evalFunction.evalCriteria.eval_method === "py"
               ? execPyFunc
               : executeLLMEval;
 
@@ -375,7 +375,7 @@ export default class EvaluationFunctionExecutor {
 
         // If not, execute the function and store the result in the cache
         const funcToExecute =
-          evalFunction.evalCriteria.eval_method === "code"
+          evalFunction.evalCriteria.eval_method === "py"
             ? execPyFunc
             : executeLLMEval;
         const result = await funcToExecute(evalFunction, example);

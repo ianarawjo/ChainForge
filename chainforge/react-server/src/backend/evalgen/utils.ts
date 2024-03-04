@@ -1,7 +1,6 @@
 // Interfaces and utility functions
 // TODO: Use ChainForge's openai utils (I tried but got errors)
 // import { AzureOpenAIStreamer } from "./oai_utils";
-import path from "path";
 import { EventEmitter } from "events";
 import {
   AssertionWriterSystemMsg,
@@ -11,12 +10,9 @@ import {
   validateEvalCriteriaFormat,
 } from "./typing";
 import { Dict, StandardizedLLMResponse } from "../typing";
-import { executejs, simpleQueryLLM } from "../backend";
+import { executejs, executepy, simpleQueryLLM } from "../backend";
 import { retryAsyncFunc } from "../utils";
-// const { loadPyodide } = require("pyodide");
-
-// Define a global variable to store the Pyodide instance without an explicit type
-const pyodideInstance: any = null;
+import { v4 as uuid } from "uuid";
 
 /**
  * Extracts substrings within "```json" and "```" ticks. Excludes the ticks from return.
@@ -174,42 +170,45 @@ export async function execJSFunc(
 
 /**
  * Executes a Python function, described by evalFunction, against the "example" LLM response object.
+ * NOTE: This runs in a sandbox using pyodide.
  * @returns `EvalFunctionResult`
  */
 export async function execPyFunc(
   evalFunction: EvalFunction,
   example: StandardizedLLMResponse,
 ): Promise<EvalFunctionResult> {
-  return EvalFunctionResult.SKIP;
-  //   // Load Pyodide only if it hasn't been loaded before
-  //   if (!pyodideInstance) {
-  //     const pyodidePath = path.join(__dirname, "pyodide");
-  //     pyodideInstance = await loadPyodide({
-  //       indexURL: pyodidePath,
-  //     });
-  //   }
+  try {
+    const result = await executepy(
+      uuid(),
+      evalFunction.code,
+      [example],
+      "response",
+      "evaluator",
+      undefined,
+      "pyodide"  // execute in sandbox with a pyodide WebWorker
+    );
 
-  //   /// Use the pyodideInstance to run Python code
-  //   try {
-  //     const pythonCode = `
-  // import json
+    // Check for errors
+    if (result.error !== undefined) throw new Error(result.error);
 
-  // ${evalFunction.code}
+    // Extract the evaluation result
+    const eval_res = result.responses
+      ? (result.responses[0] as StandardizedLLMResponse).eval_res?.items[0]
+      : undefined;
 
-  // # Execute the evaluation function with the example's prompt and response
-  // result = ${evalFunction.name}(${example.vars}, '${example.prompt}', '${example.responses[0]}')
+    // Check that the evaluation result is a boolean value
+    // NOTE: EvalGen only supports assertion functions at this time.
+    if (typeof eval_res !== "boolean")
+      throw new Error(
+        "Non-boolean return value encountered when executing JS eval code. Value: ",
+        eval_res,
+      );
 
-  // result`;
-
-  //     const result = await pyodideInstance.runPythonAsync(pythonCode);
-  //     return result ? EvalFunctionResult.PASS : EvalFunctionResult.FAIL;
-  //   } catch (error) {
-  //     // Raise error
-  //     // throw new EvalExecutionError(
-  //     //   `Error executing function ${evalFunction.name}: ${error}`,
-  //     // );
-  //     return EvalFunctionResult.SKIP;
-  //   }
+    return eval_res ? EvalFunctionResult.PASS : EvalFunctionResult.FAIL;
+  } catch (err) {
+    console.error(err);
+    return EvalFunctionResult.SKIP;
+  }
 }
 
 export async function generateFunctionsForCriteria(
@@ -290,7 +289,7 @@ function processAndEmitFunction(
     name: functionDefinition,
   };
 
-  if (criteria.eval_method === "code") {
+  if (criteria.eval_method === "py") {
     const functionNameMatch = functionDefinition.match(
       /def\s+([a-zA-Z_]\w*)\s*\(/,
     );
