@@ -156,6 +156,13 @@ export function set_api_keys(api_keys: StringDict): void {
   // Soft fail for non-present keys
 }
 
+export function get_azure_openai_api_keys(): [
+  string | undefined,
+  string | undefined,
+] {
+  return [AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT];
+}
+
 /**
  * Construct an OpenAI format chat history for sending off to an OpenAI API call.
  * @param prompt The next prompt (user message) to append.
@@ -1679,7 +1686,7 @@ export async function retryAsyncFunc<T>(
 }
 
 // Filters internally used keys LLM_{idx} and __{str} from metavar dictionaries.
-// This method is used to pass around information hidden from the user. 
+// This method is used to pass around information hidden from the user.
 export function cleanMetavarsFilterFunc() {
   return (key: string) => !(key.startsWith("LLM_") || key.startsWith("__pt"));
 }

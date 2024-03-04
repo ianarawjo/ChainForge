@@ -803,22 +803,18 @@ const VisNode = ({ data, id }) => {
           const msvars = ["LLM (default)"]
             .concat(varnames.map((name) => ({ value: name, label: name })))
             .concat(
-              metavars
-                .filter(cleanMetavarsFilterFunc)
-                .map((name) => ({
-                  value: `__meta_${name}`,
-                  label: `${name} (meta)`,
-                })),
+              metavars.filter(cleanMetavarsFilterFunc).map((name) => ({
+                value: `__meta_${name}`,
+                label: `${name} (meta)`,
+              })),
             );
 
           // Find all the special 'LLM group' metavars and put them in the 'group by' dropdown:
           const available_llm_groups = [{ value: "LLM", label: "LLM" }].concat(
-            metavars
-              .filter(cleanMetavarsFilterFunc)
-              .map((name) => ({
-                value: name,
-                label: `LLMs #${parseInt(name.slice(4)) + 1}`,
-              })),
+            metavars.filter(cleanMetavarsFilterFunc).map((name) => ({
+              value: name,
+              label: `LLMs #${parseInt(name.slice(4)) + 1}`,
+            })),
           );
           if (available_llm_groups.length > 1)
             available_llm_groups[0] = { value: "LLM", label: "LLMs (last)" };

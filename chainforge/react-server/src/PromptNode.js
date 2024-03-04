@@ -860,7 +860,7 @@ Soft failing by replacing undefined with empty strings.`,
 
                   // Carry over any metavars
                   o.metavars = resp_obj.metavars ?? {};
-                  
+
                   // Add a metavar for the prompt *template* in this PromptNode
                   o.metavars.__pt = prompt_template;
 

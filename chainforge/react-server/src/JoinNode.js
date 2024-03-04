@@ -204,12 +204,10 @@ const JoinNode = ({ data, id }) => {
           })),
         )
         .concat(
-          metavars
-            .filter(cleanMetavarsFilterFunc)
-            .map((varname) => ({
-              label: `by ${varname} (meta)`,
-              value: `M${varname}`,
-            })),
+          metavars.filter(cleanMetavarsFilterFunc).map((varname) => ({
+            label: `by ${varname} (meta)`,
+            value: `M${varname}`,
+          })),
         ),
     );
 

@@ -43,9 +43,14 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import ConfettiExplosion from "react-confetti-explosion";
-import { cleanMetavarsFilterFunc, sampleRandomElements, transformDict } from "./backend/utils";
+import {
+  cleanMetavarsFilterFunc,
+  sampleRandomElements,
+  transformDict,
+} from "./backend/utils";
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
 import { escapeBraces } from "./backend/template";
+import EvaluationFunctionExecutor from "./backend/evalgen/executor";
 
 const MANTINE_GREEN = "#40c057";
 
@@ -64,6 +69,7 @@ const CriteriaCard = function CriteriaCard({
   evalMethod,
   onTitleChange,
   onDescriptionChange,
+  onEvalMethodChange,
   onRemove,
 }) {
   const [checked, setChecked] = useState(true);
@@ -93,8 +99,13 @@ const CriteriaCard = function CriteriaCard({
           aria-hidden
         /> */}
 
-        <div style={{width: "100%"}}>
-          <TextInput value={title} onChange={(e) => onTitleChange(e.currentTarget.value)} mb={7} lh={1} styles={{
+        <div style={{ width: "100%" }}>
+          <TextInput
+            value={title}
+            onChange={(e) => onTitleChange(e.currentTarget.value)}
+            mb={7}
+            lh={1}
+            styles={{
               input: {
                 border: "none",
                 borderWidth: "0px",
@@ -104,10 +115,11 @@ const CriteriaCard = function CriteriaCard({
                 fontSize: "12pt",
                 margin: "0px",
                 height: "auto",
-                minHeight: "auto"
+                minHeight: "auto",
               },
-            }} />
-          
+            }}
+          />
+
           <Textarea
             value={description}
             onChange={(e) => onDescriptionChange(e.currentTarget.value)}
@@ -116,7 +128,9 @@ const CriteriaCard = function CriteriaCard({
               input: {
                 border: "none",
                 borderWidth: "0px",
-                padding: "0px",
+                paddingTop: "0px !important",
+                paddingLeft: "0px",
+                margin: "0px",
                 color: "#444",
                 background: "transparent",
               },
@@ -125,24 +139,24 @@ const CriteriaCard = function CriteriaCard({
             minRows={2}
             maxRows={5}
             fz="sm"
-            mb="lg"
+            mb="xs"
             c="dimmed"
           />
         </div>
 
         <Button
-            size="xs"
-            variant="subtle"
-            compact
-            color="gray"
-            onClick={onRemove}
-            pos="absolute"
-            right="8px"
-            top="8px"
-            style={{ padding: "0px" }}
-          >
-            <IconTrash size={"95%"} />
-          </Button>
+          size="xs"
+          variant="subtle"
+          compact
+          color="gray"
+          onClick={onRemove}
+          pos="absolute"
+          right="8px"
+          top="8px"
+          style={{ padding: "0px" }}
+        >
+          <IconTrash size={"95%"} />
+        </Button>
 
         <Switch
           size="lg"
@@ -153,7 +167,7 @@ const CriteriaCard = function CriteriaCard({
           right="8px"
           bottom="10px"
           checked={codeChecked}
-          onChange={(e) => setCodeChecked(e.currentTarget.checked)}
+          onChange={(e) => { setCodeChecked(e.currentTarget.checked); if (onEvalMethodChange) onEvalMethodChange(e.currentTarget.checked ? "code" : "expert"); }}
           thumbIcon={
             codeChecked ? (
               <IconCode
@@ -175,7 +189,13 @@ const CriteriaCard = function CriteriaCard({
   );
 };
 
-const ChooseCard = function ChooseCard({ title, description, icon, bg, onClick }) {
+const ChooseCard = function ChooseCard({
+  title,
+  description,
+  icon,
+  bg,
+  onClick,
+}) {
   const [hovering, setHovering] = useState(false);
 
   return (
@@ -230,24 +250,35 @@ export const PickCriteriaModal = forwardRef(
       {
         shortname: "Grammaticality",
         criteria: "The text is grammatically correct.",
+        eval_method: "expert",
       },
-      { shortname: "Length", criteria: "The text is 144 characters or less." },
+      {
+        shortname: "Length",
+        criteria: "The text is 144 characters or less.",
+        eval_method: "code",
+      },
       {
         shortname: "Clickbait potential",
         criteria: "How likely the text is to drive attention as a Tweet.",
+        eval_method: "expert",
       },
       {
         shortname: "Informality",
         criteria:
           "Whether the response sounds informal, like a real human tweeted it.",
+        eval_method: "expert",
       },
       {
         shortname: "Toxicity",
         criteria: "Whether the response sounds overly harmful or toxic.",
+        eval_method: "expert",
       },
     ]);
     const [addCriteriaValue, setAddCriteriaValue] = useState("");
     const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
+
+    // An object responsible for generating, implementing, and filtering candidate implementations
+    const [executor, setExecutor] = useState(null);
 
     const addCriteria = () => {
       // TODO: Make async LLM call to expand criteria. For now, just dummy func:
@@ -265,9 +296,12 @@ export const PickCriteriaModal = forwardRef(
       criteria[idx].criteria = desc;
       setCriteria([...criteria]);
     };
+    const setCriteriaMethod = (m, idx) => {
+      criteria[idx].eval_method = m;
+      setCriteria([...criteria]);
+    };
 
-    // Given the context from "inputs", tries to generate an array of natural language criteria.
-    const genCriteriaFromContext = useCallback(async () => {
+    const getLikelyPromptTemplateAsContext = useCallback(() => {
       // Attempt to infer the prompt template used to generate the responses:
       const prompts = new Set();
       for (const resp_obj of responses) {
@@ -276,17 +310,49 @@ export const PickCriteriaModal = forwardRef(
         }
       }
 
-      if (prompts.size === 0) {
+      if (prompts.size === 0) return null;
+
+      // Pick a prompt template at random to serve as context....
+      return escapeBraces(prompts.values().next().value);
+    }, [responses]);
+
+    // Given the context from "inputs", tries to generate an array of natural language criteria.
+    const genCriteriaFromContext = useCallback(async () => {
+      // Get the context from the input responses
+      const inputPromptTemplate = getLikelyPromptTemplateAsContext();
+
+      if (inputPromptTemplate === null) {
         console.error("No context found. Cannot proceed.");
         return;
-      } 
-      
-      // Pick a prompt template at random to serve as context....
-      const inputPromptTemplate = escapeBraces(prompts.values().next().value);
+      }
 
       // Attempt to generate criteria using an LLM
       return await generateLLMEvaluationCriteria(inputPromptTemplate);
     }, [responses]);
+
+    // Starts generating implementations for the chosen criteria
+    const beginGenCriteriaImplementations = useCallback(async () => {
+      // Check that an executor isn't already running:
+      if (executor) {
+        console.error(
+          "Executor already running. Avoiding running duplicate executors.",
+        );
+        return;
+      }
+
+      // Initialize an object responsible for generating, executing and ranking candidate implementations:
+      const new_executor = new EvaluationFunctionExecutor(
+        criteria,
+        getLikelyPromptTemplateAsContext(responses),
+        responses,
+      );
+
+      // Save executor, passing it to the GradeResponses window
+      setExecutor(new_executor);
+
+      // Start it in the background
+      new_executor.start();
+    }, [criteria, responses, executor]);
 
     // This gives the parent access to triggering the modal alert
     const trigger = (inputs) => {
@@ -299,8 +365,8 @@ export const PickCriteriaModal = forwardRef(
     }));
 
     const gradeResponsesWindow = useMemo(
-      () => <GradeResponsesWindow responses={responses} />,
-      [responses],
+      () => <GradeResponsesWindow resps={responses} executor={executor} />,
+      [responses, executor],
     );
 
     return (
@@ -320,18 +386,16 @@ export const PickCriteriaModal = forwardRef(
           <div>
             <Center>
               <Text size="sm" pl="sm" mt="lg" mb="sm" maw="560px">
-                Welcome to the EvalGen wizard. The wizard will generate
-                evaluation criteria and implementations for grading responses
-                that align with your expectations.
+                Welcome to EvalGen. The EvalGen wizard will generate evaluation
+                criteria and implementations for grading responses that align
+                with your expectations.
               </Text>
             </Center>
             <Center>
               <Text size="sm" pl="sm" mb="lg" maw="560px">
                 To get started, we need to specify some criteria in natural
-                language that will be used to evaluate model responses. Would
-                you like to ask an AI to look at your prompt (input to this
-                MultiEval node) and try to infer criteria, or enter criteria
-                manually?
+                language that will be used to evaluate model responses. How
+                would you like to generate criteria?
               </Text>
             </Center>
             <Center>
@@ -342,7 +406,9 @@ export const PickCriteriaModal = forwardRef(
                     setScreen("pick");
                     setCriteria([]);
                     setIsLoadingCriteria(true);
-                    genCriteriaFromContext().then(setCriteria).finally(() => setIsLoadingCriteria(false));
+                    genCriteriaFromContext()
+                      .then(setCriteria)
+                      .finally(() => setIsLoadingCriteria(false));
                   }}
                   title="Infer criteria from my context"
                   description="An AI will look at your input prompt and context and try to infer criteria. You will still be able to review, revise, and add criteria."
@@ -352,7 +418,7 @@ export const PickCriteriaModal = forwardRef(
                 <ChooseCard
                   onClick={() => {
                     setScreen("pick");
-                    setCriteria([]);
+                    // setCriteria([]);
                   }}
                   title="Let me specify criteria manually"
                   description="Enter criteria manually. An AI will generate longer descriptions for your criteria, which you can review and revise."
@@ -393,12 +459,19 @@ export const PickCriteriaModal = forwardRef(
                   }
                 }}
               />
-              <Button variant="filled" onClick={() => {
-                    if (isLoadingCriteria) return;
-                    setIsLoadingCriteria(true);
-                    genCriteriaFromContext().then((crit) => setCriteria(criteria.concat(crit))).finally(() => setIsLoadingCriteria(false));
-                  }}>
-                <IconRepeat /><IconSparkles />&nbsp;Suggest more
+              <Button
+                variant="filled"
+                onClick={() => {
+                  if (isLoadingCriteria) return;
+                  setIsLoadingCriteria(true);
+                  genCriteriaFromContext()
+                    .then((crit) => setCriteria(criteria.concat(crit)))
+                    .finally(() => setIsLoadingCriteria(false));
+                }}
+              >
+                <IconRepeat />
+                <IconSparkles />
+                &nbsp;Suggest more
               </Button>
             </Flex>
 
@@ -412,16 +485,25 @@ export const PickCriteriaModal = forwardRef(
                     key={`cc-${idx}`}
                     onTitleChange={(title) => setCriteriaTitle(title, idx)}
                     onDescriptionChange={(desc) => setCriteriaDesc(desc, idx)}
-                    onRemove={() => setCriteria(criteria.filter((v,j) => j !== idx))}
+                    onEvalMethodChange={(method) => setCriteriaMethod(method, idx)}
+                    onRemove={() =>
+                      setCriteria(criteria.filter((v, j) => j !== idx))
+                    }
                   />
                 ))}
                 {isLoadingCriteria ? (
-                  Array.from({length: 3}, (x, i) => (<Skeleton
-                    key={`skele-card-${i}`}><CriteriaCard
-                    title={"Loading"}
-                    description={"Loading"}
-                    evalMethod={"expert"} /></Skeleton>))
-                ): (<></>)}
+                  Array.from({ length: 3 }, (x, i) => (
+                    <Skeleton key={`skele-card-${i}`}>
+                      <CriteriaCard
+                        title={"Loading"}
+                        description={"Loading"}
+                        evalMethod={"expert"}
+                      />
+                    </Skeleton>
+                  ))
+                ) : (
+                  <></>
+                )}
               </SimpleGrid>
             </ScrollArea>
 
@@ -429,23 +511,22 @@ export const PickCriteriaModal = forwardRef(
               <Button
                 onClick={() => {
                   setScreen("wait");
+
+                  beginGenCriteriaImplementations();
+
                   // generateLLMEvaluationCriteria(
                   //   escapeBraces(`Delete 10 words or phrases from the following paragraph that don't contribute much to its meaning, but keep readability:
                   // "{paragraph}"
-                  
+
                   // Please do not add any new words or change words, only delete words.`),
                   // ).then(setCriteria);
-                  setTimeout(() => {
-                    setScreen('grade');
-                  }, 1000000);
                 }}
                 variant="gradient"
                 gradient={{ from: "teal", to: "lime", deg: 105 }}
               >
                 <IconSparkles />
-                &nbsp;I'm done. Implement it!
+                &nbsp;I&apos;m done. Implement it!
               </Button>
-              {/* <Button disabled variant='gradient' gradient={{ from: 'teal', to: 'lime', deg: 105 }}><IconSparkles />&nbsp;Validate</Button> */}
             </Flex>
           </div>
         ) : (
@@ -488,262 +569,288 @@ export const PickCriteriaModal = forwardRef(
 );
 
 // Pop-up where user grades responses.
-export const GradeResponsesWindow = forwardRef(
-  function GradeResponsesWindow(props, ref) {
-    // Confetti effects
-    const [isGreenExploding, setIsGreenExploding] = React.useState(false);
-    const [isRedExploding, setIsRedExploding] = React.useState(false);
+export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
+  { resps, executor },
+  ref,
+) {
+  // Confetti effects
+  const [isGreenExploding, setIsGreenExploding] = React.useState(false);
+  const [isRedExploding, setIsRedExploding] = React.useState(false);
 
-    const [responses, setResponses] = useState([]);
-    const [shownResponse, setShownResponse] = useState(undefined);
-    const [pastShownResponses, setPastShownResponses] = useState([]);
-    const [shownResponseIdx, setShownResponseIdx] = useState(0);
-    const [grades, setGrades] = useState({});
-    const responseText = useMemo(() =>
-      shownResponse && shownResponse.responses?.length > 0
-        ? shownResponse.responses[0]
-        : "",
-    );
-    const prompt = useMemo(() => shownResponse?.prompt ?? "", [shownResponse]);
-    const varsDivs = useMemo(() => {
-      const combined_vars_metavars = shownResponse
-        ? {
-            ...shownResponse.vars,
-            ...transformDict(
-              shownResponse.metavars,
-              cleanMetavarsFilterFunc,
-            ),
-          }
-        : {};
-      return Object.entries(combined_vars_metavars).map(([varname, val]) => (
-        <div key={varname} className="grade-resp-var-container">
-          <span className="response-var-name">{varname}&nbsp;=&nbsp;</span>
-          <span className="response-var-value">{val}</span>
-        </div>
-      ));
-    }, [shownResponse]);
+  const [responses, setResponses] = useState([]);
+  const [shownResponse, setShownResponse] = useState(undefined);
+  const [pastShownResponses, setPastShownResponses] = useState([]);
+  const [shownResponseIdx, setShownResponseIdx] = useState(0);
+  const [grades, setGrades] = useState({});
+  const responseText = useMemo(() =>
+    shownResponse && shownResponse.responses?.length > 0
+      ? shownResponse.responses[0]
+      : "",
+  );
+  const prompt = useMemo(() => shownResponse?.prompt ?? "", [shownResponse]);
+  const varsDivs = useMemo(() => {
+    const combined_vars_metavars = shownResponse
+      ? {
+          ...shownResponse.vars,
+          ...transformDict(shownResponse.metavars, cleanMetavarsFilterFunc),
+        }
+      : {};
+    return Object.entries(combined_vars_metavars).map(([varname, val]) => (
+      <div key={varname} className="grade-resp-var-container">
+        <span className="response-var-name">{varname}&nbsp;=&nbsp;</span>
+        <span className="response-var-value">{val}</span>
+      </div>
+    ));
+  }, [shownResponse]);
 
-    // Goto next response in the queue (skipping grading the current one)
-    const nextResponse = () => {
-      if (responses.length === 0) return;
+  // Goto next response in the queue (skipping grading the current one)
+  const nextResponse = () => {
+    if (responses.length === 0) return;
 
-      if (shownResponseIdx < pastShownResponses.length - 1) {
-        // If we are not at the end of the history of shown responses, then show the next response:
-        setShownResponse(pastShownResponses[shownResponseIdx + 1]);
-        setShownResponseIdx(shownResponseIdx + 1); // increment the shown resp idx
-      } else {
-        // We are at the end of the history; pick the next response at random:
-        // TODO: Make this unique (maybe by removing picked responses from the list!)
-        const random_resp = sampleRandomElements(responses, 1)[0];
-        setShownResponse(random_resp);
-        setPastShownResponses(pastShownResponses.concat(random_resp));
-        setShownResponseIdx(pastShownResponses.length);
+    if (shownResponseIdx < pastShownResponses.length - 1) {
+      // If we are not at the end of the history of shown responses, then show the next response:
+      setShownResponse(pastShownResponses[shownResponseIdx + 1]);
+      setShownResponseIdx(shownResponseIdx + 1); // increment the shown resp idx
+    } else {
+      // We are at the end of the history; pick the next response off the stack:
+      // TODO: Make this unique (maybe by removing picked responses from the list!)
+      let num_tries = 3;
+      let next_resp = executor?.getNextExampleToGrade();
+      while (
+        num_tries > 0 &&
+        (!next_resp || pastShownResponses.some((r) => r.uid === next_resp.uid))
+      ) {
+        // We're presenting a response that's already been shown. Try again.
+        // NOTE: If we're trying again the first time, executor will flip and get the response on the other side of the grading stack, so we try once more:
+        if (next_resp && num_tries === 3)
+          next_resp =
+            executor?.getNextExampleToGrade() ??
+            sampleRandomElements(responses, 1)[0];
+        // Otherwise we just choose a response at random:
+        else next_resp = sampleRandomElements(responses, 1)[0];
+        num_tries -= 1;
       }
-    };
+      // Note that this doesn't guarantee uniqueness here ---it is possible to see a response again.
+      // However, the internal "grades" dict will help us in remembering what grade the user gave the response.
+      setShownResponse(next_resp);
+      setPastShownResponses(pastShownResponses.concat(next_resp));
+      setShownResponseIdx(pastShownResponses.length);
+    }
+  };
 
-    // Go back to previously shown response
-    const prevResponse = () => {
-      if (pastShownResponses.length === 0 || shownResponseIdx === 0) return;
-      setShownResponse(pastShownResponses[shownResponseIdx - 1]);
-      setShownResponseIdx(shownResponseIdx - 1); // decrement shown resp idx
-    };
+  // Go back to previously shown response
+  const prevResponse = () => {
+    if (pastShownResponses.length === 0 || shownResponseIdx === 0) return;
+    setShownResponse(pastShownResponses[shownResponseIdx - 1]);
+    setShownResponseIdx(shownResponseIdx - 1); // decrement shown resp idx
+  };
 
-    // Update responses to draw from, when passed by external source
-    const updateResponsePool = (inputs) => {
-      if (!inputs) return;
+  // Update responses to draw from, when passed by external source
+  const updateResponsePool = (inputs) => {
+    if (!inputs) return;
 
-      setResponses(inputs);
-      console.warn(inputs);
+    setResponses(inputs);
+    console.warn(inputs);
 
-      // Choose the first response to display to the user
-      if (inputs?.length > 0) {
-        const random_resp = sampleRandomElements(inputs, 1)[0];
-        setShownResponse(random_resp);
-        setPastShownResponses([random_resp]);
-        setShownResponseIdx(0);
-        setGrades({});
-      }
-    };
+    // Choose the first response to display to the user
+    if (inputs?.length > 0) {
+      const random_resp = sampleRandomElements(inputs, 1)[0];
+      setShownResponse(random_resp);
+      setPastShownResponses([random_resp]);
+      setShownResponseIdx(0);
+      setGrades({});
+    }
+  };
 
-    // Update responses whenever upstream changes
-    useEffect(() => {
-      updateResponsePool(props.responses);
-    }, [props?.responses]);
+  const handleDone = useCallback(async () => {
+    // Await completion of all gen + execution of eval funcs
+    await executor?.waitForCompletion();
 
-    return (
-      <Stack justify="space-between" mih={500}>
-        <Box>
-          <Flex justify="center">
-            {shownResponseIdx in grades ? (
-              grades[shownResponseIdx] ? (
-                <HeaderText>
-                  You chose&nbsp;
-                  <IconThumbUp color="green" style={{ marginBottom: "-3px" }} />
-                  !
-                </HeaderText>
-              ) : (
-                <HeaderText>
-                  You chose&nbsp;
-                  <IconThumbDown color="red" style={{ marginBottom: "-6px" }} />
-                  !
-                </HeaderText>
-              )
+    // Filtering eval funcs by grades and present results
+    const filteredFunctions = await executor?.filterEvaluationFunctions(0.2);
+    console.log("Filtered Functions: ", filteredFunctions);
+  }, [executor]);
+
+  // Update responses whenever upstream changes
+  useEffect(() => {
+    updateResponsePool(resps);
+  }, [resps]);
+
+  return (
+    <Stack justify="space-between" mih={500}>
+      <Box>
+        <Flex justify="center">
+          {shownResponseIdx in grades ? (
+            grades[shownResponseIdx] ? (
+              <HeaderText>
+                You chose&nbsp;
+                <IconThumbUp color="green" style={{ marginBottom: "-3px" }} />!
+              </HeaderText>
             ) : (
               <HeaderText>
-                Is this response&nbsp;
-                <IconThumbUp style={{ marginBottom: "-3px" }} />
-                &nbsp;or&nbsp;
-                <IconThumbDown style={{ marginBottom: "-6px" }} />
-                &nbsp;?
+                You chose&nbsp;
+                <IconThumbDown color="red" style={{ marginBottom: "-6px" }} />!
               </HeaderText>
-            )}
-          </Flex>
+            )
+          ) : (
+            <HeaderText>
+              Is this response&nbsp;
+              <IconThumbUp style={{ marginBottom: "-3px" }} />
+              &nbsp;or&nbsp;
+              <IconThumbDown style={{ marginBottom: "-6px" }} />
+              &nbsp;?
+            </HeaderText>
+          )}
+        </Flex>
 
-          <Flex justify="center" align="center" mb="sm">
-            <Button variant="white" color="dark" onClick={prevResponse}>
-              <IconChevronLeft />
-            </Button>
+        <Flex justify="center" align="center" mb="sm">
+          <Button variant="white" color="dark" onClick={prevResponse}>
+            <IconChevronLeft />
+          </Button>
+          <div
+            className="response-box"
+            style={{
+              backgroundColor: "#eee",
+              width: "80%",
+              maxHeight: "300px",
+              overflowY: "scroll",
+              borderColor: "black",
+              borderStyle: "solid",
+            }}
+          >
+            <div className="response-item-llm-name-wrapper">
+              <div
+                className="small-response"
+                style={{ fontSize: "11pt", padding: "12pt" }}
+              >
+                {responseText}
+              </div>
+            </div>
+          </div>
+          <Button variant="white" color="dark" onClick={nextResponse}>
+            <IconChevronRight />
+          </Button>
+        </Flex>
+
+        <Flex justify="center" mb="xl" gap="lg">
+          <div
+            style={{
+              backgroundColor: "#fff",
+              padding: "12px",
+              width: "31%",
+              borderRadius: "12px",
+              borderWidth: "1px",
+              borderStyle: "solid",
+            }}
+          >
+            Vars
+            <hr />
+            <div style={{ maxHeight: "300px", overflowY: "scroll" }}>
+              {varsDivs}
+            </div>
+          </div>
+          <div
+            style={{
+              backgroundColor: "#fff",
+              padding: "12px",
+              width: "41%",
+              borderRadius: "2px",
+            }}
+          >
+            Prompt
+            <hr />
             <div
-              className="response-box"
+              className="monofont"
               style={{
-                backgroundColor: "#eee",
-                width: "80%",
                 maxHeight: "300px",
                 overflowY: "scroll",
-                borderColor: "black",
-                borderStyle: "solid",
+                fontSize: "10pt",
+                lineHeight: "1.2",
               }}
             >
-              <div className="response-item-llm-name-wrapper">
-                <div
-                  className="small-response"
-                  style={{ fontSize: "11pt", padding: "12pt" }}
-                >
-                  {responseText}
-                </div>
-              </div>
+              {prompt}
             </div>
-            <Button variant="white" color="dark" onClick={nextResponse}>
-              <IconChevronRight />
-            </Button>
-          </Flex>
-
-          <Flex justify="center" mb="xl" gap="lg">
-            <div
-              style={{
-                backgroundColor: "#fff",
-                padding: "12px",
-                width: "31%",
-                borderRadius: "12px",
-                borderWidth: "1px",
-                borderStyle: "solid",
-              }}
-            >
-              Vars
-              <hr />
-              <div style={{ maxHeight: "300px", overflowY: "scroll" }}>
-                {varsDivs}
-              </div>
-            </div>
-            <div
-              style={{
-                backgroundColor: "#fff",
-                padding: "12px",
-                width: "41%",
-                borderRadius: "2px",
-              }}
-            >
-              Prompt
-              <hr />
-              <div
-                className="monofont"
-                style={{
-                  maxHeight: "300px",
-                  overflowY: "scroll",
-                  fontSize: "10pt",
-                  lineHeight: "1.2",
-                }}
-              >
-                {prompt}
-              </div>
-            </div>
-          </Flex>
-
-          <Flex justify="center" gap="50px" mb="xl">
-            <Button
-              color="red"
-              variant="filled"
-              onClick={() => {
-                grades[shownResponseIdx] = false;
-                setGrades({ ...grades });
-                setIsRedExploding(true);
-                setTimeout(nextResponse, 800);
-                setTimeout(() => setIsRedExploding(false), 1200);
-              }}
-            >
-              <IconThumbDown />
-              &nbsp;Bad!
-              <>
-                {isRedExploding && (
-                  <ConfettiExplosion
-                    zIndex={1000}
-                    colors={["#f00"]}
-                    force={0.1}
-                    height={300}
-                    width={200}
-                    particleCount={5}
-                    duration={2200}
-                    onComplete={() => setIsRedExploding(false)}
-                    style={{ position: "absolute", left: "50%", top: "20%" }}
-                  />
-                )}
-              </>
-            </Button>
-            <Button
-              color="green"
-              variant="filled"
-              onClick={() => {
-                grades[shownResponseIdx] = true;
-                setGrades({ ...grades });
-                setIsGreenExploding(true);
-                setTimeout(nextResponse, 800);
-                setTimeout(() => setIsGreenExploding(false), 1200);
-              }}
-            >
-              <IconThumbUp />
-              &nbsp;Good!
-              <>
-                {isGreenExploding && (
-                  <ConfettiExplosion
-                    zIndex={1000}
-                    colors={[MANTINE_GREEN]}
-                    force={0.9}
-                    height={300}
-                    width={300}
-                    particleCount={10}
-                    duration={2200}
-                    onComplete={() => setIsGreenExploding(false)}
-                    style={{ position: "absolute", left: "50%", top: "20%" }}
-                  />
-                )}
-              </>
-            </Button>
-          </Flex>
-        </Box>
-
-        <Flex justify="left" align="center" gap="md">
-          {/* <Progress size={18} w='100%' sections={[{ value: 30, color: 'blue', label: '3/10 graded', tooltip: 'Samples graded' }]} /> */}
-          {/* <Loader size='sm' /> */}
-          <Stack w="100%" spacing={4}>
-            <Text color="#aaa" size="sm">
-              Generating candidate implementations...
-            </Text>
-            <Progress w="100%" value={30} animate mb="0px" />
-          </Stack>
-
-          <Button variant="outline">I&apos;m tired 😴</Button>
+          </div>
         </Flex>
-      </Stack>
-    );
-  },
-);
+
+        <Flex justify="center" gap="50px" mb="xl">
+          <Button
+            color="red"
+            variant="filled"
+            onClick={() => {
+              grades[shownResponseIdx] = false;
+              setGrades({ ...grades });
+              executor?.setGradeForExample(shownResponse.uid, false);
+              setIsRedExploding(true);
+              setTimeout(nextResponse, 800);
+              setTimeout(() => setIsRedExploding(false), 1200);
+            }}
+          >
+            <IconThumbDown />
+            &nbsp;Bad!
+            <>
+              {isRedExploding && (
+                <ConfettiExplosion
+                  zIndex={1000}
+                  colors={["#f00"]}
+                  force={0.1}
+                  height={300}
+                  width={200}
+                  particleCount={5}
+                  duration={2200}
+                  onComplete={() => setIsRedExploding(false)}
+                  style={{ position: "absolute", left: "50%", top: "20%" }}
+                />
+              )}
+            </>
+          </Button>
+          <Button
+            color="green"
+            variant="filled"
+            onClick={() => {
+              grades[shownResponseIdx] = true;
+              setGrades({ ...grades });
+              executor?.setGradeForExample(shownResponse.uid, true);
+              setIsGreenExploding(true);
+              setTimeout(nextResponse, 800);
+              setTimeout(() => setIsGreenExploding(false), 1200);
+            }}
+          >
+            <IconThumbUp />
+            &nbsp;Good!
+            <>
+              {isGreenExploding && (
+                <ConfettiExplosion
+                  zIndex={1000}
+                  colors={[MANTINE_GREEN]}
+                  force={0.9}
+                  height={300}
+                  width={300}
+                  particleCount={10}
+                  duration={2200}
+                  onComplete={() => setIsGreenExploding(false)}
+                  style={{ position: "absolute", left: "50%", top: "20%" }}
+                />
+              )}
+            </>
+          </Button>
+        </Flex>
+      </Box>
+
+      <Flex justify="left" align="center" gap="md">
+        {/* <Progress size={18} w='100%' sections={[{ value: 30, color: 'blue', label: '3/10 graded', tooltip: 'Samples graded' }]} /> */}
+        {/* <Loader size='sm' /> */}
+        <Stack w="100%" spacing={4}>
+          <Text color="#aaa" size="sm">
+            Generating candidate implementations...
+          </Text>
+          <Progress w="100%" value={30} animate mb="0px" />
+        </Stack>
+
+        <Button onClick={handleDone} variant="outline">
+          I&apos;m tired 😴
+        </Button>
+      </Flex>
+    </Stack>
+  );
+});

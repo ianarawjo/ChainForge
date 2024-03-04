@@ -297,9 +297,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       found_llms.add(getLLMName(res_obj));
     });
     found_vars = Array.from(found_vars);
-    found_metavars = Array.from(found_metavars).filter(
-      cleanMetavarsFilterFunc,
-    );
+    found_metavars = Array.from(found_metavars).filter(cleanMetavarsFilterFunc);
     found_llms = Array.from(found_llms);
 
     // Whether there's some evaluation scores in the responses

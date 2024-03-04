@@ -13,6 +13,7 @@ import { Dict, StandardizedLLMResponse } from "../typing";
 import { executejs, executepy, simpleQueryLLM } from "../backend";
 import { retryAsyncFunc } from "../utils";
 import { v4 as uuid } from "uuid";
+import { AzureOpenAIStreamer } from "./oai_utils";
 
 /**
  * Extracts substrings within "```json" and "```" ticks. Excludes the ticks from return.
@@ -180,6 +181,10 @@ export async function execPyFunc(
   example: StandardizedLLMResponse,
 ): Promise<EvalFunctionResult> {
   try {
+    // We need to replace the function name with "evaluate", which is what is expected by backend:
+    const code = evalFunction.code.replace(`def\s${evalFunction.name}`, "def evaluate");
+
+    // Execute the function via pyodide
     const result = await executepy(
       uuid(),
       evalFunction.code,
@@ -225,22 +230,22 @@ export async function generateFunctionsForCriteria(
     example,
   );
 
-  // try {
-  //   const streamer = new AzureOpenAIStreamer();
+  try {
+    const streamer = new AzureOpenAIStreamer();
 
-  //   streamer.on("function", (functionDefinition: string) => {
-  //     processAndEmitFunction(criteria, functionDefinition, emitter);
-  //   });
+    streamer.on("function", (functionDefinition: string) => {
+      processAndEmitFunction(criteria, functionDefinition, emitter);
+    });
 
-  //   const modelType =
-  //     criteria.eval_method === "expert" ? "llm_eval" : "python_fn";
-  //   await streamer.generate(functionGenPrompt, "gpt-35-turbo", modelType);
-  // } catch (error) {
-  //   console.error("Error generating function for criteria:", error);
-  //   throw new Error(
-  //     `Failed to generate function for criteria: ${criteria.criteria}`,
-  //   );
-  // }
+    const modelType =
+      criteria.eval_method === "expert" ? "llm_eval" : "python_fn";
+    await streamer.generate(functionGenPrompt, "gpt-35-turbo", modelType);
+  } catch (error) {
+    console.error("Error generating function for criteria:", error);
+    throw new Error(
+      `Failed to generate function for criteria: ${criteria.criteria}`,
+    );
+  }
 }
 
 function buildFunctionGenPrompt(
@@ -267,7 +272,7 @@ function buildFunctionGenPrompt(
   - ${criteria.criteria}
   
   Function Requirements:
-  - Develop multiple (at least 3) to assess the concept outlined in the criteria.
+  - Develop multiple functions (at least 3) to assess the concept outlined in the criteria.
   - Each function must accept three arguments:
     1. \`variables\`: A string representation of the variables for this LLM call.
     2. \`prompt\`: A string representing the input prompt based on the variables.

@@ -311,6 +311,17 @@ export default class EvaluationFunctionExecutor {
     return new Map(ungradedEntries);
   }
 
+  private getExampleForId(id: string) {
+    const item = this.examples.filter((e) => e.uid === id);
+    if (item.length === 1) return item[0];
+    else if (item.length > 1) {
+      console.error(
+        "More than one example found with the same id. Ids must be unique. Returning the first, to not halt...",
+      );
+      return item[0];
+    } else return null;
+  }
+
   /**
    * Determines the next example to be graded, alternating between examples with the highest and lowest ungraded scores.
    * This method aims to balance attention across examples of varying difficulty or quality. Ideally, in grading, we get a sample of good and bad
@@ -322,7 +333,7 @@ export default class EvaluationFunctionExecutor {
    */
   public getNextExampleToGrade(
     policy: "random" | "priority" = "priority",
-  ): ResponseUID | null {
+  ): StandardizedLLMResponse | null {
     const ungraded = Array.from(this.getUngradedScores().keys());
 
     if (ungraded.length === 0) {
@@ -331,14 +342,16 @@ export default class EvaluationFunctionExecutor {
 
     // If the policy is random, return a random ungraded example
     if (policy === "random") {
-      return ungraded[Math.floor(Math.random() * ungraded.length)];
+      return this.getExampleForId(
+        ungraded[Math.floor(Math.random() * ungraded.length)],
+      );
     }
 
     // Otherwise whether to pick the highest or lowest ungraded score
     const pickIndex = this.lastPickedHighScore ? ungraded.length - 1 : 0;
     this.lastPickedHighScore = !this.lastPickedHighScore; // Alternate for next time
 
-    return ungraded[pickIndex];
+    return this.getExampleForId(ungraded[pickIndex]);
   }
 
   /**
