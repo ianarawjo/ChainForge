@@ -4,6 +4,7 @@ import React, {
   useState,
   useMemo,
   useEffect,
+  useCallback,
 } from "react";
 import {
   SimpleGrid,
@@ -24,19 +25,25 @@ import {
   Stack,
   Box,
   Space,
+  Center,
+  Tooltip,
+  Skeleton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconChevronLeft,
   IconChevronRight,
   IconCode,
+  IconPencil,
+  IconRepeat,
   IconRobot,
   IconSparkles,
   IconThumbDown,
   IconThumbUp,
+  IconTrash,
 } from "@tabler/icons-react";
 import ConfettiExplosion from "react-confetti-explosion";
-import { sampleRandomElements, transformDict } from "./backend/utils";
+import { cleanMetavarsFilterFunc, sampleRandomElements, transformDict } from "./backend/utils";
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
 import { escapeBraces } from "./backend/template";
 
@@ -57,6 +64,7 @@ const CriteriaCard = function CriteriaCard({
   evalMethod,
   onTitleChange,
   onDescriptionChange,
+  onRemove,
 }) {
   const [checked, setChecked] = useState(true);
   const [codeChecked, setCodeChecked] = useState(evalMethod === "code");
@@ -71,24 +79,35 @@ const CriteriaCard = function CriteriaCard({
       style={{ backgroundColor: checked ? "#f2f7fc" : "#fff" }}
     >
       <UnstyledButton
-        onClick={() => setChecked(!checked)}
+        // onClick={() => setChecked(!checked)}
         onKeyUp={(e) => e.preventDefault()}
         className="checkcard"
       >
-        <Checkbox
+        {/* <Checkbox
           checked={checked}
           onChange={() => setChecked(!checked)}
           tabIndex={-1}
           size="md"
-          mr="xl"
+          mr="lg"
           styles={{ input: { cursor: "pointer" } }}
           aria-hidden
-        />
+        /> */}
 
-        <div>
-          <Text fw={500} mb={7} lh={1} fz="md">
-            {title}
-          </Text>
+        <div style={{width: "100%"}}>
+          <TextInput value={title} onChange={(e) => onTitleChange(e.currentTarget.value)} mb={7} lh={1} styles={{
+              input: {
+                border: "none",
+                borderWidth: "0px",
+                padding: "0px",
+                background: "transparent",
+                fontWeight: 500,
+                fontSize: "12pt",
+                margin: "0px",
+                height: "auto",
+                minHeight: "auto"
+              },
+            }} />
+          
           <Textarea
             value={description}
             onChange={(e) => onDescriptionChange(e.currentTarget.value)}
@@ -103,13 +122,27 @@ const CriteriaCard = function CriteriaCard({
               },
             }}
             autosize
-            minRows={1}
+            minRows={2}
             maxRows={5}
             fz="sm"
             mb="lg"
             c="dimmed"
           />
         </div>
+
+        <Button
+            size="xs"
+            variant="subtle"
+            compact
+            color="gray"
+            onClick={onRemove}
+            pos="absolute"
+            right="8px"
+            top="8px"
+            style={{ padding: "0px" }}
+          >
+            <IconTrash size={"95%"} />
+          </Button>
 
         <Switch
           size="lg"
@@ -142,6 +175,41 @@ const CriteriaCard = function CriteriaCard({
   );
 };
 
+const ChooseCard = function ChooseCard({ title, description, icon, bg, onClick }) {
+  const [hovering, setHovering] = useState(false);
+
+  return (
+    <Card
+      shadow="sm"
+      padding="lg"
+      radius="md"
+      withBorder
+      style={{ backgroundColor: bg + (hovering ? "44" : "77") }}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      onClick={onClick}
+    >
+      <UnstyledButton className="checkcard">
+        <Tooltip
+          label={description}
+          maw="200px"
+          position="bottom"
+          withinPortal
+          withArrow
+          multiline
+        >
+          <Flex justify="center" gap="md">
+            <Box>{icon}</Box>
+            <Text fw={500} lh={1.2} fz="md">
+              {title}
+            </Text>
+          </Flex>
+        </Tooltip>
+      </UnstyledButton>
+    </Card>
+  );
+};
+
 // Pop-up to ask user to pick criterias for evaluation
 export const PickCriteriaModal = forwardRef(
   function PickCriteriaModal(props, ref) {
@@ -150,56 +218,80 @@ export const PickCriteriaModal = forwardRef(
 
     // Which stage of picking + generating criteria we are in. Screens are:
     // pick, wait, grade
-    const [screen, setScreen] = useState("pick");
+    const [screen, setScreen] = useState("auto_or_manual");
     const modalTitle = useMemo(() => {
       if (screen === "pick") return "Pick Criteria";
+      else if (screen === "auto_or_manual") return "Welcome";
       else if (screen === "wait") return "Collecting implementations...";
       else return "Grading Responses";
     }, [screen]);
 
     const [criteria, setCriteria] = useState([
       {
-        title: "Grammaticality",
-        description: "The text is grammatically correct.",
+        shortname: "Grammaticality",
+        criteria: "The text is grammatically correct.",
       },
-      { title: "Length", description: "The text is 144 characters or less." },
+      { shortname: "Length", criteria: "The text is 144 characters or less." },
       {
-        title: "Clickbait potential",
-        description: "How likely the text is to drive attention as a Tweet.",
+        shortname: "Clickbait potential",
+        criteria: "How likely the text is to drive attention as a Tweet.",
       },
       {
-        title: "Informality",
-        description:
+        shortname: "Informality",
+        criteria:
           "Whether the response sounds informal, like a real human tweeted it.",
       },
       {
-        title: "Toxicity",
-        description: "Whether the response sounds overly harmful or toxic.",
+        shortname: "Toxicity",
+        criteria: "Whether the response sounds overly harmful or toxic.",
       },
     ]);
     const [addCriteriaValue, setAddCriteriaValue] = useState("");
+    const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
 
     const addCriteria = () => {
       // TODO: Make async LLM call to expand criteria. For now, just dummy func:
       setCriteria(
         criteria.concat([
-          { title: "New Criteria", description: addCriteriaValue },
+          { shortname: "New Criteria", criteria: addCriteriaValue },
         ]),
       );
     };
     const setCriteriaTitle = (title, idx) => {
-      criteria[idx].title = title;
+      criteria[idx].shortname = title;
       setCriteria([...criteria]);
     };
     const setCriteriaDesc = (desc, idx) => {
-      criteria[idx].description = desc;
+      criteria[idx].criteria = desc;
       setCriteria([...criteria]);
     };
+
+    // Given the context from "inputs", tries to generate an array of natural language criteria.
+    const genCriteriaFromContext = useCallback(async () => {
+      // Attempt to infer the prompt template used to generate the responses:
+      const prompts = new Set();
+      for (const resp_obj of responses) {
+        if (resp_obj?.metavars?.__pt !== undefined) {
+          prompts.add(resp_obj.metavars.__pt);
+        }
+      }
+
+      if (prompts.size === 0) {
+        console.error("No context found. Cannot proceed.");
+        return;
+      } 
+      
+      // Pick a prompt template at random to serve as context....
+      const inputPromptTemplate = escapeBraces(prompts.values().next().value);
+
+      // Attempt to generate criteria using an LLM
+      return await generateLLMEvaluationCriteria(inputPromptTemplate);
+    }, [responses]);
 
     // This gives the parent access to triggering the modal alert
     const trigger = (inputs) => {
       setResponses(inputs);
-      setScreen("pick");
+      setScreen("auto_or_manual");
       open();
     };
     useImperativeHandle(ref, () => ({
@@ -224,6 +316,57 @@ export const PickCriteriaModal = forwardRef(
         closeOnClickOutside={true}
         style={{ position: "relative", left: "-5%" }}
       >
+        {screen === "auto_or_manual" ? (
+          <div>
+            <Center>
+              <Text size="sm" pl="sm" mt="lg" mb="sm" maw="560px">
+                Welcome to the EvalGen wizard. The wizard will generate
+                evaluation criteria and implementations for grading responses
+                that align with your expectations.
+              </Text>
+            </Center>
+            <Center>
+              <Text size="sm" pl="sm" mb="lg" maw="560px">
+                To get started, we need to specify some criteria in natural
+                language that will be used to evaluate model responses. Would
+                you like to ask an AI to look at your prompt (input to this
+                MultiEval node) and try to infer criteria, or enter criteria
+                manually?
+              </Text>
+            </Center>
+            <Center>
+              <Flex justify="center" gap="lg" mt="sm" mb="lg" maw="560px">
+                <ChooseCard
+                  onClick={() => {
+                    if (isLoadingCriteria) return;
+                    setScreen("pick");
+                    setCriteria([]);
+                    setIsLoadingCriteria(true);
+                    genCriteriaFromContext().then(setCriteria).finally(() => setIsLoadingCriteria(false));
+                  }}
+                  title="Infer criteria from my context"
+                  description="An AI will look at your input prompt and context and try to infer criteria. You will still be able to review, revise, and add criteria."
+                  icon={<IconSparkles />}
+                  bg="#a834eb"
+                />
+                <ChooseCard
+                  onClick={() => {
+                    setScreen("pick");
+                    setCriteria([]);
+                  }}
+                  title="Let me specify criteria manually"
+                  description="Enter criteria manually. An AI will generate longer descriptions for your criteria, which you can review and revise."
+                  icon={<IconPencil />}
+                  bg="#34eb74"
+                />
+                {/* TODO <ChooseCard title="Chat with an AI to infer criteria" description="Chat with an AI assistant that will ask questions about your task and situation. The AI will infer some criteria and provide them as starting points." icon={<IconMessage2Bolt />} bg="#34c9eb" /> */}
+              </Flex>
+            </Center>
+          </div>
+        ) : (
+          <></>
+        )}
+
         {screen === "pick" ? (
           <div>
             <Text size="sm" pl="sm" mb="lg">
@@ -232,60 +375,75 @@ export const PickCriteriaModal = forwardRef(
               of assertions. Afterwards, an optional human scoring pass can
               better align these implementations with your expectations.
             </Text>
+
+            <Flex align="center" gap="lg">
+              <TextInput
+                label="Type a new criteria to add, then press Enter:"
+                value={addCriteriaValue}
+                onChange={(evt) => setAddCriteriaValue(evt.currentTarget.value)}
+                placeholder="the response is valid JSON"
+                mb="lg"
+                pl="sm"
+                pr="sm"
+                w="100%"
+                onKeyDown={(evt) => {
+                  if (evt.key === "Enter") {
+                    evt.preventDefault();
+                    addCriteria();
+                  }
+                }}
+              />
+              <Button variant="filled" onClick={() => {
+                    if (isLoadingCriteria) return;
+                    setIsLoadingCriteria(true);
+                    genCriteriaFromContext().then((crit) => setCriteria(criteria.concat(crit))).finally(() => setIsLoadingCriteria(false));
+                  }}>
+                <IconRepeat /><IconSparkles />&nbsp;Suggest more
+              </Button>
+            </Flex>
+
             <ScrollArea mih={300} h={500} mah={500}>
               <SimpleGrid cols={3} spacing="sm" verticalSpacing="sm" mb="lg">
                 {criteria.map((c, idx) => (
                   <CriteriaCard
-                    title={c.title}
-                    description={c.description}
-                    evalMethod={c.evalMethod}
-                    key={`cc-${idx}-${c.title}`}
+                    title={c.shortname}
+                    description={c.criteria}
+                    evalMethod={c.eval_method}
+                    key={`cc-${idx}`}
                     onTitleChange={(title) => setCriteriaTitle(title, idx)}
                     onDescriptionChange={(desc) => setCriteriaDesc(desc, idx)}
+                    onRemove={() => setCriteria(criteria.filter((v,j) => j !== idx))}
                   />
                 ))}
+                {isLoadingCriteria ? (
+                  Array.from({length: 3}, (x, i) => (<Skeleton
+                    key={`skele-card-${i}`}><CriteriaCard
+                    title={"Loading"}
+                    description={"Loading"}
+                    evalMethod={"expert"} /></Skeleton>))
+                ): (<></>)}
               </SimpleGrid>
             </ScrollArea>
 
-            <TextInput
-              label="Suggest a criteria to add, then press Enter:"
-              value={addCriteriaValue}
-              onChange={(evt) => setAddCriteriaValue(evt.currentTarget.value)}
-              placeholder="the response is valid JSON"
-              mb="lg"
-              onKeyDown={(evt) => {
-                if (evt.key === "Enter") {
-                  evt.preventDefault();
-                  addCriteria();
-                }
-              }}
-            />
-            <Flex justify="center" gap={12}>
+            <Flex justify="center" gap={12} mt="xs">
               <Button
                 onClick={() => {
-                  // setScreen("wait");
-                  generateLLMEvaluationCriteria(
-                    escapeBraces(`Delete 10 words or phrases from the following paragraph that don't contribute much to its meaning, but keep readability:
-                  "{paragraph}"
+                  setScreen("wait");
+                  // generateLLMEvaluationCriteria(
+                  //   escapeBraces(`Delete 10 words or phrases from the following paragraph that don't contribute much to its meaning, but keep readability:
+                  // "{paragraph}"
                   
-                  Please do not add any new words or change words, only delete words.`),
-                  ).then((crit) => {
-                    setCriteria(
-                      crit.map((c) => ({
-                        title: c.shortname,
-                        description: c.criteria,
-                        evalMethod: c.eval_method,
-                      })),
-                    );
-                  });
-                  // setTimeout(() => {
-                  //   setScreen('grade');
-                  // }, 1000000);
+                  // Please do not add any new words or change words, only delete words.`),
+                  // ).then(setCriteria);
+                  setTimeout(() => {
+                    setScreen('grade');
+                  }, 1000000);
                 }}
                 variant="gradient"
+                gradient={{ from: "teal", to: "lime", deg: 105 }}
               >
                 <IconSparkles />
-                &nbsp;Generate!
+                &nbsp;I'm done. Implement it!
               </Button>
               {/* <Button disabled variant='gradient' gradient={{ from: 'teal', to: 'lime', deg: 105 }}><IconSparkles />&nbsp;Validate</Button> */}
             </Flex>
@@ -353,7 +511,7 @@ export const GradeResponsesWindow = forwardRef(
             ...shownResponse.vars,
             ...transformDict(
               shownResponse.metavars,
-              (key) => !key.startsWith("LLM_"),
+              cleanMetavarsFilterFunc,
             ),
           }
         : {};

@@ -17,6 +17,8 @@ import {
   Collapse,
   Button,
   Alert,
+  Flex,
+  Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -49,25 +51,25 @@ import { PickCriteriaModal } from "./GradeResponsesModal";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
-const TEST_EVAL_COMPS = [
-  {
-    name: "Formatting",
-    type: "javascript",
-    state: {
-      code: "function evaluate(r) {\n\ttry {\n\t\tJSON.parse(r.text);\n\t\treturn true;\n\t} catch (e) {\n\t\treturn false;\n\t} \n}",
-    },
-  },
-  {
-    name: "Grammaticality",
-    type: "llm",
-    state: { prompt: "Is this grammatical?", format: "bin" },
-  },
-  {
-    name: "Length",
-    type: "python",
-    state: { code: "def evaluate(r):\n\treturn len(r.text.split())" },
-  },
-];
+// const TEST_EVAL_COMPS = [
+//   {
+//     name: "Formatting",
+//     type: "javascript",
+//     state: {
+//       code: "function evaluate(r) {\n\ttry {\n\t\tJSON.parse(r.text);\n\t\treturn true;\n\t} catch (e) {\n\t\treturn false;\n\t} \n}",
+//     },
+//   },
+//   {
+//     name: "Grammaticality",
+//     type: "llm",
+//     state: { prompt: "Is this grammatical?", format: "bin" },
+//   },
+//   {
+//     name: "Length",
+//     type: "python",
+//     state: { code: "def evaluate(r):\n\treturn len(r.text.split())" },
+//   },
+// ];
 const EVAL_TYPE_PRETTY_NAME = {
   python: "Python",
   javascript: "JavaScript",
@@ -209,9 +211,7 @@ const MultiEvalNode = ({ data, id }) => {
    *    state: <dict>  // the internal state necessary for that specific evaluator component (e.g., a prompt for llm eval, or code for code eval)
    * }
    */
-  const [evaluators, setEvaluators] = useState(
-    data.evaluators ?? TEST_EVAL_COMPS,
-  );
+  const [evaluators, setEvaluators] = useState(data.evaluators ?? []);
 
   // Add an evaluator to the end of the list
   const addEvaluator = useCallback(
@@ -337,7 +337,7 @@ const MultiEvalNode = ({ data, id }) => {
     <BaseNode
       classNames="evaluator-node"
       nodeId={id}
-      style={{ backgroundColor: "#eee" }}
+      style={{ backgroundColor: "#fff" }}
     >
       <NodeLabel
         title={data.title || "Multi-Evaluator"}
@@ -373,12 +373,22 @@ const MultiEvalNode = ({ data, id }) => {
         style={{ top: "50%" }}
       />
 
+      <Flex justify="center" gap={12} mb="md">
+        <Button onClick={onClickPickCriteria} variant="outline" size="xs">
+          <IconSparkles size="11pt" />
+          &nbsp;Generate criteria
+        </Button>
+        {/* <Button disabled variant='gradient' gradient={{ from: 'teal', to: 'lime', deg: 105 }}><IconSparkles />&nbsp;Validate</Button> */}
+      </Flex>
+
       <div className="add-text-field-btn">
         <Menu withinPortal position="right-start" shadow="sm">
           <Menu.Target>
-            <ActionIcon variant="outline" color="gray" size="sm">
-              <IconPlus size="12px" />
-            </ActionIcon>
+            <Tooltip label="Add evaluator" position="bottom" withArrow>
+              <ActionIcon variant="outline" color="gray" size="sm">
+                <IconPlus size="12px" />
+              </ActionIcon>
+            </Tooltip>
           </Menu.Target>
 
           <Menu.Dropdown>
@@ -432,8 +442,6 @@ const MultiEvalNode = ({ data, id }) => {
           </Menu.Dropdown>
         </Menu>
       </div>
-
-      <button onClick={onClickPickCriteria}>Pick Criteria</button>
 
       {lastRunSuccess && lastResponses && lastResponses.length > 0 ? (
         <InspectFooter

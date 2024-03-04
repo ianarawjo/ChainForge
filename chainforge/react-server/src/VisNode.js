@@ -7,7 +7,7 @@ import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import PlotLegend from "./PlotLegend";
 import fetch_from_backend from "./fetch_from_backend";
-import { truncStr } from "./backend/utils";
+import { cleanMetavarsFilterFunc, truncStr } from "./backend/utils";
 
 // Helper funcs
 const splitAndAddBreaks = (s, chunkSize) => {
@@ -804,7 +804,7 @@ const VisNode = ({ data, id }) => {
             .concat(varnames.map((name) => ({ value: name, label: name })))
             .concat(
               metavars
-                .filter((name) => !name.startsWith("LLM_"))
+                .filter(cleanMetavarsFilterFunc)
                 .map((name) => ({
                   value: `__meta_${name}`,
                   label: `${name} (meta)`,
@@ -814,7 +814,7 @@ const VisNode = ({ data, id }) => {
           // Find all the special 'LLM group' metavars and put them in the 'group by' dropdown:
           const available_llm_groups = [{ value: "LLM", label: "LLM" }].concat(
             metavars
-              .filter((name) => name.startsWith("LLM_"))
+              .filter(cleanMetavarsFilterFunc)
               .map((name) => ({
                 value: name,
                 label: `LLMs #${parseInt(name.slice(4)) + 1}`,

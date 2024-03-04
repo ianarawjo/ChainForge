@@ -24,6 +24,7 @@ import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 import useStore from "./store";
 import fetch_from_backend from "./fetch_from_backend";
 import {
+  cleanMetavarsFilterFunc,
   stripLLMDetailsFromResponses,
   toStandardResponseFormat,
 } from "./backend/utils";
@@ -229,7 +230,7 @@ const SimpleEvalNode = ({ data, id }) => {
           Object.keys(resp_obj.metavars).forEach((v) => metavars.add(v));
       });
       const avs = Array.from(varnames);
-      const amvs = Array.from(metavars).filter((v) => !v.startsWith("LLM_"));
+      const amvs = Array.from(metavars).filter(cleanMetavarsFilterFunc);
       setAvailableVars(avs);
       setAvailableMetavars(amvs);
       setDataPropsForNode(id, { availableVars: avs, availableMetavars: amvs });

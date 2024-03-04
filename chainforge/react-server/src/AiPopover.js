@@ -24,6 +24,7 @@ import {
 import { queryLLM } from "./backend/backend";
 import { splitText } from "./SplitNode";
 import { escapeBraces } from "./backend/template";
+import { cleanMetavarsFilterFunc } from "./backend/utils";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -73,7 +74,7 @@ const generateContextPromptForVarMetaVarContext = (context) => {
 
   let context_str = "";
   const metavars = context.metavars
-    ? context.metavars.filter((m) => !m.startsWith("LLM_"))
+    ? context.metavars.filter(cleanMetavarsFilterFunc)
     : [];
   const has_vars = context.vars && context.vars.length > 0;
   const has_metavars = metavars && metavars.length > 0;

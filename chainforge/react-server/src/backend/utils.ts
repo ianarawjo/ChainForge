@@ -1677,3 +1677,9 @@ export async function retryAsyncFunc<T>(
     return retryAsyncFunc(func, numTimes - 1);
   }
 }
+
+// Filters internally used keys LLM_{idx} and __{str} from metavar dictionaries.
+// This method is used to pass around information hidden from the user. 
+export function cleanMetavarsFilterFunc() {
+  return (key: string) => !(key.startsWith("LLM_") || key.startsWith("__pt"));
+}
