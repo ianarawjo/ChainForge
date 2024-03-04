@@ -1,140 +1,140 @@
-import fs from "fs";
-import csvParser from "csv-parser";
-import readline from "readline";
+// import fs from "fs";
+// import csvParser from "csv-parser";
+// import readline from "readline";
 
-import { Example, EvalCriteria, generateLLMEvaluationCriteria } from "./utils";
-import EvaluationFunctionExecutor from "./executor";
+// import { Example, EvalCriteria, generateLLMEvaluationCriteria } from "./utils";
+// import EvaluationFunctionExecutor from "./executor";
 
-const readCSV = async (filePath: string): Promise<Example[]> => {
-  const examples: Example[] = [];
-  let counter = 0; // Counter to generate unique IDs
+// const readCSV = async (filePath: string): Promise<Example[]> => {
+//   const examples: Example[] = [];
+//   let counter = 0; // Counter to generate unique IDs
 
-  return new Promise((resolve, reject) => {
-    fs.createReadStream(filePath)
-      .pipe(csvParser(["prompt", "example", "response", "model"]))
-      .on("data", (data) => {
-        try {
-          examples.push({
-            id: `example_${++counter}`, // Generating a unique ID
-            variables: data.example,
-            prompt: data.prompt,
-            response: data.response,
-          });
-        } catch (error) {
-          // console.error("Error parsing variables from CSV:", error);
-          // Don't throw here, just skip the example
-        }
-      })
-      .on("end", () => resolve(examples))
-      .on("error", reject);
-  });
-};
+//   return new Promise((resolve, reject) => {
+//     fs.createReadStream(filePath)
+//       .pipe(csvParser(["prompt", "example", "response", "model"]))
+//       .on("data", (data) => {
+//         try {
+//           examples.push({
+//             id: `example_${++counter}`, // Generating a unique ID
+//             variables: data.example,
+//             prompt: data.prompt,
+//             response: data.response,
+//           });
+//         } catch (error) {
+//           // console.error("Error parsing variables from CSV:", error);
+//           // Don't throw here, just skip the example
+//         }
+//       })
+//       .on("end", () => resolve(examples))
+//       .on("error", reject);
+//   });
+// };
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
+// const rl = readline.createInterface({
+//   input: process.stdin,
+//   output: process.stdout,
+// });
 
-const askQuestion = (query: string): Promise<string> =>
-  new Promise((resolve) => rl.question(query, resolve));
+// const askQuestion = (query: string): Promise<string> =>
+//   new Promise((resolve) => rl.question(query, resolve));
 
-const main = async () => {
-  // Placeholder values - replace with actual data
-  const promptTemplate = `You are an AI Assistant that’s an expert at reviewing pull requests. Review the below pull request that you receive. 
+// const main = async () => {
+//   // Placeholder values - replace with actual data
+//   const promptTemplate = `You are an AI Assistant that’s an expert at reviewing pull requests. Review the below pull request that you receive.
 
-  Input format
-  - The input format follows Github diff format with addition and subtraction of code.
-  - The + sign means that code has been added.
-  - The - sign means that code has been removed.
-  
-  Instructions
-  - Take into account that you don’t have access to the full code but only the code diff.
-  - Only answer on what can be improved and provide the improvement in code. 
-  - Answer in short form. 
-  - Include code snippets if necessary.
-  - Adhere to the languages code conventions.
-  - Make it personal and always show gratitude to the author using "@" when tagging.`;
+//   Input format
+//   - The input format follows Github diff format with addition and subtraction of code.
+//   - The + sign means that code has been added.
+//   - The - sign means that code has been removed.
 
-  let examples: Example[] = await readCSV("./codereviews.csv");
+//   Instructions
+//   - Take into account that you don’t have access to the full code but only the code diff.
+//   - Only answer on what can be improved and provide the improvement in code.
+//   - Answer in short form.
+//   - Include code snippets if necessary.
+//   - Adhere to the languages code conventions.
+//   - Make it personal and always show gratitude to the author using "@" when tagging.`;
 
-  // Get a sample of 10 examples
-  examples = examples.slice(0, 10);
+//   let examples: Example[] = await readCSV("./codereviews.csv");
 
-  // Print number of examples
-  console.log(`Loaded ${examples.length} examples.`);
+//   // Get a sample of 10 examples
+//   examples = examples.slice(0, 10);
 
-  // Start a timer
-  let start = Date.now();
-  let timeElapsed = 0;
+//   // Print number of examples
+//   console.log(`Loaded ${examples.length} examples.`);
 
-  // Step 1: Suggest eval criteria and solicit approval
-  const evalCriteria = await generateLLMEvaluationCriteria(promptTemplate);
-  // Pause the timer
-  timeElapsed += Date.now() - start;
+//   // Start a timer
+//   let start = Date.now();
+//   let timeElapsed = 0;
 
-  let approval = await askQuestion(
-    "Do you approve the suggested criteria? (y/n) ",
-  );
+//   // Step 1: Suggest eval criteria and solicit approval
+//   const evalCriteria = await generateLLMEvaluationCriteria(promptTemplate);
+//   // Pause the timer
+//   timeElapsed += Date.now() - start;
 
-  if (approval.toLowerCase() !== "y") {
-    console.log(
-      "Please adjust the criteria directly in the source code for now.",
-    );
-    return;
-  }
+//   const approval = await askQuestion(
+//     "Do you approve the suggested criteria? (y/n) ",
+//   );
 
-  let executor = new EvaluationFunctionExecutor(
-    evalCriteria,
-    promptTemplate,
-    examples,
-  );
+//   if (approval.toLowerCase() !== "y") {
+//     console.log(
+//       "Please adjust the criteria directly in the source code for now.",
+//     );
+//     return;
+//   }
 
-  // Resume the timer
-  start = Date.now();
+//   const executor = new EvaluationFunctionExecutor(
+//     evalCriteria,
+//     promptTemplate,
+//     examples,
+//   );
 
-  // Step 2: Start background task
-  executor.start();
+//   // Resume the timer
+//   start = Date.now();
 
-  //   await executor.waitForCompletion();
+//   // Step 2: Start background task
+//   executor.start();
 
-  //   Step 3: Present examples to grade
-  while (true) {
-    // Get ungraded scores
-    const ungradedScores = executor.getUngradedScores();
-    console.log("Ungraded Scores: ", ungradedScores);
+//   //   await executor.waitForCompletion();
 
-    const nextExampleId = executor.getNextExampleToGrade();
-    if (!nextExampleId) {
-      console.log("All examples graded or no examples available.");
-      break;
-    }
+//   //   Step 3: Present examples to grade
+//   while (true) {
+//     // Get ungraded scores
+//     const ungradedScores = executor.getUngradedScores();
+//     console.log("Ungraded Scores: ", ungradedScores);
 
-    const example = examples.find((e) => e.id === nextExampleId);
-    if (!example) continue;
+//     const nextExampleId = executor.getNextExampleToGrade();
+//     if (!nextExampleId) {
+//       console.log("All examples graded or no examples available.");
+//       break;
+//     }
 
-    console.log(
-      `Example ID: ${example.id}, Prompt: ${example.prompt}, Response: ${example.response}`,
-    );
-    const grade = await askQuestion(
-      "Is this response acceptable? (y/n/finish) ",
-    );
+//     const example = examples.find((e) => e.id === nextExampleId);
+//     if (!example) continue;
 
-    if (grade === "finish") {
-      break;
-    }
+//     console.log(
+//       `Example ID: ${example.id}, Prompt: ${example.prompt}, Response: ${example.response}`,
+//     );
+//     const grade = await askQuestion(
+//       "Is this response acceptable? (y/n/finish) ",
+//     );
 
-    executor.setGradeForExample(example.id, grade.toLowerCase() === "y");
-  }
+//     if (grade === "finish") {
+//       break;
+//     }
 
-  // Print grades
-  console.log("Grades: ", executor.getGrades());
+//     executor.setGradeForExample(example.id, grade.toLowerCase() === "y");
+//   }
 
-  // Step 4: Filtering and results
-  //   await executor.waitForCompletion();
-  const filteredFunctions = await executor.filterEvaluationFunctions(0.2);
-  console.log("Filtered Functions: ", filteredFunctions);
+//   // Print grades
+//   console.log("Grades: ", executor.getGrades());
 
-  rl.close();
-};
+//   // Step 4: Filtering and results
+//   //   await executor.waitForCompletion();
+//   const filteredFunctions = await executor.filterEvaluationFunctions(0.2);
+//   console.log("Filtered Functions: ", filteredFunctions);
 
-main().catch(console.error);
+//   rl.close();
+// };
+
+// main().catch(console.error);

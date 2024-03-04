@@ -64,6 +64,7 @@ async function _route_to_js_backend(route, params) {
         params.scope,
         params.process_type,
         params.script_paths,
+        params.executor,
       );
     case "evalWithLLM":
       return evalWithLLM(

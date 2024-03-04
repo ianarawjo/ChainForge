@@ -23,6 +23,7 @@ import { PromptPipeline } from "./query";
 import { PromptPermutationGenerator, PromptTemplate } from "./template";
 import { UserForcedPrematureExit } from "./errors";
 import CancelTracker from "./canceler";
+import { execPy } from "./pyodide/exec-py";
 
 // """ =================
 //     SETUP AND GLOBALS
@@ -371,62 +372,85 @@ function check_typeof_vals(arr: Array<any>): MetricType {
   } else return val_type;
 }
 
-function run_over_responses(
+async function run_over_responses(
   process_func: (resp: ResponseInfo) => any,
   responses: StandardizedLLMResponse[],
   process_type: "evaluator" | "processor",
-): StandardizedLLMResponse[] {
-  return responses.map((_resp_obj: StandardizedLLMResponse) => {
-    // Deep clone the response object
-    const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
+): Promise<StandardizedLLMResponse[]> {
+  const evald_resps = responses.map(
+    async (_resp_obj: StandardizedLLMResponse) => {
+      // Deep clone the response object
+      const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
 
-    // Map the processor func over every individual response text in each response object
-    const res = resp_obj.responses;
-    const processed = res.map((r: string) =>
-      process_func(
-        new ResponseInfo(
+      // Whether the processor function is async or not
+      const async_processor =
+        process_func?.constructor?.name === "AsyncFunction";
+
+      // Map the processor func over every individual response text in each response object
+      const res = resp_obj.responses;
+      const llm_name = extract_llm_nickname(resp_obj.llm);
+      let processed = res.map((r: string) => {
+        const r_info = new ResponseInfo(
           r,
           resp_obj.prompt,
           resp_obj.vars,
           resp_obj.metavars || {},
-          extract_llm_nickname(resp_obj.llm),
-        ),
-      ),
-    );
-
-    // If type is just a processor
-    if (process_type === "processor") {
-      // Replace response texts in resp_obj with the transformed ones:
-      resp_obj.responses = processed;
-    } else {
-      // If type is an evaluator
-      // Check the type of evaluation results
-      // NOTE: We assume this is consistent across all evaluations, but it may not be.
-      const eval_res_type = check_typeof_vals(processed);
-
-      if (eval_res_type === MetricType.Numeric) {
-        // Store items with summary of mean, median, etc
-        resp_obj.eval_res = {
-          items: processed,
-          dtype: getEnumName(MetricType, eval_res_type),
-        };
-      } else if (
-        [MetricType.Unknown, MetricType.Empty].includes(eval_res_type)
-      ) {
-        throw new Error(
-          "Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.",
+          llm_name,
         );
-      } else {
-        // Categorical, KeyValue, etc, we just store the items:
-        resp_obj.eval_res = {
-          items: processed,
-          dtype: getEnumName(MetricType, eval_res_type),
-        };
-      }
-    }
 
-    return resp_obj;
-  });
+        // Dynamically detect if process_func is async, and await its response;
+        // otherwise, simply execute the function.
+        return process_func(r_info);
+      });
+
+      // If the processor function is async we still haven't gotten responses; we need to wait for Promises to return:
+      if (async_processor) {
+        processed = await Promise.allSettled(processed);
+        for (let i = 0; i < processed.length; i++) {
+          const elem = processed[i];
+          if (elem.status === "rejected")
+            // Bubble up errors
+            throw new Error(elem.reason);
+          processed[i] = elem.value;
+        }
+      }
+
+      // If type is just a processor
+      if (process_type === "processor") {
+        // Replace response texts in resp_obj with the transformed ones:
+        resp_obj.responses = processed;
+      } else {
+        // If type is an evaluator
+        // Check the type of evaluation results
+        // NOTE: We assume this is consistent across all evaluations, but it may not be.
+        const eval_res_type = check_typeof_vals(processed);
+
+        if (eval_res_type === MetricType.Numeric) {
+          // Store items with summary of mean, median, etc
+          resp_obj.eval_res = {
+            items: processed,
+            dtype: getEnumName(MetricType, eval_res_type),
+          };
+        } else if (
+          [MetricType.Unknown, MetricType.Empty].includes(eval_res_type)
+        ) {
+          throw new Error(
+            "Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.",
+          );
+        } else {
+          // Categorical, KeyValue, etc, we just store the items:
+          resp_obj.eval_res = {
+            items: processed,
+            dtype: getEnumName(MetricType, eval_res_type),
+          };
+        }
+      }
+
+      return resp_obj;
+    },
+  );
+
+  return await Promise.all(evald_resps);
 }
 
 // """ ===================
@@ -1018,7 +1042,7 @@ export async function executejs(
 
     // Run the user-defined 'evaluate' function over the responses:
     // NOTE: 'evaluate' here was defined dynamically from 'eval' above. We've already checked that it exists.
-    processed_resps = run_over_responses(
+    processed_resps = await run_over_responses(
       iframe ? process_func : code,
       responses,
       process_type,
@@ -1059,6 +1083,8 @@ export async function executejs(
  * @param response_ids the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
  * @param scope the scope of responses to run on --a single response, or all across each batch. (If batch, evaluate() func has access to 'responses'.) NOTE: Currently disabled.
  * @param process_type the type of processing to perform. Evaluators only 'score'/annotate responses with an 'eval_res' key. Processors change responses (e.g. text).
+ * @param script_paths paths to custom server-side scripts to import
+ * @param executor the way to execute Python code. The option 'flask' runs 'exec' in the backend. The 'pyodide' option spins up a Web Worker with pyodide (running in browser). If the app is not running locally, pyodide is used by default.
  */
 export async function executepy(
   id: string,
@@ -1067,38 +1093,97 @@ export async function executepy(
   scope: "response" | "batch",
   process_type: "evaluator" | "processor",
   script_paths?: string[],
+  executor?: "flask" | "pyodide",
 ): Promise<Dict> {
-  if (!APP_IS_RUNNING_LOCALLY()) {
-    // We can't execute Python if we're not running the local Flask server. Error out:
-    throw new Error(
-      "Cannot evaluate Python code: ChainForge does not appear to be running on localhost.",
-    );
+  // Determine where we can execute Python
+  executor = APP_IS_RUNNING_LOCALLY() ? executor ?? "flask" : "pyodide";
+
+  let exec_response: Dict;
+
+  // Execute using Flask backend (unsecure; only use with trusted code)
+  if (executor === "flask") {
+    // Call our Python server to execute the evaluation code across all responses:
+    exec_response = await call_flask_backend("executepy", {
+      id,
+      code,
+      responses,
+      scope,
+      process_type,
+      script_paths,
+    }).catch((err) => {
+      throw new Error(err.message);
+    });
+
+    if (!exec_response || exec_response.error !== undefined)
+      throw new Error(
+        exec_response?.error || "Empty response received from Flask server",
+      );
+
+    // Attempt to execute using Pyodide in a WebWorker (in the browser; safer, sandboxed)
+  } else if (executor === "pyodide") {
+    const req_func_name =
+      !process_type || process_type === "evaluator" ? "evaluate" : "process";
+    const all_logs: string[] = [];
+
+    // Create a wrapper to execute the Python code, passing in the ResponseInfo object and outputting the result:
+    const code_header = `from collections import namedtuple\nResponseInfo = namedtuple('ResponseInfo', 'text prompt var meta llm')`;
+    const eval_func = async (resp: ResponseInfo) => {
+      const resp_info_init_code = `__resp_info = ResponseInfo(text=${JSON.stringify(resp.text)}, prompt=${JSON.stringify(resp.prompt)}, var=${JSON.stringify(resp.var)}, meta=${JSON.stringify(resp.meta)}, llm=${JSON.stringify(resp.llm)})`;
+      try {
+        // We have to pass in resp_info manually, since providing context via "from js import..." results in a race condition
+        const { results, error } = await execPy(
+          `${code_header}\n${code}\n${resp_info_init_code}\n__out = ${req_func_name}(__resp_info)\n__out`,
+        );
+
+        if (results !== undefined) {
+          // console.log("pyodideWorker return results: ", results);
+          return results;
+        } else if (error) {
+          console.warn("Error executing Python code with pyodide: ", error);
+          all_logs.push(error.toString());
+          throw new Error("pyodideWorker error: " + error.toString());
+        }
+      } catch (e) {
+        if (e.filename) {
+          all_logs.push(e.message());
+          throw new Error(
+            `Error in pyodideWorker at ${e.filename}, Line: ${e.lineno}, ${e.message}`,
+          );
+        } else throw e;
+      }
+    };
+
+    // Load all responses with the given ID:
+
+    let processed_resps: StandardizedLLMResponse[];
+    try {
+      // Run the user-defined 'evaluate' function over the responses:
+      processed_resps = await run_over_responses(
+        eval_func,
+        responses,
+        process_type,
+      );
+    } catch (err) {
+      return {
+        error: `Error encountered while trying to run "evaluate" method:\n${err.message}`,
+        logs: all_logs,
+      };
+    }
+
+    exec_response = {
+      responses: processed_resps,
+      logs: all_logs,
+    };
   }
 
-  // All responses loaded; call our Python server to execute the evaluation code across all responses:
-  const flask_response = await call_flask_backend("executepy", {
-    id,
-    code,
-    responses,
-    scope,
-    process_type,
-    script_paths,
-  }).catch((err) => {
-    throw new Error(err.message);
-  });
-
-  if (!flask_response || flask_response.error !== undefined)
-    throw new Error(
-      flask_response?.error || "Empty response received from Flask server",
-    );
-
-  // Grab the responses and logs from the Flask result object:
-  const all_evald_responses = flask_response.responses;
-  const all_logs = flask_response.logs;
+  // Grab the responses and logs from the executor result object:
+  const all_evald_responses = exec_response.responses;
+  const all_logs = exec_response.logs;
 
   // Store the evaluated responses in a new cache json:
   StorageCache.store(`${id}.json`, all_evald_responses);
 
+  console.log(all_evald_responses);
   return { responses: all_evald_responses, logs: all_logs };
 }
 

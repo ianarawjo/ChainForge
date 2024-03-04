@@ -1,5 +1,10 @@
 module.exports = {
-  ignorePatterns: ["node_modules/**", "build/**", "craco.config.js"],
+  ignorePatterns: [
+    "node_modules/**",
+    "build/**",
+    "craco.config.js",
+    "src/backend/pyodide/**",
+  ],
   extends: [
     "semistandard",
     "plugin:react/recommended",

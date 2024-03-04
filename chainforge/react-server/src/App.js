@@ -1130,19 +1130,15 @@ const App = () => {
                   JavaScript Evaluator{" "}
                 </Menu.Item>
               </MenuTooltip>
-              {IS_RUNNING_LOCALLY ? (
-                <MenuTooltip label="Evaluate responses by writing Python code.">
-                  <Menu.Item
-                    onClick={() => addEvalNode("python")}
-                    icon={<IconTerminal size="16px" />}
-                  >
-                    {" "}
-                    Python Evaluator{" "}
-                  </Menu.Item>
-                </MenuTooltip>
-              ) : (
-                <></>
-              )}
+              <MenuTooltip label="Evaluate responses by writing Python code.">
+                <Menu.Item
+                  onClick={() => addEvalNode("python")}
+                  icon={<IconTerminal size="16px" />}
+                >
+                  {" "}
+                  Python Evaluator{" "}
+                </Menu.Item>
+              </MenuTooltip>
               <MenuTooltip label="Evaluate responses with an LLM like GPT-4.">
                 <Menu.Item
                   onClick={addLLMEvalNode}

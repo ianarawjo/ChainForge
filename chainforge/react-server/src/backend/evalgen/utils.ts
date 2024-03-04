@@ -1,8 +1,6 @@
 // Interfaces and utility functions
 // TODO: Use ChainForge's openai utils (I tried but got errors)
-import { AzureOpenAIStreamer } from "./oai_utils";
-const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");
-const { loadPyodide } = require("pyodide");
+// import { AzureOpenAIStreamer } from "./oai_utils";
 import path from "path";
 import { EventEmitter } from "events";
 import {
@@ -10,14 +8,15 @@ import {
   EvalCriteria,
   EvalFunction,
   EvalFunctionResult,
-  isValidEvalCriteriaFormat,
+  validateEvalCriteriaFormat,
 } from "./typing";
 import { Dict, StandardizedLLMResponse } from "../typing";
 import { executejs, simpleQueryLLM } from "../backend";
 import { retryAsyncFunc } from "../utils";
+// const { loadPyodide } = require("pyodide");
 
 // Define a global variable to store the Pyodide instance without an explicit type
-let pyodideInstance: any = null;
+const pyodideInstance: any = null;
 
 /**
  * Extracts substrings within "```json" and "```" ticks. Excludes the ticks from return.
@@ -77,10 +76,10 @@ export async function generateLLMEvaluationCriteria(
       );
 
     // Attempt to parse all JSON blocks into objects
-    let data: EvalCriteria[] = json_blocks.map((s) => JSON.parse(s));
+    const data: EvalCriteria[] = json_blocks.map((s) => JSON.parse(s));
 
     // Double-check the formatting
-    if (data.every(isValidEvalCriteriaFormat)) return data;
+    if (data.every(validateEvalCriteriaFormat)) return data;
     // Incorrect formatting
     else
       throw new Error(
@@ -181,35 +180,36 @@ export async function execPyFunc(
   evalFunction: EvalFunction,
   example: StandardizedLLMResponse,
 ): Promise<EvalFunctionResult> {
-  // Load Pyodide only if it hasn't been loaded before
-  if (!pyodideInstance) {
-    const pyodidePath = path.join(__dirname, "pyodide");
-    pyodideInstance = await loadPyodide({
-      indexURL: pyodidePath,
-    });
-  }
+  return EvalFunctionResult.SKIP;
+  //   // Load Pyodide only if it hasn't been loaded before
+  //   if (!pyodideInstance) {
+  //     const pyodidePath = path.join(__dirname, "pyodide");
+  //     pyodideInstance = await loadPyodide({
+  //       indexURL: pyodidePath,
+  //     });
+  //   }
 
-  /// Use the pyodideInstance to run Python code
-  try {
-    const pythonCode = `
-import json
+  //   /// Use the pyodideInstance to run Python code
+  //   try {
+  //     const pythonCode = `
+  // import json
 
-${evalFunction.code}
+  // ${evalFunction.code}
 
-# Execute the evaluation function with the example's prompt and response
-result = ${evalFunction.name}(${example.vars}, '${example.prompt}', '${example.responses[0]}')
+  // # Execute the evaluation function with the example's prompt and response
+  // result = ${evalFunction.name}(${example.vars}, '${example.prompt}', '${example.responses[0]}')
 
-result`;
+  // result`;
 
-    const result = await pyodideInstance.runPythonAsync(pythonCode);
-    return result ? EvalFunctionResult.PASS : EvalFunctionResult.FAIL;
-  } catch (error) {
-    // Raise error
-    // throw new EvalExecutionError(
-    //   `Error executing function ${evalFunction.name}: ${error}`,
-    // );
-    return EvalFunctionResult.SKIP;
-  }
+  //     const result = await pyodideInstance.runPythonAsync(pythonCode);
+  //     return result ? EvalFunctionResult.PASS : EvalFunctionResult.FAIL;
+  //   } catch (error) {
+  //     // Raise error
+  //     // throw new EvalExecutionError(
+  //     //   `Error executing function ${evalFunction.name}: ${error}`,
+  //     // );
+  //     return EvalFunctionResult.SKIP;
+  //   }
 }
 
 export async function generateFunctionsForCriteria(
@@ -224,22 +224,22 @@ export async function generateFunctionsForCriteria(
     example,
   );
 
-  try {
-    const streamer = new AzureOpenAIStreamer();
+  // try {
+  //   const streamer = new AzureOpenAIStreamer();
 
-    streamer.on("function", (functionDefinition: string) => {
-      processAndEmitFunction(criteria, functionDefinition, emitter);
-    });
+  //   streamer.on("function", (functionDefinition: string) => {
+  //     processAndEmitFunction(criteria, functionDefinition, emitter);
+  //   });
 
-    const modelType =
-      criteria.eval_method === "expert" ? "llm_eval" : "python_fn";
-    await streamer.generate(functionGenPrompt, "gpt-35-turbo", modelType);
-  } catch (error) {
-    console.error("Error generating function for criteria:", error);
-    throw new Error(
-      `Failed to generate function for criteria: ${criteria.criteria}`,
-    );
-  }
+  //   const modelType =
+  //     criteria.eval_method === "expert" ? "llm_eval" : "python_fn";
+  //   await streamer.generate(functionGenPrompt, "gpt-35-turbo", modelType);
+  // } catch (error) {
+  //   console.error("Error generating function for criteria:", error);
+  //   throw new Error(
+  //     `Failed to generate function for criteria: ${criteria.criteria}`,
+  //   );
+  // }
 }
 
 function buildFunctionGenPrompt(
@@ -284,7 +284,7 @@ function processAndEmitFunction(
   functionDefinition: string,
   emitter: EventEmitter,
 ): void {
-  let evalFunction: EvalFunction = {
+  const evalFunction: EvalFunction = {
     evalCriteria: criteria,
     code: functionDefinition,
     name: functionDefinition,

@@ -129,7 +129,7 @@ export default class EvaluationFunctionExecutor {
     const emitter = new EventEmitter();
     let criteriaProcessed = 0; // Track the number of criteria processed
     let resolveAllFunctionsGenerated; // To be called when all functions are generated and executed
-    let functionExecutionPromises: Promise<any>[] = []; // Track execution promises for function executions
+    const functionExecutionPromises: Promise<any>[] = []; // Track execution promises for function executions
 
     // This promise resolves when the 'allFunctionsGenerated' event is emitted
     const allFunctionsGeneratedPromise = new Promise<void>((resolve) => {
@@ -355,14 +355,14 @@ export default class EvaluationFunctionExecutor {
     const gradedExamples = this.examples.filter((example) =>
       this.grades.has(example.uid),
     );
-    let gradedResultMap: Map<
+    const gradedResultMap: Map<
       ResponseUID,
       Map<EvalFunction, EvalFunctionResult>
     > = new Map();
 
     // Iterate over graded examples and evaluation functions to fill the matrix
     for (const example of gradedExamples) {
-      let row = new Map<EvalFunction, EvalFunctionResult>();
+      const row = new Map<EvalFunction, EvalFunctionResult>();
       for (const evalFunction of this.evalFunctions) {
         // Check if the result is in the cache
         if (this.resultsCache.has(evalFunction)) {
@@ -394,9 +394,10 @@ export default class EvaluationFunctionExecutor {
     const numFailGrades = gradedExamples.filter(
       (example) => !this.grades.get(example.uid),
     ).length;
-    let bestEvalFunctions: EvalFunction[] = [];
-    let evalFunctionReport: Map<EvalCriteria, EvalFunctionReport[]> = new Map();
-    let coveredFailures = new Set<ResponseUID>();
+    const bestEvalFunctions: EvalFunction[] = [];
+    const evalFunctionReport: Map<EvalCriteria, EvalFunctionReport[]> =
+      new Map();
+    const coveredFailures = new Set<ResponseUID>();
 
     // Iterate through each criteria
     // For each criteria, select the function with the highest accuracy rate
@@ -411,8 +412,8 @@ export default class EvaluationFunctionExecutor {
         }
 
         // Create a report for this function
-        let report: EvalFunctionReport = {
-          evalFunction: evalFunction,
+        const report: EvalFunctionReport = {
+          evalFunction,
           true_pass: 0,
           true_fail: 0,
           false_pass: 0,
@@ -499,7 +500,7 @@ export default class EvaluationFunctionExecutor {
     // Create report of coverage, missed failures, selected functions, and all eval function reports
     const report = {
       failureCoverage: coverage,
-      missedFailures: missedFailures,
+      missedFailures,
       selectedEvalFunctions: bestEvalFunctions,
       allEvalFunctionReports: evalFunctionReport,
     };
@@ -518,7 +519,7 @@ export default class EvaluationFunctionExecutor {
     { passed: number; failed: number; skipped: number }
   > {
     // Compute based on the results cache
-    let outcomes = new Map<
+    const outcomes = new Map<
       EvalFunction,
       { passed: number; failed: number; skipped: number }
     >();
