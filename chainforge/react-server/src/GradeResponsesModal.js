@@ -37,6 +37,8 @@ import {
 } from "@tabler/icons-react";
 import ConfettiExplosion from "react-confetti-explosion";
 import { sampleRandomElements, transformDict } from "./backend/utils";
+import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
+import { escapeBraces } from "./backend/template";
 
 const MANTINE_GREEN = "#40c057";
 
@@ -52,11 +54,12 @@ const HeaderText = ({ children }) => {
 const CriteriaCard = function CriteriaCard({
   title,
   description,
+  evalMethod,
   onTitleChange,
   onDescriptionChange,
 }) {
   const [checked, setChecked] = useState(true);
-  const [codeChecked, setCodeChecked] = useState(false);
+  const [codeChecked, setCodeChecked] = useState(evalMethod === "code");
   const theme = useMantineTheme();
 
   return (
@@ -235,7 +238,8 @@ export const PickCriteriaModal = forwardRef(
                   <CriteriaCard
                     title={c.title}
                     description={c.description}
-                    key={`cc-${idx}`}
+                    evalMethod={c.evalMethod}
+                    key={`cc-${idx}-${c.title}`}
                     onTitleChange={(title) => setCriteriaTitle(title, idx)}
                     onDescriptionChange={(desc) => setCriteriaDesc(desc, idx)}
                   />
@@ -259,7 +263,21 @@ export const PickCriteriaModal = forwardRef(
             <Flex justify="center" gap={12}>
               <Button
                 onClick={() => {
-                  setScreen("wait");
+                  // setScreen("wait");
+                  generateLLMEvaluationCriteria(
+                    escapeBraces(`Delete 10 words or phrases from the following paragraph that don't contribute much to its meaning, but keep readability:
+                  "{paragraph}"
+                  
+                  Please do not add any new words or change words, only delete words.`),
+                  ).then((crit) => {
+                    setCriteria(
+                      crit.map((c) => ({
+                        title: c.shortname,
+                        description: c.criteria,
+                        evalMethod: c.eval_method,
+                      })),
+                    );
+                  });
                   // setTimeout(() => {
                   //   setScreen('grade');
                   // }, 1000000);

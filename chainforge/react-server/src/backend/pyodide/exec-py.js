@@ -1,6 +1,6 @@
 /**
  * Executes Python code in browser sandbox with pyodide.
- * 
+ *
  * Code adapted from https://pyodide.org/en/stable/usage/webworker.html
  */
 

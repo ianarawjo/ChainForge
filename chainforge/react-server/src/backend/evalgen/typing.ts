@@ -1,14 +1,17 @@
 import { ChatHistoryInfo, Dict, StandardizedLLMResponse } from "../typing";
 
 export interface EvalCriteria {
+  shortname: string;
   criteria: string;
-  eval_method: "py" | "js" | "expert";
+  eval_method: "code" | "expert";
   source?: string;
 }
 
-export function validateEvalCriteriaFormat(json_obj: Dict) {
+export function validEvalCriteriaFormat(json_obj: Dict) {
   return (
-    "criteria" in json_obj && ["py", "js", "expert"].includes(json_obj.eval_method)
+    "criteria" in json_obj &&
+    "shortname" in json_obj &&
+    ["code", "expert"].includes(json_obj.eval_method)
   );
 }
 

@@ -7,7 +7,7 @@ import {
   EvalCriteria,
   EvalFunction,
   EvalFunctionResult,
-  validateEvalCriteriaFormat,
+  validEvalCriteriaFormat,
 } from "./typing";
 import { Dict, StandardizedLLMResponse } from "../typing";
 import { executejs, executepy, simpleQueryLLM } from "../backend";
@@ -20,7 +20,7 @@ import { v4 as uuid } from "uuid";
  * @returns
  */
 function extractJSONBlocks(mdText: string): string[] | undefined {
-  const regex = /```json(.*?)```/g;
+  const regex = /```json(.*?)```/gs;
   const matches = mdText.match(regex);
   if (matches)
     return matches.map((s) => s.replace("```json", "").replace("```", ""));
@@ -34,8 +34,8 @@ function extractJSONBlocks(mdText: string): string[] | undefined {
  *
  * FUTURE: One might consider giving more contextual information, e.g. input vars to the prompt or prompt history.
  *
- * @param prompt
- * @returns
+ * @param prompt The user's prompt (must be 'concrete'/escaped braces)
+ * @returns A list of parsed `EvalCriteria`
  */
 export async function generateLLMEvaluationCriteria(
   prompt: string,
@@ -46,7 +46,7 @@ export async function generateLLMEvaluationCriteria(
   
   \`${prompt}\`
     
-    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following fields: "criteria" and "eval_method" (code or expert). The criteria should be short, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept.`;
+    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should be short, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case.`;
 
   // Query the LLM (below, we will try this up to 3 times)
   async function _query() {
@@ -72,10 +72,12 @@ export async function generateLLMEvaluationCriteria(
       );
 
     // Attempt to parse all JSON blocks into objects
-    const data: EvalCriteria[] = json_blocks.map((s) => JSON.parse(s));
+    const data: EvalCriteria[] = json_blocks.map((s) => JSON.parse(s)).flat(1);
+
+    console.log("Parsed", data);
 
     // Double-check the formatting
-    if (data.every(validateEvalCriteriaFormat)) return data;
+    if (data.every(validEvalCriteriaFormat)) return data;
     // Incorrect formatting
     else
       throw new Error(
@@ -185,7 +187,7 @@ export async function execPyFunc(
       "response",
       "evaluator",
       undefined,
-      "pyodide"  // execute in sandbox with a pyodide WebWorker
+      "pyodide", // execute in sandbox with a pyodide WebWorker
     );
 
     // Check for errors
@@ -289,7 +291,7 @@ function processAndEmitFunction(
     name: functionDefinition,
   };
 
-  if (criteria.eval_method === "py") {
+  if (criteria.eval_method === "code") {
     const functionNameMatch = functionDefinition.match(
       /def\s+([a-zA-Z_]\w*)\s*\(/,
     );
