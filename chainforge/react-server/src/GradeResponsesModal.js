@@ -6,13 +6,13 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import { v4 as uuid } from "uuid";
 import {
   SimpleGrid,
   Card,
   Modal,
   Text,
   Button,
-  Checkbox,
   UnstyledButton,
   Textarea,
   TextInput,
@@ -167,7 +167,11 @@ const CriteriaCard = function CriteriaCard({
           right="8px"
           bottom="10px"
           checked={codeChecked}
-          onChange={(e) => { setCodeChecked(e.currentTarget.checked); if (onEvalMethodChange) onEvalMethodChange(e.currentTarget.checked ? "code" : "expert"); }}
+          onChange={(e) => {
+            setCodeChecked(e.currentTarget.checked);
+            if (onEvalMethodChange)
+              onEvalMethodChange(e.currentTarget.checked ? "code" : "expert");
+          }}
           thumbIcon={
             codeChecked ? (
               <IconCode
@@ -280,11 +284,25 @@ export const PickCriteriaModal = forwardRef(
     // An object responsible for generating, implementing, and filtering candidate implementations
     const [executor, setExecutor] = useState(null);
 
+    // The samples to pass the executor / grading responses features. This will be bounded
+    // by maxNumSamplesForExecutor, instead of the whole dataset.
+    const samples = useMemo(() => {
+      // The max number of samples (responses) to pass the executor. This controls how many requests will
+      // need to be sent off and how many evaluation function executions are performed.
+      // TODO: Give the user some control over this.
+      const maxNumSamplesForExecutor = 16;
+
+      // Sample from the full set of responses, if needed:
+      if (responses.length > maxNumSamplesForExecutor)
+        return sampleRandomElements(responses, maxNumSamplesForExecutor);
+      else return responses.slice();
+    }, [responses]);
+
     const addCriteria = () => {
       // TODO: Make async LLM call to expand criteria. For now, just dummy func:
       setCriteria(
         criteria.concat([
-          { shortname: "New Criteria", criteria: addCriteriaValue },
+          { shortname: "New Criteria", criteria: addCriteriaValue, eval_method: "expert", uid: uuid() },
         ]),
       );
     };
@@ -300,6 +318,17 @@ export const PickCriteriaModal = forwardRef(
       criteria[idx].eval_method = m;
       setCriteria([...criteria]);
     };
+
+    // An estimate of many requests the implementation executor will require (upper bound).
+    const estimatedLLMRequestsToImplement = useMemo(() => {
+      const num_llm_evals = criteria.reduce(
+        (acc, crit) => acc + (crit.eval_method === "expert" ? 1 : 0),
+        0,
+      );
+      // The executor sends off one query per criteria to generate 3-5 candidates each.
+      // Each candidate LLM eval prompt will be run over all candidates.
+      return criteria.length + num_llm_evals * 5 * samples.length;
+    }, [criteria, samples]);
 
     const getLikelyPromptTemplateAsContext = useCallback(() => {
       // Attempt to infer the prompt template used to generate the responses:
@@ -343,8 +372,8 @@ export const PickCriteriaModal = forwardRef(
       // Initialize an object responsible for generating, executing and ranking candidate implementations:
       const new_executor = new EvaluationFunctionExecutor(
         criteria,
-        getLikelyPromptTemplateAsContext(responses),
-        responses,
+        getLikelyPromptTemplateAsContext(samples),
+        samples,
       );
 
       // Save executor, passing it to the GradeResponses window
@@ -352,12 +381,13 @@ export const PickCriteriaModal = forwardRef(
 
       // Start it in the background
       new_executor.start();
-    }, [criteria, responses, executor]);
+    }, [criteria, samples, executor]);
 
     // This gives the parent access to triggering the modal alert
     const trigger = (inputs) => {
       setResponses(inputs);
       setScreen("auto_or_manual");
+      setExecutor(null); 
       open();
     };
     useImperativeHandle(ref, () => ({
@@ -365,8 +395,8 @@ export const PickCriteriaModal = forwardRef(
     }));
 
     const gradeResponsesWindow = useMemo(
-      () => <GradeResponsesWindow resps={responses} executor={executor} />,
-      [responses, executor],
+      () => <GradeResponsesWindow resps={samples} executor={executor} />,
+      [samples, executor],
     );
 
     return (
@@ -407,7 +437,7 @@ export const PickCriteriaModal = forwardRef(
                     setCriteria([]);
                     setIsLoadingCriteria(true);
                     genCriteriaFromContext()
-                      .then(setCriteria)
+                      .then((crits) => setCriteria(crits.map(c => ({...c, uid: uuid()}))))
                       .finally(() => setIsLoadingCriteria(false));
                   }}
                   title="Infer criteria from my context"
@@ -482,10 +512,12 @@ export const PickCriteriaModal = forwardRef(
                     title={c.shortname}
                     description={c.criteria}
                     evalMethod={c.eval_method}
-                    key={`cc-${idx}`}
+                    key={`cc-${c.uid ?? idx}`}
                     onTitleChange={(title) => setCriteriaTitle(title, idx)}
                     onDescriptionChange={(desc) => setCriteriaDesc(desc, idx)}
-                    onEvalMethodChange={(method) => setCriteriaMethod(method, idx)}
+                    onEvalMethodChange={(method) =>
+                      setCriteriaMethod(method, idx)
+                    }
                     onRemove={() =>
                       setCriteria(criteria.filter((v, j) => j !== idx))
                     }
@@ -508,25 +540,30 @@ export const PickCriteriaModal = forwardRef(
             </ScrollArea>
 
             <Flex justify="center" gap={12} mt="xs">
-              <Button
-                onClick={() => {
-                  setScreen("wait");
-
-                  beginGenCriteriaImplementations();
-
-                  // generateLLMEvaluationCriteria(
-                  //   escapeBraces(`Delete 10 words or phrases from the following paragraph that don't contribute much to its meaning, but keep readability:
-                  // "{paragraph}"
-
-                  // Please do not add any new words or change words, only delete words.`),
-                  // ).then(setCriteria);
-                }}
-                variant="gradient"
-                gradient={{ from: "teal", to: "lime", deg: 105 }}
+              <Tooltip
+                label={`Will send off up to ${estimatedLLMRequestsToImplement} requests`}
+                withArrow
               >
-                <IconSparkles />
-                &nbsp;I&apos;m done. Implement it!
-              </Button>
+                <Button
+                  onClick={() => {
+                    // Start generating implementations + transition to next screen
+                    setScreen("wait");
+                    beginGenCriteriaImplementations();
+
+                    // generateLLMEvaluationCriteria(
+                    //   escapeBraces(`Delete 10 words or phrases from the following paragraph that don't contribute much to its meaning, but keep readability:
+                    // "{paragraph}"
+
+                    // Please do not add any new words or change words, only delete words.`),
+                    // ).then(setCriteria);
+                  }}
+                  variant="gradient"
+                  gradient={{ from: "teal", to: "lime", deg: 105 }}
+                >
+                  <IconSparkles />
+                  &nbsp;I&apos;m done. Implement it!
+                </Button>
+              </Tooltip>
             </Flex>
           </div>
         ) : (

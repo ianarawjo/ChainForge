@@ -1139,7 +1139,6 @@ export async function executepy(
           // console.log("pyodideWorker return results: ", results);
           return results;
         } else if (error) {
-          console.warn("Error executing Python code with pyodide: ", error);
           all_logs.push(error.toString());
           throw new Error("pyodideWorker error: " + error.toString());
         }
@@ -1183,7 +1182,6 @@ export async function executepy(
   // Store the evaluated responses in a new cache json:
   StorageCache.store(`${id}.json`, all_evald_responses);
 
-  console.log(all_evald_responses);
   return { responses: all_evald_responses, logs: all_logs };
 }
 

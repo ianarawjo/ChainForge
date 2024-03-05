@@ -198,7 +198,8 @@ export class AzureOpenAIStreamer extends EventEmitter {
   private processFunctionDelta(delta: string): void {
     this.buffer += delta;
     if (!this.isPythonContentStarted) {
-      const startIndex = this.buffer.indexOf("```python");
+      let startIndex = this.buffer.indexOf("```python");
+      if (startIndex === -1) startIndex = this.buffer.indexOf("```");
       if (startIndex !== -1) {
         this.isPythonContentStarted = true;
         this.buffer = this.buffer.substring(startIndex);
@@ -207,7 +208,7 @@ export class AzureOpenAIStreamer extends EventEmitter {
       const endIndex = this.buffer.indexOf("```", 8); // Look for end marker after the start
       if (endIndex !== -1) {
         // Extract Python code block
-        const pythonCode = this.buffer.substring(8, endIndex).trim();
+        const pythonCode = this.buffer.replace("```python", "").replaceAll("```", "").trim();
         this.pythonBlockBuffer += pythonCode;
         this.buffer = this.buffer.substring(endIndex + 3);
         this.isPythonContentStarted = false;

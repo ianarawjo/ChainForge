@@ -11,9 +11,10 @@ import {
 } from "./typing";
 import { Dict, StandardizedLLMResponse } from "../typing";
 import { executejs, executepy, simpleQueryLLM } from "../backend";
-import { retryAsyncFunc } from "../utils";
+import { getVarsAndMetavars, retryAsyncFunc } from "../utils";
 import { v4 as uuid } from "uuid";
 import { AzureOpenAIStreamer } from "./oai_utils";
+import { buildContextPromptForVarsMetavars, buildGenEvalCodePrompt } from "../../AiPopover";
 
 /**
  * Extracts substrings within "```json" and "```" ticks. Excludes the ticks from return.
@@ -96,7 +97,7 @@ export async function executeLLMEval(
 ): Promise<EvalFunctionResult> {
   // Construct call to an LLM to evaluate the example
   const evalPrompt =
-    "You are an expert evaluator. Evaluate the text below according to this criteria: " +
+    "Evaluate the text below according to this criteria: " +
     evalFunction.code +
     ' Only return "yes" or "no", nothing else.\n\n```\n' +
     example.responses[0] +
@@ -182,12 +183,17 @@ export async function execPyFunc(
 ): Promise<EvalFunctionResult> {
   try {
     // We need to replace the function name with "evaluate", which is what is expected by backend:
-    const code = evalFunction.code.replace(`def\s${evalFunction.name}`, "def evaluate");
+    const code = evalFunction.code.replace(
+      `def ${evalFunction.name}`,
+      "def evaluate",
+    );
+
+    console.log(`Executing function: ${code}`);
 
     // Execute the function via pyodide
     const result = await executepy(
       uuid(),
-      evalFunction.code,
+      code,
       [example],
       "response",
       "evaluator",
@@ -253,36 +259,38 @@ function buildFunctionGenPrompt(
   promptTemplate: string,
   example: StandardizedLLMResponse,
 ): string {
-  if (criteria.eval_method === "expert") {
+  if (criteria.eval_method === "expert") 
     return `Given a prompt template for an LLM pipeline, your task is to devise a prompt for an expert to evaluate the pipeline's responses based on the following criteria: ${criteria.criteria}
   
   Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate the LLM response based on the criteria. Be creative in your prompts. Try different variations/wordings in the question. Return your answers in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
   `;
-  } else {
-    return `Given a prompt template for an LLM pipeline, your task is to devise multiple Python functions to evaluate LLM responses based on specific criteria. Create as many implementations as possible.
+  else 
+    return `Given a prompt template for an LLM pipeline, your task is to devise multiple Python functions to evaluate LLM responses based on the criteria "${criteria.shortname}". Create as many implementations as possible.
+${buildGenEvalCodePrompt("python", buildContextPromptForVarsMetavars(getVarsAndMetavars([example])), criteria.criteria, true)}
+
+Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function.`;
   
-  Prompt Template:
-  "${promptTemplate}"
+  // Prompt Template:
+  // "${promptTemplate}"
   
-  Example inputs and outputs of the LLM pipeline:
-  - Prompt: ${example.prompt}
-  - LLM Response: ${example.responses[0]}
+  // Example inputs and outputs of the LLM pipeline:
+  // - Prompt: ${example.prompt}
+  // - LLM Response: ${example.responses[0]}
   
-  Evaluation Criteria:
-  - ${criteria.criteria}
+  // Evaluation Criteria:
+  // - ${criteria.criteria}
   
-  Function Requirements:
-  - Develop multiple functions (at least 3) to assess the concept outlined in the criteria.
-  - Each function must accept three arguments:
-    1. \`variables\`: A string representation of the variables for this LLM call.
-    2. \`prompt\`: A string representing the input prompt based on the variables.
-    3. \`response\`: The LLM response as a string.
-  - The function should return a boolean value indicating whether the LLM response meets the set criteria.
-  - Base the implementations on standard coding practices and common Python libraries.
+  // Function Requirements:
+  // - Develop multiple functions (at least 3) to assess the concept outlined in the criteria.
+  // - Each function must accept three arguments:
+  //   1. \`variables\`: A string representation of the variables for this LLM call.
+  //   2. \`prompt\`: A string representing the input prompt based on the variables.
+  //   3. \`response\`: The LLM response as a string.
+  // - The function should return a boolean value indicating whether the LLM response meets the set criteria.
+  // - Base the implementations on standard coding practices and common Python libraries.
   
-  Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Feel free to use external libraries for code-based evaluation methods, but all imports (e.g., import re, import nltk) should be done within the function definitions. Include the full implementation of each function.
-  `;
-  }
+  // Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. All imports (e.g., import re, import nltk) should be done within the function definitions. Include the full implementation of each function.
+  // `;
 }
 
 function processAndEmitFunction(
