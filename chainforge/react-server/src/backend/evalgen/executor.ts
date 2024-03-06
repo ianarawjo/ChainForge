@@ -27,7 +27,11 @@ import { EventEmitter } from "events";
  *    and a set of examples to be evaluated.
  *
  *    const executor = new EvaluationFunctionExecutor(
- *      evalCriteria, promptTemplate, examples);
+ *      promptTemplate, examples, evalCriteria);
+ *
+ *    // Optionally, you can call setEvalCriteria to set the evaluation criteria
+ *    // after the executor has been initialized.
+ *    executor.setEvalCriteria(evalCriteria);
  *
  * 2. Start Background Computation:
  *    Call the `start` method to begin generating and executing evaluation
@@ -77,9 +81,9 @@ export default class EvaluationFunctionExecutor {
    * @param examples A set of variable-prompt-response triples that we want the developer to grade (and use for filtering incorrect evaluation functions).
    */
   constructor(
-    evalCriteria: EvalCriteria[],
     promptTemplate: string,
     examples: StandardizedLLMResponse[],
+    evalCriteria: EvalCriteria[] = [],
   ) {
     this.resultsCache = new Map<
       EvalFunction,
@@ -108,6 +112,20 @@ export default class EvaluationFunctionExecutor {
    * This method should be called after the constructor.
    */
   public start(): void {
+    // Throw error if there is no eval criteria
+    if (this.evalCriteria.length === 0) {
+      throw new Error(
+        "No evaluation criteria provided. Please provide at least one evaluation criterion.",
+      );
+    }
+
+    // Throw error if bg task is already running
+    if (this.backgroundTaskPromise) {
+      throw new Error(
+        "Background task for generating and executing evaluation functions is already running.",
+      );
+    }
+
     // Initiate the background task without awaiting its completion
     this.backgroundTaskPromise = this.generateAndExecuteEvaluationFunctions();
   }
@@ -285,6 +303,14 @@ export default class EvaluationFunctionExecutor {
    */
   public setGradeForExample(exampleId: ResponseUID, grade: boolean): void {
     this.grades.set(exampleId, grade);
+  }
+
+  /**
+   * Set evaluation criteria for the executor.
+   * This method allows the client to set the evaluation criteria after the executor has been initialized.
+   */
+  public setEvalCriteria(evalCriteria: EvalCriteria[]): void {
+    this.evalCriteria = evalCriteria;
   }
 
   /**

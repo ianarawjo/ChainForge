@@ -84,10 +84,12 @@
 //   }
 
 //   const executor = new EvaluationFunctionExecutor(
-//     evalCriteria,
 //     promptTemplate,
 //     examples,
 //   );
+
+//   // Set the evaluation criteria
+//   executor.setEvaluationCriteria(evalCriteria);
 
 //   // Resume the timer
 //   start = Date.now();
