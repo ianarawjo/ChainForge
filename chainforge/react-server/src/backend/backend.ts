@@ -377,7 +377,7 @@ async function run_over_responses(
   responses: StandardizedLLMResponse[],
   process_type: "evaluator" | "processor",
 ): Promise<StandardizedLLMResponse[]> {
-  const evald_resps = responses.map(
+  const evald_resps: Promise<StandardizedLLMResponse>[] = responses.map(
     async (_resp_obj: StandardizedLLMResponse) => {
       // Deep clone the response object
       const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
@@ -404,7 +404,12 @@ async function run_over_responses(
       });
 
       // If the processor function is async we still haven't gotten responses; we need to wait for Promises to return:
-      if (async_processor) {
+      // NOTE: For some reason, async_processor check may not work in production builds. To circumvent this,
+      //       we also check if 'processed' has a Promise (is it assume all processed items will then be promises).
+      if (
+        async_processor ||
+        (processed.length > 0 && processed[0] instanceof Promise)
+      ) {
         processed = await Promise.allSettled(processed);
         for (let i = 0; i < processed.length; i++) {
           const elem = processed[i];
