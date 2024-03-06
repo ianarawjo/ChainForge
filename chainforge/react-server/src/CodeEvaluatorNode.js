@@ -213,6 +213,12 @@ export const CodeEvaluatorComponent = forwardRef(
 
       const codeTextOnRun = codeText + "";
       const execute_route = progLang === "python" ? "executepy" : "executejs";
+      let executor = progLang === "python" ? "pyodide" : undefined;
+
+      // Enable running Python in Flask backend (unsafe) if running locally and the user has turned off the sandbox:
+      if (progLang === "python" && IS_RUNNING_LOCALLY && !runInSandbox)
+        executor = "flask";
+
       return fetch_from_backend(execute_route, {
         id,
         code: codeTextOnRun,
@@ -370,13 +376,8 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
       // without access to the Flask backend on localhost.
       // Warn them the evaluator won't function:
       console.warn(
-        "Loaded a Python evaluator node without access to Flask backend on localhost.",
-      );
-      alertModal.current.trigger(
         `This flow contains a Python evaluator node, yet ChainForge does not appear to be running locally on your machine. 
-You will not be able to run Python code in the evaluator. If you want to write an evaluator to score responses, 
-we recommend that you use a JavaScript evaluator node instead. If you'd like to run the Python evaluator, 
-consider installing ChainForge locally.`,
+The Python interpeter in the browser is Pyodide. You may not be able to run some Python code in this evaluator (e.g., if it imports external packages).`,
       );
     }
 
@@ -414,16 +415,6 @@ consider installing ChainForge locally.`,
   }, [status, setStatus]);
 
   const handleRunClick = () => {
-    // Disallow running a Python evaluator node when not on localhost:
-    if (!IS_RUNNING_LOCALLY && progLang === "python") {
-      alertModal.current.trigger(
-        `Python code can only be evaluated when ChainForge is running locally on your machine (on localhost). 
-If you want to run an evaluator to score responses, we recommend that you use a JavaScript evaluator node 
-instead. If you'd like to run the Python evaluator, consider installing ChainForge locally.`,
-      );
-      return;
-    }
-
     // Pull input data
     const pulled_inputs = pullInputs();
     if (!pulled_inputs) return;
