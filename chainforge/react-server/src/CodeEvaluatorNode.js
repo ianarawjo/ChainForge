@@ -657,6 +657,7 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
               : "Running unsandboxed (Python)"
           }
           key="sandbox"
+          withArrow
         >
           <button
             onClick={() => {

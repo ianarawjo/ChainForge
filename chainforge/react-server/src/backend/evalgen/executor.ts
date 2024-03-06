@@ -138,7 +138,6 @@ export default class EvaluationFunctionExecutor {
 
     // Listen for generated functions and execute them as they come in
     emitter.on("functionGenerated", (evalFunction) => {
-
       // Capture the execution promise of each function
       const executionPromise = (async () => {
         // Add the eval function to the list of functions

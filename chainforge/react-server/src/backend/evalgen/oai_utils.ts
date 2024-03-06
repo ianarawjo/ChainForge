@@ -208,7 +208,10 @@ export class AzureOpenAIStreamer extends EventEmitter {
       const endIndex = this.buffer.indexOf("```", 8); // Look for end marker after the start
       if (endIndex !== -1) {
         // Extract Python code block
-        const pythonCode = this.buffer.replace("```python", "").replaceAll("```", "").trim();
+        const pythonCode = this.buffer
+          .replace("```python", "")
+          .replaceAll("```", "")
+          .trim();
         this.pythonBlockBuffer += pythonCode;
         this.buffer = this.buffer.substring(endIndex + 3);
         this.isPythonContentStarted = false;

@@ -294,6 +294,8 @@ const ClaudeSettings = {
         description:
           "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
         enum: [
+          "claude-3-opus-20240229",
+          "claude-3-sonnet-20240229",
           "claude-2",
           "claude-2.0",
           "claude-2.1",
@@ -312,7 +314,18 @@ const ClaudeSettings = {
           "claude-instant-v1.1-100k",
           "claude-instant-v1.0",
         ],
-        default: "claude-2",
+        default: "claude-2.1",
+        shortname_map: {
+          "claude-3-opus-20240229": "claude-3-opus",
+          "claude-3-sonnet-20240229": "claude-3-sonnet",
+        },
+      },
+      system_msg: {
+        type: "string",
+        title: "system_msg",
+        description:
+          "Only supported in Claude 2.1+ models. A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role.",
+        default: "",
       },
       temperature: {
         type: "number",
@@ -337,7 +350,7 @@ const ClaudeSettings = {
         title: "Prompt Wrapper (ChainForge)",
         description:
           // eslint-disable-next-line
-          'Anthropic models expect prompts in the form "\\n\\nHuman: ${prompt}\\n\\nAssistant:". ChainForge wraps all prompts in this template by default. If you wish to explore custom prompt wrappers that deviate, write a Python template here with a single variable, ${prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)',
+          'Older text completions Anthropic models expect prompts in the form "\\n\\nHuman: ${prompt}\\n\\nAssistant:". ChainForge wraps all prompts in this template by default. If you wish to explore custom prompt wrappers that deviate, write a Python template here with a single variable, ${prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)',
         default: "",
       },
       stop_sequences: {
@@ -375,7 +388,10 @@ const ClaudeSettings = {
     },
     model: {
       "ui:help":
-        "Defaults to claude-2. Note that Anthropic models in particular are subject to change. Model names prior to Claude 2, including 100k context window, are no longer listed on the Anthropic site, so they may or may not work.",
+        "Defaults to claude-2.1. Note that Anthropic models are subject to change. Model names prior to Claude 2, including 100k context window, are no longer listed on the Anthropic site, so they may or may not work.",
+    },
+    system_msg: {
+      "ui:widget": "textarea",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -397,7 +413,7 @@ const ClaudeSettings = {
     custom_prompt_wrapper: {
       "ui:widget": "textarea",
       "ui:help":
-        'Defaults to Anthropic\'s internal wrapper "\\n\\nHuman: {prompt}\\n\\nAssistant".',
+        'Defaults to Anthropic\'s internal wrapper "\\n\\nHuman: {prompt}\\n\\nAssistant". Only used for text completions models (2.0 or earlier).',
     },
   },
 

@@ -62,7 +62,13 @@ const changeFourSpaceTabsToTwo = (code) => {
   return retabbed_lines.join("\n");
 };
 
-export const buildGenEvalCodePrompt = (progLang, context, specPrompt, manyFuncs, onlyBooleanFuncs) => `You are to generate ${manyFuncs ? "many different functions" : "one function"} to evaluate textual data, given a user-specified specification. 
+export const buildGenEvalCodePrompt = (
+  progLang,
+  context,
+  specPrompt,
+  manyFuncs,
+  onlyBooleanFuncs,
+) => `You are to generate ${manyFuncs ? "many different functions" : "one function"} to evaluate textual data, given a user-specified specification. 
 The function${manyFuncs ? "s" : ""} will be mapped over an array of objects of type ResponseInfo.
 ${manyFuncs ? "Each" : "Your"} solution must contain a single function called 'evaluate' that takes a single object, 'r', of type ResponseInfo. A ResponseInfo is defined as:
 
@@ -449,7 +455,12 @@ export function AIGenCodeEvaluatorPopover({
 
     const context_str = buildContextPromptForVarsMetavars(context);
 
-    const template = buildGenEvalCodePrompt(progLang, context_str, replacePrompt, false);
+    const template = buildGenEvalCodePrompt(
+      progLang,
+      context_str,
+      replacePrompt,
+      false,
+    );
 
     queryLLM(
       replacePrompt,

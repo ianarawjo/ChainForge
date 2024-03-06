@@ -302,7 +302,12 @@ export const PickCriteriaModal = forwardRef(
       // TODO: Make async LLM call to expand criteria. For now, just dummy func:
       setCriteria(
         criteria.concat([
-          { shortname: "New Criteria", criteria: addCriteriaValue, eval_method: "expert", uid: uuid() },
+          {
+            shortname: "New Criteria",
+            criteria: addCriteriaValue,
+            eval_method: "expert",
+            uid: uuid(),
+          },
         ]),
       );
     };
@@ -387,7 +392,7 @@ export const PickCriteriaModal = forwardRef(
     const trigger = (inputs) => {
       setResponses(inputs);
       setScreen("auto_or_manual");
-      setExecutor(null); 
+      setExecutor(null);
       open();
     };
     useImperativeHandle(ref, () => ({
@@ -437,7 +442,9 @@ export const PickCriteriaModal = forwardRef(
                     setCriteria([]);
                     setIsLoadingCriteria(true);
                     genCriteriaFromContext()
-                      .then((crits) => setCriteria(crits.map(c => ({...c, uid: uuid()}))))
+                      .then((crits) =>
+                        setCriteria(crits.map((c) => ({ ...c, uid: uuid() }))),
+                      )
                       .finally(() => setIsLoadingCriteria(false));
                   }}
                   title="Infer criteria from my context"

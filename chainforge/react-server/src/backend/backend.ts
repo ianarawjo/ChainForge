@@ -91,13 +91,13 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
   }
 }
 
-function REVERT_CONSOLE_LOGGING(id: string): any[] {
+function REVERT_CONSOLE_LOGGING(id: string, base_window: Dict): any[] {
   if (ORIGINAL_CONSOLE_LOG_FUNCS.log !== undefined)
-    console.log = ORIGINAL_CONSOLE_LOG_FUNCS.log;
+    base_window.console.log = ORIGINAL_CONSOLE_LOG_FUNCS.log;
   if (ORIGINAL_CONSOLE_LOG_FUNCS.warn !== undefined)
-    console.warn = ORIGINAL_CONSOLE_LOG_FUNCS.warn;
+    base_window.console.warn = ORIGINAL_CONSOLE_LOG_FUNCS.warn;
   if (ORIGINAL_CONSOLE_LOG_FUNCS.log !== undefined)
-    console.error = ORIGINAL_CONSOLE_LOG_FUNCS.error;
+    base_window.console.error = ORIGINAL_CONSOLE_LOG_FUNCS.error;
 
   const logs = HIJACKED_CONSOLE_LOGS[id];
   delete HIJACKED_CONSOLE_LOGS[id];
@@ -1151,8 +1151,6 @@ export async function executepy(
         } else throw e;
       }
     };
-
-    // Load all responses with the given ID:
 
     let processed_resps: StandardizedLLMResponse[];
     try {
