@@ -17,15 +17,10 @@ import {
   call_flask_backend,
   extractSettingsVars,
   areEqualVarsDicts,
-  repairCachedResponses,
 } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
-import {
-  PromptPermutationGenerator,
-  PromptTemplate,
-  cleanEscapedBraces,
-} from "./template";
+import { PromptPermutationGenerator, PromptTemplate } from "./template";
 import { UserForcedPrematureExit } from "./errors";
 import CancelTracker from "./canceler";
 import { execPy } from "./pyodide/exec-py";
@@ -187,10 +182,8 @@ function load_from_cache(storageKey: string): Dict {
 function load_cache_responses(storageKey: string): Array<Dict> {
   const data = load_from_cache(storageKey);
   if (Array.isArray(data)) return data;
-  else if (typeof data === "object" && data.responses_last_run !== undefined) {
-    repairCachedResponses(data, storageKey, (d) => d.responses_last_run);
+  else if (typeof data === "object" && data.responses_last_run !== undefined)
     return data.responses_last_run;
-  }
   throw new Error(`Could not find cache file for id ${storageKey}`);
 }
 
@@ -383,9 +376,8 @@ async function run_over_responses(
   process_func: (resp: ResponseInfo) => any,
   responses: StandardizedLLMResponse[],
   process_type: "evaluator" | "processor",
-  shouldCleanEscapedBraces: boolean,
 ): Promise<StandardizedLLMResponse[]> {
-  const evald_resps = responses.map(
+  const evald_resps: Promise<StandardizedLLMResponse>[] = responses.map(
     async (_resp_obj: StandardizedLLMResponse) => {
       // Deep clone the response object
       const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
@@ -399,7 +391,7 @@ async function run_over_responses(
       const llm_name = extract_llm_nickname(resp_obj.llm);
       let processed = res.map((r: string) => {
         const r_info = new ResponseInfo(
-          shouldCleanEscapedBraces ? cleanEscapedBraces(r) : r,
+          r,
           resp_obj.prompt,
           resp_obj.vars,
           resp_obj.metavars || {},
@@ -412,6 +404,8 @@ async function run_over_responses(
       });
 
       // If the processor function is async we still haven't gotten responses; we need to wait for Promises to return:
+      // NOTE: For some reason, async_processor check may not work in production builds. To circumvent this,
+      //       we also check if 'processed' has a Promise (is it assume all processed items will then be promises).
       if (
         async_processor ||
         (processed.length > 0 && processed[0] instanceof Promise)
@@ -1057,7 +1051,6 @@ export async function executejs(
       iframe ? process_func : code,
       responses,
       process_type,
-      true,
     );
 
     // Revert the console.log, .warn, .error back to browser default:
@@ -1171,7 +1164,6 @@ export async function executepy(
         eval_func,
         responses,
         process_type,
-        true,
       );
     } catch (err) {
       return {
@@ -1291,17 +1283,13 @@ export async function evalWithLLM(
   }
 
   // Check if the results are boolean-ish:
-  const boolnames = [
-    "true",
-    "True",
-    "false",
-    "False",
-    "yes",
-    "Yes",
-    "no",
-    "No",
-  ];
-  if (all_eval_res.size <= 2 && boolnames.some((b) => all_eval_res.has(b))) {
+  if (
+    all_eval_res.size === 2 &&
+    (all_eval_res.has("true") ||
+      all_eval_res.has("false") ||
+      all_eval_res.has("yes") ||
+      all_eval_res.has("no"))
+  ) {
     // Convert all eval results to boolean datatypes:
     all_evald_responses.forEach((resp_obj) => {
       if (!resp_obj.eval_res?.items) return;
@@ -1366,7 +1354,7 @@ export async function grabResponses(responses: Array<string>): Promise<Dict> {
  */
 export async function exportCache(ids: string[]) {
   // For each id, extract relevant cache file data
-  const cache_files = {};
+  const export_data = {};
   for (let i = 0; i < ids.length; i++) {
     const cache_id = ids[i];
     const cache_keys = get_cache_keys_related_to_id(cache_id);
@@ -1377,15 +1365,10 @@ export async function exportCache(ids: string[]) {
       continue;
     }
     cache_keys.forEach((key: string) => {
-      cache_files[key] = load_from_cache(key);
+      export_data[key] = load_from_cache(key);
     });
   }
-  // Bundle up specific other state in StorageCache, which
-  // includes things like human ratings for responses:
-  const cache_state = StorageCache.getAllMatching((key) =>
-    key.startsWith("r."),
-  );
-  return { files: { ...cache_files, ...cache_state } };
+  return { files: export_data };
 }
 
 /**

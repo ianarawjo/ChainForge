@@ -6,7 +6,11 @@ def readme():
 
 setup(
     name='chainforge',
+<<<<<<< HEAD
     version='0.3.0.3',
+=======
+    version='0.3.0.0',
+>>>>>>> 0f4275b (Add Claude 3 and Pyodide sandboxing (#237))
     packages=find_packages(),
     author="Ian Arawjo",
     description="A Visual Programming Environment for Prompt Engineering",

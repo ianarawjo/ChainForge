@@ -79,6 +79,10 @@ const IS_ACCEPTED_BROWSER =
     navigator?.brave !== undefined) &&
   !isMobile;
 
+// Whether we are running on localhost or not, and hence whether
+// we have access to the Flask backend for, e.g., Python code evaluation.
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
+
 const selector = (state) => ({
   nodes: state.nodes,
   edges: state.edges,
@@ -95,19 +99,37 @@ const selector = (state) => ({
 
 // The initial LLM to use when new flows are created, or upon first load
 const INITIAL_LLM = () => {
-  const falcon7b = {
-    key: uuid(),
-    name: "Mistral-7B",
-    emoji: "🤗",
-    model: "mistralai/Mistral-7B-Instruct-v0.1",
-    base_model: "hf",
-    temp: 1.0,
-    settings: getDefaultModelSettings("hf"),
-    formData: getDefaultModelFormData("hf"),
-  };
-  falcon7b.formData.shortname = falcon7b.name;
-  falcon7b.formData.model = falcon7b.model;
-  return falcon7b;
+  if (!IS_RUNNING_LOCALLY) {
+    // Prefer HF if running on server, as it's free.
+    const falcon7b = {
+      key: uuid(),
+      name: "Mistral-7B",
+      emoji: "🤗",
+      model: "mistralai/Mistral-7B-Instruct-v0.1",
+      base_model: "hf",
+      temp: 1.0,
+      settings: getDefaultModelSettings("hf"),
+      formData: getDefaultModelFormData("hf"),
+    };
+    falcon7b.formData.shortname = falcon7b.name;
+    falcon7b.formData.model = falcon7b.model;
+    return falcon7b;
+  } else {
+    // Prefer OpenAI for majority of local users.
+    const chatgpt = {
+      key: uuid(),
+      name: "GPT3.5",
+      emoji: "🤖",
+      model: "gpt-3.5-turbo",
+      base_model: "gpt-3.5-turbo",
+      temp: 1.0,
+      settings: getDefaultModelSettings("gpt-3.5-turbo"),
+      formData: getDefaultModelFormData("gpt-3.5-turbo"),
+    };
+    chatgpt.formData.shortname = chatgpt.name;
+    chatgpt.formData.model = chatgpt.model;
+    return chatgpt;
+  }
 };
 
 const nodeTypes = {
@@ -132,10 +154,6 @@ const nodeTypes = {
 const edgeTypes = {
   default: RemoveEdge,
 };
-
-// Whether we are running on localhost or not, and hence whether
-// we have access to the Flask backend for, e.g., Python code evaluation.
-const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // Try to get a GET param in the URL, representing the shared flow.
 // Returns undefined if not found.

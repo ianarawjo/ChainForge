@@ -8,7 +8,15 @@ import React, {
   useImperativeHandle,
 } from "react";
 import { Handle } from "reactflow";
-import { Code, Modal, Tooltip, Box, Text, Skeleton } from "@mantine/core";
+import {
+  Code,
+  Modal,
+  Tooltip,
+  Box,
+  Text,
+  Skeleton,
+  Switch,
+} from "@mantine/core";
 import { Prism } from "@mantine/prism";
 import { useDisclosure } from "@mantine/hooks";
 import useStore from "./store";
@@ -201,7 +209,11 @@ export const CodeEvaluatorComponent = forwardRef(
 
     // Runs the code evaluator/processor over the inputs, returning the results as a Promise.
     // Errors are raised as a rejected Promise.
+<<<<<<< HEAD
     const run = (inputs, runInSandbox) => {
+=======
+    const run = (inputs, script_paths, runInSandbox) => {
+>>>>>>> 0f4275b (Add Claude 3 and Pyodide sandboxing (#237))
       // Double-check that the code includes an 'evaluate' or 'process' function, whichever is needed:
       const find_func_regex =
         node_type === "evaluator"
@@ -220,6 +232,12 @@ export const CodeEvaluatorComponent = forwardRef(
 
       const codeTextOnRun = codeText + "";
       const execute_route = progLang === "python" ? "executepy" : "executejs";
+      let executor = progLang === "python" ? "pyodide" : undefined;
+
+      // Enable running Python in Flask backend (unsafe) if running locally and the user has turned off the sandbox:
+      if (progLang === "python" && IS_RUNNING_LOCALLY && !runInSandbox)
+        executor = "flask";
+
       return fetch_from_backend(execute_route, {
         id,
         code: codeTextOnRun,
@@ -227,12 +245,16 @@ export const CodeEvaluatorComponent = forwardRef(
         scope: "response",
         process_type: node_type,
         script_paths,
+<<<<<<< HEAD
         executor:
           progLang === "python"
             ? IS_RUNNING_LOCALLY && runInSandbox
               ? "pyodide"
               : "flask"
             : undefined,
+=======
+        executor: executor,
+>>>>>>> 0f4275b (Add Claude 3 and Pyodide sandboxing (#237))
       }).then(function (json) {
         // Check if there's an error; if so, bubble it up to user and exit:
         if (!json || json.error) {
@@ -376,13 +398,8 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
       // without access to the Flask backend on localhost.
       // Warn them the evaluator won't function:
       console.warn(
-        "Loaded a Python evaluator node without access to Flask backend on localhost.",
-      );
-      alertModal.current.trigger(
         `This flow contains a Python evaluator node, yet ChainForge does not appear to be running locally on your machine. 
-You will not be able to run Python code in the evaluator. If you want to write an evaluator to score responses, 
-we recommend that you use a JavaScript evaluator node instead. If you'd like to run the Python evaluator, 
-consider installing ChainForge locally.`,
+The Python interpeter in the browser is Pyodide. You may not be able to run some Python code in this evaluator (e.g., if it imports external packages).`,
       );
     }
 
@@ -420,16 +437,6 @@ consider installing ChainForge locally.`,
   }, [status, setStatus]);
 
   const handleRunClick = () => {
-    // Disallow running a Python evaluator node when not on localhost:
-    if (!IS_RUNNING_LOCALLY && progLang === "python") {
-      alertModal.current.trigger(
-        `Python code can only be evaluated when ChainForge is running locally on your machine (on localhost). 
-If you want to run an evaluator to score responses, we recommend that you use a JavaScript evaluator node 
-instead. If you'd like to run the Python evaluator, consider installing ChainForge locally.`,
-      );
-      return;
-    }
-
     // Pull input data
     const pulled_inputs = pullInputs();
     if (!pulled_inputs) return;
@@ -447,7 +454,11 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
 
     // Run evaluator in backend
     codeEvaluatorRef.current
+<<<<<<< HEAD
       ?.run(pulled_inputs, runInSandbox)
+=======
+      ?.run(pulled_inputs, script_paths, runInSandbox)
+>>>>>>> 0f4275b (Add Claude 3 and Pyodide sandboxing (#237))
       .then((json) => {
         if (json?.logs) setLastRunLogs(json.logs.join("\n   > "));
 
