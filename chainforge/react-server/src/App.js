@@ -42,7 +42,6 @@ import ExampleFlowsModal from "./ExampleFlowsModal";
 import AreYouSureModal from "./AreYouSureModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
 import SimpleEvalNode from "./SimpleEvalNode";
-import MultiEvalNode from "./MultiEvalNode";
 import {
   getDefaultModelFormData,
   getDefaultModelSettings,
@@ -50,7 +49,6 @@ import {
 import { v4 as uuid } from "uuid";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
-import { PickCriteriaModal } from "./GradeResponsesModal";
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
@@ -79,6 +77,10 @@ const IS_ACCEPTED_BROWSER =
     navigator?.brave !== undefined) &&
   !isMobile;
 
+// Whether we are running on localhost or not, and hence whether
+// we have access to the Flask backend for, e.g., Python code evaluation.
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
+
 const selector = (state) => ({
   nodes: state.nodes,
   edges: state.edges,
@@ -94,19 +96,37 @@ const selector = (state) => ({
 
 // The initial LLM to use when new flows are created, or upon first load
 const INITIAL_LLM = () => {
-  const falcon7b = {
-    key: uuid(),
-    name: "Mistral-7B",
-    emoji: "🤗",
-    model: "mistralai/Mistral-7B-Instruct-v0.1",
-    base_model: "hf",
-    temp: 1.0,
-    settings: getDefaultModelSettings("hf"),
-    formData: getDefaultModelFormData("hf"),
-  };
-  falcon7b.formData.shortname = falcon7b.name;
-  falcon7b.formData.model = falcon7b.model;
-  return falcon7b;
+  if (!IS_RUNNING_LOCALLY) {
+    // Prefer HF if running on server, as it's free.
+    const falcon7b = {
+      key: uuid(),
+      name: "Mistral-7B",
+      emoji: "🤗",
+      model: "mistralai/Mistral-7B-Instruct-v0.1",
+      base_model: "hf",
+      temp: 1.0,
+      settings: getDefaultModelSettings("hf"),
+      formData: getDefaultModelFormData("hf"),
+    };
+    falcon7b.formData.shortname = falcon7b.name;
+    falcon7b.formData.model = falcon7b.model;
+    return falcon7b;
+  } else {
+    // Prefer OpenAI for majority of local users.
+    const chatgpt = {
+      key: uuid(),
+      name: "GPT3.5",
+      emoji: "🤖",
+      model: "gpt-3.5-turbo",
+      base_model: "gpt-3.5-turbo",
+      temp: 1.0,
+      settings: getDefaultModelSettings("gpt-3.5-turbo"),
+      formData: getDefaultModelFormData("gpt-3.5-turbo"),
+    };
+    chatgpt.formData.shortname = chatgpt.name;
+    chatgpt.formData.model = chatgpt.model;
+    return chatgpt;
+  }
 };
 
 const nodeTypes = {
@@ -116,7 +136,6 @@ const nodeTypes = {
   simpleval: SimpleEvalNode,
   evaluator: CodeEvaluatorNode,
   llmeval: LLMEvaluatorNode,
-  multieval: MultiEvalNode,
   vis: VisNode,
   inspect: InspectNode,
   script: ScriptNode,
@@ -131,10 +150,6 @@ const nodeTypes = {
 const edgeTypes = {
   default: RemoveEdge,
 };
-
-// Whether we are running on localhost or not, and hence whether
-// we have access to the Flask backend for, e.g., Python code evaluation.
-const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // Try to get a GET param in the URL, representing the shared flow.
 // Returns undefined if not found.
@@ -345,15 +360,6 @@ const App = () => {
     addNode({
       id: "llmeval-" + Date.now(),
       type: "llmeval",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
-  const addMultiEvalNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "multieval-" + Date.now(),
-      type: "multieval",
       data: {},
       position: { x: x - 200, y: y - 100 },
     });
@@ -717,12 +723,6 @@ const App = () => {
       .catch(handleError);
   };
 
-  // DEBUG: For testing a new pop-up window
-  const testRef = useRef(null);
-  const onClickTest = useCallback(() => {
-    testRef?.current?.trigger();
-  }, []);
-
   // When the user clicks the 'New Flow' button
   const onClickNewFlow = useCallback(() => {
     setConfirmationDialogProps({
@@ -1005,7 +1005,6 @@ const App = () => {
       <div>
         <GlobalSettingsModal ref={settingsModal} alertModal={alertModal} />
         <AlertModal ref={alertModal} />
-        <PickCriteriaModal ref={testRef} />
         <LoadingOverlay visible={isLoading} overlayBlur={1} />
         <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
         <AreYouSureModal
@@ -1148,15 +1147,6 @@ const App = () => {
                   LLM Scorer{" "}
                 </Menu.Item>
               </MenuTooltip>
-              <MenuTooltip label="Define multiple criteria to evaluate responses by. Supports mix of code and LLM-based scorers.">
-                <Menu.Item
-                  onClick={addMultiEvalNode}
-                  icon={<IconAbacus size="16px" />}
-                >
-                  {" "}
-                  Multi-Evaluator{" "}
-                </Menu.Item>
-              </MenuTooltip>
               <Menu.Divider />
               <Menu.Label>Visualizers</Menu.Label>
               <MenuTooltip label="Plot evaluation results. (Attach an evaluator or scorer node as input.)">
@@ -1283,18 +1273,6 @@ const App = () => {
                   : "Share"}
             </Button>
           )}
-          <Button
-            onClick={onClickTest}
-            size="sm"
-            variant="outline"
-            bg="#eee"
-            compact
-            mr="xs"
-            style={{ float: "left" }}
-          >
-            {" "}
-            Test Stuff{" "}
-          </Button>
           <Button
             onClick={onClickNewFlow}
             size="sm"
