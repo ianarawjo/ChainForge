@@ -376,10 +376,12 @@ export const PickCriteriaModal = forwardRef(
 
       // Initialize an object responsible for generating, executing and ranking candidate implementations:
       const new_executor = new EvaluationFunctionExecutor(
-        criteria,
         getLikelyPromptTemplateAsContext(samples),
         samples,
       );
+
+      // Set the criteria to be used for generating implementations
+      new_executor.setCriteria(criteria);
 
       // Save executor, passing it to the GradeResponses window
       setExecutor(new_executor);
