@@ -4,6 +4,9 @@ const webpack = require("webpack");
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 module.exports = {
+  eslint: {
+    enable: false,
+  },
   webpack: {
     configure: {
       resolve: {

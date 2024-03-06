@@ -8,13 +8,26 @@ import React, {
   useImperativeHandle,
 } from "react";
 import { Handle } from "reactflow";
-import { Code, Modal, Tooltip, Box, Text, Skeleton } from "@mantine/core";
+import {
+  Code,
+  Modal,
+  Tooltip,
+  Box,
+  Text,
+  Skeleton,
+  Switch,
+} from "@mantine/core";
 import { Prism } from "@mantine/prism";
 import { useDisclosure } from "@mantine/hooks";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
-import { IconTerminal, IconSearch, IconInfoCircle } from "@tabler/icons-react";
+import {
+  IconTerminal,
+  IconSearch,
+  IconInfoCircle,
+  IconBox,
+} from "@tabler/icons-react";
 import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 
 // Ace code editor
@@ -39,34 +52,51 @@ import { AIGenCodeEvaluatorPopover } from "./AiPopover";
 // we have access to the Flask backend for, e.g., Python code evaluation.
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
-export const INFO_CODEBLOCK_JS = `
-class ResponseInfo {
+const INFO_CODEBLOCK_JS_PROPS = `
   text: string;  // The text of the LLM response
   prompt: string  // The text of the prompt using to query the LLM
   llm: string | LLM  // The name of the LLM queried (the nickname in ChainForge)
   var: Dict  // A dictionary of arguments that filled in the prompt template used to generate the final prompt
-  meta: Dict  // A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
-
+  meta: Dict  // A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt`;
+const INFO_CODEBLOCK_JS_EXTS = `
   // Methods
   toString(): string // returns this.text
-  asMarkdownAST(): Tokens[]  // runs markdown-it .parse; returns list of markdown nodes
+  asMarkdownAST(): Tokens[]  // runs markdown-it .parse; returns list of markdown nodes`;
+
+export const INFO_CODEBLOCK_JS = `
+class ResponseInfo {
+${INFO_CODEBLOCK_JS_PROPS}
 }`;
 
-export const INFO_CODEBLOCK_PY = `
-class ResponseInfo:
+export const INFO_CODEBLOCK_JS_FULL = `
+class ResponseInfo {${INFO_CODEBLOCK_JS_PROPS}
+${INFO_CODEBLOCK_JS_EXTS}
+}`;
+
+const INFO_CODEBLOCK_PY_PROPS = `
   text: str  # The text of the LLM response
   prompt: str  # The text of the prompt using to query the LLM
   llm: str  # The name of the LLM queried (the nickname in ChainForge)
   var: dict  # A dictionary of arguments that filled in the prompt template used to generate the final prompt
-  meta: dict  # A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt
+  meta: dict  # A dictionary of metadata ('metavars') that is 'carried alongside' data used to generate the prompt`;
 
+const INFO_CODEBLOCK_PY_EXTS = `
   # Methods
   def __str__(self):
     return self.text
   
   def asMarkdownAST(self):
     # Returns markdown AST parsed with mistune
-    ...
+    ...`;
+
+export const INFO_CODEBLOCK_PY = `
+class ResponseInfo:
+${INFO_CODEBLOCK_PY_PROPS}
+`;
+
+export const INFO_CODEBLOCK_PY_FULL = `
+class ResponseInfo:${INFO_CODEBLOCK_PY_PROPS}
+${INFO_CODEBLOCK_PY_EXTS}  
 `;
 
 // Code evaluator examples for info modal
@@ -164,7 +194,7 @@ export const CodeEvaluatorComponent = forwardRef(
 
     // Runs the code evaluator/processor over the inputs, returning the results as a Promise.
     // Errors are raised as a rejected Promise.
-    const run = (inputs, script_paths) => {
+    const run = (inputs, script_paths, runInSandbox) => {
       // Double-check that the code includes an 'evaluate' or 'process' function, whichever is needed:
       const find_func_regex =
         node_type === "evaluator"
@@ -183,6 +213,12 @@ export const CodeEvaluatorComponent = forwardRef(
 
       const codeTextOnRun = codeText + "";
       const execute_route = progLang === "python" ? "executepy" : "executejs";
+      let executor = progLang === "python" ? "pyodide" : undefined;
+
+      // Enable running Python in Flask backend (unsafe) if running locally and the user has turned off the sandbox:
+      if (progLang === "python" && IS_RUNNING_LOCALLY && !runInSandbox)
+        executor = "flask";
+
       return fetch_from_backend(execute_route, {
         id,
         code: codeTextOnRun,
@@ -190,6 +226,7 @@ export const CodeEvaluatorComponent = forwardRef(
         scope: "response",
         process_type: node_type,
         script_paths,
+        executor: executor,
       }).then(function (json) {
         // Check if there's an error; if so, bubble it up to user and exit:
         if (!json || json.error) {
@@ -276,6 +313,11 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
   const codeEvaluatorRef = useRef(null);
   const currentCode = useMemo(() => data.code, [data.code]);
 
+  // Whether to sandbox the code execution. Currently this option only displays for Python running locally,
+  // where the user is given two options ---running unsandboxed (in Flask) and running sandboxed with Pyodide (in browser).
+  // When ChainForge is running nonlocally (i.e. the website) Python code is always run sandboxed.
+  const [runInSandbox, setRunInSandbox] = useState(data.sandbox ?? true);
+
   const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
@@ -329,13 +371,8 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
       // without access to the Flask backend on localhost.
       // Warn them the evaluator won't function:
       console.warn(
-        "Loaded a Python evaluator node without access to Flask backend on localhost.",
-      );
-      alertModal.current.trigger(
         `This flow contains a Python evaluator node, yet ChainForge does not appear to be running locally on your machine. 
-You will not be able to run Python code in the evaluator. If you want to write an evaluator to score responses, 
-we recommend that you use a JavaScript evaluator node instead. If you'd like to run the Python evaluator, 
-consider installing ChainForge locally.`,
+The Python interpeter in the browser is Pyodide. You may not be able to run some Python code in this evaluator (e.g., if it imports external packages).`,
       );
     }
 
@@ -373,16 +410,6 @@ consider installing ChainForge locally.`,
   }, [status, setStatus]);
 
   const handleRunClick = () => {
-    // Disallow running a Python evaluator node when not on localhost:
-    if (!IS_RUNNING_LOCALLY && progLang === "python") {
-      alertModal.current.trigger(
-        `Python code can only be evaluated when ChainForge is running locally on your machine (on localhost). 
-If you want to run an evaluator to score responses, we recommend that you use a JavaScript evaluator node 
-instead. If you'd like to run the Python evaluator, consider installing ChainForge locally.`,
-      );
-      return;
-    }
-
     // Pull input data
     const pulled_inputs = pullInputs();
     if (!pulled_inputs) return;
@@ -410,7 +437,7 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
 
     // Run evaluator in backend
     codeEvaluatorRef.current
-      ?.run(pulled_inputs, script_paths)
+      ?.run(pulled_inputs, script_paths, runInSandbox)
       .then((json) => {
         if (json?.logs) setLastRunLogs(json.logs.join("\n   > "));
 
@@ -507,7 +534,11 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
             following properties and methods:
           </Text>
           <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python" ? INFO_CODEBLOCK_PY : INFO_CODEBLOCK_JS}
+            {progLang === "python"
+              ? IS_RUNNING_LOCALLY
+                ? INFO_CODEBLOCK_PY_FULL
+                : INFO_CODEBLOCK_PY
+              : INFO_CODEBLOCK_JS_FULL}
           </Prism>
           <Text mt="md" mb="sm">
             For instance, say you have a prompt template{" "}
@@ -560,7 +591,11 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
             following properties and methods:
           </Text>
           <Prism language={progLang === "python" ? "py" : "ts"}>
-            {progLang === "python" ? INFO_CODEBLOCK_PY : INFO_CODEBLOCK_JS}
+            {progLang === "python"
+              ? IS_RUNNING_LOCALLY
+                ? INFO_CODEBLOCK_PY_FULL
+                : INFO_CODEBLOCK_PY
+              : INFO_CODEBLOCK_JS_FULL}
           </Prism>
           <Text mt="md" mb="sm">
             For another example, say you have a prompt that requests the LLM
@@ -595,7 +630,39 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
 
   // Custom buttons for the node label
   const customButtons = useMemo(() => {
-    const btns = [
+    const btns = [];
+
+    // If this is Python and we are running locally, the user has
+    // two options ---whether to run code in sandbox with pyodide, or from Flask (unsafe):
+    if (progLang === "python" && IS_RUNNING_LOCALLY)
+      btns.push(
+        <Tooltip
+          label={
+            runInSandbox
+              ? "Running in sandbox (pyodide)"
+              : "Running unsandboxed (Python)"
+          }
+          key="sandbox"
+          withArrow
+        >
+          <button
+            onClick={() => {
+              setDataPropsForNode(id, { sandbox: !runInSandbox });
+              setRunInSandbox(!runInSandbox);
+            }}
+            className="custom-button"
+            style={{ border: "none", padding: "0px" }}
+          >
+            <IconBox
+              size="12pt"
+              color={runInSandbox ? "orange" : "#999"}
+              style={{ marginBottom: "-4px" }}
+            />
+          </button>
+        </Tooltip>,
+      );
+
+    btns.push(
       <Tooltip label="Info" key="eval-info">
         <button
           onClick={openInfoModal}
@@ -609,8 +676,9 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
           />
         </button>
       </Tooltip>,
-    ];
+    );
 
+    // If AI support is available, add gen code with AI button:
     if (flags.aiSupport && node_type === "evaluator")
       btns.push(
         <AIGenCodeEvaluatorPopover
@@ -632,6 +700,7 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
     flags,
     codeEvaluatorRef,
     progLang,
+    runInSandbox,
     node_type,
     currentCode,
     lastContext,

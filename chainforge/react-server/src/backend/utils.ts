@@ -156,6 +156,13 @@ export function set_api_keys(api_keys: StringDict): void {
   // Soft fail for non-present keys
 }
 
+export function get_azure_openai_api_keys(): [
+  string | undefined,
+  string | undefined,
+] {
+  return [AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT];
+}
+
 /**
  * Construct an OpenAI format chat history for sending off to an OpenAI API call.
  * @param prompt The next prompt (user message) to append.
@@ -165,9 +172,11 @@ export function set_api_keys(api_keys: StringDict): void {
 function construct_openai_chat_history(
   prompt: string,
   chat_history: ChatHistory | undefined,
-  system_msg: string,
+  system_msg: string | undefined,
 ): ChatHistory {
   const prompt_msg: ChatMessage = { role: "user", content: prompt };
+  const sys_msg: ChatMessage[] =
+    system_msg !== undefined ? [{ role: "system", content: system_msg }] : [];
   if (chat_history !== undefined && chat_history.length > 0) {
     if (chat_history[0].role === "system") {
       // In this case, the system_msg is ignored because the prior history already contains one.
@@ -175,11 +184,9 @@ function construct_openai_chat_history(
     } else {
       // In this case, there's no system message that starts the prior history, so inject one:
       // NOTE: We might reach this scenario if we chain output of a non-OpenAI chat model into an OpenAI model.
-      return [{ role: "system", content: system_msg }]
-        .concat(chat_history)
-        .concat([prompt_msg]);
+      return sys_msg.concat(chat_history).concat([prompt_msg]);
     }
-  } else return [{ role: "system", content: system_msg }, prompt_msg];
+  } else return sys_msg.concat([prompt_msg]);
 }
 
 /**
@@ -382,6 +389,10 @@ export async function call_azure_openai(
   return [query, response];
 }
 
+function is_newer_anthropic_model(model: LLM) {
+  return model.startsWith("claude-2.1") || model.startsWith("claude-3");
+}
+
 /**
  * Calls Anthropic API with the given model, passing in params.
    Returns raw query and response JSON dicts.
@@ -425,35 +436,61 @@ export async function call_anthropic(
     delete params.custom_prompt_wrapper;
 
   // Required non-standard params
-  const max_tokens_to_sample = params?.max_tokens_to_sample || 1024;
-  const stop_sequences = params?.stop_sequences || [ANTHROPIC_HUMAN_PROMPT];
+  const max_tokens_to_sample = params?.max_tokens_to_sample ?? 1024;
+  const stop_sequences = params?.stop_sequences ?? [ANTHROPIC_HUMAN_PROMPT];
+  const system_msg = params?.system_msg;
 
-  // Carry chat history by prepending it to the prompt
+  delete params?.custom_prompt_wrapper;
+  delete params?.max_tokens_to_sample;
+  delete params?.system_msg;
+
+  // Detect whether to use old text completions or new messaging API
+  const use_messages_api = is_newer_anthropic_model(model);
+
+  // Carry chat history
   // :: See https://docs.anthropic.com/claude/docs/human-and-assistant-formatting#use-human-and-assistant-to-put-words-in-claudes-mouth
-  if (params?.chat_history !== undefined) {
-    const chat_history: ChatHistory = params.chat_history as ChatHistory;
-    let anthr_chat_context = "";
-    for (const chat_msg of chat_history) {
-      if (chat_msg.role === "user")
-        anthr_chat_context += ANTHROPIC_HUMAN_PROMPT;
-      else if (chat_msg.role === "assistant")
-        anthr_chat_context += ANTHROPIC_AI_PROMPT;
-      else continue; // ignore system messages and other roles
-      anthr_chat_context += " " + chat_msg.content;
+  const chat_history: ChatHistory | undefined = params.chat_history;
+  if (chat_history !== undefined) {
+    // FOR OLD TEXT COMPLETIONS API ONLY: Carry chat history by prepending it to the prompt
+    if (!use_messages_api) {
+      let anthr_chat_context = "";
+      for (const chat_msg of chat_history) {
+        if (chat_msg.role === "user")
+          anthr_chat_context += ANTHROPIC_HUMAN_PROMPT;
+        else if (chat_msg.role === "assistant")
+          anthr_chat_context += ANTHROPIC_AI_PROMPT;
+        else continue; // ignore system messages and other roles
+        anthr_chat_context += " " + chat_msg.content;
+      }
+      wrapped_prompt = anthr_chat_context + wrapped_prompt; // prepend the chat context
     }
-    wrapped_prompt = anthr_chat_context + wrapped_prompt; // prepend the chat context
+
+    // For newer models Claude 2.1 and Claude 3, we carry chat history directly below; no need to do anything else.
     delete params.chat_history;
   }
 
   // Format query
-  const query = {
+  const query: Dict = {
     model,
-    prompt: wrapped_prompt,
-    max_tokens_to_sample,
     stop_sequences,
     temperature,
     ...params,
   };
+
+  if (use_messages_api) {
+    query.max_tokens = max_tokens_to_sample; // this goes by a different name than text completions
+    query.messages = construct_openai_chat_history(
+      prompt,
+      chat_history,
+      undefined,
+    );
+
+    // Pass the system message into the query. For Anthropic models this is passed outside of the chat history, unlike OpenAI.
+    if (system_msg) query.system = system_msg;
+  } else {
+    query.max_tokens_to_sample = max_tokens_to_sample;
+    query.prompt = wrapped_prompt;
+  }
 
   console.log(
     `Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`,
@@ -469,7 +506,7 @@ export async function call_anthropic(
     if (APP_IS_RUNNING_LOCALLY()) {
       // If we're running locally, route the request through the Flask backend,
       // where we can use the Anthropic Python API to make the API call:
-      const url = "https://api.anthropic.com/v1/complete";
+      const url = `https://api.anthropic.com/v1/${use_messages_api ? "messages" : "complete"}`;
       const headers = {
         Accept: "application/json",
         "anthropic-version": "2023-06-01",
@@ -480,15 +517,20 @@ export async function call_anthropic(
       const resp = await route_fetch(url, "POST", headers, query);
       responses.push(resp);
     } else {
-      // We're on the server; route API call through a proxy on the server, since Anthropic has CORS policy on their API:
-      const resp = await fetch("/db/call_anthropic.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Api-Key": ANTHROPIC_API_KEY,
+      // We're on the chainforge.ai server; route API call through a proxy on the server, since Anthropic has CORS policy on their API:
+      const resp = await fetch(
+        use_messages_api
+          ? "/db/call_anthropic_chat.php"
+          : "/db/call_anthropic.php",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Api-Key": ANTHROPIC_API_KEY,
+          },
+          body: JSON.stringify(query),
         },
-        body: JSON.stringify(query),
-      }).then((r) => r.json());
+      ).then((r) => r.json());
 
       // Check for error from server
       if (resp?.error !== undefined) {
@@ -1246,9 +1288,20 @@ function _extract_gemini_responses(completions: Array<Dict>): Array<string> {
 }
 
 /**
+ * Extracts the text part of an Anthropic chat completion (Claude 2.1+ models).
+ */
+function _extract_anthropic_chat_responses(
+  response: Array<Dict>,
+): Array<string> {
+  return response.map((r: Dict) => r.content[0].text.trim());
+}
+
+/**
  * Extracts the text part of an Anthropic text completion.
  */
-function _extract_anthropic_responses(response: Array<Dict>): Array<string> {
+function _extract_anthropic_text_responses(
+  response: Array<Dict>,
+): Array<string> {
   return response.map((r: Dict) => r.completion.trim());
 }
 
@@ -1295,7 +1348,9 @@ export function extract_responses(
     case LLMProvider.Dalai:
       return [response.toString()];
     case LLMProvider.Anthropic:
-      return _extract_anthropic_responses(response as Dict[]);
+      if (is_newer_anthropic_model(llm_name))
+        return _extract_anthropic_chat_responses(response as Dict[]);
+      else return _extract_anthropic_text_responses(response as Dict[]);
     case LLMProvider.HuggingFace:
       return _extract_huggingface_responses(response as Dict[]);
     case LLMProvider.Aleph_Alpha:
@@ -1652,3 +1707,34 @@ export const getVarsAndMetavars = (input_data) => {
     metavars: Array.from(metavars),
   };
 };
+
+/**
+ * Retries a func 'func' N times.
+ * @param func
+ * @param numTimes
+ */
+export async function retryAsyncFunc<T>(
+  func: () => Promise<T>,
+  numTimes: number,
+): Promise<T> {
+  if (numTimes < 1)
+    throw new Error("Negative numTimes encountered when calling 'retry'.");
+
+  try {
+    // Attempt to execute the function
+    return await func();
+  } catch (error) {
+    if (numTimes <= 1) {
+      // If no more retries are left, throw the last error
+      throw error;
+    }
+    // If there are retries left, retry the function:
+    return retryAsyncFunc(func, numTimes - 1);
+  }
+}
+
+// Filters internally used keys LLM_{idx} and __{str} from metavar dictionaries.
+// This method is used to pass around information hidden from the user.
+export function cleanMetavarsFilterFunc() {
+  return (key: string) => !(key.startsWith("LLM_") || key.startsWith("__pt"));
+}

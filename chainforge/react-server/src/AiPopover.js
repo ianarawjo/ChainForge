@@ -24,6 +24,7 @@ import {
 import { queryLLM } from "./backend/backend";
 import { splitText } from "./SplitNode";
 import { escapeBraces } from "./backend/template";
+import { cleanMetavarsFilterFunc } from "./backend/utils";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -61,9 +62,33 @@ const changeFourSpaceTabsToTwo = (code) => {
   return retabbed_lines.join("\n");
 };
 
-// Generates part of a longer prompt to the LLM about the shape of Response objects
+export const buildGenEvalCodePrompt = (
+  progLang,
+  context,
+  specPrompt,
+  manyFuncs,
+  onlyBooleanFuncs,
+) => `You are to generate ${manyFuncs ? "many different functions" : "one function"} to evaluate textual data, given a user-specified specification. 
+The function${manyFuncs ? "s" : ""} will be mapped over an array of objects of type ResponseInfo.
+${manyFuncs ? "Each" : "Your"} solution must contain a single function called 'evaluate' that takes a single object, 'r', of type ResponseInfo. A ResponseInfo is defined as:
+
+\`\`\`${progLang === "javascript" ? INFO_CODEBLOCK_JS : INFO_CODEBLOCK_PY}\`\`\`
+
+For instance, here is an evaluator that returns the length of a response:
+
+\`\`\`${progLang === "javascript" ? INFO_EXAMPLE_JS : INFO_EXAMPLE_PY}\`\`\`
+
+You can only write in ${progLang.charAt(0).toUpperCase() + progLang.substring(1)}. 
+You ${progLang === "javascript" ? 'CANNOT import any external packages, and always use "let" to define variables instead of "var".' : "can use imports if necessary. Do not include any type hints."} 
+Your function${manyFuncs ? "s" : ""} can ONLY return ${onlyBooleanFuncs ? "boolean" : "boolean, numeric, or string"} values.
+${context}
+Here is the user's specification:
+
+${specPrompt}`;
+
+// Builds part of a longer prompt to the LLM about the shape of Response objects
 // input into an evaluator (the names of template vars, and available metavars)
-const generateContextPromptForVarMetaVarContext = (context) => {
+export const buildContextPromptForVarsMetavars = (context) => {
   if (!context) return "";
 
   const promptify_key_arr = (arr) => {
@@ -73,7 +98,7 @@ const generateContextPromptForVarMetaVarContext = (context) => {
 
   let context_str = "";
   const metavars = context.metavars
-    ? context.metavars.filter((m) => !m.startsWith("LLM_"))
+    ? context.metavars.filter(cleanMetavarsFilterFunc)
     : [];
   const has_vars = context.vars && context.vars.length > 0;
   const has_metavars = metavars && metavars.length > 0;
@@ -428,25 +453,14 @@ export function AIGenCodeEvaluatorPopover({
     setAwaitingResponse(true);
     if (onLoadingChange) onLoadingChange(true);
 
-    const context_str = generateContextPromptForVarMetaVarContext(context);
+    const context_str = buildContextPromptForVarsMetavars(context);
 
-    const template = `You are to generate one function to evaluate textual data, given a user-specified specification. 
-The function will be mapped over an array of objects of type ResponseInfo.
-Your solution must contain a single function called 'evaluate' that takes a single object, 'r', of type ResponseInfo. A ResponseInfo is defined as:
-
-\`\`\`${progLang === "javascript" ? INFO_CODEBLOCK_JS : INFO_CODEBLOCK_PY}\`\`\`
-
-For instance, here is an evaluator that returns the length of a response:
-
-\`\`\`${progLang === "javascript" ? INFO_EXAMPLE_JS : INFO_EXAMPLE_PY}\`\`\`
-
-You can only write in ${progLang.charAt(0).toUpperCase() + progLang.substring(1)}. 
-You ${progLang === "javascript" ? 'CANNOT import any external packages, and always use "let" to define variables instead of "var".' : "can use imports if necessary. Do not include any type hints."} 
-Your function can only return boolean, numeric, or string values.
-${context_str}
-Here is the user's specification:
-
-${replacePrompt}`;
+    const template = buildGenEvalCodePrompt(
+      progLang,
+      context_str,
+      replacePrompt,
+      false,
+    );
 
     queryLLM(
       replacePrompt,

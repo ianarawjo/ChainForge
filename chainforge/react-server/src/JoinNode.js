@@ -27,6 +27,7 @@ import {
   truncStr,
   groupResponsesBy,
   getVarsAndMetavars,
+  cleanMetavarsFilterFunc,
 } from "./backend/utils";
 import StorageCache from "./backend/cache";
 
@@ -203,12 +204,10 @@ const JoinNode = ({ data, id }) => {
           })),
         )
         .concat(
-          metavars
-            .filter((varname) => !varname.startsWith("LLM_"))
-            .map((varname) => ({
-              label: `by ${varname} (meta)`,
-              value: `M${varname}`,
-            })),
+          metavars.filter(cleanMetavarsFilterFunc).map((varname) => ({
+            label: `by ${varname} (meta)`,
+            value: `M${varname}`,
+          })),
         ),
     );
 

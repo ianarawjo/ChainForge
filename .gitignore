@@ -12,6 +12,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Docker
+packages/
+jobs/
+
 # C extensions
 *.so
 

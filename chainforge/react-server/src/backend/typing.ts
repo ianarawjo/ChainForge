@@ -92,6 +92,8 @@ export function isEqualChatHistory(
   });
 }
 
+export type ResponseUID = string;
+
 /** A JSON object describing an LLM response for the same prompt, with n responses (n>=1) */
 export interface LLMResponseObject {
   prompt: string;
@@ -101,7 +103,7 @@ export interface LLMResponseObject {
   llm: LLM;
   info: Dict;
   metavars: Dict;
-  uid: string;
+  uid: ResponseUID;
   chat_history?: ChatHistory;
 }
 
@@ -124,7 +126,7 @@ export interface StandardizedLLMResponse {
   responses: Array<string>;
   vars: Dict;
   metavars: Dict;
-  uid: string;
+  uid: ResponseUID;
   tokens: Dict;
   eval_res?: Dict;
   chat_history?: ChatHistory;

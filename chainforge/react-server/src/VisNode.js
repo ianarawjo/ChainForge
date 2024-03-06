@@ -7,7 +7,7 @@ import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import PlotLegend from "./PlotLegend";
 import fetch_from_backend from "./fetch_from_backend";
-import { truncStr } from "./backend/utils";
+import { cleanMetavarsFilterFunc, truncStr } from "./backend/utils";
 
 // Helper funcs
 const splitAndAddBreaks = (s, chunkSize) => {
@@ -803,22 +803,18 @@ const VisNode = ({ data, id }) => {
           const msvars = ["LLM (default)"]
             .concat(varnames.map((name) => ({ value: name, label: name })))
             .concat(
-              metavars
-                .filter((name) => !name.startsWith("LLM_"))
-                .map((name) => ({
-                  value: `__meta_${name}`,
-                  label: `${name} (meta)`,
-                })),
+              metavars.filter(cleanMetavarsFilterFunc).map((name) => ({
+                value: `__meta_${name}`,
+                label: `${name} (meta)`,
+              })),
             );
 
           // Find all the special 'LLM group' metavars and put them in the 'group by' dropdown:
           const available_llm_groups = [{ value: "LLM", label: "LLM" }].concat(
-            metavars
-              .filter((name) => name.startsWith("LLM_"))
-              .map((name) => ({
-                value: name,
-                label: `LLMs #${parseInt(name.slice(4)) + 1}`,
-              })),
+            metavars.filter(cleanMetavarsFilterFunc).map((name) => ({
+              value: name,
+              label: `LLMs #${parseInt(name.slice(4)) + 1}`,
+            })),
           );
           if (available_llm_groups.length > 1)
             available_llm_groups[0] = { value: "LLM", label: "LLMs (last)" };

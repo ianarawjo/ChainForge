@@ -31,6 +31,7 @@ import {
   truncStr,
   groupResponsesBy,
   batchResponsesByUID,
+  cleanMetavarsFilterFunc,
 } from "./backend/utils";
 
 // Helper funcs
@@ -179,7 +180,7 @@ export const exportToExcel = (jsonResponses, filename) => {
 
         // Add columns for metavars, if present
         Object.entries(metavars).forEach(([varname, val]) => {
-          if (varname.startsWith("LLM_")) return; // skip llm group metavars
+          if (!cleanMetavarsFilterFunc(varname)) return; // skip llm group metavars
           row[`Metavar: ${varname}`] = val;
         });
 
@@ -296,9 +297,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       found_llms.add(getLLMName(res_obj));
     });
     found_vars = Array.from(found_vars);
-    found_metavars = Array.from(found_metavars).filter(
-      (v) => !v.startsWith("LLM_"),
-    );
+    found_metavars = Array.from(found_metavars).filter(cleanMetavarsFilterFunc);
     found_llms = Array.from(found_llms);
 
     // Whether there's some evaluation scores in the responses
