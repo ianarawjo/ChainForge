@@ -20,7 +20,11 @@ import {
 } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
-import { PromptPermutationGenerator, PromptTemplate } from "./template";
+import {
+  PromptPermutationGenerator,
+  PromptTemplate,
+  cleanEscapedBraces,
+} from "./template";
 import { UserForcedPrematureExit } from "./errors";
 import CancelTracker from "./canceler";
 import { execPy } from "./pyodide/exec-py";
@@ -391,7 +395,7 @@ async function run_over_responses(
       const llm_name = extract_llm_nickname(resp_obj.llm);
       let processed = res.map((r: string) => {
         const r_info = new ResponseInfo(
-          r,
+          cleanEscapedBraces(r),
           resp_obj.prompt,
           resp_obj.vars,
           resp_obj.metavars || {},
