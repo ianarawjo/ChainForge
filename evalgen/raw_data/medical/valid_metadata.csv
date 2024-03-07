@@ -1,0 +1,21 @@
+dataset,encounter_id,id,doctor_name,patient_gender,patient_age,patient_firstname,patient_familyname,cc,2nd_complaints
+virtassist,D2N068,VA052,,male,58,Brian ,White,follow-up of chronic problems,congestive heart failure;hypertension
+virtassist,D2N069,VA022,,female,43,,Thompson,right knee pain,atrial fibrillation;hx rhinoplasty
+virtassist,D2N070,VA041,,male,58,Logan,Walker,back pain,diabetes type 2;hypertension;osteoarthritis
+virtassist,D2N071,VA003,,male,62,Ralph,,annual exam,lobectomy;hypertension;depression
+virtassist,D2N072,VA024,,female,48,Sharon,Brooks,right finger pain,constipation;hx appendectomy
+virtscribe,D2N073,VS014,,female ,65,christina,cooper,iron deficiency anemia ,chilling sensation; anxiety; depression 
+virtscribe,D2N074,VS024,flores,male ,52,bruce,ward,Pituitary lesion,headaches
+virtscribe,D2N075,VS015,sanders,female ,53,betty,hill,"chest pain, suspected esophagitis",anxiety 
+virtscribe,D2N076,VS021,evelyn,female ,22-month,katherine,lopez,renal screening tests,none
+aci,D2N077,ACI110,,female,61.0,diana,scott,Right wrist injury,
+aci,D2N078,ACI026,,male,,Philip,,right knee pain ,hypertension
+aci,D2N079,ACI103,,male,66.0,wayne,taylor,left shoulder pain,
+aci,D2N080,ACI067,,female,34.0,andrea,barnes,Left knee pain,hypertension;type 2 diabetes
+aci,D2N081,ACI006,,female,53.0,Beverly,,follow-up for lung cancer,pneumonitis;painful swallowing
+aci,D2N082,ACI041,,male,46.0,Kyle,Lee,low immunoglobulin A level,
+aci,D2N083,ACI081,,male,45.0,lawrence,butler,right elbow pain,
+aci,D2N084,ACI030,,male,,David,,follow up,
+aci,D2N085,ACI005,,male,,Russell,,right-sided abdominal pain,
+aci,D2N086,ACI011,,male,45.0,Nicholas,Gutierrez,non-healing right foot ulcer,coughing and shortness of breath
+aci,D2N087,ACI051,,,,richard,,tick bite,hypertension;type 2 diabetes
