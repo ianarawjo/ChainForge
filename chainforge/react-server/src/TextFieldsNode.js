@@ -6,7 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import { Handle } from "reactflow";
-import { Textarea, Tooltip, Skeleton } from "@mantine/core";
+import { Textarea, Tooltip, Skeleton, ScrollArea } from "@mantine/core";
 import { IconTextPlus, IconEye, IconEyeOff } from "@tabler/icons-react";
 import useStore from "./store";
 import NodeLabel from "./NodeLabelComponent";
@@ -336,7 +336,7 @@ const TextFieldsNode = ({ data, id }) => {
               className="text-field-fixed nodrag nowheel"
               autosize
               minRows="2"
-              maxRows="8"
+              maxRows="4"
               value={textfieldsValues[i]}
               placeholder={flags.aiAutocomplete ? placeholder : undefined}
               disabled={fieldVisibility[i] === false}
@@ -421,7 +421,7 @@ const TextFieldsNode = ({ data, id }) => {
         }
       />
       <Skeleton visible={isLoading}>
-        <div ref={setRef}>{textFields}</div>
+        <ScrollArea.Autosize ref={setRef} mah={650} classNames="nodrag nomouse nowheel nopan">{textFields}</ScrollArea.Autosize>
       </Skeleton>
       <Handle
         type="source"

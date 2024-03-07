@@ -439,7 +439,7 @@ export async function call_anthropic(
   const max_tokens_to_sample = params?.max_tokens_to_sample ?? 1024;
   const stop_sequences = params?.stop_sequences ?? [ANTHROPIC_HUMAN_PROMPT];
   const system_msg = params?.system_msg;
-  
+
   delete params?.custom_prompt_wrapper;
   delete params?.max_tokens_to_sample;
   delete params?.system_msg;
@@ -486,10 +486,8 @@ export async function call_anthropic(
     );
 
     // Pass the system message into the query. For Anthropic models this is passed outside of the chat history, unlike OpenAI.
-    if (system_msg)
-      query.system = system_msg;
-  }
-  else {
+    if (system_msg) query.system = system_msg;
+  } else {
     query.max_tokens_to_sample = max_tokens_to_sample;
     query.prompt = wrapped_prompt;
   }
@@ -520,14 +518,19 @@ export async function call_anthropic(
       responses.push(resp);
     } else {
       // We're on the chainforge.ai server; route API call through a proxy on the server, since Anthropic has CORS policy on their API:
-      const resp = await fetch(use_messages_api ? "/db/call_anthropic_chat.php" : "/db/call_anthropic.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Api-Key": ANTHROPIC_API_KEY,
+      const resp = await fetch(
+        use_messages_api
+          ? "/db/call_anthropic_chat.php"
+          : "/db/call_anthropic.php",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Api-Key": ANTHROPIC_API_KEY,
+          },
+          body: JSON.stringify(query),
         },
-        body: JSON.stringify(query),
-      }).then((r) => r.json());
+      ).then((r) => r.json());
 
       // Check for error from server
       if (resp?.error !== undefined) {
@@ -1287,14 +1290,18 @@ function _extract_gemini_responses(completions: Array<Dict>): Array<string> {
 /**
  * Extracts the text part of an Anthropic chat completion (Claude 2.1+ models).
  */
-function _extract_anthropic_chat_responses(response: Array<Dict>): Array<string> {
+function _extract_anthropic_chat_responses(
+  response: Array<Dict>,
+): Array<string> {
   return response.map((r: Dict) => r.content[0].text.trim());
 }
 
 /**
  * Extracts the text part of an Anthropic text completion.
  */
-function _extract_anthropic_text_responses(response: Array<Dict>): Array<string> {
+function _extract_anthropic_text_responses(
+  response: Array<Dict>,
+): Array<string> {
   return response.map((r: Dict) => r.completion.trim());
 }
 
@@ -1343,8 +1350,7 @@ export function extract_responses(
     case LLMProvider.Anthropic:
       if (is_newer_anthropic_model(llm_name))
         return _extract_anthropic_chat_responses(response as Dict[]);
-      else 
-        return _extract_anthropic_text_responses(response as Dict[]);
+      else return _extract_anthropic_text_responses(response as Dict[]);
     case LLMProvider.HuggingFace:
       return _extract_huggingface_responses(response as Dict[]);
     case LLMProvider.Aleph_Alpha:

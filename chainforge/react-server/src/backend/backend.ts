@@ -404,8 +404,10 @@ async function run_over_responses(
       });
 
       // If the processor function is async we still haven't gotten responses; we need to wait for Promises to return:
-      if (async_processor ||
-        (processed.length > 0 && processed[0] instanceof Promise)) {
+      if (
+        async_processor ||
+        (processed.length > 0 && processed[0] instanceof Promise)
+      ) {
         processed = await Promise.allSettled(processed);
         for (let i = 0; i < processed.length; i++) {
           const elem = processed[i];
