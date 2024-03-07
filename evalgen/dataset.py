@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 
 import os
 import pandas as pd
+import json
 
 from rich import print
 
@@ -16,6 +17,21 @@ class Dataset(ABC):
     @abstractmethod
     def get_test(self):
         pass
+
+    def gen_and_save_splits(self, data_dir: str):
+        os.makedirs(data_dir, exist_ok=True)
+
+        # Generate and save the train and test splits
+        train_records = self.get_train()
+        test_records = self.get_test()
+
+        # Create a big json file with all the records
+        all_records = {"train": train_records, "test": test_records}
+
+        # Save to data_dir
+        task_name = self.__class__.__name__
+        with open(os.path.join(data_dir, f"{task_name}.json"), "w") as f:
+            json.dump(all_records, f)
 
 
 class MedicalDataset(Dataset):
@@ -147,6 +163,12 @@ if __name__ == "__main__":
     print(f"Test records: {len(val_records)}")
     print(val_records[0])
 
+    # Save the splits
+    save_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "processed_data"
+    )
+    dataset.gen_and_save_splits(save_dir)
+
     print(f"------ Testing Amazon Products Dataset ------")
     dataset = AmazonProductsDataset()
     train_records = dataset.get_train()
@@ -155,6 +177,9 @@ if __name__ == "__main__":
     test_records = dataset.get_test()
     print(f"Test records: {len(test_records)}")
     print(test_records[0])
+
+    # Save the splits
+    dataset.gen_and_save_splits(save_dir)
 
 # ------ Testing Medical Dataset ------
 # Train records: 67
