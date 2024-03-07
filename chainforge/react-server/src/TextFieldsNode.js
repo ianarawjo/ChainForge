@@ -421,7 +421,13 @@ const TextFieldsNode = ({ data, id }) => {
         }
       />
       <Skeleton visible={isLoading}>
-        <ScrollArea.Autosize ref={setRef} mah={650} classNames="nodrag nomouse nowheel nopan">{textFields}</ScrollArea.Autosize>
+        <ScrollArea.Autosize
+          ref={setRef}
+          mah={650}
+          classNames="nodrag nomouse nowheel nopan"
+        >
+          {textFields}
+        </ScrollArea.Autosize>
       </Skeleton>
       <Handle
         type="source"

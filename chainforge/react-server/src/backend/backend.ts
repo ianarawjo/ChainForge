@@ -20,7 +20,11 @@ import {
 } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
-import { PromptPermutationGenerator, PromptTemplate, cleanEscapedBraces } from "./template";
+import {
+  PromptPermutationGenerator,
+  PromptTemplate,
+  cleanEscapedBraces,
+} from "./template";
 import { UserForcedPrematureExit } from "./errors";
 import CancelTracker from "./canceler";
 import { execPy } from "./pyodide/exec-py";
@@ -376,6 +380,7 @@ async function run_over_responses(
   process_func: (resp: ResponseInfo) => any,
   responses: StandardizedLLMResponse[],
   process_type: "evaluator" | "processor",
+  shouldCleanEscapedBraces: boolean,
 ): Promise<StandardizedLLMResponse[]> {
   const evald_resps = responses.map(
     async (_resp_obj: StandardizedLLMResponse) => {
@@ -391,7 +396,7 @@ async function run_over_responses(
       const llm_name = extract_llm_nickname(resp_obj.llm);
       let processed = res.map((r: string) => {
         const r_info = new ResponseInfo(
-          cleanEscapedBraces(r),
+          shouldCleanEscapedBraces ? cleanEscapedBraces(r) : r,
           resp_obj.prompt,
           resp_obj.vars,
           resp_obj.metavars || {},
@@ -1049,6 +1054,7 @@ export async function executejs(
       iframe ? process_func : code,
       responses,
       process_type,
+      true,
     );
 
     // Revert the console.log, .warn, .error back to browser default:
@@ -1162,6 +1168,7 @@ export async function executepy(
         eval_func,
         responses,
         process_type,
+        true,
       );
     } catch (err) {
       return {
