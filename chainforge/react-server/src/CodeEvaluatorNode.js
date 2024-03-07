@@ -189,7 +189,7 @@ export const CodeEvaluatorComponent = forwardRef(
         else if (!code_changed && onCodeEqualToLastRun) onCodeEqualToLastRun();
       }
       setCodeText(code);
-      if (onCodeEdit) onCodeEdit();
+      if (onCodeEdit) onCodeEdit(code);
     };
 
     // Runs the code evaluator/processor over the inputs, returning the results as a Promise.
