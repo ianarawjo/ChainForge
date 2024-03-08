@@ -500,11 +500,12 @@ export default class EvaluationFunctionExecutor {
         evalFunctionReport.get(criteria)?.push(report);
 
         // IF false failure rate is above the threshold, skip this function
-        const falseFailureRate =
-          report.false_fail / (report.false_fail + report.true_pass);
-        if (falseFailureRate > falseFailureRateThreshold) {
-          continue;
-        }
+        // TODO: Filter out false failure rate later
+        // const falseFailureRate =
+        //   report.false_fail / (report.false_fail + report.true_pass);
+        // if (falseFailureRate > falseFailureRateThreshold) {
+        //   continue;
+        // }
 
         // Calculate coverage
         const failureCoverage = report.true_fail / numFailGrades;
