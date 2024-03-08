@@ -6,6 +6,8 @@ importScripts("https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js");
 async function loadPyodideAndPackages() {
   self.pyodide = await loadPyodide();
 
+  self.pyodide.loadPackage(["math", "re", "json", "random"]);
+
   // Here, we can load any packages we wish. For now, this feature is disabled:
   // await self.pyodide.loadPackage(["numpy", "pytz"]);
 }

@@ -242,7 +242,7 @@ export const PickCriteriaModal = forwardRef(
 
     // Which stage of picking + generating criteria we are in. Screens are:
     // pick, wait, grade
-    const [screen, setScreen] = useState("auto_or_manual");
+    const [screen, setScreen] = useState("grade_first");
     const modalTitle = useMemo(() => {
       if (screen === "pick") return "Pick Criteria";
       else if (screen === "auto_or_manual") return "Welcome";
@@ -381,7 +381,7 @@ export const PickCriteriaModal = forwardRef(
       );
 
       // Set the criteria to be used for generating implementations
-      new_executor.setCriteria(criteria);
+      new_executor.setEvalCriteria(criteria);
 
       // Save executor, passing it to the GradeResponses window
       setExecutor(new_executor);
@@ -393,7 +393,7 @@ export const PickCriteriaModal = forwardRef(
     // This gives the parent access to triggering the modal alert
     const trigger = (inputs) => {
       setResponses(inputs);
-      setScreen("auto_or_manual");
+      setScreen("grade_first");
       setExecutor(null);
       open();
     };
@@ -401,8 +401,25 @@ export const PickCriteriaModal = forwardRef(
       trigger,
     }));
 
+    const handleInitialGradingDone = () => {
+      setScreen("pick");
+
+      // Generate criteria
+      setCriteria([]);
+      setIsLoadingCriteria(true);
+      genCriteriaFromContext()
+        .then((crits) => setCriteria(crits.map((c) => ({ ...c, uid: uuid() }))))
+        .finally(() => setIsLoadingCriteria(false));
+    };
+
     const gradeResponsesWindow = useMemo(
-      () => <GradeResponsesWindow resps={samples} executor={executor} />,
+      () => (
+        <GradeResponsesWindow
+          resps={samples}
+          executor={executor}
+          onClickDone={handleInitialGradingDone}
+        />
+      ),
       [samples, executor],
     );
 
@@ -419,7 +436,7 @@ export const PickCriteriaModal = forwardRef(
         closeOnClickOutside={true}
         style={{ position: "relative", left: "-5%" }}
       >
-        {screen === "auto_or_manual" ? (
+        {/* {screen === "auto_or_manual" ? (
           <div>
             <Center>
               <Text size="sm" pl="sm" mt="lg" mb="sm" maw="560px">
@@ -465,12 +482,12 @@ export const PickCriteriaModal = forwardRef(
                   bg="#34eb74"
                 />
                 {/* TODO <ChooseCard title="Chat with an AI to infer criteria" description="Chat with an AI assistant that will ask questions about your task and situation. The AI will infer some criteria and provide them as starting points." icon={<IconMessage2Bolt />} bg="#34c9eb" /> */}
-              </Flex>
+        {/* </Flex>
             </Center>
           </div>
         ) : (
           <></>
-        )}
+        )} } */}
 
         {screen === "pick" ? (
           <div>
@@ -609,6 +626,27 @@ export const PickCriteriaModal = forwardRef(
         )}
 
         {screen === "grade" ? gradeResponsesWindow : <></>}
+        {screen === "grade_first" ? (
+          <div>
+            <Center>
+              <Text size="md" pl="sm" mt="lg" mb="sm" maw="80%">
+                Welcome to EvalGen. We&apos;ve learned that grading responses
+                helps you decide your criteria. So, before AI can help you
+                generate evaluators,{" "}
+                <span style={{ fontWeight: 800 }}>
+                  we ask you to grade at least 5 responses
+                </span>
+                . The EvalGen wizard will then generate evaluation criteria and
+                implementations for grading responses that align with your
+                expectations.
+              </Text>
+            </Center>
+            <hr />
+            {gradeResponsesWindow}
+          </div>
+        ) : (
+          <></>
+        )}
       </Modal>
     );
   },
@@ -616,7 +654,7 @@ export const PickCriteriaModal = forwardRef(
 
 // Pop-up where user grades responses.
 export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
-  { resps, executor },
+  { resps, executor, onClickDone },
   ref,
 ) {
   // Confetti effects
@@ -628,6 +666,31 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
   const [pastShownResponses, setPastShownResponses] = useState([]);
   const [shownResponseIdx, setShownResponseIdx] = useState(0);
   const [grades, setGrades] = useState({});
+
+  const showProgressType = useMemo(() => executor ? "grade" : "num_graded", [executor]);
+  const [minNumGrade, setMinNumGrade] = useState(5);
+  const numGraded = useMemo(() => Object.keys(grades).length, [grades]);
+
+  const [promptReasoning, setPromptReasoning] = useState(null);
+
+  const bottomBar = useMemo(() => {
+    const bar = {};
+    if (showProgressType === "num_graded") {
+      bar.progressPerc = Math.min((numGraded / minNumGrade) * 100, 100);
+      bar.progressLabel = `${numGraded} / ${minNumGrade} graded`;
+      bar.buttonLabel = bar.progressPerc < 100 ? "Keep grading!" : "Next Step";
+      bar.buttonDisabled = bar.progressPerc < 100;
+      bar.buttonStyle = "filled";
+    } else {
+      bar.progressPerc = Math.min((numGraded / minNumGrade) * 100, 100);
+      bar.progressLabel = `${numGraded} / ${minNumGrade} graded`;
+      bar.buttonLabel = "I'm tired 😴";
+      bar.buttonDisabled = false;
+      bar.buttonStyle = "outline";
+    }
+    return bar;
+  }, [showProgressType, numGraded, minNumGrade]);
+
   const responseText = useMemo(() =>
     shownResponse && shownResponse.responses?.length > 0
       ? shownResponse.responses[0]
@@ -652,6 +715,8 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
   // Goto next response in the queue (skipping grading the current one)
   const nextResponse = () => {
     if (responses.length === 0) return;
+
+    setPromptReasoning(null);
 
     if (shownResponseIdx < pastShownResponses.length - 1) {
       // If we are not at the end of the history of shown responses, then show the next response:
@@ -709,13 +774,38 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
   };
 
   const handleDone = useCallback(async () => {
-    // Await completion of all gen + execution of eval funcs
-    await executor?.waitForCompletion();
+    if (showProgressType === "num_graded") {
+      if (onClickDone) onClickDone();
+    } else {
+      // Await completion of all gen + execution of eval funcs
+      await executor?.waitForCompletion();
 
-    // Filtering eval funcs by grades and present results
-    const filteredFunctions = await executor?.filterEvaluationFunctions(0.2);
-    console.log("Filtered Functions: ", filteredFunctions);
-  }, [executor]);
+      // Filtering eval funcs by grades and present results
+      const filteredFunctions = await executor?.filterEvaluationFunctions(0.2);
+      console.log("Filtered Functions: ", filteredFunctions);
+    }
+  }, [executor, showProgressType]);
+
+  const handleClickGradeButton = (isGoodResponse) => {
+    grades[shownResponseIdx] = isGoodResponse;
+    setGrades({ ...grades });
+    executor?.setGradeForExample(shownResponse.uid, isGoodResponse);
+    const explodeFunc = isGoodResponse
+      ? setIsGreenExploding
+      : setIsRedExploding;
+    explodeFunc(true);
+    if (isGoodResponse) {
+      // Don't ask for clarification if it's a good grade
+      setTimeout(() => explodeFunc(false), 1200);
+      setTimeout(nextResponse, 800);
+    } else {
+      // If they gave a bad grade, ask them why
+      setTimeout(() => explodeFunc(false), 1200);
+      setTimeout(() => {
+        setPromptReasoning(true);
+      }, 800);
+    }
+  };
 
   // Update responses whenever upstream changes
   useEffect(() => {
@@ -819,68 +909,70 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
           </div>
         </Flex>
 
-        <Flex justify="center" gap="50px" mb="xl">
-          <Button
-            color="red"
-            variant="filled"
-            onClick={() => {
-              grades[shownResponseIdx] = false;
-              setGrades({ ...grades });
-              executor?.setGradeForExample(shownResponse.uid, false);
-              setIsRedExploding(true);
-              setTimeout(nextResponse, 800);
-              setTimeout(() => setIsRedExploding(false), 1200);
-            }}
-          >
-            <IconThumbDown />
-            &nbsp;Bad!
-            <>
-              {isRedExploding && (
-                <ConfettiExplosion
-                  zIndex={1000}
-                  colors={["#f00"]}
-                  force={0.1}
-                  height={300}
-                  width={200}
-                  particleCount={5}
-                  duration={2200}
-                  onComplete={() => setIsRedExploding(false)}
-                  style={{ position: "absolute", left: "50%", top: "20%" }}
-                />
-              )}
-            </>
-          </Button>
-          <Button
-            color="green"
-            variant="filled"
-            onClick={() => {
-              grades[shownResponseIdx] = true;
-              setGrades({ ...grades });
-              executor?.setGradeForExample(shownResponse.uid, true);
-              setIsGreenExploding(true);
-              setTimeout(nextResponse, 800);
-              setTimeout(() => setIsGreenExploding(false), 1200);
-            }}
-          >
-            <IconThumbUp />
-            &nbsp;Good!
-            <>
-              {isGreenExploding && (
-                <ConfettiExplosion
-                  zIndex={1000}
-                  colors={[MANTINE_GREEN]}
-                  force={0.9}
-                  height={300}
-                  width={300}
-                  particleCount={10}
-                  duration={2200}
-                  onComplete={() => setIsGreenExploding(false)}
-                  style={{ position: "absolute", left: "50%", top: "20%" }}
-                />
-              )}
-            </>
-          </Button>
-        </Flex>
+        {promptReasoning === null ? (
+          <Flex justify="center" gap="50px" mb="xl">
+            <Button
+              color="red"
+              variant="filled"
+              onClick={() => {
+                handleClickGradeButton(false);
+              }}
+            >
+              <IconThumbDown />
+              &nbsp;Bad!
+              <>
+                {isRedExploding && (
+                  <ConfettiExplosion
+                    zIndex={1000}
+                    colors={["#f00"]}
+                    force={0.1}
+                    height={300}
+                    width={200}
+                    particleCount={5}
+                    duration={2200}
+                    onComplete={() => setIsRedExploding(false)}
+                    style={{ position: "absolute", left: "50%", top: "20%" }}
+                  />
+                )}
+              </>
+            </Button>
+            <Button
+              color="green"
+              variant="filled"
+              onClick={() => {
+                handleClickGradeButton(true);
+              }}
+            >
+              <IconThumbUp />
+              &nbsp;Good!
+              <>
+                {isGreenExploding && (
+                  <ConfettiExplosion
+                    zIndex={1000}
+                    colors={[MANTINE_GREEN]}
+                    force={0.9}
+                    height={300}
+                    width={300}
+                    particleCount={10}
+                    duration={2200}
+                    onComplete={() => setIsGreenExploding(false)}
+                    style={{ position: "absolute", left: "50%", top: "20%" }}
+                  />
+                )}
+              </>
+            </Button>
+          </Flex>
+        ) : (
+          <Center>
+            <Stack spacing="xs">
+              <Text>What&apos;s the reason for your score?</Text>
+              <Flex align="center" gap="lg">
+                <Textarea autoFocus />
+                <Button onClick={nextResponse}>Continue</Button>
+              </Flex>
+            </Stack>
+          </Center>
+        )}
       </Box>
 
       <Flex justify="left" align="center" gap="md">
@@ -888,13 +980,17 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
         {/* <Loader size='sm' /> */}
         <Stack w="100%" spacing={4}>
           <Text color="#aaa" size="sm">
-            Generating candidate implementations...
+            {bottomBar.progressLabel}
           </Text>
-          <Progress w="100%" value={30} animate mb="0px" />
+          <Progress w="100%" value={bottomBar.progressPerc} mb="0px" />
         </Stack>
 
-        <Button onClick={handleDone} variant="outline">
-          I&apos;m tired 😴
+        <Button
+          onClick={handleDone}
+          variant={bottomBar.buttonStyle}
+          disabled={bottomBar.buttonDisabled}
+        >
+          {bottomBar.buttonLabel}
         </Button>
       </Flex>
     </Stack>
