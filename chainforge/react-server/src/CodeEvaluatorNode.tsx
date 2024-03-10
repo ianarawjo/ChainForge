@@ -7,9 +7,18 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Handle } from "reactflow";
-import { Code, Modal, Tooltip, Box, Text, Skeleton } from "@mantine/core";
+import { Handle, Position } from "reactflow";
+import {
+  Code,
+  Modal,
+  Tooltip,
+  Box,
+  Text,
+  Skeleton,
+  Switch,
+} from "@mantine/core";
 import { Prism } from "@mantine/prism";
+import { Language } from "prism-react-renderer";
 import { useDisclosure } from "@mantine/hooks";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
@@ -39,6 +48,8 @@ import InspectFooter from "./InspectFooter";
 import { escapeBraces } from "./backend/template";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { AIGenCodeEvaluatorPopover } from "./AiPopover";
+import { Dict, EvaluatedResponsesResults, StandardizedLLMResponse } from "./backend/typing";
+import { Status } from "./StatusIndicatorComponent";
 
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
@@ -151,10 +162,28 @@ function process(response) {
     return "NOT FOUND";
 }`;
 
+export interface CodeEvaluatorComponentHandles {
+  run: (inputs: Dict[], script_paths?: string[], runInSandbox?: boolean) => Promise<({
+    code: string, responses?: StandardizedLLMResponse[], error?: string | Error, logs?: string[] })>,
+  serialize: () => ({code: string}),
+  setCodeText: (code: string) => void,
+}
+
+export interface CodeEvaluatorComponentProps {
+  code: string;
+  id: string;
+  type: 'evaluator' | 'processor';
+  progLang: 'python' | 'javascript';
+  showUserInstruction: boolean;
+  onCodeEdit?: (code: string) => void;
+  onCodeChangedFromLastRun?: () => void;
+  onCodeEqualToLastRun?: () => void;
+}
+
 /**
  * Inner component for code evaluators/processors, storing the body of the UI (outside of the header and footers).
  */
-export const CodeEvaluatorComponent = forwardRef(
+export const CodeEvaluatorComponent = forwardRef<CodeEvaluatorComponentHandles, CodeEvaluatorComponentProps>(
   function CodeEvaluatorComponent(
     {
       code,
@@ -170,10 +199,10 @@ export const CodeEvaluatorComponent = forwardRef(
   ) {
     // Code in the editor
     const [codeText, setCodeText] = useState(code ?? "");
-    const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
+    const [codeTextOnLastRun, setCodeTextOnLastRun] = useState<boolean | string>(false);
 
     // Controlled handle when user edits code
-    const handleCodeEdit = (code) => {
+    const handleCodeEdit = (code: string) => {
       if (codeTextOnLastRun !== false) {
         const code_changed = code !== codeTextOnLastRun;
         if (code_changed && onCodeChangedFromLastRun)
@@ -186,7 +215,7 @@ export const CodeEvaluatorComponent = forwardRef(
 
     // Runs the code evaluator/processor over the inputs, returning the results as a Promise.
     // Errors are raised as a rejected Promise.
-    const run = (inputs, script_paths, runInSandbox) => {
+    const run = (inputs: Dict[], script_paths?: string[], runInSandbox?: boolean) => {
       // Double-check that the code includes an 'evaluate' or 'process' function, whichever is needed:
       const find_func_regex =
         node_type === "evaluator"
@@ -220,12 +249,10 @@ export const CodeEvaluatorComponent = forwardRef(
         script_paths,
         executor,
       }).then(function (json) {
+        json = json as EvaluatedResponsesResults;
         // Check if there's an error; if so, bubble it up to user and exit:
-        if (!json || json.error) {
-          if (!json)
-            json.error =
-              "Unknown error encountered when requesting evaluations: empty response returned.";
-          else if (json.logs) json.logs.push(json.error);
+        if (json.error) {
+          if (json.logs) json.logs.push(json.error);
         } else {
           setCodeTextOnLastRun(codeTextOnRun);
         }
@@ -295,14 +322,26 @@ export const CodeEvaluatorComponent = forwardRef(
   },
 );
 
+export interface CodeEvaluatorNodeProps {
+  data: {
+    title: string;
+    code: string;
+    language: 'python' | 'javascript';
+    sandbox: boolean;
+    refresh: boolean;
+  };
+  id: string; 
+  type: 'evaluator' | 'processor';
+}
+
 /**
  *  The Code Evaluator node supports users in writing JavaScript and Python functions that map across LLM responses.
  *  It has two possible node_types: 'evaluator' and 'processor' mode.
  *  Evaluators annotate responses with scores; processors transform response objects themselves.
  */
-const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
+const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({ data, id, type: node_type }) => {
   // The inner component storing the code UI and providing an interface to run the code over inputs
-  const codeEvaluatorRef = useRef(null);
+  const codeEvaluatorRef = useRef<CodeEvaluatorComponentHandles>(null);
   const currentCode = useMemo(() => data.code, [data.code]);
 
   // Whether to sandbox the code execution. Currently this option only displays for Python running locally,
@@ -314,7 +353,7 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
-  const [status, setStatus] = useState("none");
+  const [status, setStatus] = useState<Status>(Status.NONE);
   const nodes = useStore((state) => state.nodes);
 
   // For genAI features
@@ -338,7 +377,7 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
   // The programming language for the editor. Also determines what 'execute'
   // function will ultimately be called.
   // eslint-disable-next-line
-  const [progLang, setProgLang] = useState(data.language || "python");
+  const [progLang, setProgLang] = useState(data.language ?? "python");
 
   const [lastRunLogs, setLastRunLogs] = useState("");
   const [lastResponses, setLastResponses] = useState([]);
@@ -375,7 +414,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
       if (json.responses && json.responses.length > 0) {
         // Store responses and set status to green checkmark
         setLastResponses(stripLLMDetailsFromResponses(json.responses));
-        setStatus("ready");
+        setStatus(Status.READY);
       }
     });
   }, []);
@@ -384,21 +423,21 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
       setDataPropsForNode(id, { refresh: false });
-      setStatus("warning");
+      setStatus(Status.WARNING);
       const pulled_inputs = pullInputs();
       if (pulled_inputs) setLastContext(getVarsAndMetavars(pulled_inputs));
     }
   }, [data]);
 
   // Callbacks for inner code eval component
-  const handleCodeEdit = (code) => {
+  const handleCodeEdit = (code: string) => {
     setDataPropsForNode(id, { code });
   };
   const handleCodeChangedFromLastRun = useCallback(() => {
-    if (status === "warning") setStatus("ready");
+    if (status === Status.WARNING) setStatus(Status.READY);
   }, [status, setStatus]);
   const handleCodeEqualToLastRun = useCallback(() => {
-    if (status !== "warning") setStatus("warning");
+    if (status !== Status.WARNING) setStatus(Status.WARNING);
   }, [status, setStatus]);
 
   const handleRunClick = () => {
@@ -406,12 +445,12 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
     const pulled_inputs = pullInputs();
     if (!pulled_inputs) return;
 
-    setStatus("loading");
+    setStatus(Status.LOADING);
     setLastRunLogs("");
     setLastResponses([]);
 
     const rejected = (err) => {
-      setStatus("error");
+      setStatus(Status.ERROR);
       setLastRunSuccess(false);
       if (typeof err !== "string") console.error(err);
       alertModal.current.trigger(typeof err === "string" ? err : err?.message);
@@ -419,11 +458,11 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
 
     // Get all the Python script nodes, and get all the folder paths
     // NOTE: Python only!
-    let script_paths = [];
+    let script_paths: string[] = [];
     if (progLang === "python") {
       const script_nodes = nodes.filter((n) => n.type === "script");
       script_paths = script_nodes
-        .map((n) => Object.values(n.data.scriptFiles).filter((f) => f !== ""))
+        .map((n) => Object.values(n.data.scriptFiles as Dict<string>).filter((f: string) => f !== ""))
         .flat();
     }
 
@@ -479,8 +518,8 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
   };
 
   const hideStatusIndicator = () => {
-    if (status !== "none") {
-      setStatus("none");
+    if (status !== Status.NONE) {
+      setStatus(Status.NONE);
     }
   };
 
@@ -518,7 +557,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
             For instance, here is an evaluator that returns the length of a
             response:
           </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
+          <Prism language={progLang}>
             {progLang === "python" ? INFO_EXAMPLE_PY : INFO_EXAMPLE_JS}
           </Prism>
           <Text mt="md" mb="sm">
@@ -527,7 +566,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
             characters. The full <Code>ResponseInfo</Code> class has the
             following properties and methods:
           </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
+          <Prism language={progLang}>
             {progLang === "python"
               ? IS_RUNNING_LOCALLY
                 ? INFO_CODEBLOCK_PY_FULL
@@ -541,7 +580,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
             filled the prompt that led to the current response. You can use
             <Code>response.var</Code>:
           </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
+          <Prism language={progLang}>
             {progLang === "python" ? INFO_EXAMPLE_VAR_PY : INFO_EXAMPLE_VAR_JS}
           </Prism>
           <Text mt="md">
@@ -573,7 +612,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
             For instance, here is a processor that simply returns the first 12
             characters of the response:
           </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
+          <Prism language={progLang}>
             {progLang === "python"
               ? INFO_PROC_EXAMPLE_PY
               : INFO_PROC_EXAMPLE_JS}
@@ -584,7 +623,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
             character. The full <Code>ResponseInfo</Code> class has the
             following properties and methods:
           </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
+          <Prism language={progLang}>
             {progLang === "python"
               ? IS_RUNNING_LOCALLY
                 ? INFO_CODEBLOCK_PY_FULL
@@ -597,7 +636,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
             like Chain-of-Thought. You want to get just the part after
             &apos;ANSWER:&apos; Here&apos;s how you can do this:
           </Text>
-          <Prism language={progLang === "python" ? "py" : "ts"}>
+          <Prism language={progLang}>
             {progLang === "python"
               ? INFO_PROC_EXAMPLE_VAR_PY
               : INFO_PROC_EXAMPLE_VAR_JS}
@@ -732,14 +771,14 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
       <iframe style={{ display: "none" }} id={`${id}-iframe`}></iframe>
       <Handle
         type="target"
-        position="left"
+        position={Position.Left}
         id="responseBatch"
         className="grouped-handle"
         style={{ top: "50%" }}
       />
       <Handle
         type="source"
-        position="right"
+        position={Position.Right}
         id="output"
         className="grouped-handle"
         style={{ top: "50%" }}
