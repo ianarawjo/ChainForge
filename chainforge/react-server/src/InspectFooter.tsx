@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { Button, Tooltip } from "@mantine/core";
 import {
   IconSearch,
@@ -6,11 +6,20 @@ import {
   IconSquareArrowRight,
 } from "@tabler/icons-react";
 
+export interface InspectFooterProps {
+  label: React.ReactNode;
+  onClick: () => void;
+  showNotificationDot: boolean;
+  showDrawerButton: boolean;
+  onDrawerClick: () => void;
+  isDrawerOpen: boolean;
+}
+
 /**
  * The footer at the bottom of a node, allowing a user to click it
  * to inspect responses.
  */
-const InspectFooter = ({
+const InspectFooter: React.FC<InspectFooterProps> = ({
   label,
   onClick,
   showNotificationDot,
@@ -18,14 +27,15 @@ const InspectFooter = ({
   onDrawerClick,
   isDrawerOpen,
 }) => {
-  // eslint-disable-next-line
-  const [text, setText] = useState(
-    label || (
-      <>
-        Inspect responses&nbsp;
-        <IconSearch size="12pt" />
-      </>
-    ),
+  const text = useMemo(
+    () =>
+      label ?? (
+        <>
+          Inspect responses&nbsp;
+          <IconSearch size="12pt" />
+        </>
+      ),
+    [label],
   );
   const inspectBtnWidth = useMemo(
     () => (showDrawerButton ? "84%" : "100%"),

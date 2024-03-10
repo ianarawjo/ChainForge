@@ -85,6 +85,31 @@ export function isEqualChatHistory(
   });
 }
 
+/** A standard async function interface for calling an LLM. */
+export interface LLMAPICall {
+  (
+    prompt: string,
+    model: LLM,
+    n: number,
+    temperature: number,
+    params?: Dict,
+    should_cancel?: () => boolean,
+  ): Promise<[Dict, Dict]>;
+}
+
+/** What LLM to call, at what settings. */
+export type LLMSpec = {
+  name: string;
+  emoji: string;
+  base_model: string;
+  model: string;
+  temp: number;
+  key?: string;
+  formData?: Dict;
+  settings?: Dict;
+  progress?: Dict<number>; // only used for front-end to display progress collecting responses for this LLM
+};
+
 export type ResponseUID = string;
 
 /** Standard properties that every LLM response object must have. */
@@ -144,34 +169,9 @@ export type LLMResponsesByVarDict = Dict<
   (BaseLLMResponseObject | StandardizedLLMResponse)[]
 >;
 
-/** A standard async function interface for calling an LLM. */
-export interface LLMAPICall {
-  (
-    prompt: string,
-    model: LLM,
-    n: number,
-    temperature: number,
-    params?: Dict,
-    should_cancel?: () => boolean,
-  ): Promise<[Dict, Dict]>;
-}
-
-/** What LLM to call, at what settings. */
-export type LLMSpec = {
-  name: string;
-  emoji: string;
-  base_model: string;
-  model: string;
-  temp: number;
-  key?: string;
-  formData?: Dict;
-  settings?: Dict;
-  progress?: Dict<number>; // only used for front-end to display progress collecting responses for this LLM
-};
-
 /** The outputs of prompt nodes, text fields or other data passed internally in the front-end and to the PromptTemplate backend.
  * Used to populate prompt templates and carry variables/metavariables along the chain. */
- export interface TemplateVarInfo {
+export interface TemplateVarInfo {
   text: string;
   fill_history: Dict<string>;
   metavars?: Dict<string>;
@@ -188,4 +188,10 @@ export type PromptVarsDict = {
 export type QueryProgress = {
   success: number;
   error: number;
-}
+};
+
+export type TabularDataRowType = Dict<string>;
+export type TabularDataColType = {
+  key: string;
+  header: string;
+};
