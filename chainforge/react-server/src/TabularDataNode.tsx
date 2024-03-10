@@ -1,9 +1,4 @@
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Menu, NumberInput, Switch, Text, Tooltip } from "@mantine/core";
 import EditableTable from "./EditableTable";
 import * as XLSX from "xlsx";
@@ -21,14 +16,8 @@ import AlertModal, { AlertModalHandles } from "./AlertModal";
 import RenameValueModal, { RenameValueModalHandles } from "./RenameValueModal";
 import useStore from "./store";
 import { sampleRandomElements } from "./backend/utils";
-import { Dict } from "./backend/typing";
+import { Dict, TabularDataRowType, TabularDataColType } from "./backend/typing";
 import { Position } from "reactflow";
-
-export type TabularDataRowType = Dict<string>;
-export type TabularDataColType = {
-  key: string;
-  header: string;
-};
 
 const defaultRows: TabularDataRowType[] = [
   {

@@ -508,7 +508,9 @@ export async function countQueries(
   vars: Dict,
   llms: Array<Dict | string>,
   n: number,
-  chat_histories?: (ChatHistoryInfo | undefined)[] | { [key: string]: (ChatHistoryInfo | undefined)[] },
+  chat_histories?:
+    | (ChatHistoryInfo | undefined)[]
+    | { [key: string]: (ChatHistoryInfo | undefined)[] },
   id?: string,
   cont_only_w_prior_llms?: boolean,
 ): Promise<Dict> {
@@ -522,9 +524,8 @@ export async function countQueries(
       all_prompt_permutations = {};
       llms.forEach((llm_spec) => {
         const llm_key = extract_llm_key(llm_spec);
-        (all_prompt_permutations as Dict<PromptTemplate[]>)[llm_key] = Array.from(
-          gen_prompts.generate(filterVarsByLLM(vars, llm_key)),
-        );
+        (all_prompt_permutations as Dict<PromptTemplate[]>)[llm_key] =
+          Array.from(gen_prompts.generate(filterVarsByLLM(vars, llm_key)));
       });
     } else {
       all_prompt_permutations = Array.from(gen_prompts.generate(vars));
@@ -562,7 +563,7 @@ export async function countQueries(
     // Get only the relevant prompt permutations
     const _all_prompt_perms = cont_only_w_prior_llms
       ? (all_prompt_permutations as Dict<PromptTemplate[]>)[llm_key]
-      : all_prompt_permutations as PromptTemplate[];
+      : (all_prompt_permutations as PromptTemplate[]);
 
     // Get the relevant chat histories for this LLM:
     const chat_hists = (
@@ -699,13 +700,15 @@ export async function queryLLM(
   progress_listener?: (progress: { [key: symbol]: any }) => void,
   cont_only_w_prior_llms?: boolean,
   cancel_id?: string,
-): Promise<{responses: StandardizedLLMResponse[], errors: Dict<string[]>}> {
+): Promise<{ responses: StandardizedLLMResponse[]; errors: Dict<string[]> }> {
   // Verify the integrity of the params
   if (typeof id !== "string" || id.trim().length === 0)
     throw new Error("id is improper format (length 0 or not a string)");
 
   if (Array.isArray(llm) && llm.length === 0)
-    throw new Error("POST data llm is improper format (not string or list, or of length 0).");
+    throw new Error(
+      "POST data llm is improper format (not string or list, or of length 0).",
+    );
 
   // Ensure llm param is an array
   if (typeof llm === "string") llm = [llm];
@@ -764,7 +767,7 @@ export async function queryLLM(
 
   // Create a Proxy object to 'listen' for changes to a variable (see https://stackoverflow.com/a/50862441)
   // and then stream those changes back to a provided callback used to update progress bars.
-  const progress: {[key: string | symbol]: QueryProgress} = {};
+  const progress: { [key: string | symbol]: QueryProgress } = {};
   const progressProxy = new Proxy(progress, {
     set: function (target, key, value) {
       target[key] = value;
@@ -1297,11 +1300,13 @@ export async function evalWithLLM(
     // Convert all eval results to boolean datatypes:
     all_evald_responses.forEach((resp_obj) => {
       if (!resp_obj.eval_res?.items) return;
-      resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: EvaluationScore) => {
-        if (typeof i !== "string") return i;
-        const li = i.toLowerCase();
-        return li === "true" || li === "yes";
-      });
+      resp_obj.eval_res.items = resp_obj.eval_res.items.map(
+        (i: EvaluationScore) => {
+          if (typeof i !== "string") return i;
+          const li = i.toLowerCase();
+          return li === "true" || li === "yes";
+        },
+      );
       resp_obj.eval_res.dtype = "Categorical";
     });
     // Check if the results are all numeric-ish:
@@ -1309,10 +1314,12 @@ export async function evalWithLLM(
     // Convert all eval results to numeric datatypes:
     all_evald_responses.forEach((resp_obj) => {
       if (!resp_obj.eval_res?.items) return;
-      resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: EvaluationScore) => {
-        if (typeof i !== "string") return i;
-        return parseFloat(i);
-      });
+      resp_obj.eval_res.items = resp_obj.eval_res.items.map(
+        (i: EvaluationScore) => {
+          if (typeof i !== "string") return i;
+          return parseFloat(i);
+        },
+      );
       resp_obj.eval_res.dtype = "Numeric";
     });
   }

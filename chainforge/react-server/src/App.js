@@ -1022,7 +1022,10 @@ const App = () => {
         <GlobalSettingsModal ref={settingsModal} alertModal={alertModal} />
         <AlertModal ref={alertModal} />
         <LoadingOverlay visible={isLoading} overlayBlur={1} />
-        <ExampleFlowsModal ref={examplesModal} onSelect={onSelectExampleFlow} />
+        <ExampleFlowsModal
+          ref={examplesModal}
+          handleOnSelect={onSelectExampleFlow}
+        />
         <AreYouSureModal
           ref={confirmationModal}
           title={confirmationDialogProps.title}

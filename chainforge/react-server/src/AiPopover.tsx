@@ -69,7 +69,7 @@ const changeFourSpaceTabsToTwo = (code: string) => {
 };
 
 export const buildGenEvalCodePrompt = (
-  progLang: 'python' | 'javascript',
+  progLang: "python" | "javascript",
   context: string,
   specPrompt: string,
   manyFuncs?: boolean,
@@ -94,7 +94,10 @@ ${specPrompt}`;
 
 // Builds part of a longer prompt to the LLM about the shape of Response objects
 // input into an evaluator (the names of template vars, and available metavars)
-export const buildContextPromptForVarsMetavars = (context: {vars: string[], metavars: string[]}) => {
+export const buildContextPromptForVarsMetavars = (context: {
+  vars: string[];
+  metavars: string[];
+}) => {
   if (!context) return "";
 
   const promptify_key_arr = (arr: string[]) => {
@@ -127,7 +130,9 @@ export const buildContextPromptForVarsMetavars = (context: {vars: string[], meta
 export function AIPopover({
   // Pass the specific UI and logic for the popover as a child component
   children,
-}: { children: React.ReactNode }) {
+}: {
+  children: React.ReactNode;
+}) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
   const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
@@ -262,10 +267,7 @@ export function AIGenReplaceItemsPopover({
   // Generate and Replace state
   const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(3);
   const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState("");
-  const [
-    genDiverseOutputs,
-    setGenDiverseOutputs,
-  ] = useState(false);
+  const [genDiverseOutputs, setGenDiverseOutputs] = useState(false);
   const [didGenerateAndReplaceError, setDidGenerateAndReplaceError] =
     useState(false);
 
@@ -346,8 +348,7 @@ export function AIGenReplaceItemsPopover({
           defaultValue={3}
           value={commandFillNumber}
           onChange={(num) => {
-            if (typeof num === "number") 
-              setCommandFillNumber(num);
+            if (typeof num === "number") setCommandFillNumber(num);
           }}
         />
         {enoughRowsForSuggestions ? (
@@ -421,8 +422,7 @@ export function AIGenReplaceItemsPopover({
           defaultValue={3}
           value={generateAndReplaceNumber}
           onChange={(num) => {
-            if (typeof num === "number")
-              setGenerateAndReplaceNumber(num);
+            if (typeof num === "number") setGenerateAndReplaceNumber(num);
           }}
         />
         <Switch
@@ -431,9 +431,7 @@ export function AIGenReplaceItemsPopover({
           size="xs"
           label="Make outputs unconventional"
           checked={genDiverseOutputs}
-          onChange={(e) =>
-            setGenDiverseOutputs(e.currentTarget.checked)
-          }
+          onChange={(e) => setGenDiverseOutputs(e.currentTarget.checked)}
         />
         <Button
           size="sm"
@@ -479,7 +477,6 @@ export function AIGenReplaceItemsPopover({
   );
 }
 
-
 export interface AIGenCodeEvaluatorPopoverProps {
   // The programming language to generate evaluation code in (currently, only 'python' or 'javascript')
   progLang: "python" | "javascript";
@@ -488,7 +485,7 @@ export interface AIGenCodeEvaluatorPopoverProps {
   // Callback that takes a boolean that the popover will call to set whether the values are loading and are done loading
   onLoadingChange: (isLoading: boolean) => void;
   // The keys available in vars and metavar dicts, for added context to the LLM
-  context: {vars: string[], metavars:string[]};
+  context: { vars: string[]; metavars: string[] };
   // The code currently in the evaluator
   currentEvalCode: string;
 }

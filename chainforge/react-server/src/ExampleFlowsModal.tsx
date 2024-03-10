@@ -2,6 +2,7 @@ import React, { forwardRef, useImperativeHandle } from "react";
 import { SimpleGrid, Card, Modal, Text, Button, Tabs } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconChartDots3 } from "@tabler/icons-react";
+import { Dict } from "./backend/typing";
 
 /** The preconverted OpenAI evals we can load from,
  * along with their descriptions, extracted from the evals registry. */
@@ -311,26 +312,26 @@ const OAIEVALS = {
     "Test understanding of Multipolygon WKT (Well-Known Text) representation of vector geometry objects (https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry).",
   word_vector_over_reliance:
     "Example eval that checks sampled text matches the expected output.",
-};
+} as Dict<string | null>;
+
+interface ExampleFlowCardProps {
+  title: string;
+  description: string;
+  filename: string;
+  buttonText?: string;
+  onSelect?: (filename: string, category?: string) => void;
+}
 
 /** Example flows to help users get started and see what CF can do */
-const ExampleFlowCard = ({
+const ExampleFlowCard: React.FC<ExampleFlowCardProps> = ({
   title,
   description,
-  buttonText,
   filename,
+  buttonText,
   onSelect,
 }) => {
   return (
     <Card shadow="sm" padding="lg" radius="md" withBorder>
-      {/* <Card.Section>
-        <Image
-          src="..."
-          height={160}
-          alt="Alt text"
-        />
-      </Card.Section> */}
-
       <Text mb="xs" weight={500}>
         {title}
       </Text>
@@ -340,7 +341,9 @@ const ExampleFlowCard = ({
       </Text>
 
       <Button
-        onClick={() => onSelect(filename)}
+        onClick={() => {
+          if (onSelect) onSelect(filename);
+        }}
         variant="light"
         color="blue"
         fullWidth
@@ -354,16 +357,26 @@ const ExampleFlowCard = ({
   );
 };
 
-// es-lint-ignore-next-line
-const ExampleFlowsModal = forwardRef(function ExampleFlowsModal(props, ref) {
+interface ExampleFlowsModalHandles {
+  trigger: () => void;
+}
+
+interface ExampleFlowsModalProps {
+  handleOnSelect: (filename: string, category?: string) => void;
+}
+
+const ExampleFlowsModal = forwardRef<
+  ExampleFlowsModalHandles,
+  ExampleFlowsModalProps
+>(function ExampleFlowsModal({ handleOnSelect }, ref) {
   // Mantine modal popover for alerts
   const [opened, { open, close }] = useDisclosure(false);
 
   // Callback for when an example flow is selected. Passed the name of the selected flow.
-  const onSelect = props.onSelect
-    ? (filename, category) => {
+  const onSelect = handleOnSelect
+    ? (filename: string, category?: string) => {
         close();
-        props.onSelect(filename, category);
+        handleOnSelect(filename, category);
       }
     : undefined;
 
@@ -436,12 +449,6 @@ const ExampleFlowsModal = forwardRef(function ExampleFlowsModal(props, ref) {
               filename="basic-function-calls"
               onSelect={onSelect}
             />
-            {/* <ExampleFlowCard title="Test mathematical ability"
-                            description="Evaluate the ability of different LLMs to perform basic math and get the correct answer. Showcases chaining prompt templates and using prompt variables in Evaluate nodes."
-            />
-            <ExampleFlowCard title="Does it conform to spec?"
-                            description="Test how well a prompt and model conforms to a specification (instructed to format its output a certain way). Extracts and parses JSON outputs."
-            /> */}
           </SimpleGrid>
         </Tabs.Panel>
 
@@ -471,15 +478,13 @@ const ExampleFlowsModal = forwardRef(function ExampleFlowsModal(props, ref) {
                   OAIEVALS[evalname] || "No description was provided."
                 }
                 filename={evalname}
-                onSelect={(name) => onSelect(name, "openai-eval")}
+                onSelect={(name) => {
+                  if (onSelect) onSelect(name, "openai-eval");
+                }}
                 key={evalname}
               />
             ))}
           </SimpleGrid>
-          {/* <Alert icon={<IconAlertCircle size="2rem" />} title="Bummer!" color="orange" mt="md" pl="sm" styles={{message: {fontSize: '12pt'}, title: {fontSize: '12pt'}}}>
-            We detected that you do not have the <Code>evals</Code> package installed. To load ChainForge flows from OpenAI evals, install <Code>evals</Code> in the Python environment where you are running ChainForge:
-            <Code style={{fontSize: '12pt'}} block mt="sm">pip install evals</Code>
-          </Alert> */}
         </Tabs.Panel>
       </Tabs>
     </Modal>

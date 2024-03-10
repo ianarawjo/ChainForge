@@ -43,7 +43,14 @@ import {
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import CancelTracker from "./backend/canceler";
 import { UserForcedPrematureExit } from "./backend/errors";
-import { ChatHistoryInfo, Dict, LLMSpec, QueryProgress, StandardizedLLMResponse, TemplateVarInfo } from "./backend/typing";
+import {
+  ChatHistoryInfo,
+  Dict,
+  LLMSpec,
+  QueryProgress,
+  StandardizedLLMResponse,
+  TemplateVarInfo,
+} from "./backend/typing";
 import { AlertModalHandles } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 
@@ -66,8 +73,8 @@ const bucketChatHistoryInfosByLLM = (chat_hist_infos: ChatHistoryInfo[]) => {
 };
 
 class PromptInfo {
-  prompt: string; 
-  settings: Dict; 
+  prompt: string;
+  settings: Dict;
 
   constructor(prompt: string, settings: Dict) {
     this.prompt = prompt;
@@ -173,10 +180,14 @@ const PromptNode = ({ data, id, type: node_type }) => {
   // API Keys (set by user in popup GlobalSettingsModal)
   const apiKeys = useStore((state) => state.apiKeys);
 
-  const [jsonResponses, setJSONResponses] = useState<StandardizedLLMResponse[] | null>(null);
+  const [jsonResponses, setJSONResponses] = useState<
+    StandardizedLLMResponse[] | null
+  >(null);
   const [templateVars, setTemplateVars] = useState<string[]>(data.vars ?? []);
   const [promptText, setPromptText] = useState<string>(data.prompt ?? "");
-  const [promptTextOnLastRun, setPromptTextOnLastRun] = useState<string | null>(null);
+  const [promptTextOnLastRun, setPromptTextOnLastRun] = useState<string | null>(
+    null,
+  );
   const [status, setStatus] = useState(Status.NONE);
   const [numGenerations, setNumGenerations] = useState<number>(data.n ?? 1);
   const [numGenerationsLastRun, setNumGenerationsLastRun] = useState<number>(
@@ -201,7 +212,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [contWithPriorLLMs, setContWithPriorLLMs] = useState<boolean>(
     data.contChat !== undefined ? data.contChat : node_type === "chat",
   );
-  const [showContToggle, setShowContToggle] = useState<boolean>(node_type === "chat");
+  const [showContToggle, setShowContToggle] = useState<boolean>(
+    node_type === "chat",
+  );
   const [contToggleDisabled, setContChatToggleDisabled] = useState(false);
 
   // For an info pop-up that shows all the prompts that will be sent off
@@ -210,7 +223,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
     useDisclosure(false);
 
   // Progress when querying responses
-  const [progress, setProgress] = useState<QueryProgress | undefined>(undefined);
+  const [progress, setProgress] = useState<QueryProgress | undefined>(
+    undefined,
+  );
   const [progressAnimated, setProgressAnimated] = useState(true);
   const [runTooltip, setRunTooltip] = useState<string | undefined>(undefined);
 
@@ -390,7 +405,11 @@ const PromptNode = ({ data, id, type: node_type }) => {
     // We need to create a revised chat history that concatenates the past history with the last AI + human turns:
     const past_chats = pulled_data.__past_chats.map((info: TemplateVarInfo) => {
       // Add to unique LLMs list, if necessary
-      if (typeof info?.llm !== "string" && info?.llm?.name !== undefined && !llm_names.has(info.llm.name)) {
+      if (
+        typeof info?.llm !== "string" &&
+        info?.llm?.name !== undefined &&
+        !llm_names.has(info.llm.name)
+      ) {
         llm_names.add(info.llm.name);
         past_chat_llms.push(info.llm);
       }
@@ -740,7 +759,9 @@ Soft failing by replacing undefined with empty strings.`,
     llmListContainer?.current?.setZeroPercProgress();
 
     // Create a callback to listen for progress
-    let onProgressChange: ((progress_by_llm_key: Dict<QueryProgress>) => void) | undefined = undefined;
+    let onProgressChange:
+      | ((progress_by_llm_key: Dict<QueryProgress>) => void)
+      | undefined;
     const open_progress_listener = ([response_counts, total_num_responses]) => {
       setResponsesWillChange(
         !response_counts || Object.keys(response_counts).length === 0,

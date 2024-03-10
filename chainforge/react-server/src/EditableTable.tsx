@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Table, Textarea, Menu } from "@mantine/core";
+import {
+  Table,
+  Textarea,
+  Menu,
+  TextInputStylesNames,
+  Styles,
+} from "@mantine/core";
 import {
   IconDots,
   IconPencil,
@@ -7,6 +13,7 @@ import {
   IconArrowRight,
   IconX,
 } from "@tabler/icons-react";
+import { TabularDataColType, TabularDataRowType } from "./backend/typing";
 
 const cellTextareaStyle = {
   input: {
@@ -22,12 +29,12 @@ const cellTextareaStyle = {
   root: {
     width: "inherit",
   },
-};
+} satisfies Styles<TextInputStylesNames>;
 const headerTextareaStyle = {
   input: {
     border: "0",
     fontSize: "10pt",
-    fontWeight: "600",
+    fontWeight: "bold",
     padding: "2px !important",
     minHeight: "10pt",
     lineHeight: "1.2",
@@ -37,17 +44,19 @@ const headerTextareaStyle = {
   root: {
     width: "inherit",
   },
-};
+} satisfies Styles<TextInputStylesNames>;
 const tableHeaderStyle = {
   paddingBottom: "4px",
 };
 
 /* Set the cursor position to start of innerText in a content editable div. */
-const forceFocusContentEditable = (e) => {
+const forceFocusContentEditable = (
+  e: React.MouseEvent<HTMLParagraphElement>,
+) => {
   // We need to do some jujitsu here, because apparently divs with no text don't autofocus the cursor
   // properly the first time they are clicked. Instead we (a) detect an empty div and (b) force the cursor to focus on it:
-  if (e.target.innerText.length === 0) {
-    const node = e.target;
+  if ((e.target as HTMLParagraphElement).innerText.length === 0) {
+    const node = e.target as HTMLParagraphElement;
     const range = document.createRange();
     range.selectNode(node);
     range.setStart(node, 0);
@@ -55,18 +64,27 @@ const forceFocusContentEditable = (e) => {
 
     const selection = window.getSelection();
     range.collapse(false);
-    selection.removeAllRanges();
-    selection.addRange(range);
+    if (selection !== null) {
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
   }
 };
 
-export function CellTextarea({
+interface CellTextareaProps {
+  initialValue: string;
+  rowIdx: number;
+  column: TabularDataColType;
+  handleSaveCell: (rowIdx: number, colKey: string, text: string) => void;
+}
+
+const CellTextarea: React.FC<CellTextareaProps> = ({
   initialValue,
   rowIdx,
   column,
   handleSaveCell,
   // onContextMenu,
-}) {
+}) => {
   const [value, setValue] = useState(initialValue);
 
   useEffect(() => {
@@ -89,12 +107,21 @@ export function CellTextarea({
       styles={rowIdx > -1 ? cellTextareaStyle : headerTextareaStyle}
     />
   );
+};
+
+export interface EditableTableProps {
+  rows: TabularDataRowType[];
+  columns: TabularDataColType[];
+  handleSaveCell: (rowIdx: number, colKey: string, text: string) => void;
+  handleInsertColumn: (colKey: string, dir: 1 | -1) => void;
+  handleRemoveColumn: (colKey: string) => void;
+  handleRenameColumn: (col: TabularDataColType) => void;
 }
 
 /**
  * A table with multi-line textareas that is always editable and relatively fast.
  */
-const EditableTable = ({
+const EditableTable: React.FC<EditableTableProps> = ({
   rows,
   columns,
   handleSaveCell,
@@ -102,12 +129,12 @@ const EditableTable = ({
   handleRemoveColumn,
   handleRenameColumn,
 }) => {
-  const [trows, setTrows] = useState([]);
-  const [thead, setThead] = useState([]);
+  const [trows, setTrows] = useState<React.ReactNode[]>([]);
+  const [thead, setThead] = useState<React.ReactNode>([]);
 
   // Re-create the table anytime the rows or columns changes
   useEffect(() => {
-    const cols = columns || [];
+    const cols = columns ?? [];
 
     setTrows(
       rows.map(
