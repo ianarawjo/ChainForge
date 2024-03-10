@@ -17,7 +17,7 @@ export interface Dict<T = any> {
 export type Func<T = void> = (...args: any[]) => T;
 
 // JSON-compatible leaf types
-export type JSONLeaf = string | number | boolean | null;
+export type JSONLeaf = string | number | boolean | null | undefined;
 export type JSONCompatible<T = JSONLeaf> =
   | T
   | JSONCompatible<T>[]
@@ -112,8 +112,8 @@ export type LLMSpec = {
   model: string;
   temp: number;
   key?: string;
-  formData?: Dict;
-  settings?: Dict;
+  formData?: Dict<JSONCompatible>;
+  settings?: Dict<JSONCompatible>;
   progress?: Dict<number>; // only used for front-end to display progress collecting responses for this LLM
 };
 
@@ -136,6 +136,7 @@ export interface ModelSettingsDict {
     type: "object";
     required: string[];
     properties: Dict<Dict<JSONCompatible>>;
+    description?: string;
   };
   uiSchema: Dict<JSONCompatible>;
   postprocessors: Dict<(val: string | number | boolean) => any>;

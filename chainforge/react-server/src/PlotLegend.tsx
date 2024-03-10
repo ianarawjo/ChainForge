@@ -1,13 +1,8 @@
 import React from "react";
+import { Dict } from "./backend/typing";
+import { truncStr } from "./backend/utils";
 
-const truncStr = (s, maxLen) => {
-  if (s.length > maxLen)
-    // Cut the name short if it's long
-    return s.substring(0, maxLen) + "...";
-  else return s;
-};
-
-const PlotLegend = ({ labels, onClickLabel }) => {
+const PlotLegend = ({ labels, onClickLabel }: { labels: Dict<string>, onClickLabel: (label: string) => void }) => {
   return (
     <div className="plot-legend">
       {Object.entries(labels).map(([label, color]) => (
