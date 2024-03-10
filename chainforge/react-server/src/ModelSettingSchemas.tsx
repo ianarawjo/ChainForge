@@ -10,7 +10,14 @@
  * Descriptions of OpenAI model parameters copied from OpenAI's official chat completions documentation: https://platform.openai.com/docs/models/model-endpoint-compatibility
  */
 
-import { LLMProvider, RATE_LIMITS, getProvider } from "./backend/models";
+import { LLM, LLMProvider, RATE_LIMITS, getProvider } from "./backend/models";
+import {
+  Dict,
+  JSONCompatible,
+  CustomLLMProviderSpec,
+  ModelSettingsDict,
+  LLMSpec,
+} from "./backend/typing";
 import { transformDict } from "./backend/utils";
 import useStore from "./store";
 
@@ -21,9 +28,9 @@ const UI_SUBMIT_BUTTON_SPEC = {
   },
   norender: false,
   submitText: "Submit",
-};
+} satisfies Dict;
 
-const ChatGPTSettings = {
+const ChatGPTSettings: ModelSettingsDict = {
   fullName: "GPT-3.5+ (OpenAI)",
   schema: {
     type: "object",
@@ -224,29 +231,32 @@ const ChatGPTSettings = {
   },
 
   postprocessors: {
-    functions: (str) => {
+    functions: (str: string | number | boolean) => {
+      if (typeof str !== "string") return str;
       if (str.trim().length === 0) return [];
       return JSON.parse(str); // parse the JSON schema
     },
-    function_call: (str) => {
+    function_call: (str: string | number | boolean) => {
+      if (typeof str !== "string") return str;
       const s = str.trim();
       if (s.length === 0) return "";
       if (s === "auto" || s === "none") return s;
       else return { name: s };
     },
-    stop: (str) => {
+    stop: (str: string | number | boolean) => {
+      if (typeof str !== "string") return str;
       if (str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
-        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
-    response_format: (str) => {
+    response_format: (str: string | number | boolean) => {
       return { type: str };
     },
   },
 };
 
-const GPT4Settings = {
+const GPT4Settings: ModelSettingsDict = {
   fullName: ChatGPTSettings.fullName,
   schema: {
     type: "object",
@@ -275,7 +285,7 @@ const GPT4Settings = {
   postprocessors: ChatGPTSettings.postprocessors,
 };
 
-const ClaudeSettings = {
+const ClaudeSettings: ModelSettingsDict = {
   fullName: "Claude (Anthropic)",
   schema: {
     type: "object",
@@ -420,16 +430,17 @@ const ClaudeSettings = {
   },
 
   postprocessors: {
-    stop_sequences: (str) => {
+    stop_sequences: (str: string | number | boolean) => {
+      if (typeof str !== "string") return str;
       if (str.trim().length === 0) return ["\n\nHuman:"];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
-        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
   },
 };
 
-const PaLM2Settings = {
+const PaLM2Settings: ModelSettingsDict = {
   fullName: "Google AI Models (Gemini & PaLM)",
   schema: {
     type: "object",
@@ -531,16 +542,17 @@ const PaLM2Settings = {
   },
 
   postprocessors: {
-    stop_sequences: (str) => {
+    stop_sequences: (str: string | number | boolean) => {
+      if (typeof str !== "string") return str;
       if (str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
-        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
   },
 };
 
-const DalaiModelSettings = {
+const DalaiModelSettings: ModelSettingsDict = {
   fullName: "Dalai-hosted local model (Alpaca, Llama)",
   schema: {
     type: "object",
@@ -691,7 +703,7 @@ const DalaiModelSettings = {
   postprocessors: {},
 };
 
-const AzureOpenAISettings = {
+const AzureOpenAISettings: ModelSettingsDict = {
   fullName: "Azure OpenAI Model",
   schema: {
     type: "object",
@@ -738,7 +750,7 @@ const AzureOpenAISettings = {
   postprocessors: ChatGPTSettings.postprocessors,
 };
 
-const HuggingFaceTextInferenceSettings = {
+const HuggingFaceTextInferenceSettings: ModelSettingsDict = {
   fullName: "HuggingFace-hosted text generation models",
   schema: {
     type: "object",
@@ -910,7 +922,7 @@ const HuggingFaceTextInferenceSettings = {
   postprocessors: {},
 };
 
-const AlephAlphaLuminousSettings = {
+const AlephAlphaLuminousSettings: ModelSettingsDict = {
   fullName: "Aleph Alpha Luminous",
   schema: {
     type: "object",
@@ -1111,22 +1123,25 @@ const AlephAlphaLuminousSettings = {
     },
   },
   postprocessors: {
-    stop_sequences: (str) => {
+    stop_sequences: (str: string | number | boolean) => {
+      if (typeof str !== "string") return str;
       if (str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
-        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
-    log_probs: (bool) => {
+    log_probs: (bool: boolean | number | string) => {
+      if (typeof bool !== "boolean") return bool;
       return bool ? 3 : null;
     },
-    best_of: (a) => {
+    best_of: (a: number | string | boolean) => {
+      if (typeof a !== "number") return a;
       return a === 1 ? null : a;
     },
   },
 };
 
-const OllamaSettings = {
+const OllamaSettings: ModelSettingsDict = {
   fullName: "Ollama",
   schema: {
     type: "object",
@@ -1234,11 +1249,12 @@ const OllamaSettings = {
     },
   },
   postprocessors: {
-    stop_sequences: (str) => {
+    stop_sequences: (str: string | number | boolean) => {
+      if (typeof str !== "string") return str;
       if (str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
-        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
   },
 };
@@ -1929,7 +1945,7 @@ const MetaLlama2ChatSettings = {
 };
 
 // A lookup table indexed by base_model.
-export const ModelSettings = {
+export const ModelSettings: Dict<ModelSettingsDict> = {
   "gpt-3.5-turbo": ChatGPTSettings,
   "gpt-4": GPT4Settings,
   "claude-v1": ClaudeSettings,
@@ -1948,7 +1964,9 @@ export const ModelSettings = {
   "br.meta.llama2": MetaLlama2ChatSettings,
 };
 
-export function getSettingsSchemaForLLM(llm_name) {
+export function getSettingsSchemaForLLM(
+  llm_name: string,
+): ModelSettingsDict | undefined {
   const llm_provider = getProvider(llm_name);
 
   const provider_to_settings_schema = {
@@ -1963,13 +1981,13 @@ export function getSettingsSchemaForLLM(llm_name) {
   };
 
   if (llm_provider === LLMProvider.Custom) return ModelSettings[llm_name];
-  else if (llm_provider in provider_to_settings_schema)
+  else if (llm_provider && llm_provider in provider_to_settings_schema)
     return provider_to_settings_schema[llm_provider];
   else if (llm_provider === LLMProvider.Bedrock) {
     return ModelSettings[llm_name.split("-")[0]];
   } else {
     console.error(`Could not find provider for llm ${llm_name}`);
-    return {};
+    return undefined;
   }
 }
 
@@ -1978,7 +1996,10 @@ export function getSettingsSchemaForLLM(llm_name) {
  * @param {*} settings_dict A dict of form setting_name: value (string: string)
  * @param {*} llm A string of the name of the model to query.
  */
-export function typecastSettingsDict(settings_dict, llm) {
+export function typecastSettingsDict(
+  settings_dict: ModelSettingsDict,
+  llm: string,
+) {
   const settings = getSettingsSchemaForLLM(llm);
   const schema = settings?.schema?.properties ?? {};
   const postprocessors = settings?.postprocessors ?? {};
@@ -2014,16 +2035,16 @@ export function typecastSettingsDict(settings_dict, llm) {
  * @param {*} settings_schema
  */
 export const setCustomProvider = (
-  name,
-  emoji,
-  models,
-  rate_limit,
-  settings_schema,
+  name: string,
+  emoji: string,
+  models?: string[],
+  rate_limit?: number,
+  settings_schema?: CustomLLMProviderSpec["settings_schema"],
 ) => {
   if (typeof emoji === "string" && (emoji.length === 0 || emoji.length > 2))
     throw new Error(`Emoji for a custom provider must have a character.`);
 
-  const new_provider = { name };
+  const new_provider: Dict<JSONCompatible> = { name };
   new_provider.emoji = emoji || "✨";
 
   // Each LLM *model* must have a unique name. To avoid name collisions, for custom providers,
@@ -2036,7 +2057,7 @@ export const setCustomProvider = (
     (Array.isArray(models) && models.length > 0 ? `${models[0]}` : "");
 
   // Build the settings form schema for this new custom provider
-  const compiled_schema = {
+  const compiled_schema: ModelSettingsDict = {
     fullName: `${name} (custom provider)`,
     schema: {
       type: "object",
@@ -2057,6 +2078,7 @@ export const setCustomProvider = (
         "ui:autofocus": true,
       },
     },
+    postprocessors: {},
   };
 
   // Add a models selector if there's multiple models
@@ -2093,8 +2115,9 @@ export const setCustomProvider = (
   // Add the built provider and its settings to the global lookups:
   const AvailableLLMs = useStore.getState().AvailableLLMs;
   const prev_provider_idx = AvailableLLMs.findIndex((d) => d.name === name);
-  if (prev_provider_idx > -1) AvailableLLMs[prev_provider_idx] = new_provider;
-  else AvailableLLMs.push(new_provider);
+  if (prev_provider_idx > -1)
+    AvailableLLMs[prev_provider_idx] = new_provider as LLMSpec;
+  else AvailableLLMs.push(new_provider as LLMSpec);
   ModelSettings[base_model] = compiled_schema;
 
   // Add rate limit info, if specified
@@ -2113,7 +2136,7 @@ export const setCustomProvider = (
   useStore.getState().setAvailableLLMs(AvailableLLMs);
 };
 
-export const setCustomProviders = (providers) => {
+export const setCustomProviders = (providers: CustomLLMProviderSpec[]) => {
   for (const p of providers)
     setCustomProvider(
       p.name,
@@ -2124,7 +2147,7 @@ export const setCustomProviders = (providers) => {
     );
 };
 
-export const getTemperatureSpecForModel = (modelName) => {
+export const getTemperatureSpecForModel = (modelName: string) => {
   if (modelName in ModelSettings) {
     const temperature_property =
       ModelSettings[modelName].schema?.properties?.temperature;
@@ -2139,11 +2162,14 @@ export const getTemperatureSpecForModel = (modelName) => {
   return null;
 };
 
-export const postProcessFormData = (settingsSpec, formData) => {
+export const postProcessFormData = (
+  settingsSpec: ModelSettingsDict,
+  formData: Dict<JSONCompatible>,
+) => {
   // Strip all 'model' and 'shortname' props in the submitted form, as these are passed elsewhere or unecessary for the backend
   const skip_keys = { model: true, shortname: true };
 
-  const new_data = {};
+  const new_data: Dict<JSONCompatible> = {};
   const postprocessors = settingsSpec?.postprocessors
     ? settingsSpec.postprocessors
     : {};
@@ -2151,28 +2177,32 @@ export const postProcessFormData = (settingsSpec, formData) => {
   Object.keys(formData).forEach((key) => {
     if (key in skip_keys) return;
     if (key in postprocessors)
-      new_data[key] = postprocessors[key](formData[key]);
+      new_data[key] = postprocessors[key](
+        formData[key] as string | number | boolean,
+      );
     else new_data[key] = formData[key];
   });
 
   return new_data;
 };
 
-export const getDefaultModelFormData = (settingsSpec) => {
+export const getDefaultModelFormData = (
+  settingsSpec: string | ModelSettingsDict,
+) => {
   if (typeof settingsSpec === "string")
     settingsSpec = ModelSettings[settingsSpec];
-  const default_formdata = {};
+  const default_formdata: Dict<JSONCompatible> = {};
   const schema = settingsSpec.schema;
   Object.keys(schema.properties).forEach((key) => {
     default_formdata[key] =
       "default" in schema.properties[key]
         ? schema.properties[key].default
-        : undefined;
+        : null;
   });
   return default_formdata;
 };
 
-export const getDefaultModelSettings = (modelName) => {
+export const getDefaultModelSettings = (modelName: string) => {
   if (!(modelName in ModelSettings)) {
     console.warn(
       `Model ${modelName} not found in list of available model settings.`,

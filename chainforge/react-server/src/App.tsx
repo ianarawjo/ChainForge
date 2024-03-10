@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import ReactFlow, { Controls, Background } from "reactflow";
+import ReactFlow, { Controls, Background, ReactFlowInstance } from "reactflow";
 import {
   Button,
   Menu,
@@ -31,7 +31,7 @@ import CodeEvaluatorNode from "./CodeEvaluatorNode";
 import VisNode from "./VisNode";
 import InspectNode from "./InspectorNode";
 import ScriptNode from "./ScriptNode";
-import AlertModal from "./AlertModal";
+import AlertModal, { AlertModalHandles } from "./AlertModal";
 import ItemsNode from "./ItemsNode";
 import TabularDataNode from "./TabularDataNode";
 import JoinNode from "./JoinNode";
@@ -56,7 +56,7 @@ import "./text-fields-node.css"; // project
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from "zustand/shallow";
-import useStore from "./store";
+import useStore, { StoreHandles } from "./store";
 import fetch_from_backend from "./fetch_from_backend";
 import StorageCache from "./backend/cache";
 import { APP_IS_RUNNING_LOCALLY, browserTabIsActive } from "./backend/utils";
@@ -69,19 +69,20 @@ import {
   isEdgeChromium,
   isChromium,
 } from "react-device-detect";
+import { Dict, LLMSpec } from "./backend/typing";
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
     isChromium ||
     isEdgeChromium ||
     isFirefox ||
-    navigator?.brave !== undefined) &&
+    (navigator as any)?.brave !== undefined) &&
   !isMobile;
 
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
-const selector = (state) => ({
+const selector = (state: StoreHandles) => ({
   nodes: state.nodes,
   edges: state.edges,
   onNodesChange: state.onNodesChange,
@@ -108,7 +109,7 @@ const INITIAL_LLM = () => {
       temp: 1.0,
       settings: getDefaultModelSettings("hf"),
       formData: getDefaultModelFormData("hf"),
-    };
+    } satisfies LLMSpec;
     falcon7b.formData.shortname = falcon7b.name;
     falcon7b.formData.model = falcon7b.model;
     return falcon7b;
@@ -123,7 +124,7 @@ const INITIAL_LLM = () => {
       temp: 1.0,
       settings: getDefaultModelSettings("gpt-3.5-turbo"),
       formData: getDefaultModelFormData("gpt-3.5-turbo"),
-    };
+    } satisfies LLMSpec;
     chatgpt.formData.shortname = chatgpt.name;
     chatgpt.formData.model = chatgpt.model;
     return chatgpt;
@@ -173,7 +174,13 @@ const getSharedFlowURLParam = () => {
   return undefined;
 };
 
-const MenuTooltip = ({ label, children }) => {
+const MenuTooltip = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) => {
   return (
     <Tooltip
       label={label}
@@ -208,7 +215,7 @@ const App = () => {
   } = useStore(selector, shallow);
 
   // For saving / loading
-  const [rfInstance, setRfInstance] = useState(null);
+  const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
   const [autosavingInterval, setAutosavingInterval] = useState(null);
 
   // For 'share' button
@@ -236,7 +243,7 @@ const App = () => {
   const { hideContextMenu } = useContextMenu();
 
   // For displaying error messages to user
-  const alertModal = useRef(null);
+  const alertModal = useRef<AlertModalHandles>(null);
 
   // For displaying a pending 'loading' status
   const [isLoading, setIsLoading] = useState(true);
@@ -252,6 +259,7 @@ const App = () => {
   };
   const getViewportCenter = () => {
     const { centerX, centerY } = getWindowCenter();
+    if (rfInstance === null) return { x: centerX, y: centerY };
     // Support Zoom
     const { x, y, zoom } = rfInstance.getViewport();
     return { x: -(x / zoom) + centerX / zoom, y: -(y / zoom) + centerY / zoom };
@@ -293,7 +301,7 @@ const App = () => {
       position: { x: x - 200, y: y - 100 },
     });
   };
-  const addEvalNode = (progLang) => {
+  const addEvalNode = (progLang: string) => {
     const { x, y } = getViewportCenter();
     let code = "";
     if (progLang === "python")
@@ -388,7 +396,7 @@ const App = () => {
       position: { x: x - 200, y: y - 100 },
     });
   };
-  const addProcessorNode = (progLang) => {
+  const addProcessorNode = (progLang: string) => {
     const { x, y } = getViewportCenter();
     let code = "";
     if (progLang === "python")
@@ -410,11 +418,12 @@ const App = () => {
     if (settingsModal && settingsModal.current) settingsModal.current.trigger();
   };
 
-  const handleError = (err) => {
+  const handleError = (err: Error | string) => {
+    const msg = typeof err === "string" ? err : err.message;
     setIsLoading(false);
     setWaitingForShare(false);
-    if (alertModal.current) alertModal.current.trigger(err.message);
-    console.error(err.message);
+    if (alertModal.current) alertModal.current.trigger(msg);
+    console.error(msg);
   };
 
   /**
@@ -468,7 +477,7 @@ const App = () => {
   const resetFlow = useCallback(() => {
     resetLLMColors();
 
-    const uid = (id) => `${id}-${Date.now()}`;
+    const uid = (id: string) => `${id}-${Date.now()}`;
     const starting_nodes = [
       {
         id: uid("prompt"),
@@ -493,39 +502,38 @@ const App = () => {
     if (rfInstance) rfInstance.setViewport({ x: 200, y: 80, zoom: 1 });
   }, [setNodes, setEdges, resetLLMColors, rfInstance]);
 
-  const loadFlow = async (flow, rf_inst) => {
-    if (flow) {
-      if (rf_inst) {
-        if (flow.viewport)
-          rf_inst.setViewport({
-            x: flow.viewport.x || 0,
-            y: flow.viewport.y || 0,
-            zoom: flow.viewport.zoom || 1,
-          });
-        else rf_inst.setViewport({ x: 0, y: 0, zoom: 1 });
-      }
-      resetLLMColors();
-
-      // First, clear the ReactFlow state entirely
-      // NOTE: We need to do this so it forgets any node/edge ids, which might have cross-over in the loaded flow.
-      setNodes([]);
-      setEdges([]);
-
-      // After a delay, load in the new state.
-      setTimeout(() => {
-        setNodes(flow.nodes || []);
-        setEdges(flow.edges || []);
-
-        // Save flow that user loaded to autosave cache, in case they refresh the browser
-        StorageCache.saveToLocalStorage("chainforge-flow", flow);
-
-        // Cancel loading spinner
-        setIsLoading(false);
-      }, 10);
-
-      // Start auto-saving, if it's not already enabled
-      if (rf_inst) initAutosaving(rf_inst);
+  const loadFlow = async (flow?: Dict, rf_inst?: ReactFlowInstance | null) => {
+    if (flow === undefined) return;
+    if (rf_inst) {
+      if (flow.viewport)
+        rf_inst.setViewport({
+          x: flow.viewport.x || 0,
+          y: flow.viewport.y || 0,
+          zoom: flow.viewport.zoom || 1,
+        });
+      else rf_inst.setViewport({ x: 0, y: 0, zoom: 1 });
     }
+    resetLLMColors();
+
+    // First, clear the ReactFlow state entirely
+    // NOTE: We need to do this so it forgets any node/edge ids, which might have cross-over in the loaded flow.
+    setNodes([]);
+    setEdges([]);
+
+    // After a delay, load in the new state.
+    setTimeout(() => {
+      setNodes(flow.nodes || []);
+      setEdges(flow.edges || []);
+
+      // Save flow that user loaded to autosave cache, in case they refresh the browser
+      StorageCache.saveToLocalStorage("chainforge-flow", flow);
+
+      // Cancel loading spinner
+      setIsLoading(false);
+    }, 10);
+
+    // Start auto-saving, if it's not already enabled
+    if (rf_inst) initAutosaving(rf_inst);
   };
 
   const importGlobalStateFromCache = useCallback(() => {
@@ -535,7 +543,7 @@ const App = () => {
   const autosavedFlowExists = () => {
     return window.localStorage.getItem("chainforge-flow") !== null;
   };
-  const loadFlowFromAutosave = async (rf_inst) => {
+  const loadFlowFromAutosave = async (rf_inst: ReactFlowInstance) => {
     const saved_flow = StorageCache.loadFromLocalStorage(
       "chainforge-flow",
       false,
@@ -602,8 +610,8 @@ const App = () => {
   );
 
   const importFlowFromJSON = useCallback(
-    (flowJSON, rf_inst) => {
-      const rf = rf_inst || rfInstance;
+    (flowJSON: Dict, rf_inst?: ReactFlowInstance | null) => {
+      const rf = rf_inst ?? rfInstance;
 
       setIsLoading(true);
 
@@ -656,13 +664,16 @@ const App = () => {
       // Handle file load event
       reader.addEventListener("load", function () {
         try {
+          if (typeof reader.result !== "string")
+            throw new Error("File could not be read: Unknown format or empty.");
+
           // We try to parse the JSON response
           const flow_and_cache = JSON.parse(reader.result);
 
           // Import it to React Flow and import cache data on the backend
           importFlowFromJSON(flow_and_cache);
         } catch (error) {
-          handleError(error);
+          handleError(error as Error);
         }
       });
 
@@ -675,7 +686,7 @@ const App = () => {
   };
 
   // Downloads the selected OpenAI eval file (preconverted to a .cforge flow)
-  const importFlowFromOpenAIEval = (evalname) => {
+  const importFlowFromOpenAIEval = (evalname: string) => {
     setIsLoading(true);
 
     fetch_from_backend(
@@ -707,7 +718,7 @@ const App = () => {
   };
 
   // Load flow from examples modal
-  const onSelectExampleFlow = (name, example_category) => {
+  const onSelectExampleFlow = (name: string, example_category: string) => {
     // Trigger the 'loading' modal
     setIsLoading(true);
 
@@ -772,9 +783,9 @@ const App = () => {
     }
 
     // Helper function
-    function isFileSizeLessThan5MB(str) {
+    function isFileSizeLessThan5MB(json_str: string) {
       const encoder = new TextEncoder();
-      const encodedString = encoder.encode(str);
+      const encodedString = encoder.encode(json_str);
       const fileSizeInBytes = encodedString.length;
       const fileSizeInMB = fileSizeInBytes / (1024 * 1024); // Convert bytes to megabytes
       return fileSizeInMB < 5;
@@ -894,7 +905,7 @@ const App = () => {
   };
 
   // Run once upon ReactFlow initialization
-  const onInit = (rf_inst) => {
+  const onInit = (rf_inst: ReactFlowInstance) => {
     setRfInstance(rf_inst);
 
     if (IS_RUNNING_LOCALLY) {

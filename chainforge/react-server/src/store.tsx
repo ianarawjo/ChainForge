@@ -22,8 +22,9 @@ import {
   PromptVarType,
   PromptVarsDict,
   TemplateVarInfo,
+  TabularDataColType,
+  TabularDataRowType,
 } from "./backend/typing";
-import { TabularDataColType, TabularDataRowType } from "./TabularDataNode";
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -227,7 +228,7 @@ export const initLLMProviders = initLLMProviderMenu
   .map((item) => ("group" in item && "items" in item ? item.items : item))
   .flat();
 
-interface StoreHandles {
+export interface StoreHandles {
   // Nodes and edges
   nodes: Node[];
   edges: Edge[];
