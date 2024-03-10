@@ -8,6 +8,9 @@ import {
   ChatHistoryInfo,
   isEqualChatHistory,
   PromptVarsDict,
+  QueryProgress,
+  EvaluationScore,
+  LLMSpec,
 } from "./typing";
 import { LLM, getEnumName } from "./models";
 import {
@@ -505,21 +508,21 @@ export async function countQueries(
   vars: Dict,
   llms: Array<Dict | string>,
   n: number,
-  chat_histories?: ChatHistoryInfo[] | { [key: string]: ChatHistoryInfo[] },
+  chat_histories?: (ChatHistoryInfo | undefined)[] | { [key: string]: (ChatHistoryInfo | undefined)[] },
   id?: string,
   cont_only_w_prior_llms?: boolean,
 ): Promise<Dict> {
   if (chat_histories === undefined) chat_histories = [undefined];
 
   let gen_prompts: PromptPermutationGenerator;
-  let all_prompt_permutations: Array<PromptTemplate> | Dict;
+  let all_prompt_permutations: PromptTemplate[] | Dict<PromptTemplate[]>;
   try {
     gen_prompts = new PromptPermutationGenerator(prompt);
     if (cont_only_w_prior_llms && Array.isArray(llms)) {
       all_prompt_permutations = {};
       llms.forEach((llm_spec) => {
         const llm_key = extract_llm_key(llm_spec);
-        all_prompt_permutations[llm_key] = Array.from(
+        (all_prompt_permutations as Dict<PromptTemplate[]>)[llm_key] = Array.from(
           gen_prompts.generate(filterVarsByLLM(vars, llm_key)),
         );
       });
@@ -527,7 +530,7 @@ export async function countQueries(
       all_prompt_permutations = Array.from(gen_prompts.generate(vars));
     }
   } catch (err) {
-    return { error: err.message };
+    return { error: (err as Error).message };
   }
 
   let cache_file_lookup: Dict = {};
@@ -536,8 +539,8 @@ export async function countQueries(
     cache_file_lookup = cache_data?.cache_files || {};
   }
 
-  const missing_queries = {};
-  const num_responses_req = {};
+  const missing_queries: Dict<Dict<number>> = {};
+  const num_responses_req: Dict<number> = {};
   const add_to_missing_queries = (
     llm_key: string,
     prompt: string,
@@ -558,8 +561,8 @@ export async function countQueries(
 
     // Get only the relevant prompt permutations
     const _all_prompt_perms = cont_only_w_prior_llms
-      ? all_prompt_permutations[llm_key]
-      : all_prompt_permutations;
+      ? (all_prompt_permutations as Dict<PromptTemplate[]>)[llm_key]
+      : all_prompt_permutations as PromptTemplate[];
 
     // Get the relevant chat histories for this LLM:
     const chat_hists = (
@@ -639,7 +642,7 @@ export async function countQueries(
     }
 
     if (!found_cache) {
-      _all_prompt_perms.forEach((perm) => {
+      _all_prompt_perms.forEach((perm: PromptTemplate) => {
         add_to_num_responses_req(llm_key, n * chat_hists.length);
         add_to_missing_queries(llm_key, perm.toString(), n * chat_hists.length);
       });
@@ -686,7 +689,7 @@ export async function fetchEnvironAPIKeys(): Promise<Dict> {
  */
 export async function queryLLM(
   id: string,
-  llm: string | Array<string> | Array<Dict>,
+  llm: string | (string | LLMSpec)[],
   n: number,
   prompt: string,
   vars: Dict,
@@ -696,21 +699,18 @@ export async function queryLLM(
   progress_listener?: (progress: { [key: symbol]: any }) => void,
   cont_only_w_prior_llms?: boolean,
   cancel_id?: string,
-): Promise<Dict> {
+): Promise<{responses: StandardizedLLMResponse[], errors: Dict<string[]>}> {
   // Verify the integrity of the params
   if (typeof id !== "string" || id.trim().length === 0)
-    return { error: "id is improper format (length 0 or not a string)" };
+    throw new Error("id is improper format (length 0 or not a string)");
 
   if (Array.isArray(llm) && llm.length === 0)
-    return {
-      error:
-        "POST data llm is improper format (not string or list, or of length 0).",
-    };
+    throw new Error("POST data llm is improper format (not string or list, or of length 0).");
 
   // Ensure llm param is an array
   if (typeof llm === "string") llm = [llm];
 
-  llm = llm as Array<string> | Array<Dict>;
+  llm = llm as string[] | LLMSpec[];
 
   if (api_keys !== undefined) set_api_keys(api_keys);
 
@@ -721,8 +721,8 @@ export async function queryLLM(
   // Ignore cache if no_cache is present
   if (no_cache) cache = {};
 
-  const llm_to_cache_filename = {};
-  const past_cache_files = {};
+  const llm_to_cache_filename: Dict<string> = {};
+  const past_cache_files: Dict<string | LLMSpec> = {};
   if (typeof cache === "object" && cache.cache_files !== undefined) {
     const past_cache_files: Dict = cache.cache_files;
     const past_cache_filenames: Array<string> = Object.keys(past_cache_files);
@@ -764,7 +764,7 @@ export async function queryLLM(
 
   // Create a Proxy object to 'listen' for changes to a variable (see https://stackoverflow.com/a/50862441)
   // and then stream those changes back to a provided callback used to update progress bars.
-  const progress = {};
+  const progress: {[key: string | symbol]: QueryProgress} = {};
   const progressProxy = new Proxy(progress, {
     set: function (target, key, value) {
       target[key] = value;
@@ -783,7 +783,7 @@ export async function queryLLM(
 
   // For each LLM, generate and cache responses:
   const responses: { [key: string]: Array<RawLLMResponseObject> } = {};
-  const all_errors = {};
+  const all_errors: Dict<string[]> = {};
   const num_generations = n ?? 1;
   async function query(llm_spec: string | Dict): Promise<LLMPrompterResults> {
     // Get LLM model name and any params
@@ -862,7 +862,7 @@ export async function queryLLM(
         throw e;
       } else {
         console.error(
-          `Error generating responses for ${llm_str}: ${e.message}`,
+          `Error generating responses for ${llm_str}: ${(e as Error).message}`,
         );
         throw e;
       }
@@ -875,21 +875,15 @@ export async function queryLLM(
     };
   }
 
-  try {
-    // Request responses simultaneously across LLMs
-    const tasks: Array<Promise<LLMPrompterResults>> = llms.map(query);
+  // Request responses simultaneously across LLMs
+  const tasks: Array<Promise<LLMPrompterResults>> = llms.map(query);
 
-    // Await the responses from all queried LLMs
-    const llm_results = await Promise.all(tasks);
-    llm_results.forEach((result) => {
-      responses[result.llm_key] = result.responses;
-      if (result.errors.length > 0) all_errors[result.llm_key] = result.errors;
-    });
-  } catch (e) {
-    if (e instanceof UserForcedPrematureExit) throw e;
-    console.error(`Error requesting responses: ${e.message}`);
-    return { error: e.message };
-  }
+  // Await the responses from all queried LLMs
+  const llm_results = await Promise.all(tasks);
+  llm_results.forEach((result) => {
+    responses[result.llm_key] = result.responses;
+    if (result.errors.length > 0) all_errors[result.llm_key] = result.errors;
+  });
 
   // Convert the responses into a more standardized format with less information
   const res = Object.values(responses).flatMap((rs) =>
@@ -920,7 +914,7 @@ export async function queryLLM(
 
   // Save the responses *of this run* to the storage cache, for further recall:
   const cache_filenames = past_cache_files;
-  llms.forEach((llm_spec: string | Dict) => {
+  llms.forEach((llm_spec: string | LLMSpec) => {
     const filename = llm_to_cache_filename[extract_llm_key(llm_spec)];
     cache_filenames[filename] = llm_spec;
   });
@@ -948,7 +942,7 @@ export async function queryLLM(
  */
 export async function simpleQueryLLM(
   prompt: string,
-  llm: string | string[] | Dict[],
+  llm: string | string[] | LLMSpec[],
   system_msg?: string,
   apiKeys?: Dict,
 ) {
@@ -1039,7 +1033,7 @@ export async function executejs(
         throw new Error(`${req_func_name}() function is undefined.`);
     } catch (err) {
       return {
-        error: `Could not compile code. Error message:\n${err.message}`,
+        error: `Could not compile code. Error message:\n${(err as Error).message}`,
       };
     }
   }
@@ -1074,7 +1068,7 @@ export async function executejs(
       REVERT_CONSOLE_LOGGING(id, iframe.contentWindow),
     );
     return {
-      error: `Error encountered while trying to run "evaluate" method:\n${err.message}`,
+      error: `Error encountered while trying to run "evaluate" method:\n${(err as Error).message}`,
       logs: all_logs,
     };
   }
@@ -1112,7 +1106,7 @@ export async function executepy(
   // Determine where we can execute Python
   executor = APP_IS_RUNNING_LOCALLY() ? executor ?? "flask" : "pyodide";
 
-  let exec_response: Dict;
+  let exec_response: Dict = {};
 
   // Execute using Flask backend (unsecure; only use with trusted code)
   if (executor === "flask") {
@@ -1156,7 +1150,8 @@ export async function executepy(
           all_logs.push(error.toString());
           throw new Error("pyodideWorker error: " + error.toString());
         }
-      } catch (e) {
+      } catch (err) {
+        const e = err as Dict;
         if (e.filename) {
           all_logs.push(e.message());
           throw new Error(
@@ -1176,7 +1171,7 @@ export async function executepy(
       );
     } catch (err) {
       return {
-        error: `Error encountered while trying to run "evaluate" method:\n${err.message}`,
+        error: `Error encountered while trying to run "evaluate" method:\n${(err as Error).message}`,
         logs: all_logs,
       };
     }
@@ -1208,7 +1203,7 @@ export async function executepy(
  */
 export async function evalWithLLM(
   id: string,
-  llm: Dict,
+  llm: string | LLMSpec,
   root_prompt: string,
   response_ids: string | string[],
   api_keys?: Dict,
@@ -1259,7 +1254,7 @@ export async function evalWithLLM(
       progress_listener,
     );
 
-    const err_vals: string[] = Array.from(Object.values(errors)) as string[];
+    const err_vals: string[] = Object.values(errors).flat();
     if (err_vals.length > 0) all_errors = all_errors.concat(err_vals);
 
     // Now we need to apply each response as an eval_res (a score) back to each response object,
@@ -1302,7 +1297,8 @@ export async function evalWithLLM(
     // Convert all eval results to boolean datatypes:
     all_evald_responses.forEach((resp_obj) => {
       if (!resp_obj.eval_res?.items) return;
-      resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) => {
+      resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: EvaluationScore) => {
+        if (typeof i !== "string") return i;
         const li = i.toLowerCase();
         return li === "true" || li === "yes";
       });
@@ -1313,9 +1309,10 @@ export async function evalWithLLM(
     // Convert all eval results to numeric datatypes:
     all_evald_responses.forEach((resp_obj) => {
       if (!resp_obj.eval_res?.items) return;
-      resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) =>
-        parseFloat(i),
-      );
+      resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: EvaluationScore) => {
+        if (typeof i !== "string") return i;
+        return parseFloat(i);
+      });
       resp_obj.eval_res.dtype = "Numeric";
     });
   }
@@ -1362,7 +1359,7 @@ export async function grabResponses(responses: Array<string>): Promise<Dict> {
  */
 export async function exportCache(ids: string[]) {
   // For each id, extract relevant cache file data
-  const cache_files = {};
+  const cache_files: Dict = {};
   for (const cache_id of ids) {
     const cache_keys = get_cache_keys_related_to_id(cache_id);
     if (cache_keys.length === 0) {
@@ -1404,7 +1401,7 @@ export async function importCache(files: {
       StorageCache.store(filename, data);
     });
   } catch (err) {
-    console.error("Error importing from cache:", err.message);
+    console.error("Error importing from cache:", (err as Error).message);
     return { result: false };
   }
 
