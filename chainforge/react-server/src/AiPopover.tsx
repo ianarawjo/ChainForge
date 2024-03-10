@@ -13,7 +13,7 @@ import {
 } from "@mantine/core";
 import { autofill, generateAndReplace, AIError } from "./backend/ai";
 import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
-import AlertModal from "./AlertModal";
+import AlertModal, { AlertModalHandles } from "./AlertModal";
 import useStore from "./store";
 import {
   INFO_CODEBLOCK_JS,
@@ -25,6 +25,7 @@ import { queryLLM } from "./backend/backend";
 import { splitText } from "./SplitNode";
 import { escapeBraces } from "./backend/template";
 import { cleanMetavarsFilterFunc } from "./backend/utils";
+import { Dict, TemplateVarInfo } from "./backend/typing";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -34,10 +35,10 @@ const ROW_CONSTANTS = {
   warnIfBelow: 2,
 };
 
-const changeFourSpaceTabsToTwo = (code) => {
+const changeFourSpaceTabsToTwo = (code: string) => {
   const lines = code.split("\n");
   const retabbed_lines = [];
-  function countLeadingSpaces(str) {
+  function countLeadingSpaces(str: string) {
     const match = str.match(/^ */);
     return match ? match[0].length : 0;
   }
@@ -63,11 +64,11 @@ const changeFourSpaceTabsToTwo = (code) => {
 };
 
 export const buildGenEvalCodePrompt = (
-  progLang,
-  context,
-  specPrompt,
-  manyFuncs,
-  onlyBooleanFuncs,
+  progLang: 'python' | 'javascript',
+  context: string,
+  specPrompt: string,
+  manyFuncs?: boolean,
+  onlyBooleanFuncs?: boolean,
 ) => `You are to generate ${manyFuncs ? "many different functions" : "one function"} to evaluate textual data, given a user-specified specification. 
 The function${manyFuncs ? "s" : ""} will be mapped over an array of objects of type ResponseInfo.
 ${manyFuncs ? "Each" : "Your"} solution must contain a single function called 'evaluate' that takes a single object, 'r', of type ResponseInfo. A ResponseInfo is defined as:
@@ -88,10 +89,10 @@ ${specPrompt}`;
 
 // Builds part of a longer prompt to the LLM about the shape of Response objects
 // input into an evaluator (the names of template vars, and available metavars)
-export const buildContextPromptForVarsMetavars = (context) => {
+export const buildContextPromptForVarsMetavars = (context: {vars: string[], metavars: string[]}) => {
   if (!context) return "";
 
-  const promptify_key_arr = (arr) => {
+  const promptify_key_arr = (arr: string[]) => {
     if (arr.length === 1) return `with the key "${arr[0]}"`;
     else return "with the keys " + arr.map((s) => `"${s}"`).join(", ");
   };
@@ -121,7 +122,7 @@ export const buildContextPromptForVarsMetavars = (context) => {
 export function AIPopover({
   // Pass the specific UI and logic for the popover as a child component
   children,
-}) {
+}: { children: React.ReactNode }) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
 
@@ -174,29 +175,37 @@ export function AIPopover({
   );
 }
 
+export interface AIGenReplaceItemsPopoverProps {
+  // A list of strings for the Extend feature to use as a basis.
+  values: string[];
+  // A function that takes a list of strings that the popover will call to add new values
+  onAddValues: (newVals: string[]) => void;
+  // A function that takes a list of strings that the popover will call to replace the existing values
+  onReplaceValues: (newVals: string[]) => void;
+  // A boolean that indicates whether the values are in a loading state
+  areValuesLoading: boolean;
+  // A function that takes a boolean that the popover will call to indicate values are loading (true) or finished (false)
+  setValuesLoading: (isLoading: boolean) => void;
+}
+
 /**
  * AI Popover UI for TextFields and Items nodes
  */
 export function AIGenReplaceItemsPopover({
-  // A list of strings for the Extend feature to use as a basis.
   values,
-  // A function that takes a list of strings that the popover will call to add new values
   onAddValues,
-  // A function that takes a list of strings that the popover will call to replace the existing values
   onReplaceValues,
-  // A boolean that indicates whether the values are in a loading state
   areValuesLoading,
-  // A function that takes a boolean that the popover will call to set whether the values should be loading
   setValuesLoading,
-}) {
+}: AIGenReplaceItemsPopoverProps) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
 
   // Alerts
-  const alertModal = useRef(null);
+  const alertModal = useRef<AlertModalHandles>(null);
 
   // Command Fill state
-  const [commandFillNumber, setCommandFillNumber] = useState(3);
+  const [commandFillNumber, setCommandFillNumber] = useState<number>(3);
   const [isCommandFillLoading, setIsCommandFillLoading] = useState(false);
   const [didCommandFillError, setDidCommandFillError] = useState(false);
 
@@ -204,8 +213,8 @@ export function AIGenReplaceItemsPopover({
   const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(3);
   const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState("");
   const [
-    generateAndReplaceIsUnconventional,
-    setGenerateAndReplaceIsUnconventional,
+    genDiverseOutputs,
+    setGenDiverseOutputs,
   ] = useState(false);
   const [didGenerateAndReplaceError, setDidGenerateAndReplaceError] =
     useState(false);
@@ -247,7 +256,7 @@ export function AIGenReplaceItemsPopover({
     generateAndReplace(
       generateAndReplacePrompt,
       generateAndReplaceNumber,
-      generateAndReplaceIsUnconventional,
+      genDiverseOutputs,
       apiKeys,
     )
       .then(onReplaceValues)
@@ -280,7 +289,10 @@ export function AIGenReplaceItemsPopover({
           max={10}
           defaultValue={3}
           value={commandFillNumber}
-          onChange={setCommandFillNumber}
+          onChange={(num) => {
+            if (typeof num === "number") 
+              setCommandFillNumber(num);
+          }}
         />
         {enoughRowsForSuggestions ? (
           <></>
@@ -352,16 +364,19 @@ export function AIGenReplaceItemsPopover({
           max={10}
           defaultValue={3}
           value={generateAndReplaceNumber}
-          onChange={setGenerateAndReplaceNumber}
+          onChange={(num) => {
+            if (typeof num === "number")
+              setGenerateAndReplaceNumber(num);
+          }}
         />
         <Switch
           color="grape"
           mb={10}
           size="xs"
           label="Make outputs unconventional"
-          value={generateAndReplaceIsUnconventional}
+          checked={genDiverseOutputs}
           onChange={(e) =>
-            setGenerateAndReplaceIsUnconventional(e.currentTarget.checked)
+            setGenDiverseOutputs(e.currentTarget.checked)
           }
         />
         <Button
@@ -382,8 +397,8 @@ export function AIGenReplaceItemsPopover({
       setGenerateAndReplacePrompt,
       generateAndReplaceNumber,
       setGenerateAndReplaceNumber,
-      generateAndReplaceIsUnconventional,
-      setGenerateAndReplaceIsUnconventional,
+      genDiverseOutputs,
+      setGenDiverseOutputs,
       handleGenerateAndReplace,
       areValuesLoading,
     ],
@@ -408,21 +423,30 @@ export function AIGenReplaceItemsPopover({
   );
 }
 
+
+export interface AIGenCodeEvaluatorPopoverProps {
+  // The programming language to generate evaluation code in (currently, only 'python' or 'javascript')
+  progLang: "python" | "javascript";
+  // Callback when the AI has returned code to put in the evaluator's text editor
+  onGeneratedCode: (code: string) => void;
+  // Callback that takes a boolean that the popover will call to set whether the values are loading and are done loading
+  onLoadingChange: (isLoading: boolean) => void;
+  // The keys available in vars and metavar dicts, for added context to the LLM
+  context: {vars: string[], metavars:string[]};
+  // The code currently in the evaluator
+  currentEvalCode: string;
+}
+
 /**
  * AI Popover UI for code evaluators.
  */
 export function AIGenCodeEvaluatorPopover({
-  // The programming language to generate evaluation code in (currently, only 'python' or 'javascript')
   progLang,
-  // Callback when the AI has returned code to put in the evaluator's text editor
   onGeneratedCode,
-  // Callback that takes a boolean that the popover will call to set whether the values are loading and are done loading
   onLoadingChange,
-  // The keys available in vars and metavar dicts, for added context to the LLM
   context,
-  // The code currently in the evaluator
   currentEvalCode,
-}) {
+}: AIGenCodeEvaluatorPopoverProps) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
 
@@ -432,12 +456,12 @@ export function AIGenCodeEvaluatorPopover({
   const [awaitingResponse, setAwaitingResponse] = useState(false);
 
   // Alerts
-  const alertModal = useRef(null);
+  const alertModal = useRef<AlertModalHandles>(null);
   const [didEncounterError, setDidEncounterError] = useState(false);
 
   // Handle errors
   const handleError = useCallback(
-    (err) => {
+    (err: string | Error) => {
       setAwaitingResponse(false);
       if (onLoadingChange) onLoadingChange(false);
       setDidEncounterError(true);
@@ -459,6 +483,7 @@ export function AIGenCodeEvaluatorPopover({
       progLang,
       context_str,
       replacePrompt,
+      false,
       false,
     );
 
@@ -485,14 +510,14 @@ export function AIGenCodeEvaluatorPopover({
         console.log("LLM said: ", response);
 
         // Try to extract out a single code block from the response
-        let code_blocks = splitText(response, "code");
+        let code_blocks: string[] = splitText(response, "code");
 
         // Concat all found code blocks
         if (code_blocks.length > 0) {
           // Success! (we assume...)
           // If there's more than 1 code block, remove any others that also define an 'evaluate' function,
           // after the first appearance:
-          const first_eval = code_blocks.findIndex((c) =>
+          const first_eval: number = code_blocks.findIndex((c) =>
             c.includes("evaluate(r"),
           );
           code_blocks = code_blocks.filter(
@@ -551,8 +576,10 @@ ${currentEvalCode}
         if (onLoadingChange) onLoadingChange(false);
 
         // Handle any errors when collecting the response
-        if (result.errors && Object.keys(result.errors).length > 0)
-          throw new Error(Object.values(result.errors)[0].toString());
+        if (result.errors && Object.keys(result.errors).length > 0) {
+          const first_err = Object.values(result.errors)[0];
+          throw new Error(first_err.toString());
+        }
 
         // Extract the first response
         const response = result.responses[0].responses[0];

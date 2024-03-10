@@ -58,10 +58,10 @@ function sleep(ms: number): Promise<void> {
  *  Abstract class that captures a generic querying interface to prompt LLMs
  */
 export class PromptPipeline {
-  private _storageKey: string;
   private _template: string;
+  private _storageKey?: string;
 
-  constructor(template: string, storageKey: string) {
+  constructor(template: string, storageKey?: string) {
     this._template = template;
     this._storageKey = storageKey;
   }
