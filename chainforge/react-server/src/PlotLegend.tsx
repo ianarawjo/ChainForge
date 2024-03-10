@@ -2,7 +2,13 @@ import React from "react";
 import { Dict } from "./backend/typing";
 import { truncStr } from "./backend/utils";
 
-const PlotLegend = ({ labels, onClickLabel }: { labels: Dict<string>, onClickLabel: (label: string) => void }) => {
+const PlotLegend = ({
+  labels,
+  onClickLabel,
+}: {
+  labels: Dict<string>;
+  onClickLabel: (label: string) => void;
+}) => {
   return (
     <div className="plot-legend">
       {Object.entries(labels).map(([label, color]) => (

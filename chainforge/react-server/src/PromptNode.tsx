@@ -51,7 +51,7 @@ import {
   StandardizedLLMResponse,
   TemplateVarInfo,
 } from "./backend/typing";
-import { AlertModalHandles } from "./AlertModal";
+import { AlertModalRef } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 
 const getUniqueLLMMetavarKey = (responses: StandardizedLLMResponse[]) => {
@@ -199,7 +199,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [llmItemsCurrState, setLLMItemsCurrState] = useState<LLMSpec[]>([]);
 
   // For displaying error messages to user
-  const alertModal = useRef<AlertModalHandles | null>(null);
+  const alertModal = useRef<AlertModalRef | null>(null);
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
@@ -441,7 +441,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         fill_history: info.fill_history,
         metavars: info.metavars,
         llm: info?.llm?.name,
-        batch_id: uuid(),
+        uid: uuid(),
       };
     });
 
@@ -873,7 +873,7 @@ Soft failing by replacing undefined with empty strings.`,
                     llm: _llmItemsCurrState.find(
                       (item) => item.name === resp_obj.llm,
                     ),
-                    batch_id: resp_obj.uid,
+                    uid: resp_obj.uid,
                   };
 
                   // Carry over any metavars
