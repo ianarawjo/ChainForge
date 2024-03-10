@@ -8,38 +8,36 @@ const ALERT_MODAL_STYLE = {
   root: { position: "relative", left: "-5%" },
 } as Styles<ModalBaseStylesNames>;
 
-export interface AlertModalHandles {
+export interface AlertModalRef {
   trigger: (msg?: string) => void;
 }
 
-const AlertModal = forwardRef<AlertModalHandles>(
-  function AlertModal(props, ref) {
-    // Mantine modal popover for alerts
-    const [opened, { open, close }] = useDisclosure(false);
-    const [alertMsg, setAlertMsg] = useState("");
+const AlertModal = forwardRef<AlertModalRef>(function AlertModal(props, ref) {
+  // Mantine modal popover for alerts
+  const [opened, { open, close }] = useDisclosure(false);
+  const [alertMsg, setAlertMsg] = useState("");
 
-    // This gives the parent access to triggering the modal alert
-    const trigger = (msg?: string) => {
-      if (!msg) msg = "Unknown error.";
-      console.error(msg);
-      setAlertMsg(msg);
-      open();
-    };
-    useImperativeHandle(ref, () => ({
-      trigger,
-    }));
+  // This gives the parent access to triggering the modal alert
+  const trigger = (msg?: string) => {
+    if (!msg) msg = "Unknown error.";
+    console.error(msg);
+    setAlertMsg(msg);
+    open();
+  };
+  useImperativeHandle(ref, () => ({
+    trigger,
+  }));
 
-    return (
-      <Modal
-        opened={opened}
-        onClose={close}
-        title="Error"
-        styles={ALERT_MODAL_STYLE}
-      >
-        <p style={{ whiteSpace: "pre-line" }}>{alertMsg}</p>
-      </Modal>
-    );
-  },
-);
+  return (
+    <Modal
+      opened={opened}
+      onClose={close}
+      title="Error"
+      styles={ALERT_MODAL_STYLE}
+    >
+      <p style={{ whiteSpace: "pre-line" }}>{alertMsg}</p>
+    </Modal>
+  );
+});
 
 export default AlertModal;

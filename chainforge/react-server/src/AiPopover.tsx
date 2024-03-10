@@ -18,7 +18,7 @@ import {
   getAIFeaturesModels,
 } from "./backend/ai";
 import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
-import AlertModal, { AlertModalHandles } from "./AlertModal";
+import AlertModal, { AlertModalRef } from "./AlertModal";
 import useStore from "./store";
 import {
   INFO_CODEBLOCK_JS,
@@ -30,7 +30,7 @@ import { queryLLM } from "./backend/backend";
 import { splitText } from "./SplitNode";
 import { escapeBraces } from "./backend/template";
 import { cleanMetavarsFilterFunc } from "./backend/utils";
-import { Dict, TemplateVarInfo } from "./backend/typing";
+import { Dict, TemplateVarInfo, VarsContext } from "./backend/typing";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -94,10 +94,7 @@ ${specPrompt}`;
 
 // Builds part of a longer prompt to the LLM about the shape of Response objects
 // input into an evaluator (the names of template vars, and available metavars)
-export const buildContextPromptForVarsMetavars = (context: {
-  vars: string[];
-  metavars: string[];
-}) => {
+export const buildContextPromptForVarsMetavars = (context: VarsContext) => {
   if (!context) return "";
 
   const promptify_key_arr = (arr: string[]) => {
@@ -106,10 +103,11 @@ export const buildContextPromptForVarsMetavars = (context: {
   };
 
   let context_str = "";
-  const metavars = context.metavars
-    ? context.metavars.filter(cleanMetavarsFilterFunc)
-    : [];
-  const has_vars = context.vars && context.vars.length > 0;
+  const metavars =
+    "metavars" in context
+      ? context.metavars.filter(cleanMetavarsFilterFunc)
+      : [];
+  const has_vars = "vars" in context && context.vars.length > 0;
   const has_metavars = metavars && metavars.length > 0;
   const has_context = has_vars || has_metavars;
   if (has_context) context_str = "\nThe ResponseInfo instances have ";
@@ -257,7 +255,7 @@ export function AIGenReplaceItemsPopover({
   const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
 
   // Alerts
-  const alertModal = useRef<AlertModalHandles>(null);
+  const alertModal = useRef<AlertModalRef>(null);
 
   // Command Fill state
   const [commandFillNumber, setCommandFillNumber] = useState<number>(3);
@@ -485,7 +483,7 @@ export interface AIGenCodeEvaluatorPopoverProps {
   // Callback that takes a boolean that the popover will call to set whether the values are loading and are done loading
   onLoadingChange: (isLoading: boolean) => void;
   // The keys available in vars and metavar dicts, for added context to the LLM
-  context: { vars: string[]; metavars: string[] };
+  context: VarsContext;
   // The code currently in the evaluator
   currentEvalCode: string;
 }
@@ -510,7 +508,7 @@ export function AIGenCodeEvaluatorPopover({
   const [awaitingResponse, setAwaitingResponse] = useState(false);
 
   // Alerts
-  const alertModal = useRef<AlertModalHandles>(null);
+  const alertModal = useRef<AlertModalRef>(null);
   const [didEncounterError, setDidEncounterError] = useState(false);
 
   // Handle errors

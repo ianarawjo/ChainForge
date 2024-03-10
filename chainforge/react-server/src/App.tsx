@@ -31,7 +31,7 @@ import CodeEvaluatorNode from "./CodeEvaluatorNode";
 import VisNode from "./VisNode";
 import InspectNode from "./InspectorNode";
 import ScriptNode from "./ScriptNode";
-import AlertModal, { AlertModalHandles } from "./AlertModal";
+import AlertModal, { AlertModalRef } from "./AlertModal";
 import ItemsNode from "./ItemsNode";
 import TabularDataNode from "./TabularDataNode";
 import JoinNode from "./JoinNode";
@@ -243,7 +243,7 @@ const App = () => {
   const { hideContextMenu } = useContextMenu();
 
   // For displaying error messages to user
-  const alertModal = useRef<AlertModalHandles>(null);
+  const alertModal = useRef<AlertModalRef>(null);
 
   // For displaying a pending 'loading' status
   const [isLoading, setIsLoading] = useState(true);
@@ -455,8 +455,8 @@ const App = () => {
   // Save the current flow to localStorage for later recall. Useful to getting
   // back progress upon leaving the site / browser crash / system restart.
   const saveFlow = useCallback(
-    (rf_inst) => {
-      const rf = rf_inst || rfInstance;
+    (rf_inst: ReactFlowInstance) => {
+      const rf = rf_inst ?? rfInstance;
       if (!rf) return;
 
       // NOTE: This currently only saves the front-end state. Cache files

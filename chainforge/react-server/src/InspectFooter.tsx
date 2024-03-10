@@ -9,10 +9,10 @@ import {
 export interface InspectFooterProps {
   label: React.ReactNode;
   onClick: () => void;
-  showNotificationDot: boolean;
   showDrawerButton: boolean;
   onDrawerClick: () => void;
   isDrawerOpen: boolean;
+  showNotificationDot?: boolean;
 }
 
 /**
@@ -22,10 +22,10 @@ export interface InspectFooterProps {
 const InspectFooter: React.FC<InspectFooterProps> = ({
   label,
   onClick,
-  showNotificationDot,
   showDrawerButton,
   onDrawerClick,
   isDrawerOpen,
+  showNotificationDot,
 }) => {
   const text = useMemo(
     () =>

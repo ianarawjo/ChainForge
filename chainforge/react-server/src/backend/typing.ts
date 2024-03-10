@@ -201,7 +201,11 @@ export type LLMResponsesByVarDict = Dict<
   (BaseLLMResponseObject | StandardizedLLMResponse)[]
 >;
 
-export type EvaluatedResponsesResults = ({responses?: StandardizedLLMResponse[], logs?: string[], error?: string});
+export type EvaluatedResponsesResults = {
+  responses?: StandardizedLLMResponse[];
+  logs?: string[];
+  error?: string;
+};
 
 /** The outputs of prompt nodes, text fields or other data passed internally in the front-end and to the PromptTemplate backend.
  * Used to populate prompt templates and carry variables/metavariables along the chain. */
@@ -210,9 +214,18 @@ export interface TemplateVarInfo {
   fill_history: Dict<string>;
   metavars?: Dict<string>;
   associate_id?: string;
+  prompt?: string;
+  uid?: ResponseUID;
   llm?: string | LLMSpec;
   chat_history?: ChatHistory;
 }
+
+export type VarsContext =
+  | {
+      vars: string[];
+      metavars: string[];
+    }
+  | object;
 
 export type PromptVarType = string | TemplateVarInfo;
 export type PromptVarsDict = {
@@ -229,3 +242,5 @@ export type TabularDataColType = {
   key: string;
   header: string;
 };
+
+export type PythonInterpreter = "flask" | "pyodide";

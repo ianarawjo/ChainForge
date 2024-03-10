@@ -17,7 +17,13 @@ import {
   getDefaultModelFormData,
   postProcessFormData,
 } from "./ModelSettingSchemas";
-import { Dict, Func, JSONCompatible, LLMSpec, ModelSettingsDict } from "./backend/typing";
+import {
+  Dict,
+  Func,
+  JSONCompatible,
+  LLMSpec,
+  ModelSettingsDict,
+} from "./backend/typing";
 
 export interface ModelSettingsModalHandle {
   trigger: () => void;
@@ -28,7 +34,10 @@ export interface ModelSettingsModalProps {
 }
 type FormData = LLMSpec["formData"];
 
-const ModelSettingsModal = forwardRef<ModelSettingsModalHandle, ModelSettingsModalProps>(function ModelSettingsModal({model, onSettingsSubmit}, ref) {
+const ModelSettingsModal = forwardRef<
+  ModelSettingsModalHandle,
+  ModelSettingsModalProps
+>(function ModelSettingsModal({ model, onSettingsSubmit }, ref) {
   const [opened, { open, close }] = useDisclosure(false);
 
   const [formData, setFormData] = useState<FormData>(undefined);
@@ -42,8 +51,12 @@ const ModelSettingsModal = forwardRef<ModelSettingsModalHandle, ModelSettingsMod
   const [uiSchema, setUISchema] = useState<ModelSettingsDict["uiSchema"]>({});
   const [baseModelName, setBaseModelName] = useState("(unknown)");
 
-  const [initShortname, setInitShortname] = useState<string | undefined>(undefined);
-  const [initModelName, setInitModelName] = useState<string | undefined>(undefined);
+  const [initShortname, setInitShortname] = useState<string | undefined>(
+    undefined,
+  );
+  const [initModelName, setInitModelName] = useState<string | undefined>(
+    undefined,
+  );
 
   // Totally necessary emoji picker
   const [modelEmoji, setModelEmoji] = useState("");
@@ -98,7 +111,7 @@ const ModelSettingsModal = forwardRef<ModelSettingsModalHandle, ModelSettingsMod
 
   const saveFormState = useCallback(
     (fdata: FormData) => {
-      if (fdata === undefined) return; 
+      if (fdata === undefined) return;
       // For some reason react-json-form-schema returns 'undefined' on empty strings.
       // We need to (1) detect undefined values for keys in formData and (2) if they are of type string, replace with "",
       // if that property is marked with a special "allow_empty_str" property.
@@ -117,11 +130,7 @@ const ModelSettingsModal = forwardRef<ModelSettingsModalHandle, ModelSettingsMod
 
       if (onSettingsSubmit) {
         model.emoji = modelEmoji;
-        onSettingsSubmit(
-          model,
-          patched_fdata,
-          postprocess(patched_fdata),
-        );
+        onSettingsSubmit(model, patched_fdata, postprocess(patched_fdata));
       }
     },
     [model, modelEmoji, schema, setFormData, onSettingsSubmit, postprocess],

@@ -10,8 +10,8 @@ import { EditText, onSaveProps } from "react-edit-text";
 import "react-edit-text/dist/index.css";
 import useStore from "./store";
 import StatusIndicator, { Status } from "./StatusIndicatorComponent";
-import AlertModal, { AlertModalHandles } from "./AlertModal";
-import AreYouSureModal, { AreYouSureModalHandles } from "./AreYouSureModal";
+import AlertModal, { AlertModalRef } from "./AlertModal";
+import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 
 export interface NodeLabelProps {
   title: string;
@@ -22,7 +22,7 @@ export interface NodeLabelProps {
   editable?: boolean;
   status?: Status;
   isRunning?: boolean;
-  alertModal?: React.Ref<AlertModalHandles>;
+  alertModal?: React.Ref<AlertModalRef>;
   customButtons?: React.ReactElement[];
   handleRunClick?: () => void;
   handleStopClick?: (nodeId: string) => void;
@@ -58,7 +58,7 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
   const removeNode = useStore((state) => state.removeNode);
 
   // For 'delete node' confirmation popup
-  const deleteConfirmModal = useRef<AreYouSureModalHandles>(null);
+  const deleteConfirmModal = useRef<AreYouSureModalRef>(null);
   const [deleteConfirmProps, setDeleteConfirmProps] =
     useState<DeleteConfirmProps>({
       title: "Delete node",

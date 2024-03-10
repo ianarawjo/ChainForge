@@ -17,9 +17,9 @@ import {
   GeminiChatContext,
   GeminiChatMessage,
   StandardizedLLMResponse,
-  BaseLLMResponseObject,
   LLMResponsesByVarDict,
   Func,
+  VarsContext,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
@@ -1682,8 +1682,8 @@ export const getLLMsInPulledInputData = (pulled_data: Dict) => {
 };
 
 export const stripLLMDetailsFromResponses = (
-  resps: (StandardizedLLMResponse | BaseLLMResponseObject)[],
-) =>
+  resps: StandardizedLLMResponse[],
+): StandardizedLLMResponse[] =>
   resps.map((r) => ({
     ...r,
     llm: typeof r?.llm === "string" ? r?.llm : r?.llm?.name ?? "undefined",
@@ -1834,11 +1834,11 @@ export function sampleRandomElements(arr: any[], num_sample: number): any[] {
   return Array.from(idxs).map((idx) => arr[idx]);
 }
 
-export const getVarsAndMetavars = (input_data: Dict) => {
+export const getVarsAndMetavars = (input_data: Dict): VarsContext => {
   // Find all vars and metavars in the input data (if any):
   // NOTE: The typing is purposefully general for some backwards compatibility concenrs.
-  const varnames = new Set();
-  const metavars = new Set();
+  const varnames = new Set<string>();
+  const metavars = new Set<string>();
 
   const add_from_resp_obj = (resp_obj: Dict) => {
     if (typeof resp_obj === "string") return;

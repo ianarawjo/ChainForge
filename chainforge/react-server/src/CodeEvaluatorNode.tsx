@@ -18,7 +18,6 @@ import {
   Switch,
 } from "@mantine/core";
 import { Prism } from "@mantine/prism";
-import { Language } from "prism-react-renderer";
 import { useDisclosure } from "@mantine/hooks";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
@@ -29,7 +28,9 @@ import {
   IconInfoCircle,
   IconBox,
 } from "@tabler/icons-react";
-import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
+import LLMResponseInspectorModal, {
+  LLMResponseInspectorModalRef,
+} from "./LLMResponseInspectorModal";
 
 // Ace code editor
 import AceEditor from "react-ace";
@@ -37,7 +38,6 @@ import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
-import fetch_from_backend from "./fetch_from_backend";
 import {
   APP_IS_RUNNING_LOCALLY,
   getVarsAndMetavars,
@@ -48,8 +48,17 @@ import InspectFooter from "./InspectFooter";
 import { escapeBraces } from "./backend/template";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { AIGenCodeEvaluatorPopover } from "./AiPopover";
-import { Dict, EvaluatedResponsesResults, StandardizedLLMResponse } from "./backend/typing";
+import {
+  Dict,
+  EvaluatedResponsesResults,
+  PythonInterpreter,
+  StandardizedLLMResponse,
+  TemplateVarInfo,
+  VarsContext,
+} from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
+import { executejs, executepy, grabResponses } from "./backend/backend";
+import { AlertModalRef } from "./AlertModal";
 
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
@@ -162,18 +171,26 @@ function process(response) {
     return "NOT FOUND";
 }`;
 
-export interface CodeEvaluatorComponentHandles {
-  run: (inputs: Dict[], script_paths?: string[], runInSandbox?: boolean) => Promise<({
-    code: string, responses?: StandardizedLLMResponse[], error?: string | Error, logs?: string[] })>,
-  serialize: () => ({code: string}),
-  setCodeText: (code: string) => void,
+export interface CodeEvaluatorComponentRef {
+  run: (
+    inputs: StandardizedLLMResponse[],
+    script_paths?: string[],
+    runInSandbox?: boolean,
+  ) => Promise<{
+    code: string;
+    responses?: StandardizedLLMResponse[];
+    error?: string | undefined;
+    logs?: string[];
+  }>;
+  serialize: () => { code: string };
+  setCodeText: (code: string) => void;
 }
 
 export interface CodeEvaluatorComponentProps {
   code: string;
   id: string;
-  type: 'evaluator' | 'processor';
-  progLang: 'python' | 'javascript';
+  type: "evaluator" | "processor";
+  progLang: "python" | "javascript";
   showUserInstruction: boolean;
   onCodeEdit?: (code: string) => void;
   onCodeChangedFromLastRun?: () => void;
@@ -183,155 +200,159 @@ export interface CodeEvaluatorComponentProps {
 /**
  * Inner component for code evaluators/processors, storing the body of the UI (outside of the header and footers).
  */
-export const CodeEvaluatorComponent = forwardRef<CodeEvaluatorComponentHandles, CodeEvaluatorComponentProps>(
-  function CodeEvaluatorComponent(
-    {
-      code,
-      id,
-      type: node_type,
-      progLang,
-      showUserInstruction,
-      onCodeEdit,
-      onCodeChangedFromLastRun,
-      onCodeEqualToLastRun,
-    },
-    ref,
-  ) {
-    // Code in the editor
-    const [codeText, setCodeText] = useState(code ?? "");
-    const [codeTextOnLastRun, setCodeTextOnLastRun] = useState<boolean | string>(false);
-
-    // Controlled handle when user edits code
-    const handleCodeEdit = (code: string) => {
-      if (codeTextOnLastRun !== false) {
-        const code_changed = code !== codeTextOnLastRun;
-        if (code_changed && onCodeChangedFromLastRun)
-          onCodeChangedFromLastRun();
-        else if (!code_changed && onCodeEqualToLastRun) onCodeEqualToLastRun();
-      }
-      setCodeText(code);
-      if (onCodeEdit) onCodeEdit(code);
-    };
-
-    // Runs the code evaluator/processor over the inputs, returning the results as a Promise.
-    // Errors are raised as a rejected Promise.
-    const run = (inputs: Dict[], script_paths?: string[], runInSandbox?: boolean) => {
-      // Double-check that the code includes an 'evaluate' or 'process' function, whichever is needed:
-      const find_func_regex =
-        node_type === "evaluator"
-          ? progLang === "python"
-            ? /def\s+evaluate\s*(.*):/
-            : /function\s+evaluate\s*(.*)/
-          : progLang === "python"
-            ? /def\s+process\s*(.*):/
-            : /function\s+process\s*(.*)/;
-      if (codeText.search(find_func_regex) === -1) {
-        const req_func_name =
-          node_type === "evaluator" ? "evaluate" : "process";
-        const err_msg = `Could not find required function '${req_func_name}'. Make sure you have defined an '${req_func_name}' function.`;
-        return Promise.reject(new Error(err_msg)); // hard fail
-      }
-
-      const codeTextOnRun = codeText + "";
-      const execute_route = progLang === "python" ? "executepy" : "executejs";
-      let executor = progLang === "python" ? "pyodide" : undefined;
-
-      // Enable running Python in Flask backend (unsafe) if running locally and the user has turned off the sandbox:
-      if (progLang === "python" && IS_RUNNING_LOCALLY && !runInSandbox)
-        executor = "flask";
-
-      return fetch_from_backend(execute_route, {
-        id,
-        code: codeTextOnRun,
-        responses: inputs,
-        scope: "response",
-        process_type: node_type,
-        script_paths,
-        executor,
-      }).then(function (json) {
-        json = json as EvaluatedResponsesResults;
-        // Check if there's an error; if so, bubble it up to user and exit:
-        if (json.error) {
-          if (json.logs) json.logs.push(json.error);
-        } else {
-          setCodeTextOnLastRun(codeTextOnRun);
-        }
-
-        return {
-          code, // string
-          responses: json?.responses, // array of ResponseInfo Objects
-          error: json?.error, // undefined or, if present, a string of the error message
-          logs: json?.logs, // an array of strings representing console.logs/prints made during execution
-        };
-      });
-    };
-
-    // Export the current internal state as JSON
-    const serialize = () => ({ code: codeText });
-
-    // Define functions accessible from the parent component
-    useImperativeHandle(ref, () => ({
-      run,
-      serialize,
-      setCodeText,
-    }));
-
-    // Helpful instruction for user
-    const code_instruct_header = useMemo(() => {
-      if (node_type === "evaluator")
-        return (
-          <div className="code-mirror-field-header">
-            Define an <Code>evaluate</Code> func to map over each response:
-          </div>
-        );
-      else
-        return (
-          <div className="code-mirror-field-header">
-            Define a <Code>process</Code> func to map over each response:
-          </div>
-        );
-    }, [node_type]);
-
-    return (
-      <div className="core-mirror-field">
-        {showUserInstruction ? code_instruct_header : <></>}
-        <div className="ace-editor-container nodrag">
-          <AceEditor
-            mode={progLang}
-            theme="xcode"
-            onChange={handleCodeEdit}
-            value={code}
-            name={"aceeditor_" + id}
-            editorProps={{ $blockScrolling: true }}
-            width="100%"
-            height="100px"
-            style={{ minWidth: "310px" }}
-            setOptions={{ useWorker: false }}
-            tabSize={2}
-            onLoad={(editorInstance) => {
-              // Make Ace Editor div resizeable.
-              editorInstance.container.style.resize = "both";
-              document.addEventListener("mouseup", () =>
-                editorInstance.resize(),
-              );
-            }}
-          />
-        </div>
-      </div>
-    );
+export const CodeEvaluatorComponent = forwardRef<
+  CodeEvaluatorComponentRef,
+  CodeEvaluatorComponentProps
+>(function CodeEvaluatorComponent(
+  {
+    code,
+    id,
+    type: node_type,
+    progLang,
+    showUserInstruction,
+    onCodeEdit,
+    onCodeChangedFromLastRun,
+    onCodeEqualToLastRun,
   },
-);
+  ref,
+) {
+  // Code in the editor
+  const [codeText, setCodeText] = useState(code ?? "");
+  const [codeTextOnLastRun, setCodeTextOnLastRun] = useState<boolean | string>(
+    false,
+  );
+
+  // Controlled handle when user edits code
+  const handleCodeEdit = (code: string) => {
+    if (codeTextOnLastRun !== false) {
+      const code_changed = code !== codeTextOnLastRun;
+      if (code_changed && onCodeChangedFromLastRun) onCodeChangedFromLastRun();
+      else if (!code_changed && onCodeEqualToLastRun) onCodeEqualToLastRun();
+    }
+    setCodeText(code);
+    if (onCodeEdit) onCodeEdit(code);
+  };
+
+  // Runs the code evaluator/processor over the inputs, returning the results as a Promise.
+  // Errors are raised as a rejected Promise.
+  const run = (
+    inputs: StandardizedLLMResponse[],
+    script_paths?: string[],
+    runInSandbox?: boolean,
+  ) => {
+    // Double-check that the code includes an 'evaluate' or 'process' function, whichever is needed:
+    const find_func_regex =
+      node_type === "evaluator"
+        ? progLang === "python"
+          ? /def\s+evaluate\s*(.*):/
+          : /function\s+evaluate\s*(.*)/
+        : progLang === "python"
+          ? /def\s+process\s*(.*):/
+          : /function\s+process\s*(.*)/;
+    if (codeText.search(find_func_regex) === -1) {
+      const req_func_name = node_type === "evaluator" ? "evaluate" : "process";
+      const err_msg = `Could not find required function '${req_func_name}'. Make sure you have defined an '${req_func_name}' function.`;
+      return Promise.reject(new Error(err_msg)); // hard fail
+    }
+
+    const codeTextOnRun = codeText + "";
+    const execute_route = progLang === "python" ? executepy : executejs;
+    let executor: PythonInterpreter | undefined =
+      progLang === "python" ? "pyodide" : undefined;
+
+    // Enable running Python in Flask backend (unsafe) if running locally and the user has turned off the sandbox:
+    if (progLang === "python" && IS_RUNNING_LOCALLY && !runInSandbox)
+      executor = "flask";
+
+    return execute_route(
+      id,
+      codeTextOnRun,
+      inputs,
+      "response",
+      node_type,
+      script_paths,
+      executor,
+    ).then(function (json) {
+      json = json as EvaluatedResponsesResults;
+      // Check if there's an error; if so, bubble it up to user and exit:
+      if (json.error) {
+        if (json.logs) json.logs.push(json.error);
+      } else {
+        setCodeTextOnLastRun(codeTextOnRun);
+      }
+
+      return {
+        code, // string
+        responses: json?.responses, // array of ResponseInfo Objects
+        error: json?.error, // undefined or, if present, a string of the error message
+        logs: json?.logs, // an array of strings representing console.logs/prints made during execution
+      };
+    });
+  };
+
+  // Export the current internal state as JSON
+  const serialize = () => ({ code: codeText });
+
+  // Define functions accessible from the parent component
+  useImperativeHandle(ref, () => ({
+    run,
+    serialize,
+    setCodeText,
+  }));
+
+  // Helpful instruction for user
+  const code_instruct_header = useMemo(() => {
+    if (node_type === "evaluator")
+      return (
+        <div className="code-mirror-field-header">
+          Define an <Code>evaluate</Code> func to map over each response:
+        </div>
+      );
+    else
+      return (
+        <div className="code-mirror-field-header">
+          Define a <Code>process</Code> func to map over each response:
+        </div>
+      );
+  }, [node_type]);
+
+  return (
+    <div className="core-mirror-field">
+      {showUserInstruction ? code_instruct_header : <></>}
+      <div className="ace-editor-container nodrag">
+        <AceEditor
+          mode={progLang}
+          theme="xcode"
+          onChange={handleCodeEdit}
+          value={code}
+          name={"aceeditor_" + id}
+          editorProps={{ $blockScrolling: true }}
+          width="100%"
+          height="100px"
+          style={{ minWidth: "310px" }}
+          setOptions={{ useWorker: false }}
+          tabSize={2}
+          onLoad={(editorInstance) => {
+            // Make Ace Editor div resizeable.
+            editorInstance.container.style.resize = "both";
+            document.addEventListener("mouseup", () => editorInstance.resize());
+          }}
+        />
+      </div>
+    </div>
+  );
+});
 
 export interface CodeEvaluatorNodeProps {
   data: {
     title: string;
     code: string;
-    language: 'python' | 'javascript';
+    language: "python" | "javascript";
     sandbox: boolean;
     refresh: boolean;
   };
-  id: string; 
-  type: 'evaluator' | 'processor';
+  id: string;
+  type: "evaluator" | "processor";
 }
 
 /**
@@ -339,9 +360,13 @@ export interface CodeEvaluatorNodeProps {
  *  It has two possible node_types: 'evaluator' and 'processor' mode.
  *  Evaluators annotate responses with scores; processors transform response objects themselves.
  */
-const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({ data, id, type: node_type }) => {
+const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({
+  data,
+  id,
+  type: node_type,
+}) => {
   // The inner component storing the code UI and providing an interface to run the code over inputs
-  const codeEvaluatorRef = useRef<CodeEvaluatorComponentHandles>(null);
+  const codeEvaluatorRef = useRef<CodeEvaluatorComponentRef>(null);
   const currentCode = useMemo(() => data.code, [data.code]);
 
   // Whether to sandbox the code execution. Currently this option only displays for Python running locally,
@@ -359,17 +384,17 @@ const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({ data, id, type: n
   // For genAI features
   const flags = useStore((state) => state.flags);
   const [isEvalCodeGenerating, setIsEvalCodeGenerating] = useState(false);
-  const [lastContext, setLastContext] = useState({});
+  const [lastContext, setLastContext] = useState<VarsContext>({});
 
   // For displaying error messages to user
-  const alertModal = useRef(null);
+  const alertModal = useRef<AlertModalRef>(null);
 
   // For an info pop-up that explains the type of ResponseInfo
   const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] =
     useDisclosure(false);
 
   // For a way to inspect responses without having to attach a dedicated node
-  const inspectModal = useRef(null);
+  const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
   // eslint-disable-next-line
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -380,19 +405,35 @@ const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({ data, id, type: n
   const [progLang, setProgLang] = useState(data.language ?? "python");
 
   const [lastRunLogs, setLastRunLogs] = useState("");
-  const [lastResponses, setLastResponses] = useState([]);
+  const [lastResponses, setLastResponses] = useState<StandardizedLLMResponse[]>(
+    [],
+  );
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
+
+  const handleError = useCallback(
+    (err: string | Error) => {
+      setStatus(Status.ERROR);
+      setLastRunSuccess(false);
+      if (typeof err !== "string") console.error(err);
+      alertModal.current?.trigger(typeof err === "string" ? err : err?.message);
+    },
+    [alertModal],
+  );
 
   const pullInputs = useCallback(() => {
     // Pull input data
-    let pulled_inputs = pullInputData(["responseBatch"], id);
+    let pulled_inputs: Dict | StandardizedLLMResponse[] = pullInputData(
+      ["responseBatch"],
+      id,
+    );
     if (!pulled_inputs || !pulled_inputs.responseBatch) {
       console.warn(`No inputs for code ${node_type} node.`);
       return null;
     }
     // Convert to standard response format (StandardLLMResponseFormat)
-    pulled_inputs = pulled_inputs.responseBatch.map(toStandardResponseFormat);
-    return pulled_inputs;
+    return pulled_inputs.responseBatch.map(
+      toStandardResponseFormat,
+    ) as StandardizedLLMResponse[];
   }, [id, pullInputData]);
 
   // On initialization
@@ -408,15 +449,13 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
     }
 
     // Attempt to grab cache'd responses
-    fetch_from_backend("grabResponses", {
-      responses: [id],
-    }).then(function (json) {
-      if (json.responses && json.responses.length > 0) {
+    grabResponses([id])
+      .then(function (resps) {
         // Store responses and set status to green checkmark
-        setLastResponses(stripLLMDetailsFromResponses(json.responses));
+        setLastResponses(stripLLMDetailsFromResponses(resps));
         setStatus(Status.READY);
-      }
-    });
+      })
+      .catch(handleError);
   }, []);
 
   // On upstream changes
@@ -449,20 +488,17 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
     setLastRunLogs("");
     setLastResponses([]);
 
-    const rejected = (err) => {
-      setStatus(Status.ERROR);
-      setLastRunSuccess(false);
-      if (typeof err !== "string") console.error(err);
-      alertModal.current.trigger(typeof err === "string" ? err : err?.message);
-    };
-
     // Get all the Python script nodes, and get all the folder paths
     // NOTE: Python only!
     let script_paths: string[] = [];
     if (progLang === "python") {
       const script_nodes = nodes.filter((n) => n.type === "script");
       script_paths = script_nodes
-        .map((n) => Object.values(n.data.scriptFiles as Dict<string>).filter((f: string) => f !== ""))
+        .map((n) =>
+          Object.values(n.data.scriptFiles as Dict<string>).filter(
+            (f: string) => f !== "",
+          ),
+        )
         .flat();
     }
 
@@ -473,10 +509,12 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
         if (json?.logs) setLastRunLogs(json.logs.join("\n   > "));
 
         // Check if there's an error; if so, bubble it up to user and exit:
-        if (!json || json.error) {
-          rejected(json?.error);
-          return;
-        }
+        if (!json || json.error || json.responses === undefined)
+          throw new Error(
+            typeof json.error === "string"
+              ? json.error
+              : "Unknown error when running code evaluator.",
+          );
 
         console.log(json.responses);
 
@@ -495,13 +533,13 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
             .map((resp_obj) =>
               resp_obj.responses.map((r) => {
                 // Carry over the response text, prompt, prompt fill history (vars), and llm data
-                const o = {
+                const o: TemplateVarInfo = {
                   text: escapeBraces(r),
                   prompt: resp_obj.prompt,
                   fill_history: resp_obj.vars,
                   metavars: resp_obj.metavars || {},
                   llm: resp_obj.llm,
-                  batch_id: resp_obj.uid,
+                  uid: resp_obj.uid,
                 };
 
                 // Carry over any chat history
@@ -513,8 +551,13 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
             )
             .flat(),
         });
+
+        if (status !== Status.READY && !showDrawer)
+          setUninspectedResponses(true);
+
+        setStatus(Status.READY);
       })
-      .catch(rejected);
+      .catch(handleError);
   };
 
   const hideStatusIndicator = () => {

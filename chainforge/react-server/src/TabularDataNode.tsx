@@ -12,8 +12,8 @@ import {
 import TemplateHooks from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
-import AlertModal, { AlertModalHandles } from "./AlertModal";
-import RenameValueModal, { RenameValueModalHandles } from "./RenameValueModal";
+import AlertModal, { AlertModalRef } from "./AlertModal";
+import RenameValueModal, { RenameValueModalRef } from "./RenameValueModal";
 import useStore from "./store";
 import { sampleRandomElements } from "./backend/utils";
 import { Dict, TabularDataRowType, TabularDataColType } from "./backend/typing";
@@ -91,10 +91,10 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   const [hooksY, setHooksY] = useState(120);
 
   // For displaying error messages to user
-  const alertModal = useRef<AlertModalHandles>(null);
+  const alertModal = useRef<AlertModalRef>(null);
 
   // For renaming a column
-  const renameColumnModal = useRef<RenameValueModalHandles>(null);
+  const renameColumnModal = useRef<RenameValueModalRef>(null);
   const [renameColumnInitialVal, setRenameColumnInitialVal] = useState<
     TabularDataColType | string
   >("");

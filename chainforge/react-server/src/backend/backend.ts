@@ -187,7 +187,9 @@ function load_from_cache(storageKey: string): Dict {
   return StorageCache.get(storageKey) || {};
 }
 
-function load_cache_responses(storageKey: string): Array<Dict> {
+function load_cache_responses(
+  storageKey: string,
+): Dict<StandardizedLLMResponse[]> | StandardizedLLMResponse[] {
   const data = load_from_cache(storageKey);
   if (Array.isArray(data)) return data;
   else if (typeof data === "object" && data.responses_last_run !== undefined) {
@@ -1228,9 +1230,9 @@ export async function evalWithLLM(
       return { error: `Did not find cache file for id ${cache_id}` };
 
     // Load the raw responses from the cache + clone them all:
-    const resp_objs = load_cache_responses(fname).map((r) =>
-      JSON.parse(JSON.stringify(r)),
-    ) as StandardizedLLMResponse[];
+    const resp_objs = (
+      load_cache_responses(fname) as StandardizedLLMResponse[]
+    ).map((r) => JSON.parse(JSON.stringify(r))) as StandardizedLLMResponse[];
     if (resp_objs.length === 0) continue;
 
     // We need to keep track of the index of each response in the response object.
@@ -1337,15 +1339,17 @@ export async function evalWithLLM(
  * @returns If success, a Dict with a single key, 'responses', with an array of StandardizedLLMResponse objects
  *          If failure, a Dict with a single key, 'error', with the error message.
  */
-export async function grabResponses(responses: Array<string>): Promise<Dict> {
+export async function grabResponses(
+  responses: string[],
+): Promise<StandardizedLLMResponse[]> {
   // Grab all responses with the given ID:
-  let grabbed_resps: Dict[] = [];
+  let grabbed_resps: StandardizedLLMResponse[] = [];
   for (const cache_id of responses) {
     const storageKey = `${cache_id}.json`;
     if (!StorageCache.has(storageKey))
-      return { error: `Did not find cache data for id ${cache_id}` };
+      throw new Error(`Did not find cache data for id ${cache_id}`);
 
-    let res: Dict | Array<{ [key: string]: Dict }> =
+    let res: StandardizedLLMResponse[] | Dict<StandardizedLLMResponse[]> =
       load_cache_responses(storageKey);
     if (typeof res === "object" && !Array.isArray(res)) {
       // Convert to standard response format
@@ -1356,7 +1360,7 @@ export async function grabResponses(responses: Array<string>): Promise<Dict> {
     grabbed_resps = grabbed_resps.concat(res);
   }
 
-  return { responses: grabbed_resps };
+  return grabbed_resps;
 }
 
 /**
