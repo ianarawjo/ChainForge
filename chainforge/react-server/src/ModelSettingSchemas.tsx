@@ -231,26 +231,26 @@ const ChatGPTSettings: ModelSettingsDict = {
   },
 
   postprocessors: {
-    functions: (str: string | number | boolean) => {
+    functions: (str) => {
       if (typeof str !== "string") return str;
       if (str.trim().length === 0) return [];
       return JSON.parse(str); // parse the JSON schema
     },
-    function_call: (str: string | number | boolean) => {
+    function_call: (str) => {
       if (typeof str !== "string") return str;
       const s = str.trim();
       if (s.length === 0) return "";
       if (s === "auto" || s === "none") return s;
       else return { name: s };
     },
-    stop: (str: string | number | boolean) => {
+    stop: (str) => {
       if (typeof str !== "string") return str;
       if (str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
         ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
-    response_format: (str: string | number | boolean) => {
+    response_format: (str) => {
       return { type: str };
     },
   },
@@ -430,7 +430,7 @@ const ClaudeSettings: ModelSettingsDict = {
   },
 
   postprocessors: {
-    stop_sequences: (str: string | number | boolean) => {
+    stop_sequences: (str) => {
       if (typeof str !== "string") return str;
       if (str.trim().length === 0) return ["\n\nHuman:"];
       return str
@@ -542,7 +542,7 @@ const PaLM2Settings: ModelSettingsDict = {
   },
 
   postprocessors: {
-    stop_sequences: (str: string | number | boolean) => {
+    stop_sequences: (str) => {
       if (typeof str !== "string") return str;
       if (str.trim().length === 0) return [];
       return str
@@ -1123,18 +1123,18 @@ const AlephAlphaLuminousSettings: ModelSettingsDict = {
     },
   },
   postprocessors: {
-    stop_sequences: (str: string | number | boolean) => {
+    stop_sequences: (str) => {
       if (typeof str !== "string") return str;
       if (str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
         ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
-    log_probs: (bool: boolean | number | string) => {
+    log_probs: (bool) => {
       if (typeof bool !== "boolean") return bool;
       return bool ? 3 : null;
     },
-    best_of: (a: number | string | boolean) => {
+    best_of: (a) => {
       if (typeof a !== "number") return a;
       return a === 1 ? null : a;
     },
@@ -1249,7 +1249,7 @@ const OllamaSettings: ModelSettingsDict = {
     },
   },
   postprocessors: {
-    stop_sequences: (str: string | number | boolean) => {
+    stop_sequences: (str) => {
       if (typeof str !== "string") return str;
       if (str.trim().length === 0) return [];
       return str

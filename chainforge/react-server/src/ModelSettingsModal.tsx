@@ -7,91 +7,102 @@ import React, {
 } from "react";
 import { Button, Modal, Popover } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-
 import emojidata from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
-
 // react-jsonschema-form
 import validator from "@rjsf/validator-ajv8";
 import Form from "@rjsf/core";
-
 import {
   ModelSettings,
   getDefaultModelFormData,
   postProcessFormData,
 } from "./ModelSettingSchemas";
+import { Dict, Func, JSONCompatible, LLMSpec, ModelSettingsDict } from "./backend/typing";
 
-const ModelSettingsModal = forwardRef(function ModelSettingsModal(props, ref) {
+export interface ModelSettingsModalHandle {
+  trigger: () => void;
+}
+export interface ModelSettingsModalProps {
+  model: LLMSpec;
+  onSettingsSubmit?: () => void;
+}
+type FormData = LLMSpec["formData"];
+
+const ModelSettingsModal = forwardRef<ModelSettingsModalHandle, ModelSettingsModalProps>(function ModelSettingsModal({model, onSettingsSubmit}, ref) {
   const [opened, { open, close }] = useDisclosure(false);
 
-  const [formData, setFormData] = useState(undefined);
-  const onSettingsSubmit = props.onSettingsSubmit;
+  const [formData, setFormData] = useState<FormData>(undefined);
 
-  const [schema, setSchema] = useState({
+  const [schema, setSchema] = useState<ModelSettingsDict["schema"]>({
     type: "object",
     description: "No model info object was passed to settings modal.",
+    required: [],
+    properties: {},
   });
-  const [uiSchema, setUISchema] = useState({});
+  const [uiSchema, setUISchema] = useState<ModelSettingsDict["uiSchema"]>({});
   const [baseModelName, setBaseModelName] = useState("(unknown)");
 
-  const [initShortname, setInitShortname] = useState(undefined);
-  const [initModelName, setInitModelName] = useState(undefined);
+  const [initShortname, setInitShortname] = useState<string | undefined>(undefined);
+  const [initModelName, setInitModelName] = useState<string | undefined>(undefined);
 
   // Totally necessary emoji picker
   const [modelEmoji, setModelEmoji] = useState("");
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(null);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState<Func | null>(null);
 
   useEffect(() => {
-    if (props.model && props.model.base_model) {
-      setModelEmoji(props.model.emoji);
-      if (!(props.model.base_model in ModelSettings)) {
+    if (model && model.base_model) {
+      setModelEmoji(model.emoji);
+      if (!(model.base_model in ModelSettings)) {
         setSchema({
           type: "object",
-          description: `Did not find settings schema for base model ${props.model.base_model}. Maybe you are missing importing a custom provider script?`,
+          description: `Did not find settings schema for base model ${model.base_model}. Maybe you are missing importing a custom provider script?`,
+          required: [],
+          properties: {},
         });
         setUISchema({});
-        setBaseModelName(props.model.base_model);
+        setBaseModelName(model.base_model);
         return;
       }
-      const settingsSpec = ModelSettings[props.model.base_model];
+      const settingsSpec = ModelSettings[model.base_model];
       const schema = settingsSpec.schema;
       setSchema(schema);
       setUISchema(settingsSpec.uiSchema);
       setBaseModelName(settingsSpec.fullName);
-      if (props.model.formData) {
-        setFormData(props.model.formData);
-        setInitShortname(props.model.formData.shortname);
-        setInitModelName(props.model.formData.model);
+      if (model.formData) {
+        setFormData(model.formData);
+        setInitShortname(model.formData.shortname as string | undefined);
+        setInitModelName(model.formData.model as string | undefined);
       } else {
         // Create settings from schema
-        const default_settings = {};
+        const default_settings: Dict<JSONCompatible | undefined> = {};
         Object.keys(schema.properties).forEach((key) => {
           default_settings[key] =
             "default" in schema.properties[key]
               ? schema.properties[key].default
               : undefined;
         });
-        setInitShortname(default_settings.shortname);
-        setInitModelName(default_settings.model);
+        setInitShortname(default_settings.shortname?.toString());
+        setInitModelName(default_settings.model?.toString());
         setFormData(getDefaultModelFormData(settingsSpec));
       }
     }
-  }, [props.model]);
+  }, [model]);
 
   // Postprocess the form data into the format expected by the backend (kwargs passed to Python API calls)
   const postprocess = useCallback(
-    (fdata) => {
-      return postProcessFormData(ModelSettings[props.model.base_model], fdata);
+    (fdata: FormData) => {
+      return postProcessFormData(ModelSettings[model.base_model], fdata ?? {});
     },
-    [props.model],
+    [model],
   );
 
   const saveFormState = useCallback(
-    (fdata) => {
+    (fdata: FormData) => {
+      if (fdata === undefined) return; 
       // For some reason react-json-form-schema returns 'undefined' on empty strings.
       // We need to (1) detect undefined values for keys in formData and (2) if they are of type string, replace with "",
       // if that property is marked with a special "allow_empty_str" property.
-      const patched_fdata = {};
+      const patched_fdata: FormData = {};
       Object.entries(fdata).forEach(([key, val]) => {
         if (
           val === undefined &&
@@ -105,44 +116,46 @@ const ModelSettingsModal = forwardRef(function ModelSettingsModal(props, ref) {
       setFormData(patched_fdata);
 
       if (onSettingsSubmit) {
-        props.model.emoji = modelEmoji;
+        model.emoji = modelEmoji;
         onSettingsSubmit(
-          props.model,
+          model,
           patched_fdata,
           postprocess(patched_fdata),
         );
       }
     },
-    [props, modelEmoji, schema, setFormData, onSettingsSubmit, postprocess],
+    [model, modelEmoji, schema, setFormData, onSettingsSubmit, postprocess],
   );
 
   const onSubmit = useCallback(
-    (submitInfo) => {
+    (submitInfo: LLMSpec) => {
       saveFormState(submitInfo.formData);
     },
     [saveFormState],
   );
 
   // On every edit to the form...
-  const onFormDataChange = (state) => {
+  const onFormDataChange = (state: LLMSpec) => {
     if (state && state.formData) {
       // This checks if the model name has changed, but the shortname wasn't edited (in this window).
       // In this case, we auto-change the shortname, to save user's time and nickname models appropriately.
+      const modelname = state.formData.model as string | undefined;
+      const shortname = state.formData.shortname as string | undefined;
       if (
-        state.formData.shortname === initShortname &&
-        state.formData.model !== initModelName
+        shortname === initShortname &&
+        modelname !== initModelName
       ) {
         // Only change the shortname if there is a distinct model name.
         // If not, let the shortname remain the same for this time, and just remember the model name.
         if (initModelName !== undefined) {
-          const shortname_map = schema.properties?.model?.shortname_map;
-          if (shortname_map && state.formData.model in shortname_map)
-            state.formData.shortname = shortname_map[state.formData.model];
-          else state.formData.shortname = state.formData.model;
-          setInitShortname(state.formData.shortname);
+          const shortname_map = schema.properties?.model?.shortname_map as Dict<string>;
+          if (shortname_map && modelname !== undefined && modelname in shortname_map)
+            state.formData.shortname = shortname_map[modelname];
+          else state.formData.shortname = modelname;
+          setInitShortname(shortname);
         }
 
-        setInitModelName(state.formData.model);
+        setInitModelName(modelname);
       }
 
       setFormData(state.formData);
@@ -194,7 +207,7 @@ const ModelSettingsModal = forwardRef(function ModelSettingsModal(props, ref) {
                 compact
                 style={{ fontSize: "16pt" }}
                 onClick={() => {
-                  setEmojiPickerOpen((o) => !o);
+                  setEmojiPickerOpen((o: boolean) => !o);
                 }}
               >
                 {modelEmoji}
