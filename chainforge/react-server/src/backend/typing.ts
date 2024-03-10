@@ -16,6 +16,13 @@ export interface Dict<T = any> {
 // Function types
 export type Func<T = void> = (...args: any[]) => T;
 
+// JSON-compatible leaf types
+export type JSONLeaf = string | number | boolean | null;
+export type JSONCompatible<T = JSONLeaf> =
+  | T
+  | JSONCompatible<T>[]
+  | Dict<JSONCompatible<T>>;
+
 /** OpenAI function call format */
 export interface OpenAIFunctionCall {
   name: string;
@@ -109,6 +116,30 @@ export type LLMSpec = {
   settings?: Dict;
   progress?: Dict<number>; // only used for front-end to display progress collecting responses for this LLM
 };
+
+/** A spec for a user-defined custom LLM provider */
+export type CustomLLMProviderSpec = {
+  name: string;
+  emoji: string;
+  models?: string[];
+  rate_limit?: number;
+  settings_schema?: {
+    settings: Dict<Dict<JSONCompatible>>;
+    ui: Dict<Dict<JSONCompatible>>;
+  };
+};
+
+/** Internal description of model settings, passed to react-json-schema */
+export interface ModelSettingsDict {
+  fullName: string;
+  schema: {
+    type: "object";
+    required: string[];
+    properties: Dict<Dict<JSONCompatible>>;
+  };
+  uiSchema: Dict<JSONCompatible>;
+  postprocessors: Dict<(val: string | number | boolean) => any>;
+}
 
 export type ResponseUID = string;
 

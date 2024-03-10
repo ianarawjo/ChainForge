@@ -22,8 +22,9 @@ import {
   PromptVarType,
   PromptVarsDict,
   TemplateVarInfo,
+  TabularDataColType,
+  TabularDataRowType,
 } from "./backend/typing";
-import { TabularDataColType, TabularDataRowType } from "./TabularDataNode";
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -144,7 +145,7 @@ if (APP_IS_RUNNING_LOCALLY()) {
   // -------------------------
 }
 
-interface StoreHandles {
+export interface StoreHandles {
   // Nodes and edges
   nodes: Node[];
   edges: Edge[];

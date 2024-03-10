@@ -6,6 +6,7 @@ import {
   RawLLMResponseObject,
   isEqualChatHistory,
   ChatHistoryInfo,
+  ModelSettingsDict,
 } from "./typing";
 import {
   extract_responses,
@@ -288,7 +289,13 @@ export class PromptPipeline {
               num_queries_sent,
               max_req,
               wait_secs,
-              { ...llm_params, ...typecastSettingsDict(settings_params, llm) },
+              {
+                ...llm_params,
+                ...typecastSettingsDict(
+                  settings_params as ModelSettingsDict,
+                  llm,
+                ),
+              },
               chat_history,
               should_cancel,
             ),
@@ -305,7 +312,13 @@ export class PromptPipeline {
             undefined,
             undefined,
             undefined,
-            { ...llm_params, ...typecastSettingsDict(settings_params, llm) },
+            {
+              ...llm_params,
+              ...typecastSettingsDict(
+                settings_params as ModelSettingsDict,
+                llm,
+              ),
+            },
             chat_history,
             should_cancel,
           );
