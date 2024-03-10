@@ -11,6 +11,7 @@ import {
   QueryProgress,
   EvaluationScore,
   LLMSpec,
+  EvaluatedResponsesResults,
 } from "./typing";
 import { LLM, getEnumName } from "./models";
 import {
@@ -996,7 +997,7 @@ export async function executejs(
   responses: StandardizedLLMResponse[],
   scope: "response" | "batch",
   process_type: "evaluator" | "processor",
-): Promise<Dict> {
+): Promise<EvaluatedResponsesResults> {
   const req_func_name =
     !process_type || process_type === "evaluator" ? "evaluate" : "process";
 
@@ -1105,7 +1106,7 @@ export async function executepy(
   process_type: "evaluator" | "processor",
   script_paths?: string[],
   executor?: "flask" | "pyodide",
-): Promise<Dict> {
+): Promise<EvaluatedResponsesResults> {
   // Determine where we can execute Python
   executor = APP_IS_RUNNING_LOCALLY() ? executor ?? "flask" : "pyodide";
 

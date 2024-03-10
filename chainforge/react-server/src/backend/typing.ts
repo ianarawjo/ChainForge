@@ -201,6 +201,8 @@ export type LLMResponsesByVarDict = Dict<
   (BaseLLMResponseObject | StandardizedLLMResponse)[]
 >;
 
+export type EvaluatedResponsesResults = ({responses?: StandardizedLLMResponse[], logs?: string[], error?: string});
+
 /** The outputs of prompt nodes, text fields or other data passed internally in the front-end and to the PromptTemplate backend.
  * Used to populate prompt templates and carry variables/metavariables along the chain. */
 export interface TemplateVarInfo {
