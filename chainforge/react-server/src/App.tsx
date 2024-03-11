@@ -39,7 +39,7 @@ import SplitNode from "./SplitNode";
 import CommentNode from "./CommentNode";
 import GlobalSettingsModal, { GlobalSettingsModalRef } from "./GlobalSettingsModal";
 import ExampleFlowsModal, { ExampleFlowsModalRef } from "./ExampleFlowsModal";
-import AreYouSureModal from "./AreYouSureModal";
+import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
 import SimpleEvalNode from "./SimpleEvalNode";
 import {
@@ -57,9 +57,10 @@ import "./text-fields-node.css"; // project
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from "zustand/shallow";
 import useStore, { StoreHandles } from "./store";
-import fetch_from_backend from "./fetch_from_backend";
 import StorageCache from "./backend/cache";
 import { APP_IS_RUNNING_LOCALLY, browserTabIsActive } from "./backend/utils";
+import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
+import { exportCache, fetchEnvironAPIKeys, fetchExampleFlow, fetchOpenAIEval, importCache } from "./backend/backend";
 
 // Device / Browser detection
 import {
@@ -69,7 +70,7 @@ import {
   isEdgeChromium,
   isChromium,
 } from "react-device-detect";
-import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
+
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
     isChromium ||
@@ -232,8 +233,8 @@ const App = () => {
   // const [welcomeModalOpened, { open: openWelcomeModal, close: closeWelcomeModal }] = useDisclosure(false);
 
   // For confirmation popup
-  const confirmationModal = useRef(null);
-  const [confirmationDialogProps, setConfirmationDialogProps] = useState({
+  const confirmationModal = useRef<AreYouSureModalRef>(null);
+  const [confirmationDialogProps, setConfirmationDialogProps] = useState<{title: string, message: string, onConfirm?: () => void}>({
     title: "Confirm action",
     message: "Are you sure?",
   });
@@ -458,48 +459,28 @@ const App = () => {
 
     // Then we grab all the relevant cache files from the backend
     const all_node_ids = nodes.map((n) => n.id);
-    fetch_from_backend("exportCache", {
-      ids: all_node_ids,
-    })
-      .then(function (json) {
-        if (!json || !json.files)
-          throw new Error(
-            "Request was sent and received by backend server, but there was no response.",
-          );
-
+    exportCache(all_node_ids)
+      .then(function (cacheData) {
         // Now we append the cache file data to the flow
         const flow_and_cache = {
           flow,
-          cache: json.files,
+          cache: cacheData,
         };
 
         // Save!
+        // @ts-expect-error The exported RF instance is JSON compatible but TypeScript won't read it as such.
         downloadJSON(flow_and_cache, `flow-${Date.now()}.cforge`);
       })
       .catch(handleError);
   }, [rfInstance, nodes, handleError]);
 
   // Import data to the cache stored on the local filesystem (in backend)
-  const importCache = useCallback(
-    (cache_data) => {
-      return fetch_from_backend("importCache", {
-        files: cache_data,
-      })
-        .then(function (json) {
-          if (!json || json.result === undefined)
-            throw new Error(
-              "Request to import cache data was sent and received by backend server, but there was no response.",
-            );
-          else if (json.error || json.result === false)
-            throw new Error("Error importing cache data:" + json.error);
-
-          // Import global state of human ratings from the cache, to the global Zustand store
-          importGlobalStateFromCache();
-
-          // Done!
-        })
-        .catch(handleError);
-    },
+  const handleImportCache = useCallback(
+    (cache_data: Dict<Dict>) => 
+      importCache(cache_data)
+        .then(importGlobalStateFromCache)
+        .catch(handleError)
+    ,
     [handleError, importGlobalStateFromCache],
   );
 
@@ -522,7 +503,7 @@ const App = () => {
 
       // We need to send the cache data to the backend first,
       // before we can load the flow itself...
-      importCache(cache)
+      handleImportCache(cache)
         .then(() => {
           // We load the ReactFlow instance last
           loadFlow(flow, rf);
@@ -548,11 +529,18 @@ const App = () => {
     input.accept = ".cforge, .json";
 
     // Handle file selection
-    input.addEventListener("change", function (event) {
+    // @ts-expect-error The event is correctly typed here, but for some reason TS doesn't pick up on it.
+    input.addEventListener("change", function (event: React.ChangeEvent<HTMLInputElement>) {
       // Start loading spinner
       setIsLoading(false);
 
-      const file = event.target.files[0];
+      const files = event.target.files;
+      if (!files || !Array.isArray(files) || files.length === 0) {
+        console.error("No files found to load.");
+        return;
+      }
+
+      const file = files[0];
       const reader = new window.FileReader();
 
       // Handle file load event
@@ -583,31 +571,8 @@ const App = () => {
   const importFlowFromOpenAIEval = (evalname: string) => {
     setIsLoading(true);
 
-    fetch_from_backend(
-      "fetchOpenAIEval",
-      {
-        name: evalname,
-      },
-      handleError,
-    )
-      .then(function (json) {
-        // Detect any issues with the response
-        if (!json) {
-          handleError(
-            "Request was sent and received by backend server, but there was no response.",
-          );
-          return undefined;
-        } else if (json.error || !json.data) {
-          handleError(
-            json.error ||
-              "Unknown error when fetching file for OpenAI eval from backend server.",
-          );
-          return undefined;
-        }
-
-        // Import the JSON to React Flow and import cache data on the backend
-        importFlowFromJSON(json.data);
-      })
+    fetchOpenAIEval(evalname)
+      .then(importFlowFromJSON)
       .catch(handleError);
   };
 
@@ -623,24 +588,11 @@ const App = () => {
     }
 
     // Fetch the example flow data from the backend
-    fetch_from_backend(
-      "fetchExampleFlow",
-      {
-        name,
-      },
-      handleError,
-    )
-      .then(function (json) {
-        if (!json)
-          throw new Error(
-            "Request to fetch example flow was sent to backend server, but there was no response.",
-          );
-        else if (json.error || !json.data)
-          throw new Error("Error importing example flow:" + json.error);
-
+    fetchExampleFlow(name)
+      .then(function (flowJSON) {
         // We have the data, import it:
-        importFlowFromJSON(json.data);
-      }, handleError)
+        importFlowFromJSON(flowJSON);
+      })
       .catch(handleError);
   };
 
@@ -655,7 +607,7 @@ const App = () => {
 
     // Trigger the 'are you sure' modal:
     if (confirmationModal && confirmationModal.current)
-      confirmationModal.current.trigger();
+      confirmationModal.current?.trigger();
   }, [confirmationModal, resetFlow, setConfirmationDialogProps]);
 
   // When the user clicks the 'Share Flow' button
@@ -688,19 +640,14 @@ const App = () => {
     setWaitingForShare(true);
 
     // Package up the current flow:
-    const flow = rfInstance.toObject();
+    const flow = rfInstance?.toObject();
     const all_node_ids = nodes.map((n) => n.id);
-    const cforge_data = await fetch_from_backend("exportCache", {
-      ids: all_node_ids,
-    })
-      .then(function (json) {
-        if (!json || !json.files)
-          throw new Error("There was no response from the backend.");
-
+    const cforge_data = await exportCache(all_node_ids)
+      .then(function (cacheData) {
         // Now we append the cache file data to the flow
         return {
           flow,
-          cache: json.files,
+          cache: cacheData,
         };
       })
       .catch(handleError);
@@ -804,7 +751,7 @@ const App = () => {
 
     if (IS_RUNNING_LOCALLY) {
       // If we're running locally, try to fetch API keys from Python os.environ variables in the locally running Flask backend:
-      fetch_from_backend("fetchEnvironAPIKeys")
+      fetchEnvironAPIKeys()
         .then((api_keys) => {
           setAPIKeys(api_keys);
         })
