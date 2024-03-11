@@ -4,13 +4,13 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useContext,
 } from "react";
 import { Tooltip } from "@mantine/core";
 import { EditText, onSaveProps } from "react-edit-text";
 import "react-edit-text/dist/index.css";
 import useStore from "./store";
 import StatusIndicator, { Status } from "./StatusIndicatorComponent";
-import AlertModal, { AlertModalRef } from "./AlertModal";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 
 export interface NodeLabelProps {
@@ -22,7 +22,6 @@ export interface NodeLabelProps {
   editable?: boolean;
   status?: Status;
   isRunning?: boolean;
-  alertModal?: React.Ref<AlertModalRef>;
   customButtons?: React.ReactElement[];
   handleRunClick?: () => void;
   handleStopClick?: (nodeId: string) => void;
@@ -45,7 +44,6 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
   editable,
   status,
   isRunning,
-  alertModal,
   customButtons,
   handleRunClick,
   handleStopClick,
@@ -167,7 +165,6 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
           readonly={editable !== undefined ? !editable : false}
         />
         {statusIndicator}
-        <AlertModal ref={alertModal} />
         <div className="node-header-btns-container">
           {customButtons ?? <></>}
           {isRunning ? stopButton : runButton}

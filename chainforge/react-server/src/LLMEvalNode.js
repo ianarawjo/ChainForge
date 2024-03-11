@@ -5,6 +5,7 @@ import React, {
   useEffect,
   forwardRef,
   useImperativeHandle,
+  useContext,
 } from "react";
 import { Handle } from "reactflow";
 import { Group, NativeSelect, Progress, Text, Textarea } from "@mantine/core";
@@ -20,6 +21,7 @@ import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { stripLLMDetailsFromResponses } from "./backend/utils";
+import { AlertModalContext } from "./AlertModal";
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
 const PLACEHOLDER_PROMPT =
@@ -211,7 +213,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
   const llmEvaluatorRef = useRef(null);
 
   const [status, setStatus] = useState("none");
-  const alertModal = useRef(null);
+  const showAlert = useContext(AlertModalContext);
 
   const inspectModal = useRef(null);
   // eslint-disable-next-line
@@ -243,7 +245,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
       setStatus("error");
       setProgress(undefined);
       if (typeof err !== "string") console.error(err);
-      alertModal.current.trigger(typeof err === "string" ? err : err?.message);
+      if (showAlert) showAlert(typeof err === "string" ? err : err?.message);
     };
 
     // Fetch info about the number of queries we'll need to make
@@ -296,7 +298,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
     pingOutputNodes,
     setStatus,
     showDrawer,
-    alertModal,
+    showAlert,
   ]);
 
   const showResponseInspector = useCallback(() => {
@@ -334,7 +336,6 @@ const LLMEvaluatorNode = ({ data, id }) => {
         nodeId={id}
         icon={<IconRobot size="16px" />}
         status={status}
-        alertModal={alertModal}
         handleRunClick={handleRunClick}
         runButtonTooltip="Run scorer over inputs"
       />

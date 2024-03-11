@@ -6,6 +6,7 @@ import React, {
   useMemo,
   forwardRef,
   useImperativeHandle,
+  useContext,
 } from "react";
 import { Handle, NodeProps, Position } from "reactflow";
 import {
@@ -58,7 +59,7 @@ import {
 } from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
 import { executejs, executepy, grabResponses } from "./backend/backend";
-import { AlertModalRef } from "./AlertModal";
+import { AlertModalContext } from "./AlertModal";
 
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
@@ -387,7 +388,7 @@ const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({
   const [lastContext, setLastContext] = useState<VarsContext>({});
 
   // For displaying error messages to user
-  const alertModal = useRef<AlertModalRef>(null);
+  const showAlert = useContext(AlertModalContext);
 
   // For an info pop-up that explains the type of ResponseInfo
   const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] =
@@ -413,9 +414,9 @@ const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({
       setStatus(Status.ERROR);
       setLastRunSuccess(false);
       if (typeof err !== "string") console.error(err);
-      alertModal.current?.trigger(typeof err === "string" ? err : err?.message);
+      if (showAlert) showAlert(typeof err === "string" ? err : err?.message);
     },
-    [alertModal],
+    [showAlert],
   );
 
   const pullInputs = useCallback(() => {
@@ -788,7 +789,6 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
         onEdit={hideStatusIndicator}
         icon={<IconTerminal size="16px" />}
         status={status}
-        alertModal={alertModal}
         handleRunClick={handleRunClick}
         runButtonTooltip={run_tooltip}
         customButtons={customButtons}

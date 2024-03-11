@@ -718,7 +718,9 @@ const useStore = create<StoreHandles>((set, get) => ({
   },
   onConnect: (connection) => {
     // Get the target node information
-    const target = connection.target ? get().getNode(connection.target) : undefined;
+    const target = connection.target
+      ? get().getNode(connection.target)
+      : undefined;
     if (target === undefined) return;
 
     if (

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 import {
   Stack,
   NumberInput,
@@ -18,7 +18,7 @@ import {
   getAIFeaturesModels,
 } from "./backend/ai";
 import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
-import AlertModal, { AlertModalRef } from "./AlertModal";
+import { AlertModalContext } from "./AlertModal";
 import useStore from "./store";
 import {
   INFO_CODEBLOCK_JS,
@@ -30,7 +30,7 @@ import { queryLLM } from "./backend/backend";
 import { splitText } from "./SplitNode";
 import { escapeBraces } from "./backend/template";
 import { cleanMetavarsFilterFunc } from "./backend/utils";
-import { Dict, TemplateVarInfo, VarsContext } from "./backend/typing";
+import { VarsContext } from "./backend/typing";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -255,7 +255,7 @@ export function AIGenReplaceItemsPopover({
   const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
 
   // Alerts
-  const alertModal = useRef<AlertModalRef>(null);
+  const showAlert = useContext(AlertModalContext);
 
   // Command Fill state
   const [commandFillNumber, setCommandFillNumber] = useState<number>(3);
@@ -298,7 +298,7 @@ export function AIGenReplaceItemsPopover({
         if (e instanceof AIError) {
           setDidCommandFillError(true);
         } else {
-          if (alertModal.current) alertModal.current.trigger(e?.message);
+          if (showAlert) showAlert(e?.message);
           else console.error(e);
         }
       })
@@ -321,7 +321,7 @@ export function AIGenReplaceItemsPopover({
           console.log(e);
           setDidGenerateAndReplaceError(true);
         } else {
-          if (alertModal.current) alertModal.current.trigger(e?.message);
+          if (showAlert) showAlert(e?.message);
           else console.error(e);
         }
       })
@@ -470,7 +470,6 @@ export function AIGenReplaceItemsPopover({
           {replaceUI}
         </Tabs.Panel>
       </Tabs>
-      <AlertModal ref={alertModal} />
     </AIPopover>
   );
 }
@@ -508,7 +507,7 @@ export function AIGenCodeEvaluatorPopover({
   const [awaitingResponse, setAwaitingResponse] = useState(false);
 
   // Alerts
-  const alertModal = useRef<AlertModalRef>(null);
+  const showAlert = useContext(AlertModalContext);
   const [didEncounterError, setDidEncounterError] = useState(false);
 
   // Handle errors
@@ -518,9 +517,9 @@ export function AIGenCodeEvaluatorPopover({
       if (onLoadingChange) onLoadingChange(false);
       setDidEncounterError(true);
       if (typeof err !== "string") console.error(err);
-      alertModal.current?.trigger(typeof err === "string" ? err : err?.message);
+      if (showAlert) showAlert(typeof err === "string" ? err : err?.message);
     },
-    [setAwaitingResponse, onLoadingChange, setDidEncounterError, alertModal],
+    [setAwaitingResponse, onLoadingChange, setDidEncounterError, showAlert],
   );
 
   // Generate an evaluate function, given the user-specified prompt, in the proper programming language
@@ -731,7 +730,6 @@ ${currentEvalCode}
           </Button>
         </Tabs.Panel>
       </Tabs>
-      <AlertModal ref={alertModal} />
     </AIPopover>
   );
 }

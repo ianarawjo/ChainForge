@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useContext,
+} from "react";
 import ReactFlow, { Controls, Background, ReactFlowInstance } from "reactflow";
 import {
   Button,
@@ -31,13 +37,15 @@ import CodeEvaluatorNode from "./CodeEvaluatorNode";
 import VisNode from "./VisNode";
 import InspectNode from "./InspectorNode";
 import ScriptNode from "./ScriptNode";
-import AlertModal, { AlertModalRef } from "./AlertModal";
+import { AlertModalProvider, AlertModalContext } from "./AlertModal";
 import ItemsNode from "./ItemsNode";
 import TabularDataNode from "./TabularDataNode";
 import JoinNode from "./JoinNode";
 import SplitNode from "./SplitNode";
 import CommentNode from "./CommentNode";
-import GlobalSettingsModal, { GlobalSettingsModalRef } from "./GlobalSettingsModal";
+import GlobalSettingsModal, {
+  GlobalSettingsModalRef,
+} from "./GlobalSettingsModal";
 import ExampleFlowsModal, { ExampleFlowsModalRef } from "./ExampleFlowsModal";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
@@ -60,7 +68,13 @@ import useStore, { StoreHandles } from "./store";
 import StorageCache from "./backend/cache";
 import { APP_IS_RUNNING_LOCALLY, browserTabIsActive } from "./backend/utils";
 import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
-import { exportCache, fetchEnvironAPIKeys, fetchExampleFlow, fetchOpenAIEval, importCache } from "./backend/backend";
+import {
+  exportCache,
+  fetchEnvironAPIKeys,
+  fetchExampleFlow,
+  fetchOpenAIEval,
+  importCache,
+} from "./backend/backend";
 
 // Device / Browser detection
 import {
@@ -217,7 +231,9 @@ const App = () => {
 
   // For saving / loading
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
-  const [autosavingInterval, setAutosavingInterval] = useState<NodeJS.Timeout | undefined>(undefined);
+  const [autosavingInterval, setAutosavingInterval] = useState<
+    NodeJS.Timeout | undefined
+  >(undefined);
 
   // For 'share' button
   const clipboard = useClipboard({ timeout: 1500 });
@@ -232,9 +248,16 @@ const App = () => {
   // For an info pop-up that welcomes new users
   // const [welcomeModalOpened, { open: openWelcomeModal, close: closeWelcomeModal }] = useDisclosure(false);
 
+  // For displaying alerts
+  const showAlert = useContext(AlertModalContext);
+
   // For confirmation popup
   const confirmationModal = useRef<AreYouSureModalRef>(null);
-  const [confirmationDialogProps, setConfirmationDialogProps] = useState<{title: string, message: string, onConfirm?: () => void}>({
+  const [confirmationDialogProps, setConfirmationDialogProps] = useState<{
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+  }>({
     title: "Confirm action",
     message: "Are you sure?",
   });
@@ -266,13 +289,22 @@ const App = () => {
     return { x: -(x / zoom) + centerX / zoom, y: -(y / zoom) + centerY / zoom };
   };
 
-  const addNode = (id: string, type?: string, data?: Dict, offsetX?: number, offsetY?: number) => {
+  const addNode = (
+    id: string,
+    type?: string,
+    data?: Dict,
+    offsetX?: number,
+    offsetY?: number,
+  ) => {
     const { x, y } = getViewportCenter();
     addNodeToStore({
       id: `${id}-` + Date.now(),
       type: type ?? id,
       data: data ?? {},
-      position: { x: x - 200 + (offsetX ? offsetX : 0), y: y - 100 + (offsetY ? offsetY : 0)},
+      position: {
+        x: x - 200 + (offsetX || 0),
+        y: y - 100 + (offsetY || 0),
+      },
     });
   };
 
@@ -317,7 +349,7 @@ const App = () => {
     const msg = typeof err === "string" ? err : err.message;
     setIsLoading(false);
     setWaitingForShare(false);
-    if (alertModal.current) alertModal.current.trigger(msg);
+    if (showAlert) showAlert(msg);
     console.error(msg);
   };
 
@@ -529,39 +561,44 @@ const App = () => {
     input.accept = ".cforge, .json";
 
     // Handle file selection
-    // @ts-expect-error The event is correctly typed here, but for some reason TS doesn't pick up on it.
-    input.addEventListener("change", function (event: React.ChangeEvent<HTMLInputElement>) {
-      // Start loading spinner
-      setIsLoading(false);
+    input.addEventListener(
+      "change",
+      // @ts-expect-error The event is correctly typed here, but for some reason TS doesn't pick up on it.
+      function (event: React.ChangeEvent<HTMLInputElement>) {
+        // Start loading spinner
+        setIsLoading(false);
 
-      const files = event.target.files;
-      if (!files || !Array.isArray(files) || files.length === 0) {
-        console.error("No files found to load.");
-        return;
-      }
-
-      const file = files[0];
-      const reader = new window.FileReader();
-
-      // Handle file load event
-      reader.addEventListener("load", function () {
-        try {
-          if (typeof reader.result !== "string")
-            throw new Error("File could not be read: Unknown format or empty.");
-
-          // We try to parse the JSON response
-          const flow_and_cache = JSON.parse(reader.result);
-
-          // Import it to React Flow and import cache data on the backend
-          importFlowFromJSON(flow_and_cache);
-        } catch (error) {
-          handleError(error as Error);
+        const files = event.target.files;
+        if (!files || !Array.isArray(files) || files.length === 0) {
+          console.error("No files found to load.");
+          return;
         }
-      });
 
-      // Read the selected file as text
-      reader.readAsText(file);
-    });
+        const file = files[0];
+        const reader = new window.FileReader();
+
+        // Handle file load event
+        reader.addEventListener("load", function () {
+          try {
+            if (typeof reader.result !== "string")
+              throw new Error(
+                "File could not be read: Unknown format or empty.",
+              );
+
+            // We try to parse the JSON response
+            const flow_and_cache = JSON.parse(reader.result);
+
+            // Import it to React Flow and import cache data on the backend
+            importFlowFromJSON(flow_and_cache);
+          } catch (error) {
+            handleError(error as Error);
+          }
+        });
+
+        // Read the selected file as text
+        reader.readAsText(file);
+      },
+    );
 
     // Trigger the file selector
     input.click();
@@ -571,9 +608,7 @@ const App = () => {
   const importFlowFromOpenAIEval = (evalname: string) => {
     setIsLoading(true);
 
-    fetchOpenAIEval(evalname)
-      .then(importFlowFromJSON)
-      .catch(handleError);
+    fetchOpenAIEval(evalname).then(importFlowFromJSON).catch(handleError);
   };
 
   // Load flow from examples modal
@@ -863,9 +898,8 @@ const App = () => {
     );
   } else
     return (
-      <div>
-        <GlobalSettingsModal ref={settingsModal} alertModal={alertModal} />
-        <AlertModal ref={alertModal} />
+      <AlertModalProvider>
+        <GlobalSettingsModal ref={settingsModal} />
         <LoadingOverlay visible={isLoading} overlayBlur={1} />
         <ExampleFlowsModal
           ref={examplesModal}
@@ -1189,7 +1223,7 @@ const App = () => {
             Send us feedback
           </a>
         </div>
-      </div>
+      </AlertModalProvider>
     );
 };
 

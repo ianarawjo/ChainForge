@@ -98,7 +98,10 @@ export default class StorageCache {
         console.warn("Storage quota exceeded");
       } else {
         // Handle other types of storage-related errors
-        console.error("Error storing data in localStorage:", (error as Error).message);
+        console.error(
+          "Error storing data in localStorage:",
+          (error as Error).message,
+        );
       }
       return false;
     }
