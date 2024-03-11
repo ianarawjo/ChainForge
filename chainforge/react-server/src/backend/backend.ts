@@ -663,7 +663,7 @@ interface LLMPrompterResults {
   errors: Array<string>;
 }
 
-export async function fetchEnvironAPIKeys(): Promise<Dict> {
+export async function fetchEnvironAPIKeys(): Promise<Dict<string>> {
   return fetch(`${FLASK_BASE_URL}app/fetchEnvironAPIKeys`, {
     method: "POST",
     headers: {
@@ -1372,7 +1372,7 @@ export async function grabResponses(
  * @param ids the ids of the nodes to export data for
  * @returns the cache'd data, as a JSON dict in format `{ files: { filename: <Dict|Array> } }`
  */
-export async function exportCache(ids: string[]) {
+export async function exportCache(ids: string[]): Promise<Dict<Dict>> {
   // For each id, extract relevant cache file data
   const cache_files: Dict = {};
   for (let i = 0; i < ids.length; i++) {
@@ -1405,7 +1405,7 @@ export async function exportCache(ids: string[]) {
  */
 export async function importCache(files: {
   [key: string]: Dict | Array<any>;
-}): Promise<Dict> {
+}): Promise<void> {
   try {
     // First clear the storage cache and any saved state:
     StorageCache.clear();
@@ -1417,12 +1417,10 @@ export async function importCache(files: {
       StorageCache.store(filename, data);
     });
   } catch (err) {
-    console.error("Error importing from cache:", (err as Error).message);
-    return { result: false };
+    throw new Error("Error importing from cache:" + (err as Error).message);
   }
 
   console.log("Imported cache data and stored to cache.");
-  return { result: true };
 }
 
 /**
@@ -1445,6 +1443,10 @@ export async function fetchExampleFlow(evalname: string): Promise<Dict> {
       body: JSON.stringify({ name: evalname }),
     }).then(function (res) {
       return res.json();
+    }).then(function (json) {
+      if (json?.error !== undefined || !json?.data)
+        throw new Error(json.error as string ?? "Request to fetch example flow was sent to backend server, but there was no response.");
+      return json.data as Dict;
     });
   }
 
@@ -1477,6 +1479,10 @@ export async function fetchOpenAIEval(evalname: string): Promise<Dict> {
       body: JSON.stringify({ name: evalname }),
     }).then(function (res) {
       return res.json();
+    }).then(function (json) {
+      if (json?.error !== undefined || !json?.data)
+        throw new Error(json.error as string ?? "Request to fetch OpenAI eval was sent to backend server, but there was no response.");
+      return json.data as Dict;
     });
   }
 
