@@ -1,12 +1,16 @@
 import React, { Button, Group, RingProgress } from "@mantine/core";
 import { IconSettings, IconTrash } from "@tabler/icons-react";
+import { QueryProgress } from "./backend/typing";
 
-export function GatheringResponsesRingProgress({ progress }) {
+export function GatheringResponsesRingProgress({
+  progress,
+}: {
+  progress: QueryProgress | undefined;
+}) {
   return progress !== undefined ? (
     progress.success > 0 || progress.error > 0 ? (
       <RingProgress
         size={20}
-        width="16px"
         thickness={3}
         sections={[
           {
@@ -29,12 +33,19 @@ export function GatheringResponsesRingProgress({ progress }) {
   );
 }
 
+export interface LLMItemButtonGroupProps {
+  onClickTrash?: () => void;
+  onClickSettings?: () => void;
+  ringProgress?: QueryProgress;
+  hideTrashIcon?: boolean;
+}
+
 export default function LLMItemButtonGroup({
   onClickTrash,
   onClickSettings,
   ringProgress,
   hideTrashIcon,
-}) {
+}: LLMItemButtonGroupProps) {
   return (
     <div>
       <Group position="right" style={{ float: "right", height: "20px" }}>

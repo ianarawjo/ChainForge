@@ -7,7 +7,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Handle, Position } from "reactflow";
+import { Handle, NodeProps, Position } from "reactflow";
 import {
   Code,
   Modal,

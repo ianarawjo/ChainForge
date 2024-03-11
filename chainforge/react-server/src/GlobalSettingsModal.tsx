@@ -30,11 +30,14 @@ import {
   IconX,
   IconSparkles,
 } from "@tabler/icons-react";
-import { Dropzone } from "@mantine/dropzone";
+import { Dropzone, FileWithPath } from "@mantine/dropzone";
 import useStore from "./store";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 import fetch_from_backend from "./fetch_from_backend";
 import { setCustomProviders } from "./ModelSettingSchemas";
+import { CustomLLMProviderSpec, Dict } from "./backend/typing";
+import { initCustomProvider, loadCachedCustomProviders, removeCustomProvider } from "./backend/backend";
+import { AlertModalRef } from "./AlertModal";
 
 const _LINK_STYLE = { color: "#1E90FF", textDecoration: "none" };
 
@@ -42,11 +45,11 @@ const _LINK_STYLE = { color: "#1E90FF", textDecoration: "none" };
 let LOADED_CUSTOM_PROVIDERS = false;
 
 // Read a file as text and pass the text to a cb (callback) function
-const read_file = (file, cb) => {
+const read_file = (file: FileWithPath, cb: (contents: string | ArrayBuffer | null) => void) => {
   const reader = new window.FileReader();
   reader.onload = function (event) {
-    const fileContent = event.target.result;
-    cb(fileContent);
+    const fileContent = event.target?.result;
+    cb(fileContent ?? null);
   };
   reader.onerror = function (event) {
     console.error("Error reading file:", event);
@@ -54,10 +57,15 @@ const read_file = (file, cb) => {
   reader.readAsText(file);
 };
 
+interface CustomProviderScriptDropzoneProps {
+  onError: (err: string | Error) => void;
+  onSetProviders: (providers: CustomLLMProviderSpec[]) => void;
+}
+
 /** A Dropzone to load a Python `.py` script that registers a `CustomModelProvider` in the Flask backend.
  * If successful, the list of custom model providers in the ChainForge UI dropdown is updated.
  * */
-const CustomProviderScriptDropzone = ({ onError, onSetProviders }) => {
+const CustomProviderScriptDropzone: React.FC<CustomProviderScriptDropzoneProps> = ({ onError, onSetProviders }) => {
   const theme = useMantineTheme();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -67,23 +75,20 @@ const CustomProviderScriptDropzone = ({ onError, onSetProviders }) => {
       onDrop={(files) => {
         if (files.length === 1) {
           setIsLoading(true);
-          read_file(files[0], (content) => {
+          read_file(files[0], (content: string | ArrayBuffer | null) => {
+            if (typeof content !== "string") {
+              console.error("File unreadable: Contents are not text.");
+              return;
+            }
             // Read the file into text and then send it to backend
-            fetch_from_backend("initCustomProvider", {
-              code: content,
-            })
-              .then((response) => {
+            initCustomProvider(content)
+              .then((providers) => {
                 setIsLoading(false);
-
-                if (response.error || !response.providers) {
-                  onError(response.error);
-                  return;
-                }
                 // Successfully loaded custom providers in backend,
                 // now load them into the ChainForge UI:
-                console.log(response.providers);
-                setCustomProviders(response.providers);
-                onSetProviders(response.providers);
+                console.log(providers);
+                setCustomProviders(providers);
+                onSetProviders(providers);
               })
               .catch((err) => {
                 setIsLoading(false);
@@ -100,8 +105,6 @@ const CustomProviderScriptDropzone = ({ onError, onSetProviders }) => {
       maxSize={3 * 1024 ** 2}
     >
       <Flex
-        pos="center"
-        spacing="md"
         style={{ minHeight: rem(80), pointerEvents: "none" }}
       >
         <Center>
@@ -142,7 +145,15 @@ const CustomProviderScriptDropzone = ({ onError, onSetProviders }) => {
   );
 };
 
-const GlobalSettingsModal = forwardRef(
+export interface GlobalSettingsModalRef {
+  trigger: () => void;
+}
+
+export interface GlobalSettingsModalProps {
+  alertModal?: React.RefObject<AlertModalRef>;
+}
+
+const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, GlobalSettingsModalProps>(
   function GlobalSettingsModal(props, ref) {
     const [opened, { open, close }] = useDisclosure(false);
     const setAPIKeys = useStore((state) => state.setAPIKeys);
@@ -154,11 +165,15 @@ const GlobalSettingsModal = forwardRef(
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const alertModal = props?.alertModal;
 
-    const [aiSupportActive, setAISupportActive] = useState(
-      getFlag("aiSupport"),
+    const [aiSupportActive, setAISupportActive] = useState<boolean>(
+      getFlag("aiSupport") as boolean,
     );
+    const [aiAutocompleteActive, setAIAutocompleteActive] = useState<boolean>(
+      getFlag("aiAutocomplete") as boolean,
+    );
+
     const handleAISupportChecked = useCallback(
-      (e) => {
+      (e: React.ChangeEvent<HTMLInputElement>) => {
         const checked = e.currentTarget.checked;
         setAISupportActive(checked);
         setFlag("aiSupport", checked);
@@ -171,11 +186,8 @@ const GlobalSettingsModal = forwardRef(
       [setFlag, setAISupportActive],
     );
 
-    const [aiAutocompleteActive, setAIAutocompleteActive] = useState(
-      getFlag("aiAutocomplete"),
-    );
     const handleAIAutocompleteChecked = useCallback(
-      (e) => {
+      (e: React.ChangeEvent<HTMLInputElement>) => {
         const checked = e.currentTarget.checked;
         setAIAutocompleteActive(checked);
         setFlag("aiAutocomplete", checked);
@@ -184,13 +196,14 @@ const GlobalSettingsModal = forwardRef(
     );
 
     const handleError = useCallback(
-      (msg) => {
+      (err: string | Error) => {
+        const msg = typeof err === "string" ? err : err.message;
         if (alertModal && alertModal.current) alertModal.current.trigger(msg);
       },
       [alertModal],
     );
 
-    const [customProviders, setLocalCustomProviders] = useState([]);
+    const [customProviders, setLocalCustomProviders] = useState<CustomLLMProviderSpec[]>([]);
     const refreshLLMProviderLists = useCallback(() => {
       // We unfortunately have to force all prompt/chat nodes to refresh their LLM lists, bc
       // apparently the update to the AvailableLLMs list is not immediately propagated to them.
@@ -202,16 +215,9 @@ const GlobalSettingsModal = forwardRef(
       );
     }, [nodes, setDataPropsForNode]);
 
-    const removeCustomProvider = useCallback(
-      (name) => {
-        fetch_from_backend("removeCustomProvider", {
-          name,
-        })
-          .then((response) => {
-            if (response.error || !response.success) {
-              handleError(response.error);
-              return;
-            }
+    const handleRemoveCustomProvider = useCallback(
+      (name: string) => {
+        removeCustomProvider(name).then(() => {
             // Successfully deleted the custom provider from backend;
             // now updated the front-end UI to reflect this:
             setAvailableLLMs(AvailableLLMs.filter((p) => p.name !== name));
@@ -220,7 +226,7 @@ const GlobalSettingsModal = forwardRef(
             );
             refreshLLMProviderLists();
           })
-          .catch((err) => handleError(err.message));
+          .catch(handleError);
       },
       [customProviders, handleError, AvailableLLMs, refreshLLMProviderLists],
     );
@@ -231,20 +237,13 @@ const GlobalSettingsModal = forwardRef(
         LOADED_CUSTOM_PROVIDERS = true;
         // Is running locally; try to load any custom providers.
         // Soft fails if it encounters error:
-        fetch_from_backend("loadCachedCustomProviders", {}, console.error).then(
-          (json) => {
-            if (json?.error || json?.providers === undefined) {
-              console.error(
-                json?.error ||
-                  "Could not load custom provider scripts: Error contacting backend.",
-              );
-              return;
-            }
+        loadCachedCustomProviders().then(
+          (providers) => {
             // Success; pass custom providers list to store:
-            setCustomProviders(json.providers);
-            setLocalCustomProviders(json.providers);
+            setCustomProviders(providers);
+            setLocalCustomProviders(providers);
           },
-        );
+        ).catch(console.error);
       }
     }, []);
 
@@ -265,7 +264,7 @@ const GlobalSettingsModal = forwardRef(
     });
 
     // When the API settings form is submitted
-    const onSubmit = (values) => {
+    const onSubmit = (values: Dict<string>) => {
       setAPIKeys(values);
       close();
     };
@@ -465,7 +464,7 @@ const GlobalSettingsModal = forwardRef(
                         )}
                       </Group>
                       <Button
-                        onClick={() => removeCustomProvider(p.name)}
+                        onClick={() => handleRemoveCustomProvider(p.name)}
                         color="red"
                         p="0px"
                         mt="4px"
@@ -478,7 +477,7 @@ const GlobalSettingsModal = forwardRef(
                 ))}
                 <CustomProviderScriptDropzone
                   onError={handleError}
-                  onSetProviders={(ps) => {
+                  onSetProviders={(ps: CustomLLMProviderSpec[]) => {
                     refreshLLMProviderLists();
                     setLocalCustomProviders(ps);
                   }}

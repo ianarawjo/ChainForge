@@ -357,16 +357,16 @@ const ExampleFlowCard: React.FC<ExampleFlowCardProps> = ({
   );
 };
 
-interface ExampleFlowsModalHandles {
+export interface ExampleFlowsModalRef {
   trigger: () => void;
 }
 
-interface ExampleFlowsModalProps {
+export interface ExampleFlowsModalProps {
   handleOnSelect: (filename: string, category?: string) => void;
 }
 
 const ExampleFlowsModal = forwardRef<
-  ExampleFlowsModalHandles,
+  ExampleFlowsModalRef,
   ExampleFlowsModalProps
 >(function ExampleFlowsModal({ handleOnSelect }, ref) {
   // Mantine modal popover for alerts
