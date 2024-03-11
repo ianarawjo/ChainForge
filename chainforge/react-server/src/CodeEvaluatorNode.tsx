@@ -52,7 +52,7 @@ import {
   Dict,
   EvaluatedResponsesResults,
   PythonInterpreter,
-  StandardizedLLMResponse,
+  LLMResponse,
   TemplateVarInfo,
   VarsContext,
 } from "./backend/typing";
@@ -173,12 +173,12 @@ function process(response) {
 
 export interface CodeEvaluatorComponentRef {
   run: (
-    inputs: StandardizedLLMResponse[],
+    inputs: LLMResponse[],
     script_paths?: string[],
     runInSandbox?: boolean,
   ) => Promise<{
     code: string;
-    responses?: StandardizedLLMResponse[];
+    responses?: LLMResponse[];
     error?: string | undefined;
     logs?: string[];
   }>;
@@ -236,7 +236,7 @@ export const CodeEvaluatorComponent = forwardRef<
   // Runs the code evaluator/processor over the inputs, returning the results as a Promise.
   // Errors are raised as a rejected Promise.
   const run = (
-    inputs: StandardizedLLMResponse[],
+    inputs: LLMResponse[],
     script_paths?: string[],
     runInSandbox?: boolean,
   ) => {
@@ -405,9 +405,7 @@ const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({
   const [progLang, setProgLang] = useState(data.language ?? "python");
 
   const [lastRunLogs, setLastRunLogs] = useState("");
-  const [lastResponses, setLastResponses] = useState<StandardizedLLMResponse[]>(
-    [],
-  );
+  const [lastResponses, setLastResponses] = useState<LLMResponse[]>([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
 
   const handleError = useCallback(
@@ -422,7 +420,7 @@ const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({
 
   const pullInputs = useCallback(() => {
     // Pull input data
-    let pulled_inputs: Dict | StandardizedLLMResponse[] = pullInputData(
+    const pulled_inputs: Dict | LLMResponse[] = pullInputData(
       ["responseBatch"],
       id,
     );
@@ -433,7 +431,7 @@ const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({
     // Convert to standard response format (StandardLLMResponseFormat)
     return pulled_inputs.responseBatch.map(
       toStandardResponseFormat,
-    ) as StandardizedLLMResponse[];
+    ) as LLMResponse[];
   }, [id, pullInputData]);
 
   // On initialization

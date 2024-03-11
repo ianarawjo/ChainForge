@@ -2,11 +2,7 @@ import React, { Suspense, useMemo, lazy } from "react";
 import { Collapse, Flex } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { truncStr } from "./backend/utils";
-import {
-  Dict,
-  StandardizedLLMResponse,
-  EvaluationScore, 
-} from "./backend/typing";
+import { Dict, EvaluationScore, LLMResponse } from "./backend/typing";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar.js"));
@@ -111,7 +107,7 @@ interface ResponseBoxProps {
   truncLenForVars?: number;
   llmName?: string;
   boxColor?: string;
-  width?: number;
+  width?: number | string;
 }
 
 export const ResponseBox: React.FC<ResponseBoxProps> = ({
@@ -160,7 +156,7 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
  * This is the lowest level display for response texts in ChainForge.
  */
 export const genResponseTextsDisplay = (
-  res_obj: StandardizedLLMResponse,
+  res_obj: LLMResponse,
   filterFunc?: (txts: string[]) => string[],
   customTextDisplay?: (txt: string) => React.ReactNode,
   onlyShowScores?: boolean,

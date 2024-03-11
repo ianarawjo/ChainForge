@@ -188,7 +188,7 @@ export type EvaluationResults = {
 };
 
 /** A standard response format expected by the front-end. */
-export interface StandardizedLLMResponse extends BaseLLMResponseObject {
+export interface LLMResponse extends BaseLLMResponseObject {
   // Extracted responses (1 or more) from raw_response
   responses: string[];
   // Evaluation results
@@ -197,12 +197,8 @@ export interface StandardizedLLMResponse extends BaseLLMResponseObject {
   tokens?: Dict<number>;
 }
 
-export type LLMResponsesByVarDict = Dict<
-  (BaseLLMResponseObject | StandardizedLLMResponse)[]
->;
-
 export type EvaluatedResponsesResults = {
-  responses?: StandardizedLLMResponse[];
+  responses?: LLMResponse[];
   logs?: string[];
   error?: string;
 };
@@ -219,6 +215,10 @@ export interface TemplateVarInfo {
   llm?: string | LLMSpec;
   chat_history?: ChatHistory;
 }
+
+export type LLMResponsesByVarDict = Dict<
+  (BaseLLMResponseObject | LLMResponse | TemplateVarInfo | string)[]
+>;
 
 export type VarsContext =
   | {
