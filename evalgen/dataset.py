@@ -1,12 +1,14 @@
 # This file contains the dataset class for our evaluation experiments.
 
 from abc import ABC, abstractmethod
+import asyncio
 
 import os
 import pandas as pd
 import json
 
 from rich import print
+from openai import AsyncAzureOpenAI
 
 
 class Dataset(ABC):
@@ -32,6 +34,20 @@ class Dataset(ABC):
         task_name = self.__class__.__name__
         with open(os.path.join(data_dir, f"{task_name}.json"), "w") as f:
             json.dump(all_records, f)
+
+    def iter(self, data_dir: str, split="train"):
+        # Check if the data_dir exists
+        if not os.path.exists(data_dir):
+            raise ValueError(f"Data directory {data_dir} does not exist")
+
+        # Load the data
+        task_name = self.__class__.__name__
+        with open(os.path.join(data_dir, f"{task_name}.json"), "r") as f:
+            all_records = json.load(f)
+
+        # Return an interator over the split records
+        for record in all_records[split]:
+            yield record
 
 
 class MedicalDataset(Dataset):
@@ -153,7 +169,7 @@ Review Text: {product_data['text']}
         return self.get_data("test")
 
 
-if __name__ == "__main__":
+def gen_splits():
     print(f"------ Testing Medical Dataset ------")
     dataset = MedicalDataset()
     train_records = dataset.get_train()
@@ -178,8 +194,118 @@ if __name__ == "__main__":
     print(f"Test records: {len(test_records)}")
     print(test_records[0])
 
-    # Save the splits
     dataset.gen_and_save_splits(save_dir)
+
+
+async def query_openai_api(system_message: str, user_message: str):
+    # This function will query the OpenAI API and return the response
+    messages = [
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": user_message},
+    ]
+
+    client = AsyncAzureOpenAI(
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+        api_key=os.getenv("AZURE_OPENAI_KEY"),
+        api_version="2024-02-15-preview",
+    )
+
+    completion = await client.chat.completions.create(
+        model="gpt-35-turbo",
+        messages=messages,
+    )
+
+    # Parse the response
+    return messages, completion.choices[0].message.content
+
+
+async def run_medical_prompts():
+    system_message = 'You are extracting insights from some medical records. The records contain a medical note and a dialogue between a doctor and a patient. You need to extract values for the following: Chief complaint, History of present illness, Physical examination, Symptoms experienced by the patient, New medications prescribed or changed, including dosages (if any), and Follow-up instructions (if any). Your answer should not include any personal identifiable information (PII) such as name, age, gender, or ID. Use "the patient" instead of their name, for example. Return your answer as a bullet list, where each bullet is formatted like `chief complaint: xx.` If there is no value for the key, the value should be `N/A`. Keep your response under 100 words.'
+
+    dataset = MedicalDataset()
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(curr_dir, "processed_data")
+    records_to_write = []
+
+    for split in ["train", "test"]:
+        openai_tasks = []
+        records = []
+
+        for record in dataset.iter(data_dir, split=split):
+            records.append(record)
+            openai_tasks.append(query_openai_api(system_message, record))
+
+        # Wait for all the tasks to complete
+        results = await asyncio.gather(*openai_tasks, return_exceptions=True)
+        for record, result in zip(records, results):
+            if isinstance(result, Exception):
+                print(f"Error processing record")
+                continue
+
+            try:
+                prompt, response = result
+                records_to_write.append(
+                    {
+                        "example": record,
+                        "prompt": prompt,
+                        "response": response,
+                        "split": split,
+                    }
+                )
+                print("Wrote prompt and response")
+            except Exception as e:
+                print(f"Error processing record: {record}, error: {e}")
+
+    # Write the results to a csv
+    df = pd.DataFrame(records_to_write)
+    df.to_csv(os.path.join(data_dir, "medical_prompts_responses.csv"), index=False)
+
+
+async def run_product_seo():
+    system_message = "You are an expert copywriter. You need to write an e-commerce product description based on the product details and customer reviews. Your description should be SEO-optimized. It should use an active voice and include the product's features, benefits, unique selling points without overpromising, and a call to action for the buyer. Benefits describe how product features will work for the buyer, addressing exactly how the product will improve their lives. Clearly distinguish between features (e.g., lightweight, USB-chargeable) and benefits (e.g., convenience, nutritious drinks on-the-go). Don't mention weaknesses of the product or use generic or repetitive language. Divide your description into readable chunks divided by relevant subheadings. Keep your description around 200 words, in Markdown format."
+
+    dataset = AmazonProductsDataset()
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(curr_dir, "processed_data")
+    records_to_write = []
+
+    for split in ["train", "test"]:
+        openai_tasks = []
+        records = []
+
+        for record in dataset.iter(data_dir, split=split):
+            records.append(record)
+            openai_tasks.append(query_openai_api(system_message, record))
+
+        # Wait for all the tasks to complete
+        results = await asyncio.gather(*openai_tasks, return_exceptions=True)
+        for record, result in zip(records, results):
+            if isinstance(result, Exception):
+                print(f"Error processing record")
+                continue
+
+            try:
+                prompt, response = result
+                records_to_write.append(
+                    {
+                        "example": record,
+                        "prompt": prompt,
+                        "response": response,
+                        "split": split,
+                    }
+                )
+                print("Wrote prompt and response")
+            except Exception as e:
+                print(f"Error processing record: {record}, error: {e}")
+
+    # Write the results to a csv
+    df = pd.DataFrame(records_to_write)
+    df.to_csv(os.path.join(data_dir, "product_prompts_responses.csv"), index=False)
+
+
+if __name__ == "__main__":
+    # asyncio.run(run_medical_prompts())
+    asyncio.run(run_product_seo())
 
 # ------ Testing Medical Dataset ------
 # Train records: 67
