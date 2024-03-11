@@ -2153,9 +2153,9 @@ export const getTemperatureSpecForModel = (modelName: string) => {
       ModelSettings[modelName].schema?.properties?.temperature;
     if (temperature_property) {
       return {
-        minimum: temperature_property.minimum,
-        maximum: temperature_property.maximum,
-        default: temperature_property.default,
+        minimum: temperature_property.minimum as number,
+        maximum: temperature_property.maximum as number,
+        default: temperature_property.default as number,
       };
     }
   }

@@ -8,6 +8,7 @@ import {
   NodeChange,
   EdgeChange,
   MarkerType,
+  Connection,
 } from "reactflow";
 import { escapeBraces } from "./backend/template";
 import {
@@ -248,7 +249,7 @@ export interface StoreHandles {
   removeEdge: (id: string) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
-  onConnect: (connection: Edge) => void;
+  onConnect: (connection: Connection | Edge) => void;
 
   // The LLM providers available in the drop-down list
   AvailableLLMs: LLMSpec[];
@@ -717,7 +718,7 @@ const useStore = create<StoreHandles>((set, get) => ({
   },
   onConnect: (connection) => {
     // Get the target node information
-    const target = get().getNode(connection.target);
+    const target = connection.target ? get().getNode(connection.target) : undefined;
     if (target === undefined) return;
 
     if (
@@ -736,6 +737,7 @@ const useStore = create<StoreHandles>((set, get) => ({
       get().setDataPropsForNode(target.id, { refresh: true });
     }
 
+    connection = connection as Edge;
     connection.interactionWidth = 40;
     connection.markerEnd = { type: MarkerType.Arrow, width: 22, height: 22 }; // 22px
     connection.type = "default";

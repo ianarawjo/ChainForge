@@ -13,6 +13,7 @@ import {
   LLMSpec,
   EvaluatedResponsesResults,
   TemplateVarInfo,
+  CustomLLMProviderSpec,
 } from "./typing";
 import { LLM, getEnumName } from "./models";
 import {
@@ -489,7 +490,9 @@ export async function generatePrompts(
   vars: Dict<(TemplateVarInfo | string)[]>,
 ): Promise<PromptTemplate[]> {
   const gen_prompts = new PromptPermutationGenerator(root_prompt);
-  const all_prompt_permutations = Array.from(gen_prompts.generate(deepcopy(vars)));
+  const all_prompt_permutations = Array.from(
+    gen_prompts.generate(deepcopy(vars)),
+  );
   return all_prompt_permutations;
 }
 
@@ -1491,7 +1494,7 @@ export async function fetchOpenAIEval(evalname: string): Promise<Dict> {
  * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success, 
  *          a 'providers' key with a list of all loaded custom provider callbacks, as dicts.
  */
-export async function initCustomProvider(code: string): Promise<Dict> {
+export async function initCustomProvider(code: string): Promise<CustomLLMProviderSpec[]> {
   // Attempt to fetch the example flow from the local filesystem
   // by querying the Flask server:
   return fetch(`${FLASK_BASE_URL}app/initCustomProvider`, {
@@ -1503,6 +1506,10 @@ export async function initCustomProvider(code: string): Promise<Dict> {
     body: JSON.stringify({ code }),
   }).then(function (res) {
     return res.json();
+  }).then(function (json) {
+    if (!json || json.error || !json.providers)
+      throw new Error(json.error ?? "Unknown error");
+    return json.providers as CustomLLMProviderSpec[];
   });
 }
 
@@ -1513,7 +1520,7 @@ export async function initCustomProvider(code: string): Promise<Dict> {
  * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success, 
  *          a 'success' key with a true value.
  */
-export async function removeCustomProvider(name: string): Promise<Dict> {
+export async function removeCustomProvider(name: string): Promise<boolean> {
   // Attempt to fetch the example flow from the local filesystem
   // by querying the Flask server:
   return fetch(`${FLASK_BASE_URL}app/removeCustomProvider`, {
@@ -1525,6 +1532,10 @@ export async function removeCustomProvider(name: string): Promise<Dict> {
     body: JSON.stringify({ name }),
   }).then(function (res) {
     return res.json();
+  }).then(function (json) {
+    if (!json || json.error || !json.success)
+      throw new Error(json.error ?? "Unknown error");
+    return true;
   });
 }
 
@@ -1534,7 +1545,7 @@ export async function removeCustomProvider(name: string): Promise<Dict> {
  * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success,
  *          a 'providers' key with all loaded custom providers in an array. If there were none, returns empty array.
  */
-export async function loadCachedCustomProviders(): Promise<Dict> {
+export async function loadCachedCustomProviders(): Promise<CustomLLMProviderSpec[]> {
   return fetch(`${FLASK_BASE_URL}app/loadCachedCustomProviders`, {
     method: "POST",
     headers: {
@@ -1544,5 +1555,9 @@ export async function loadCachedCustomProviders(): Promise<Dict> {
     body: "{}",
   }).then(function (res) {
     return res.json();
+  }).then(function (json) {
+    if (!json || json.error || !json.providers)
+      throw new Error(json.error ?? "Could not load custom provider scripts: Error contacting backend.");
+    return json.providers as CustomLLMProviderSpec[];
   });
 }

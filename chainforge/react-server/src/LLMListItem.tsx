@@ -5,12 +5,14 @@ import LLMItemButtonGroup from "./LLMItemButtonGroup";
 import { IconTemperature } from "@tabler/icons-react";
 import { getTemperatureSpecForModel } from "./ModelSettingSchemas";
 import { Tooltip } from "@mantine/core";
+import { LLMSpec, QueryProgress } from "./backend/typing";
+import { DraggableProvided, DraggableStateSnapshot } from "react-beautiful-dnd";
 
 // == The below function perc2color modified from: ==
 // License: MIT - https://opensource.org/licenses/MIT
 // Author: Michele Locati <michele@locati.it>
 // Source: https://gist.github.com/mlocati/7210513
-const perc2color = (perc) => {
+const perc2color = (perc: number) => {
   let r = 0;
   let g = 0;
   let b = 0;
@@ -27,9 +29,9 @@ const perc2color = (perc) => {
   return "#" + ("000000" + h.toString(16)).slice(-6);
 };
 
-const percTemperature = (llm_item) => {
+const percTemperature = (llm_item: LLMSpec) => {
   // Get the temp for this llm item
-  const temp = llm_item.settings?.temperature;
+  const temp = llm_item.settings?.temperature as number;
   if (temp === undefined) {
     console.warn(
       `Did not find temperature setting for model ${llm_item.base_model}.`,
@@ -74,7 +76,17 @@ export const DragItem = styled.div`
   flex-direction: column;
 `;
 
-const LLMListItem = ({
+export interface LLMListItemProps {
+  item: LLMSpec;
+  provided: DraggableProvided;
+  snapshot: DraggableStateSnapshot;
+  removeCallback: (key: string) => void;
+  onClickSettings: () => void;
+  progress?: QueryProgress;
+  hideTrashIcon: boolean;
+}
+
+const LLMListItem: React.FC<LLMListItemProps> = ({
   item,
   provided,
   snapshot,
@@ -85,7 +97,7 @@ const LLMListItem = ({
 }) => {
   // Set color by temperature only on item change (not every render)
   const [tempColor, setTempColor] = useState(perc2color(50));
-  const temperature = item.settings?.temperature;
+  const temperature = item.settings?.temperature as number;
 
   useEffect(() => {
     if (temperature !== undefined)
@@ -95,6 +107,7 @@ const LLMListItem = ({
   return (
     <DragItem
       ref={provided.innerRef}
+      // @ts-expect-error This property is used dynamically by the Draggable library.
       snapshot={snapshot}
       {...provided.draggableProps}
       {...provided.dragHandleProps}
@@ -123,7 +136,7 @@ const LLMListItem = ({
           )}
         </CardHeader>
         <LLMItemButtonGroup
-          onClickTrash={() => removeCallback(item.key)}
+          onClickTrash={() => removeCallback(item.key ?? "undefined")}
           ringProgress={progress}
           onClickSettings={onClickSettings}
           hideTrashIcon={hideTrashIcon}
@@ -133,7 +146,7 @@ const LLMListItem = ({
   );
 };
 
-export const LLMListItemClone = ({
+export const LLMListItemClone: React.FC<LLMListItemProps> = ({
   item,
   provided,
   snapshot,
@@ -141,7 +154,7 @@ export const LLMListItemClone = ({
 }) => {
   // Set color by temperature only on item change (not every render)
   const [tempColor, setTempColor] = useState(perc2color(50));
-  const temperature = item.settings?.temperature;
+  const temperature = item.settings?.temperature as number;
 
   useEffect(() => {
     if (temperature !== undefined)
@@ -153,6 +166,7 @@ export const LLMListItemClone = ({
       ref={provided.innerRef}
       {...provided.draggableProps}
       {...provided.dragHandleProps}
+      // @ts-expect-error This property is used dynamically by the Draggable library.
       snapshot={snapshot}
     >
       <div>

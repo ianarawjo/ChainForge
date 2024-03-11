@@ -37,8 +37,8 @@ import TabularDataNode from "./TabularDataNode";
 import JoinNode from "./JoinNode";
 import SplitNode from "./SplitNode";
 import CommentNode from "./CommentNode";
-import GlobalSettingsModal from "./GlobalSettingsModal";
-import ExampleFlowsModal from "./ExampleFlowsModal";
+import GlobalSettingsModal, { GlobalSettingsModalRef } from "./GlobalSettingsModal";
+import ExampleFlowsModal, { ExampleFlowsModalRef } from "./ExampleFlowsModal";
 import AreYouSureModal from "./AreYouSureModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
 import SimpleEvalNode from "./SimpleEvalNode";
@@ -69,7 +69,7 @@ import {
   isEdgeChromium,
   isChromium,
 } from "react-device-detect";
-import { Dict, LLMSpec } from "./backend/typing";
+import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
     isChromium ||
@@ -196,7 +196,7 @@ const MenuTooltip = ({
 };
 
 // const connectionLineStyle = { stroke: '#ddd' };
-const snapGrid = [16, 16];
+const snapGrid: [number, number] = [16, 16];
 
 const App = () => {
   // Get nodes, edges, etc. state from the Zustand store:
@@ -206,7 +206,7 @@ const App = () => {
     onNodesChange,
     onEdgesChange,
     onConnect,
-    addNode,
+    addNode: addNodeToStore,
     setNodes,
     setEdges,
     resetLLMColors,
@@ -216,17 +216,17 @@ const App = () => {
 
   // For saving / loading
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
-  const [autosavingInterval, setAutosavingInterval] = useState(null);
+  const [autosavingInterval, setAutosavingInterval] = useState<NodeJS.Timeout | undefined>(undefined);
 
   // For 'share' button
   const clipboard = useClipboard({ timeout: 1500 });
   const [waitingForShare, setWaitingForShare] = useState(false);
 
   // For modal popup to set global settings like API keys
-  const settingsModal = useRef(null);
+  const settingsModal = useRef<GlobalSettingsModalRef>(null);
 
   // For modal popup of example flows
-  const examplesModal = useRef(null);
+  const examplesModal = useRef<ExampleFlowsModalRef>(null);
 
   // For an info pop-up that welcomes new users
   // const [welcomeModalOpened, { open: openWelcomeModal, close: closeWelcomeModal }] = useDisclosure(false);
@@ -265,150 +265,44 @@ const App = () => {
     return { x: -(x / zoom) + centerX / zoom, y: -(y / zoom) + centerY / zoom };
   };
 
-  const addTextFieldsNode = () => {
+  const addNode = (id: string, type?: string, data?: Dict, offsetX?: number, offsetY?: number) => {
     const { x, y } = getViewportCenter();
-    addNode({
-      id: "textFieldsNode-" + Date.now(),
-      type: "textfields",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
+    addNodeToStore({
+      id: `${id}-` + Date.now(),
+      type: type ?? id,
+      data: data ?? {},
+      position: { x: x - 200 + (offsetX ? offsetX : 0), y: y - 100 + (offsetY ? offsetY : 0)},
     });
   };
-  const addPromptNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "promptNode-" + Date.now(),
-      type: "prompt",
-      data: { prompt: "" },
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
-  const addChatTurnNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "chatTurn-" + Date.now(),
-      type: "chat",
-      data: { prompt: "" },
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
-  const addSimpleEvalNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "simpleEval-" + Date.now(),
-      type: "simpleval",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
+
+  const addTextFieldsNode = () => addNode("textFieldsNode", "textfields");
+  const addPromptNode = () => addNode("promptNode", "prompt", { prompt: "" });
+  const addChatTurnNode = () => addNode("chatTurn", "chat", { prompt: "" });
+  const addSimpleEvalNode = () => addNode("simpleEval", "simpleval");
   const addEvalNode = (progLang: string) => {
-    const { x, y } = getViewportCenter();
     let code = "";
     if (progLang === "python")
       code = "def evaluate(response):\n  return len(response.text)";
     else if (progLang === "javascript")
       code = "function evaluate(response) {\n  return response.text.length;\n}";
-    addNode({
-      id: "evalNode-" + Date.now(),
-      type: "evaluator",
-      data: { language: progLang, code },
-      position: { x: x - 200, y: y - 100 },
-    });
+    addNode("evalNode", "evaluator", { language: progLang, code });
   };
-  const addVisNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "visNode-" + Date.now(),
-      type: "vis",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
-  const addInspectNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "inspectNode-" + Date.now(),
-      type: "inspect",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
-  const addScriptNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "scriptNode-" + Date.now(),
-      type: "script",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
-  const addItemsNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "csvNode-" + Date.now(),
-      type: "csv",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
-  const addTabularDataNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "table-" + Date.now(),
-      type: "table",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
-  const addCommentNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "comment-" + Date.now(),
-      type: "comment",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
-  const addLLMEvalNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "llmeval-" + Date.now(),
-      type: "llmeval",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
-  const addJoinNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "join-" + Date.now(),
-      type: "join",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
-  const addSplitNode = () => {
-    const { x, y } = getViewportCenter();
-    addNode({
-      id: "split-" + Date.now(),
-      type: "split",
-      data: {},
-      position: { x: x - 200, y: y - 100 },
-    });
-  };
+  const addVisNode = () => addNode("visNode", "vis", {});
+  const addInspectNode = () => addNode("inspectNode", "inspect");
+  const addScriptNode = () => addNode("scriptNode", "script");
+  const addItemsNode = () => addNode("csvNode", "csv");
+  const addTabularDataNode = () => addNode("table");
+  const addCommentNode = () => addNode("comment");
+  const addLLMEvalNode = () => addNode("llmeval");
+  const addJoinNode = () => addNode("join");
+  const addSplitNode = () => addNode("split");
   const addProcessorNode = (progLang: string) => {
-    const { x, y } = getViewportCenter();
     let code = "";
     if (progLang === "python")
       code = "def process(response):\n  return response.text;";
     else if (progLang === "javascript")
       code = "function process(response) {\n  return response.text;\n}";
-    addNode({
-      id: "process-" + Date.now(),
-      type: "processor",
-      data: { language: progLang, code },
-      position: { x: x - 200, y: y - 100 },
-    });
+    addNode("process", "processor", { language: progLang, code });
   };
 
   const onClickExamples = () => {
@@ -429,7 +323,7 @@ const App = () => {
   /**
    * SAVING / LOADING, IMPORT / EXPORT (from JSON)
    */
-  const downloadJSON = (jsonData, filename) => {
+  const downloadJSON = (jsonData: JSONCompatible, filename: string) => {
     // Convert JSON object to JSON string
     const jsonString = JSON.stringify(jsonData, null, 2);
 
@@ -547,7 +441,7 @@ const App = () => {
     const saved_flow = StorageCache.loadFromLocalStorage(
       "chainforge-flow",
       false,
-    );
+    ) as Dict;
     if (saved_flow) {
       StorageCache.loadFromLocalStorage("chainforge-state");
       importGlobalStateFromCache();
@@ -718,7 +612,7 @@ const App = () => {
   };
 
   // Load flow from examples modal
-  const onSelectExampleFlow = (name: string, example_category: string) => {
+  const onSelectExampleFlow = (name: string, example_category?: string) => {
     // Trigger the 'loading' modal
     setIsLoading(true);
 
@@ -872,9 +766,9 @@ const App = () => {
   ]);
 
   // Initialize auto-saving
-  const initAutosaving = (rf_inst) => {
-    if (autosavingInterval !== null) return; // autosaving interval already set
-    console.log("Init autosaving!");
+  const initAutosaving = (rf_inst: ReactFlowInstance) => {
+    if (autosavingInterval !== undefined) return; // autosaving interval already set
+    console.log("Init autosaving");
 
     // Autosave the flow to localStorage every minute:
     const interv = setInterval(() => {
@@ -898,7 +792,7 @@ const App = () => {
           "Autosaving disabled. The time required to save to localStorage exceeds 1 second. This can happen when there's a lot of data in your flow. Make sure to export frequently to save your work.",
         );
         clearInterval(interv);
-        setAutosavingInterval(null);
+        setAutosavingInterval(undefined);
       }
     }, 60000); // 60000 milliseconds = 1 minute
     setAutosavingInterval(interv);
@@ -938,23 +832,16 @@ const App = () => {
               if (!response || response.startsWith("Error")) {
                 // Error encountered during the query; alert the user
                 // with the error message:
-                handleError(new Error(response || "Unknown error"));
-                return;
+                throw new Error(response || "Unknown error");
               }
 
               // Attempt to parse the response as a compressed flow + import it:
-              try {
-                const cforge_json = JSON.parse(
-                  LZString.decompressFromUTF16(response),
-                );
-                importFlowFromJSON(cforge_json, rf_inst);
-              } catch (err) {
-                handleError(err);
-              }
+              const cforge_json = JSON.parse(
+                LZString.decompressFromUTF16(response),
+              );
+              importFlowFromJSON(cforge_json, rf_inst);
             })
-            .catch((err) => {
-              handleError(err);
-            });
+            .catch(handleError);
         } catch (err) {
           // Soft fail
           setIsLoading(false);
@@ -1064,7 +951,9 @@ const App = () => {
               onConnect={onConnect}
               nodes={nodes}
               edges={edges}
+              // @ts-expect-error Node types won't perfectly fit unless we explicitly extend from RF's types; ignoring this for now.
               nodeTypes={nodeTypes}
+              // @ts-expect-error Edge types won't perfectly fit unless we explicitly extend from RF's types; ignoring this for now.
               edgeTypes={edgeTypes}
               zoomOnPinch={false}
               zoomOnScroll={false}

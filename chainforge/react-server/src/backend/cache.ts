@@ -1,4 +1,4 @@
-import { Dict } from "./typing";
+import { Dict, JSONCompatible } from "./typing";
 import LZString from "lz-string";
 
 /**
@@ -98,7 +98,7 @@ export default class StorageCache {
         console.warn("Storage quota exceeded");
       } else {
         // Handle other types of storage-related errors
-        console.error("Error storing data in localStorage:", error.message);
+        console.error("Error storing data in localStorage:", (error as Error).message);
       }
       return false;
     }
@@ -114,7 +114,7 @@ export default class StorageCache {
   public static loadFromLocalStorage(
     localStorageKey = "chainforge",
     setStorageCacheData = true,
-  ): boolean {
+  ): JSONCompatible | undefined {
     const compressed = localStorage.getItem(localStorageKey);
     if (!compressed) {
       console.error(
@@ -128,7 +128,7 @@ export default class StorageCache {
       console.log("loaded", data);
       return data;
     } catch (error) {
-      console.error(error.message);
+      console.error((error as Error).message);
       return undefined;
     }
   }
