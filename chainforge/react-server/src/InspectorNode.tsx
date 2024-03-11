@@ -1,17 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { Handle } from "reactflow";
+import { Handle, Position } from "reactflow";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import LLMResponseInspector, { exportToExcel } from "./LLMResponseInspector";
-import fetch_from_backend from "./fetch_from_backend";
+import { grabResponses } from "./backend/backend";
+import { LLMResponse } from "./backend/typing";
 
-const InspectorNode = ({ data, id }) => {
+export interface InspectorNodeProps {
+  data: {
+    title: string;
+    input: string;
+    refresh: boolean;
+  };
+  id: string;
+}
+
+const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
   let is_fetching = false;
 
-  const [jsonResponses, setJSONResponses] = useState(null);
+  const [jsonResponses, setJSONResponses] = useState<LLMResponse[] | null>(
+    null,
+  );
 
-  const [pastInputs, setPastInputs] = useState([]);
+  const [pastInputs, setPastInputs] = useState<string>("");
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
@@ -26,13 +38,9 @@ const InspectorNode = ({ data, id }) => {
     is_fetching = true;
 
     // Grab responses associated with those ids:
-    fetch_from_backend("grabResponses", {
-      responses: input_node_ids,
-    })
-      .then(function (json) {
-        if (json.responses && json.responses.length > 0) {
-          setJSONResponses(json.responses);
-        }
+    grabResponses(input_node_ids)
+      .then(function (resps) {
+        if (resps && resps.length > 0) setJSONResponses(resps);
         is_fetching = false;
       })
       .catch(() => {
@@ -76,11 +84,14 @@ const InspectorNode = ({ data, id }) => {
         className="inspect-response-container nowheel nodrag"
         style={{ marginTop: "-8pt" }}
       >
-        <LLMResponseInspector jsonResponses={jsonResponses} />
+        <LLMResponseInspector
+          jsonResponses={jsonResponses}
+          wideFormat={false}
+        />
       </div>
       <Handle
         type="target"
-        position="left"
+        position={Position.Left}
         id="input"
         className="grouped-handle"
         style={{ top: "50%" }}

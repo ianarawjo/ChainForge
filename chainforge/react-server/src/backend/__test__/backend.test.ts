@@ -10,7 +10,7 @@ import {
   ResponseInfo,
   grabResponses,
 } from "../backend";
-import { StandardizedLLMResponse, Dict } from "../typing";
+import { LLMResponse, Dict } from "../typing";
 import StorageCache from "../cache";
 
 test("count queries required", async () => {
@@ -88,7 +88,7 @@ test("call three LLMs with a single prompt", async () => {
 
   // Check responses
   expect(responses).toHaveLength(3);
-  responses.forEach((resp_obj: StandardizedLLMResponse) => {
+  responses.forEach((resp_obj: LLMResponse) => {
     expect(resp_obj.prompt).toBe(prompt);
     expect(resp_obj.responses).toHaveLength(1); // since n = 1
     expect(Object.keys(resp_obj.vars)).toHaveLength(0);
@@ -109,7 +109,7 @@ test("run evaluate func over responses", async () => {
 
   const input_resps = (await grabResponses([
     "dummy_response_id",
-  ])) as StandardizedLLMResponse[];
+  ])) as LLMResponse[];
 
   //   const code = `
   // function evaluate(response) {

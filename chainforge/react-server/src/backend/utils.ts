@@ -16,10 +16,13 @@ import {
   HuggingFaceChatHistory,
   GeminiChatContext,
   GeminiChatMessage,
-  StandardizedLLMResponse,
+  LLMResponse,
   LLMResponsesByVarDict,
   Func,
   VarsContext,
+  TemplateVarInfo,
+  BaseLLMResponseObject,
+  LLMSpec,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
@@ -1682,8 +1685,8 @@ export const getLLMsInPulledInputData = (pulled_data: Dict) => {
 };
 
 export const stripLLMDetailsFromResponses = (
-  resps: StandardizedLLMResponse[],
-): StandardizedLLMResponse[] =>
+  resps: LLMResponse[],
+): LLMResponse[] =>
   resps.map((r) => ({
     ...r,
     llm: typeof r?.llm === "string" ? r?.llm : r?.llm?.name ?? "undefined",
@@ -1691,7 +1694,7 @@ export const stripLLMDetailsFromResponses = (
 
 // NOTE: The typing is purposefully general since we are trying to cast to an expected format.
 export const toStandardResponseFormat = (r: Dict) => {
-  const resp_obj: StandardizedLLMResponse = {
+  const resp_obj: LLMResponse = {
     vars: r?.fill_history ?? {},
     metavars: r?.metavars ?? {},
     uid: r?.batch_id ?? r?.uid ?? uuid(),
@@ -1736,13 +1739,28 @@ export const tagMetadataWithLLM = (input_data: LLMResponsesByVarDict) => {
   return new_data;
 };
 
-export const extractLLMLookup = (input_data: LLMResponsesByVarDict) => {
-  const llm_lookup: Dict = {};
+export const extractLLMLookup = (
+  input_data: Dict<
+    (string | TemplateVarInfo | BaseLLMResponseObject | LLMResponse)[]
+  >,
+) => {
+  const llm_lookup: Dict<string | LLMSpec> = {};
   Object.values(input_data).forEach((resp_objs) => {
-    (resp_objs as any[]).forEach((r) => {
-      if (typeof r === "string" || !r?.llm?.key || r.llm.key in llm_lookup)
+    resp_objs.forEach((r) => {
+      const llm_name =
+        typeof r === "string"
+          ? undefined
+          : !r.llm || typeof r.llm === "string"
+            ? r.llm
+            : r.llm.key;
+      if (
+        typeof r === "string" ||
+        !r.llm ||
+        !llm_name ||
+        llm_name in llm_lookup
+      )
         return;
-      llm_lookup[r.llm.key] = r.llm;
+      llm_lookup[llm_name] = r.llm;
     });
   });
   return llm_lookup;
@@ -1767,8 +1785,8 @@ export const truncStr = (
 };
 
 export const groupResponsesBy = (
-  responses: StandardizedLLMResponse[],
-  keyFunc: (item: StandardizedLLMResponse) => string | null | undefined,
+  responses: LLMResponse[],
+  keyFunc: (item: LLMResponse) => string | null | undefined,
 ) => {
   const responses_by_key: Dict = {};
   const unspecified_group: Dict[] = [];
@@ -1784,7 +1802,7 @@ export const groupResponsesBy = (
   return [responses_by_key, unspecified_group];
 };
 
-export const batchResponsesByUID = (responses: StandardizedLLMResponse[]) => {
+export const batchResponsesByUID = (responses: LLMResponse[]) => {
   const [batches, unspecified_id_group] = groupResponsesBy(
     responses,
     (resp_obj) => resp_obj.uid,

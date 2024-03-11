@@ -6,14 +6,14 @@ import React, { forwardRef, useImperativeHandle } from "react";
 import { Modal } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import LLMResponseInspector, { exportToExcel } from "./LLMResponseInspector";
-import { StandardizedLLMResponse } from "./backend/typing";
+import { LLMResponse } from "./backend/typing";
 
 export interface LLMResponseInspectorModalRef {
   trigger: () => void;
 }
 
 export interface LLMResponseInspectorModalProps {
-  jsonResponses: StandardizedLLMResponse[];
+  jsonResponses: LLMResponse[];
 }
 
 const LLMResponseInspectorModal = forwardRef<

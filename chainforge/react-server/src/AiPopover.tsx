@@ -562,7 +562,7 @@ export function AIGenCodeEvaluatorPopover({
         console.log("LLM said: ", response);
 
         // Try to extract out a single code block from the response
-        let code_blocks: string[] = splitText(response, "code");
+        let code_blocks: string[] = splitText(response, "code", false);
 
         // Concat all found code blocks
         if (code_blocks.length > 0) {
@@ -638,7 +638,7 @@ ${currentEvalCode}
         console.log("LLM said: ", response);
 
         // Try to extract out a single code block from the response
-        const code_blocks = splitText(response, "code");
+        const code_blocks = splitText(response, "code", false);
 
         // Concat all found code blocks
         if (code_blocks.length > 0) {

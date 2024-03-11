@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Handle } from "reactflow";
+import { Handle, Position } from "reactflow";
 import { v4 as uuid } from "uuid";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
@@ -31,6 +31,14 @@ import {
 import { fromMarkdown } from "mdast-util-from-markdown";
 import StorageCache from "./backend/cache";
 import { ResponseBox } from "./ResponseBoxes";
+import { Root, RootContent } from "mdast";
+import {
+  Dict,
+  LLMResponse,
+  LLMResponsesByVarDict,
+  TemplateVarInfo,
+} from "./backend/typing";
+import { generatePrompts } from "./backend/backend";
 
 const formattingOptions = [
   { value: "list", label: "- list items" },
@@ -42,15 +50,20 @@ const formattingOptions = [
 ];
 
 /** Flattens markdown AST as dict to text (string) */
-function compileTextFromMdAST(md) {
-  if (md?.value !== undefined) return md.value ?? "";
-  else if (md?.children?.length > 0)
+function compileTextFromMdAST(md: Root | RootContent): string {
+  if (md === undefined) return "";
+  else if ("value" in md) return typeof md.value === "string" ? md.value : "";
+  else if ("children" in md && md.children?.length > 0)
     return md.children.map(compileTextFromMdAST).join("");
   return "";
 }
 
-export const splitText = (s, format, shouldEscapeBraces) => {
-  const _escapeBraces = shouldEscapeBraces ? escapeBraces : (x) => x;
+export const splitText = (
+  s: string,
+  format: string,
+  shouldEscapeBraces: boolean,
+) => {
+  const _escapeBraces = shouldEscapeBraces ? escapeBraces : (x: string) => x;
 
   // If format is newline separators, we can just split:
   if (format === "\n\n" || format === "\n")
@@ -66,9 +79,9 @@ export const splitText = (s, format, shouldEscapeBraces) => {
   // Other formatting rules require markdown parsing:
   // Parse string as markdown
   const md = fromMarkdown(s);
-  let results = [];
+  let results: string[] = [];
 
-  const extract_md_blocks = (block_type) => {
+  const extract_md_blocks = (block_type: string) => {
     if (
       md?.children.length > 0 &&
       md.children.some((c) => c.type === block_type)
@@ -83,10 +96,10 @@ export const splitText = (s, format, shouldEscapeBraces) => {
             const text = compileTextFromMdAST(item).trim();
             results.push(text);
           }
-        } else if (md_block?.children !== undefined) {
+        } else if ("children" in md_block) {
           results.push(compileTextFromMdAST(md_block).trim());
         }
-        if (md_block.value !== undefined) results.push(md_block.value);
+        if ("value" in md_block) results.push(md_block.value);
       }
     }
   };
@@ -99,26 +112,65 @@ export const splitText = (s, format, shouldEscapeBraces) => {
   return results;
 };
 
-const displaySplitTexts = (textInfos, getColorForLLM) => {
-  const color_for_llm = (llm) => getColorForLLM(llm) + "99";
+const displaySplitTexts = (
+  textInfos: (TemplateVarInfo | string)[],
+  getColorForLLM: (llm_name: string) => string,
+) => {
+  const color_for_llm = (llm_name: string) => getColorForLLM(llm_name) + "99";
   return textInfos.map((info, idx) => {
-    const ps = <pre className="small-response">{info.text ?? info}</pre>;
-    return (
-      <ResponseBox
-        key={"r" + idx}
-        boxColor={info.llm ? color_for_llm(info.llm?.name) : "#ddd"}
-        width="100%"
-        vars={info.fill_history ?? {}}
-        truncLenForVars={72}
-        llmName={info.llm?.name ?? ""}
-      >
-        {ps}
-      </ResponseBox>
-    );
+    const text = typeof info === "string" ? info : info.text;
+    const ps = <pre className="small-response">{text}</pre>;
+    if (typeof info === "string") {
+      return (
+        <ResponseBox
+          key={"r" + idx}
+          boxColor="#ddd"
+          width="100%"
+          vars={{}}
+          truncLenForVars={72}
+          llmName=""
+        >
+          {ps}
+        </ResponseBox>
+      );
+    } else {
+      const llm_color =
+        typeof info.llm === "object" && "name" in info.llm
+          ? color_for_llm(info.llm?.name)
+          : "#ddd";
+      const llm_name =
+        typeof info.llm === "object" && "name" in info.llm
+          ? info.llm?.name
+          : "";
+      return (
+        <ResponseBox
+          key={"r" + idx}
+          boxColor={llm_color}
+          width="100%"
+          vars={info.fill_history ?? {}}
+          truncLenForVars={72}
+          llmName={llm_name}
+        >
+          {ps}
+        </ResponseBox>
+      );
+    }
   });
 };
 
-const SplitTextsPopover = ({ textInfos, onHover, onClick, getColorForLLM }) => {
+export interface SplitTextsPopoverProps {
+  textInfos: (TemplateVarInfo | string)[];
+  onHover: () => void;
+  onClick: (evt: React.MouseEvent<HTMLButtonElement>) => void;
+  getColorForLLM: (llm_name: string) => string;
+}
+
+const SplitTextsPopover: React.FC<SplitTextsPopoverProps> = ({
+  textInfos,
+  onHover,
+  onClick,
+  getColorForLLM,
+}) => {
   const [opened, { close, open }] = useDisclosure(false);
 
   const _onHover = useCallback(() => {
@@ -172,14 +224,24 @@ const SplitTextsPopover = ({ textInfos, onHover, onClick, getColorForLLM }) => {
   );
 };
 
-const SplitNode = ({ data, id }) => {
-  const [splitTexts, setSplitTexts] = useState([]);
+export interface SplitNodeProps {
+  data: {
+    title: string;
+    splitFormat: string;
+    refresh: boolean;
+  };
+  id: string;
+}
+
+const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
+  const [splitTexts, setSplitTexts] = useState<(TemplateVarInfo | string)[]>(
+    [],
+  );
 
   // For an info pop-up that previews all the joined inputs
   const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] =
     useDisclosure(false);
 
-  const [pastInputs, setPastInputs] = useState([]);
   const pullInputData = useStore((state) => state.pullInputData);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
@@ -205,45 +267,51 @@ const SplitNode = ({ data, id }) => {
     const llm_lookup = extractLLMLookup(input_data);
 
     // Tag all response objects in the input data with a metavar for their LLM (using the llm key as a uid)
-    input_data = tagMetadataWithLLM(input_data);
+    input_data = tagMetadataWithLLM(input_data) as Dict<
+      string[] | TemplateVarInfo[]
+    >;
 
     // Generate (flatten) the inputs, which could be recursively chained templates
     // and a mix of LLM resp objects, templates, and strings.
     // (We tagged each object with its LLM key so that we can use built-in features to keep track of the LLM associated with each response object)
-    fetch_from_backend("generatePrompts", {
-      prompt: "{__input}",
-      vars: input_data,
-    }).then((promptTemplates) => {
-      // Convert the templates into response objects
-      const resp_objs = promptTemplates.map((p) => ({
-        text: p.toString(),
-        fill_history: dict_excluding_key(p.fill_history, "__input"),
-        llm:
-          "__LLM_key" in p.metavars
-            ? llm_lookup[p.metavars.__LLM_key]
-            : undefined,
-        metavars: removeLLMTagFromMetadata(p.metavars),
-        batch_id: uuid(),
-      }));
+    generatePrompts("{__input}", input_data)
+      .then((promptTemplates) => {
+        // Convert the templates into response objects
+        const resp_objs = promptTemplates.map((p) => ({
+          text: p.toString(),
+          fill_history: dict_excluding_key(p.fill_history, "__input"),
+          llm:
+            "__LLM_key" in p.metavars
+              ? llm_lookup[p.metavars.__LLM_key]
+              : undefined,
+          metavars: removeLLMTagFromMetadata(p.metavars),
+          uid: uuid(),
+        }));
 
-      // The naive splitter is just to look at every
-      // response object's text value, and split that into N objects
-      // that have the exact same properties except for their text values.
-      const split_objs = resp_objs
-        .map((resp_obj) => {
-          if (typeof resp_obj === "string")
-            return splitText(resp_obj, formatting, true);
-          const texts = splitText(resp_obj?.text, formatting, true);
-          if (texts !== undefined && texts.length >= 1)
-            return texts.map((t) => deepcopy_and_modify(resp_obj, { text: t }));
-          else if (texts?.length === 0) return [];
-          else return deepcopy(resp_obj);
-        })
-        .flat(); // flatten the split response objects
+        // The naive splitter is just to look at every
+        // response object's text value, and split that into N objects
+        // that have the exact same properties except for their text values.
+        const split_objs: (TemplateVarInfo | string)[] = resp_objs
+          .map((resp_obj: TemplateVarInfo | string) => {
+            if (typeof resp_obj === "string")
+              return splitText(resp_obj, formatting, true);
+            const texts = splitText(resp_obj?.text, formatting, true);
+            if (texts !== undefined && texts.length >= 1)
+              return texts.map(
+                (t: string) =>
+                  deepcopy_and_modify(resp_obj, { text: t }) as TemplateVarInfo,
+              );
+            else if (texts?.length === 0) return [];
+            else return deepcopy(resp_obj) as TemplateVarInfo;
+          })
+          .flat(); // flatten the split response objects
 
-      setSplitTexts(split_objs);
-      setDataPropsForNode(id, { fields: split_objs });
-    });
+        setSplitTexts(split_objs);
+        setDataPropsForNode(id, { fields: split_objs });
+      })
+      .catch((err: Error | string) => {
+        console.error(err);
+      });
   }, [
     pullInputData,
     splitOnFormat,
@@ -252,14 +320,6 @@ const SplitNode = ({ data, id }) => {
     tagMetadataWithLLM,
   ]);
 
-  if (data.input) {
-    // If there's a change in inputs...
-    if (data.input !== pastInputs) {
-      setPastInputs(data.input);
-      handleOnConnect();
-    }
-  }
-
   // Refresh split output anytime the dropdown changes
   useEffect(() => {
     handleOnConnect();
@@ -267,7 +327,13 @@ const SplitNode = ({ data, id }) => {
 
   // Store the outputs to the cache whenever they change
   useEffect(() => {
-    StorageCache.store(`${id}.json`, splitTexts.map(toStandardResponseFormat));
+    StorageCache.store(
+      `${id}.json`,
+      splitTexts.map((r) => {
+        if (typeof r === "string") return r;
+        return toStandardResponseFormat(r);
+      }),
+    );
   }, [splitTexts]);
 
   useEffect(() => {
@@ -304,7 +370,7 @@ const SplitNode = ({ data, id }) => {
           root: { position: "relative", left: "-5%" },
         }}
       >
-        <Box size={600} m="lg" mt="xl">
+        <Box m="lg" mt="xl">
           {displaySplitTexts(splitTexts, getColorForLLMAndSetIfNotFound)}
         </Box>
       </Modal>
@@ -331,7 +397,7 @@ const SplitNode = ({ data, id }) => {
       )}
       <Handle
         type="target"
-        position="left"
+        position={Position.Left}
         id="__input"
         className="grouped-handle"
         style={{ top: "50%" }}
@@ -339,7 +405,7 @@ const SplitNode = ({ data, id }) => {
       />
       <Handle
         type="source"
-        position="right"
+        position={Position.Right}
         id="output"
         className="grouped-handle"
         style={{ top: "50%" }}

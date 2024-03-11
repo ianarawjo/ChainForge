@@ -48,13 +48,13 @@ import {
   Dict,
   LLMSpec,
   QueryProgress,
-  StandardizedLLMResponse,
+  LLMResponse,
   TemplateVarInfo,
 } from "./backend/typing";
 import { AlertModalRef } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 
-const getUniqueLLMMetavarKey = (responses: StandardizedLLMResponse[]) => {
+const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
     responses.map((resp_obj) => Object.keys(resp_obj.metavars)).flat(),
   );
@@ -180,9 +180,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
   // API Keys (set by user in popup GlobalSettingsModal)
   const apiKeys = useStore((state) => state.apiKeys);
 
-  const [jsonResponses, setJSONResponses] = useState<
-    StandardizedLLMResponse[] | null
-  >(null);
+  const [jsonResponses, setJSONResponses] = useState<LLMResponse[] | null>(
+    null,
+  );
   const [templateVars, setTemplateVars] = useState<string[]>(data.vars ?? []);
   const [promptText, setPromptText] = useState<string>(data.prompt ?? "");
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState<string | null>(
@@ -850,7 +850,7 @@ Soft failing by replacing undefined with empty strings.`,
 
         // Store and log responses (if any)
         if (json?.responses) {
-          const json_responses = json.responses as StandardizedLLMResponse[];
+          const json_responses = json.responses as LLMResponse[];
           setJSONResponses(json_responses);
 
           // Log responses for debugging:
@@ -1086,7 +1086,7 @@ Soft failing by replacing undefined with empty strings.`,
               <Textarea
                 key={0}
                 className="prompt-field-fixed nodrag nowheel"
-                minRows="4"
+                minRows={4}
                 defaultValue={data.prompt}
                 onChange={handleInputChange}
                 miw={230}
@@ -1098,7 +1098,7 @@ Soft failing by replacing undefined with empty strings.`,
           />
           <Handle
             type="target"
-            position="left"
+            position={Position.Left}
             id="__past_chats"
             style={{ top: "82px", background: "#555" }}
           />
@@ -1108,8 +1108,8 @@ Soft failing by replacing undefined with empty strings.`,
           ref={setRef}
           autosize
           className="prompt-field-fixed nodrag nowheel"
-          minRows="4"
-          maxRows="12"
+          minRows={4}
+          maxRows={12}
           defaultValue={data.prompt}
           onChange={handleInputChange}
         />

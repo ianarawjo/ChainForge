@@ -4,7 +4,7 @@ import {
   Dict,
   LLMResponseError,
   RawLLMResponseObject,
-  StandardizedLLMResponse,
+  LLMResponse,
   ChatHistoryInfo,
   isEqualChatHistory,
   PromptVarsDict,
@@ -12,6 +12,7 @@ import {
   EvaluationScore,
   LLMSpec,
   EvaluatedResponsesResults,
+  TemplateVarInfo,
 } from "./typing";
 import { LLM, getEnumName } from "./models";
 import {
@@ -22,6 +23,7 @@ import {
   extractSettingsVars,
   areEqualVarsDicts,
   repairCachedResponses,
+  deepcopy,
 } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
@@ -145,10 +147,8 @@ export class ResponseInfo {
   }
 }
 
-function to_standard_format(
-  r: RawLLMResponseObject | Dict,
-): StandardizedLLMResponse {
-  const resp_obj: StandardizedLLMResponse = {
+function to_standard_format(r: RawLLMResponseObject | Dict): LLMResponse {
+  const resp_obj: LLMResponse = {
     vars: r.vars,
     metavars: r.metavars ?? {},
     llm: r.llm,
@@ -189,7 +189,7 @@ function load_from_cache(storageKey: string): Dict {
 
 function load_cache_responses(
   storageKey: string,
-): Dict<StandardizedLLMResponse[]> | StandardizedLLMResponse[] {
+): Dict<LLMResponse[]> | LLMResponse[] {
   const data = load_from_cache(storageKey);
   if (Array.isArray(data)) return data;
   else if (typeof data === "object" && data.responses_last_run !== undefined) {
@@ -389,11 +389,11 @@ function check_typeof_vals(arr: Array<any>): MetricType {
 
 async function run_over_responses(
   process_func: (resp: ResponseInfo) => any,
-  responses: StandardizedLLMResponse[],
+  responses: LLMResponse[],
   process_type: "evaluator" | "processor",
-): Promise<StandardizedLLMResponse[]> {
-  const evald_resps: Promise<StandardizedLLMResponse>[] = responses.map(
-    async (_resp_obj: StandardizedLLMResponse) => {
+): Promise<LLMResponse[]> {
+  const evald_resps: Promise<LLMResponse>[] = responses.map(
+    async (_resp_obj: LLMResponse) => {
       // Deep clone the response object
       const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
 
@@ -486,10 +486,10 @@ async function run_over_responses(
  */
 export async function generatePrompts(
   root_prompt: string,
-  vars: Dict,
+  vars: Dict<(TemplateVarInfo | string)[]>,
 ): Promise<PromptTemplate[]> {
   const gen_prompts = new PromptPermutationGenerator(root_prompt);
-  const all_prompt_permutations = Array.from(gen_prompts.generate(vars));
+  const all_prompt_permutations = Array.from(gen_prompts.generate(deepcopy(vars)));
   return all_prompt_permutations;
 }
 
@@ -689,7 +689,7 @@ export async function fetchEnvironAPIKeys(): Promise<Dict> {
  * @param progress_listener (optional) a callback whenever an LLM response is collected, on the current progress
  * @param cont_only_w_prior_llms (optional) whether we are continuing using prior LLMs
  * @param cancel_id (optional) the id that would appear in CancelTracker if the user cancels the querying (NOT the same as 'id' --must be unique!)
- * @returns a dictionary in format `{responses: StandardizedLLMResponse[], errors: string[]}`
+ * @returns a dictionary in format `{responses: LLMResponse[], errors: string[]}`
  */
 export async function queryLLM(
   id: string,
@@ -703,7 +703,7 @@ export async function queryLLM(
   progress_listener?: (progress: { [key: symbol]: any }) => void,
   cont_only_w_prior_llms?: boolean,
   cancel_id?: string,
-): Promise<{ responses: StandardizedLLMResponse[]; errors: Dict<string[]> }> {
+): Promise<{ responses: LLMResponse[]; errors: Dict<string[]> }> {
   // Verify the integrity of the params
   if (typeof id !== "string" || id.trim().length === 0)
     throw new Error("id is improper format (length 0 or not a string)");
@@ -996,7 +996,7 @@ export async function simpleQueryLLM(
 export async function executejs(
   id: string,
   code: string | ((rinfo: ResponseInfo) => any),
-  responses: StandardizedLLMResponse[],
+  responses: LLMResponse[],
   scope: "response" | "batch",
   process_type: "evaluator" | "processor",
 ): Promise<EvaluatedResponsesResults> {
@@ -1046,7 +1046,7 @@ export async function executejs(
 
   // Load all responses with the given ID:
   let all_logs: string[] = [];
-  let processed_resps: StandardizedLLMResponse[];
+  let processed_resps: LLMResponse[];
   try {
     // Intercept any calls to console.log, .warn, or .error, so we can store the calls
     // and print them in the 'output' footer of the Evaluator Node:
@@ -1103,7 +1103,7 @@ export async function executejs(
 export async function executepy(
   id: string,
   code: string | ((rinfo: ResponseInfo) => any),
-  responses: StandardizedLLMResponse[],
+  responses: LLMResponse[],
   scope: "response" | "batch",
   process_type: "evaluator" | "processor",
   script_paths?: string[],
@@ -1167,7 +1167,7 @@ export async function executepy(
       }
     };
 
-    let processed_resps: StandardizedLLMResponse[];
+    let processed_resps: LLMResponse[];
     try {
       // Run the user-defined 'evaluate' function over the responses:
       processed_resps = await run_over_responses(
@@ -1222,7 +1222,7 @@ export async function evalWithLLM(
   if (api_keys !== undefined) set_api_keys(api_keys);
 
   // Load all responses with the given ID:
-  let all_evald_responses: StandardizedLLMResponse[] = [];
+  let all_evald_responses: LLMResponse[] = [];
   let all_errors: string[] = [];
   for (const cache_id of response_ids) {
     const fname = `${cache_id}.json`;
@@ -1230,9 +1230,9 @@ export async function evalWithLLM(
       return { error: `Did not find cache file for id ${cache_id}` };
 
     // Load the raw responses from the cache + clone them all:
-    const resp_objs = (
-      load_cache_responses(fname) as StandardizedLLMResponse[]
-    ).map((r) => JSON.parse(JSON.stringify(r))) as StandardizedLLMResponse[];
+    const resp_objs = (load_cache_responses(fname) as LLMResponse[]).map((r) =>
+      JSON.parse(JSON.stringify(r)),
+    ) as LLMResponse[];
     if (resp_objs.length === 0) continue;
 
     // We need to keep track of the index of each response in the response object.
@@ -1265,7 +1265,7 @@ export async function evalWithLLM(
 
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
-    responses.forEach((r: StandardizedLLMResponse) => {
+    responses.forEach((r: LLMResponse) => {
       const resp_obj = resp_objs[r.metavars.__i];
       if (resp_obj.eval_res !== undefined)
         resp_obj.eval_res.items[r.metavars.__j] = r.responses[0];
@@ -1336,20 +1336,20 @@ export async function evalWithLLM(
 /**
  * Returns all responses with the specified id(s).
  * @param responses the ids to grab
- * @returns If success, a Dict with a single key, 'responses', with an array of StandardizedLLMResponse objects
+ * @returns If success, a Dict with a single key, 'responses', with an array of LLMResponse objects
  *          If failure, a Dict with a single key, 'error', with the error message.
  */
 export async function grabResponses(
   responses: string[],
-): Promise<StandardizedLLMResponse[]> {
+): Promise<LLMResponse[]> {
   // Grab all responses with the given ID:
-  let grabbed_resps: StandardizedLLMResponse[] = [];
+  let grabbed_resps: LLMResponse[] = [];
   for (const cache_id of responses) {
     const storageKey = `${cache_id}.json`;
     if (!StorageCache.has(storageKey))
       throw new Error(`Did not find cache data for id ${cache_id}`);
 
-    let res: StandardizedLLMResponse[] | Dict<StandardizedLLMResponse[]> =
+    let res: LLMResponse[] | Dict<LLMResponse[]> =
       load_cache_responses(storageKey);
     if (typeof res === "object" && !Array.isArray(res)) {
       // Convert to standard response format
