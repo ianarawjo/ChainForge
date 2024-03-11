@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useContext,
+} from "react";
 import { Handle } from "reactflow";
 import {
   NativeSelect,
@@ -29,6 +35,7 @@ import {
   toStandardResponseFormat,
 } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
+import { AlertModalContext } from "./AlertModal";
 
 const createJSEvalCodeFor = (responseFormat, operation, value, valueType) => {
   let responseObj = "r.text";
@@ -80,7 +87,7 @@ const SimpleEvalNode = ({ data, id }) => {
   const [pastInputs, setPastInputs] = useState([]);
 
   const [status, setStatus] = useState("none");
-  const alertModal = useRef(null);
+  const showAlert = useContext(AlertModalContext);
 
   const inspectModal = useRef(null);
   // eslint-disable-next-line
@@ -156,7 +163,7 @@ const SimpleEvalNode = ({ data, id }) => {
 
     const rejected = (err_msg) => {
       setStatus("error");
-      alertModal.current.trigger(err_msg);
+      if (showAlert) showAlert(err_msg);
     };
 
     // Generate JS code for the user's spec
@@ -200,7 +207,7 @@ const SimpleEvalNode = ({ data, id }) => {
     handlePullInputs,
     pingOutputNodes,
     setStatus,
-    alertModal,
+    showAlert,
     status,
     varValue,
     varValueType,
@@ -260,7 +267,6 @@ const SimpleEvalNode = ({ data, id }) => {
         nodeId={id}
         icon={<IconRuler2 size="16px" />}
         status={status}
-        alertModal={alertModal}
         handleRunClick={handleRunClick}
         runButtonTooltip="Run evaluator over inputs"
       />

@@ -4,6 +4,7 @@ import React, {
   useImperativeHandle,
   useCallback,
   useEffect,
+  useContext,
 } from "react";
 import {
   TextInput,
@@ -33,11 +34,14 @@ import {
 import { Dropzone, FileWithPath } from "@mantine/dropzone";
 import useStore from "./store";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
-import fetch_from_backend from "./fetch_from_backend";
 import { setCustomProviders } from "./ModelSettingSchemas";
 import { CustomLLMProviderSpec, Dict } from "./backend/typing";
-import { initCustomProvider, loadCachedCustomProviders, removeCustomProvider } from "./backend/backend";
-import { AlertModalRef } from "./AlertModal";
+import {
+  initCustomProvider,
+  loadCachedCustomProviders,
+  removeCustomProvider,
+} from "./backend/backend";
+import { AlertModalContext } from "./AlertModal";
 
 const _LINK_STYLE = { color: "#1E90FF", textDecoration: "none" };
 
@@ -45,7 +49,10 @@ const _LINK_STYLE = { color: "#1E90FF", textDecoration: "none" };
 let LOADED_CUSTOM_PROVIDERS = false;
 
 // Read a file as text and pass the text to a cb (callback) function
-const read_file = (file: FileWithPath, cb: (contents: string | ArrayBuffer | null) => void) => {
+const read_file = (
+  file: FileWithPath,
+  cb: (contents: string | ArrayBuffer | null) => void,
+) => {
   const reader = new window.FileReader();
   reader.onload = function (event) {
     const fileContent = event.target?.result;
@@ -65,7 +72,9 @@ interface CustomProviderScriptDropzoneProps {
 /** A Dropzone to load a Python `.py` script that registers a `CustomModelProvider` in the Flask backend.
  * If successful, the list of custom model providers in the ChainForge UI dropdown is updated.
  * */
-const CustomProviderScriptDropzone: React.FC<CustomProviderScriptDropzoneProps> = ({ onError, onSetProviders }) => {
+const CustomProviderScriptDropzone: React.FC<
+  CustomProviderScriptDropzoneProps
+> = ({ onError, onSetProviders }) => {
   const theme = useMantineTheme();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -104,9 +113,7 @@ const CustomProviderScriptDropzone: React.FC<CustomProviderScriptDropzoneProps> 
       onReject={(files) => console.log("rejected files", files)}
       maxSize={3 * 1024 ** 2}
     >
-      <Flex
-        style={{ minHeight: rem(80), pointerEvents: "none" }}
-      >
+      <Flex style={{ minHeight: rem(80), pointerEvents: "none" }}>
         <Center>
           <Dropzone.Accept>
             <IconUpload
@@ -149,11 +156,7 @@ export interface GlobalSettingsModalRef {
   trigger: () => void;
 }
 
-export interface GlobalSettingsModalProps {
-  alertModal?: React.RefObject<AlertModalRef>;
-}
-
-const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, GlobalSettingsModalProps>(
+const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
   function GlobalSettingsModal(props, ref) {
     const [opened, { open, close }] = useDisclosure(false);
     const setAPIKeys = useStore((state) => state.setAPIKeys);
@@ -163,7 +166,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, GlobalSettingsMod
     const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
     const nodes = useStore((state) => state.nodes);
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
-    const alertModal = props?.alertModal;
+    const showAlert = useContext(AlertModalContext);
 
     const [aiSupportActive, setAISupportActive] = useState<boolean>(
       getFlag("aiSupport") as boolean,
@@ -198,12 +201,14 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, GlobalSettingsMod
     const handleError = useCallback(
       (err: string | Error) => {
         const msg = typeof err === "string" ? err : err.message;
-        if (alertModal && alertModal.current) alertModal.current.trigger(msg);
+        if (showAlert) showAlert(msg);
       },
-      [alertModal],
+      [showAlert],
     );
 
-    const [customProviders, setLocalCustomProviders] = useState<CustomLLMProviderSpec[]>([]);
+    const [customProviders, setLocalCustomProviders] = useState<
+      CustomLLMProviderSpec[]
+    >([]);
     const refreshLLMProviderLists = useCallback(() => {
       // We unfortunately have to force all prompt/chat nodes to refresh their LLM lists, bc
       // apparently the update to the AvailableLLMs list is not immediately propagated to them.
@@ -217,7 +222,8 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, GlobalSettingsMod
 
     const handleRemoveCustomProvider = useCallback(
       (name: string) => {
-        removeCustomProvider(name).then(() => {
+        removeCustomProvider(name)
+          .then(() => {
             // Successfully deleted the custom provider from backend;
             // now updated the front-end UI to reflect this:
             setAvailableLLMs(AvailableLLMs.filter((p) => p.name !== name));
@@ -237,13 +243,13 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, GlobalSettingsMod
         LOADED_CUSTOM_PROVIDERS = true;
         // Is running locally; try to load any custom providers.
         // Soft fails if it encounters error:
-        loadCachedCustomProviders().then(
-          (providers) => {
+        loadCachedCustomProviders()
+          .then((providers) => {
             // Success; pass custom providers list to store:
             setCustomProviders(providers);
             setLocalCustomProviders(providers);
-          },
-        ).catch(console.error);
+          })
+          .catch(console.error);
       }
     }, []);
 

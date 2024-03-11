@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useContext,
+} from "react";
 import { Menu, NumberInput, Switch, Text, Tooltip } from "@mantine/core";
 import EditableTable from "./EditableTable";
 import * as XLSX from "xlsx";
@@ -12,7 +18,7 @@ import {
 import TemplateHooks from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
-import AlertModal, { AlertModalRef } from "./AlertModal";
+import { AlertModalContext } from "./AlertModal";
 import RenameValueModal, { RenameValueModalRef } from "./RenameValueModal";
 import useStore from "./store";
 import { sampleRandomElements } from "./backend/utils";
@@ -91,7 +97,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   const [hooksY, setHooksY] = useState(120);
 
   // For displaying error messages to user
-  const alertModal = useRef<AlertModalRef>(null);
+  const showAlert = useContext(AlertModalContext);
 
   // For renaming a column
   const renameColumnModal = useRef<RenameValueModalRef>(null);
@@ -467,7 +473,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   }, [tableData, tableColumns, shouldSample, sampleNum]);
 
   const handleError = (err: Error) => {
-    if (alertModal.current) alertModal.current?.trigger(err.message);
+    if (showAlert) showAlert(err.message);
     console.error(err.message);
   };
 
@@ -519,8 +525,6 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
           </Tooltip>,
         ]}
       />
-
-      <AlertModal ref={alertModal} />
 
       <RenameValueModal
         ref={renameColumnModal}

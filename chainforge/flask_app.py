@@ -268,13 +268,13 @@ def index():
 def executepy():
     """
         Executes a Python function sent from JavaScript,
-        over all the `StandardizedLLMResponse` objects passed in from the front-end. 
+        over all the `LLMResponse` objects passed in from the front-end. 
 
         POST'd data should be in the form: 
         {
             'id': # a unique ID to refer to this information. Used when cache'ing responses. 
             'code': str,  # the body of the lambda function to evaluate, in form: lambda responses: <body>
-            'responses': List[StandardizedLLMResponse]  # the responses to run on.
+            'responses': List[LLMResponse]  # the responses to run on.
             'scope': 'response' | 'batch'  # the scope of responses to run on --a single response, or all across each batch. 
                                            # If batch, evaluator has access to 'responses'. Only matters if n > 1 for each prompt.
             'process_type': 'evaluator' | 'processor'  # the type of processing to perform. Evaluators only 'score'/annotate responses. Processors change responses (e.g. text).

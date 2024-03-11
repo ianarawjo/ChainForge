@@ -4,6 +4,7 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  useContext,
 } from "react";
 import { Handle, Position } from "reactflow";
 import { v4 as uuid } from "uuid";
@@ -51,7 +52,7 @@ import {
   LLMResponse,
   TemplateVarInfo,
 } from "./backend/typing";
-import { AlertModalRef } from "./AlertModal";
+import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
@@ -167,6 +168,8 @@ const PromptNode = ({ data, id, type: node_type }) => {
     [node_type],
   );
 
+  console.log("re-render");
+
   // Get state from the Zustand store:
   const edges = useStore((state) => state.edges);
   const pullInputData = useStore((state) => state.pullInputData);
@@ -199,7 +202,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const [llmItemsCurrState, setLLMItemsCurrState] = useState<LLMSpec[]>([]);
 
   // For displaying error messages to user
-  const alertModal = useRef<AlertModalRef | null>(null);
+  const showAlert = useContext(AlertModalContext);
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef(null);
@@ -241,9 +244,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
     (msg: string) => {
       setProgress(undefined);
       llmListContainer?.current?.resetLLMItemsProgress();
-      alertModal?.current?.trigger(msg);
+      if (showAlert) showAlert(msg);
     },
-    [llmListContainer, alertModal],
+    [llmListContainer, showAlert],
   );
 
   const showResponseInspector = useCallback(() => {
@@ -313,7 +316,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
       const pulled_data = pullInputData(templateVars, id);
       updateShowContToggle(pulled_data);
     } catch (err) {
-      // alertModal.current?.trigger(err.message);
       console.error(err);
     }
   }, [templateVars, id, pullInputData, updateShowContToggle]);
@@ -705,7 +707,7 @@ Soft failing by replacing undefined with empty strings.`,
       // Try to pull inputs
       pulled_data = pullInputData(templateVars, id);
     } catch (err) {
-      alertModal.current?.trigger((err as Error)?.message ?? err);
+      if (showAlert) showAlert((err as Error)?.message ?? err);
       console.error(err);
       return; // early exit
     }
@@ -923,10 +925,11 @@ Soft failing by replacing undefined with empty strings.`,
               "\n";
           });
           // We trigger the alert directly (don't use triggerAlert) here because we want to keep the progress bar:
-          alertModal?.current?.trigger(
-            "Errors collecting responses. Re-run prompt node to retry.\n\n" +
-              combined_err_msg,
-          );
+          if (showAlert)
+            showAlert(
+              "Errors collecting responses. Re-run prompt node to retry.\n\n" +
+                combined_err_msg,
+            );
 
           return;
         }
@@ -1039,7 +1042,6 @@ Soft failing by replacing undefined with empty strings.`,
         icon={node_icon}
         status={status}
         isRunning={status === "loading"}
-        alertModal={alertModal}
         handleRunClick={handleRunClick}
         handleStopClick={handleStopClick}
         handleRunHover={handleRunHover}
