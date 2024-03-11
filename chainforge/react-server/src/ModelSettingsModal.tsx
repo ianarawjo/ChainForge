@@ -19,7 +19,6 @@ import {
 } from "./ModelSettingSchemas";
 import {
   Dict,
-  Func,
   JSONCompatible,
   LLMSpec,
   ModelSettingsDict,
@@ -60,7 +59,7 @@ const ModelSettingsModal = forwardRef<
 
   // Totally necessary emoji picker
   const [modelEmoji, setModelEmoji] = useState("");
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState<Func | null>(null);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (model && model.base_model) {
@@ -177,7 +176,7 @@ const ModelSettingsModal = forwardRef<
   }, [formData, close, saveFormState]);
 
   const onEmojiSelect = useCallback(
-    (selection) => {
+    (selection: Dict) => {
       const emoji = selection.native;
       setModelEmoji(emoji);
       setEmojiPickerOpen(false);
@@ -199,14 +198,13 @@ const ModelSettingsModal = forwardRef<
       opened={opened}
       onClose={onClickSubmit}
       title={
-        <div>
+        <div className="nowheel nodrag">
           <Popover
             width={200}
             position="bottom"
             withArrow
             shadow="md"
             withinPortal
-            className="nowheel nodrag"
             opened={emojiPickerOpen}
             onChange={setEmojiPickerOpen}
           >
@@ -240,8 +238,11 @@ const ModelSettingsModal = forwardRef<
         schema={schema}
         uiSchema={uiSchema}
         formData={formData}
+        // @ts-expect-error This is literally the example code from react-json-schema; no idea why it wouldn't typecheck correctly.
         validator={validator}
+        // @ts-expect-error Expect format is LLMSpec.
         onChange={onFormDataChange}
+        // @ts-expect-error Expect format is LLMSpec.
         onSubmit={onSubmit}
         style={{ width: "100%" }}
       >

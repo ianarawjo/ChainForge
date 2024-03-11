@@ -6,8 +6,9 @@
 import React, { useCallback, useMemo, useState, useRef } from "react";
 import { Menu, MenuStylesNames, Styles } from "@mantine/core";
 import { IconCopy, IconX } from "@tabler/icons-react";
-import AreYouSureModal from "./AreYouSureModal";
+import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import useStore from "./store";
+import { Dict } from "./backend/typing";
 
 interface BaseNodeProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
@@ -31,7 +32,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   const [contextMenuOpened, setContextMenuOpened] = useState(false);
 
   // For 'delete node' confirmation popup
-  const deleteConfirmModal = useRef(null);
+  const deleteConfirmModal = useRef<AreYouSureModalRef>(null);
 
   // Class styles for ChainForge nodes
   const classes = useMemo(() => {
@@ -50,12 +51,12 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
       deleteConfirmModal.current.trigger();
   }, [deleteConfirmModal]);
 
-  const handleOpenContextMenu = (e) => {
+  const handleOpenContextMenu = (e: Dict) => {
     // Ignore all right-clicked elements that aren't children of the parent,
     // and that aren't divs (for instance, textfields should still have normal right-click)
     if (e.target?.localName !== "div") return;
 
-    let parent = e.target.parentElement;
+    let parent = e.target?.parentElement;
     let found_cfnode = false;
     while (parent) {
       if (parent.className.startsWith("cfnode")) {

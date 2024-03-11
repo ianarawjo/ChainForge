@@ -223,7 +223,7 @@ const JoinNode = ({ data, id }) => {
             fill_history: isMetavar ? {} : vars,
             metavars: isMetavar ? vars : {},
             llm,
-            batch_id: uuid(),
+            uid: uuid(),
             // NOTE: We lose all other metadata here, because we could've joined across other vars or metavars values.
           };
         },
@@ -241,7 +241,7 @@ const JoinNode = ({ data, id }) => {
           fill_history: {},
           metavars: {},
           llm,
-          batch_id: uuid(),
+          uid: uuid(),
         });
       }
 
@@ -264,7 +264,7 @@ const JoinNode = ({ data, id }) => {
             ? llm_lookup[p.metavars.__LLM_key]
             : undefined,
         metavars: removeLLMTagFromMetadata(p.metavars),
-        batch_id: uuid(),
+        uid: uuid(),
       }));
 
       // If there's multiple LLMs and groupByLLM is 'within', we need to
@@ -305,7 +305,7 @@ const JoinNode = ({ data, id }) => {
               text: joined_texts,
               fill_history: {},
               llm: resp_objs[0].llm,
-              batch_id: uuid(),
+              uid: uuid(),
             };
 
           setJoinedTexts([joined_texts]);
