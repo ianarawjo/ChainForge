@@ -168,8 +168,6 @@ const PromptNode = ({ data, id, type: node_type }) => {
     [node_type],
   );
 
-  console.log("re-render");
-
   // Get state from the Zustand store:
   const edges = useStore((state) => state.edges);
   const pullInputData = useStore((state) => state.pullInputData);
