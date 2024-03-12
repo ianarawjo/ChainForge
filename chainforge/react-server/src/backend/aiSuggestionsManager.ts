@@ -125,7 +125,7 @@ class AISuggestionsManager {
    */
 
   // Update what the suggestions are based off of. Debounce included.
-  update: (newBase: Row[]) => void = debounce((newBase) => {
+  update: (newBase: Row[]) => void = debounce((newBase: Row[]) => {
     // Clear suggestions if necessary.
     if (shouldClearSuggestions(newBase)) {
       this.clearSuggestions();

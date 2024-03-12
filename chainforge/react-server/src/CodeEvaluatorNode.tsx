@@ -8,7 +8,7 @@ import React, {
   useImperativeHandle,
   useContext,
 } from "react";
-import { Handle, NodeProps, Position } from "reactflow";
+import { Handle, Position } from "reactflow";
 import {
   Code,
   Modal,

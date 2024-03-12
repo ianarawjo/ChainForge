@@ -24,17 +24,17 @@ import {
   ModelSettingsDict,
 } from "./backend/typing";
 
-export interface ModelSettingsModalHandle {
+export interface ModelSettingsModalRef {
   trigger: () => void;
 }
 export interface ModelSettingsModalProps {
-  model: LLMSpec;
+  model?: LLMSpec;
   onSettingsSubmit?: () => void;
 }
 type FormData = LLMSpec["formData"];
 
 const ModelSettingsModal = forwardRef<
-  ModelSettingsModalHandle,
+  ModelSettingsModalRef,
   ModelSettingsModalProps
 >(function ModelSettingsModal({ model, onSettingsSubmit }, ref) {
   const [opened, { open, close }] = useDisclosure(false);
@@ -103,6 +103,7 @@ const ModelSettingsModal = forwardRef<
   // Postprocess the form data into the format expected by the backend (kwargs passed to Python API calls)
   const postprocess = useCallback(
     (fdata: FormData) => {
+      if (model === undefined) return {};
       return postProcessFormData(ModelSettings[model.base_model], fdata ?? {});
     },
     [model],
@@ -127,7 +128,7 @@ const ModelSettingsModal = forwardRef<
 
       setFormData(patched_fdata);
 
-      if (onSettingsSubmit) {
+      if (onSettingsSubmit && model !== undefined) {
         model.emoji = modelEmoji;
         onSettingsSubmit(model, patched_fdata, postprocess(patched_fdata));
       }

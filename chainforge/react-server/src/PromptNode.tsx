@@ -28,8 +28,9 @@ import TemplateHooks, {
   extractBracketedSubstrings,
 } from "./TemplateHooksComponent";
 import { LLMListContainer } from "./LLMListComponent";
-import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
-import fetch_from_backend from "./fetch_from_backend";
+import LLMResponseInspectorModal, {
+  LLMResponseInspectorModalRef,
+} from "./LLMResponseInspectorModal";
 import { PromptTemplate, escapeBraces } from "./backend/template";
 import ChatHistoryView from "./ChatHistoryView";
 import InspectFooter from "./InspectFooter";
@@ -54,6 +55,12 @@ import {
 } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
+import {
+  countQueries,
+  generatePrompts,
+  grabResponses,
+  queryLLM,
+} from "./backend/backend";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -64,11 +71,11 @@ const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   return `LLM_${i}`;
 };
 const bucketChatHistoryInfosByLLM = (chat_hist_infos: ChatHistoryInfo[]) => {
-  const chats_by_llm = {};
+  const chats_by_llm: Dict<ChatHistoryInfo[]> = {};
   chat_hist_infos.forEach((chat_hist_info) => {
-    if (chat_hist_info.llm in chats_by_llm)
-      chats_by_llm[chat_hist_info.llm].push(chat_hist_info);
-    else chats_by_llm[chat_hist_info.llm] = [chat_hist_info];
+    const llm_name = chat_hist_info.llm ?? "undefined";
+    if (llm_name in chats_by_llm) chats_by_llm[llm_name].push(chat_hist_info);
+    else chats_by_llm[llm_name] = [chat_hist_info];
   });
   return chats_by_llm;
 };
@@ -158,7 +165,26 @@ const PromptListPopover = ({ promptInfos, onHover, onClick }) => {
   );
 };
 
-const PromptNode = ({ data, id, type: node_type }) => {
+export interface PromptNodeProps {
+  data: {
+    title: string;
+    vars: string[];
+    llms: LLMSpec[];
+    prompt: string;
+    n: number;
+    contChat: boolean;
+    refresh: boolean;
+    refreshLLMList: boolean;
+  };
+  id: string;
+  type: string;
+}
+
+const PromptNode: React.FC<PromptNodeProps> = ({
+  data,
+  id,
+  type: node_type,
+}) => {
   const node_icon = useMemo(
     () => (node_type === "chat" ? "🗣" : "💬"),
     [node_type],
@@ -203,7 +229,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
   const showAlert = useContext(AlertModalContext);
 
   // For a way to inspect responses without having to attach a dedicated node
-  const inspectModal = useRef(null);
+  const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
   // eslint-disable-next-line
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [responsesWillChange, setResponsesWillChange] = useState(false);
@@ -278,7 +304,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
         !new_items.every((itemA) => {
           const itemB = old_items.find((b) => b.key === itemA.key);
           return (
-            JSON.stringify(itemA.settings) === JSON.stringify(itemB.settings)
+            JSON.stringify(itemA.settings) === JSON.stringify(itemB?.settings)
           );
         })
       ) {
@@ -337,7 +363,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     [setTemplateVars, templateVars, pullInputData, id],
   );
 
-  const handleInputChange = (event) => {
+  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = event.target.value;
 
     // Store prompt text
@@ -361,15 +387,15 @@ const PromptNode = ({ data, id, type: node_type }) => {
     refreshTemplateHooks(promptText);
 
     // Attempt to grab cache'd responses
-    fetch_from_backend("grabResponses", {
-      responses: [id],
-    }).then(function (json) {
-      if (json.responses && json.responses.length > 0) {
-        // Store responses and set status to green checkmark
-        setJSONResponses(json.responses);
-        setStatus(Status.READY);
-      }
-    });
+    grabResponses([id])
+      .then(function (resps) {
+        if (resps.length > 0) {
+          // Store responses and set status to green checkmark
+          setJSONResponses(resps);
+          setStatus(Status.READY);
+        }
+      })
+      .catch(console.error); // soft fail
   }, []);
 
   // On upstream changes
@@ -399,51 +425,58 @@ const PromptNode = ({ data, id, type: node_type }) => {
     const llm_names = new Set();
     const past_chat_llms: (LLMSpec | string)[] = [];
 
+    // Filter all inputs that have metadata (vars, metavars, etc) and aren't just string inputs.
+    const past_chat_inputs = pulled_data.__past_chats.filter(
+      (info) => typeof info !== "string",
+    ) as TemplateVarInfo[];
+
     // We need to calculate the conversation history from the pulled responses.
     // Note that TemplateVarInfo might have a 'chat_history' component, but this does not
     // include the most recent prompt and response --for that, we need to use the 'prompt' and 'text' items.
     // We need to create a revised chat history that concatenates the past history with the last AI + human turns:
-    const past_chats = pulled_data.__past_chats.map((info: TemplateVarInfo) => {
-      // Add to unique LLMs list, if necessary
-      if (
-        typeof info?.llm !== "string" &&
-        info?.llm?.name !== undefined &&
-        !llm_names.has(info.llm.name)
-      ) {
-        llm_names.add(info.llm.name);
-        past_chat_llms.push(info.llm);
-      }
+    const past_chats = past_chat_inputs.map<ChatHistoryInfo>(
+      (info: TemplateVarInfo) => {
+        // Add to unique LLMs list, if necessary
+        if (
+          typeof info?.llm !== "string" &&
+          info?.llm?.name !== undefined &&
+          !llm_names.has(info.llm.name)
+        ) {
+          llm_names.add(info.llm.name);
+          past_chat_llms.push(info.llm);
+        }
 
-      // Create revised chat_history on the TemplateVarInfo object,
-      // with the prompt and text of the pulled data as the 2nd-to-last, and last, messages:
-      const last_messages = [
-        { role: "user", content: info.prompt },
-        { role: "assistant", content: info.text },
-      ];
-      let updated_chat_hist =
-        info.chat_history !== undefined
-          ? info.chat_history.concat(last_messages)
-          : last_messages;
+        // Create revised chat_history on the TemplateVarInfo object,
+        // with the prompt and text of the pulled data as the 2nd-to-last, and last, messages:
+        const last_messages = [
+          { role: "user", content: info.prompt ?? "" },
+          { role: "assistant", content: info.text },
+        ];
+        let updated_chat_hist =
+          info.chat_history !== undefined
+            ? info.chat_history.concat(last_messages)
+            : last_messages;
 
-      // Append any present system message retroactively as the first message in the chat history:
-      if (
-        typeof info?.llm !== "string" &&
-        info?.llm?.settings?.system_msg !== undefined &&
-        updated_chat_hist[0].role !== "system"
-      )
-        updated_chat_hist = [
-          { role: "system", content: info.llm.settings.system_msg },
-        ].concat(updated_chat_hist);
+        // Append any present system message retroactively as the first message in the chat history:
+        if (
+          typeof info?.llm !== "string" &&
+          typeof info?.llm?.settings?.system_msg === "string" &&
+          updated_chat_hist[0].role !== "system"
+        )
+          updated_chat_hist = [
+            { role: "system", content: info.llm.settings.system_msg },
+          ].concat(updated_chat_hist);
 
-      // ChatHistoryInfo format (see typing.ts)
-      return {
-        messages: updated_chat_hist,
-        fill_history: info.fill_history,
-        metavars: info.metavars,
-        llm: info?.llm?.name,
-        uid: uuid(),
-      };
-    });
+        // ChatHistoryInfo format (see typing.ts)
+        return {
+          messages: updated_chat_hist,
+          fill_history: info.fill_history,
+          metavars: info.metavars,
+          llm: typeof info?.llm === "string" ? info.llm : info?.llm?.name,
+          uid: uuid(),
+        };
+      },
+    );
 
     // Returns [list of LLM specs, list of ChatHistoryInfo]
     return [past_chat_llms, past_chats];
@@ -451,33 +484,27 @@ const PromptNode = ({ data, id, type: node_type }) => {
 
   // Ask the backend how many responses it needs to collect, given the input data:
   const fetchResponseCounts = (
-    prompt,
-    vars,
-    llms,
-    chat_histories,
-    rejected,
+    prompt: string,
+    vars: Dict,
+    llms: (string | Dict)[],
+    rejected: (err: string | Error) => void,
+    chat_histories?:
+      | (ChatHistoryInfo | undefined)[]
+      | Dict<(ChatHistoryInfo | undefined)[]>,
   ) => {
-    return fetch_from_backend(
-      "countQueriesRequired",
-      {
-        prompt,
-        vars,
-        llms,
-        id,
-        chat_histories,
-        n: numGenerations,
-        cont_only_w_prior_llms:
-          node_type !== "chat"
-            ? showContToggle && contWithPriorLLMs
-            : undefined,
-      },
-      rejected,
-    ).then(function (json) {
-      if (!json || !json.counts) {
-        throw new Error("There was no response from the server.");
-      }
-      return [json.counts, json.total_num_responses];
-    }, rejected);
+    return countQueries(
+      prompt,
+      vars,
+      llms,
+      numGenerations,
+      chat_histories,
+      id,
+      node_type !== "chat" ? showContToggle && contWithPriorLLMs : undefined,
+    )
+      .then(function (results) {
+        return [results.counts, results.total_num_responses];
+      })
+      .catch(rejected);
   };
 
   // On hover over the 'info' button, to preview the prompts that will be sent out
@@ -488,12 +515,9 @@ const PromptNode = ({ data, id, type: node_type }) => {
       const pulled_vars = pullInputData(templateVars, id);
       updateShowContToggle(pulled_vars);
 
-      fetch_from_backend("generatePrompts", {
-        prompt: promptText,
-        vars: pulled_vars,
-      }).then((prompts) => {
+      generatePrompts(promptText, pulled_vars).then((prompts) => {
         setPromptPreviews(
-          (prompts as PromptTemplate[]).map(
+          prompts.map(
             (p: PromptTemplate) =>
               new PromptInfo(p.toString(), extractSettingsVars(p.fill_history)),
           ),
@@ -519,15 +543,19 @@ const PromptNode = ({ data, id, type: node_type }) => {
     let _llmItemsCurrState = llmItemsCurrState;
 
     // If this is a chat node, we also need to pull chat histories:
-    let [past_chat_llms, pulled_chats] =
+    const [past_chat_llms, pulled_chats] =
       node_type === "chat" ? pullInputChats() : [undefined, undefined];
+    let chat_hist_by_llm: Dict<ChatHistoryInfo[]> | undefined;
+
     if (node_type === "chat" && contWithPriorLLMs) {
-      if (past_chat_llms === undefined) {
+      if (past_chat_llms === undefined || pulled_chats === undefined) {
         setRunTooltip("Attach an input to past conversations first.");
         return;
       }
-      _llmItemsCurrState = past_chat_llms;
-      pulled_chats = bucketChatHistoryInfosByLLM(pulled_chats);
+      _llmItemsCurrState = past_chat_llms as LLMSpec[];
+      chat_hist_by_llm = bucketChatHistoryInfosByLLM(
+        pulled_chats as ChatHistoryInfo[],
+      );
     }
 
     // Pull the input data
@@ -562,10 +590,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
       promptText,
       pulled_vars,
       _llmItemsCurrState,
-      pulled_chats,
       (err) => {
-        console.warn(err.message); // soft fail
+        console.warn(typeof err === "string" ? err : err.message); // soft fail
       },
+      chat_hist_by_llm,
     )
       .then(([counts]) => {
         // Check for empty counts (means no requests will be sent!)
@@ -652,6 +680,10 @@ const PromptNode = ({ data, id, type: node_type }) => {
     // If this is a chat node, we need to pull chat histories:
     let [past_chat_llms, pulled_chats] =
       node_type === "chat" ? pullInputChats() : [undefined, undefined];
+    let chat_hist_by_llm: Dict<ChatHistoryInfo[]> | undefined;
+
+    past_chat_llms = past_chat_llms as (string | LLMSpec)[] | undefined;
+    pulled_chats = pulled_chats as ChatHistoryInfo[] | undefined;
 
     // If this is a chat node and 'continuing chat with prior LLMs' is checked,
     // there's no customizable model list (llmItemsCurrState). Instead, we need to get the unique
@@ -661,7 +693,7 @@ const PromptNode = ({ data, id, type: node_type }) => {
     let _llmItemsCurrState = llmItemsCurrState;
     if (node_type === "chat" && contWithPriorLLMs) {
       // If there's nothing attached to past conversations, we can't continue the chat:
-      if (past_chat_llms === undefined) {
+      if (past_chat_llms === undefined || pulled_chats === undefined) {
         triggerAlert(
           `You need to attach an input to the Past Conversation message first. For instance, you might query 
 multiple chat LLMs with a prompt node, and then attach the Prompt Node output to the
@@ -693,14 +725,14 @@ Soft failing by replacing undefined with empty strings.`,
       }
 
       // Override LLM list with the past llm info (unique LLMs in prior responses)
-      _llmItemsCurrState = past_chat_llms;
+      _llmItemsCurrState = past_chat_llms as LLMSpec[];
 
       // Now we need transform the 'pulled_chats' to be a dict indexed by LLM nicknames:
-      pulled_chats = bucketChatHistoryInfosByLLM(pulled_chats);
+      chat_hist_by_llm = bucketChatHistoryInfosByLLM(pulled_chats);
     }
 
     // Pull the data to fill in template input variables, if any
-    let pulled_data = {};
+    let pulled_data: Dict<(string | TemplateVarInfo)[]> = {};
     try {
       // Try to pull inputs
       pulled_data = pullInputData(templateVars, id);
@@ -750,8 +782,8 @@ Soft failing by replacing undefined with empty strings.`,
         prompt_template,
         pulled_data,
         _llmItemsCurrState,
-        pulled_chats,
         rejected,
+        pulled_chats,
       );
 
     // Initialize progress bars to small amounts
@@ -762,7 +794,10 @@ Soft failing by replacing undefined with empty strings.`,
     let onProgressChange:
       | ((progress_by_llm_key: Dict<QueryProgress>) => void)
       | undefined;
-    const open_progress_listener = ([response_counts, total_num_responses]) => {
+    const open_progress_listener = ([response_counts, total_num_responses]: [
+      Dict<Dict<number>>,
+      Dict<number>,
+    ]) => {
       setResponsesWillChange(
         !response_counts || Object.keys(response_counts).length === 0,
       );
@@ -819,145 +854,141 @@ Soft failing by replacing undefined with empty strings.`,
 
     // Run all prompt permutations through the LLM to generate + cache responses:
     const query_llms = () => {
-      return fetch_from_backend(
-        "queryllm",
-        {
-          id,
-          llm: _llmItemsCurrState, // deep clone it first
-          prompt: prompt_template,
-          vars: pulled_data,
-          chat_histories: pulled_chats,
-          n: numGenerations,
-          api_keys: apiKeys || {},
-          no_cache: false,
-          progress_listener: onProgressChange,
-          cont_only_w_prior_llms:
-            node_type !== "chat"
-              ? showContToggle && contWithPriorLLMs
-              : undefined,
-          cancel_id: cancelId,
-        },
-        rejected,
-      ).then(function (json: unknown) {
-        // We have to early exit explicitly because we will still enter this function even if 'rejected' is called
-        if (!json && CancelTracker.has(cancelId)) return;
+      return queryLLM(
+        id,
+        _llmItemsCurrState, // deep clone it first
+        numGenerations,
+        prompt_template,
+        pulled_data,
+        chat_hist_by_llm,
+        apiKeys || {},
+        false,
+        onProgressChange,
+        node_type !== "chat" ? showContToggle && contWithPriorLLMs : undefined,
+        cancelId,
+      )
+        .then(function (json) {
+          // We have to early exit explicitly because we will still enter this function even if 'rejected' is called
+          if (!json && CancelTracker.has(cancelId)) return;
 
-        // Remove progress bars
-        setProgress(undefined);
-        setProgressAnimated(false);
-        // eslint-disable-next-line
-        debounce(() => {}, 1)(); // erase any pending debounces
-
-        // Store and log responses (if any)
-        if (json?.responses) {
-          const json_responses = json.responses as LLMResponse[];
-          setJSONResponses(json_responses);
-
-          // Log responses for debugging:
-          console.log(json_responses);
-
-          // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
-          // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
-          // so we can keep track of 'upstream' LLMs (and plot against them) later on:
-          const llm_metavar_key = getUniqueLLMMetavarKey(json_responses);
-
-          setDataPropsForNode(id, {
-            fields: json_responses
-              .map((resp_obj) =>
-                resp_obj.responses.map((r) => {
-                  // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
-                  const o = {
-                    text: escapeBraces(r),
-                    prompt: resp_obj.prompt,
-                    fill_history: resp_obj.vars,
-                    llm: _llmItemsCurrState.find(
-                      (item) => item.name === resp_obj.llm,
-                    ),
-                    uid: resp_obj.uid,
-                  };
-
-                  // Carry over any metavars
-                  o.metavars = resp_obj.metavars ?? {};
-
-                  // Add a metavar for the prompt *template* in this PromptNode
-                  o.metavars.__pt = promptText;
-
-                  // Carry over any chat history
-                  if (resp_obj.chat_history)
-                    o.chat_history = resp_obj.chat_history;
-
-                  // Add a meta var to keep track of which LLM produced this response
-                  if (llm_metavar_key !== undefined)
-                    o.metavars[llm_metavar_key] = resp_obj.llm;
-                  return o;
-                }),
-              )
-              .flat(),
-          });
-        }
-
-        // If there was at least one error collecting a response...
-        const llms_w_errors = json?.errors ? Object.keys(json.errors) : [];
-        if (llms_w_errors.length > 0) {
-          // Remove the total progress bar
+          // Remove progress bars
           setProgress(undefined);
+          setProgressAnimated(false);
+          // eslint-disable-next-line
+          debounce(() => {}, 1)(); // erase any pending debounces
 
-          // Ensure there's a sliver of error displayed in the progress bar
-          // of every LLM item that has an error:
-          llmListContainer?.current?.ensureLLMItemsErrorProgress(llms_w_errors);
+          // Store and log responses (if any)
+          if (json?.responses) {
+            const json_responses = json.responses as LLMResponse[];
+            setJSONResponses(json_responses);
 
-          // Set error status
-          setStatus(Status.ERROR);
+            // Log responses for debugging:
+            console.log(json_responses);
+
+            // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
+            // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
+            // so we can keep track of 'upstream' LLMs (and plot against them) later on:
+            const llm_metavar_key = getUniqueLLMMetavarKey(json_responses);
+
+            setDataPropsForNode(id, {
+              fields: json_responses
+                .map((resp_obj) =>
+                  resp_obj.responses.map((r) => {
+                    // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
+                    const o = {
+                      text: escapeBraces(r),
+                      prompt: resp_obj.prompt,
+                      fill_history: resp_obj.vars,
+                      llm: _llmItemsCurrState.find(
+                        (item) => item.name === resp_obj.llm,
+                      ),
+                      uid: resp_obj.uid,
+                    };
+
+                    // Carry over any metavars
+                    o.metavars = resp_obj.metavars ?? {};
+
+                    // Add a metavar for the prompt *template* in this PromptNode
+                    o.metavars.__pt = prompt_template;
+
+                    // Carry over any chat history
+                    if (resp_obj.chat_history)
+                      o.chat_history = resp_obj.chat_history;
+
+                    // Add a meta var to keep track of which LLM produced this response
+                    o.metavars[llm_metavar_key] = resp_obj.llm;
+                    return o;
+                  }),
+                )
+                .flat(),
+            });
+          }
+
+          // If there was at least one error collecting a response...
+          const llms_w_errors = json?.errors ? Object.keys(json.errors) : [];
+          if (llms_w_errors.length > 0) {
+            // Remove the total progress bar
+            setProgress(undefined);
+
+            // Ensure there's a sliver of error displayed in the progress bar
+            // of every LLM item that has an error:
+            llmListContainer?.current?.ensureLLMItemsErrorProgress(
+              llms_w_errors,
+            );
+
+            // Set error status
+            setStatus(Status.ERROR);
+            setContChatToggleDisabled(false);
+
+            // Trigger alert and display one error message per LLM of all collected errors:
+            let combined_err_msg = "";
+            llms_w_errors.forEach((llm_key) => {
+              const item = _llmItemsCurrState.find(
+                (item) => item.key === llm_key,
+              );
+              combined_err_msg +=
+                item?.name +
+                ": " +
+                JSON.stringify(json.errors[llm_key][0]) +
+                "\n";
+            });
+            // We trigger the alert directly (don't use triggerAlert) here because we want to keep the progress bar:
+            if (showAlert)
+              showAlert(
+                "Errors collecting responses. Re-run prompt node to retry.\n\n" +
+                  combined_err_msg,
+              );
+
+            return;
+          }
+
+          if (responsesWillChange && !showDrawer) setUninspectedResponses(true);
+
+          setResponsesWillChange(false);
           setContChatToggleDisabled(false);
 
-          // Trigger alert and display one error message per LLM of all collected errors:
-          let combined_err_msg = "";
-          llms_w_errors.forEach((llm_key) => {
-            const item = _llmItemsCurrState.find(
-              (item) => item.key === llm_key,
+          // Remove individual progress rings
+          llmListContainer?.current?.resetLLMItemsProgress();
+
+          if (json?.error || !json) {
+            rejected(
+              json?.error ??
+                "Request was sent and received by backend server, but there was no response.",
             );
-            combined_err_msg +=
-              item?.name +
-              ": " +
-              JSON.stringify(json.errors[llm_key][0]) +
-              "\n";
-          });
-          // We trigger the alert directly (don't use triggerAlert) here because we want to keep the progress bar:
-          if (showAlert)
-            showAlert(
-              "Errors collecting responses. Re-run prompt node to retry.\n\n" +
-                combined_err_msg,
-            );
+            return;
+          }
 
-          return;
-        }
+          // Save prompt text so we remember what prompt we have responses cache'd for:
+          setPromptTextOnLastRun(promptText);
+          setNumGenerationsLastRun(numGenerations);
 
-        if (responsesWillChange && !showDrawer) setUninspectedResponses(true);
+          // All responses collected! Change status to 'ready':
+          setStatus(Status.READY);
 
-        setResponsesWillChange(false);
-        setContChatToggleDisabled(false);
-
-        // Remove individual progress rings
-        llmListContainer?.current?.resetLLMItemsProgress();
-
-        if (json?.error || !json) {
-          rejected(
-            json?.error ??
-              "Request was sent and received by backend server, but there was no response.",
-          );
-          return;
-        }
-
-        // Save prompt text so we remember what prompt we have responses cache'd for:
-        setPromptTextOnLastRun(promptText);
-        setNumGenerationsLastRun(numGenerations);
-
-        // All responses collected! Change status to 'ready':
-        setStatus(Status.READY);
-
-        // Ping any inspect nodes attached to this node to refresh their contents:
-        pingOutputNodes(id);
-      }, rejected);
+          // Ping any inspect nodes attached to this node to refresh their contents:
+          pingOutputNodes(id);
+        })
+        .catch(rejected);
     };
 
     // Now put it all together!
@@ -986,8 +1017,9 @@ Soft failing by replacing undefined with empty strings.`,
   }, [cancelId, refreshCancelId]);
 
   const handleNumGenChange = useCallback(
-    (event) => {
-      let n = event.target.value;
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      let n: string | number = event.target.value;
+      // @ts-expect-error The isNaN check on a string input is the correct approach to determining what we want, yet this will show an error in TS.
       if (!isNaN(n) && n.length > 0 && /^\d+$/.test(n)) {
         // n is an integer; save it
         n = parseInt(n);
@@ -1008,7 +1040,8 @@ Soft failing by replacing undefined with empty strings.`,
   const textAreaRef = useRef<HTMLTextAreaElement | HTMLDivElement | null>(null);
   const [hooksY, setHooksY] = useState(138);
   const setRef = useCallback(
-    (elem: HTMLDivElement | HTMLTextAreaElement) => {
+    (elem: HTMLDivElement | HTMLTextAreaElement | null) => {
+      if (!elem) return;
       // To listen for resize events of the textarea, we need to use a ResizeObserver.
       // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div wrapping textfields.
       // NOTE: This won't work on older browsers, but there's no alternative solution.
@@ -1055,8 +1088,7 @@ Soft failing by replacing undefined with empty strings.`,
       />
       <LLMResponseInspectorModal
         ref={inspectModal}
-        jsonResponses={jsonResponses}
-        prompt={promptText}
+        jsonResponses={jsonResponses ?? []}
       />
       <Modal
         title={
@@ -1072,7 +1104,7 @@ Soft failing by replacing undefined with empty strings.`,
           root: { position: "relative", left: "-5%" },
         }}
       >
-        <Box size={600} m="lg" mt="xl">
+        <Box m="lg" mt="xl">
           {displayPromptInfos(promptPreviews, true)}
         </Box>
       </Modal>
@@ -1221,7 +1253,7 @@ Soft failing by replacing undefined with empty strings.`,
       </div>
 
       <LLMResponseInspectorDrawer
-        jsonResponses={jsonResponses}
+        jsonResponses={jsonResponses ?? []}
         showDrawer={showDrawer}
       />
     </BaseNode>

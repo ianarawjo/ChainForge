@@ -408,7 +408,8 @@ export class PromptPipeline {
     // Now try to call the API. If it fails for whatever reason, 'soft fail' by returning
     // an LLMResponseException object as the 'response'.
     const params = deepcopy(llm_params);
-    if (chat_history !== undefined) params.chat_history = chat_history.messages;
+    if (chat_history !== undefined && params)
+      params.chat_history = chat_history.messages;
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;
     try {
