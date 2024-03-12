@@ -104,6 +104,11 @@ export interface LLMAPICall {
   ): Promise<[Dict, Dict]>;
 }
 
+export type QueryProgress = {
+  success: number;
+  error: number;
+};
+
 /** What LLM to call, at what settings. */
 export type LLMSpec = {
   name: string;
@@ -114,7 +119,7 @@ export type LLMSpec = {
   key?: string;
   formData?: Dict<JSONCompatible>;
   settings?: Dict<JSONCompatible>;
-  progress?: Dict<number>; // only used for front-end to display progress collecting responses for this LLM
+  progress?: QueryProgress; // only used for front-end to display progress collecting responses for this LLM
 };
 
 /** A spec for a user-defined custom LLM provider */
@@ -230,11 +235,6 @@ export type VarsContext =
 export type PromptVarType = string | TemplateVarInfo;
 export type PromptVarsDict = {
   [key: string]: PromptVarType[];
-};
-
-export type QueryProgress = {
-  success: number;
-  error: number;
 };
 
 export type TabularDataRowType = Dict<string>;

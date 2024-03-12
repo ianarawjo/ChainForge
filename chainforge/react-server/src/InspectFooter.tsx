@@ -7,12 +7,12 @@ import {
 } from "@tabler/icons-react";
 
 export interface InspectFooterProps {
-  label: React.ReactNode;
   onClick: () => void;
   showDrawerButton: boolean;
   onDrawerClick: () => void;
   isDrawerOpen: boolean;
   showNotificationDot?: boolean;
+  label?: React.ReactNode;
 }
 
 /**

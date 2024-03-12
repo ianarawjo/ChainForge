@@ -1657,7 +1657,7 @@ export const setsAreEqual = (setA: Set<any>, setB: Set<any>): boolean => {
   return equal;
 };
 
-export const deepcopy = (v: any) => JSON.parse(JSON.stringify(v));
+export const deepcopy = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 export const deepcopy_and_modify = (v: Dict, new_val_dict: Dict) => {
   const new_v = deepcopy(v);
   Object.entries(new_val_dict).forEach(([key, val]) => {

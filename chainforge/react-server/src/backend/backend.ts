@@ -516,28 +516,27 @@ export async function countQueries(
   n: number,
   chat_histories?:
     | (ChatHistoryInfo | undefined)[]
-    | { [key: string]: (ChatHistoryInfo | undefined)[] },
+    | Dict<(ChatHistoryInfo | undefined)[]>,
   id?: string,
   cont_only_w_prior_llms?: boolean,
-): Promise<Dict> {
+): Promise<{ counts: Dict<Dict<number>>; total_num_responses: Dict<number> }> {
   if (chat_histories === undefined) chat_histories = [undefined];
+  vars = deepcopy(vars);
+  llms = deepcopy(llms);
 
-  let gen_prompts: PromptPermutationGenerator;
   let all_prompt_permutations: PromptTemplate[] | Dict<PromptTemplate[]>;
-  try {
-    gen_prompts = new PromptPermutationGenerator(prompt);
-    if (cont_only_w_prior_llms && Array.isArray(llms)) {
-      all_prompt_permutations = {};
-      llms.forEach((llm_spec) => {
-        const llm_key = extract_llm_key(llm_spec);
-        (all_prompt_permutations as Dict<PromptTemplate[]>)[llm_key] =
-          Array.from(gen_prompts.generate(filterVarsByLLM(vars, llm_key)));
-      });
-    } else {
-      all_prompt_permutations = Array.from(gen_prompts.generate(vars));
-    }
-  } catch (err) {
-    return { error: (err as Error).message };
+
+  const gen_prompts = new PromptPermutationGenerator(prompt);
+  if (cont_only_w_prior_llms && Array.isArray(llms)) {
+    all_prompt_permutations = {};
+    llms.forEach((llm_spec) => {
+      const llm_key = extract_llm_key(llm_spec);
+      (all_prompt_permutations as Dict<PromptTemplate[]>)[llm_key] = Array.from(
+        gen_prompts.generate(filterVarsByLLM(vars, llm_key)),
+      );
+    });
+  } else {
+    all_prompt_permutations = Array.from(gen_prompts.generate(vars));
   }
 
   let cache_file_lookup: Dict = {};
@@ -705,7 +704,7 @@ export async function queryLLM(
   no_cache?: boolean,
   progress_listener?: (progress: { [key: symbol]: any }) => void,
   cont_only_w_prior_llms?: boolean,
-  cancel_id?: string,
+  cancel_id?: string | number,
 ): Promise<{ responses: LLMResponse[]; errors: Dict<string[]> }> {
   // Verify the integrity of the params
   if (typeof id !== "string" || id.trim().length === 0)
@@ -719,7 +718,9 @@ export async function queryLLM(
   // Ensure llm param is an array
   if (typeof llm === "string") llm = [llm];
 
-  llm = llm as string[] | LLMSpec[];
+  // Cast and deep copy these objects as they may be modified
+  llm = deepcopy(llm) as string[] | LLMSpec[];
+  vars = deepcopy(vars);
 
   if (api_keys !== undefined) set_api_keys(api_keys);
 

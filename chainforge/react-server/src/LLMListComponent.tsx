@@ -8,13 +8,21 @@ import React, {
   useReducer,
   useMemo,
 } from "react";
-import { DragDropContext, Draggable } from "react-beautiful-dnd";
+import {
+  DragDropContext,
+  Draggable,
+  OnDragEndResponder,
+} from "react-beautiful-dnd";
+import { Menu } from "@mantine/core";
 import { v4 as uuid } from "uuid";
 import LLMListItem, { LLMListItemClone } from "./LLMListItem";
 import { StrictModeDroppable } from "./StrictModeDroppable";
-import ModelSettingsModal from "./ModelSettingsModal";
+import ModelSettingsModal, {
+  ModelSettingsModalRef,
+} from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
-import useStore, { initLLMProviderMenu, initLLMProviders } from "./store";
+import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
+import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
 import { useContextMenu } from "mantine-contextmenu";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
@@ -22,8 +30,8 @@ import { useContextMenu } from "mantine-contextmenu";
 const DEFAULT_INIT_LLMS = [initLLMProviders[0]];
 
 // Helper funcs
-/** Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)") */
-const ensureUniqueName = (_name, _prev_names) => {
+// Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
+const ensureUniqueName = (_name: string, _prev_names: string[]) => {
   // Strip whitespace around names
   const prev_names = _prev_names.map((n) => n.trim());
   const name = _name.trim();
@@ -42,7 +50,7 @@ const ensureUniqueName = (_name, _prev_names) => {
 };
 
 /** Get position CSS style below and left-aligned to the input element */
-const getPositionCSSStyle = (elem) => {
+const getPositionCSSStyle = (elem: HTMLButtonElement) => {
   const rect = elem.getBoundingClientRect();
   return {
     style: {
@@ -53,13 +61,23 @@ const getPositionCSSStyle = (elem) => {
   };
 };
 
-export function LLMList({ llms, onItemsChange, hideTrashIcon }) {
+export function LLMList({
+  llms,
+  onItemsChange,
+  hideTrashIcon,
+}: {
+  llms: LLMSpec[];
+  onItemsChange: (new_items: LLMSpec[]) => void;
+  hideTrashIcon: boolean;
+}) {
   const [items, setItems] = useState(llms);
-  const settingsModal = useRef(null);
-  const [selectedModel, setSelectedModel] = useState(undefined);
+  const settingsModal = useRef<ModelSettingsModalRef>(null);
+  const [selectedModel, setSelectedModel] = useState<LLMSpec | undefined>(
+    undefined,
+  );
 
   const updateItems = useCallback(
-    (new_items) => {
+    (new_items: LLMSpec[]) => {
       setItems(new_items);
       onItemsChange(new_items);
     },
@@ -67,7 +85,7 @@ export function LLMList({ llms, onItemsChange, hideTrashIcon }) {
   );
 
   const onClickSettings = useCallback(
-    (item) => {
+    (item: LLMSpec) => {
       if (settingsModal && settingsModal.current) {
         setSelectedModel(item);
         settingsModal.current.trigger();
@@ -77,7 +95,11 @@ export function LLMList({ llms, onItemsChange, hideTrashIcon }) {
   );
 
   const onSettingsSubmit = useCallback(
-    (savedItem, formData, settingsData) => {
+    (
+      savedItem: LLMSpec,
+      formData: Dict<JSONCompatible>,
+      settingsData: Dict<JSONCompatible>,
+    ) => {
       // First check for the item with key and get it:
       const llm = items.find((i) => i.key === savedItem.key);
       if (!llm) {
@@ -96,7 +118,7 @@ export function LLMList({ llms, onItemsChange, hideTrashIcon }) {
         items.map((item) => {
           if (item.key === savedItem.key) {
             // Create a new item with the same settings
-            const updated_item = { ...item };
+            const updated_item: LLMSpec = { ...item };
             updated_item.formData = { ...formData };
             updated_item.settings = { ...settingsData };
 
@@ -105,12 +127,12 @@ export function LLMList({ llms, onItemsChange, hideTrashIcon }) {
               if (item.base_model.startsWith("__custom"))
                 // Custom models must always have their base name, to avoid name collisions
                 updated_item.model = item.base_model + "/" + formData.model;
-              else updated_item.model = formData.model;
+              else updated_item.model = formData.model as string;
             }
             if ("shortname" in formData) {
               // Change the name, amending any name that isn't unique to ensure it is unique:
               const unique_name = ensureUniqueName(
-                formData.shortname,
+                formData.shortname as string,
                 prev_names,
               );
               updated_item.name = unique_name;
@@ -128,12 +150,13 @@ export function LLMList({ llms, onItemsChange, hideTrashIcon }) {
     [items, updateItems],
   );
 
-  const onDragEnd = (result) => {
+  const onDragEnd: OnDragEndResponder = (result) => {
     const { destination, source } = result;
     if (!destination) return;
     if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
+      (destination.droppableId === source.droppableId &&
+        destination.index === source.index) ||
+      !result.destination
     ) {
       return;
     }
@@ -144,7 +167,7 @@ export function LLMList({ llms, onItemsChange, hideTrashIcon }) {
   };
 
   const removeItem = useCallback(
-    (item_key) => {
+    (item_key: string) => {
       // Double-check that the item we want to remove is in the list of items...
       if (!items.find((i) => i.key === item_key)) {
         console.error(
@@ -252,7 +275,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
         ...i,
       })),
   );
-  const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
+  const [llmItemsCurrState, setLLMItemsCurrState] = useState<LLMSpec[]>([]);
   const resetLLMItemsProgress = useCallback(() => {
     setLLMItems(
       llmItemsCurrState.map((item) => {
@@ -270,7 +293,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
     );
   }, [llmItemsCurrState]);
   const updateProgress = useCallback(
-    (itemProcessorFunc) => {
+    (itemProcessorFunc: (llms: LLMSpec) => LLMSpec) => {
       setLLMItems(llmItemsCurrState.map(itemProcessorFunc));
     },
     [llmItemsCurrState],
@@ -305,7 +328,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
   );
 
   const handleSelectModel = useCallback(
-    (model) => {
+    (model: string) => {
       // Get the item for that model
       let item = AvailableLLMs.find((llm) => llm.base_model === model);
       if (!item) {
@@ -346,7 +369,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
   );
 
   const onLLMListItemsChange = useCallback(
-    (new_items) => {
+    (new_items: LLMSpec[]) => {
       setLLMItemsCurrState(new_items);
       if (onItemsChange) onItemsChange(new_items, llmItemsCurrState);
     },
