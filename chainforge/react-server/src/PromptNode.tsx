@@ -970,14 +970,6 @@ Soft failing by replacing undefined with empty strings.`,
           // Remove individual progress rings
           llmListContainer?.current?.resetLLMItemsProgress();
 
-          if (json?.error || !json) {
-            rejected(
-              json?.error ??
-                "Request was sent and received by backend server, but there was no response.",
-            );
-            return;
-          }
-
           // Save prompt text so we remember what prompt we have responses cache'd for:
           setPromptTextOnLastRun(promptText);
           setNumGenerationsLastRun(numGenerations);
