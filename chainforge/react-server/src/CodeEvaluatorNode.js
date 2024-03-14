@@ -344,46 +344,6 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
   const [lastResponses, setLastResponses] = useState([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
 
-  // Whenever lastResponses updates, update the output of this node:
-  useEffect(() => {
-    if (!lastResponses) return;
-    setDataPropsForNode(id, {
-      fields: lastResponses
-        .map((resp_obj, idx) =>
-          resp_obj.responses.map((r) => {
-            // Carry over the response text, prompt, prompt fill history (vars), and llm data
-            const o = {
-              text: escapeBraces(r),
-              prompt: resp_obj.prompt,
-              fill_history: resp_obj.vars,
-              metavars: resp_obj.metavars || {},
-              llm: resp_obj.llm,
-              batch_id: resp_obj.uid,
-            };
-
-            // Carry over any chat history
-            if (resp_obj.chat_history) o.chat_history = resp_obj.chat_history;
-
-            // Carry over any ratings
-            if (resp_obj.rating)
-              o.rating = {
-                grade:
-                  resp_obj.rating?.grade && idx in resp_obj.rating.grade
-                    ? resp_obj.rating.grade[idx]
-                    : undefined,
-                note:
-                  resp_obj.rating?.note && idx in resp_obj.rating.note
-                    ? resp_obj.rating.note[idx]
-                    : undefined,
-              };
-
-            return o;
-          }),
-        )
-        .flat(),
-    });
-  }, [lastResponses]);
-
   const pullInputs = useCallback(() => {
     // Pull input data
     let pulled_inputs = pullInputData(["responseBatch"], id);
@@ -490,6 +450,30 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
         if (status !== "ready" && !showDrawer) setUninspectedResponses(true);
 
         setStatus("ready");
+
+        setDataPropsForNode(id, {
+          fields: json.responses
+            .map((resp_obj) =>
+              resp_obj.responses.map((r) => {
+                // Carry over the response text, prompt, prompt fill history (vars), and llm data
+                const o = {
+                  text: escapeBraces(r),
+                  prompt: resp_obj.prompt,
+                  fill_history: resp_obj.vars,
+                  metavars: resp_obj.metavars || {},
+                  llm: resp_obj.llm,
+                  batch_id: resp_obj.uid,
+                };
+
+                // Carry over any chat history
+                if (resp_obj.chat_history)
+                  o.chat_history = resp_obj.chat_history;
+
+                return o;
+              }),
+            )
+            .flat(),
+        });
       })
       .catch(rejected);
   };
@@ -732,9 +716,6 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
       <LLMResponseInspectorModal
         ref={inspectModal}
         jsonResponses={lastResponses}
-        updateResponses={(reducer) => {
-          setLastResponses([...reducer(lastResponses)]);
-        }}
       />
       <Modal
         title={default_header}
@@ -815,9 +796,6 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
       <LLMResponseInspectorDrawer
         jsonResponses={lastResponses}
         showDrawer={showDrawer}
-        updateResponses={(reducer) => {
-          setLastResponses([...reducer(lastResponses)]);
-        }}
       />
     </BaseNode>
   );

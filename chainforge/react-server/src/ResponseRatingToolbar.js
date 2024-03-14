@@ -1,6 +1,14 @@
 import React, { forwardRef, useCallback, useMemo, useState } from "react";
 import { Button, Flex, Popover, Stack, Textarea } from "@mantine/core";
 import { IconMessage2, IconThumbDown, IconThumbUp } from "@tabler/icons-react";
+import StorageCache from "./backend/cache";
+
+export const getLabelForResponse = (uid, label_name) => {
+  return StorageCache.get(`r.${uid}.${label_name}`);
+};
+export const setLabelForResponse = (uid, label_name, payload) => {
+  StorageCache.store(`r.${uid}.${label_name}`, payload);
+};
 
 const ToolbarButton = forwardRef(function ToolbarButton(
   { selected, onClick, children },
@@ -27,7 +35,6 @@ const ResponseRatingToolbar = ({
   uid,
   wideFormat,
   innerIdxs,
-  updateResponses,
   onUpdateResponses,
 }) => {
   // The internal annotation in the text area, which is only committed upon pressing Save.
@@ -46,50 +53,30 @@ const ResponseRatingToolbar = ({
 
   // For human labeling of responses in the inspector
   const onGrade = (grade) => {
-    if (!updateResponses || uid === undefined) return;
-    updateResponses((resps) => {
-      if (!resps) return resps;
-      resps.forEach((resp_obj) => {
-        if (resp_obj.uid === uid) {
-          const new_grades = resp_obj?.rating?.grade ?? {};
-          innerIdxs.forEach((idx) => {
-            new_grades[idx] = grade;
-          });
-          resp_obj.rating = resp_obj.rating
-            ? { ...resp_obj.rating, grade: new_grades }
-            : { grade: new_grades };
-        }
-      });
-      // console.log(resps.filter((resp_obj) => resp_obj.rating !== undefined));
-      return resps;
+    if (uid === undefined) return;
+    const new_grades = getLabelForResponse(uid, "grade") ?? {};
+    innerIdxs.forEach((idx) => {
+      new_grades[idx] = grade;
     });
+    setLabelForResponse(uid, "grade", new_grades);
     if (onUpdateResponses) onUpdateResponses();
   };
 
   const onAnnotate = (label) => {
-    if (!updateResponses || uid === undefined) return;
+    if (uid === undefined) return;
     if (typeof label === "string" && label.trim().length === 0)
       label = undefined; // empty strings are undefined
-    updateResponses((resps) => {
-      if (!resps) return resps;
-      resps.forEach((resp_obj) => {
-        if (resp_obj.uid === uid) {
-          const new_labels = resp_obj?.rating?.note ?? {};
-          innerIdxs.forEach((idx) => {
-            new_labels[idx] = label;
-          });
-          resp_obj.rating = resp_obj.rating
-            ? { ...resp_obj.rating, note: new_labels }
-            : { note: new_labels };
-        }
-      });
-      return resps;
+    const new_notes = getLabelForResponse(uid, "note") ?? {};
+    innerIdxs.forEach((idx) => {
+      new_notes[idx] = label;
     });
+    setLabelForResponse(uid, "note", new_notes);
     if (onUpdateResponses) onUpdateResponses();
   };
 
   const handleSaveAnnotation = useCallback(() => {
-    onAnnotate(annotationText);
+    if (annotation !== annotationText)
+      onAnnotate(annotationText);
     setAnnotationPopoverOpened(false);
   }, [annotationText, onAnnotate]);
 

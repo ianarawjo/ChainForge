@@ -268,7 +268,6 @@ const SimpleEvalNode = ({ data, id }) => {
       <LLMResponseInspectorModal
         ref={inspectModal}
         jsonResponses={lastResponses}
-        updateResponses={setLastResponses}
       />
       <iframe style={{ display: "none" }} id={`${id}-iframe`}></iframe>
 
@@ -431,7 +430,6 @@ const SimpleEvalNode = ({ data, id }) => {
       <LLMResponseInspectorDrawer
         jsonResponses={lastResponses}
         showDrawer={showDrawer}
-        updateResponses={setLastResponses}
       />
     </BaseNode>
   );

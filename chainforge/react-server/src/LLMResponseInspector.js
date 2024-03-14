@@ -4,7 +4,7 @@
  * Separated from ReactFlow node UI so that it can
  * be deployed in multiple locations.
  */
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from "react";
 import {
   Collapse,
   MultiSelect,
@@ -33,7 +33,9 @@ import {
   batchResponsesByUID,
   cleanMetavarsFilterFunc,
 } from "./backend/utils";
-import ResponseRatingToolbar from "./ResponseRatingToolbar";
+import ResponseRatingToolbar, {
+  getLabelForResponse,
+} from "./ResponseRatingToolbar";
 
 // Helper funcs
 const countResponsesBy = (responses, keyFunc) => {
@@ -153,7 +155,10 @@ export const exportToExcel = (jsonResponses, filename) => {
       const prompt = res_obj.prompt;
       const vars = res_obj.vars;
       const metavars = res_obj.metavars ?? {};
-      const ratings = res_obj.rating;
+      const ratings = {
+        grade: getLabelForResponse(res_obj.uid, "grade"),
+        note: getLabelForResponse(res_obj.uid, "note"),
+      };
       const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
       return res_obj.responses.map((r, r_idx) => {
         const row = {
@@ -237,11 +242,8 @@ const ResponseGroup = ({
   );
 };
 
-const LLMResponseInspector = ({
-  jsonResponses,
-  wideFormat,
-  updateResponses,
-}) => {
+const LLMResponseInspector = forwardRef(function LLMResponseInspector({ jsonResponses, wideFormat }, ref) {
+  // Responses
   const [responses, setResponses] = useState([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
@@ -293,6 +295,10 @@ const LLMResponseInspector = ({
   const getColorForLLMAndSetIfNotFound = useStore(
     (state) => state.getColorForLLMAndSetIfNotFound,
   );
+
+  // Force global redraw when human labels change
+  const forcedRedraw = useStore((state) => state.redraw);
+  const triggerGlobalRedraw = useStore((state) => state.triggerRedraw);
 
   // Update the visualization whenever the jsonResponses or MultiSelect values change:
   const triggerRedraw = () => {
@@ -414,6 +420,7 @@ const LLMResponseInspector = ({
     };
 
     const generateResponseBoxes = (resps, eatenvars, fixed_width) => {
+      const hide_llm_name = eatenvars.includes("LLM");
       return resps.map((res_obj, res_idx) => {
         const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
 
@@ -462,33 +469,28 @@ const LLMResponseInspector = ({
           return (
             <div key={idx}>
               <Flex justify="right" gap="xs" align="center">
-                {idx === 0 &&
+                {!hide_llm_name && idx === 0 &&
                 same_resp_keys.length > 1 &&
                 wideFormat === true ? (
                   <h1>{getLLMName(res_obj)}</h1>
                 ) : (
                   <></>
                 )}
-                {updateResponses ? (
-                  <ResponseRatingToolbar
-                    uid={res_obj?.uid}
-                    innerIdxs={origIdxs}
-                    wideFormat={wideFormat}
-                    grade={collapse_annotations(
-                      res_obj?.rating?.grade,
-                      origIdxs,
-                    )}
-                    annotation={collapse_annotations(
-                      res_obj?.rating?.note,
-                      origIdxs,
-                    )}
-                    updateResponses={updateResponses}
-                    onUpdateResponses={triggerRedraw}
-                  />
-                ) : (
-                  <></>
-                )}
-                {idx === 0 && (same_resp_keys.length === 1 || !wideFormat) ? (
+                <ResponseRatingToolbar
+                  uid={res_obj.uid}
+                  innerIdxs={origIdxs}
+                  wideFormat={wideFormat}
+                  grade={collapse_annotations(
+                    getLabelForResponse(res_obj.uid, "grade"),
+                    origIdxs,
+                  )}
+                  annotation={collapse_annotations(
+                    getLabelForResponse(res_obj.uid, "note"),
+                    origIdxs,
+                  )}
+                  onUpdateResponses={triggerGlobalRedraw}
+                />
+                {!hide_llm_name && idx === 0 && (same_resp_keys.length === 1 || !wideFormat) ? (
                   <h1>{getLLMName(res_obj)}</h1>
                 ) : (
                   <></>
@@ -543,7 +545,7 @@ const LLMResponseInspector = ({
             }}
           >
             <div className="response-var-inline-container">{var_tags}</div>
-            {eatenvars.includes("LLM") ? (
+            {hide_llm_name ? (
               ps
             ) : (
               <div className="response-item-llm-name-wrapper">{ps}</div>
@@ -794,7 +796,9 @@ const LLMResponseInspector = ({
     setNumMatches(numResponsesDisplayed);
   };
 
+  // Trigger a redraw of the inspector when any of the below changes:
   useEffect(triggerRedraw, [
+    forcedRedraw,
     multiSelectValue,
     batchedResponses,
     wideFormat,
@@ -805,6 +809,11 @@ const LLMResponseInspector = ({
     caseSensitive,
     filterBySearchValue,
   ]);
+
+  // Allow parents to force a redraw
+  useImperativeHandle(ref, () => ({
+    triggerRedraw,
+  }));
 
   // When the user clicks an item in the drop-down,
   // we want to autoclose the multiselect drop-down:
@@ -964,6 +973,6 @@ const LLMResponseInspector = ({
       <div className="nowheel nodrag">{responses}</div>
     </div>
   );
-};
+});
 
 export default LLMResponseInspector;

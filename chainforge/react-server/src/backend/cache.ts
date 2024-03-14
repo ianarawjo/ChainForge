@@ -24,11 +24,23 @@ export default class StorageCache {
   }
 
   private getCacheData(key: string): Dict | undefined {
-    return this.data[key] || undefined;
+    return this.data[key] ?? undefined;
   }
 
   public static get(key: string): Dict | undefined {
     return StorageCache.getInstance().getCacheData(key);
+  }
+
+  private getAllCacheData(filterFunc: (key: string) => boolean): Dict {
+    const res = {};
+    Object.keys(this.data).filter(filterFunc).forEach((key) => {
+      res[key] = this.data[key];
+    })
+    return res;
+  }
+
+  public static getAllMatching(filterFunc: (key: string) => boolean): Dict {
+    return StorageCache.getInstance().getAllCacheData(filterFunc);
   }
 
   private hasKey(key: string): boolean {

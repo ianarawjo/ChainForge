@@ -1358,7 +1358,7 @@ export async function grabResponses(responses: Array<string>): Promise<Dict> {
  */
 export async function exportCache(ids: string[]) {
   // For each id, extract relevant cache file data
-  const export_data = {};
+  const cache_files = {};
   for (let i = 0; i < ids.length; i++) {
     const cache_id = ids[i];
     const cache_keys = get_cache_keys_related_to_id(cache_id);
@@ -1369,10 +1369,13 @@ export async function exportCache(ids: string[]) {
       continue;
     }
     cache_keys.forEach((key: string) => {
-      export_data[key] = load_from_cache(key);
+      cache_files[key] = load_from_cache(key);
     });
   }
-  return { files: export_data };
+  // Bundle up specific other state in StorageCache, which
+  // includes things like human ratings for responses:
+  const cache_state = StorageCache.getAllMatching((key) => key.startsWith('r.'));
+  return { files: {...cache_files, ...cache_state} };
 }
 
 /**
