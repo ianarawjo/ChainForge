@@ -1374,8 +1374,10 @@ export async function exportCache(ids: string[]) {
   }
   // Bundle up specific other state in StorageCache, which
   // includes things like human ratings for responses:
-  const cache_state = StorageCache.getAllMatching((key) => key.startsWith('r.'));
-  return { files: {...cache_files, ...cache_state} };
+  const cache_state = StorageCache.getAllMatching((key) =>
+    key.startsWith("r."),
+  );
+  return { files: { ...cache_files, ...cache_state } };
 }
 
 /**

@@ -846,7 +846,7 @@ Soft failing by replacing undefined with empty strings.`,
           setDataPropsForNode(id, {
             fields: json.responses
               .map((resp_obj) =>
-                resp_obj.responses.map((r, idx) => {
+                resp_obj.responses.map((r) => {
                   // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
                   const o = {
                     text: escapeBraces(r),

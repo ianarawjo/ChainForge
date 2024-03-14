@@ -161,14 +161,22 @@ const useStore = create((set, get) => ({
     set({ flags });
   },
 
-  // Force-trigger redraws that depend on outside state
-  redraw: {},
-  triggerRedraw: (redraw_id) => {
-    if (redraw_id in get().redraw)
-      // Increment the redraw to trigger updates listening to it
-      set({redraw: {...get().redraw, redraw_id: get().redraw[redraw_id] + 1}});
-    else
-      set({redraw: {...get().redraw, redraw_id: 0}});
+  // State shared across the application, for forcing redraws upon change.
+  state: {},
+  setState: (key, value) => {
+    set((st) => ({
+      ...st,
+      state: {
+        ...st.state,
+        [key]: value,
+      },
+    }));
+  },
+  importState: (state) => {
+    set((st) => ({
+      ...st,
+      state,
+    }));
   },
 
   // Keep track of LLM colors, to ensure color consistency across various plots and displays

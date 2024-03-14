@@ -218,7 +218,7 @@ export const CodeEvaluatorComponent = forwardRef(
         scope: "response",
         process_type: node_type,
         script_paths,
-        executor: executor,
+        executor,
       }).then(function (json) {
         // Check if there's an error; if so, bubble it up to user and exit:
         if (!json || json.error) {

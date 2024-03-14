@@ -1,13 +1,31 @@
-import React, { forwardRef, useCallback, useMemo, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Button, Flex, Popover, Stack, Textarea } from "@mantine/core";
 import { IconMessage2, IconThumbDown, IconThumbUp } from "@tabler/icons-react";
 import StorageCache from "./backend/cache";
+import useStore from "./store";
+import { deepcopy } from "./backend/utils";
+
+const getRatingKeyForResponse = (uid, label_name) => `r.${uid}.${label_name}`;
+const collapse_ratings = (rating_dict, idxs) => {
+  if (rating_dict === undefined) return undefined;
+  for (let j = 0; j < idxs.length; j++) {
+    if (idxs[j] in rating_dict && rating_dict[idxs[j]] !== undefined)
+      return rating_dict[idxs[j]];
+  }
+  return undefined;
+};
 
 export const getLabelForResponse = (uid, label_name) => {
-  return StorageCache.get(`r.${uid}.${label_name}`);
+  return StorageCache.get(getRatingKeyForResponse(uid, label_name));
 };
 export const setLabelForResponse = (uid, label_name, payload) => {
-  StorageCache.store(`r.${uid}.${label_name}`, payload);
+  StorageCache.store(getRatingKeyForResponse(uid, label_name), payload);
 };
 
 const ToolbarButton = forwardRef(function ToolbarButton(
@@ -30,23 +48,60 @@ const ToolbarButton = forwardRef(function ToolbarButton(
 });
 
 const ResponseRatingToolbar = ({
-  grade,
-  annotation,
   uid,
   wideFormat,
   innerIdxs,
   onUpdateResponses,
 }) => {
-  // The internal annotation in the text area, which is only committed upon pressing Save.
-  const [annotationText, setAnnotationText] = useState(annotation);
-  const [annotationPopoverOpened, setAnnotationPopoverOpened] = useState(false);
+  // The cache keys storing the ratings for this response object
+  const gradeKey = getRatingKeyForResponse(uid, "grade");
+  const noteKey = getRatingKeyForResponse(uid, "note");
 
+  // The current rating states, reading from the global store.
+  // :: This ensures refreshes will occur only on this component, only when the rating
+  // :: for this component changes.
+  // const state = useStore((store) => store.state);
+  const setState = useStore((store) => store.setState);
+  const gradeState = useStore((store) => store.state[gradeKey]);
+  const noteState = useStore((store) => store.state[noteKey]);
+  const setRating = useCallback(
+    (uid, label, payload) => {
+      const key = getRatingKeyForResponse(uid, label);
+      const safe_payload = deepcopy(payload);
+      setState(key, safe_payload);
+      StorageCache.store(key, safe_payload);
+    },
+    [setState],
+  );
+
+  // The actual states used in the UI. These are distilled versions of the full state,
+  // as a consequence that this response rating toolbar can actually apply across multiple responses (texts).
+  const grade = useMemo(
+    () => collapse_ratings(gradeState, innerIdxs),
+    [gradeState, innerIdxs],
+  );
+  const note = useMemo(
+    () => collapse_ratings(noteState, innerIdxs),
+    [noteState, innerIdxs],
+  );
+
+  // The internal annotation in the text area, which is only committed upon pressing Save.
+  const [noteText, setNoteText] = useState("");
+  const [notePopoverOpened, setNotePopoverOpened] = useState(false);
+
+  // Override the text in the internal textarea whenever upstream annotation changes.
+  useEffect(() => {
+    setNoteText(note);
+  }, [note]);
+
+  // The label for the pop-up comment box.
   const textAreaLabel = useMemo(() => {
     if (grade === true) return "Why was this good?";
     else if (grade === false) return "Why was this bad?";
     else return "Comment on this response:";
   }, [grade]);
 
+  // Adjust button size dynamically depending on format.
   const size = useMemo(() => {
     return wideFormat ? "14pt" : "10pt";
   }, [wideFormat]);
@@ -54,11 +109,11 @@ const ResponseRatingToolbar = ({
   // For human labeling of responses in the inspector
   const onGrade = (grade) => {
     if (uid === undefined) return;
-    const new_grades = getLabelForResponse(uid, "grade") ?? {};
+    const new_grades = gradeState ?? {};
     innerIdxs.forEach((idx) => {
       new_grades[idx] = grade;
     });
-    setLabelForResponse(uid, "grade", new_grades);
+    setRating(uid, "grade", new_grades);
     if (onUpdateResponses) onUpdateResponses();
   };
 
@@ -66,19 +121,18 @@ const ResponseRatingToolbar = ({
     if (uid === undefined) return;
     if (typeof label === "string" && label.trim().length === 0)
       label = undefined; // empty strings are undefined
-    const new_notes = getLabelForResponse(uid, "note") ?? {};
+    const new_notes = noteState ?? {};
     innerIdxs.forEach((idx) => {
       new_notes[idx] = label;
     });
-    setLabelForResponse(uid, "note", new_notes);
+    setRating(uid, "note", new_notes);
     if (onUpdateResponses) onUpdateResponses();
   };
 
   const handleSaveAnnotation = useCallback(() => {
-    if (annotation !== annotationText)
-      onAnnotate(annotationText);
-    setAnnotationPopoverOpened(false);
-  }, [annotationText, onAnnotate]);
+    if (note !== noteText) onAnnotate(noteText);
+    setNotePopoverOpened(false);
+  }, [noteText, onAnnotate]);
 
   return (
     <Flex justify="right" gap="0px">
@@ -103,8 +157,8 @@ const ResponseRatingToolbar = ({
         <IconThumbDown size={size} />
       </ToolbarButton>
       <Popover
-        opened={annotationPopoverOpened}
-        onChange={setAnnotationPopoverOpened}
+        opened={notePopoverOpened}
+        onChange={setNotePopoverOpened}
         onClose={handleSaveAnnotation}
         position="right-start"
         withArrow
@@ -114,8 +168,8 @@ const ResponseRatingToolbar = ({
       >
         <Popover.Target>
           <ToolbarButton
-            selected={annotation !== undefined}
-            onClick={() => setAnnotationPopoverOpened((o) => !o)}
+            selected={note !== undefined}
+            onClick={() => setNotePopoverOpened((o) => !o)}
           >
             <IconMessage2 size={size} />
           </ToolbarButton>
@@ -123,9 +177,9 @@ const ResponseRatingToolbar = ({
         <Popover.Dropdown className="nodrag nowheel">
           <Stack>
             <Textarea
-              value={annotationText}
+              value={noteText}
               autoFocus
-              onChange={(e) => setAnnotationText(e.currentTarget.value)}
+              onChange={(e) => setNoteText(e.currentTarget.value)}
               label={textAreaLabel}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {

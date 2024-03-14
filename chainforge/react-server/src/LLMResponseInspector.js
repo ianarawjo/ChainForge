@@ -4,7 +4,7 @@
  * Separated from ReactFlow node UI so that it can
  * be deployed in multiple locations.
  */
-import React, { useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Collapse,
   MultiSelect,
@@ -242,7 +242,7 @@ const ResponseGroup = ({
   );
 };
 
-const LLMResponseInspector = forwardRef(function LLMResponseInspector({ jsonResponses, wideFormat }, ref) {
+const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   // Responses
   const [responses, setResponses] = useState([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
@@ -295,10 +295,6 @@ const LLMResponseInspector = forwardRef(function LLMResponseInspector({ jsonResp
   const getColorForLLMAndSetIfNotFound = useStore(
     (state) => state.getColorForLLMAndSetIfNotFound,
   );
-
-  // Force global redraw when human labels change
-  const forcedRedraw = useStore((state) => state.redraw);
-  const triggerGlobalRedraw = useStore((state) => state.triggerRedraw);
 
   // Update the visualization whenever the jsonResponses or MultiSelect values change:
   const triggerRedraw = () => {
@@ -452,15 +448,6 @@ const LLMResponseInspector = forwardRef(function LLMResponseInspector({ jsonResp
             same_resp_text_counts[key1].length,
         );
 
-        const collapse_annotations = (annot_dict, idxs) => {
-          if (annot_dict === undefined) return undefined;
-          for (let j = 0; j < idxs.length; j++) {
-            if (idxs[j] in annot_dict && annot_dict[idxs[j]] !== undefined)
-              return annot_dict[idxs[j]];
-          }
-          return undefined;
-        };
-
         const ps = same_resp_keys.map((r, idx) => {
           const origIdxs = same_resp_text_counts[r];
           const textToShow = searchValue
@@ -469,7 +456,8 @@ const LLMResponseInspector = forwardRef(function LLMResponseInspector({ jsonResp
           return (
             <div key={idx}>
               <Flex justify="right" gap="xs" align="center">
-                {!hide_llm_name && idx === 0 &&
+                {!hide_llm_name &&
+                idx === 0 &&
                 same_resp_keys.length > 1 &&
                 wideFormat === true ? (
                   <h1>{getLLMName(res_obj)}</h1>
@@ -480,17 +468,10 @@ const LLMResponseInspector = forwardRef(function LLMResponseInspector({ jsonResp
                   uid={res_obj.uid}
                   innerIdxs={origIdxs}
                   wideFormat={wideFormat}
-                  grade={collapse_annotations(
-                    getLabelForResponse(res_obj.uid, "grade"),
-                    origIdxs,
-                  )}
-                  annotation={collapse_annotations(
-                    getLabelForResponse(res_obj.uid, "note"),
-                    origIdxs,
-                  )}
-                  onUpdateResponses={triggerGlobalRedraw}
                 />
-                {!hide_llm_name && idx === 0 && (same_resp_keys.length === 1 || !wideFormat) ? (
+                {!hide_llm_name &&
+                idx === 0 &&
+                (same_resp_keys.length === 1 || !wideFormat) ? (
                   <h1>{getLLMName(res_obj)}</h1>
                 ) : (
                   <></>
@@ -798,7 +779,6 @@ const LLMResponseInspector = forwardRef(function LLMResponseInspector({ jsonResp
 
   // Trigger a redraw of the inspector when any of the below changes:
   useEffect(triggerRedraw, [
-    forcedRedraw,
     multiSelectValue,
     batchedResponses,
     wideFormat,
@@ -809,11 +789,6 @@ const LLMResponseInspector = forwardRef(function LLMResponseInspector({ jsonResp
     caseSensitive,
     filterBySearchValue,
   ]);
-
-  // Allow parents to force a redraw
-  useImperativeHandle(ref, () => ({
-    triggerRedraw,
-  }));
 
   // When the user clicks an item in the drop-down,
   // we want to autoclose the multiselect drop-down:
@@ -973,6 +948,6 @@ const LLMResponseInspector = forwardRef(function LLMResponseInspector({ jsonResp
       <div className="nowheel nodrag">{responses}</div>
     </div>
   );
-});
+};
 
 export default LLMResponseInspector;

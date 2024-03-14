@@ -322,14 +322,15 @@ export class PromptPipeline {
     [key: string]: LLMResponseObject | LLMResponseObject[];
   } {
     if (this._storageKey === undefined) return {};
-    const data: Record<string, LLMResponseObject | LLMResponseObject[]> = StorageCache.get(this._storageKey) ?? {};
-    
+    const data: Record<string, LLMResponseObject | LLMResponseObject[]> =
+      StorageCache.get(this._storageKey) ?? {};
+
     // Verify data integrity: check that uids are present for all responses.
     // If they are not present, add it and note the discrepency.
     let shouldRepair = false;
     Object.values(data).forEach((val) => {
       const resps = Array.isArray(val) ? val : [val];
-      resps.forEach(r => {
+      resps.forEach((r) => {
         if (r.uid === undefined) {
           r.uid = uuid();
           shouldRepair = true;

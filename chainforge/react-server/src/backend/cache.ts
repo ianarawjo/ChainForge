@@ -33,9 +33,11 @@ export default class StorageCache {
 
   private getAllCacheData(filterFunc: (key: string) => boolean): Dict {
     const res = {};
-    Object.keys(this.data).filter(filterFunc).forEach((key) => {
-      res[key] = this.data[key];
-    })
+    Object.keys(this.data)
+      .filter(filterFunc)
+      .forEach((key) => {
+        res[key] = this.data[key];
+      });
     return res;
   }
 

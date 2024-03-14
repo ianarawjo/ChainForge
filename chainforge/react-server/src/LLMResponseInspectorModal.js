@@ -2,14 +2,14 @@
  * A fullscreen version of the Inspect node that
  * appears in a Mantine modal pop-up which takes up much of the screen.
  */
-import React, { forwardRef, useImperativeHandle, useRef } from "react";
+import React, { forwardRef, useImperativeHandle } from "react";
 import { Modal } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import LLMResponseInspector, { exportToExcel } from "./LLMResponseInspector";
 
 const LLMResponseInspectorModal = forwardRef(
   function LLMResponseInspectorModal(props, ref) {
-    // const inspectorRef = useRef(null); 
+    // const inspectorRef = useRef(null);
     const [opened, { open, close }] = useDisclosure(false);
 
     // This gives the parent access to triggering the modal
