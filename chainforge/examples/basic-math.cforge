@@ -3,7 +3,7 @@
     "nodes": [
       {
         "width": 312,
-        "height": 423,
+        "height": 411,
         "data": {
           "fields": [
             {
@@ -32,9 +32,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "13392cf5-1a2b-487e-9c21-d446fcf736b9",
+              "batch_id": "568b5331-f9e5-462f-8314-a0d48bdbbe34",
               "metavars": {
                 "Expected": "4",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -64,9 +65,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "13392cf5-1a2b-487e-9c21-d446fcf736b9",
+              "batch_id": "568b5331-f9e5-462f-8314-a0d48bdbbe34",
               "metavars": {
                 "Expected": "4",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -99,9 +101,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "6a986109-8af7-4972-a07e-af72bb09be55",
+              "batch_id": "3e4d4071-7768-4ef1-aba4-04f97da8e3c8",
               "metavars": {
                 "Expected": "4",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT4"
               }
             },
@@ -134,9 +137,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "6a986109-8af7-4972-a07e-af72bb09be55",
+              "batch_id": "3e4d4071-7768-4ef1-aba4-04f97da8e3c8",
               "metavars": {
                 "Expected": "4",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT4"
               }
             },
@@ -168,9 +172,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "c4892453-5159-447d-97ed-15ed3f345143",
+              "batch_id": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661",
               "metavars": {
                 "Expected": "4",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "PaLM2"
               }
             },
@@ -202,9 +207,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "c4892453-5159-447d-97ed-15ed3f345143",
+              "batch_id": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661",
               "metavars": {
                 "Expected": "4",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "PaLM2"
               }
             },
@@ -234,9 +240,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "6c343d7f-6983-4556-9396-0bacb7c33013",
+              "batch_id": "49a4841f-98c5-46aa-92a7-416cfe8f041b",
               "metavars": {
                 "Expected": "3",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -266,9 +273,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "6c343d7f-6983-4556-9396-0bacb7c33013",
+              "batch_id": "49a4841f-98c5-46aa-92a7-416cfe8f041b",
               "metavars": {
                 "Expected": "3",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -301,9 +309,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "0fcbdb6c-190a-4ae8-b65e-66105b4f851b",
+              "batch_id": "8aa01880-0342-4e2a-bed5-c0e893b68f3f",
               "metavars": {
                 "Expected": "3",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT4"
               }
             },
@@ -336,9 +345,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "0fcbdb6c-190a-4ae8-b65e-66105b4f851b",
+              "batch_id": "8aa01880-0342-4e2a-bed5-c0e893b68f3f",
               "metavars": {
                 "Expected": "3",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT4"
               }
             },
@@ -370,9 +380,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "a9d5aa99-1954-403d-aeb9-c0e8e9b1711e",
+              "batch_id": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603",
               "metavars": {
                 "Expected": "3",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "PaLM2"
               }
             },
@@ -404,9 +415,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "a9d5aa99-1954-403d-aeb9-c0e8e9b1711e",
+              "batch_id": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603",
               "metavars": {
                 "Expected": "3",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "PaLM2"
               }
             },
@@ -436,9 +448,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "7b00d058-ea25-4530-911c-b88bcef7bbd6",
+              "batch_id": "e11f0ed2-41ed-4d53-ad8a-510c7836fadc",
               "metavars": {
                 "Expected": "1997",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -468,9 +481,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "7b00d058-ea25-4530-911c-b88bcef7bbd6",
+              "batch_id": "e11f0ed2-41ed-4d53-ad8a-510c7836fadc",
               "metavars": {
                 "Expected": "1997",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -503,9 +517,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "ee42ebeb-2adb-40a3-9c4f-5a4455e004e6",
+              "batch_id": "55136cbc-c5f1-4c5c-876e-d76a3efaff0f",
               "metavars": {
                 "Expected": "1997",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT4"
               }
             },
@@ -538,9 +553,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "ee42ebeb-2adb-40a3-9c4f-5a4455e004e6",
+              "batch_id": "55136cbc-c5f1-4c5c-876e-d76a3efaff0f",
               "metavars": {
                 "Expected": "1997",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT4"
               }
             },
@@ -572,9 +588,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "315b64a8-ce31-43d8-ba43-1f677c8e7b0a",
+              "batch_id": "33d5aa12-cfe2-4806-89fb-f66789e90ea4",
               "metavars": {
                 "Expected": "1997",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "PaLM2"
               }
             },
@@ -606,9 +623,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "315b64a8-ce31-43d8-ba43-1f677c8e7b0a",
+              "batch_id": "33d5aa12-cfe2-4806-89fb-f66789e90ea4",
               "metavars": {
                 "Expected": "1997",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "PaLM2"
               }
             },
@@ -638,9 +656,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "7801deab-4725-422c-8559-73f1ea462e9b",
+              "batch_id": "9905585e-ac2c-4e70-b307-dcce305bc9ae",
               "metavars": {
                 "Expected": "125",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -670,9 +689,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "7801deab-4725-422c-8559-73f1ea462e9b",
+              "batch_id": "9905585e-ac2c-4e70-b307-dcce305bc9ae",
               "metavars": {
                 "Expected": "125",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -705,9 +725,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "2ca08d4c-ebee-4b62-b19b-8491b6ebdf51",
+              "batch_id": "7b46d7b2-3e20-4cfa-9e83-20bf184f05fa",
               "metavars": {
                 "Expected": "125",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT4"
               }
             },
@@ -740,9 +761,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "2ca08d4c-ebee-4b62-b19b-8491b6ebdf51",
+              "batch_id": "7b46d7b2-3e20-4cfa-9e83-20bf184f05fa",
               "metavars": {
                 "Expected": "125",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT4"
               }
             },
@@ -774,9 +796,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "07e78cd8-4a7f-468f-8d00-8bbf8f7470bd",
+              "batch_id": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2",
               "metavars": {
                 "Expected": "125",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "PaLM2"
               }
             },
@@ -808,9 +831,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "07e78cd8-4a7f-468f-8d00-8bbf8f7470bd",
+              "batch_id": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2",
               "metavars": {
                 "Expected": "125",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "PaLM2"
               }
             },
@@ -840,9 +864,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "1f1fc3c8-97fa-441b-904b-b75c2c1174cf",
+              "batch_id": "33b1f438-e9d7-4627-be1f-2c6677412f58",
               "metavars": {
                 "Expected": "18",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -872,9 +897,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "1f1fc3c8-97fa-441b-904b-b75c2c1174cf",
+              "batch_id": "33b1f438-e9d7-4627-be1f-2c6677412f58",
               "metavars": {
                 "Expected": "18",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -907,9 +933,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "24cb2f3f-0a7d-401f-84b7-8f85e34e0756",
+              "batch_id": "4e23bba3-879b-4c9d-aa7f-25a5e9202a4d",
               "metavars": {
                 "Expected": "18",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT4"
               }
             },
@@ -942,9 +969,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "24cb2f3f-0a7d-401f-84b7-8f85e34e0756",
+              "batch_id": "4e23bba3-879b-4c9d-aa7f-25a5e9202a4d",
               "metavars": {
                 "Expected": "18",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT4"
               }
             },
@@ -976,9 +1004,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "c6f6e892-c1af-444c-9c2d-1353bd14032a",
+              "batch_id": "2387013d-aa6c-4e61-8960-ee27309823b6",
               "metavars": {
                 "Expected": "18",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "PaLM2"
               }
             },
@@ -1010,9 +1039,10 @@
                   "error": 0
                 }
               },
-              "batch_id": "c6f6e892-c1af-444c-9c2d-1353bd14032a",
+              "batch_id": "2387013d-aa6c-4e61-8960-ee27309823b6",
               "metavars": {
                 "Expected": "18",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "PaLM2"
               }
             }
@@ -1095,12 +1125,20 @@
           "input": "simpleEval-1692475827469",
           "llm_groups": [
             {
-              "label": "LLMs (last)",
-              "value": "LLM"
+              "value": "LLM",
+              "label": "LLMs (last)"
             },
             {
-              "label": "LLMs #1",
-              "value": "LLM_0"
+              "value": "Expected",
+              "label": "LLMs #NaN"
+            },
+            {
+              "value": "__pt",
+              "label": "LLMs #NaN"
+            },
+            {
+              "value": "LLM_0",
+              "label": "LLMs #1"
             }
           ],
           "refresh": false,
@@ -1109,12 +1147,20 @@
           "vars": [
             "LLM (default)",
             {
-              "label": "question",
-              "value": "question"
+              "value": "question",
+              "label": "question"
             },
             {
-              "label": "Expected (meta)",
-              "value": "__meta_Expected"
+              "value": "__meta_Expected",
+              "label": "Expected (meta)"
+            },
+            {
+              "value": "__meta___pt",
+              "label": "__pt (meta)"
+            },
+            {
+              "value": "__meta_LLM_0",
+              "label": "LLM_0 (meta)"
             }
           ]
         },
@@ -1153,7 +1199,7 @@
       },
       {
         "width": 423,
-        "height": 417,
+        "height": 420,
         "data": {
           "columns": [
             {
@@ -1191,7 +1237,8 @@
               "answer": "18",
               "question": "What is 2 multiplied by the cubic root of 729?"
             }
-          ]
+          ],
+          "sel_rows": null
         },
         "dragging": false,
         "id": "table-1686496353296",
@@ -1211,7 +1258,9 @@
         "height": 230,
         "data": {
           "availableMetavars": [
-            "Expected"
+            "Expected",
+            "__pt",
+            "LLM_0"
           ],
           "availableVars": [
             "question"
@@ -1454,7 +1503,8 @@
           "responses": [
             "4",
             "4."
-          ]
+          ],
+          "uid": "568b5331-f9e5-462f-8314-a0d48bdbbe34"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?": [
@@ -1533,7 +1583,8 @@
           "responses": [
             "18",
             "54"
-          ]
+          ],
+          "uid": "33b1f438-e9d7-4627-be1f-2c6677412f58"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?": [
@@ -1612,7 +1663,8 @@
           "responses": [
             "125",
             "125"
-          ]
+          ],
+          "uid": "9905585e-ac2c-4e70-b307-dcce305bc9ae"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?": [
@@ -1691,7 +1743,8 @@
           "responses": [
             "3",
             "3"
-          ]
+          ],
+          "uid": "49a4841f-98c5-46aa-92a7-416cfe8f041b"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?": [
@@ -1770,7 +1823,8 @@
           "responses": [
             "1997",
             "1997."
-          ]
+          ],
+          "uid": "e11f0ed2-41ed-4d53-ad8a-510c7836fadc"
         }
       ]
     },
@@ -1851,7 +1905,8 @@
           "responses": [
             "4",
             "4"
-          ]
+          ],
+          "uid": "3e4d4071-7768-4ef1-aba4-04f97da8e3c8"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?": [
@@ -1930,7 +1985,8 @@
           "responses": [
             "36",
             "12"
-          ]
+          ],
+          "uid": "4e23bba3-879b-4c9d-aa7f-25a5e9202a4d"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?": [
@@ -2009,7 +2065,8 @@
           "responses": [
             "125",
             "125"
-          ]
+          ],
+          "uid": "7b46d7b2-3e20-4cfa-9e83-20bf184f05fa"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?": [
@@ -2088,7 +2145,8 @@
           "responses": [
             "3",
             "3"
-          ]
+          ],
+          "uid": "8aa01880-0342-4e2a-bed5-c0e893b68f3f"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?": [
@@ -2167,7 +2225,8 @@
           "responses": [
             "1997",
             "1997"
-          ]
+          ],
+          "uid": "55136cbc-c5f1-4c5c-876e-d76a3efaff0f"
         }
       ]
     },
@@ -2233,7 +2292,8 @@
           "responses": [
             "2 + 2 = 4",
             "2+2=4"
-          ]
+          ],
+          "uid": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?": [
@@ -2297,7 +2357,8 @@
           "responses": [
             "2 multiplied by the cubic root of 729 is 27.",
             "2 multiplied by the cubic root of 729 is 27."
-          ]
+          ],
+          "uid": "2387013d-aa6c-4e61-8960-ee27309823b6"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?": [
@@ -2361,7 +2422,8 @@
           "responses": [
             "5 to the power of 3 is 125.",
             "5 to the power of 3 is 125."
-          ]
+          ],
+          "uid": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?": [
@@ -2425,7 +2487,8 @@
           "responses": [
             "The square root of 9 is 3.",
             "The square root of 9 is 3."
-          ]
+          ],
+          "uid": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603"
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?": [
@@ -2489,7 +2552,8 @@
           "responses": [
             "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997.",
             "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
-          ]
+          ],
+          "uid": "33d5aa12-cfe2-4806-89fb-f66789e90ea4"
         }
       ]
     },
@@ -2568,6 +2632,7 @@
           },
           "metavars": {
             "Expected": "4",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "GPT3.5"
           },
           "llm": "GPT3.5",
@@ -2577,7 +2642,7 @@
             "4."
           ],
           "tokens": {},
-          "uid": "13392cf5-1a2b-487e-9c21-d446fcf736b9"
+          "uid": "568b5331-f9e5-462f-8314-a0d48bdbbe34"
         },
         {
           "vars": {
@@ -2585,6 +2650,7 @@
           },
           "metavars": {
             "Expected": "4",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "GPT4"
           },
           "llm": "GPT4",
@@ -2594,7 +2660,7 @@
             "4"
           ],
           "tokens": {},
-          "uid": "6a986109-8af7-4972-a07e-af72bb09be55"
+          "uid": "3e4d4071-7768-4ef1-aba4-04f97da8e3c8"
         },
         {
           "vars": {
@@ -2602,6 +2668,7 @@
           },
           "metavars": {
             "Expected": "4",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "PaLM2"
           },
           "llm": "PaLM2",
@@ -2611,7 +2678,7 @@
             "2+2=4"
           ],
           "tokens": {},
-          "uid": "c4892453-5159-447d-97ed-15ed3f345143"
+          "uid": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661"
         },
         {
           "vars": {
@@ -2619,6 +2686,7 @@
           },
           "metavars": {
             "Expected": "3",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "GPT3.5"
           },
           "llm": "GPT3.5",
@@ -2628,7 +2696,7 @@
             "3"
           ],
           "tokens": {},
-          "uid": "6c343d7f-6983-4556-9396-0bacb7c33013"
+          "uid": "49a4841f-98c5-46aa-92a7-416cfe8f041b"
         },
         {
           "vars": {
@@ -2636,6 +2704,7 @@
           },
           "metavars": {
             "Expected": "3",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "GPT4"
           },
           "llm": "GPT4",
@@ -2645,7 +2714,7 @@
             "3"
           ],
           "tokens": {},
-          "uid": "0fcbdb6c-190a-4ae8-b65e-66105b4f851b"
+          "uid": "8aa01880-0342-4e2a-bed5-c0e893b68f3f"
         },
         {
           "vars": {
@@ -2653,6 +2722,7 @@
           },
           "metavars": {
             "Expected": "3",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "PaLM2"
           },
           "llm": "PaLM2",
@@ -2662,7 +2732,7 @@
             "The square root of 9 is 3."
           ],
           "tokens": {},
-          "uid": "a9d5aa99-1954-403d-aeb9-c0e8e9b1711e"
+          "uid": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603"
         },
         {
           "vars": {
@@ -2670,6 +2740,7 @@
           },
           "metavars": {
             "Expected": "1997",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "GPT3.5"
           },
           "llm": "GPT3.5",
@@ -2679,7 +2750,7 @@
             "1997."
           ],
           "tokens": {},
-          "uid": "7b00d058-ea25-4530-911c-b88bcef7bbd6"
+          "uid": "e11f0ed2-41ed-4d53-ad8a-510c7836fadc"
         },
         {
           "vars": {
@@ -2687,6 +2758,7 @@
           },
           "metavars": {
             "Expected": "1997",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "GPT4"
           },
           "llm": "GPT4",
@@ -2696,7 +2768,7 @@
             "1997"
           ],
           "tokens": {},
-          "uid": "ee42ebeb-2adb-40a3-9c4f-5a4455e004e6"
+          "uid": "55136cbc-c5f1-4c5c-876e-d76a3efaff0f"
         },
         {
           "vars": {
@@ -2704,6 +2776,7 @@
           },
           "metavars": {
             "Expected": "1997",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "PaLM2"
           },
           "llm": "PaLM2",
@@ -2713,7 +2786,7 @@
             "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
           ],
           "tokens": {},
-          "uid": "315b64a8-ce31-43d8-ba43-1f677c8e7b0a"
+          "uid": "33d5aa12-cfe2-4806-89fb-f66789e90ea4"
         },
         {
           "vars": {
@@ -2721,6 +2794,7 @@
           },
           "metavars": {
             "Expected": "125",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "GPT3.5"
           },
           "llm": "GPT3.5",
@@ -2730,7 +2804,7 @@
             "125"
           ],
           "tokens": {},
-          "uid": "7801deab-4725-422c-8559-73f1ea462e9b"
+          "uid": "9905585e-ac2c-4e70-b307-dcce305bc9ae"
         },
         {
           "vars": {
@@ -2738,6 +2812,7 @@
           },
           "metavars": {
             "Expected": "125",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "GPT4"
           },
           "llm": "GPT4",
@@ -2747,7 +2822,7 @@
             "125"
           ],
           "tokens": {},
-          "uid": "2ca08d4c-ebee-4b62-b19b-8491b6ebdf51"
+          "uid": "7b46d7b2-3e20-4cfa-9e83-20bf184f05fa"
         },
         {
           "vars": {
@@ -2755,6 +2830,7 @@
           },
           "metavars": {
             "Expected": "125",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "PaLM2"
           },
           "llm": "PaLM2",
@@ -2764,7 +2840,7 @@
             "5 to the power of 3 is 125."
           ],
           "tokens": {},
-          "uid": "07e78cd8-4a7f-468f-8d00-8bbf8f7470bd"
+          "uid": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2"
         },
         {
           "vars": {
@@ -2772,6 +2848,7 @@
           },
           "metavars": {
             "Expected": "18",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "GPT3.5"
           },
           "llm": "GPT3.5",
@@ -2781,7 +2858,7 @@
             "54"
           ],
           "tokens": {},
-          "uid": "1f1fc3c8-97fa-441b-904b-b75c2c1174cf"
+          "uid": "33b1f438-e9d7-4627-be1f-2c6677412f58"
         },
         {
           "vars": {
@@ -2789,6 +2866,7 @@
           },
           "metavars": {
             "Expected": "18",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "GPT4"
           },
           "llm": "GPT4",
@@ -2798,7 +2876,7 @@
             "12"
           ],
           "tokens": {},
-          "uid": "24cb2f3f-0a7d-401f-84b7-8f85e34e0756"
+          "uid": "4e23bba3-879b-4c9d-aa7f-25a5e9202a4d"
         },
         {
           "vars": {
@@ -2806,6 +2884,7 @@
           },
           "metavars": {
             "Expected": "18",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
             "LLM_0": "PaLM2"
           },
           "llm": "PaLM2",
@@ -2815,7 +2894,7 @@
             "2 multiplied by the cubic root of 729 is 27."
           ],
           "tokens": {},
-          "uid": "c6f6e892-c1af-444c-9c2d-1353bd14032a"
+          "uid": "2387013d-aa6c-4e61-8960-ee27309823b6"
         }
       ]
     },
@@ -2829,9 +2908,10 @@
         },
         "metavars": {
           "Expected": "4",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT3.5"
         },
-        "uid": "13392cf5-1a2b-487e-9c21-d446fcf736b9",
+        "uid": "568b5331-f9e5-462f-8314-a0d48bdbbe34",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -2870,9 +2950,10 @@
         },
         "metavars": {
           "Expected": "4",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT3.5"
         },
-        "uid": "13392cf5-1a2b-487e-9c21-d446fcf736b9",
+        "uid": "568b5331-f9e5-462f-8314-a0d48bdbbe34",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -2911,9 +2992,10 @@
         },
         "metavars": {
           "Expected": "4",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT4"
         },
-        "uid": "6a986109-8af7-4972-a07e-af72bb09be55",
+        "uid": "3e4d4071-7768-4ef1-aba4-04f97da8e3c8",
         "llm": {
           "base_model": "gpt-4",
           "emoji": "🥵",
@@ -2955,9 +3037,10 @@
         },
         "metavars": {
           "Expected": "4",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT4"
         },
-        "uid": "6a986109-8af7-4972-a07e-af72bb09be55",
+        "uid": "3e4d4071-7768-4ef1-aba4-04f97da8e3c8",
         "llm": {
           "base_model": "gpt-4",
           "emoji": "🥵",
@@ -2999,9 +3082,10 @@
         },
         "metavars": {
           "Expected": "4",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "PaLM2"
         },
-        "uid": "c4892453-5159-447d-97ed-15ed3f345143",
+        "uid": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661",
         "llm": {
           "base_model": "palm2-bison",
           "emoji": "🦬",
@@ -3042,9 +3126,10 @@
         },
         "metavars": {
           "Expected": "4",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "PaLM2"
         },
-        "uid": "c4892453-5159-447d-97ed-15ed3f345143",
+        "uid": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661",
         "llm": {
           "base_model": "palm2-bison",
           "emoji": "🦬",
@@ -3085,9 +3170,10 @@
         },
         "metavars": {
           "Expected": "3",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT3.5"
         },
-        "uid": "6c343d7f-6983-4556-9396-0bacb7c33013",
+        "uid": "49a4841f-98c5-46aa-92a7-416cfe8f041b",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -3126,9 +3212,10 @@
         },
         "metavars": {
           "Expected": "3",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT3.5"
         },
-        "uid": "6c343d7f-6983-4556-9396-0bacb7c33013",
+        "uid": "49a4841f-98c5-46aa-92a7-416cfe8f041b",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -3167,9 +3254,10 @@
         },
         "metavars": {
           "Expected": "3",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT4"
         },
-        "uid": "0fcbdb6c-190a-4ae8-b65e-66105b4f851b",
+        "uid": "8aa01880-0342-4e2a-bed5-c0e893b68f3f",
         "llm": {
           "base_model": "gpt-4",
           "emoji": "🥵",
@@ -3211,9 +3299,10 @@
         },
         "metavars": {
           "Expected": "3",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT4"
         },
-        "uid": "0fcbdb6c-190a-4ae8-b65e-66105b4f851b",
+        "uid": "8aa01880-0342-4e2a-bed5-c0e893b68f3f",
         "llm": {
           "base_model": "gpt-4",
           "emoji": "🥵",
@@ -3255,9 +3344,10 @@
         },
         "metavars": {
           "Expected": "3",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "PaLM2"
         },
-        "uid": "a9d5aa99-1954-403d-aeb9-c0e8e9b1711e",
+        "uid": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603",
         "llm": {
           "base_model": "palm2-bison",
           "emoji": "🦬",
@@ -3298,9 +3388,10 @@
         },
         "metavars": {
           "Expected": "3",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "PaLM2"
         },
-        "uid": "a9d5aa99-1954-403d-aeb9-c0e8e9b1711e",
+        "uid": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603",
         "llm": {
           "base_model": "palm2-bison",
           "emoji": "🦬",
@@ -3341,9 +3432,10 @@
         },
         "metavars": {
           "Expected": "1997",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT3.5"
         },
-        "uid": "7b00d058-ea25-4530-911c-b88bcef7bbd6",
+        "uid": "e11f0ed2-41ed-4d53-ad8a-510c7836fadc",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -3382,9 +3474,10 @@
         },
         "metavars": {
           "Expected": "1997",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT3.5"
         },
-        "uid": "7b00d058-ea25-4530-911c-b88bcef7bbd6",
+        "uid": "e11f0ed2-41ed-4d53-ad8a-510c7836fadc",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -3423,9 +3516,10 @@
         },
         "metavars": {
           "Expected": "1997",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT4"
         },
-        "uid": "ee42ebeb-2adb-40a3-9c4f-5a4455e004e6",
+        "uid": "55136cbc-c5f1-4c5c-876e-d76a3efaff0f",
         "llm": {
           "base_model": "gpt-4",
           "emoji": "🥵",
@@ -3467,9 +3561,10 @@
         },
         "metavars": {
           "Expected": "1997",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT4"
         },
-        "uid": "ee42ebeb-2adb-40a3-9c4f-5a4455e004e6",
+        "uid": "55136cbc-c5f1-4c5c-876e-d76a3efaff0f",
         "llm": {
           "base_model": "gpt-4",
           "emoji": "🥵",
@@ -3511,9 +3606,10 @@
         },
         "metavars": {
           "Expected": "1997",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "PaLM2"
         },
-        "uid": "315b64a8-ce31-43d8-ba43-1f677c8e7b0a",
+        "uid": "33d5aa12-cfe2-4806-89fb-f66789e90ea4",
         "llm": {
           "base_model": "palm2-bison",
           "emoji": "🦬",
@@ -3554,9 +3650,10 @@
         },
         "metavars": {
           "Expected": "1997",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "PaLM2"
         },
-        "uid": "315b64a8-ce31-43d8-ba43-1f677c8e7b0a",
+        "uid": "33d5aa12-cfe2-4806-89fb-f66789e90ea4",
         "llm": {
           "base_model": "palm2-bison",
           "emoji": "🦬",
@@ -3597,9 +3694,10 @@
         },
         "metavars": {
           "Expected": "125",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT3.5"
         },
-        "uid": "7801deab-4725-422c-8559-73f1ea462e9b",
+        "uid": "9905585e-ac2c-4e70-b307-dcce305bc9ae",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -3638,9 +3736,10 @@
         },
         "metavars": {
           "Expected": "125",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT3.5"
         },
-        "uid": "7801deab-4725-422c-8559-73f1ea462e9b",
+        "uid": "9905585e-ac2c-4e70-b307-dcce305bc9ae",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -3679,9 +3778,10 @@
         },
         "metavars": {
           "Expected": "125",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT4"
         },
-        "uid": "2ca08d4c-ebee-4b62-b19b-8491b6ebdf51",
+        "uid": "7b46d7b2-3e20-4cfa-9e83-20bf184f05fa",
         "llm": {
           "base_model": "gpt-4",
           "emoji": "🥵",
@@ -3723,9 +3823,10 @@
         },
         "metavars": {
           "Expected": "125",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT4"
         },
-        "uid": "2ca08d4c-ebee-4b62-b19b-8491b6ebdf51",
+        "uid": "7b46d7b2-3e20-4cfa-9e83-20bf184f05fa",
         "llm": {
           "base_model": "gpt-4",
           "emoji": "🥵",
@@ -3767,9 +3868,10 @@
         },
         "metavars": {
           "Expected": "125",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "PaLM2"
         },
-        "uid": "07e78cd8-4a7f-468f-8d00-8bbf8f7470bd",
+        "uid": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2",
         "llm": {
           "base_model": "palm2-bison",
           "emoji": "🦬",
@@ -3810,9 +3912,10 @@
         },
         "metavars": {
           "Expected": "125",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "PaLM2"
         },
-        "uid": "07e78cd8-4a7f-468f-8d00-8bbf8f7470bd",
+        "uid": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2",
         "llm": {
           "base_model": "palm2-bison",
           "emoji": "🦬",
@@ -3853,9 +3956,10 @@
         },
         "metavars": {
           "Expected": "18",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT3.5"
         },
-        "uid": "1f1fc3c8-97fa-441b-904b-b75c2c1174cf",
+        "uid": "33b1f438-e9d7-4627-be1f-2c6677412f58",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -3894,9 +3998,10 @@
         },
         "metavars": {
           "Expected": "18",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT3.5"
         },
-        "uid": "1f1fc3c8-97fa-441b-904b-b75c2c1174cf",
+        "uid": "33b1f438-e9d7-4627-be1f-2c6677412f58",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -3935,9 +4040,10 @@
         },
         "metavars": {
           "Expected": "18",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT4"
         },
-        "uid": "24cb2f3f-0a7d-401f-84b7-8f85e34e0756",
+        "uid": "4e23bba3-879b-4c9d-aa7f-25a5e9202a4d",
         "llm": {
           "base_model": "gpt-4",
           "emoji": "🥵",
@@ -3979,9 +4085,10 @@
         },
         "metavars": {
           "Expected": "18",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "GPT4"
         },
-        "uid": "24cb2f3f-0a7d-401f-84b7-8f85e34e0756",
+        "uid": "4e23bba3-879b-4c9d-aa7f-25a5e9202a4d",
         "llm": {
           "base_model": "gpt-4",
           "emoji": "🥵",
@@ -4023,9 +4130,10 @@
         },
         "metavars": {
           "Expected": "18",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "PaLM2"
         },
-        "uid": "c6f6e892-c1af-444c-9c2d-1353bd14032a",
+        "uid": "2387013d-aa6c-4e61-8960-ee27309823b6",
         "llm": {
           "base_model": "palm2-bison",
           "emoji": "🦬",
@@ -4066,9 +4174,10 @@
         },
         "metavars": {
           "Expected": "18",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
           "LLM_0": "PaLM2"
         },
-        "uid": "c6f6e892-c1af-444c-9c2d-1353bd14032a",
+        "uid": "2387013d-aa6c-4e61-8960-ee27309823b6",
         "llm": {
           "base_model": "palm2-bison",
           "emoji": "🦬",
@@ -4103,6 +4212,7 @@
           "dtype": "Categorical"
         }
       }
-    ]
+    ],
+    "r.568b5331-f9e5-462f-8314-a0d48bdbbe34.grade": {}
   }
 }

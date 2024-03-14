@@ -8,15 +8,7 @@ import React, {
   useImperativeHandle,
 } from "react";
 import { Handle } from "reactflow";
-import {
-  Code,
-  Modal,
-  Tooltip,
-  Box,
-  Text,
-  Skeleton,
-  Switch,
-} from "@mantine/core";
+import { Code, Modal, Tooltip, Box, Text, Skeleton } from "@mantine/core";
 import { Prism } from "@mantine/prism";
 import { useDisclosure } from "@mantine/hooks";
 import useStore from "./store";
@@ -461,11 +453,17 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
           return;
         }
 
+        console.log(json.responses);
+
         // Ping any vis + inspect nodes attached to this node to refresh their contents:
         pingOutputNodes(id);
         setLastResponses(stripLLMDetailsFromResponses(json.responses));
         setLastContext(getVarsAndMetavars(json.responses));
         setLastRunSuccess(true);
+
+        if (status !== "ready" && !showDrawer) setUninspectedResponses(true);
+
+        setStatus("ready");
 
         setDataPropsForNode(id, {
           fields: json.responses
@@ -490,10 +488,6 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
             )
             .flat(),
         });
-
-        if (status !== "ready" && !showDrawer) setUninspectedResponses(true);
-
-        setStatus("ready");
       })
       .catch(rejected);
   };

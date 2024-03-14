@@ -3,7 +3,7 @@
     "nodes": [
       {
         "width": 312,
-        "height": 382,
+        "height": 370,
         "data": {
           "fields": [
             {
@@ -70,8 +70,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "68122490-31b3-4ce9-95d9-3e0577b7c8af",
+              "batch_id": "cfa8f743-32c7-4a24-8141-9e1fa264af49",
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "gpt3.5-turbo-0613"
               }
             },
@@ -111,8 +112,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "f6ee3564-8d63-4883-9cdd-49000f7a0c08",
+              "batch_id": "e342daaf-acde-4988-a759-c1c753efd670",
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "old-gpt3.5"
               }
             },
@@ -180,8 +182,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "07293a43-15ef-46a9-8143-93ad064fbce4",
+              "batch_id": "ebcba322-b11c-4680-8170-98b0f3bebbe5",
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "gpt3.5-turbo-0613"
               }
             },
@@ -221,8 +224,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "42124445-5b64-4da5-bc1d-7ad3a86351fa",
+              "batch_id": "1e884f42-d130-4a33-9039-22490772902d",
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "old-gpt3.5"
               }
             },
@@ -290,8 +294,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "16c74c10-6085-4902-a349-c79ba4933b55",
+              "batch_id": "ba600f1c-ea3c-4c74-b5e5-bf03739d6d1c",
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "gpt3.5-turbo-0613"
               }
             },
@@ -331,8 +336,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "786602e3-56c6-4c7e-8080-e63182d89971",
+              "batch_id": "8c2e8fb8-76dc-455d-8ba7-252f99594b36",
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "old-gpt3.5"
               }
             },
@@ -400,8 +406,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "0825d567-3dde-4180-81b1-f19ed87f0433",
+              "batch_id": "2a8ff935-4c25-4222-8d37-22634b8c6208",
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "gpt3.5-turbo-0613"
               }
             },
@@ -441,8 +448,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "158ffa31-7d9b-40d2-9fdb-1e585c430e3e",
+              "batch_id": "a993b28a-df28-462e-9e2b-e7afd6742824",
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "old-gpt3.5"
               }
             },
@@ -510,8 +518,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "6b103c06-c4a1-4e48-9554-7be2bf7bd476",
+              "batch_id": "4b818464-a297-429e-b081-19c61b12bae7",
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "gpt3.5-turbo-0613"
               }
             },
@@ -551,8 +560,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "a6232cb4-06a4-4df9-9900-61870d750de2",
+              "batch_id": "426b0d32-7afd-46a8-a9db-b0e893e7e3b7",
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "old-gpt3.5"
               }
             }
@@ -662,20 +672,34 @@
           "input": "evalNode-1688060142717",
           "llm_groups": [
             {
-              "label": "LLM",
-              "value": "LLM"
+              "value": "LLM",
+              "label": "LLMs (last)"
+            },
+            {
+              "value": "__pt",
+              "label": "LLMs #NaN"
+            },
+            {
+              "value": "LLM_0",
+              "label": "LLMs #1"
             }
           ],
           "refresh": false,
-          "selected_vars": [
-            "prompt"
-          ],
+          "selected_vars": [],
           "title": "Whether the prompt triggered the function call 'get_current_weather'",
           "vars": [
             "LLM (default)",
             {
-              "label": "prompt",
-              "value": "prompt"
+              "value": "prompt",
+              "label": "prompt"
+            },
+            {
+              "value": "__meta___pt",
+              "label": "__pt (meta)"
+            },
+            {
+              "value": "__meta_LLM_0",
+              "label": "LLM_0 (meta)"
             }
           ]
         },
@@ -743,8 +767,6 @@
         "height": 221,
         "data": {
           "code": "function evaluate(response) {\n  return response.text.startsWith(\n    \"[[FUNCTION]]\"\n  );\n}",
-          "language": "javascript",
-          "refresh": false,
           "fields": [
             {
               "text": "[[FUNCTION]] get_current_weather\\\\{\n  \"format\": \"celsius\",\n  \"location\": \"Boston, MA\"\n\\\\}",
@@ -753,6 +775,7 @@
                 "prompt": "What's the weather like in Boston?"
               },
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "gpt3.5-turbo-0613"
               },
               "llm": {
@@ -813,7 +836,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "68122490-31b3-4ce9-95d9-3e0577b7c8af"
+              "batch_id": "cfa8f743-32c7-4a24-8141-9e1fa264af49"
             },
             {
               "text": "I'm sorry, I cannot provide real-time information as I do not have access to live data. However, you can check reliable weather websites or applications for up-to-date information about the weather in Boston.",
@@ -822,6 +845,7 @@
                 "prompt": "What's the weather like in Boston?"
               },
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "old-gpt3.5"
               },
               "llm": {
@@ -854,7 +878,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "f6ee3564-8d63-4883-9cdd-49000f7a0c08"
+              "batch_id": "e342daaf-acde-4988-a759-c1c753efd670"
             },
             {
               "text": "The movie \"Twister\" was directed by Jan de Bont.",
@@ -863,6 +887,7 @@
                 "prompt": "Who directed the movie Twister?"
               },
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "gpt3.5-turbo-0613"
               },
               "llm": {
@@ -923,7 +948,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "07293a43-15ef-46a9-8143-93ad064fbce4"
+              "batch_id": "ebcba322-b11c-4680-8170-98b0f3bebbe5"
             },
             {
               "text": "The movie \"Twister\" was directed by Jan de Bont.",
@@ -932,6 +957,7 @@
                 "prompt": "Who directed the movie Twister?"
               },
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "old-gpt3.5"
               },
               "llm": {
@@ -964,7 +990,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "42124445-5b64-4da5-bc1d-7ad3a86351fa"
+              "batch_id": "1e884f42-d130-4a33-9039-22490772902d"
             },
             {
               "text": "Thunderstorms are caused by the rapid upward movement of warm, moist air, which then cools and condenses, forming cumulonimbus clouds. These clouds contain large amounts of water vapor, ice, and electrically charged particles. As the air continues to rise, the water droplets and ice particles within the clouds collide, leading to the development of strong updrafts and downdrafts. The movement of these particles within the cloud generates electrical charges, resulting in the formation of lightning. The rapid expansion and contraction of the air around the lightning bolt creates a shock wave that we hear as thunder.",
@@ -973,6 +999,7 @@
                 "prompt": "What causes thunderstorms?"
               },
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "gpt3.5-turbo-0613"
               },
               "llm": {
@@ -1033,7 +1060,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "16c74c10-6085-4902-a349-c79ba4933b55"
+              "batch_id": "ba600f1c-ea3c-4c74-b5e5-bf03739d6d1c"
             },
             {
               "text": "Thunderstorms are caused by the rapid upward movement of warm, moist air, which creates unstable atmospheric conditions. As the warm air rises, it cools and forms cumulonimbus clouds, which are the towering dark clouds that typically come to mind when thinking of a thunderstorm. Within these clouds, a variety of atmospheric conditions exist that can cause the development of lightning, thunder, heavy rain, hail, and tornadoes. The exact cause of a thunderstorm can vary depending on the location, time of year, and other environmental factors.",
@@ -1042,6 +1069,7 @@
                 "prompt": "What causes thunderstorms?"
               },
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "old-gpt3.5"
               },
               "llm": {
@@ -1074,7 +1102,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "786602e3-56c6-4c7e-8080-e63182d89971"
+              "batch_id": "8c2e8fb8-76dc-455d-8ba7-252f99594b36"
             },
             {
               "text": "[[FUNCTION]] get_current_weather\\\\{\n  \"format\": \"celsius\",\n  \"location\": \"Kenya\"\n\\\\}",
@@ -1083,6 +1111,7 @@
                 "prompt": "What is the typical temperature in Kenya in June?"
               },
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "gpt3.5-turbo-0613"
               },
               "llm": {
@@ -1143,7 +1172,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "0825d567-3dde-4180-81b1-f19ed87f0433"
+              "batch_id": "2a8ff935-4c25-4222-8d37-22634b8c6208"
             },
             {
               "text": "The typical temperature in Kenya in June varies depending on the region, but generally, temperatures range from 19°C (66°F) to 30°C (86°F). In some parts of the country, particularly in areas of higher elevation, temperatures may be cooler, while in areas closer to the equator temperatures can be quite hot.",
@@ -1152,6 +1181,7 @@
                 "prompt": "What is the typical temperature in Kenya in June?"
               },
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "old-gpt3.5"
               },
               "llm": {
@@ -1184,7 +1214,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "158ffa31-7d9b-40d2-9fdb-1e585c430e3e"
+              "batch_id": "a993b28a-df28-462e-9e2b-e7afd6742824"
             },
             {
               "text": "[[FUNCTION]] get_current_weather\\\\{\n  \"format\": \"celsius\",\n  \"location\": \"Honolulu, HI\"\n\\\\}",
@@ -1193,6 +1223,7 @@
                 "prompt": "What is the average temperature in Hawaii in December?"
               },
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "gpt3.5-turbo-0613"
               },
               "llm": {
@@ -1253,7 +1284,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "6b103c06-c4a1-4e48-9554-7be2bf7bd476"
+              "batch_id": "4b818464-a297-429e-b081-19c61b12bae7"
             },
             {
               "text": "The average temperature in Hawaii in December is around 77°F (25°C) during the day and 66°F (19°C) at night.",
@@ -1262,6 +1293,7 @@
                 "prompt": "What is the average temperature in Hawaii in December?"
               },
               "metavars": {
+                "__pt": "{prompt}",
                 "LLM_0": "old-gpt3.5"
               },
               "llm": {
@@ -1294,9 +1326,11 @@
                   "error": 0
                 }
               },
-              "batch_id": "a6232cb4-06a4-4df9-9900-61870d750de2"
+              "batch_id": "426b0d32-7afd-46a8-a9db-b0e893e7e3b7"
             }
-          ]
+          ],
+          "language": "javascript",
+          "refresh": false
         },
         "dragging": false,
         "id": "evalNode-1688060142717",
@@ -1393,8 +1427,8 @@
       }
     ],
     "viewport": {
-      "x": -89,
-      "y": 83,
+      "x": -15,
+      "y": 81,
       "zoom": 1
     }
   },
@@ -1478,7 +1512,8 @@
         },
         "responses": [
           "Thunderstorms are caused by the rapid upward movement of warm, moist air, which then cools and condenses, forming cumulonimbus clouds. These clouds contain large amounts of water vapor, ice, and electrically charged particles. As the air continues to rise, the water droplets and ice particles within the clouds collide, leading to the development of strong updrafts and downdrafts. The movement of these particles within the cloud generates electrical charges, resulting in the formation of lightning. The rapid expansion and contraction of the air around the lightning bolt creates a shock wave that we hear as thunder."
-        ]
+        ],
+        "uid": "ba600f1c-ea3c-4c74-b5e5-bf03739d6d1c"
       },
       "What is the average temperature in Hawaii in December?": {
         "info": {
@@ -1562,7 +1597,8 @@
         },
         "responses": [
           "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Honolulu, HI\"\n}"
-        ]
+        ],
+        "uid": "4b818464-a297-429e-b081-19c61b12bae7"
       },
       "What is the typical temperature in Kenya in June?": {
         "info": {
@@ -1646,7 +1682,8 @@
         },
         "responses": [
           "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Kenya\"\n}"
-        ]
+        ],
+        "uid": "2a8ff935-4c25-4222-8d37-22634b8c6208"
       },
       "What's the weather like in Boston?": {
         "info": {
@@ -1730,7 +1767,8 @@
         },
         "responses": [
           "[[FUNCTION]] get_current_weather{\n  \"format\": \"celsius\",\n  \"location\": \"Boston, MA\"\n}"
-        ]
+        ],
+        "uid": "cfa8f743-32c7-4a24-8141-9e1fa264af49"
       },
       "Who directed the movie Twister?": {
         "info": {
@@ -1810,7 +1848,8 @@
         },
         "responses": [
           "The movie \"Twister\" was directed by Jan de Bont."
-        ]
+        ],
+        "uid": "ebcba322-b11c-4680-8170-98b0f3bebbe5"
       }
     },
     "prompt-1686689549227_4.json": {
@@ -1862,7 +1901,8 @@
         },
         "responses": [
           "Thunderstorms are caused by the rapid upward movement of warm, moist air, which creates unstable atmospheric conditions. As the warm air rises, it cools and forms cumulonimbus clouds, which are the towering dark clouds that typically come to mind when thinking of a thunderstorm. Within these clouds, a variety of atmospheric conditions exist that can cause the development of lightning, thunder, heavy rain, hail, and tornadoes. The exact cause of a thunderstorm can vary depending on the location, time of year, and other environmental factors."
-        ]
+        ],
+        "uid": "8c2e8fb8-76dc-455d-8ba7-252f99594b36"
       },
       "What is the average temperature in Hawaii in December?": {
         "info": {
@@ -1912,7 +1952,8 @@
         },
         "responses": [
           "The average temperature in Hawaii in December is around 77°F (25°C) during the day and 66°F (19°C) at night."
-        ]
+        ],
+        "uid": "426b0d32-7afd-46a8-a9db-b0e893e7e3b7"
       },
       "What is the typical temperature in Hawaii in December?": {
         "info": {
@@ -1962,7 +2003,8 @@
         },
         "responses": [
           "In Hawaii, the typical temperature during December is around 75°F (24°C) during the day and around 65°F (18°C) at night. However, the temperature can vary depending on the island and geographical location within the island."
-        ]
+        ],
+        "uid": "be76c4fc-5e04-475f-ace3-b1a9e6046610"
       },
       "What is the typical temperature in Kenya in June?": {
         "info": {
@@ -2012,7 +2054,8 @@
         },
         "responses": [
           "The typical temperature in Kenya in June varies depending on the region, but generally, temperatures range from 19°C (66°F) to 30°C (86°F). In some parts of the country, particularly in areas of higher elevation, temperatures may be cooler, while in areas closer to the equator temperatures can be quite hot."
-        ]
+        ],
+        "uid": "a993b28a-df28-462e-9e2b-e7afd6742824"
       },
       "What's the current weather in Boston?": {
         "info": {},
@@ -2060,7 +2103,8 @@
         },
         "responses": [
           "I'm sorry, as an AI language model, I don't have access to current, up-to-date information about the weather. However, you can check the current weather in Boston by doing a quick online search or by downloading a weather app that can give you updates on the weather in real-time."
-        ]
+        ],
+        "uid": "d2578c6d-90a9-4208-9dbb-b1f5afb7d512"
       },
       "What's the weather like in Boston?": {
         "info": {
@@ -2110,7 +2154,8 @@
         },
         "responses": [
           "I'm sorry, I cannot provide real-time information as I do not have access to live data. However, you can check reliable weather websites or applications for up-to-date information about the weather in Boston."
-        ]
+        ],
+        "uid": "e342daaf-acde-4988-a759-c1c753efd670"
       },
       "Who directed the movie Tornado?": {
         "info": {
@@ -2160,7 +2205,8 @@
         },
         "responses": [
           "The 1996 movie \"Tornado\" was directed by Noel Nosseck."
-        ]
+        ],
+        "uid": "2f75b175-08fa-4d81-93ca-0716d72e9e4d"
       },
       "Who directed the movie Twister?": {
         "info": {
@@ -2212,7 +2258,8 @@
         },
         "responses": [
           "The movie \"Twister\" was directed by Jan de Bont."
-        ]
+        ],
+        "uid": "1e884f42-d130-4a33-9039-22490772902d"
       }
     },
     "prompt-1686689549227.json": {
@@ -2312,6 +2359,7 @@
             "prompt": "What's the weather like in Boston?"
           },
           "metavars": {
+            "__pt": "{prompt}",
             "LLM_0": "gpt3.5-turbo-0613"
           },
           "llm": "gpt3.5-turbo-0613",
@@ -2324,13 +2372,14 @@
             "prompt_tokens": 98,
             "total_tokens": 124
           },
-          "uid": "68122490-31b3-4ce9-95d9-3e0577b7c8af"
+          "uid": "cfa8f743-32c7-4a24-8141-9e1fa264af49"
         },
         {
           "vars": {
             "prompt": "What's the weather like in Boston?"
           },
           "metavars": {
+            "__pt": "{prompt}",
             "LLM_0": "old-gpt3.5"
           },
           "llm": "old-gpt3.5",
@@ -2343,13 +2392,14 @@
             "prompt_tokens": 27,
             "total_tokens": 68
           },
-          "uid": "f6ee3564-8d63-4883-9cdd-49000f7a0c08"
+          "uid": "e342daaf-acde-4988-a759-c1c753efd670"
         },
         {
           "vars": {
             "prompt": "Who directed the movie Twister?"
           },
           "metavars": {
+            "__pt": "{prompt}",
             "LLM_0": "gpt3.5-turbo-0613"
           },
           "llm": "gpt3.5-turbo-0613",
@@ -2362,13 +2412,14 @@
             "prompt_tokens": 97,
             "total_tokens": 112
           },
-          "uid": "07293a43-15ef-46a9-8143-93ad064fbce4"
+          "uid": "ebcba322-b11c-4680-8170-98b0f3bebbe5"
         },
         {
           "vars": {
             "prompt": "Who directed the movie Twister?"
           },
           "metavars": {
+            "__pt": "{prompt}",
             "LLM_0": "old-gpt3.5"
           },
           "llm": "old-gpt3.5",
@@ -2381,13 +2432,14 @@
             "prompt_tokens": 24,
             "total_tokens": 38
           },
-          "uid": "42124445-5b64-4da5-bc1d-7ad3a86351fa"
+          "uid": "1e884f42-d130-4a33-9039-22490772902d"
         },
         {
           "vars": {
             "prompt": "What causes thunderstorms?"
           },
           "metavars": {
+            "__pt": "{prompt}",
             "LLM_0": "gpt3.5-turbo-0613"
           },
           "llm": "gpt3.5-turbo-0613",
@@ -2400,13 +2452,14 @@
             "prompt_tokens": 95,
             "total_tokens": 218
           },
-          "uid": "16c74c10-6085-4902-a349-c79ba4933b55"
+          "uid": "ba600f1c-ea3c-4c74-b5e5-bf03739d6d1c"
         },
         {
           "vars": {
             "prompt": "What causes thunderstorms?"
           },
           "metavars": {
+            "__pt": "{prompt}",
             "LLM_0": "old-gpt3.5"
           },
           "llm": "old-gpt3.5",
@@ -2419,13 +2472,14 @@
             "prompt_tokens": 24,
             "total_tokens": 132
           },
-          "uid": "786602e3-56c6-4c7e-8080-e63182d89971"
+          "uid": "8c2e8fb8-76dc-455d-8ba7-252f99594b36"
         },
         {
           "vars": {
             "prompt": "What is the typical temperature in Kenya in June?"
           },
           "metavars": {
+            "__pt": "{prompt}",
             "LLM_0": "gpt3.5-turbo-0613"
           },
           "llm": "gpt3.5-turbo-0613",
@@ -2438,13 +2492,14 @@
             "prompt_tokens": 100,
             "total_tokens": 125
           },
-          "uid": "0825d567-3dde-4180-81b1-f19ed87f0433"
+          "uid": "2a8ff935-4c25-4222-8d37-22634b8c6208"
         },
         {
           "vars": {
             "prompt": "What is the typical temperature in Kenya in June?"
           },
           "metavars": {
+            "__pt": "{prompt}",
             "LLM_0": "old-gpt3.5"
           },
           "llm": "old-gpt3.5",
@@ -2457,13 +2512,14 @@
             "prompt_tokens": 29,
             "total_tokens": 96
           },
-          "uid": "158ffa31-7d9b-40d2-9fdb-1e585c430e3e"
+          "uid": "a993b28a-df28-462e-9e2b-e7afd6742824"
         },
         {
           "vars": {
             "prompt": "What is the average temperature in Hawaii in December?"
           },
           "metavars": {
+            "__pt": "{prompt}",
             "LLM_0": "gpt3.5-turbo-0613"
           },
           "llm": "gpt3.5-turbo-0613",
@@ -2476,13 +2532,14 @@
             "prompt_tokens": 100,
             "total_tokens": 127
           },
-          "uid": "6b103c06-c4a1-4e48-9554-7be2bf7bd476"
+          "uid": "4b818464-a297-429e-b081-19c61b12bae7"
         },
         {
           "vars": {
             "prompt": "What is the average temperature in Hawaii in December?"
           },
           "metavars": {
+            "__pt": "{prompt}",
             "LLM_0": "old-gpt3.5"
           },
           "llm": "old-gpt3.5",
@@ -2495,7 +2552,7 @@
             "prompt_tokens": 29,
             "total_tokens": 59
           },
-          "uid": "a6232cb4-06a4-4df9-9900-61870d750de2"
+          "uid": "426b0d32-7afd-46a8-a9db-b0e893e7e3b7"
         }
       ]
     },
@@ -2508,9 +2565,10 @@
           "prompt": "What's the weather like in Boston?"
         },
         "metavars": {
+          "__pt": "{prompt}",
           "LLM_0": "gpt3.5-turbo-0613"
         },
-        "uid": "68122490-31b3-4ce9-95d9-3e0577b7c8af",
+        "uid": "cfa8f743-32c7-4a24-8141-9e1fa264af49",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🌦️",
@@ -2586,9 +2644,10 @@
           "prompt": "What's the weather like in Boston?"
         },
         "metavars": {
+          "__pt": "{prompt}",
           "LLM_0": "old-gpt3.5"
         },
-        "uid": "f6ee3564-8d63-4883-9cdd-49000f7a0c08",
+        "uid": "e342daaf-acde-4988-a759-c1c753efd670",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -2636,9 +2695,10 @@
           "prompt": "Who directed the movie Twister?"
         },
         "metavars": {
+          "__pt": "{prompt}",
           "LLM_0": "gpt3.5-turbo-0613"
         },
-        "uid": "07293a43-15ef-46a9-8143-93ad064fbce4",
+        "uid": "ebcba322-b11c-4680-8170-98b0f3bebbe5",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🌦️",
@@ -2714,9 +2774,10 @@
           "prompt": "Who directed the movie Twister?"
         },
         "metavars": {
+          "__pt": "{prompt}",
           "LLM_0": "old-gpt3.5"
         },
-        "uid": "42124445-5b64-4da5-bc1d-7ad3a86351fa",
+        "uid": "1e884f42-d130-4a33-9039-22490772902d",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -2764,9 +2825,10 @@
           "prompt": "What causes thunderstorms?"
         },
         "metavars": {
+          "__pt": "{prompt}",
           "LLM_0": "gpt3.5-turbo-0613"
         },
-        "uid": "16c74c10-6085-4902-a349-c79ba4933b55",
+        "uid": "ba600f1c-ea3c-4c74-b5e5-bf03739d6d1c",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🌦️",
@@ -2842,9 +2904,10 @@
           "prompt": "What causes thunderstorms?"
         },
         "metavars": {
+          "__pt": "{prompt}",
           "LLM_0": "old-gpt3.5"
         },
-        "uid": "786602e3-56c6-4c7e-8080-e63182d89971",
+        "uid": "8c2e8fb8-76dc-455d-8ba7-252f99594b36",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -2892,9 +2955,10 @@
           "prompt": "What is the typical temperature in Kenya in June?"
         },
         "metavars": {
+          "__pt": "{prompt}",
           "LLM_0": "gpt3.5-turbo-0613"
         },
-        "uid": "0825d567-3dde-4180-81b1-f19ed87f0433",
+        "uid": "2a8ff935-4c25-4222-8d37-22634b8c6208",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🌦️",
@@ -2970,9 +3034,10 @@
           "prompt": "What is the typical temperature in Kenya in June?"
         },
         "metavars": {
+          "__pt": "{prompt}",
           "LLM_0": "old-gpt3.5"
         },
-        "uid": "158ffa31-7d9b-40d2-9fdb-1e585c430e3e",
+        "uid": "a993b28a-df28-462e-9e2b-e7afd6742824",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -3020,9 +3085,10 @@
           "prompt": "What is the average temperature in Hawaii in December?"
         },
         "metavars": {
+          "__pt": "{prompt}",
           "LLM_0": "gpt3.5-turbo-0613"
         },
-        "uid": "6b103c06-c4a1-4e48-9554-7be2bf7bd476",
+        "uid": "4b818464-a297-429e-b081-19c61b12bae7",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🌦️",
@@ -3098,9 +3164,10 @@
           "prompt": "What is the average temperature in Hawaii in December?"
         },
         "metavars": {
+          "__pt": "{prompt}",
           "LLM_0": "old-gpt3.5"
         },
-        "uid": "a6232cb4-06a4-4df9-9900-61870d750de2",
+        "uid": "426b0d32-7afd-46a8-a9db-b0e893e7e3b7",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",

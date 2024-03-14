@@ -4,7 +4,14 @@
  * Separated from ReactFlow node UI so that it can
  * be deployed in multiple locations.
  */
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  lazy,
+  Suspense,
+} from "react";
 import {
   Collapse,
   MultiSelect,
@@ -34,7 +41,10 @@ import {
   batchResponsesByUID,
   cleanMetavarsFilterFunc,
 } from "./backend/utils";
-import ResponseRatingToolbar from "./ResponseRatingToolbar";
+import { getLabelForResponse } from "./ResponseRatingToolbar";
+
+// Lazy load the response toolbars
+const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar.js"));
 
 // Helper funcs
 const countResponsesBy = (responses, keyFunc) => {
@@ -154,7 +164,10 @@ export const exportToExcel = (jsonResponses, filename) => {
       const prompt = res_obj.prompt;
       const vars = res_obj.vars;
       const metavars = res_obj.metavars ?? {};
-      const ratings = res_obj.rating;
+      const ratings = {
+        grade: getLabelForResponse(res_obj.uid, "grade"),
+        note: getLabelForResponse(res_obj.uid, "note"),
+      };
       const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
       return res_obj.responses.map((r, r_idx) => {
         const row = {
@@ -238,7 +251,8 @@ const ResponseGroup = ({
   );
 };
 
-const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) => {
+const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
+  // Responses
   const [responses, setResponses] = useState([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
@@ -411,6 +425,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) =>
     };
 
     const generateResponseBoxes = (resps, eatenvars, fixed_width) => {
+      const hide_llm_name = eatenvars.includes("LLM");
       return resps.map((res_obj, res_idx) => {
         const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
 
@@ -438,7 +453,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) =>
         const same_resp_text_counts = countResponsesBy(responses, (r) => r)[0];
         const same_resp_keys = Object.keys(same_resp_text_counts).sort(
           (key1, key2) =>
-            same_resp_text_counts[key2].length - same_resp_text_counts[key1].length,
+            same_resp_text_counts[key2].length -
+            same_resp_text_counts[key1].length,
         );
 
         const collapse_annotations = (annot_dict, idxs) => {
@@ -457,25 +473,30 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) =>
             : r;
           return (
             <div key={idx}>
-                <Flex justify="right" gap="xs" align="center">
-                {idx === 0 && same_resp_keys.length > 1 && wideFormat === true ?
-                    <h1>{getLLMName(res_obj)}</h1>
-                    : <></>}
-                {updateResponses ?
-                  <ResponseRatingToolbar 
-                    uid={res_obj?.uid}
+              <Flex justify="right" gap="xs" align="center">
+                {!hide_llm_name &&
+                idx === 0 &&
+                same_resp_keys.length > 1 &&
+                wideFormat === true ? (
+                  <h1>{getLLMName(res_obj)}</h1>
+                ) : (
+                  <></>
+                )}
+                <Suspense>
+                  <ResponseRatingToolbar
+                    uid={res_obj.uid}
                     innerIdxs={origIdxs}
                     wideFormat={wideFormat}
-                    grade={collapse_annotations(res_obj?.rating?.grade, origIdxs)} 
-                    annotation={collapse_annotations(res_obj?.rating?.note, origIdxs)} 
-                    updateResponses={updateResponses}
-                    onUpdateResponses={triggerRedraw}
                   />
-                  :<></>}
-                {idx === 0 && (same_resp_keys.length === 1 || !wideFormat) ?
-                    <h1>{getLLMName(res_obj)}</h1>
-                    : <></>}
-                </Flex>
+                </Suspense>
+                {!hide_llm_name &&
+                idx === 0 &&
+                (same_resp_keys.length === 1 || !wideFormat) ? (
+                  <h1>{getLLMName(res_obj)}</h1>
+                ) : (
+                  <></>
+                )}
+              </Flex>
               {same_resp_text_counts[r].length > 1 ? (
                 <span className="num-same-responses">
                   {same_resp_text_counts[r].length} times
@@ -525,12 +546,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) =>
             }}
           >
             <div className="response-var-inline-container">{var_tags}</div>
-            {eatenvars.includes("LLM") ? (
+            {hide_llm_name ? (
               ps
             ) : (
-              <div className="response-item-llm-name-wrapper">
-                {ps}
-              </div>
+              <div className="response-item-llm-name-wrapper">{ps}</div>
             )}
           </div>
         );
@@ -777,7 +796,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) =>
 
     setNumMatches(numResponsesDisplayed);
   };
-  
+
+  // Trigger a redraw of the inspector when any of the below changes:
   useEffect(triggerRedraw, [
     multiSelectValue,
     batchedResponses,
