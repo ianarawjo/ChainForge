@@ -341,6 +341,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
       <LLMResponseInspectorModal
         ref={inspectModal}
         jsonResponses={lastResponses}
+        updateResponses={setLastResponses}
       />
 
       <div className="llm-scorer-container">
@@ -427,6 +428,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
       <LLMResponseInspectorDrawer
         jsonResponses={lastResponses}
         showDrawer={showDrawer}
+        updateResponses={setLastResponses}
       />
     </BaseNode>
   );

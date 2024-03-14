@@ -48,6 +48,7 @@ const LLMResponseInspectorModal = forwardRef(
           <LLMResponseInspector
             jsonResponses={props.jsonResponses}
             wideFormat={true}
+            updateResponses={props.updateResponses}
           />
         </div>
       </Modal>

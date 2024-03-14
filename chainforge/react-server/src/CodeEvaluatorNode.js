@@ -722,6 +722,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
       <LLMResponseInspectorModal
         ref={inspectModal}
         jsonResponses={lastResponses}
+        updateResponses={setLastResponses}
       />
       <Modal
         title={default_header}
@@ -802,6 +803,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
       <LLMResponseInspectorDrawer
         jsonResponses={lastResponses}
         showDrawer={showDrawer}
+        updateResponses={setLastResponses}
       />
     </BaseNode>
   );
