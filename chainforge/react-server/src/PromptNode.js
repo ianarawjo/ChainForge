@@ -862,14 +862,15 @@ Soft failing by replacing undefined with empty strings.`,
                   o.metavars = resp_obj.metavars ?? {};
 
                   // Add a metavar for the prompt *template* in this PromptNode
-                  o.metavars.__pt = prompt_template;
+                  o.metavars.__pt = promptText;
 
                   // Carry over any chat history
                   if (resp_obj.chat_history)
                     o.chat_history = resp_obj.chat_history;
 
                   // Add a meta var to keep track of which LLM produced this response
-                  o.metavars[llm_metavar_key] = resp_obj.llm;
+                  if (llm_metavar_key !== undefined)
+                    o.metavars[llm_metavar_key] = resp_obj.llm;
                   return o;
                 }),
               )

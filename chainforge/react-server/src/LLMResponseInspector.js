@@ -4,7 +4,14 @@
  * Separated from ReactFlow node UI so that it can
  * be deployed in multiple locations.
  */
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  lazy,
+  Suspense,
+} from "react";
 import {
   Collapse,
   MultiSelect,
@@ -33,16 +40,20 @@ import {
   batchResponsesByUID,
   cleanMetavarsFilterFunc,
 } from "./backend/utils";
+import { getLabelForResponse } from "./ResponseRatingToolbar";
+
+// Lazy load the response toolbars
+const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar.js"));
 
 // Helper funcs
 const countResponsesBy = (responses, keyFunc) => {
   const responses_by_key = {};
   const unspecified_group = [];
-  responses.forEach((item) => {
+  responses.forEach((item, idx) => {
     const key = keyFunc(item);
     const d = key !== null ? responses_by_key : unspecified_group;
-    if (key in d) d[key] += 1;
-    else d[key] = 1;
+    if (key in d) d[key].push(idx);
+    else d[key] = [idx];
   });
   return [responses_by_key, unspecified_group];
 };
@@ -152,6 +163,10 @@ export const exportToExcel = (jsonResponses, filename) => {
       const prompt = res_obj.prompt;
       const vars = res_obj.vars;
       const metavars = res_obj.metavars ?? {};
+      const ratings = {
+        grade: getLabelForResponse(res_obj.uid, "grade"),
+        note: getLabelForResponse(res_obj.uid, "note"),
+      };
       const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
       return res_obj.responses.map((r, r_idx) => {
         const row = {
@@ -165,6 +180,15 @@ export const exportToExcel = (jsonResponses, filename) => {
         Object.entries(vars).forEach(([varname, val]) => {
           row[`Var: ${varname}`] = val;
         });
+
+        // Add column(s) for human ratings, if present
+        if (ratings) {
+          Object.entries(ratings).forEach(([rating_key, label_map]) => {
+            if (!label_map) return;
+            if (r_idx in label_map && label_map[r_idx] !== undefined)
+              row[`Human rating: ${rating_key}`] = label_map[r_idx];
+          });
+        }
 
         // Add column(s) for evaluation results, if present
         if (eval_res_items && eval_res_items.length > r_idx) {
@@ -227,6 +251,7 @@ const ResponseGroup = ({
 };
 
 const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
+  // Responses
   const [responses, setResponses] = useState([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
@@ -280,7 +305,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   );
 
   // Update the visualization whenever the jsonResponses or MultiSelect values change:
-  useEffect(() => {
+  const triggerRedraw = () => {
     if (
       !batchedResponses ||
       (Array.isArray(batchedResponses) && batchedResponses.length === 0)
@@ -399,6 +424,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     };
 
     const generateResponseBoxes = (resps, eatenvars, fixed_width) => {
+      const hide_llm_name = eatenvars.includes("LLM");
       return resps.map((res_obj, res_idx) => {
         const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
 
@@ -422,21 +448,48 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             resp_str_to_eval_res[r] = eval_res_items[idx];
           });
 
+        // Counts the responses with the same keys
         const same_resp_text_counts = countResponsesBy(responses, (r) => r)[0];
         const same_resp_keys = Object.keys(same_resp_text_counts).sort(
           (key1, key2) =>
-            same_resp_text_counts[key2] - same_resp_text_counts[key1],
+            same_resp_text_counts[key2].length -
+            same_resp_text_counts[key1].length,
         );
 
         const ps = same_resp_keys.map((r, idx) => {
+          const origIdxs = same_resp_text_counts[r];
           const textToShow = searchValue
             ? genSpansForHighlightedValue(r, searchValue, caseSensitive)
             : r;
           return (
             <div key={idx}>
-              {same_resp_text_counts[r] > 1 ? (
+              <Flex justify="right" gap="xs" align="center">
+                {!hide_llm_name &&
+                idx === 0 &&
+                same_resp_keys.length > 1 &&
+                wideFormat === true ? (
+                  <h1>{getLLMName(res_obj)}</h1>
+                ) : (
+                  <></>
+                )}
+                <Suspense>
+                  <ResponseRatingToolbar
+                    uid={res_obj.uid}
+                    innerIdxs={origIdxs}
+                    wideFormat={wideFormat}
+                  />
+                </Suspense>
+                {!hide_llm_name &&
+                idx === 0 &&
+                (same_resp_keys.length === 1 || !wideFormat) ? (
+                  <h1>{getLLMName(res_obj)}</h1>
+                ) : (
+                  <></>
+                )}
+              </Flex>
+              {same_resp_text_counts[r].length > 1 ? (
                 <span className="num-same-responses">
-                  {same_resp_text_counts[r]} times
+                  {same_resp_text_counts[r].length} times
                 </span>
               ) : (
                 <></>
@@ -483,13 +536,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             }}
           >
             <div className="response-var-inline-container">{var_tags}</div>
-            {eatenvars.includes("LLM") ? (
+            {hide_llm_name ? (
               ps
             ) : (
-              <div className="response-item-llm-name-wrapper">
-                <h1>{getLLMName(res_obj)}</h1>
-                {ps}
-              </div>
+              <div className="response-item-llm-name-wrapper">{ps}</div>
             )}
           </div>
         );
@@ -735,7 +785,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     }
 
     setNumMatches(numResponsesDisplayed);
-  }, [
+  };
+
+  // Trigger a redraw of the inspector when any of the below changes:
+  useEffect(triggerRedraw, [
     multiSelectValue,
     batchedResponses,
     wideFormat,

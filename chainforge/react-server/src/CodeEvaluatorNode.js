@@ -8,15 +8,7 @@ import React, {
   useImperativeHandle,
 } from "react";
 import { Handle } from "reactflow";
-import {
-  Code,
-  Modal,
-  Tooltip,
-  Box,
-  Text,
-  Skeleton,
-  Switch,
-} from "@mantine/core";
+import { Code, Modal, Tooltip, Box, Text, Skeleton } from "@mantine/core";
 import { Prism } from "@mantine/prism";
 import { useDisclosure } from "@mantine/hooks";
 import useStore from "./store";
@@ -226,7 +218,7 @@ export const CodeEvaluatorComponent = forwardRef(
         scope: "response",
         process_type: node_type,
         script_paths,
-        executor: executor,
+        executor,
       }).then(function (json) {
         // Check if there's an error; if so, bubble it up to user and exit:
         if (!json || json.error) {
@@ -447,11 +439,17 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
           return;
         }
 
+        console.log(json.responses);
+
         // Ping any vis + inspect nodes attached to this node to refresh their contents:
         pingOutputNodes(id);
         setLastResponses(stripLLMDetailsFromResponses(json.responses));
         setLastContext(getVarsAndMetavars(json.responses));
         setLastRunSuccess(true);
+
+        if (status !== "ready" && !showDrawer) setUninspectedResponses(true);
+
+        setStatus("ready");
 
         setDataPropsForNode(id, {
           fields: json.responses
@@ -476,10 +474,6 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
             )
             .flat(),
         });
-
-        if (status !== "ready" && !showDrawer) setUninspectedResponses(true);
-
-        setStatus("ready");
       })
       .catch(rejected);
   };

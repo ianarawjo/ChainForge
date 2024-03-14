@@ -17,6 +17,7 @@ import {
   call_flask_backend,
   extractSettingsVars,
   areEqualVarsDicts,
+  repairCachedResponses,
 } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
@@ -186,8 +187,10 @@ function load_from_cache(storageKey: string): Dict {
 function load_cache_responses(storageKey: string): Array<Dict> {
   const data = load_from_cache(storageKey);
   if (Array.isArray(data)) return data;
-  else if (typeof data === "object" && data.responses_last_run !== undefined)
+  else if (typeof data === "object" && data.responses_last_run !== undefined) {
+    repairCachedResponses(data, storageKey, (d) => d.responses_last_run);
     return data.responses_last_run;
+  }
   throw new Error(`Could not find cache file for id ${storageKey}`);
 }
 
@@ -1358,7 +1361,7 @@ export async function grabResponses(responses: Array<string>): Promise<Dict> {
  */
 export async function exportCache(ids: string[]) {
   // For each id, extract relevant cache file data
-  const export_data = {};
+  const cache_files = {};
   for (let i = 0; i < ids.length; i++) {
     const cache_id = ids[i];
     const cache_keys = get_cache_keys_related_to_id(cache_id);
@@ -1369,10 +1372,15 @@ export async function exportCache(ids: string[]) {
       continue;
     }
     cache_keys.forEach((key: string) => {
-      export_data[key] = load_from_cache(key);
+      cache_files[key] = load_from_cache(key);
     });
   }
-  return { files: export_data };
+  // Bundle up specific other state in StorageCache, which
+  // includes things like human ratings for responses:
+  const cache_state = StorageCache.getAllMatching((key) =>
+    key.startsWith("r."),
+  );
+  return { files: { ...cache_files, ...cache_state } };
 }
 
 /**
