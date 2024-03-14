@@ -81,6 +81,17 @@ export enum NativeLLM {
   // The actual model name will be passed as a param to the LLM call function.
   HF_OTHER = "Other (HuggingFace)",
   Ollama = "ollama",
+
+  Bedrock_Claude_2_1 = "anthropic.claude-v2:1",
+  Bedrock_Claude_2 = "anthropic.claude-v2",
+  Bedrock_Claude_Instant_1 = "anthropic.claude-instant-v1",
+  Bedrock_Jurassic_Ultra = "ai21.j2-ultra",
+  Bedrock_Jurassic_Mid = "ai21.j2-mid",
+  Bedrock_Titan_Light = "amazon.titan-text-lite-v1",
+  Bedrock_Titan_Large = "amazon.titan-tg1-large",
+  Bedrock_Titan_Express = "amazon.titan-text-express-v1",
+  Bedrock_Command_Text = "cohere.command-text-v14",
+  Bedrock_Command_Text_Light = "cohere.command-light-text-v14",
 }
 
 export type LLM = string | NativeLLM;
@@ -97,6 +108,7 @@ export enum LLMProvider {
   HuggingFace = "hf",
   Aleph_Alpha = "alephalpha",
   Ollama = "ollama",
+  Bedrock = "bedrock",
   Custom = "__custom",
 }
 
@@ -116,6 +128,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   else if (llm.toString().startsWith("claude")) return LLMProvider.Anthropic;
   else if (llm_name?.startsWith("Aleph_Alpha")) return LLMProvider.Aleph_Alpha;
   else if (llm_name?.startsWith("Ollama")) return LLMProvider.Ollama;
+  else if (llm_name?.startsWith("Bedrock")) return LLMProvider.Bedrock;
   else if (llm.toString().startsWith("__custom/")) return LLMProvider.Custom;
 
   return undefined;
@@ -142,6 +155,7 @@ export const RATE_LIMITS: { [key in LLM]?: [number, number] } = {
   [NativeLLM.Azure_OpenAI]: [30, 10],
   [NativeLLM.PaLM2_Text_Bison]: [4, 10], // max 30 requests per minute; so do 4 per batch, 10 seconds between (conservative)
   [NativeLLM.PaLM2_Chat_Bison]: [4, 10],
+  [NativeLLM.Bedrock_Claude_2]: [5, 10],
 };
 
 /** Equivalent to a Python enum's .name property */

@@ -112,6 +112,34 @@ export const initLLMProviders = [
     base_model: "azure-openai",
     temp: 1.0,
   },
+  {
+    name: "Bedrock Claude",
+    emoji: "⛰️",
+    model: "anthropic.claude-v2:1",
+    base_model: "anthropic.claude",
+    temp: 0.9,
+  },
+  {
+    name: "Bedrock Jurassic 2",
+    emoji: "⛰️",
+    model: "ai21.j2-ultra",
+    base_model: "ai21.j2",
+    temp: 0.9,
+  },
+  {
+    name: "Bedrock Titan",
+    emoji: "⛰️",
+    model: "amazon.titan-tg1-large",
+    base_model: "amazon.titan",
+    temp: 0.9,
+  },
+  {
+    name: "Bedrock Command Text 14",
+    emoji: "⛰️",
+    model: "cohere.command-text-v14",
+    base_model: "cohere.command",
+    temp: 0.9,
+  },
 ];
 if (APP_IS_RUNNING_LOCALLY()) {
   initLLMProviders.push({
@@ -309,8 +337,7 @@ const useStore = create((set, get) => ({
               return Object.values(
                 transformDict(
                   src_node.data.fields,
-                  // eslint-disable-next-line
-                  (fid) => src_node.data.fields_visibility.fid !== false,
+                  (fid) => src_node.data.fields_visibility[fid] !== false,
                 ),
               );
             // return all field values

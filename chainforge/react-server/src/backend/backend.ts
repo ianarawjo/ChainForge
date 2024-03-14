@@ -170,8 +170,8 @@ function get_cache_keys_related_to_id(
     );
   else return include_basefile ? [base_file] : [];
 }
-// eslint-disable-next-line
-async function setAPIKeys(api_keys: StringDict): Promise<void> {
+
+export async function setAPIKeys(api_keys: StringDict): Promise<void> {
   if (api_keys !== undefined) set_api_keys(api_keys);
 }
 
@@ -220,7 +220,9 @@ function extract_llm_key(llm_spec: Dict | string): string {
   else if (llm_spec.key !== undefined) return llm_spec.key;
   else
     throw new Error(
-      `Could not find a key property on spec ${JSON.stringify(llm_spec)} for LLM`,
+      `Could not find a key property on spec ${JSON.stringify(
+        llm_spec,
+      )} for LLM`,
     );
 }
 
@@ -779,7 +781,7 @@ export async function queryLLM(
   // For each LLM, generate and cache responses:
   const responses: { [key: string]: Array<LLMResponseObject> } = {};
   const all_errors = {};
-  const num_generations = n !== undefined ? n : 1;
+  const num_generations = n ?? 1;
   async function query(llm_spec: string | Dict): Promise<LLMPrompterResults> {
     // Get LLM model name and any params
     const llm_str = extract_llm_name(llm_spec);
@@ -932,7 +934,6 @@ export async function queryLLM(
     errors: all_errors,
   };
 }
-
 /**
  * A convenience function for a simpler call to queryLLM.
  * This is queryLLM with "no_cache" turned on, no variables, and n=1 responses per prompt.
@@ -1051,6 +1052,7 @@ export async function executejs(
 
     // Run the user-defined 'evaluate' function over the responses:
     // NOTE: 'evaluate' here was defined dynamically from 'eval' above. We've already checked that it exists.
+
     processed_resps = await run_over_responses(
       iframe ? process_func : code,
       responses,
@@ -1218,8 +1220,7 @@ export async function evalWithLLM(
   // Load all responses with the given ID:
   let all_evald_responses: StandardizedLLMResponse[] = [];
   let all_errors: string[] = [];
-  for (let i = 0; i < response_ids.length; i++) {
-    const cache_id = response_ids[i];
+  for (const cache_id of response_ids) {
     const fname = `${cache_id}.json`;
     if (!StorageCache.has(fname))
       return { error: `Did not find cache file for id ${cache_id}` };
@@ -1330,8 +1331,7 @@ export async function evalWithLLM(
 export async function grabResponses(responses: Array<string>): Promise<Dict> {
   // Grab all responses with the given ID:
   let grabbed_resps: Dict[] = [];
-  for (let i = 0; i < responses.length; i++) {
-    const cache_id = responses[i];
+  for (const cache_id of responses) {
     const storageKey = `${cache_id}.json`;
     if (!StorageCache.has(storageKey))
       return { error: `Did not find cache data for id ${cache_id}` };
@@ -1359,8 +1359,7 @@ export async function grabResponses(responses: Array<string>): Promise<Dict> {
 export async function exportCache(ids: string[]) {
   // For each id, extract relevant cache file data
   const export_data = {};
-  for (let i = 0; i < ids.length; i++) {
-    const cache_id = ids[i];
+  for (const cache_id of ids) {
     const cache_keys = get_cache_keys_related_to_id(cache_id);
     if (cache_keys.length === 0) {
       console.warn(

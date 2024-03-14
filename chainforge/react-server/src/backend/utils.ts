@@ -20,6 +20,7 @@ import {
 import { env as process_env } from "process";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
+import path from "path";
 
 /* LLM API SDKs */
 import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
@@ -29,6 +30,7 @@ import {
 } from "@azure/openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { UserForcedPrematureExit } from "./errors";
+import { fromModelId } from "bedrock-models";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
@@ -118,12 +120,7 @@ async function route_fetch(
 // import { GoogleAuth } from "google-auth-library";
 
 function get_environ(key: string): string | undefined {
-  if (key in process_env) return process_env[key];
-  return undefined;
-}
-
-function appendEndSlashIfMissing(path: string) {
-  return path + (path[path.length - 1] === "/" ? "" : "/");
+  return process.env[key];
 }
 
 let OPENAI_API_KEY = get_environ("OPENAI_API_KEY");
@@ -133,6 +130,11 @@ let AZURE_OPENAI_KEY = get_environ("AZURE_OPENAI_KEY");
 let AZURE_OPENAI_ENDPOINT = get_environ("AZURE_OPENAI_ENDPOINT");
 let HUGGINGFACE_API_KEY = get_environ("HUGGINGFACE_API_KEY");
 let ALEPH_ALPHA_API_KEY = get_environ("ALEPH_ALPHA_API_KEY");
+let AMAZON_BEDROCK_CONFIG = get_environ("AMAZON_BEDROCK_CONFIG");
+let AWS_ACCESS_KEY_ID = get_environ("AWS_ACCESS_KEY_ID");
+let AWS_SECRET_ACCESS_KEY = get_environ("AWS_SECRET_ACCESS_KEY");
+let AWS_SESSION_TOKEN = get_environ("AWS_SESSION_TOKEN");
+let AWS_REGION = get_environ("AWS_REGION");
 
 /**
  * Sets the local API keys for the revelant LLM API(s).
@@ -154,6 +156,15 @@ export function set_api_keys(api_keys: StringDict): void {
     AZURE_OPENAI_ENDPOINT = api_keys.Azure_OpenAI_Endpoint;
   if (key_is_present("AlephAlpha")) ALEPH_ALPHA_API_KEY = api_keys.AlephAlpha;
   // Soft fail for non-present keys
+  if (key_is_present("AmazonBedrock"))
+    AMAZON_BEDROCK_CONFIG = api_keys.AmazonBedrock;
+  if (key_is_present("AWS_Access_Key_ID"))
+    AWS_ACCESS_KEY_ID = api_keys.AWS_Access_Key_ID;
+  if (key_is_present("AWS_Secret_Access_Key"))
+    AWS_SECRET_ACCESS_KEY = api_keys.AWS_Secret_Access_Key;
+  if (key_is_present("AWS_Session_Token"))
+    AWS_SESSION_TOKEN = api_keys.AWS_Session_Token;
+  if (key_is_present("AWS_Region")) AWS_REGION = api_keys.AWS_Region;
 }
 
 export function get_azure_openai_api_keys(): [
@@ -171,8 +182,8 @@ export function get_azure_openai_api_keys(): [
  */
 function construct_openai_chat_history(
   prompt: string,
-  chat_history: ChatHistory | undefined,
-  system_msg: string | undefined,
+  chat_history?: ChatHistory,
+  system_msg?: string,
 ): ChatHistory {
   const prompt_msg: ChatMessage = { role: "user", content: prompt };
   const sys_msg: ChatMessage[] =
@@ -686,7 +697,9 @@ export async function call_google_palm(
   // We need to detect this and fill the response with the safety reasoning:
   if (completion.filters && completion.filters.length > 0) {
     // Request was blocked. Output why in the response text, repairing the candidate dict to mock up 'n' responses
-    const block_error_msg = `[[BLOCKED_REQUEST]] Request was blocked because it triggered safety filters: ${JSON.stringify(completion.filters)}`;
+    const block_error_msg = `[[BLOCKED_REQUEST]] Request was blocked because it triggered safety filters: ${JSON.stringify(
+      completion.filters,
+    )}`;
     completion.candidates = new Array(n).fill({
       author: "1",
       content: block_error_msg,
@@ -923,9 +936,11 @@ export async function call_huggingface(
   // Inference Endpoints for text completion models has the same call,
   // except the endpoint is an entire URL. Detect this:
   const url =
-    using_custom_model_endpoint && params?.custom_model?.startsWith("https:")
-      ? params?.custom_model
-      : `https://api-inference.huggingface.co/models/${using_custom_model_endpoint ? params?.custom_model?.trim() : model}`;
+    using_custom_model_endpoint && params.custom_model.startsWith("https:")
+      ? params.custom_model
+      : `https://api-inference.huggingface.co/models/${
+          using_custom_model_endpoint ? params.custom_model.trim() : model
+        }`;
 
   const responses: Array<Dict> = [];
   while (responses.length < n) {
@@ -1047,7 +1062,7 @@ export async function call_ollama_provider(
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
-  let url: string = appendEndSlashIfMissing(params?.ollama_url);
+  let url: string = path.join(params?.ollama_url);
   const ollama_model: string = params?.ollamaModel.toString();
   const model_type: string = params?.model_type ?? "text";
   const system_msg: string = params?.system_msg ?? "";
@@ -1122,6 +1137,85 @@ export async function call_ollama_provider(
   );
 
   return [query, responses];
+}
+
+/**
+ * Calls Bedrock models via Bedrock's API.
+   @returns raw query and response JSON dicts.
+ */
+export async function call_bedrock(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+): Promise<[Dict, Dict]> {
+  if (!AMAZON_BEDROCK_CONFIG)
+    throw new Error(
+      "Could not find an Region value for the Bedrock API. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  const modelName: string = model.toString();
+
+  let stopWords = [];
+  if (
+    !(
+      params?.stop_sequences !== undefined &&
+      (!Array.isArray(params.stop_sequences) ||
+        params.stop_sequences.length === 0)
+    )
+  ) {
+    stopWords = params?.stop_sequences ?? [];
+  }
+
+  const bedrockConfig = JSON.parse(AMAZON_BEDROCK_CONFIG);
+  console.warn("Params", params, bedrockConfig);
+  delete params.stop;
+  const fm = fromModelId({
+    modelId: modelName,
+    region: bedrockConfig.region ?? "us-west-2",
+    credentials: bedrockConfig.credentials,
+    stopSequences: stopWords,
+    temperature,
+    topP: params?.top_p ?? 1.0,
+    maxTokensCount: params?.max_tokens_to_sample ?? 512,
+  });
+
+  console.log(`Querying Bedrock model '${model}' with prompt '${prompt}'...`);
+
+  // Determine the system message and whether there's chat history to continue:
+  // const chat_history: ChatHistory | undefined = params?.chat_history;
+  // const system_msg: string =
+  //   params?.system_msg !== undefined
+  //     ? params.system_msg
+  //     : "You are a helpful assistant.";
+  // delete params?.system_msg;
+  // delete params?.chat_history;
+
+  const query: Dict = {
+    model: modelName,
+    n,
+    temperature,
+    ...params, // 'the rest' of the settings, passed from the front-end settings
+  };
+
+  let response: [];
+  try {
+    response = await fm.generate(prompt, { extraArgs: params });
+    console.log("Response", response);
+  } catch (error: any) {
+    console.error("Error", error);
+    if (error?.response) {
+      throw new Error(error.response.data?.error?.message);
+      // throw new Error(error.response.status);
+    } else {
+      console.log(error?.message || error);
+      throw new Error(error?.message || error);
+    }
+  }
+
+  return [query, response];
 }
 
 async function call_custom_provider(
@@ -1204,10 +1298,12 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.Aleph_Alpha) call_api = call_alephalpha;
   else if (llm_provider === LLMProvider.Ollama) call_api = call_ollama_provider;
   else if (llm_provider === LLMProvider.Custom) call_api = call_custom_provider;
-
+  else if (llm_provider === LLMProvider.Bedrock) call_api = call_bedrock;
+  console.log(call_api);
   if (call_api === undefined)
-    throw new Error(`Could not find an API hook for model ${llm}.`);
-
+    throw new Error(
+      `Adapter for Language model ${llm} and ${llm_provider} not found`,
+    );
   return call_api(prompt, llm, n, temperature, params, should_cancel);
 }
 

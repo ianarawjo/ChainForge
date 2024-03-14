@@ -878,6 +878,9 @@ const HuggingFaceTextInferenceSettings = {
       "ui:help": "Defaults to 1.0.",
       "ui:widget": "range",
     },
+    max_new_tokens: {
+      "ui:help": "Defaults to unspecified (-1)",
+    },
     top_k: {
       "ui:help": "Defaults to unspecified (-1)",
     },
@@ -1241,6 +1244,456 @@ const OllamaSettings = {
   },
 };
 
+const BedrockClaudeSettings = {
+  fullName: "Claude (Anthropic) via Amazon Bedrock",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "Claude",
+      },
+      model: {
+        type: "string",
+        title: "Model Version",
+        description:
+          "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
+        enum: [
+          "anthropic.claude-v2:1",
+          "anthropic.claude-v2",
+          "anthropic.claude-instant-v1",
+        ],
+        default: "anthropic.claude-v2:1",
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.01,
+      },
+      max_tokens_to_sample: {
+        type: "integer",
+        title: "max_tokens_to_sample",
+        description:
+          "A maximum number of tokens to generate before stopping. Lower this if you want shorter responses. By default, ChainForge uses the value 1024, although the Anthropic API does not specify a default value.",
+        default: 1024,
+        minimum: 1,
+      },
+      custom_prompt_wrapper: {
+        type: "string",
+        title: "Prompt Wrapper (ChainForge)",
+        description:
+          'Anthropic models expect prompts in the form "\\n\\nHuman: ${prompt}\\n\\nAssistant:". ChainForge wraps all prompts in this template by default. If you wish to \
+                explore custom prompt wrappers that deviate, write a Python template here with a single variable, ${prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)',
+        default: "",
+      },
+      stop_sequences: {
+        type: "string",
+        title: "stop_sequences",
+        description:
+          'Anthropic models stop on "\\n\\nHuman:", and may include additional built-in stop sequences in the future. By providing the stop_sequences parameter, you may include additional strings that will cause the model to stop generating.\nEnclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: '"\n\nHuman:"',
+      },
+      top_k: {
+        type: "integer",
+        title: "top_k",
+        description:
+          'Only sample from the top K options for each subsequent token. Used to remove "long tail" low probability responses. Defaults to -1, which disables it.',
+        minimum: 1,
+        default: 1,
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description:
+          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
+        default: 0.9,
+        minimum: 0.001,
+        maximum: 1,
+        multipleOf: 0.001,
+      },
+    },
+  },
+
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:help":
+        "Defaults to claude-2. Note that Anthropic models in particular are subject to change. Model names prior to Claude 2, including 100k context window, are no longer listed on the Anthropic site, so they may or may not work.",
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    max_tokens_to_sample: {
+      "ui:help": "Defaults to 1024.",
+    },
+    top_k: {
+      "ui:help": "Defaults to -1 (none).",
+    },
+    top_p: {
+      "ui:help": "Defaults to -1 (none).",
+    },
+    stop_sequences: {
+      "ui:widget": "textarea",
+      "ui:help": 'Defaults to one stop sequence, "\\n\\nHuman: "',
+    },
+    custom_prompt_wrapper: {
+      "ui:widget": "textarea",
+      "ui:help":
+        'Defaults to Anthropic\'s internal wrapper "\\n\\nHuman: {prompt}\\n\\nAssistant".',
+    },
+  },
+
+  postprocessors: {
+    stop_sequences: (str) => {
+      if (str.trim().length === 0) return ["\n\nHuman:"];
+      return str
+        .match(/"((?:[^"\\]|\\.)*)"/g)
+        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+  },
+};
+
+const BedrockJurassic2Settings = {
+  fullName: "Jurassic-2 (Ai21) via Amazon Bedrock",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "Jurassic2",
+      },
+      model: {
+        type: "string",
+        title: "Model Version",
+        description:
+          "Select a version of Jurassic 2 to query. For more details on the differences, see the AI21 API documentation.",
+        enum: ["ai21.j2-ultra", "ai21.j2-mid"],
+        default: "ai21.j2-ultra",
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.01,
+      },
+      maxTokens: {
+        type: "integer",
+        title: "maxTokens",
+        description:
+          "The maximum number of tokens to generate for each response.",
+        default: 1024,
+        minimum: 1,
+      },
+      minTokens: {
+        type: "integer",
+        title: "maxTokens",
+        description:
+          "The minimum number of tokens to generate for each response.",
+        default: 1,
+        minimum: 1,
+      },
+      numResults: {
+        type: "integer",
+        title: "numResults",
+        description: "The number of responses to generate for a given prompt.",
+        default: 1,
+        minimum: 1,
+      },
+      stopSequences: {
+        type: "string",
+        title: "stopSequences",
+        description:
+          'Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: "",
+      },
+      topKReturn: {
+        type: "integer",
+        title: "topKReturn",
+        description:
+          "The number of top-scoring tokens to consider for each generation step.",
+        minimum: 0,
+        default: 0,
+      },
+      topP: {
+        type: "number",
+        title: "topP",
+        description:
+          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
+        default: 1,
+        minimum: 0.01,
+        maximum: 1,
+        multipleOf: 0.001,
+      },
+    },
+  },
+  postprocessors: {
+    stopSequences: (str) => {
+      if (str.trim().length === 0) return [];
+      return str
+        .match(/"((?:[^"\\]|\\.)*)"/g)
+        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+  },
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:help": "Defaults to Jurassic 2 Ultra. ",
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    maxTokens: {
+      "ui:help": "Defaults to 1024.",
+    },
+    minTokens: {
+      "ui:help": "Defaults to 1.",
+    },
+    topKReturn: {
+      "ui:help": "Defaults to 0.",
+    },
+    topP: {
+      "ui:help": "Defaults to 1.",
+    },
+    stopSequences: {
+      "ui:widget": "textarea",
+      "ui:help": "Defaults to no sequence",
+    },
+  },
+};
+
+const BedrockTitanSettings = {
+  fullName: "Titan (Amazon) via Amazon Bedrock",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "Titan",
+      },
+      model: {
+        type: "string",
+        title: "Model Version",
+        description:
+          "Select a version of Amazon Titan to query. For more details on the differences, see the Amazon Titan API documentation.",
+        enum: [
+          "amazon.titan-tg1-large",
+          "amazon.titan-text-lite-v1",
+          "amazon.titan-text-express-v1",
+        ],
+        default: "amazon.titan-tg1-large",
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.01,
+      },
+      maxTokenCount: {
+        type: "integer",
+        title: "maxTokens",
+        description:
+          "The maximum number of tokens to generate for each response.",
+        default: 1024,
+        minimum: 1,
+      },
+      stopSequences: {
+        type: "string",
+        title: "stopSequences",
+        description:
+          'Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: "",
+      },
+      topP: {
+        type: "number",
+        title: "topP",
+        description:
+          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
+        default: 1,
+        minimum: 0.01,
+        maximum: 1,
+        multipleOf: 0.001,
+      },
+    },
+  },
+  postprocessors: {
+    stopSequences: (str) => {
+      if (str.trim().length === 0) return [];
+      return str
+        .match(/"((?:[^"\\]|\\.)*)"/g)
+        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+  },
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:help": "Defaults to Titan Large",
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    maxTokenCount: {
+      "ui:help": "Defaults to 1024.",
+    },
+    topP: {
+      "ui:help": "Defaults to 1.",
+    },
+    stopSequences: {
+      "ui:widget": "textarea",
+      "ui:help": "Defaults to no sequence",
+    },
+  },
+};
+
+const BedrockCommandTextSettings = {
+  fullName: "Command Text (Cohere) via Amazon Bedrock",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "CommandText",
+      },
+      model: {
+        type: "string",
+        title: "Model Version",
+        description:
+          "Select a version of Command Cohere to query. For more details on the differences, see the Cohere API documentation.",
+        enum: ["cohere.command-text-v14", "cohere.command-light-text-v14"],
+        default: "cohere.command-text-v14",
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.01,
+      },
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The maximum number of tokens to generate for each response.",
+        default: 1024,
+        minimum: 1,
+      },
+      num_generations: {
+        type: "integer",
+        title: "num_generations",
+        description: "The number of responses to generate for a given prompt.",
+        default: 1,
+        minimum: 1,
+      },
+      stop_sequences: {
+        type: "string",
+        title: "stop_sequences",
+        description:
+          'Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: "",
+      },
+      k: {
+        type: "integer",
+        title: "k",
+        description:
+          "The number of top-scoring tokens to consider for each generation step.",
+        minimum: 0,
+        default: 0,
+      },
+      p: {
+        type: "number",
+        title: "p",
+        description:
+          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
+        default: 1,
+        minimum: 0.01,
+        maximum: 1,
+        multipleOf: 0.001,
+      },
+    },
+  },
+  postprocessors: {
+    stop_sequences: (str) => {
+      if (str.trim().length === 0) return [];
+      return str
+        .match(/"((?:[^"\\]|\\.)*)"/g)
+        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+  },
+
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:help": "Defaults to Command Text",
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    max_tokens: {
+      "ui:help": "Defaults to 1024.",
+    },
+    num_generations: {
+      "ui:help": "Defaults to 1.",
+    },
+    k: {
+      "ui:help": "Defaults to 0.",
+    },
+    p: {
+      "ui:help": "Defaults to 1.",
+    },
+    stop_sequences: {
+      "ui:widget": "textarea",
+      "ui:help": "Defaults to no sequence",
+    },
+  },
+};
+
 // A lookup table indexed by base_model.
 export const ModelSettings = {
   "gpt-3.5-turbo": ChatGPTSettings,
@@ -1252,6 +1705,10 @@ export const ModelSettings = {
   hf: HuggingFaceTextInferenceSettings,
   "luminous-base": AlephAlphaLuminousSettings,
   ollama: OllamaSettings,
+  "anthropic.claude": BedrockClaudeSettings,
+  "ai21.j2": BedrockJurassic2Settings,
+  "amazon.titan": BedrockTitanSettings,
+  "cohere.command": BedrockCommandTextSettings,
 };
 
 export function getSettingsSchemaForLLM(llm_name) {
@@ -1271,7 +1728,9 @@ export function getSettingsSchemaForLLM(llm_name) {
   if (llm_provider === LLMProvider.Custom) return ModelSettings[llm_name];
   else if (llm_provider in provider_to_settings_schema)
     return provider_to_settings_schema[llm_provider];
-  else {
+  else if (llm_provider === LLMProvider.Bedrock) {
+    return ModelSettings[llm_name.split("-")[0]];
+  } else {
     console.error(`Could not find provider for llm ${llm_name}`);
     return {};
   }
@@ -1323,6 +1782,7 @@ export const setCustomProvider = (
   models,
   rate_limit,
   settings_schema,
+  llmProviderList,
 ) => {
   if (typeof emoji === "string" && (emoji.length === 0 || emoji.length > 2))
     throw new Error(`Emoji for a custom provider must have a character.`);
@@ -1408,7 +1868,8 @@ export const setCustomProvider = (
     rate_limit > 0
   ) {
     if (rate_limit >= 60)
-      RATE_LIMITS[base_model] = [Math.trunc(rate_limit / 60), 1]; // for instance, 300 rpm means 5 every second
+      RATE_LIMITS[base_model] = [Math.trunc(rate_limit / 60), 1];
+    // for instance, 300 rpm means 5 every second
     else RATE_LIMITS[base_model] = [1, Math.trunc(60 / rate_limit)]; // for instance, 10 rpm means 1 every 6 seconds
   }
 
