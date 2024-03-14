@@ -76,7 +76,7 @@ const InspectorNode = ({ data, id }) => {
         className="inspect-response-container nowheel nodrag"
         style={{ marginTop: "-8pt" }}
       >
-        <LLMResponseInspector jsonResponses={jsonResponses} />
+        <LLMResponseInspector jsonResponses={jsonResponses} updateResponses={setJSONResponses} />
       </div>
       <Handle
         type="target"

@@ -1038,6 +1038,7 @@ Soft failing by replacing undefined with empty strings.`,
         ref={inspectModal}
         jsonResponses={jsonResponses}
         prompt={promptText}
+        updateResponses={setJSONResponses}
       />
       <Modal
         title={
@@ -1203,6 +1204,7 @@ Soft failing by replacing undefined with empty strings.`,
       <LLMResponseInspectorDrawer
         jsonResponses={jsonResponses}
         showDrawer={showDrawer}
+        updateResponses={setJSONResponses}
       />
     </BaseNode>
   );

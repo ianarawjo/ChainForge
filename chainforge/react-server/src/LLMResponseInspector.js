@@ -23,6 +23,7 @@ import {
   IconLayoutList,
   IconLetterCaseToggle,
   IconFilter,
+  IconThumbUp,
 } from "@tabler/icons-react";
 import * as XLSX from "xlsx";
 import useStore from "./store";
@@ -33,16 +34,17 @@ import {
   batchResponsesByUID,
   cleanMetavarsFilterFunc,
 } from "./backend/utils";
+import ResponseRatingToolbar from "./ResponseRatingToolbar";
 
 // Helper funcs
 const countResponsesBy = (responses, keyFunc) => {
   const responses_by_key = {};
   const unspecified_group = [];
-  responses.forEach((item) => {
+  responses.forEach((item, idx) => {
     const key = keyFunc(item);
     const d = key !== null ? responses_by_key : unspecified_group;
-    if (key in d) d[key] += 1;
-    else d[key] = 1;
+    if (key in d) d[key].push(idx);
+    else d[key] = [idx];
   });
   return [responses_by_key, unspecified_group];
 };
@@ -152,6 +154,7 @@ export const exportToExcel = (jsonResponses, filename) => {
       const prompt = res_obj.prompt;
       const vars = res_obj.vars;
       const metavars = res_obj.metavars ?? {};
+      const ratings = res_obj.rating;
       const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
       return res_obj.responses.map((r, r_idx) => {
         const row = {
@@ -165,6 +168,15 @@ export const exportToExcel = (jsonResponses, filename) => {
         Object.entries(vars).forEach(([varname, val]) => {
           row[`Var: ${varname}`] = val;
         });
+
+        // Add column(s) for human ratings, if present
+        if (ratings) {
+          Object.entries(ratings).forEach(([rating_key, label_map]) => {
+            if (!label_map) return;
+            if (r_idx in label_map && label_map[r_idx] !== undefined)
+              row[`Human rating: ${rating_key}`] = label_map[r_idx];
+          });
+        }
 
         // Add column(s) for evaluation results, if present
         if (eval_res_items && eval_res_items.length > r_idx) {
@@ -226,7 +238,7 @@ const ResponseGroup = ({
   );
 };
 
-const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
+const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) => {
   const [responses, setResponses] = useState([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
@@ -280,13 +292,13 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   );
 
   // Update the visualization whenever the jsonResponses or MultiSelect values change:
-  useEffect(() => {
+  const triggerRedraw = () => {
     if (
       !batchedResponses ||
       (Array.isArray(batchedResponses) && batchedResponses.length === 0)
     )
       return;
-
+    
     // Find all vars in responses
     let found_vars = new Set();
     let found_metavars = new Set();
@@ -422,21 +434,51 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             resp_str_to_eval_res[r] = eval_res_items[idx];
           });
 
+        // Counts the responses with the same keys
         const same_resp_text_counts = countResponsesBy(responses, (r) => r)[0];
         const same_resp_keys = Object.keys(same_resp_text_counts).sort(
           (key1, key2) =>
-            same_resp_text_counts[key2] - same_resp_text_counts[key1],
+            same_resp_text_counts[key2].length - same_resp_text_counts[key1].length,
         );
 
+        const collapse_annotations = (annot_dict, idxs) => {
+          if (annot_dict === undefined) return undefined;
+          for (let j = 0; j < idxs.length; j++) {
+            if (idxs[j] in annot_dict && annot_dict[idxs[j]] !== undefined)
+              return annot_dict[idxs[j]];
+          }
+          return undefined;
+        };
+
         const ps = same_resp_keys.map((r, idx) => {
+          const origIdxs = same_resp_text_counts[r];
           const textToShow = searchValue
             ? genSpansForHighlightedValue(r, searchValue, caseSensitive)
             : r;
           return (
             <div key={idx}>
-              {same_resp_text_counts[r] > 1 ? (
+                <Flex justify="right" gap="xs" align="center">
+                {idx === 0 && same_resp_keys.length > 1 && wideFormat === true ?
+                    <h1>{getLLMName(res_obj)}</h1>
+                    : <></>}
+                {updateResponses ?
+                  <ResponseRatingToolbar 
+                    uid={res_obj?.uid}
+                    innerIdxs={origIdxs}
+                    wideFormat={wideFormat}
+                    grade={collapse_annotations(res_obj?.rating?.grade, origIdxs)} 
+                    annotation={collapse_annotations(res_obj?.rating?.note, origIdxs)} 
+                    updateResponses={updateResponses}
+                    onUpdateResponses={triggerRedraw}
+                  />
+                  :<></>}
+                {idx === 0 && (same_resp_keys.length === 1 || !wideFormat) ?
+                    <h1>{getLLMName(res_obj)}</h1>
+                    : <></>}
+                </Flex>
+              {same_resp_text_counts[r].length > 1 ? (
                 <span className="num-same-responses">
-                  {same_resp_text_counts[r]} times
+                  {same_resp_text_counts[r].length} times
                 </span>
               ) : (
                 <></>
@@ -487,7 +529,6 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
               ps
             ) : (
               <div className="response-item-llm-name-wrapper">
-                <h1>{getLLMName(res_obj)}</h1>
                 {ps}
               </div>
             )}
@@ -735,7 +776,9 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     }
 
     setNumMatches(numResponsesDisplayed);
-  }, [
+  };
+  
+  useEffect(triggerRedraw, [
     multiSelectValue,
     batchedResponses,
     wideFormat,

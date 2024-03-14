@@ -667,7 +667,10 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
   const [shownResponseIdx, setShownResponseIdx] = useState(0);
   const [grades, setGrades] = useState({});
 
-  const showProgressType = useMemo(() => executor ? "grade" : "num_graded", [executor]);
+  const showProgressType = useMemo(
+    () => (executor ? "grade" : "num_graded"),
+    [executor],
+  );
   const [minNumGrade, setMinNumGrade] = useState(5);
   const numGraded = useMemo(() => Object.keys(grades).length, [grades]);
 

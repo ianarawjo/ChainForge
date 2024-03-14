@@ -352,6 +352,7 @@ const MultiEvalNode = ({ data, id }) => {
       <LLMResponseInspectorModal
         ref={inspectModal}
         jsonResponses={lastResponses}
+        updateResponses={setLastResponses}
       />
       <PickCriteriaModal ref={pickCriteriaModalRef} />
       <iframe style={{ display: "none" }} id={`${id}-iframe`}></iframe>
@@ -468,6 +469,7 @@ const MultiEvalNode = ({ data, id }) => {
       <LLMResponseInspectorDrawer
         jsonResponses={lastResponses}
         showDrawer={showDrawer}
+        updateResponses={setLastResponses}
       />
     </BaseNode>
   );

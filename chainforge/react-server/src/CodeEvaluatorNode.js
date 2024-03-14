@@ -736,6 +736,7 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
       <LLMResponseInspectorModal
         ref={inspectModal}
         jsonResponses={lastResponses}
+        updateResponses={setLastResponses}
       />
       <Modal
         title={default_header}
@@ -816,6 +817,7 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
       <LLMResponseInspectorDrawer
         jsonResponses={lastResponses}
         showDrawer={showDrawer}
+        updateResponses={setLastResponses}
       />
     </BaseNode>
   );
