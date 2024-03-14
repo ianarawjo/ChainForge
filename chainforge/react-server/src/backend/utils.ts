@@ -1404,6 +1404,21 @@ export function merge_response_objs(
   };
   if (resp_obj_B.chat_history !== undefined)
     res.chat_history = resp_obj_B.chat_history;
+  if (resp_obj_A.rating !== undefined || resp_obj_B.rating !== undefined) {
+    // Merge rating dicts, shifting the indices of the labels for B over by the number of resp_obj_A's responses.
+    res.rating = {
+      grade: resp_obj_A?.rating?.grade ?? {},
+      note: resp_obj_A?.rating?.note ?? {},
+    };
+    if (resp_obj_B.rating)
+      Object.entries(resp_obj_B.rating).forEach(([rating_key, label_map]) => {
+        if (!label_map) return;
+        Object.entries(label_map).forEach(([r_idx, label]) => {
+          res.rating[rating_key][r_idx + resp_obj_A.responses.length] = label;
+        });
+      });
+  }
+  console.log(res);
   return res;
 }
 
@@ -1559,6 +1574,13 @@ export const toStandardResponseFormat = (r) => {
   };
   if (r?.eval_res !== undefined) resp_obj.eval_res = r.eval_res;
   if (r?.chat_history !== undefined) resp_obj.chat_history = r.chat_history;
+  if (r?.rating !== undefined) {
+    resp_obj.rating = {};
+    if (r.rating.grade !== undefined)
+      resp_obj.rating.grade = { 0: r.rating.grade };
+    if (r.rating.note !== undefined)
+      resp_obj.rating.note = { 0: r.rating.note };
+  }
   return resp_obj;
 };
 

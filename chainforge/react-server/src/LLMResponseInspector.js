@@ -23,7 +23,6 @@ import {
   IconLayoutList,
   IconLetterCaseToggle,
   IconFilter,
-  IconThumbUp,
 } from "@tabler/icons-react";
 import * as XLSX from "xlsx";
 import useStore from "./store";
@@ -238,7 +237,11 @@ const ResponseGroup = ({
   );
 };
 
-const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) => {
+const LLMResponseInspector = ({
+  jsonResponses,
+  wideFormat,
+  updateResponses,
+}) => {
   const [responses, setResponses] = useState([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
@@ -298,7 +301,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) =>
       (Array.isArray(batchedResponses) && batchedResponses.length === 0)
     )
       return;
-    
+
     // Find all vars in responses
     let found_vars = new Set();
     let found_metavars = new Set();
@@ -438,7 +441,8 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) =>
         const same_resp_text_counts = countResponsesBy(responses, (r) => r)[0];
         const same_resp_keys = Object.keys(same_resp_text_counts).sort(
           (key1, key2) =>
-            same_resp_text_counts[key2].length - same_resp_text_counts[key1].length,
+            same_resp_text_counts[key2].length -
+            same_resp_text_counts[key1].length,
         );
 
         const collapse_annotations = (annot_dict, idxs) => {
@@ -457,25 +461,39 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) =>
             : r;
           return (
             <div key={idx}>
-                <Flex justify="right" gap="xs" align="center">
-                {idx === 0 && same_resp_keys.length > 1 && wideFormat === true ?
-                    <h1>{getLLMName(res_obj)}</h1>
-                    : <></>}
-                {updateResponses ?
-                  <ResponseRatingToolbar 
+              <Flex justify="right" gap="xs" align="center">
+                {idx === 0 &&
+                same_resp_keys.length > 1 &&
+                wideFormat === true ? (
+                  <h1>{getLLMName(res_obj)}</h1>
+                ) : (
+                  <></>
+                )}
+                {updateResponses ? (
+                  <ResponseRatingToolbar
                     uid={res_obj?.uid}
                     innerIdxs={origIdxs}
                     wideFormat={wideFormat}
-                    grade={collapse_annotations(res_obj?.rating?.grade, origIdxs)} 
-                    annotation={collapse_annotations(res_obj?.rating?.note, origIdxs)} 
+                    grade={collapse_annotations(
+                      res_obj?.rating?.grade,
+                      origIdxs,
+                    )}
+                    annotation={collapse_annotations(
+                      res_obj?.rating?.note,
+                      origIdxs,
+                    )}
                     updateResponses={updateResponses}
                     onUpdateResponses={triggerRedraw}
                   />
-                  :<></>}
-                {idx === 0 && (same_resp_keys.length === 1 || !wideFormat) ?
-                    <h1>{getLLMName(res_obj)}</h1>
-                    : <></>}
-                </Flex>
+                ) : (
+                  <></>
+                )}
+                {idx === 0 && (same_resp_keys.length === 1 || !wideFormat) ? (
+                  <h1>{getLLMName(res_obj)}</h1>
+                ) : (
+                  <></>
+                )}
+              </Flex>
               {same_resp_text_counts[r].length > 1 ? (
                 <span className="num-same-responses">
                   {same_resp_text_counts[r].length} times
@@ -528,9 +546,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) =>
             {eatenvars.includes("LLM") ? (
               ps
             ) : (
-              <div className="response-item-llm-name-wrapper">
-                {ps}
-              </div>
+              <div className="response-item-llm-name-wrapper">{ps}</div>
             )}
           </div>
         );
@@ -777,7 +793,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat, updateResponses }) =>
 
     setNumMatches(numResponsesDisplayed);
   };
-  
+
   useEffect(triggerRedraw, [
     multiSelectValue,
     batchedResponses,

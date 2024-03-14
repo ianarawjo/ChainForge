@@ -179,6 +179,67 @@ const PromptNode = ({ data, id, type: node_type }) => {
     data.n || 1,
   );
 
+  const serializeResponses = (resps, llm_items) => {
+    // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
+    // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
+    // so we can keep track of 'upstream' LLMs (and plot against them) later on:
+    const llm_metavar_key = getUniqueLLMMetavarKey(resps);
+    setDataPropsForNode(id, {
+      fields: resps
+        .map((resp_obj) =>
+          resp_obj.responses.map((r, idx) => {
+            // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
+            const o = {
+              text: escapeBraces(r),
+              prompt: resp_obj.prompt,
+              fill_history: resp_obj.vars,
+              llm: llm_items.find((item) => item.name === resp_obj.llm),
+              batch_id: resp_obj.uid,
+            };
+
+            // Carry over any metavars
+            o.metavars = resp_obj.metavars ?? {};
+
+            // Add a metavar for the prompt *template* in this PromptNode
+            o.metavars.__pt = promptText;
+
+            // Carry over any chat history
+            if (resp_obj.chat_history) o.chat_history = resp_obj.chat_history;
+
+            // Carry over any ratings
+            if (resp_obj.rating)
+              o.rating = {
+                grade:
+                  resp_obj.rating?.grade && idx in resp_obj.rating.grade
+                    ? resp_obj.rating.grade[idx]
+                    : undefined,
+                note:
+                  resp_obj.rating?.note && idx in resp_obj.rating.note
+                    ? resp_obj.rating.note[idx]
+                    : undefined,
+              };
+
+            // Add a meta var to keep track of which LLM produced this response
+            if (llm_metavar_key !== undefined)
+              o.metavars[llm_metavar_key] = resp_obj.llm;
+            return o;
+          }),
+        )
+        .flat(),
+    });
+  };
+
+  // Whenever jsonResponses updates, update the output of this node:
+  const [llmItemsLastRun, setLLMItemsLastRun] = useState(null);
+  useEffect(() => {
+    if (!jsonResponses) return;
+
+    const llm_items = llmItemsLastRun ?? llmItemsCurrState;
+
+    // Store as the output of this node
+    serializeResponses(jsonResponses, llm_items);
+  }, [jsonResponses]);
+
   // The LLM items container
   const llmListContainer = useRef(null);
   const [llmItemsCurrState, setLLMItemsCurrState] = useState([]);
@@ -715,6 +776,7 @@ Soft failing by replacing undefined with empty strings.`,
     setContChatToggleDisabled(true);
     setJSONResponses([]);
     setProgressAnimated(true);
+    setLLMItemsLastRun(_llmItemsCurrState);
 
     const rejected = (err) => {
       if (
@@ -837,44 +899,6 @@ Soft failing by replacing undefined with empty strings.`,
 
           // Log responses for debugging:
           console.log(json.responses);
-
-          // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
-          // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
-          // so we can keep track of 'upstream' LLMs (and plot against them) later on:
-          const llm_metavar_key = getUniqueLLMMetavarKey(json.responses);
-
-          setDataPropsForNode(id, {
-            fields: json.responses
-              .map((resp_obj) =>
-                resp_obj.responses.map((r) => {
-                  // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
-                  const o = {
-                    text: escapeBraces(r),
-                    prompt: resp_obj.prompt,
-                    fill_history: resp_obj.vars,
-                    llm: _llmItemsCurrState.find(
-                      (item) => item.name === resp_obj.llm,
-                    ),
-                    batch_id: resp_obj.uid,
-                  };
-
-                  // Carry over any metavars
-                  o.metavars = resp_obj.metavars ?? {};
-
-                  // Add a metavar for the prompt *template* in this PromptNode
-                  o.metavars.__pt = prompt_template;
-
-                  // Carry over any chat history
-                  if (resp_obj.chat_history)
-                    o.chat_history = resp_obj.chat_history;
-
-                  // Add a meta var to keep track of which LLM produced this response
-                  o.metavars[llm_metavar_key] = resp_obj.llm;
-                  return o;
-                }),
-              )
-              .flat(),
-          });
         }
 
         // If there was at least one error collecting a response...
@@ -1038,7 +1062,9 @@ Soft failing by replacing undefined with empty strings.`,
         ref={inspectModal}
         jsonResponses={jsonResponses}
         prompt={promptText}
-        updateResponses={setJSONResponses}
+        updateResponses={(reducer) => {
+          setJSONResponses([...reducer(jsonResponses)]);
+        }}
       />
       <Modal
         title={
@@ -1204,7 +1230,9 @@ Soft failing by replacing undefined with empty strings.`,
       <LLMResponseInspectorDrawer
         jsonResponses={jsonResponses}
         showDrawer={showDrawer}
-        updateResponses={setJSONResponses}
+        updateResponses={(reducer) => {
+          setJSONResponses([...reducer(jsonResponses)]);
+        }}
       />
     </BaseNode>
   );

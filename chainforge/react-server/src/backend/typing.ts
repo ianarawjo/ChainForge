@@ -105,6 +105,10 @@ export interface LLMResponseObject {
   metavars: Dict;
   uid: ResponseUID;
   chat_history?: ChatHistory;
+  rating?: {
+    grade?: Dict;
+    note?: Dict;
+  };
 }
 
 /** A standard async function interface for calling an LLM. */
