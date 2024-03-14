@@ -2,14 +2,8 @@
  * A fullscreen version of the Inspect node that
  * appears in a Mantine modal pop-up which takes up much of the screen.
  */
-import React, {
-  forwardRef,
-  useImperativeHandle,
-  lazy,
-  Suspense,
-  useState,
-} from "react";
-import { LoadingOverlay, Modal, Skeleton } from "@mantine/core";
+import React, { forwardRef, useImperativeHandle, lazy, Suspense } from "react";
+import { LoadingOverlay, Modal } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { exportToExcel } from "./LLMResponseInspector";
 
