@@ -4,7 +4,14 @@
  * Separated from ReactFlow node UI so that it can
  * be deployed in multiple locations.
  */
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  lazy,
+  Suspense,
+} from "react";
 import {
   Collapse,
   MultiSelect,
@@ -33,9 +40,10 @@ import {
   batchResponsesByUID,
   cleanMetavarsFilterFunc,
 } from "./backend/utils";
-import ResponseRatingToolbar, {
-  getLabelForResponse,
-} from "./ResponseRatingToolbar";
+import { getLabelForResponse } from "./ResponseRatingToolbar";
+
+// Lazy load the response toolbars
+const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar.js"));
 
 // Helper funcs
 const countResponsesBy = (responses, keyFunc) => {
@@ -464,11 +472,13 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                 ) : (
                   <></>
                 )}
-                <ResponseRatingToolbar
-                  uid={res_obj.uid}
-                  innerIdxs={origIdxs}
-                  wideFormat={wideFormat}
-                />
+                <Suspense>
+                  <ResponseRatingToolbar
+                    uid={res_obj.uid}
+                    innerIdxs={origIdxs}
+                    wideFormat={wideFormat}
+                  />
+                </Suspense>
                 {!hide_llm_name &&
                 idx === 0 &&
                 (same_resp_keys.length === 1 || !wideFormat) ? (

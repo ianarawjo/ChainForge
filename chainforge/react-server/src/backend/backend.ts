@@ -17,6 +17,7 @@ import {
   call_flask_backend,
   extractSettingsVars,
   areEqualVarsDicts,
+  repairCachedResponses,
 } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
@@ -186,8 +187,10 @@ function load_from_cache(storageKey: string): Dict {
 function load_cache_responses(storageKey: string): Array<Dict> {
   const data = load_from_cache(storageKey);
   if (Array.isArray(data)) return data;
-  else if (typeof data === "object" && data.responses_last_run !== undefined)
+  else if (typeof data === "object" && data.responses_last_run !== undefined) {
+    repairCachedResponses(data, storageKey, (d) => d.responses_last_run);
     return data.responses_last_run;
+  }
   throw new Error(`Could not find cache file for id ${storageKey}`);
 }
 

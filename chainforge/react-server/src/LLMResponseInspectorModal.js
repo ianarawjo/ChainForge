@@ -2,15 +2,25 @@
  * A fullscreen version of the Inspect node that
  * appears in a Mantine modal pop-up which takes up much of the screen.
  */
-import React, { forwardRef, useImperativeHandle } from "react";
-import { Modal } from "@mantine/core";
+import React, {
+  forwardRef,
+  useImperativeHandle,
+  lazy,
+  Suspense,
+  useState,
+} from "react";
+import { LoadingOverlay, Modal, Skeleton } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import LLMResponseInspector, { exportToExcel } from "./LLMResponseInspector";
+import { exportToExcel } from "./LLMResponseInspector";
+
+// Lazy load the inspector view
+const LLMResponseInspector = lazy(() => import("./LLMResponseInspector.js"));
 
 const LLMResponseInspectorModal = forwardRef(
   function LLMResponseInspectorModal(props, ref) {
     // const inspectorRef = useRef(null);
     const [opened, { open, close }] = useDisclosure(false);
+    // const [openedOnce, setOpenedOnce] = useState(false);
 
     // This gives the parent access to triggering the modal
     const trigger = () => {
@@ -47,10 +57,12 @@ const LLMResponseInspectorModal = forwardRef(
           className="inspect-modal-response-container"
           style={{ padding: "6px", overflow: "scroll" }}
         >
-          <LLMResponseInspector
-            jsonResponses={props.jsonResponses}
-            wideFormat={true}
-          />
+          <Suspense fallback={<LoadingOverlay visible={true} />}>
+            <LLMResponseInspector
+              jsonResponses={props.jsonResponses}
+              wideFormat={true}
+            />
+          </Suspense>
         </div>
       </Modal>
     );

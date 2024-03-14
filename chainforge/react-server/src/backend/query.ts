@@ -15,6 +15,7 @@ import {
   deepcopy,
   extractSettingsVars,
   areEqualVarsDicts,
+  repairCachedResponses,
 } from "./utils";
 import StorageCache from "./cache";
 import { UserForcedPrematureExit } from "./errors";
@@ -325,26 +326,8 @@ export class PromptPipeline {
     const data: Record<string, LLMResponseObject | LLMResponseObject[]> =
       StorageCache.get(this._storageKey) ?? {};
 
-    // Verify data integrity: check that uids are present for all responses.
-    // If they are not present, add it and note the discrepency.
-    let shouldRepair = false;
-    Object.values(data).forEach((val) => {
-      const resps = Array.isArray(val) ? val : [val];
-      resps.forEach((r) => {
-        if (r.uid === undefined) {
-          r.uid = uuid();
-          shouldRepair = true;
-        }
-      });
-    });
-
-    if (shouldRepair) {
-      // The data did not include uids. Flash it back to the cache to repair.
-      // This maintains consistency across re-runs.
-      StorageCache.store(this._storageKey, data);
-    }
-
-    return data;
+    // Before retuning, verify data integrity: check that uids are present for all responses.
+    return repairCachedResponses(data, this._storageKey);
   }
 
   /**

@@ -3,7 +3,7 @@
     "nodes": [
       {
         "width": 312,
-        "height": 342,
+        "height": 330,
         "data": {
           "fields": [
             {
@@ -35,8 +35,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "4d3e646f-c799-46ec-88f8-3494f6577877",
+              "batch_id": "c22bea3b-7764-4b2a-94a7-2ce25c8b40fe",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -69,8 +70,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "4d3e646f-c799-46ec-88f8-3494f6577877",
+              "batch_id": "c22bea3b-7764-4b2a-94a7-2ce25c8b40fe",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -103,8 +105,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "4d3e646f-c799-46ec-88f8-3494f6577877",
+              "batch_id": "c22bea3b-7764-4b2a-94a7-2ce25c8b40fe",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -137,8 +140,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "99dd71d3-fe8c-4207-a77d-944368aba873",
+              "batch_id": "8f8b97a6-01fe-4aa9-97ce-10fbe8eb6399",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -171,8 +175,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "99dd71d3-fe8c-4207-a77d-944368aba873",
+              "batch_id": "8f8b97a6-01fe-4aa9-97ce-10fbe8eb6399",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -205,8 +210,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "99dd71d3-fe8c-4207-a77d-944368aba873",
+              "batch_id": "8f8b97a6-01fe-4aa9-97ce-10fbe8eb6399",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -239,8 +245,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "3c182dab-6ccd-46c8-97fb-dadaeba0c53c",
+              "batch_id": "f9f3f2f7-c0cc-4414-afb3-eac25eff8d3b",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -273,8 +280,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "3c182dab-6ccd-46c8-97fb-dadaeba0c53c",
+              "batch_id": "f9f3f2f7-c0cc-4414-afb3-eac25eff8d3b",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -307,8 +315,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "3c182dab-6ccd-46c8-97fb-dadaeba0c53c",
+              "batch_id": "f9f3f2f7-c0cc-4414-afb3-eac25eff8d3b",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -341,8 +350,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "740459d8-f968-4efe-9448-376e20834d4d",
+              "batch_id": "3a7dfdde-08c8-4cde-89ac-74dbf9a7999e",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -375,8 +385,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "740459d8-f968-4efe-9448-376e20834d4d",
+              "batch_id": "3a7dfdde-08c8-4cde-89ac-74dbf9a7999e",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -409,8 +420,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "740459d8-f968-4efe-9448-376e20834d4d",
+              "batch_id": "3a7dfdde-08c8-4cde-89ac-74dbf9a7999e",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -443,8 +455,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "80f88757-3b99-4e82-913e-c39e70e50de7",
+              "batch_id": "5da16720-8f6c-4b3e-994c-320e26d9ad00",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -477,8 +490,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "80f88757-3b99-4e82-913e-c39e70e50de7",
+              "batch_id": "5da16720-8f6c-4b3e-994c-320e26d9ad00",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -511,8 +525,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "80f88757-3b99-4e82-913e-c39e70e50de7",
+              "batch_id": "5da16720-8f6c-4b3e-994c-320e26d9ad00",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -545,8 +560,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "a2aa2b9f-ed78-4a10-a5c1-92bbd23fd19b",
+              "batch_id": "d1127e66-4ac1-4e6d-84aa-fc9e29e86355",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -579,8 +595,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "a2aa2b9f-ed78-4a10-a5c1-92bbd23fd19b",
+              "batch_id": "d1127e66-4ac1-4e6d-84aa-fc9e29e86355",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             },
@@ -613,8 +630,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "a2aa2b9f-ed78-4a10-a5c1-92bbd23fd19b",
+              "batch_id": "d1127e66-4ac1-4e6d-84aa-fc9e29e86355",
               "metavars": {
+                "__pt": "Who invented the {tool}?",
                 "LLM_0": "GPT3.5"
               }
             }
@@ -663,24 +681,46 @@
           "input": "evalNode-1688055313296",
           "llm_groups": [
             {
-              "label": "LLM",
-              "value": "LLM"
+              "value": "LLM",
+              "label": "LLMs (last)"
+            },
+            {
+              "value": "__pt",
+              "label": "LLMs #NaN"
+            },
+            {
+              "value": "LLM_0",
+              "label": "LLMs #1"
+            },
+            {
+              "value": "LLM_1",
+              "label": "LLMs #2"
             }
           ],
           "refresh": false,
-          "selected_vars": [
-            "tool"
-          ],
+          "selected_vars": [],
           "title": "Number of entities in responses",
           "vars": [
             "LLM (default)",
             {
-              "label": "text",
-              "value": "text"
+              "value": "tool",
+              "label": "tool"
             },
             {
-              "label": "tool",
-              "value": "tool"
+              "value": "text",
+              "label": "text"
+            },
+            {
+              "value": "__meta___pt",
+              "label": "__pt (meta)"
+            },
+            {
+              "value": "__meta_LLM_0",
+              "label": "LLM_0 (meta)"
+            },
+            {
+              "value": "__meta_LLM_1",
+              "label": "LLM_1 (meta)"
             }
           ]
         },
@@ -719,7 +759,7 @@
       },
       {
         "width": 312,
-        "height": 368,
+        "height": 356,
         "data": {
           "fields": [
             {
@@ -759,8 +799,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "47bc3bee-9f58-435a-9f4f-dc5c7f0b7d80",
+              "batch_id": "0df53eee-53c8-44ab-b88c-e40bad891e86",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -802,8 +843,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "678e4b5a-55f9-4b30-975f-4f905318e419",
+              "batch_id": "d28f4348-6801-4695-aef4-d02efdcfc0a5",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -845,8 +887,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "96131260-55cd-47b7-8f91-cc63849bfd46",
+              "batch_id": "e890c702-c28d-4966-8853-f4b6921584ac",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -888,8 +931,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "06bf2f9f-3435-45ba-b1df-4089994ba818",
+              "batch_id": "cda490a7-56dc-4f44-a062-53a3737e0a49",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -931,8 +975,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "ad2d9d03-185a-480f-9f30-60d35c9a5e84",
+              "batch_id": "84503f90-80a7-4ae8-b08b-309b6ad4e91c",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -974,8 +1019,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "3482814f-1b9c-4525-beff-777b820da731",
+              "batch_id": "d7b4566a-7187-49d8-aa9d-39a5114eca90",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1017,8 +1063,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "9c5fe679-d2eb-4c95-87b3-0b6a22329155",
+              "batch_id": "df39bf8e-1ce2-4457-b7cd-c35c8520cc5c",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1060,8 +1107,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "6a800fff-0256-4edf-96d0-1bed80aee4a3",
+              "batch_id": "43156f1b-268f-4021-9e35-b00376029c42",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1103,8 +1151,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "d90a3905-34da-41ae-a731-d0a2ba133120",
+              "batch_id": "c6d3a29c-e856-4208-b141-7f632d21b0a2",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1146,8 +1195,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "2fc1b9fb-e086-463e-a9d4-b1a1595d94ab",
+              "batch_id": "d87e8684-d236-4719-a721-427c1a63e280",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1189,8 +1239,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "7876f414-1219-43b3-b05d-b8d8c4436f94",
+              "batch_id": "4a72f3d9-adf3-4e6c-a6fc-30904c986467",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1232,8 +1283,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "1ece4e52-5fc4-4d3c-a12e-e915c9442095",
+              "batch_id": "0e8b1378-1980-41d0-bc4a-026e69b4401f",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1275,8 +1327,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "cf5e3ea6-dd33-45c6-916b-7cf2878df494",
+              "batch_id": "e5bf5776-78e1-48a6-b3f3-284022e7eb40",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1318,8 +1371,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "7f8498e0-320c-4517-b0c5-c7f8ce47d639",
+              "batch_id": "21b3c233-ba70-4efe-9463-8a633bcc5b9d",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1361,8 +1415,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "6ca663c7-cfb1-4407-961e-0ace91167983",
+              "batch_id": "9d9d6856-f824-4ea7-b5e9-ab9dca65cf95",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1404,8 +1459,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "5e52cf75-758e-4a02-bed7-42c762ddca94",
+              "batch_id": "8e7e83a1-6574-44b0-b7dc-4c62f104914f",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1447,8 +1503,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "b5583aff-25f5-4d1d-b89a-b078ef8e1a94",
+              "batch_id": "30126b53-bf4e-4a30-a938-534a78236957",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1490,8 +1547,9 @@
                   "error": 0
                 }
               },
-              "batch_id": "a053c281-c438-4080-b55d-6ba5cb1b1323",
+              "batch_id": "b0f35abb-a7cf-496f-9e50-a619ea981cb9",
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               }
@@ -1526,7 +1584,8 @@
             }
           ],
           "prompt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
-          "refresh": false
+          "refresh": false,
+          "contChat": false
         },
         "dragging": false,
         "id": "promptNode-1683813691363",
@@ -1538,7 +1597,7 @@
           "x": 832,
           "y": 480
         },
-        "selected": false,
+        "selected": true,
         "type": "prompt"
       },
       {
@@ -1573,8 +1632,6 @@
         "height": 221,
         "data": {
           "code": "function evaluate(response) {\n  const txt = response.text;  \n  return { \n    'Number of entities': \n      txt.split(',').length\n  };\n}",
-          "language": "javascript",
-          "refresh": false,
           "fields": [
             {
               "text": "Andreas Stihl, Stihl",
@@ -1584,6 +1641,7 @@
                 "text": "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -1617,7 +1675,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "47bc3bee-9f58-435a-9f4f-dc5c7f0b7d80"
+              "batch_id": "0df53eee-53c8-44ab-b88c-e40bad891e86"
             },
             {
               "text": "Andreas Stihl, James Shand.",
@@ -1627,6 +1685,7 @@
                 "text": "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -1660,7 +1719,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "678e4b5a-55f9-4b30-975f-4f905318e419"
+              "batch_id": "d28f4348-6801-4695-aef4-d02efdcfc0a5"
             },
             {
               "text": "Scottish, John Aitken, James Jeffray, early 1900s, gasoline-powered, Andreas Stihl.",
@@ -1670,6 +1729,7 @@
                 "text": "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -1703,7 +1763,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "96131260-55cd-47b7-8f91-cc63849bfd46"
+              "batch_id": "e890c702-c28d-4966-8853-f4b6921584ac"
             },
             {
               "text": "Thomas Edison",
@@ -1713,6 +1773,7 @@
                 "text": "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -1746,7 +1807,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "06bf2f9f-3435-45ba-b1df-4089994ba818"
+              "batch_id": "cda490a7-56dc-4f44-a062-53a3737e0a49"
             },
             {
               "text": "Thomas Edison",
@@ -1756,6 +1817,7 @@
                 "text": "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -1789,7 +1851,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "ad2d9d03-185a-480f-9f30-60d35c9a5e84"
+              "batch_id": "84503f90-80a7-4ae8-b08b-309b6ad4e91c"
             },
             {
               "text": "Thomas Edison.",
@@ -1799,6 +1861,7 @@
                 "text": "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -1832,7 +1895,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "3482814f-1b9c-4525-beff-777b820da731"
+              "batch_id": "d7b4566a-7187-49d8-aa9d-39a5114eca90"
             },
             {
               "text": "Hubert Cecil Booth.",
@@ -1842,6 +1905,7 @@
                 "text": "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -1875,7 +1939,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "9c5fe679-d2eb-4c95-87b3-0b6a22329155"
+              "batch_id": "df39bf8e-1ce2-4457-b7cd-c35c8520cc5c"
             },
             {
               "text": "Hubert Cecil Booth.",
@@ -1885,6 +1949,7 @@
                 "text": "The vacuum cleaner was invented by Hubert Cecil Booth in 1901."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -1918,7 +1983,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "6a800fff-0256-4edf-96d0-1bed80aee4a3"
+              "batch_id": "43156f1b-268f-4021-9e35-b00376029c42"
             },
             {
               "text": "British, Hubert Cecil Booth",
@@ -1928,6 +1993,7 @@
                 "text": "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -1961,7 +2027,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "d90a3905-34da-41ae-a731-d0a2ba133120"
+              "batch_id": "c6d3a29c-e856-4208-b141-7f632d21b0a2"
             },
             {
               "text": "Willis Carrier",
@@ -1971,6 +2037,7 @@
                 "text": "Willis Carrier is credited with inventing the modern air conditioner in 1902."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -2004,7 +2071,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "2fc1b9fb-e086-463e-a9d4-b1a1595d94ab"
+              "batch_id": "d87e8684-d236-4719-a721-427c1a63e280"
             },
             {
               "text": "Willis Carrier",
@@ -2014,6 +2081,7 @@
                 "text": "Willis Carrier is credited with inventing the modern air conditioning system in 1902."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -2047,7 +2115,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "7876f414-1219-43b3-b05d-b8d8c4436f94"
+              "batch_id": "4a72f3d9-adf3-4e6c-a6fc-30904c986467"
             },
             {
               "text": "Willis Carrier.",
@@ -2057,6 +2125,7 @@
                 "text": "The air conditioner was invented by Willis Carrier in 1902."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -2090,7 +2159,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "1ece4e52-5fc4-4d3c-a12e-e915c9442095"
+              "batch_id": "0e8b1378-1980-41d0-bc4a-026e69b4401f"
             },
             {
               "text": "Paul Werbos, David Rumelhart, Jay McClelland, Geoffrey Hinton.",
@@ -2100,6 +2169,7 @@
                 "text": "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -2133,7 +2203,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "cf5e3ea6-dd33-45c6-916b-7cf2878df494"
+              "batch_id": "e5bf5776-78e1-48a6-b3f3-284022e7eb40"
             },
             {
               "text": "Paul Werbos, David Rumelhart, Geoffrey Hinton, Ronald Williams.",
@@ -2143,6 +2213,7 @@
                 "text": "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -2176,7 +2247,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "7f8498e0-320c-4517-b0c5-c7f8ce47d639"
+              "batch_id": "21b3c233-ba70-4efe-9463-8a633bcc5b9d"
             },
             {
               "text": "David Rumelhart, Geoffrey Hinton, Ronald Williams.",
@@ -2186,6 +2257,7 @@
                 "text": "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -2219,7 +2291,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "6ca663c7-cfb1-4407-961e-0ace91167983"
+              "batch_id": "9d9d6856-f824-4ea7-b5e9-ab9dca65cf95"
             },
             {
               "text": "Louis Bernard Rabaut, Frenchman, Melitta Bentz.",
@@ -2229,6 +2301,7 @@
                 "text": "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -2262,7 +2335,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "5e52cf75-758e-4a02-bed7-42c762ddca94"
+              "batch_id": "8e7e83a1-6574-44b0-b7dc-4c62f104914f"
             },
             {
               "text": "Frenchman, Melitta Bentz",
@@ -2272,6 +2345,7 @@
                 "text": "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -2305,7 +2379,7 @@
                   "error": 0
                 }
               },
-              "batch_id": "b5583aff-25f5-4d1d-b89a-b078ef8e1a94"
+              "batch_id": "30126b53-bf4e-4a30-a938-534a78236957"
             },
             {
               "text": "Melitta Bentz, German",
@@ -2315,6 +2389,7 @@
                 "text": "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today."
               },
               "metavars": {
+                "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
                 "LLM_0": "GPT3.5",
                 "LLM_1": "GPT3.5"
               },
@@ -2348,9 +2423,11 @@
                   "error": 0
                 }
               },
-              "batch_id": "a053c281-c438-4080-b55d-6ba5cb1b1323"
+              "batch_id": "b0f35abb-a7cf-496f-9e50-a619ea981cb9"
             }
-          ]
+          ],
+          "language": "javascript",
+          "refresh": false
         },
         "dragging": false,
         "id": "evalNode-1688055313296",
@@ -2520,7 +2597,8 @@
           "Willis Carrier is credited with inventing the modern air conditioner in 1902.",
           "Willis Carrier is credited with inventing the modern air conditioning system in 1902.",
           "The air conditioner was invented by Willis Carrier in 1902."
-        ]
+        ],
+        "uid": "3a7dfdde-08c8-4cde-89ac-74dbf9a7999e"
       },
       "Who invented the back-propagation algorithm?": {
         "info": {
@@ -2587,7 +2665,8 @@
           "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.",
           "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.",
           "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986."
-        ]
+        ],
+        "uid": "5da16720-8f6c-4b3e-994c-320e26d9ad00"
       },
       "Who invented the chainsaw?": {
         "info": {
@@ -2654,7 +2733,8 @@
           "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.",
           "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.",
           "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl."
-        ]
+        ],
+        "uid": "c22bea3b-7764-4b2a-94a7-2ce25c8b40fe"
       },
       "Who invented the coffee maker?": {
         "info": {
@@ -2721,7 +2801,8 @@
           "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.",
           "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.",
           "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today."
-        ]
+        ],
+        "uid": "d1127e66-4ac1-4e6d-84aa-fc9e29e86355"
       },
       "Who invented the lightbulb?": {
         "info": {
@@ -2788,7 +2869,8 @@
           "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.",
           "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.",
           "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals."
-        ]
+        ],
+        "uid": "8f8b97a6-01fe-4aa9-97ce-10fbe8eb6399"
       },
       "Who invented the vacuum cleaner?": {
         "info": {
@@ -2855,7 +2937,8 @@
           "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
           "The vacuum cleaner was invented by Hubert Cecil Booth in 1901.",
           "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets."
-        ]
+        ],
+        "uid": "f9f3f2f7-c0cc-4414-afb3-eac25eff8d3b"
       }
     },
     "prompt-1683813164213.json": {
@@ -2890,6 +2973,7 @@
             "tool": "chainsaw"
           },
           "metavars": {
+            "__pt": "Who invented the {tool}?",
             "LLM_0": "GPT3.5"
           },
           "llm": "GPT3.5",
@@ -2904,13 +2988,14 @@
             "prompt_tokens": 25,
             "total_tokens": 206
           },
-          "uid": "4d3e646f-c799-46ec-88f8-3494f6577877"
+          "uid": "c22bea3b-7764-4b2a-94a7-2ce25c8b40fe"
         },
         {
           "vars": {
             "tool": "lightbulb"
           },
           "metavars": {
+            "__pt": "Who invented the {tool}?",
             "LLM_0": "GPT3.5"
           },
           "llm": "GPT3.5",
@@ -2925,13 +3010,14 @@
             "prompt_tokens": 26,
             "total_tokens": 122
           },
-          "uid": "99dd71d3-fe8c-4207-a77d-944368aba873"
+          "uid": "8f8b97a6-01fe-4aa9-97ce-10fbe8eb6399"
         },
         {
           "vars": {
             "tool": "vacuum cleaner"
           },
           "metavars": {
+            "__pt": "Who invented the {tool}?",
             "LLM_0": "GPT3.5"
           },
           "llm": "GPT3.5",
@@ -2946,13 +3032,14 @@
             "prompt_tokens": 25,
             "total_tokens": 91
           },
-          "uid": "3c182dab-6ccd-46c8-97fb-dadaeba0c53c"
+          "uid": "f9f3f2f7-c0cc-4414-afb3-eac25eff8d3b"
         },
         {
           "vars": {
             "tool": "air conditioner"
           },
           "metavars": {
+            "__pt": "Who invented the {tool}?",
             "LLM_0": "GPT3.5"
           },
           "llm": "GPT3.5",
@@ -2967,13 +3054,14 @@
             "prompt_tokens": 25,
             "total_tokens": 73
           },
-          "uid": "740459d8-f968-4efe-9448-376e20834d4d"
+          "uid": "3a7dfdde-08c8-4cde-89ac-74dbf9a7999e"
         },
         {
           "vars": {
             "tool": "back-propagation algorithm"
           },
           "metavars": {
+            "__pt": "Who invented the {tool}?",
             "LLM_0": "GPT3.5"
           },
           "llm": "GPT3.5",
@@ -2988,13 +3076,14 @@
             "prompt_tokens": 27,
             "total_tokens": 215
           },
-          "uid": "80f88757-3b99-4e82-913e-c39e70e50de7"
+          "uid": "5da16720-8f6c-4b3e-994c-320e26d9ad00"
         },
         {
           "vars": {
             "tool": "coffee maker"
           },
           "metavars": {
+            "__pt": "Who invented the {tool}?",
             "LLM_0": "GPT3.5"
           },
           "llm": "GPT3.5",
@@ -3009,7 +3098,7 @@
             "prompt_tokens": 25,
             "total_tokens": 233
           },
-          "uid": "a2aa2b9f-ed78-4a10-a5c1-92bbd23fd19b"
+          "uid": "d1127e66-4ac1-4e6d-84aa-fc9e29e86355"
         }
       ]
     },
@@ -3064,7 +3153,8 @@
         },
         "responses": [
           "Willis Carrier."
-        ]
+        ],
+        "uid": "0e8b1378-1980-41d0-bc4a-026e69b4401f"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986.\"": {
         "info": {
@@ -3114,7 +3204,8 @@
         },
         "responses": [
           "David Rumelhart, Geoffrey Hinton, Ronald Williams."
-        ]
+        ],
+        "uid": "9d9d6856-f824-4ea7-b5e9-ab9dca65cf95"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm.\"": {
         "info": {
@@ -3164,7 +3255,8 @@
         },
         "responses": [
           "Paul Werbos, David Rumelhart, Geoffrey Hinton, Ronald Williams."
-        ]
+        ],
+        "uid": "21b3c233-ba70-4efe-9463-8a633bcc5b9d"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986.\"": {
         "info": {
@@ -3214,7 +3306,8 @@
         },
         "responses": [
           "Paul Werbos, David Rumelhart, Jay McClelland, Geoffrey Hinton."
-        ]
+        ],
+        "uid": "e5bf5776-78e1-48a6-b3f3-284022e7eb40"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s.\"": {
         "info": {
@@ -3264,7 +3357,8 @@
         },
         "responses": [
           "Andreas Stihl, James Shand."
-        ]
+        ],
+        "uid": "d28f4348-6801-4695-aef4-d02efdcfc0a5"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl.\"": {
         "info": {
@@ -3314,7 +3408,8 @@
         },
         "responses": [
           "Scottish, John Aitken, James Jeffray, early 1900s, gasoline-powered, Andreas Stihl."
-        ]
+        ],
+        "uid": "e890c702-c28d-4966-8853-f4b6921584ac"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies.\"": {
         "info": {
@@ -3364,7 +3459,8 @@
         },
         "responses": [
           "Andreas Stihl, Stihl"
-        ]
+        ],
+        "uid": "0df53eee-53c8-44ab-b88c-e40bad891e86"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908.\"": {
         "info": {
@@ -3414,7 +3510,8 @@
         },
         "responses": [
           "Louis Bernard Rabaut, Frenchman, Melitta Bentz."
-        ]
+        ],
+        "uid": "8e7e83a1-6574-44b0-b7dc-4c62f104914f"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds.\"": {
         "info": {
@@ -3464,7 +3561,8 @@
         },
         "responses": [
           "Frenchman, Melitta Bentz"
-        ]
+        ],
+        "uid": "30126b53-bf4e-4a30-a938-534a78236957"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets.\"": {
         "info": {
@@ -3514,7 +3612,8 @@
         },
         "responses": [
           "British, Hubert Cecil Booth"
-        ]
+        ],
+        "uid": "c6d3a29c-e856-4208-b141-7f632d21b0a2"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"": {
         "info": {
@@ -3564,7 +3663,8 @@
         },
         "responses": [
           "Hubert Cecil Booth."
-        ]
+        ],
+        "uid": "df39bf8e-1ce2-4457-b7cd-c35c8520cc5c"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today.\"": {
         "info": {
@@ -3614,7 +3714,8 @@
         },
         "responses": [
           "Melitta Bentz, German"
-        ]
+        ],
+        "uid": "b0f35abb-a7cf-496f-9e50-a619ea981cb9"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"The vacuum cleaner was invented by Hubert Cecil Booth in 1901.\"": {
         "info": {
@@ -3664,7 +3765,8 @@
         },
         "responses": [
           "Hubert Cecil Booth."
-        ]
+        ],
+        "uid": "43156f1b-268f-4021-9e35-b00376029c42"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879.\"": {
         "info": {
@@ -3714,7 +3816,8 @@
         },
         "responses": [
           "Thomas Edison"
-        ]
+        ],
+        "uid": "84503f90-80a7-4ae8-b08b-309b6ad4e91c"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879.\"": {
         "info": {
@@ -3764,7 +3867,8 @@
         },
         "responses": [
           "Thomas Edison"
-        ]
+        ],
+        "uid": "cda490a7-56dc-4f44-a062-53a3737e0a49"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals.\"": {
         "info": {
@@ -3814,7 +3918,8 @@
         },
         "responses": [
           "Thomas Edison."
-        ]
+        ],
+        "uid": "d7b4566a-7187-49d8-aa9d-39a5114eca90"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioner in 1902.\"": {
         "info": {
@@ -3864,7 +3969,8 @@
         },
         "responses": [
           "Willis Carrier"
-        ]
+        ],
+        "uid": "d87e8684-d236-4719-a721-427c1a63e280"
       },
       "Return only a comma-separated list of named entities that appear in the following text: \"Willis Carrier is credited with inventing the modern air conditioning system in 1902.\"": {
         "info": {
@@ -3914,7 +4020,8 @@
         },
         "responses": [
           "Willis Carrier"
-        ]
+        ],
+        "uid": "4a72f3d9-adf3-4e6c-a6fc-30904c986467"
       }
     },
     "promptNode-1683813691363.json": {
@@ -3957,6 +4064,7 @@
             "text": "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -3970,7 +4078,7 @@
             "prompt_tokens": 93,
             "total_tokens": 102
           },
-          "uid": "47bc3bee-9f58-435a-9f4f-dc5c7f0b7d80"
+          "uid": "0df53eee-53c8-44ab-b88c-e40bad891e86"
         },
         {
           "vars": {
@@ -3978,6 +4086,7 @@
             "text": "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -3991,7 +4100,7 @@
             "prompt_tokens": 93,
             "total_tokens": 103
           },
-          "uid": "678e4b5a-55f9-4b30-975f-4f905318e419"
+          "uid": "d28f4348-6801-4695-aef4-d02efdcfc0a5"
         },
         {
           "vars": {
@@ -3999,6 +4108,7 @@
             "text": "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4012,7 +4122,7 @@
             "prompt_tokens": 103,
             "total_tokens": 129
           },
-          "uid": "96131260-55cd-47b7-8f91-cc63849bfd46"
+          "uid": "e890c702-c28d-4966-8853-f4b6921584ac"
         },
         {
           "vars": {
@@ -4020,6 +4130,7 @@
             "text": "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4033,7 +4144,7 @@
             "prompt_tokens": 57,
             "total_tokens": 59
           },
-          "uid": "06bf2f9f-3435-45ba-b1df-4089994ba818"
+          "uid": "cda490a7-56dc-4f44-a062-53a3737e0a49"
         },
         {
           "vars": {
@@ -4041,6 +4152,7 @@
             "text": "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4054,7 +4166,7 @@
             "prompt_tokens": 57,
             "total_tokens": 59
           },
-          "uid": "ad2d9d03-185a-480f-9f30-60d35c9a5e84"
+          "uid": "84503f90-80a7-4ae8-b08b-309b6ad4e91c"
         },
         {
           "vars": {
@@ -4062,6 +4174,7 @@
             "text": "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4075,7 +4188,7 @@
             "prompt_tokens": 90,
             "total_tokens": 93
           },
-          "uid": "3482814f-1b9c-4525-beff-777b820da731"
+          "uid": "d7b4566a-7187-49d8-aa9d-39a5114eca90"
         },
         {
           "vars": {
@@ -4083,6 +4196,7 @@
             "text": "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4096,7 +4210,7 @@
             "prompt_tokens": 53,
             "total_tokens": 58
           },
-          "uid": "9c5fe679-d2eb-4c95-87b3-0b6a22329155"
+          "uid": "df39bf8e-1ce2-4457-b7cd-c35c8520cc5c"
         },
         {
           "vars": {
@@ -4104,6 +4218,7 @@
             "text": "The vacuum cleaner was invented by Hubert Cecil Booth in 1901."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4117,7 +4232,7 @@
             "prompt_tokens": 51,
             "total_tokens": 56
           },
-          "uid": "6a800fff-0256-4edf-96d0-1bed80aee4a3"
+          "uid": "43156f1b-268f-4021-9e35-b00376029c42"
         },
         {
           "vars": {
@@ -4125,6 +4240,7 @@
             "text": "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4138,7 +4254,7 @@
             "prompt_tokens": 70,
             "total_tokens": 76
           },
-          "uid": "d90a3905-34da-41ae-a731-d0a2ba133120"
+          "uid": "c6d3a29c-e856-4208-b141-7f632d21b0a2"
         },
         {
           "vars": {
@@ -4146,6 +4262,7 @@
             "text": "Willis Carrier is credited with inventing the modern air conditioner in 1902."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4159,7 +4276,7 @@
             "prompt_tokens": 53,
             "total_tokens": 56
           },
-          "uid": "2fc1b9fb-e086-463e-a9d4-b1a1595d94ab"
+          "uid": "d87e8684-d236-4719-a721-427c1a63e280"
         },
         {
           "vars": {
@@ -4167,6 +4284,7 @@
             "text": "Willis Carrier is credited with inventing the modern air conditioning system in 1902."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4180,7 +4298,7 @@
             "prompt_tokens": 54,
             "total_tokens": 57
           },
-          "uid": "7876f414-1219-43b3-b05d-b8d8c4436f94"
+          "uid": "4a72f3d9-adf3-4e6c-a6fc-30904c986467"
         },
         {
           "vars": {
@@ -4188,6 +4306,7 @@
             "text": "The air conditioner was invented by Willis Carrier in 1902."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4201,7 +4320,7 @@
             "prompt_tokens": 49,
             "total_tokens": 53
           },
-          "uid": "1ece4e52-5fc4-4d3c-a12e-e915c9442095"
+          "uid": "0e8b1378-1980-41d0-bc4a-026e69b4401f"
         },
         {
           "vars": {
@@ -4209,6 +4328,7 @@
             "text": "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4222,7 +4342,7 @@
             "prompt_tokens": 84,
             "total_tokens": 102
           },
-          "uid": "cf5e3ea6-dd33-45c6-916b-7cf2878df494"
+          "uid": "e5bf5776-78e1-48a6-b3f3-284022e7eb40"
         },
         {
           "vars": {
@@ -4230,6 +4350,7 @@
             "text": "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4243,7 +4364,7 @@
             "prompt_tokens": 114,
             "total_tokens": 130
           },
-          "uid": "7f8498e0-320c-4517-b0c5-c7f8ce47d639"
+          "uid": "21b3c233-ba70-4efe-9463-8a633bcc5b9d"
         },
         {
           "vars": {
@@ -4251,6 +4372,7 @@
             "text": "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4264,7 +4386,7 @@
             "prompt_tokens": 98,
             "total_tokens": 110
           },
-          "uid": "6ca663c7-cfb1-4407-961e-0ace91167983"
+          "uid": "9d9d6856-f824-4ea7-b5e9-ab9dca65cf95"
         },
         {
           "vars": {
@@ -4272,6 +4394,7 @@
             "text": "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4285,7 +4408,7 @@
             "prompt_tokens": 82,
             "total_tokens": 95
           },
-          "uid": "5e52cf75-758e-4a02-bed7-42c762ddca94"
+          "uid": "8e7e83a1-6574-44b0-b7dc-4c62f104914f"
         },
         {
           "vars": {
@@ -4293,6 +4416,7 @@
             "text": "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4306,7 +4430,7 @@
             "prompt_tokens": 108,
             "total_tokens": 115
           },
-          "uid": "b5583aff-25f5-4d1d-b89a-b078ef8e1a94"
+          "uid": "30126b53-bf4e-4a30-a938-534a78236957"
         },
         {
           "vars": {
@@ -4314,6 +4438,7 @@
             "text": "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today."
           },
           "metavars": {
+            "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
             "LLM_0": "GPT3.5",
             "LLM_1": "GPT3.5"
           },
@@ -4327,7 +4452,7 @@
             "prompt_tokens": 126,
             "total_tokens": 132
           },
-          "uid": "a053c281-c438-4080-b55d-6ba5cb1b1323"
+          "uid": "b0f35abb-a7cf-496f-9e50-a619ea981cb9"
         }
       ]
     },
@@ -4339,10 +4464,11 @@
           "text": "The first chainsaw was patented in 1926 by Andreas Stihl, a German mechanical engineer and the founder of the company Stihl. However, the chainsaw as we know it today has gone through multiple modifications and improvements over the years by various inventors and companies."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "47bc3bee-9f58-435a-9f4f-dc5c7f0b7d80",
+        "uid": "0df53eee-53c8-44ab-b88c-e40bad891e86",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4393,10 +4519,11 @@
           "text": "The chainsaw was invented by two different people: \n1. The first electric chainsaw was invented by Andreas Stihl in 1926.\n2. The first chainsaw with a gasoline engine was invented by a Canadian logger named James Shand in the 1920s."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "678e4b5a-55f9-4b30-975f-4f905318e419",
+        "uid": "d28f4348-6801-4695-aef4-d02efdcfc0a5",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4447,10 +4574,11 @@
           "text": "The first chainsaw was invented in the late 18th century by two Scottish doctors, John Aitken and James Jeffray. However, it was not until the early 1900s that the chainsaw became a widely used tool. The first gasoline-powered chainsaw was invented in 1929 by Andreas Stihl."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "96131260-55cd-47b7-8f91-cc63849bfd46",
+        "uid": "e890c702-c28d-4966-8853-f4b6921584ac",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4501,10 +4629,11 @@
           "text": "Thomas Edison is credited with inventing the first commercially successful incandescent light bulb in 1879."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "06bf2f9f-3435-45ba-b1df-4089994ba818",
+        "uid": "cda490a7-56dc-4f44-a062-53a3737e0a49",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4555,10 +4684,11 @@
           "text": "Thomas Edison is credited with inventing the first commercially practical incandescent light bulb in 1879."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "ad2d9d03-185a-480f-9f30-60d35c9a5e84",
+        "uid": "84503f90-80a7-4ae8-b08b-309b6ad4e91c",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4609,10 +4739,11 @@
           "text": "Thomas Edison is credited with inventing the lightbulb in 1879. However, it is important to note that there were other inventors working on similar inventions at the same time, and the final design of the lightbulb involved the contributions of many individuals."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "3482814f-1b9c-4525-beff-777b820da731",
+        "uid": "d7b4566a-7187-49d8-aa9d-39a5114eca90",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4663,10 +4794,11 @@
           "text": "The first practical vacuum cleaner was invented by Hubert Cecil Booth in 1901."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "9c5fe679-d2eb-4c95-87b3-0b6a22329155",
+        "uid": "df39bf8e-1ce2-4457-b7cd-c35c8520cc5c",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4717,10 +4849,11 @@
           "text": "The vacuum cleaner was invented by Hubert Cecil Booth in 1901."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "6a800fff-0256-4edf-96d0-1bed80aee4a3",
+        "uid": "43156f1b-268f-4021-9e35-b00376029c42",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4771,10 +4904,11 @@
           "text": "The first portable vacuum cleaner was invented by British inventor Hubert Cecil Booth in 1901, although various other inventors had previously worked on suction devices for cleaning carpets."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "d90a3905-34da-41ae-a731-d0a2ba133120",
+        "uid": "c6d3a29c-e856-4208-b141-7f632d21b0a2",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4825,10 +4959,11 @@
           "text": "Willis Carrier is credited with inventing the modern air conditioner in 1902."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "2fc1b9fb-e086-463e-a9d4-b1a1595d94ab",
+        "uid": "d87e8684-d236-4719-a721-427c1a63e280",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4879,10 +5014,11 @@
           "text": "Willis Carrier is credited with inventing the modern air conditioning system in 1902."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "7876f414-1219-43b3-b05d-b8d8c4436f94",
+        "uid": "4a72f3d9-adf3-4e6c-a6fc-30904c986467",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4933,10 +5069,11 @@
           "text": "The air conditioner was invented by Willis Carrier in 1902."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "1ece4e52-5fc4-4d3c-a12e-e915c9442095",
+        "uid": "0e8b1378-1980-41d0-bc4a-026e69b4401f",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -4987,10 +5124,11 @@
           "text": "The backpropagation algorithm was invented independently by multiple researchers. It was independently developed by Paul Werbos in 1974, David Rumelhart and Jay McClelland in 1986, and Geoffrey Hinton in 1986."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "cf5e3ea6-dd33-45c6-916b-7cf2878df494",
+        "uid": "e5bf5776-78e1-48a6-b3f3-284022e7eb40",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -5041,10 +5179,11 @@
           "text": "The backpropagation algorithm was independently invented by several researchers in the early 1980s. These included Paul Werbos, David Rumelhart, and Geoffrey Hinton. However, it was Rumelhart, Hinton, and Ronald Williams who popularized and refined the algorithm, and their work is generally considered to be the most influential in the development of the backpropagation algorithm."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "7f8498e0-320c-4517-b0c5-c7f8ce47d639",
+        "uid": "21b3c233-ba70-4efe-9463-8a633bcc5b9d",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -5095,10 +5234,11 @@
           "text": "The back-propagation algorithm was independently invented by multiple researchers in the 1970s and 1980s, but its modern form and popularization as a powerful training algorithm for neural networks is credited to a paper published by David Rumelhart, Geoffrey Hinton, and Ronald Williams in 1986."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "6ca663c7-cfb1-4407-961e-0ace91167983",
+        "uid": "9d9d6856-f824-4ea7-b5e9-ab9dca65cf95",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -5149,10 +5289,11 @@
           "text": "The first coffee maker was invented by a Frenchman named Louis Bernard Rabaut in 1822. However, the modern drip coffee maker that is commonly used today was invented by Mrs. Melitta Bentz in 1908."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "5e52cf75-758e-4a02-bed7-42c762ddca94",
+        "uid": "8e7e83a1-6574-44b0-b7dc-4c62f104914f",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -5203,10 +5344,11 @@
           "text": "The first coffee maker was invented by a Frenchman named Melitta Bentz in 1908. She used a paper filter to brew coffee, which was a revolutionary idea at the time and is still commonly used today. Prior to her invention, coffee was typically made by simply boiling water and coffee grounds together and then straining the mixture to remove the grounds."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "b5583aff-25f5-4d1d-b89a-b078ef8e1a94",
+        "uid": "30126b53-bf4e-4a30-a938-534a78236957",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
@@ -5257,10 +5399,11 @@
           "text": "The modern coffee maker was invented by Melitta Bentz in 1908. She was a German housewife who was not satisfied with the coffee that was made in coffee bags and pots. She experimented with different materials and finally found that a piece of blotting paper from her son's school notebook, placed in a metal cup perforated with small holes, was the perfect filter. She patented the design and started a company, which still exists today."
         },
         "metavars": {
+          "__pt": "Return only a comma-separated list of named entities that appear in the following text: \"{text}\"",
           "LLM_0": "GPT3.5",
           "LLM_1": "GPT3.5"
         },
-        "uid": "a053c281-c438-4080-b55d-6ba5cb1b1323",
+        "uid": "b0f35abb-a7cf-496f-9e50-a619ea981cb9",
         "llm": {
           "base_model": "gpt-3.5-turbo",
           "emoji": "🙂",
