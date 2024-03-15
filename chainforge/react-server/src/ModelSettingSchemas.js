@@ -878,9 +878,6 @@ const HuggingFaceTextInferenceSettings = {
       "ui:help": "Defaults to 1.0.",
       "ui:widget": "range",
     },
-    max_new_tokens: {
-      "ui:help": "Defaults to unspecified (-1)",
-    },
     top_k: {
       "ui:help": "Defaults to unspecified (-1)",
     },
@@ -1263,11 +1260,23 @@ const BedrockClaudeSettings = {
         description:
           "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
         enum: [
+          "anthropic.claude-3-sonnet-20240229-v1:0",
+          "anthropic.claude-3-haiku-20240307-v1:0",
           "anthropic.claude-v2:1",
           "anthropic.claude-v2",
           "anthropic.claude-instant-v1",
         ],
-        default: "anthropic.claude-v2:1",
+        default: "anthropic.claude-3-haiku-20240307-v1:0",
+        shortname_map: {
+          "anthropic.claude-3-sonnet-20240229-v1:0": "claude-3-sonnet",
+          "anthropic.claude-3-haiku-20240307-v1:0": "claude-3-haiku",
+        },
+      },
+      system_msg: {
+        type: "string",
+        title: "system_msg",
+        description: "A system message to use with the model",
+        default: "",
       },
       temperature: {
         type: "number",
@@ -1291,8 +1300,10 @@ const BedrockClaudeSettings = {
         type: "string",
         title: "Prompt Wrapper (ChainForge)",
         description:
-          'Anthropic models expect prompts in the form "\\n\\nHuman: ${prompt}\\n\\nAssistant:". ChainForge wraps all prompts in this template by default. If you wish to \
-                explore custom prompt wrappers that deviate, write a Python template here with a single variable, ${prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)',
+          // eslint-disable-next-line no-template-curly-in-string
+          'Anthropic models expect prompts in the form "\\n\\nHuman: ${prompt}\\n\\nAssistant:". ChainForge wraps all prompts in this template by default. If you wish to' +
+          // eslint-disable-next-line no-template-curly-in-string
+          "explore custom prompt wrappers that deviate, write a Python template here with a single variable, ${prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)",
         default: "",
       },
       stop_sequences: {
@@ -1782,7 +1793,6 @@ export const setCustomProvider = (
   models,
   rate_limit,
   settings_schema,
-  llmProviderList,
 ) => {
   if (typeof emoji === "string" && (emoji.length === 0 || emoji.length > 2))
     throw new Error(`Emoji for a custom provider must have a character.`);

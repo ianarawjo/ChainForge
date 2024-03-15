@@ -84,6 +84,8 @@ export enum NativeLLM {
 
   Bedrock_Claude_2_1 = "anthropic.claude-v2:1",
   Bedrock_Claude_2 = "anthropic.claude-v2",
+  Bedrock_Claude_3_Sonnet = "anthropic.claude-3-sonnet-20240229-v1:0",
+  Bedrock_Claude_3_Haiku = "anthropic.claude-3-haiku-20240307-v1:0",
   Bedrock_Claude_Instant_1 = "anthropic.claude-instant-v1",
   Bedrock_Jurassic_Ultra = "ai21.j2-ultra",
   Bedrock_Jurassic_Mid = "ai21.j2-mid",

@@ -17,10 +17,9 @@ import {
   GeminiChatContext,
   GeminiChatMessage,
 } from "./typing";
-import { env as process_env } from "process";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
-import path from "path";
+import * as path from "path-browserify";
 
 /* LLM API SDKs */
 import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
@@ -30,7 +29,11 @@ import {
 } from "@azure/openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { UserForcedPrematureExit } from "./errors";
-import { fromModelId } from "bedrock-models";
+import {
+  fromModelId,
+  ChatMessage as BedrockChatMessage,
+} from "@mirai73/bedrock-fm";
+import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
@@ -460,7 +463,7 @@ export async function call_anthropic(
 
   // Carry chat history
   // :: See https://docs.anthropic.com/claude/docs/human-and-assistant-formatting#use-human-and-assistant-to-put-words-in-claudes-mouth
-  const chat_history: ChatHistory | undefined = params.chat_history;
+  const chat_history: ChatHistory | undefined = params?.chat_history;
   if (chat_history !== undefined) {
     // FOR OLD TEXT COMPLETIONS API ONLY: Carry chat history by prepending it to the prompt
     if (!use_messages_api) {
@@ -477,7 +480,7 @@ export async function call_anthropic(
     }
 
     // For newer models Claude 2.1 and Claude 3, we carry chat history directly below; no need to do anything else.
-    delete params.chat_history;
+    delete params?.chat_history;
   }
 
   // Format query
@@ -936,10 +939,10 @@ export async function call_huggingface(
   // Inference Endpoints for text completion models has the same call,
   // except the endpoint is an entire URL. Detect this:
   const url =
-    using_custom_model_endpoint && params.custom_model.startsWith("https:")
+    using_custom_model_endpoint && params?.custom_model.startsWith("https:")
       ? params.custom_model
       : `https://api-inference.huggingface.co/models/${
-          using_custom_model_endpoint ? params.custom_model.trim() : model
+          using_custom_model_endpoint ? params?.custom_model.trim() : model
         }`;
 
   const responses: Array<Dict> = [];
@@ -1151,10 +1154,14 @@ export async function call_bedrock(
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
-  if (!AMAZON_BEDROCK_CONFIG)
+  if (
+    !AMAZON_BEDROCK_CONFIG ||
+    (!AWS_ACCESS_KEY_ID && !AWS_SESSION_TOKEN && !AWS_REGION)
+  ) {
     throw new Error(
-      "Could not find an Region value for the Bedrock API. Double-check that your API key is set in Settings or in your local environment.",
+      "Could not find credentials value for the Bedrock API. Double-check that your API key is set in Settings or in your local environment.",
     );
+  }
 
   const modelName: string = model.toString();
 
@@ -1169,17 +1176,37 @@ export async function call_bedrock(
     stopWords = params?.stop_sequences ?? [];
   }
 
-  const bedrockConfig = JSON.parse(AMAZON_BEDROCK_CONFIG);
+  let bedrockConfig: {
+    credentials: {
+      accessKeyId: string;
+      secretAccessKey: string;
+      sessionToken?: string;
+    };
+    region: string;
+  };
+
+  if (AMAZON_BEDROCK_CONFIG) {
+    bedrockConfig = JSON.parse(AMAZON_BEDROCK_CONFIG);
+  } else {
+    bedrockConfig = {
+      credentials: {
+        accessKeyId: AWS_ACCESS_KEY_ID,
+        secretAccessKey: AWS_SECRET_ACCESS_KEY,
+        sessionToken: AWS_SESSION_TOKEN,
+      },
+      region: AWS_REGION,
+    };
+  }
+
   console.warn("Params", params, bedrockConfig);
-  delete params.stop;
-  const fm = fromModelId({
-    modelId: modelName,
+  delete params?.stop;
+  const fm = fromModelId(modelName as Models, {
     region: bedrockConfig.region ?? "us-west-2",
     credentials: bedrockConfig.credentials,
     stopSequences: stopWords,
     temperature,
     topP: params?.top_p ?? 1.0,
-    maxTokensCount: params?.max_tokens_to_sample ?? 512,
+    maxTokenCount: params?.max_tokens_to_sample ?? 512,
   });
 
   console.log(`Querying Bedrock model '${model}' with prompt '${prompt}'...`);
@@ -1200,9 +1227,18 @@ export async function call_bedrock(
     ...params, // 'the rest' of the settings, passed from the front-end settings
   };
 
-  let response: [];
+  let response: string;
   try {
-    response = await fm.generate(prompt, { extraArgs: params });
+    if (modelName.startsWith("anthropic")) {
+      const conv: BedrockChatMessage[] = [];
+      if (params.system_msg) {
+        conv.push({ role: "system", message: params.system_msg });
+      }
+      conv.push({ role: "human", message: prompt });
+      response = (await fm.chat(conv, { ...params })).message;
+    } else {
+      response = await fm.generate(prompt, { ...params });
+    }
     console.log("Response", response);
   } catch (error: any) {
     console.error("Error", error);
@@ -1215,7 +1251,7 @@ export async function call_bedrock(
     }
   }
 
-  return [query, response];
+  return [query, [response]];
 }
 
 async function call_custom_provider(
@@ -1430,6 +1466,7 @@ export function extract_responses(
   response: Array<string | Dict> | Dict,
   llm: LLM | string,
 ): Array<string> {
+  console.error(response);
   const llm_provider: LLMProvider | undefined = getProvider(llm as LLM);
   const llm_name = llm.toString().toLowerCase();
   switch (llm_provider) {
@@ -1453,6 +1490,8 @@ export function extract_responses(
       return _extract_alephalpha_responses(response);
     case LLMProvider.Ollama:
       return _extract_ollama_responses(response as Dict[]);
+    case LLMProvider.Bedrock:
+      return response as Array<string>;
     default:
       if (
         Array.isArray(response) &&

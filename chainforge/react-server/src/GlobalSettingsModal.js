@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import {
   TextInput,
+  Textarea,
   Button,
   Group,
   Box,
@@ -257,6 +258,11 @@ const GlobalSettingsModal = forwardRef(
         Azure_OpenAI_Endpoint: "",
         HuggingFace: "",
         AlephAlpha: "",
+        AWS_Access_Key_ID: "",
+        AWS_Secret_Access_Key: "",
+        AWS_Session_Token: "",
+        AWS_Region: "us-east-1",
+        AmazonBedrock: JSON.stringify({ credentials: {}, region: "us-east-1" }),
       },
 
       validate: {
@@ -287,10 +293,11 @@ const GlobalSettingsModal = forwardRef(
         closeOnClickOutside={false}
         style={{ position: "relative", left: "-5%" }}
       >
-        <Box maw={400} mx="auto">
+        <Box maw={600} mx="auto">
           <Tabs defaultValue="api-keys">
             <Tabs.List>
               <Tabs.Tab value="api-keys">API Keys</Tabs.Tab>
+              <Tabs.Tab value="aws-credentials">AWS</Tabs.Tab>
               <Tabs.Tab value="ai-support">AI Support (BETA)</Tabs.Tab>
               <Tabs.Tab value="custom-providers">Custom Providers</Tabs.Tab>
             </Tabs.List>
@@ -327,6 +334,13 @@ const GlobalSettingsModal = forwardRef(
                   label="OpenAI API Key"
                   placeholder="Paste your OpenAI API key here"
                   {...form.getInputProps("OpenAI")}
+                />
+                <br />
+                <Textarea
+                  rows={4}
+                  label="AWS Credentials"
+                  placeholder="Paste your AWS Credentials JSON here"
+                  {...form.getInputProps("AmazonBedrock")}
                 />
                 <br />
                 <TextInput
@@ -393,6 +407,35 @@ const GlobalSettingsModal = forwardRef(
                   <Button type="submit">Submit</Button>
                 </Group>
               </form>
+            </Tabs.Panel>
+            <Tabs.Panel value="aws-credentials" pt="xs">
+              <Text mb="md" fz="sm" lh={1.3}>
+                AWS credentials are used to access the AWS API. You can find
+                your credentials in the AWS console.
+              </Text>
+              <TextInput
+                label="AWS Access Key ID"
+                placeholder="Paste your AWS Access Key ID here"
+                {...form.getInputProps("AWS_Access_Key_ID")}
+              />
+              <br />
+              <TextInput
+                label="AWS Secret Access Key"
+                placeholder="Paste your AWS Secret Access Key here"
+                {...form.getInputProps("AWS_Secret_Access_Key")}
+              />
+              <br />
+              <TextInput
+                label="AWS Session Token"
+                placeholder="Paste your AWS Session Token here"
+                {...form.getInputProps("AWS_Session_Token")}
+              />
+              <br />
+              <TextInput
+                label="AWS Region"
+                placeholder="Paste your AWS Region here"
+                {...form.getInputProps("AWS_Region")}
+              />
             </Tabs.Panel>
 
             <Tabs.Panel value="ai-support" pt="xs">
