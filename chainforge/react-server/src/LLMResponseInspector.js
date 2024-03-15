@@ -312,7 +312,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       (Array.isArray(batchedResponses) && batchedResponses.length === 0)
     )
       return;
-    
+
     // Find all vars in responses
     let found_vars = new Set();
     let found_metavars = new Set();

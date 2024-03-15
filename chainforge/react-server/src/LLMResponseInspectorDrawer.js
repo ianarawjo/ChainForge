@@ -15,7 +15,10 @@ export default function LLMResponseInspectorDrawer({
         className="inspect-response-container nowheel nodrag"
         style={{ margin: "0px 10px 10px 12px" }}
       >
-        <LLMResponseInspector jsonResponses={jsonResponses} updateResponses={updateResponses} />
+        <LLMResponseInspector
+          jsonResponses={jsonResponses}
+          updateResponses={updateResponses}
+        />
       </div>
     </div>
   );
