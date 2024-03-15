@@ -10,7 +10,7 @@
  * Descriptions of OpenAI model parameters copied from OpenAI's official chat completions documentation: https://platform.openai.com/docs/models/model-endpoint-compatibility
  */
 
-import { LLM, LLMProvider, RATE_LIMITS, getProvider } from "./backend/models";
+import { LLMProvider, RATE_LIMITS, getProvider } from "./backend/models";
 import {
   Dict,
   JSONCompatible,
