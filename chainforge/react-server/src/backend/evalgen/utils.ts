@@ -45,9 +45,11 @@ function extractJSONBlocks(mdText: string): string[] | undefined {
 export async function generateLLMEvaluationCriteria(
   prompt: string,
   apiKeys?: Dict,
+  promptTemplate?: string, // overrides prompt template used
+  systemMsg?: string | null, // overrides default system message, if present. Use null to specify empty. 
 ): Promise<EvalCriteria[]> {
   // Construct the detailed prompt for the LLM
-  const detailedPrompt = `Here is my LLM prompt template:
+  const detailedPrompt = promptTemplate ?? `Here is my LLM prompt template:
   
   \`${prompt}\`
     
@@ -58,7 +60,7 @@ export async function generateLLMEvaluationCriteria(
     const result = await simpleQueryLLM(
       detailedPrompt, // prompt
       "gpt-3.5-turbo", // llm
-      AssertionWriterSystemMsg, // system_msg
+      systemMsg !== undefined ? (systemMsg === null ? undefined : systemMsg) : AssertionWriterSystemMsg, // system_msg
       apiKeys, // API keys (if any)
     );
 

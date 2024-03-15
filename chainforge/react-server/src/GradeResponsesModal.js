@@ -51,6 +51,9 @@ import {
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
 import { escapeBraces } from "./backend/template";
 import EvaluationFunctionExecutor from "./backend/evalgen/executor";
+import { setLabelForResponse } from "./ResponseRatingToolbar";
+import { simpleQueryLLM } from "./backend/backend";
+import useStore from "./store";
 
 const MANTINE_GREEN = "#40c057";
 
@@ -79,7 +82,9 @@ const CriteriaCard = function CriteriaCard({
   return (
     <Card
       shadow="sm"
-      padding="lg"
+      padding="sm"
+      pl="md"
+      pb="xl"
       radius="md"
       withBorder
       style={{ backgroundColor: checked ? "#f2f7fc" : "#fff" }}
@@ -133,6 +138,7 @@ const CriteriaCard = function CriteriaCard({
                 margin: "0px",
                 color: "#444",
                 background: "transparent",
+                lineHeight: 1.1,
               },
             }}
             autosize
@@ -239,13 +245,14 @@ export const PickCriteriaModal = forwardRef(
   function PickCriteriaModal(props, ref) {
     const [opened, { open, close }] = useDisclosure(false);
     const [responses, setResponses] = useState([]);
+    const apiKeys = useStore((state) => state.apiKeys);
 
     // Which stage of picking + generating criteria we are in. Screens are:
     // pick, wait, grade
-    const [screen, setScreen] = useState("grade_first");
+    const [screen, setScreen] = useState("welcome");
     const modalTitle = useMemo(() => {
       if (screen === "pick") return "Pick Criteria";
-      else if (screen === "auto_or_manual") return "Welcome";
+      else if (screen === "welcome") return "Welcome";
       else if (screen === "wait") return "Collecting implementations...";
       else return "Grading Responses";
     }, [screen]);
@@ -279,7 +286,7 @@ export const PickCriteriaModal = forwardRef(
       },
     ]);
     const [addCriteriaValue, setAddCriteriaValue] = useState("");
-    const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
+    const [isLoadingCriteria, setIsLoadingCriteria] = useState(0);
 
     // An object responsible for generating, implementing, and filtering candidate implementations
     const [executor, setExecutor] = useState(null);
@@ -299,17 +306,36 @@ export const PickCriteriaModal = forwardRef(
     }, [responses]);
 
     const addCriteria = () => {
-      // TODO: Make async LLM call to expand criteria. For now, just dummy func:
-      setCriteria(
-        criteria.concat([
-          {
-            shortname: "New Criteria",
-            criteria: addCriteriaValue,
-            eval_method: "expert",
-            uid: uuid(),
-          },
-        ]),
-      );
+      // Add a loading Skeleton
+      setIsLoadingCriteria((num) => (num + 1));
+      // Make async LLM call to expand criteria
+      generateLLMEvaluationCriteria("", apiKeys,
+`I've described a criteria I want to use to evaluate text. I want you to take the criteria and output a JSON object in the format below. 
+
+CRITERIA: 
+\`\`\`
+${addCriteriaValue}
+\`\`\`
+
+Your response should contain a short title for the criteria ("shortname"), a description of the criteria in 2 sentences ("criteria"), and whether it should be evaluated with "code", or by an "expert" if the criteria is difficult to evaluate ("eval_method"). Your answer should be JSON within a \`\`\`json \`\`\` marker, with the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should expand upon the user's input, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case. Only output JSON, nothing else.`, // prompt
+        "gpt-3.5-turbo", // llm
+        null, // system_msg
+      ).then((evalCrits) => {
+        // Take only the first
+        setCriteria(
+          criteria.concat([
+            {
+              ...evalCrits[0],
+              uid: uuid(),
+            },
+          ]),
+        );
+        // Remove a loading Skeleton
+        setIsLoadingCriteria((num) => (num - 1));
+      }).catch((err) => {
+        console.error(err);
+        setIsLoadingCriteria((num) => (num - 1));
+      });      
     };
     const setCriteriaTitle = (title, idx) => {
       criteria[idx].shortname = title;
@@ -361,7 +387,7 @@ export const PickCriteriaModal = forwardRef(
       }
 
       // Attempt to generate criteria using an LLM
-      return await generateLLMEvaluationCriteria(inputPromptTemplate);
+      return await generateLLMEvaluationCriteria(inputPromptTemplate, apiKeys);
     }, [responses]);
 
     // Starts generating implementations for the chosen criteria
@@ -393,7 +419,7 @@ export const PickCriteriaModal = forwardRef(
     // This gives the parent access to triggering the modal alert
     const trigger = (inputs) => {
       setResponses(inputs);
-      setScreen("grade_first");
+      setScreen("welcome");
       setExecutor(null);
       open();
     };
@@ -406,10 +432,10 @@ export const PickCriteriaModal = forwardRef(
 
       // Generate criteria
       setCriteria([]);
-      setIsLoadingCriteria(true);
+      setIsLoadingCriteria(3);
       genCriteriaFromContext()
         .then((crits) => setCriteria(crits.map((c) => ({ ...c, uid: uuid() }))))
-        .finally(() => setIsLoadingCriteria(false));
+        .finally(() => setIsLoadingCriteria(0));
     };
 
     const gradeResponsesWindow = useMemo(
@@ -418,9 +444,10 @@ export const PickCriteriaModal = forwardRef(
           resps={samples}
           executor={executor}
           onClickDone={handleInitialGradingDone}
+          askForAnnotations={screen === "grade_first"}
         />
       ),
-      [samples, executor],
+      [samples, executor, screen],
     );
 
     return (
@@ -436,7 +463,7 @@ export const PickCriteriaModal = forwardRef(
         closeOnClickOutside={true}
         style={{ position: "relative", left: "-5%" }}
       >
-        {/* {screen === "auto_or_manual" ? (
+        {screen === "welcome" ? (
           <div>
             <Center>
               <Text size="sm" pl="sm" mt="lg" mb="sm" maw="560px">
@@ -456,15 +483,15 @@ export const PickCriteriaModal = forwardRef(
               <Flex justify="center" gap="lg" mt="sm" mb="lg" maw="560px">
                 <ChooseCard
                   onClick={() => {
-                    if (isLoadingCriteria) return;
+                    if (isLoadingCriteria > 0) return;
                     setScreen("pick");
                     setCriteria([]);
-                    setIsLoadingCriteria(true);
+                    setIsLoadingCriteria(3);
                     genCriteriaFromContext()
                       .then((crits) =>
                         setCriteria(crits.map((c) => ({ ...c, uid: uuid() }))),
                       )
-                      .finally(() => setIsLoadingCriteria(false));
+                      .finally(() => setIsLoadingCriteria(0));
                   }}
                   title="Infer criteria from my context"
                   description="An AI will look at your input prompt and context and try to infer criteria. You will still be able to review, revise, and add criteria."
@@ -481,13 +508,23 @@ export const PickCriteriaModal = forwardRef(
                   icon={<IconPencil />}
                   bg="#34eb74"
                 />
+                <ChooseCard
+                  onClick={() => {
+                    setScreen("grade_first");
+                    // setCriteria([]);
+                  }}
+                  title="Grade some responses first"
+                  description="Grade some responses first, to help yourself identify criteria. The AI will incorporate your grades in its criteria suggestions."
+                  icon={<IconThumbUp />}
+                  bg="#eba834"
+                />
                 {/* TODO <ChooseCard title="Chat with an AI to infer criteria" description="Chat with an AI assistant that will ask questions about your task and situation. The AI will infer some criteria and provide them as starting points." icon={<IconMessage2Bolt />} bg="#34c9eb" /> */}
-        {/* </Flex>
+              </Flex>
             </Center>
           </div>
         ) : (
           <></>
-        )} } */}
+        )}
 
         {screen === "pick" ? (
           <div>
@@ -518,11 +555,11 @@ export const PickCriteriaModal = forwardRef(
               <Button
                 variant="filled"
                 onClick={() => {
-                  if (isLoadingCriteria) return;
-                  setIsLoadingCriteria(true);
+                  if (isLoadingCriteria > 0) return;
+                  setIsLoadingCriteria(3);
                   genCriteriaFromContext()
                     .then((crit) => setCriteria(criteria.concat(crit)))
-                    .finally(() => setIsLoadingCriteria(false));
+                    .finally(() => setIsLoadingCriteria(0));
                 }}
               >
                 <IconRepeat />
@@ -549,8 +586,8 @@ export const PickCriteriaModal = forwardRef(
                     }
                   />
                 ))}
-                {isLoadingCriteria ? (
-                  Array.from({ length: 3 }, (x, i) => (
+                {isLoadingCriteria > 0 ? (
+                  Array.from({ length: isLoadingCriteria }, (x, i) => (
                     <Skeleton key={`skele-card-${i}`}>
                       <CriteriaCard
                         title={"Loading"}
@@ -630,7 +667,10 @@ export const PickCriteriaModal = forwardRef(
           <div>
             <Center>
               <Text size="md" pl="sm" mt="lg" mb="sm" maw="80%">
-                Welcome to EvalGen. We&apos;ve learned that grading responses
+                Grade at least 5 responses. You can use the arrows to skip
+                responses. Try to get a good sample of good (thumbs up) and bad
+                (thumbs down) examples.
+                {/* Welcome to EvalGen. We&apos;ve learned that grading responses
                 helps you decide your criteria. So, before AI can help you
                 generate evaluators,{" "}
                 <span style={{ fontWeight: 800 }}>
@@ -638,7 +678,7 @@ export const PickCriteriaModal = forwardRef(
                 </span>
                 . The EvalGen wizard will then generate evaluation criteria and
                 implementations for grading responses that align with your
-                expectations.
+                expectations. */}
               </Text>
             </Center>
             <hr />
@@ -654,7 +694,7 @@ export const PickCriteriaModal = forwardRef(
 
 // Pop-up where user grades responses.
 export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
-  { resps, executor, onClickDone },
+  { resps, executor, onClickDone, askForAnnotations },
   ref,
 ) {
   // Confetti effects
@@ -675,6 +715,7 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
   const numGraded = useMemo(() => Object.keys(grades).length, [grades]);
 
   const [promptReasoning, setPromptReasoning] = useState(null);
+  const [annotation, setAnnotation] = useState(null);
 
   const bottomBar = useMemo(() => {
     const bar = {};
@@ -719,6 +760,18 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
   const nextResponse = () => {
     if (responses.length === 0) return;
 
+    // Update annotation for current response (if any)
+    // TODO: Fix this for generate case when num resp per prompt > 1
+    if (
+      shownResponse &&
+      annotation &&
+      typeof annotation === "string" &&
+      annotation.trim().length > 0
+    ) {
+      console.log("setting annotation for resp", shownResponse.uid, annotation);
+      setLabelForResponse(shownResponse.uid, "note", { 0: annotation });
+      setAnnotation(null);
+    }
     setPromptReasoning(null);
 
     if (shownResponseIdx < pastShownResponses.length - 1) {
@@ -805,7 +858,8 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
       // If they gave a bad grade, ask them why
       setTimeout(() => explodeFunc(false), 1200);
       setTimeout(() => {
-        setPromptReasoning(true);
+        if (askForAnnotations) setPromptReasoning(true);
+        else nextResponse();
       }, 800);
     }
   };
@@ -970,8 +1024,20 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
             <Stack spacing="xs">
               <Text>What&apos;s the reason for your score?</Text>
               <Flex align="center" gap="lg">
-                <Textarea autoFocus />
-                <Button onClick={nextResponse}>Continue</Button>
+                <Textarea
+                  value={annotation}
+                  onChange={(e) => setAnnotation(e.currentTarget.value)}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      nextResponse();
+                    }
+                  }}
+                />
+                <Button onClick={nextResponse} w={100}>
+                  {!annotation ? "Skip" : "Continue"}
+                </Button>
               </Flex>
             </Stack>
           </Center>

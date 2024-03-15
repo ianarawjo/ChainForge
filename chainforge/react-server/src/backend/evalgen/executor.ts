@@ -499,15 +499,17 @@ export default class EvaluationFunctionExecutor {
         }
         evalFunctionReport.get(criteria)?.push(report);
 
+        // TODO: Revisit this choice
         // IF false failure rate is above the threshold, skip this function
-        const falseFailureRate =
-          report.false_fail / (report.false_fail + report.true_pass);
-        if (falseFailureRate > falseFailureRateThreshold) {
-          continue;
-        }
+        // const falseFailureRate =
+        //   report.false_fail / (report.false_fail + report.true_pass);
+        // if (falseFailureRate > falseFailureRateThreshold) {
+        //   continue;
+        // }
 
         // Calculate coverage
-        const failureCoverage = report.true_fail / numFailGrades;
+        // NOTE: If there are no resps graded as failing, then technically coverage is 100%; this will pick the first function generated.
+        const failureCoverage = numFailGrades > 0 ? report.true_fail / numFailGrades : 1.0;
 
         if (failureCoverage > bestCoverage) {
           bestFunction = evalFunction;
