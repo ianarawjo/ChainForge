@@ -232,7 +232,10 @@ export class PromptTemplate {
   /** Returns True if the template has an unfilled variable in its fill_history with the given name,
    * that is a settings variable (i.e. starts with =, e.g. {=system_msg}). */
   has_unfilled_settings_var(varname: string): boolean {
-    return Object.entries(this.fill_history).some(([key, val]) => key.startsWith("=") && (new StringTemplate(val).has_vars([varname])));
+    return Object.entries(this.fill_history).some(
+      ([key, val]) =>
+        key.startsWith("=") && new StringTemplate(val).has_vars([varname]),
+    );
   }
 
   /** Returns True if no template variables are left in template string. */
@@ -302,9 +305,11 @@ export class PromptTemplate {
     // Perform the fill inside any and all 'settings' template vars
     Object.entries(filled_pt.fill_history).forEach(([key, val]) => {
       if (!key.startsWith("=")) return;
-      filled_pt.fill_history[key] = new StringTemplate(val).safe_substitute(params_wo_settings);
+      filled_pt.fill_history[key] = new StringTemplate(val).safe_substitute(
+        params_wo_settings,
+      );
     });
-  
+
     // Append any past history passed as vars:
     Object.entries(past_fill_history).forEach(([key, val]) => {
       if (key in filled_pt.fill_history)
@@ -423,7 +428,8 @@ export class PromptPermutationGenerator {
           const v_associate_id = v.associate_id;
           params_left.forEach((other_param) => {
             if (
-              (template.has_var(other_param) || template.has_unfilled_settings_var(other_param)) &&
+              (template.has_var(other_param) ||
+                template.has_unfilled_settings_var(other_param)) &&
               Array.isArray(paramDict[other_param])
             ) {
               for (let i = 0; i < paramDict[other_param].length; i++) {
