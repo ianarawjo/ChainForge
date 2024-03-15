@@ -59,7 +59,7 @@ export async function generateLLMEvaluationCriteria(
   async function _query() {
     const result = await simpleQueryLLM(
       detailedPrompt, // prompt
-      "gpt-3.5-turbo", // llm
+      "gpt-4", // llm
       systemMsg !== undefined ? (systemMsg === null ? undefined : systemMsg) : AssertionWriterSystemMsg, // system_msg
       apiKeys, // API keys (if any)
     );
