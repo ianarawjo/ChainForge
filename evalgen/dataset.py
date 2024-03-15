@@ -10,6 +10,8 @@ import json
 from rich import print
 from openai import AsyncAzureOpenAI
 
+from uuid import uuid4
+
 
 class Dataset(ABC):
     @abstractmethod
@@ -26,6 +28,14 @@ class Dataset(ABC):
         # Generate and save the train and test splits
         train_records = self.get_train()
         test_records = self.get_test()
+
+        # Make uuids for each record
+        train_records = [
+            {"id": uuid4().hex, "document": record} for record in train_records[:80]
+        ]
+        test_records = [
+            {"id": uuid4().hex, "document": record} for record in test_records[:20]
+        ]
 
         # Create a big json file with all the records
         all_records = {"train": train_records, "test": test_records}
@@ -131,7 +141,6 @@ Features: {product_data['features']}
 Description: {product_data['description']}
 Price: {product_data['price']}
 Store: {product_data['store']}
-Details: {product_data['details']}
 Review Text: {product_data['text']}
 """
         return formatted_string
@@ -170,37 +179,37 @@ Review Text: {product_data['text']}
 
 
 def gen_splits():
-    print(f"------ Testing Medical Dataset ------")
-    dataset = MedicalDataset()
-    train_records = dataset.get_train()
-    print(f"Train records: {len(train_records)}")
-    print(train_records[0])
-    val_records = dataset.get_test()
-    print(f"Test records: {len(val_records)}")
-    print(val_records[0])
+    # print(f"------ Testing Medical Dataset ------")
+    # dataset = MedicalDataset()
+    # train_records = dataset.get_train()[:65]
+    # print(f"Train records: {len(train_records)}")
+    # print(train_records[0])
+    # val_records = dataset.get_test()[:20]
+    # print(f"Test records: {len(val_records)}")
+    # print(val_records[0])
 
-    # Save the splits
+    # # Save the splits
     save_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "processed_data"
     )
-    dataset.gen_and_save_splits(save_dir)
+    # dataset.gen_and_save_splits(save_dir)
 
     print(f"------ Testing Amazon Products Dataset ------")
     dataset = AmazonProductsDataset()
-    train_records = dataset.get_train()
+    train_records = dataset.get_train()[:80]
     print(f"Train records: {len(train_records)}")
     print(train_records[0])
-    test_records = dataset.get_test()
+    test_records = dataset.get_test()[:20]
     print(f"Test records: {len(test_records)}")
     print(test_records[0])
 
     dataset.gen_and_save_splits(save_dir)
 
 
-async def query_openai_api(system_message: str, user_message: str):
+async def query_openai_api(user_message: str):
     # This function will query the OpenAI API and return the response
     messages = [
-        {"role": "system", "content": system_message},
+        {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": user_message},
     ]
 
@@ -220,7 +229,7 @@ async def query_openai_api(system_message: str, user_message: str):
 
 
 async def run_medical_prompts():
-    system_message = 'You are extracting insights from some medical records. The records contain a medical note and a dialogue between a doctor and a patient. You need to extract values for the following: Chief complaint, History of present illness, Physical examination, Symptoms experienced by the patient, New medications prescribed or changed, including dosages (if any), and Follow-up instructions (if any). Your answer should not include any personal identifiable information (PII) such as name, age, gender, or ID. Use "the patient" instead of their name, for example. Return your answer as a bullet list, where each bullet is formatted like `chief complaint: xx.` If there is no value for the key, the value should be `N/A`. Keep your response under 100 words.'
+    full_prompt_template = 'You are extracting insights from some medical records. The records contain a medical note and a dialogue between a doctor and a patient. You need to extract values for the following: Chief complaint, History of present illness, Physical examination, Symptoms experienced by the patient, New medications prescribed or changed, including dosages (N/A if not provided), and Follow-up instructions (N/A if not provided). Your answer should not include any personal identifiable information (PII) such as name, age, gender, or ID. Use "the patient" instead of their name, for example. Return your answer as a bullet list, where each bullet is formatted like `chief complaint: xx.` If there is no value for the key, the value should be `N/A`. Keep your response around 150 words (you may have to summarize some extracted values to stay within the word limit).\n\n{document}'
 
     dataset = MedicalDataset()
     curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -233,7 +242,11 @@ async def run_medical_prompts():
 
         for record in dataset.iter(data_dir, split=split):
             records.append(record)
-            openai_tasks.append(query_openai_api(system_message, record))
+            openai_tasks.append(
+                query_openai_api(
+                    full_prompt_template.format(document=record["document"])
+                )
+            )
 
         # Wait for all the tasks to complete
         results = await asyncio.gather(*openai_tasks, return_exceptions=True)
@@ -246,7 +259,8 @@ async def run_medical_prompts():
                 prompt, response = result
                 records_to_write.append(
                     {
-                        "example": record,
+                        "id": record["id"],
+                        "document": record["document"],
                         "prompt": prompt,
                         "response": response,
                         "split": split,
@@ -262,7 +276,7 @@ async def run_medical_prompts():
 
 
 async def run_product_seo():
-    system_message = "You are an expert copywriter. You need to write an e-commerce product description based on the product details and customer reviews. Your description should be SEO-optimized. It should use an active voice and include the product's features, benefits, unique selling points without overpromising, and a call to action for the buyer. Benefits describe how product features will work for the buyer, addressing exactly how the product will improve their lives. Clearly distinguish between features (e.g., lightweight, USB-chargeable) and benefits (e.g., convenience, nutritious drinks on-the-go). Don't mention weaknesses of the product or use generic or repetitive language. Divide your description into readable chunks divided by relevant subheadings. Keep your description around 200 words, in Markdown format."
+    full_prompt_template = "You are an expert copywriter. You need to write an e-commerce product description based on the product details and customer reviews. Your description should be SEO-optimized. It should use an active voice and include the product's features, benefits, unique selling points without overpromising, and a call to action for the buyer. Benefits describe how product features will work for the buyer, addressing exactly how the product will improve their lives. Clearly distinguish between features (e.g., lightweight, USB-chargeable) and benefits (e.g., convenience, nutritious drinks on-the-go). Don't mention weaknesses of the product or use generic or repetitive language. Don't make up review text or quotes. Don't include any links. Don't cite the reviews too heavily. Divide your description into readable chunks divided by relevant subheadings. Keep your description around 200 words, no more than 300, in Markdown format.\n\n{document}"
 
     dataset = AmazonProductsDataset()
     curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -275,7 +289,11 @@ async def run_product_seo():
 
         for record in dataset.iter(data_dir, split=split):
             records.append(record)
-            openai_tasks.append(query_openai_api(system_message, record))
+            openai_tasks.append(
+                query_openai_api(
+                    full_prompt_template.format(document=record["document"])
+                )
+            )
 
         # Wait for all the tasks to complete
         results = await asyncio.gather(*openai_tasks, return_exceptions=True)
@@ -288,7 +306,8 @@ async def run_product_seo():
                 prompt, response = result
                 records_to_write.append(
                     {
-                        "example": record,
+                        "id": record["id"],
+                        "document": record["document"],
                         "prompt": prompt,
                         "response": response,
                         "split": split,
@@ -304,6 +323,9 @@ async def run_product_seo():
 
 
 if __name__ == "__main__":
+    # Gen datasets
+    # gen_splits()
+
     # asyncio.run(run_medical_prompts())
     asyncio.run(run_product_seo())
 
