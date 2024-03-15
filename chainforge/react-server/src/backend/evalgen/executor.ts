@@ -511,7 +511,7 @@ export default class EvaluationFunctionExecutor {
         // NOTE: If there are no resps graded as failing, then technically coverage is 100%; this will pick the first function generated.
         const failureCoverage = numFailGrades > 0 ? report.true_fail / numFailGrades : 1.0;
 
-        if (failureCoverage > bestCoverage) {
+        if (failureCoverage >= bestCoverage) {
           bestFunction = evalFunction;
           bestCoverage = failureCoverage;
         }

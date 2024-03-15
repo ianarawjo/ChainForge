@@ -45,6 +45,7 @@ import {
 import ConfettiExplosion from "react-confetti-explosion";
 import {
   cleanMetavarsFilterFunc,
+  deepcopy,
   sampleRandomElements,
   transformDict,
 } from "./backend/utils";
@@ -54,6 +55,7 @@ import EvaluationFunctionExecutor from "./backend/evalgen/executor";
 import { setLabelForResponse } from "./ResponseRatingToolbar";
 import { simpleQueryLLM } from "./backend/backend";
 import useStore from "./store";
+import { DEFAULT_LLM_EVAL_MODEL } from "./LLMEvalNode";
 
 const MANTINE_GREEN = "#40c057";
 
@@ -247,6 +249,9 @@ export const PickCriteriaModal = forwardRef(
     const [responses, setResponses] = useState([]);
     const apiKeys = useStore((state) => state.apiKeys);
 
+    // Callback to caller when criteria implementations return
+    const [onFinish, setOnFinish] = useState(null);
+
     // Which stage of picking + generating criteria we are in. Screens are:
     // pick, wait, grade
     const [screen, setScreen] = useState("welcome");
@@ -417,10 +422,16 @@ Your response should contain a short title for the criteria ("shortname"), a des
     }, [criteria, samples, executor]);
 
     // This gives the parent access to triggering the modal alert
-    const trigger = (inputs) => {
+    const trigger = (inputs, _onFinish) => {
       setResponses(inputs);
       setScreen("welcome");
+      setAddCriteriaValue("");
       setExecutor(null);
+      setOnFinish(() => ((implementations) => {
+        close();
+        if (_onFinish)
+          _onFinish(implementations);
+      }));
       open();
     };
     useImperativeHandle(ref, () => ({
@@ -445,9 +456,10 @@ Your response should contain a short title for the criteria ("shortname"), a des
           executor={executor}
           onClickDone={handleInitialGradingDone}
           askForAnnotations={screen === "grade_first"}
+          onFinish={onFinish}
         />
       ),
-      [samples, executor, screen],
+      [samples, executor, screen, onFinish],
     );
 
     return (
@@ -549,6 +561,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
                   if (evt.key === "Enter") {
                     evt.preventDefault();
                     addCriteria();
+                    setAddCriteriaValue("");
                   }
                 }}
               />
@@ -575,7 +588,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
                     title={c.shortname}
                     description={c.criteria}
                     evalMethod={c.eval_method}
-                    key={`cc-${c.uid ?? idx}`}
+                    key={`cc-${c.uid ?? (idx.toString() + c.shortname)}`}
                     onTitleChange={(title) => setCriteriaTitle(title, idx)}
                     onDescriptionChange={(desc) => setCriteriaDesc(desc, idx)}
                     onEvalMethodChange={(method) =>
@@ -694,7 +707,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
 
 // Pop-up where user grades responses.
 export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
-  { resps, executor, onClickDone, askForAnnotations },
+  { resps, executor, onClickDone, askForAnnotations, onFinish },
   ref,
 ) {
   // Confetti effects
@@ -839,6 +852,33 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
       // Filtering eval funcs by grades and present results
       const filteredFunctions = await executor?.filterEvaluationFunctions(0.2);
       console.log("Filtered Functions: ", filteredFunctions);
+
+      // Return selected implementations to caller
+      if (onFinish) {
+
+        // Convert to expected format
+        const implementations = filteredFunctions.selectedEvalFunctions.map((evalFuncSpec) => {
+          if (evalFuncSpec.evalCriteria.eval_method === "code")
+            return {
+              name: evalFuncSpec.evalCriteria.shortname,
+              type: "python", // for now, only generates Python
+              state: {
+                code: evalFuncSpec.code,
+              },
+            };
+          else return {
+            name: evalFuncSpec.evalCriteria.shortname,
+            type: "llm",
+            state: {
+              prompt: evalFuncSpec.code,
+              grader: deepcopy(DEFAULT_LLM_EVAL_MODEL),
+              format: 'bin' // for now, only boolean assertions
+            },
+          };
+        });
+
+        onFinish(implementations);
+      }
     }
   }, [executor, showProgressType]);
 

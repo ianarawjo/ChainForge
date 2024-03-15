@@ -39,7 +39,7 @@ const OUTPUT_FORMAT_PROMPTS = {
 };
 
 // The default LLM annotator is GPT-4 at temperature 0.
-const DEFAULT_LLM_ITEM = (() => {
+export const DEFAULT_LLM_EVAL_MODEL = (() => {
   const item = [initLLMProviders.find((i) => i.base_model === "gpt-4")].map(
     (i) => ({
       key: uuid(),
@@ -69,7 +69,7 @@ export const LLMEvaluatorComponent = forwardRef(function LLMEvaluatorComponent(
   ref,
 ) {
   const [promptText, setPromptText] = useState(prompt ?? "");
-  const [llmScorers, setLLMScorers] = useState([grader ?? DEFAULT_LLM_ITEM]);
+  const [llmScorers, setLLMScorers] = useState([grader ?? DEFAULT_LLM_EVAL_MODEL]);
   const [expectedFormat, setExpectedFormat] = useState(format ?? "bin");
   const apiKeys = useStore((state) => state.apiKeys);
 

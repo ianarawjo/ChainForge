@@ -197,7 +197,12 @@ const MultiEvalNode = ({ data, id }) => {
   const pickCriteriaModalRef = useRef(null);
   const onClickPickCriteria = () => {
     const inputs = handlePullInputs();
-    pickCriteriaModalRef?.current?.trigger(inputs);
+    pickCriteriaModalRef?.current?.trigger(inputs, (implementations) => {
+      // Returned if/when the Pick Criteria modal finishes generating implementations.
+      console.warn(implementations);
+      // Override any existing evals with the returned implementations
+      setEvaluators(implementations);
+    });
   };
 
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
@@ -307,8 +312,9 @@ const MultiEvalNode = ({ data, id }) => {
     setStatus("loading");
     setLastResponses([]);
 
-    // Run stuff here!
+    // Run all evaluators here!
     // TODO
+    setTimeout(() => setStatus("ready"), 1000);
   }, [
     handlePullInputs,
     pingOutputNodes,
@@ -337,7 +343,7 @@ const MultiEvalNode = ({ data, id }) => {
     <BaseNode
       classNames="evaluator-node"
       nodeId={id}
-      style={{ backgroundColor: "#fff" }}
+      style={{ backgroundColor: "#eee" }}
     >
       <NodeLabel
         title={data.title || "Multi-Evaluator"}
