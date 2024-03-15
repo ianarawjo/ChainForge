@@ -229,6 +229,12 @@ export class PromptTemplate {
     return new StringTemplate(this.template).has_vars([varname]);
   }
 
+  /** Returns True if the template has an unfilled variable in its fill_history with the given name,
+   * that is a settings variable (i.e. starts with =, e.g. {=system_msg}). */
+  has_unfilled_settings_var(varname: string): boolean {
+    return Object.entries(this.fill_history).some(([key, val]) => key.startsWith("=") && (new StringTemplate(val).has_vars([varname])));
+  }
+
   /** Returns True if no template variables are left in template string. */
   is_concrete(): boolean {
     return !new StringTemplate(this.template).has_vars();
@@ -284,6 +290,7 @@ export class PromptTemplate {
       });
     }
 
+    // Perform the fill on the main text
     const filled_pt = new PromptTemplate(
       new StringTemplate(this.template).safe_substitute(params_wo_settings),
     );
@@ -292,6 +299,12 @@ export class PromptTemplate {
     filled_pt.fill_history = JSON.parse(JSON.stringify(this.fill_history));
     filled_pt.metavars = JSON.parse(JSON.stringify(this.metavars));
 
+    // Perform the fill inside any and all 'settings' template vars
+    Object.entries(filled_pt.fill_history).forEach(([key, val]) => {
+      if (!key.startsWith("=")) return;
+      filled_pt.fill_history[key] = new StringTemplate(val).safe_substitute(params_wo_settings);
+    });
+  
     // Append any past history passed as vars:
     Object.entries(past_fill_history).forEach(([key, val]) => {
       if (key in filled_pt.fill_history)
@@ -380,7 +393,7 @@ export class PromptPermutationGenerator {
     let params_left: Array<string> = params_to_fill;
     for (let i = 0; i < params_to_fill.length; i++) {
       const p = params_to_fill[i];
-      if (template.has_var(p)) {
+      if (template.has_var(p) || template.has_unfilled_settings_var(p)) {
         param = p;
         params_left = params_to_fill.filter((_p) => _p !== p);
         break;
@@ -410,7 +423,7 @@ export class PromptPermutationGenerator {
           const v_associate_id = v.associate_id;
           params_left.forEach((other_param) => {
             if (
-              template.has_var(other_param) &&
+              (template.has_var(other_param) || template.has_unfilled_settings_var(other_param)) &&
               Array.isArray(paramDict[other_param])
             ) {
               for (let i = 0; i < paramDict[other_param].length; i++) {
