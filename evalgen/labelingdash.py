@@ -12,10 +12,10 @@ from openai import AzureOpenAI
 @st.cache_data
 def load_data(dataset_name):
     curr_dir = os.path.dirname(__file__)
-    data_folder = os.path.join(curr_dir, "processed_data")
+    data_folder = os.path.join(curr_dir, "flows/outputs")
     if dataset_name not in ["medical", "product"]:
         raise ValueError("Invalid dataset name")
-    data_path = os.path.join(data_folder, f"{dataset_name}_prompts_responses.csv")
+    data_path = os.path.join(data_folder, f"{dataset_name}.csv")
     df = pd.read_csv(data_path)
     if "grade" not in df.columns:
         df["grade"] = None  # Initialize the grade column if it doesn't exist
@@ -69,26 +69,18 @@ if dataset_name:
     if index < len(data):
         row = data.iloc[index]
         st.markdown(f"## Row {index + 1} of {len(data)}")
-        st.write(f"ID: {row['id']}")
+        st.write(f"ID: {row['Metavar: id']}")
 
-        with st.expander("See Example"):
-            st.markdown(row["document"])
+        with st.expander("See Input Document"):
+            st.markdown(row["Var: document"])
         # Prompt using an expander with pretty-printed JSON
         with st.expander("See Prompt"):
-            try:
-                # Attempt to load the prompt as dict and pretty-print it
-                prompt_json = eval(row["prompt"])
-                st.json(
-                    prompt_json
-                )  # Streamlit's st.json to nicely format and display JSON
-            except json.JSONDecodeError:
-                # If there's an error in decoding the JSON, display it as-is
-                st.write(f"Prompt: `{row['prompt']}`")
+            st.write(row["Prompt"])
 
         # Response
         st.markdown("### LLM Response")
-        st.write(row["response"])
-        num_words = len(row["response"].split())
+        st.write(row["Response"])
+        num_words = len(row["Response"].split())
         st.markdown(
             f"_(Note: The response above contains {num_words} words.)_"
         )  # Clarification for word count
@@ -102,10 +94,10 @@ if dataset_name:
                 )
 
                 if dataset_name == "medical":
-                    evaluator_system_prompt = f"You are an expert evaluator, deciding whether an LLM response appropriately answers an LLM  prompt:\n\n{row['prompt']}\n\nCriteria for a good response includes: No PII present in the output (e.g., names, addresses, phone numbers, emails). Each bullet has some information associated with it (or N/A). Dosage included with medicines listed. Response under 200 words"
+                    evaluator_system_prompt = f"You are an expert evaluator, deciding whether an LLM response appropriately answers an LLM  prompt:\n\n{row['Prompt']}\n\nCriteria for a good response includes: No PII present in the output (e.g., names, addresses, phone numbers, emails). Each bullet has some information associated with it (or N/A). Dosage included with medicines listed. Response under 200 words"
 
                 elif dataset_name == "product":
-                    evaluator_system_prompt = f"You are an expert evaluator, deciding whether an LLM response appropriately answers an LLM  prompt:\n\n{row['prompt']}\n\nCriteria for a good response includes: Incorporates SEO keywords naturally. Differentiates between product features (lightweight, USB-chargeable) and benefits (convenience, nutritious drinks on-the-go). No exaggeration or overpromising. Don't say bad things about the product. ~200 word response. Active voice usage. Appropriate subheadings. Includes a call to action. No links. Markdown formatting."
+                    evaluator_system_prompt = f"You are an expert evaluator, deciding whether an LLM response appropriately answers an LLM  prompt:\n\n{row['Prompt']}\n\nCriteria for a good response includes: Incorporates SEO keywords naturally. Differentiates between product features (lightweight, USB-chargeable) and benefits (convenience, nutritious drinks on-the-go). No exaggeration or overpromising. Don't say bad things about the product. ~200 word response. Active voice usage. Appropriate subheadings. Includes a call to action. No links. Markdown formatting."
 
                 stream = client.chat.completions.create(
                     model="gpt-4-2",
@@ -116,7 +108,7 @@ if dataset_name:
                         },
                         {
                             "role": "user",
-                            "content": f"The LLM responded with:\n\n{row['response']}\n\nDid it follow all instructions in the prompt? Explain succinctly. Don't correct the response.",
+                            "content": f"The LLM responded with:\n\n{row['Response']}\n\nDid it follow all instructions in the prompt? Explain succinctly. Don't correct the response.",
                         },
                     ],
                     stream=True,
