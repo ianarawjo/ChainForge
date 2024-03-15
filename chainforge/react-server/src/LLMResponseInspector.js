@@ -9,8 +9,6 @@ import React, {
   useEffect,
   useRef,
   useMemo,
-  lazy,
-  Suspense,
 } from "react";
 import {
   MultiSelect,

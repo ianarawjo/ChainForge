@@ -508,11 +508,10 @@ const App = () => {
 
   // Import data to the cache stored on the local filesystem (in backend)
   const handleImportCache = useCallback(
-    (cache_data: Dict<Dict>) => 
+    (cache_data: Dict<Dict>) =>
       importCache(cache_data)
         .then(importGlobalStateFromCache)
-        .catch(handleError)
-    ,
+        .catch(handleError),
     [handleError, importGlobalStateFromCache],
   );
 

@@ -143,9 +143,7 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
       {llmName !== undefined ? (
         children
       ) : (
-        <div className="response-item-llm-name-wrapper">
-          {children}
-        </div>
+        <div className="response-item-llm-name-wrapper">{children}</div>
       )}
     </div>
   );
@@ -161,7 +159,7 @@ export const genResponseTextsDisplay = (
   customTextDisplay?: (txt: string) => React.ReactNode,
   onlyShowScores?: boolean,
   llmName?: string,
-  wideFormat?:boolean,
+  wideFormat?: boolean,
 ): React.ReactNode[] | React.ReactNode => {
   if (!res_obj) return <></>;
 

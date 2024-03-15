@@ -1944,7 +1944,7 @@ export function repairCachedResponses(
   return data;
 }
 
-/** 
+/**
  * Generates a function that can be called to debounce another function,
  * inside a React component. Note that it requires passing (and capturing) a React ref using useRef.
  * The ref is used so that when the function is called multiple times; it will 'debounce' --cancel any pending call.
