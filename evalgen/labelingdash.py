@@ -71,7 +71,7 @@ if dataset_name:
         st.markdown(f"## Row {index + 1} of {len(data)}")
         st.write(f"ID: {row['Metavar: id']}")
 
-        with st.expander("See Input Document"):
+        with st.expander("See InputDocument"):
             st.markdown(row["Var: document"])
         # Prompt using an expander with pretty-printed JSON
         with st.expander("See Prompt"):
@@ -143,6 +143,12 @@ if dataset_name:
             mime="text/csv",
         )
     else:
-        st.write(
-            "No more data to label, or data is fully labeled. Save grades if you have not already."
+        st.write("No more data to label, or data is fully labeled!")
+        graded_df = save_grades(data, dataset_name)
+        st.download_button(
+            "💾 Save Grades",
+            type="primary",
+            data=graded_df.to_csv(index=False).encode("utf-8"),
+            file_name=f"grades_{dataset_name}.csv",
+            mime="text/csv",
         )
