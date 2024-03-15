@@ -297,7 +297,6 @@ const GlobalSettingsModal = forwardRef(
           <Tabs defaultValue="api-keys">
             <Tabs.List>
               <Tabs.Tab value="api-keys">API Keys</Tabs.Tab>
-              <Tabs.Tab value="aws-credentials">AWS</Tabs.Tab>
               <Tabs.Tab value="ai-support">AI Support (BETA)</Tabs.Tab>
               <Tabs.Tab value="custom-providers">Custom Providers</Tabs.Tab>
             </Tabs.List>
@@ -336,13 +335,6 @@ const GlobalSettingsModal = forwardRef(
                   {...form.getInputProps("OpenAI")}
                 />
                 <br />
-                <Textarea
-                  rows={4}
-                  label="AWS Credentials"
-                  placeholder="Paste your AWS Credentials JSON here"
-                  {...form.getInputProps("AmazonBedrock")}
-                />
-                <br />
                 <TextInput
                   label="HuggingFace API Key"
                   placeholder="Paste your HuggingFace API key here"
@@ -367,6 +359,44 @@ const GlobalSettingsModal = forwardRef(
                   label="Aleph Alpha API Key"
                   placeholder="Paste your Aleph Alpha API key here"
                   {...form.getInputProps("AlephAlpha")}
+                />
+                <br />
+
+                <Divider
+                  my="xs"
+                  label="Amazon Web Services"
+                  labelPosition="center"
+                />
+                <TextInput
+                  description={
+                    "AWS credentials are used to access the AWS API. You must use" +
+                    "temporary credentials and associated to an IAM role with the" +
+                    "right permission."
+                  }
+                  label="AWS Access Key ID"
+                  placeholder="Paste your AWS Access Key ID here"
+                  {...form.getInputProps("AWS_Access_Key_ID")}
+                  style={{ marginBottom: "8pt" }}
+                />
+
+                <TextInput
+                  label="AWS Secret Access Key"
+                  placeholder="Paste your AWS Secret Access Key here"
+                  {...form.getInputProps("AWS_Secret_Access_Key")}
+                  style={{ marginBottom: "8pt" }}
+                />
+
+                <TextInput
+                  label="AWS Session Token"
+                  placeholder="Paste your AWS Session Token here"
+                  {...form.getInputProps("AWS_Session_Token")}
+                  style={{ marginBottom: "8pt" }}
+                />
+
+                <TextInput
+                  label="AWS Region"
+                  placeholder="Paste your AWS Region here"
+                  {...form.getInputProps("AWS_Region")}
                 />
                 <br />
                 <Divider
@@ -407,35 +437,6 @@ const GlobalSettingsModal = forwardRef(
                   <Button type="submit">Submit</Button>
                 </Group>
               </form>
-            </Tabs.Panel>
-            <Tabs.Panel value="aws-credentials" pt="xs">
-              <Text mb="md" fz="sm" lh={1.3}>
-                AWS credentials are used to access the AWS API. You can find
-                your credentials in the AWS console.
-              </Text>
-              <TextInput
-                label="AWS Access Key ID"
-                placeholder="Paste your AWS Access Key ID here"
-                {...form.getInputProps("AWS_Access_Key_ID")}
-              />
-              <br />
-              <TextInput
-                label="AWS Secret Access Key"
-                placeholder="Paste your AWS Secret Access Key here"
-                {...form.getInputProps("AWS_Secret_Access_Key")}
-              />
-              <br />
-              <TextInput
-                label="AWS Session Token"
-                placeholder="Paste your AWS Session Token here"
-                {...form.getInputProps("AWS_Session_Token")}
-              />
-              <br />
-              <TextInput
-                label="AWS Region"
-                placeholder="Paste your AWS Region here"
-                {...form.getInputProps("AWS_Region")}
-              />
             </Tabs.Panel>
 
             <Tabs.Panel value="ai-support" pt="xs">

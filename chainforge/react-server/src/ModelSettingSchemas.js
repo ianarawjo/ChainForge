@@ -1705,6 +1705,206 @@ const BedrockCommandTextSettings = {
   },
 };
 
+const MistralSettings = {
+  fullName: "Mistral models via Amazon Bedrock",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "Mistral",
+      },
+      model: {
+        type: "string",
+        title: "Model Version",
+        description:
+          "Select a version of Command Cohere to query. For more details on the differences, see the Cohere API documentation.",
+        enum: [
+          "mistral.mistral-7b-instruct-v0:2",
+          "mistral.mixtral-8x7b-instruct-v0:1",
+        ],
+        default: "mistral.mistral-7b-instruct-v0:2",
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.01,
+      },
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The maximum number of tokens to generate for each response.",
+        default: 1024,
+        minimum: 1,
+      },
+      stop: {
+        type: "string",
+        title: "stop",
+        description:
+          'Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: "",
+      },
+      top_k: {
+        type: "integer",
+        title: "top_k",
+        description:
+          "The number of top-scoring tokens to consider for each generation step.",
+        minimum: 0,
+        default: 0,
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description:
+          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
+        default: 1,
+        minimum: 0.01,
+        maximum: 1,
+        multipleOf: 0.001,
+      },
+    },
+  },
+  postprocessors: {
+    stop_sequences: (str) => {
+      if (str.trim().length === 0) return [];
+      return str
+        .match(/"((?:[^"\\]|\\.)*)"/g)
+        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+  },
+
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:help": "Defaults to Mistral",
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    max_tokens: {
+      "ui:help": "Defaults to 1024.",
+    },
+    num_generations: {
+      "ui:help": "Defaults to 1.",
+    },
+    k: {
+      "ui:help": "Defaults to 0.",
+    },
+    p: {
+      "ui:help": "Defaults to 1.",
+    },
+    stop_sequences: {
+      "ui:widget": "textarea",
+      "ui:help": "Defaults to no sequence",
+    },
+  },
+};
+
+const MetaLlama2ChatSettings = {
+  fullName: "Llama2Chat (Meta) via Amazon Bedrock",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "LlamaChat",
+      },
+      model: {
+        type: "string",
+        title: "Model Version",
+        description:
+          "Select a version of Command Cohere to query. For more details on the differences, see the Cohere API documentation.",
+        enum: ["meta.llama2-13b-chat-v1", "meta.llama2-70b-chat-v1"],
+        default: "meta.llama2-13b-chat-v1",
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.01,
+      },
+      max_gen_len: {
+        type: "integer",
+        title: "max_gen_len",
+        description:
+          "The maximum number of tokens to generate for each response.",
+        default: 1024,
+        minimum: 1,
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description:
+          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
+        default: 1,
+        minimum: 0.01,
+        maximum: 1,
+        multipleOf: 0.001,
+      },
+    },
+  },
+  postprocessors: {
+    stop_sequences: (str) => {
+      if (str.trim().length === 0) return [];
+      return str
+        .match(/"((?:[^"\\]|\\.)*)"/g)
+        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+  },
+
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:help": "Defaults to LlamaChat 13B",
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    max_tokens: {
+      "ui:help": "Defaults to 1024.",
+    },
+    num_generations: {
+      "ui:help": "Defaults to 1.",
+    },
+    k: {
+      "ui:help": "Defaults to 0.",
+    },
+    p: {
+      "ui:help": "Defaults to 1.",
+    },
+    stop_sequences: {
+      "ui:widget": "textarea",
+      "ui:help": "Defaults to no sequence",
+    },
+  },
+};
+
 // A lookup table indexed by base_model.
 export const ModelSettings = {
   "gpt-3.5-turbo": ChatGPTSettings,
@@ -1720,6 +1920,9 @@ export const ModelSettings = {
   "ai21.j2": BedrockJurassic2Settings,
   "amazon.titan": BedrockTitanSettings,
   "cohere.command": BedrockCommandTextSettings,
+  "mistral.mistral": MistralSettings,
+  "mistral.mixtral": MistralSettings,
+  "meta.llama": MetaLlama2ChatSettings,
 };
 
 export function getSettingsSchemaForLLM(llm_name) {

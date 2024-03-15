@@ -94,6 +94,10 @@ export enum NativeLLM {
   Bedrock_Titan_Express = "amazon.titan-text-express-v1",
   Bedrock_Command_Text = "cohere.command-text-v14",
   Bedrock_Command_Text_Light = "cohere.command-light-text-v14",
+  Bedrock_Meta_LLama2Chat_13b = "meta.llama2-13b-chat-v1",
+  Bedrock_Meta_LLama2Chat_70b = "meta.llama2-70b-chat-v1",
+  Bedrock_Mistral_Mistral = "mistral.mistral-7b-instruct-v0:2",
+  Bedrock_Mistral_Mixtral = "mistral.mixtral-8x7b-instruct-v0:1",
 }
 
 export type LLM = string | NativeLLM;
@@ -157,7 +161,20 @@ export const RATE_LIMITS: { [key in LLM]?: [number, number] } = {
   [NativeLLM.Azure_OpenAI]: [30, 10],
   [NativeLLM.PaLM2_Text_Bison]: [4, 10], // max 30 requests per minute; so do 4 per batch, 10 seconds between (conservative)
   [NativeLLM.PaLM2_Chat_Bison]: [4, 10],
-  [NativeLLM.Bedrock_Claude_2]: [5, 10],
+  [NativeLLM.Bedrock_Jurassic_Mid]: [20, 5],
+  [NativeLLM.Bedrock_Jurassic_Ultra]: [5, 5],
+  [NativeLLM.Bedrock_Titan_Light]: [40, 5],
+  [NativeLLM.Bedrock_Titan_Express]: [20, 5], // 400 RPM
+  [NativeLLM.Bedrock_Claude_2]: [20, 15], // 100 RPM
+  [NativeLLM.Bedrock_Claude_2_1]: [20, 15], // 100 RPM
+  [NativeLLM.Bedrock_Claude_3_Haiku]: [20, 5], // 100 RPM
+  [NativeLLM.Bedrock_Claude_3_Sonnet]: [20, 15], // 100 RPM
+  [NativeLLM.Bedrock_Command_Text]: [20, 5], // 400 RPM
+  [NativeLLM.Bedrock_Command_Text_Light]: [40, 5], // 800 RPM
+  [NativeLLM.Bedrock_Meta_LLama2Chat_70b]: [20, 5], // 400 RPM
+  [NativeLLM.Bedrock_Meta_LLama2Chat_13b]: [40, 5], // 800 RPM
+  [NativeLLM.Bedrock_Mistral_Mixtral]: [20, 5], // 400 RPM
+  [NativeLLM.Bedrock_Mistral_Mistral]: [40, 5], // 800 RPM
 };
 
 /** Equivalent to a Python enum's .name property */

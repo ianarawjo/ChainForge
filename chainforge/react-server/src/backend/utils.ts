@@ -133,7 +133,6 @@ let AZURE_OPENAI_KEY = get_environ("AZURE_OPENAI_KEY");
 let AZURE_OPENAI_ENDPOINT = get_environ("AZURE_OPENAI_ENDPOINT");
 let HUGGINGFACE_API_KEY = get_environ("HUGGINGFACE_API_KEY");
 let ALEPH_ALPHA_API_KEY = get_environ("ALEPH_ALPHA_API_KEY");
-let AMAZON_BEDROCK_CONFIG = get_environ("AMAZON_BEDROCK_CONFIG");
 let AWS_ACCESS_KEY_ID = get_environ("AWS_ACCESS_KEY_ID");
 let AWS_SECRET_ACCESS_KEY = get_environ("AWS_SECRET_ACCESS_KEY");
 let AWS_SESSION_TOKEN = get_environ("AWS_SESSION_TOKEN");
@@ -159,8 +158,6 @@ export function set_api_keys(api_keys: StringDict): void {
     AZURE_OPENAI_ENDPOINT = api_keys.Azure_OpenAI_Endpoint;
   if (key_is_present("AlephAlpha")) ALEPH_ALPHA_API_KEY = api_keys.AlephAlpha;
   // Soft fail for non-present keys
-  if (key_is_present("AmazonBedrock"))
-    AMAZON_BEDROCK_CONFIG = api_keys.AmazonBedrock;
   if (key_is_present("AWS_Access_Key_ID"))
     AWS_ACCESS_KEY_ID = api_keys.AWS_Access_Key_ID;
   if (key_is_present("AWS_Secret_Access_Key"))
@@ -1154,10 +1151,7 @@ export async function call_bedrock(
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
-  if (
-    !AMAZON_BEDROCK_CONFIG ||
-    (!AWS_ACCESS_KEY_ID && !AWS_SESSION_TOKEN && !AWS_REGION)
-  ) {
+  if (!AWS_ACCESS_KEY_ID && !AWS_SESSION_TOKEN && !AWS_REGION) {
     throw new Error(
       "Could not find credentials value for the Bedrock API. Double-check that your API key is set in Settings or in your local environment.",
     );
@@ -1176,27 +1170,14 @@ export async function call_bedrock(
     stopWords = params?.stop_sequences ?? [];
   }
 
-  let bedrockConfig: {
+  const bedrockConfig = {
     credentials: {
-      accessKeyId: string;
-      secretAccessKey: string;
-      sessionToken?: string;
-    };
-    region: string;
+      accessKeyId: AWS_ACCESS_KEY_ID,
+      secretAccessKey: AWS_SECRET_ACCESS_KEY,
+      sessionToken: AWS_SESSION_TOKEN,
+    },
+    region: AWS_REGION,
   };
-
-  if (AMAZON_BEDROCK_CONFIG) {
-    bedrockConfig = JSON.parse(AMAZON_BEDROCK_CONFIG);
-  } else {
-    bedrockConfig = {
-      credentials: {
-        accessKeyId: AWS_ACCESS_KEY_ID,
-        secretAccessKey: AWS_SECRET_ACCESS_KEY,
-        sessionToken: AWS_SESSION_TOKEN,
-      },
-      region: AWS_REGION,
-    };
-  }
 
   console.warn("Params", params, bedrockConfig);
   delete params?.stop;

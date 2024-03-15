@@ -362,8 +362,8 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
         <div className="add-llm-model-btn nodrag">
           <Menu
             transitionProps={{ transition: "pop-top-left" }}
-            position="bottom-start"
             width={220}
+            position="right"
             withinPortal={true}
           >
             <Menu.Target>
