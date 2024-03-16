@@ -172,6 +172,21 @@ export const CodeEvaluatorComponent = forwardRef(
     const [codeText, setCodeText] = useState(code ?? "");
     const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
 
+    // For getting script paths (Python only)
+    const nodes = useStore(state => state.nodes);
+    const script_paths = useMemo(() => {
+      // Get all the Python script nodes, and get all the folder paths
+      // NOTE: Python only!
+      let paths = [];
+      if (progLang === "python") {
+        const script_nodes = nodes.filter((n) => n.type === "script");
+        paths = script_nodes
+          .map((n) => Object.values(n.data.scriptFiles).filter((f) => f !== ""))
+          .flat();
+      }
+      return paths;
+    }, nodes);
+    
     // Controlled handle when user edits code
     const handleCodeEdit = (code) => {
       if (codeTextOnLastRun !== false) {
@@ -186,7 +201,7 @@ export const CodeEvaluatorComponent = forwardRef(
 
     // Runs the code evaluator/processor over the inputs, returning the results as a Promise.
     // Errors are raised as a rejected Promise.
-    const run = (inputs, script_paths, runInSandbox) => {
+    const run = (inputs, runInSandbox) => {
       // Double-check that the code includes an 'evaluate' or 'process' function, whichever is needed:
       const find_func_regex =
         node_type === "evaluator"
@@ -314,7 +329,6 @@ const CodeEvaluatorNode = ({ data, id, type: node_type }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
   const [status, setStatus] = useState("none");
-  const nodes = useStore((state) => state.nodes);
 
   // For genAI features
   const flags = useStore((state) => state.flags);
@@ -431,19 +445,9 @@ instead. If you'd like to run the Python evaluator, consider installing ChainFor
       alertModal.current.trigger(typeof err === "string" ? err : err?.message);
     };
 
-    // Get all the Python script nodes, and get all the folder paths
-    // NOTE: Python only!
-    let script_paths = [];
-    if (progLang === "python") {
-      const script_nodes = nodes.filter((n) => n.type === "script");
-      script_paths = script_nodes
-        .map((n) => Object.values(n.data.scriptFiles).filter((f) => f !== ""))
-        .flat();
-    }
-
     // Run evaluator in backend
     codeEvaluatorRef.current
-      ?.run(pulled_inputs, script_paths, runInSandbox)
+      ?.run(pulled_inputs, runInSandbox)
       .then((json) => {
         if (json?.logs) setLastRunLogs(json.logs.join("\n   > "));
 

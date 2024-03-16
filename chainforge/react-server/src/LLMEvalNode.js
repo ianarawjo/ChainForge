@@ -69,7 +69,9 @@ export const LLMEvaluatorComponent = forwardRef(function LLMEvaluatorComponent(
   ref,
 ) {
   const [promptText, setPromptText] = useState(prompt ?? "");
-  const [llmScorers, setLLMScorers] = useState([grader ?? DEFAULT_LLM_EVAL_MODEL]);
+  const [llmScorers, setLLMScorers] = useState([
+    grader ?? DEFAULT_LLM_EVAL_MODEL,
+  ]);
   const [expectedFormat, setExpectedFormat] = useState(format ?? "bin");
   const apiKeys = useStore((state) => state.apiKeys);
 

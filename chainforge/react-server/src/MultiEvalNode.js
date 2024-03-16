@@ -82,6 +82,7 @@ const EvaluatorContainer = ({
   type: evalType,
   padding,
   onDelete,
+  progress,
   children,
 }) => {
   const [opened, { toggle }] = useDisclosure(false);
@@ -133,9 +134,11 @@ const EvaluatorContainer = ({
             <Text color="#bbb" size="sm" mr="6px">
               {evalType}
             </Text>
-            <GatheringResponsesRingProgress
-              progress={{ success: 30, error: 0 }}
-            />
+            {progress ? 
+              <GatheringResponsesRingProgress
+                progress={progress}
+              />
+              :<></>}
             {/* <Progress
                 radius="xl"
                 w={32}
@@ -184,6 +187,7 @@ const MultiEvalNode = ({ data, id }) => {
   const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
+  const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
 
   const flags = useStore((state) => state.flags);
   const AI_SUPPORT_ENABLED = useMemo(() => {
@@ -232,13 +236,16 @@ const MultiEvalNode = ({ data, id }) => {
   }, [evaluators, setDataPropsForNode, id]);
 
   // Generate UI for the evaluator state
+  const evaluatorComponentRefs = useRef([]);
   const evaluatorComponents = useMemo(
-    () =>
-      evaluators.map((e, idx) => {
+    () => {
+      evaluatorComponentRefs.current = [];
+      return evaluators.map((e, idx) => {
         let component;
         if (e.type === "python" || e.type === "javascript") {
           component = (
             <CodeEvaluatorComponent
+              ref={el => (evaluatorComponentRefs.current[idx] = {type: "code", ref: el})}
               code={e.state?.code}
               progLang={e.type}
               type="evaluator"
@@ -248,6 +255,7 @@ const MultiEvalNode = ({ data, id }) => {
         } else if (e.type === "llm") {
           component = (
             <LLMEvaluatorComponent
+              ref={el => (evaluatorComponentRefs.current[idx] = {type: "llm", ref: el})}
               prompt={e.state?.prompt}
               grader={e.state?.grader}
               format={e.state?.format}
@@ -266,6 +274,7 @@ const MultiEvalNode = ({ data, id }) => {
             name={e.name}
             key={`${e.name}-${idx}`}
             type={EVAL_TYPE_PRETTY_NAME[e.type]}
+            progress={e.progress}
             onDelete={() =>
               setEvaluators(evaluators.filter((_, i) => i !== idx))
             }
@@ -274,7 +283,8 @@ const MultiEvalNode = ({ data, id }) => {
             {component}
           </EvaluatorContainer>
         );
-      }),
+      })
+    },
     [evaluators, id],
   );
 
@@ -308,13 +318,62 @@ const MultiEvalNode = ({ data, id }) => {
     const pulled_inputs = handlePullInputs();
     if (!pulled_inputs || pulled_inputs.length === 0) return;
 
+    // Get the ids from the connected input nodes:
+    // TODO: Remove this dependency; have everything go through pull instead.
+    const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
+    if (input_node_ids.length === 0) {
+      console.warn("No inputs to multi-evaluator node.");
+      return;
+    }
+
+    // Sanity check that there's evaluators in the multieval node
+    if (!evaluatorComponentRefs.current || evaluatorComponentRefs.current.length === 0) {
+      console.error("Cannot run multievals: No current evaluators found.")
+      return;
+    }
+
     // Set status and created rejection callback
     setStatus("loading");
     setLastResponses([]);
 
+    // Helper function to update progress ring on a single evaluator component
+    const updateProgressRing = (evaluator_idx, progress) => {
+      setEvaluators((evs) => {
+        if (evs.length >= evaluator_idx) return evs;
+        evs[evaluator_idx].progress = progress;
+        return [...evs];
+      });
+    };
+
     // Run all evaluators here!
     // TODO
-    setTimeout(() => setStatus("ready"), 1000);
+    let num_left = evaluatorComponentRefs.current.length;
+    evaluatorComponentRefs.current.forEach(({type, ref}, idx) => {
+      // Start loading spinner status on running evaluators
+      updateProgressRing(idx, {success: 0, error: 0});
+
+      // Run each evaluator
+      if (type === "code") {
+        // Run code evaluator
+        // TODO: Change runInSandbox to be user-controlled, for Python code evals (right now it is always sandboxed)
+        ref.run(pulled_inputs, true).then((ret) => {
+          console.log("Code evaluator done!", ret);
+          updateProgressRing(idx, undefined);
+          num_left -= 1;
+          if (num_left <= 0) setStatus("ready");
+        });
+      } else if (type === "llm") {
+        // Run LLM-based evaluator
+        // TODO: Add back live progress, e.g. (progress) => updateProgressRing(idx, progress)) but with appropriate mapping for progress.
+        ref.run(input_node_ids, () => {}) 
+        .then((ret) => {
+          console.log("LLM evaluator done!", ret);
+          updateProgressRing(idx, undefined);
+          num_left -= 1;
+          if (num_left <= 0) setStatus("ready");
+        });
+      }
+    });
   }, [
     handlePullInputs,
     pingOutputNodes,
@@ -322,6 +381,9 @@ const MultiEvalNode = ({ data, id }) => {
     alertModal,
     status,
     showDrawer,
+    evaluators,
+    evaluatorComponents,
+    evaluatorComponentRefs,
   ]);
 
   const showResponseInspector = useCallback(() => {

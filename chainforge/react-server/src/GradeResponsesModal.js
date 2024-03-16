@@ -312,10 +312,12 @@ export const PickCriteriaModal = forwardRef(
 
     const addCriteria = () => {
       // Add a loading Skeleton
-      setIsLoadingCriteria((num) => (num + 1));
+      setIsLoadingCriteria((num) => num + 1);
       // Make async LLM call to expand criteria
-      generateLLMEvaluationCriteria("", apiKeys,
-`I've described a criteria I want to use to evaluate text. I want you to take the criteria and output a JSON object in the format below. 
+      generateLLMEvaluationCriteria(
+        "",
+        apiKeys,
+        `I've described a criteria I want to use to evaluate text. I want you to take the criteria and output a JSON object in the format below. 
 
 CRITERIA: 
 \`\`\`
@@ -325,22 +327,24 @@ ${addCriteriaValue}
 Your response should contain a short title for the criteria ("shortname"), a description of the criteria in 2 sentences ("criteria"), and whether it should be evaluated with "code", or by an "expert" if the criteria is difficult to evaluate ("eval_method"). Your answer should be JSON within a \`\`\`json \`\`\` marker, with the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should expand upon the user's input, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case. Only output JSON, nothing else.`, // prompt
         "gpt-3.5-turbo", // llm
         null, // system_msg
-      ).then((evalCrits) => {
-        // Take only the first
-        setCriteria(
-          criteria.concat([
-            {
-              ...evalCrits[0],
-              uid: uuid(),
-            },
-          ]),
-        );
-        // Remove a loading Skeleton
-        setIsLoadingCriteria((num) => (num - 1));
-      }).catch((err) => {
-        console.error(err);
-        setIsLoadingCriteria((num) => (num - 1));
-      });      
+      )
+        .then((evalCrits) => {
+          // Take only the first
+          setCriteria(
+            criteria.concat([
+              {
+                ...evalCrits[0],
+                uid: uuid(),
+              },
+            ]),
+          );
+          // Remove a loading Skeleton
+          setIsLoadingCriteria((num) => num - 1);
+        })
+        .catch((err) => {
+          console.error(err);
+          setIsLoadingCriteria((num) => num - 1);
+        });
     };
     const setCriteriaTitle = (title, idx) => {
       criteria[idx].shortname = title;
@@ -427,11 +431,10 @@ Your response should contain a short title for the criteria ("shortname"), a des
       setScreen("welcome");
       setAddCriteriaValue("");
       setExecutor(null);
-      setOnFinish(() => ((implementations) => {
+      setOnFinish(() => (implementations) => {
         close();
-        if (_onFinish)
-          _onFinish(implementations);
-      }));
+        if (_onFinish) _onFinish(implementations);
+      });
       open();
     };
     useImperativeHandle(ref, () => ({
@@ -588,7 +591,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
                     title={c.shortname}
                     description={c.criteria}
                     evalMethod={c.eval_method}
-                    key={`cc-${c.uid ?? (idx.toString() + c.shortname)}`}
+                    key={`cc-${c.uid ?? idx.toString() + c.shortname}`}
                     onTitleChange={(title) => setCriteriaTitle(title, idx)}
                     onDescriptionChange={(desc) => setCriteriaDesc(desc, idx)}
                     onEvalMethodChange={(method) =>
@@ -855,27 +858,29 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
 
       // Return selected implementations to caller
       if (onFinish) {
-
         // Convert to expected format
-        const implementations = filteredFunctions.selectedEvalFunctions.map((evalFuncSpec) => {
-          if (evalFuncSpec.evalCriteria.eval_method === "code")
-            return {
-              name: evalFuncSpec.evalCriteria.shortname,
-              type: "python", // for now, only generates Python
-              state: {
-                code: evalFuncSpec.code,
-              },
-            };
-          else return {
-            name: evalFuncSpec.evalCriteria.shortname,
-            type: "llm",
-            state: {
-              prompt: evalFuncSpec.code,
-              grader: deepcopy(DEFAULT_LLM_EVAL_MODEL),
-              format: 'bin' // for now, only boolean assertions
-            },
-          };
-        });
+        const implementations = filteredFunctions.selectedEvalFunctions.map(
+          (evalFuncSpec) => {
+            if (evalFuncSpec.evalCriteria.eval_method === "code")
+              return {
+                name: evalFuncSpec.evalCriteria.shortname,
+                type: "python", // for now, only generates Python
+                state: {
+                  code: evalFuncSpec.code,
+                },
+              };
+            else
+              return {
+                name: evalFuncSpec.evalCriteria.shortname,
+                type: "llm",
+                state: {
+                  prompt: evalFuncSpec.code,
+                  grader: deepcopy(DEFAULT_LLM_EVAL_MODEL),
+                  format: "bin", // for now, only boolean assertions
+                },
+              };
+          },
+        );
 
         onFinish(implementations);
       }
