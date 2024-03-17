@@ -17,16 +17,16 @@ const initialLLMColors = {};
 const llmColorPalette = [
   "#44d044",
   "#f1b933",
-  "#e46161",
   "#8888f9",
+  "#e46161",
   "#33bef0",
-  "#bb55f9",
+  "#bea5d1",
   "#f7ee45",
   "#f955cd",
   "#26e080",
   "#2654e0",
   "#7d8191",
-  "#bea5d1",
+  "#bb55f9",
 ];
 
 /** The color palette used for displaying variations of prompts and prompt variables (non-LLM differences).
