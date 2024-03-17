@@ -528,8 +528,8 @@ g.ytick text {
   padding-bottom: 20px;
   min-width: 160px;
   border-right: 1px solid #eee;
-  padding-left: 8px !important;
-  padding-right: 8px !important;
+  padding-left: 0px !important;
+  padding-right: 0px !important;
 }
 .inspect-responses-drawer {
   position: absolute;

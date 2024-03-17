@@ -12,6 +12,7 @@
     "@codemirror/lang-python": "^6.1.2",
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
+    "@fontsource/fira-mono": "^5.0.12",
     "@fontsource/geist-mono": "^5.0.1",
     "@google-ai/generativelanguage": "^0.2.0",
     "@google/generative-ai": "^0.1.3",

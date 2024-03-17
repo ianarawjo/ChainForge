@@ -361,6 +361,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     const contains_eval_res = batchedResponses.some(
       (res_obj) => res_obj.eval_res !== undefined,
     );
+    const contains_multi_evals = contains_eval_res ? batchedResponses.some((res_obj) => {
+      const items = res_obj.eval_res?.items;
+      return items && items.length > 0 && typeof items[0] === "object";
+    }) : false;
     setShowEvalScoreOptions(contains_eval_res);
 
     // Set the variables accessible in the MultiSelect for 'group by'
@@ -377,16 +381,20 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
 
     // If only one LLM is present, and user hasn't manually selected one to plot,
     // and there's more than one prompt variable as input, default to plotting the
-    // first found prompt variable as columns instead:
+    // eval scores, or the first found prompt variable as columns instead:
     if (
       viewFormat === "table" &&
       !userSelectedTableCol &&
-      tableColVar === "$LLM" &&
-      found_llms.length === 1 &&
-      found_vars.length > 1
+      tableColVar === "$LLM"
     ) {
-      setTableColVar(found_vars[0]);
-      return; // useEffect will replot with the new values
+      if (contains_multi_evals || (found_llms.length === 1 && contains_eval_res)) {
+        // Plot eval scores on columns
+        setTableColVar("$EVAL_RES");
+        return;
+      } else if (found_llms.length === 1 && found_vars.length > 1) {
+        setTableColVar(found_vars[0]);
+        return; // useEffect will replot with the new values
+      }
     }
 
     // If this is the first time receiving responses, set the multiSelectValue to whatever is the first:
@@ -725,9 +733,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
               ))}
               {eval_cols_vals.map((c, i) => (
                 <td key={`e${i}`} className="inspect-table-score-col">
-                  <Stack spacing={0}>
-                    {c}
-                  </Stack>
+                  <Stack spacing={0}>{c}</Stack>
                 </td>
               ))}
             </tr>
@@ -742,6 +748,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           horizontalSpacing="xs"
           verticalSpacing={0}
           striped
+          withColumnBorders={true}
         >
           <thead>
             <tr>

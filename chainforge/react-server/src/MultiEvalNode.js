@@ -441,7 +441,7 @@ const MultiEvalNode = ({ data, id }) => {
       if (settled.some((s) => s.status === "rejected")) {
         setStatus("error");
         setLastRunSuccess(false);
-        handleError(s.reason);
+        handleError(settled.find((s) => s.status === "rejected").reason);
         return;
       }
 
