@@ -41,6 +41,7 @@ import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
 import useStore from "./store";
 import {
   APP_IS_RUNNING_LOCALLY,
+  batchResponsesByUID,
   toStandardResponseFormat,
 } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
@@ -82,12 +83,18 @@ const EvaluatorContainer = ({
   type: evalType,
   padding,
   onDelete,
+  onChangeTitle,
   progress,
   children,
 }) => {
   const [opened, { toggle }] = useDisclosure(false);
   const _padding = useMemo(() => padding ?? "0px", [padding]);
   const [title, setTitle] = useState(name ?? "Criteria");
+
+  const handleChangeTitle = (newTitle) => {
+    setTitle(newTitle);
+    if (onChangeTitle) onChangeTitle(newTitle);
+  };
 
   return (
     <Card
@@ -116,6 +123,7 @@ const EvaluatorContainer = ({
             <TextInput
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onBlur={(e) => handleChangeTitle(e.target.value)}
               placeholder="Criteria name"
               variant="unstyled"
               size="sm"
@@ -134,11 +142,11 @@ const EvaluatorContainer = ({
             <Text color="#bbb" size="sm" mr="6px">
               {evalType}
             </Text>
-            {progress ? 
-              <GatheringResponsesRingProgress
-                progress={progress}
-              />
-              :<></>}
+            {progress ? (
+              <GatheringResponsesRingProgress progress={progress} />
+            ) : (
+              <></>
+            )}
             {/* <Progress
                 radius="xl"
                 w={32}
@@ -237,56 +245,68 @@ const MultiEvalNode = ({ data, id }) => {
 
   // Generate UI for the evaluator state
   const evaluatorComponentRefs = useRef([]);
-  const evaluatorComponents = useMemo(
-    () => {
-      evaluatorComponentRefs.current = [];
-      return evaluators.map((e, idx) => {
-        let component;
-        if (e.type === "python" || e.type === "javascript") {
-          component = (
-            <CodeEvaluatorComponent
-              ref={el => (evaluatorComponentRefs.current[idx] = {type: "code", ref: el})}
-              code={e.state?.code}
-              progLang={e.type}
-              type="evaluator"
-              id={id}
-            />
-          );
-        } else if (e.type === "llm") {
-          component = (
-            <LLMEvaluatorComponent
-              ref={el => (evaluatorComponentRefs.current[idx] = {type: "llm", ref: el})}
-              prompt={e.state?.prompt}
-              grader={e.state?.grader}
-              format={e.state?.format}
-              id={id}
-              showUserInstruction={false}
-            />
-          );
-        } else {
-          console.error(
-            `Unknown evaluator type ${e.type} inside multi-evaluator node. Cannot display evaluator UI.`,
-          );
-          component = <Alert>Error: Unknown evaluator type {e.type}</Alert>;
-        }
-        return (
-          <EvaluatorContainer
-            name={e.name}
-            key={`${e.name}-${idx}`}
-            type={EVAL_TYPE_PRETTY_NAME[e.type]}
-            progress={e.progress}
-            onDelete={() =>
-              setEvaluators(evaluators.filter((_, i) => i !== idx))
+  const evaluatorComponents = useMemo(() => {
+    evaluatorComponentRefs.current = [];
+    const updateEvalState = (idx, transformFunc) => setEvaluators(es => es.map((e, i) => {
+      if (idx === i) transformFunc(e);
+      return e;
+    }));
+    return evaluators.map((e, idx) => {
+      let component;
+      if (e.type === "python" || e.type === "javascript") {
+        component = (
+          <CodeEvaluatorComponent
+            ref={(el) =>
+              (evaluatorComponentRefs.current[idx] = { type: "code", name: e.name, ref: el })
             }
-            padding={e.type === "llm" ? "8px" : undefined}
-          >
-            {component}
-          </EvaluatorContainer>
+            code={e.state?.code}
+            progLang={e.type}
+            type="evaluator"
+            id={id}
+            onCodeEdit={(code) => updateEvalState(idx, (e) => (e.state.code = code))}
+          />
         );
-      })
-    },
-    [evaluators, id],
-  );
+      } else if (e.type === "llm") {
+        component = (
+          <LLMEvaluatorComponent
+            ref={(el) =>
+              (evaluatorComponentRefs.current[idx] = { type: "llm", name: e.name, ref: el })
+            }
+            prompt={e.state?.prompt}
+            grader={e.state?.grader}
+            format={e.state?.format}
+            id={id}
+            showUserInstruction={false}
+            onPromptEdit={(prompt) => updateEvalState(idx, (e) => (e.state.prompt = prompt))}
+            onLLMGraderChange={(grader) => updateEvalState(idx, (e) => (e.state.grader = grader))}
+            onFormatChange={(format) => updateEvalState(idx, (e) => (e.state.format = format))}
+          />
+        );
+      } else {
+        console.error(
+          `Unknown evaluator type ${e.type} inside multi-evaluator node. Cannot display evaluator UI.`,
+        );
+        component = <Alert>Error: Unknown evaluator type {e.type}</Alert>;
+      }
+      return (
+        <EvaluatorContainer
+          name={e.name}
+          key={`${e.name}-${idx}`}
+          type={EVAL_TYPE_PRETTY_NAME[e.type]}
+          progress={e.progress}
+          onDelete={() => setEvaluators(evaluators.filter((_, i) => i !== idx))}
+          onChangeTitle={(newTitle) => setEvaluators(evaluators.map((e, i) => {
+            if (i === idx) e.name = newTitle;
+            console.log(e);
+            return e;
+          }))}
+          padding={e.type === "llm" ? "8px" : undefined}
+        >
+          {component}
+        </EvaluatorContainer>
+      );
+    });
+  }, [evaluators, id]);
 
   const handleError = useCallback(
     (err) => {
@@ -327,8 +347,11 @@ const MultiEvalNode = ({ data, id }) => {
     }
 
     // Sanity check that there's evaluators in the multieval node
-    if (!evaluatorComponentRefs.current || evaluatorComponentRefs.current.length === 0) {
-      console.error("Cannot run multievals: No current evaluators found.")
+    if (
+      !evaluatorComponentRefs.current ||
+      evaluatorComponentRefs.current.length === 0
+    ) {
+      console.error("Cannot run multievals: No current evaluators found.");
       return;
     }
 
@@ -347,37 +370,104 @@ const MultiEvalNode = ({ data, id }) => {
 
     // Run all evaluators here!
     // TODO
-    let num_left = evaluatorComponentRefs.current.length;
-    evaluatorComponentRefs.current.forEach(({type, ref}, idx) => {
+    const runPromises = evaluatorComponentRefs.current.map(({ type, name, ref }, idx) => {
       // Start loading spinner status on running evaluators
-      updateProgressRing(idx, {success: 0, error: 0});
+      updateProgressRing(idx, { success: 0, error: 0 });
 
       // Run each evaluator
       if (type === "code") {
         // Run code evaluator
         // TODO: Change runInSandbox to be user-controlled, for Python code evals (right now it is always sandboxed)
-        ref.run(pulled_inputs, true).then((ret) => {
+        return ref.run(pulled_inputs, true).then((ret) => {
           console.log("Code evaluator done!", ret);
           updateProgressRing(idx, undefined);
-          num_left -= 1;
-          if (num_left <= 0) setStatus("ready");
+          return {
+            type: "code",
+            name, 
+            result: ret.responses,
+          };
         });
       } else if (type === "llm") {
         // Run LLM-based evaluator
         // TODO: Add back live progress, e.g. (progress) => updateProgressRing(idx, progress)) but with appropriate mapping for progress.
-        ref.run(input_node_ids, () => {}) 
-        .then((ret) => {
-          console.log("LLM evaluator done!", ret);
-          updateProgressRing(idx, undefined);
-          num_left -= 1;
-          if (num_left <= 0) setStatus("ready");
-        });
+        return ref
+          .run(input_node_ids, () => {
+            /** skip */
+          })
+          .then((ret) => {
+            console.log("LLM evaluator done!", ret);
+            updateProgressRing(idx, undefined);
+            return {
+              type: "llm",
+              name,
+              result: ret.responses,
+            };
+          });
       }
+    });
+
+    // When all evaluators finish...
+    Promise.allSettled(runPromises).then((settled) => {
+      if (settled.some(s => s.status === "rejected")) {
+        setStatus("error");
+        setLastRunSuccess(false);
+        return;
+      }
+      // Success -- set the responses for the inspector
+      // First we need to group up all response evals by UID, *within* each evaluator. 
+      const evalResults = settled.map(s => {
+        if (s.value.type === "llm") return s.value; // responses are already batched by uid
+        // If code evaluator, for some reason, in this version of CF the code eval has de-batched responses. 
+        // We need to re-batch them by UID before returning, to correct this: 
+        return {
+          type: s.value.type,
+          name: s.value.name,
+          result: batchResponsesByUID(s.value.result),
+        };
+      });
+
+      // Now we have a duplicates of each response object, one per evaluator run,
+      // with evaluation results per evaluator. They are not yet merged. We now need
+      // to merge the evaluation results within response objects with the same UIDs. 
+      // It *should* be the case (invariant) that response objects with the same UID
+      // have exactly the same number of evaluation results (e.g. n=3 for num resps per prompt=3). 
+      const merged_res_objs_by_uid = {};
+      // For each set of evaluation results...
+      evalResults.forEach(({name, result}) => { 
+        // For each response obj in the results...
+        result.forEach((res_obj) => {
+          // If it's not already in the merged dict, add it: 
+          const uid = res_obj.uid;
+          if (!(uid in merged_res_objs_by_uid)) {
+            // Transform evaluation results into dict form, indexed by "name" of the evaluator:
+            res_obj.eval_res.items = res_obj.eval_res.items.map((item) => ({[name]: item}));
+            res_obj.eval_res.dtype = 3; // "KeyValue_Mixed" enum;
+            merged_res_objs_by_uid[uid] = res_obj; // we don't make a copy, to save time
+          } else {
+            // It is already in the merged dict, so add the new eval results
+            // Sanity check that the lengths of eval result lists are equal across evaluators:
+            if (merged_res_objs_by_uid[uid].eval_res.items.length !== res_obj.eval_res?.items?.length) {
+              console.error(`Critical error: Evaluation result lists for response ${uid} do not contain the same number of items per evaluator. Skipping...`);
+              return;
+            }
+            // Add the new evaluation result, keyed by evaluator name:
+            merged_res_objs_by_uid[uid].eval_res.items.forEach((item, idx) => {
+              item[name] = res_obj.eval_res.items[idx];
+            });
+          }
+        });
+      });
+
+      // We now have a dict of the form { uid: LLMResponse }
+      // We need return only the values of this dict:
+      setLastResponses(Object.values(merged_res_objs_by_uid));
+      setLastRunSuccess(true);
+
+      setStatus("ready");
     });
   }, [
     handlePullInputs,
     pingOutputNodes,
-    setStatus,
     alertModal,
     status,
     showDrawer,

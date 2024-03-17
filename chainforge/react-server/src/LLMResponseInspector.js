@@ -74,7 +74,7 @@ const getEvalResultStr = (eval_item) => {
         val = val.toFixed(4); // truncate floats to 4 decimal places
       return `${key}: ${val}`;
     });
-    return strs.join(", ");
+    return strs.join("\n");
   } else {
     const eval_str = eval_item.toString().trim().toLowerCase();
     const color = SUCCESS_EVAL_SCORES.has(eval_str)
@@ -424,10 +424,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       }
     };
 
-    const generateResponseBoxes = (resps, eatenvars, fixed_width) => {
+    const generateResponseBoxes = (resps, eatenvars, fixed_width, hide_eval_scores) => {
       const hide_llm_name = eatenvars.includes("LLM");
       return resps.map((res_obj, res_idx) => {
-        const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
+        const eval_res_items = !hide_eval_scores && res_obj.eval_res ? res_obj.eval_res.items : null;
 
         // Bucket responses that have the same text, and sort by the
         // number of same responses so that the top div is the most prevalent response.
@@ -456,15 +456,6 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             same_resp_text_counts[key2].length -
             same_resp_text_counts[key1].length,
         );
-
-        const collapse_annotations = (annot_dict, idxs) => {
-          if (annot_dict === undefined) return undefined;
-          for (let j = 0; j < idxs.length; j++) {
-            if (idxs[j] in annot_dict && annot_dict[idxs[j]] !== undefined)
-              return annot_dict[idxs[j]];
-          }
-          return undefined;
-        };
 
         const ps = same_resp_keys.map((r, idx) => {
           const origIdxs = same_resp_text_counts[r];
@@ -560,13 +551,44 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     if (viewFormat === "table") {
       // Generate a table, with default columns for: input vars, LLMs queried
       // First get column names as input vars + LLMs:
-      let var_cols, colnames, getColVal, found_sel_var_vals;
+      let var_cols, colnames, getColVal, found_sel_var_vals, eval_res_cols;
       let metavar_cols = []; // found_metavars; -- Disabling this functionality for now, since it is usually annoying.
+
       if (tableColVar === "LLM") {
         var_cols = found_vars;
         getColVal = getLLMName;
         found_sel_var_vals = found_llms;
         colnames = var_cols.concat(metavar_cols).concat(found_llms);
+
+        // Special case ---there is only one LLM to display. In only this case
+        // can we plot evaluation results on separate column(s):
+        if (found_llms.length === 1 && contains_eval_res) {
+          // Look for + extract any consistent, *named* evaluation metrics (dicts)
+          const metric_names = new Set();
+          const has_unnamed_metric = false;
+          eval_res_cols = [];
+          responses.forEach(res_obj => {
+            if (res_obj?.eval_res?.items === undefined) return;
+            res_obj.eval_res.items.forEach((item) => {
+              if (typeof item !== "object") {
+                has_unnamed_metric = true;
+                return; 
+              }
+              Object.keys(item).forEach(metric_name => metric_names.add(metric_name));
+            });
+          });
+
+          if (metric_names.size === 0 || has_unnamed_metric)
+            // None found, but there are scores, OR, there is at least one unnamed score. Add a generic col for scores:
+            eval_res_cols.push("Score");
+          if (metric_names.size > 0) {
+            // Add a column for each named metric: 
+            eval_res_cols = eval_res_cols.concat(Array.from(metric_names));
+          }
+
+          colnames = colnames.concat(eval_res_cols);
+        }
+
       } else {
         metavar_cols = [];
         var_cols = found_vars
@@ -609,6 +631,21 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             const val = resp_objs[0].metavars[v];
             return val !== undefined ? val : "(unspecified)";
           });
+          let eval_cols_vals = [];
+          if (eval_res_cols && eval_res_cols.length > 0) {
+            // We can assume that there's only one response object, since to 
+            // if eval_res_cols is set, there must be only one LLM. 
+            eval_cols_vals = eval_res_cols.map((metric_name, metric_idx) => {
+              const items = resp_objs[0].eval_res?.items;
+              if (!items) return "(no result)";
+              return items.map(item => {
+                if (item === undefined) return "(undefined)";
+                if (typeof item !== "object" && metric_idx === 0 && metric_name === "Score") return item.toString();
+                else if (metric_name in item) return item[metric_name];
+                else return "(unspecified)";
+              }).join("\n"); // treat n>1 resps per prompt as multi-line results in the column
+            });
+          }
           const resp_objs_by_col_var = groupResponsesBy(
             resp_objs,
             getColVal,
@@ -618,7 +655,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
               const rs = resp_objs_by_col_var[val];
               // Return response divs as response box here:
               return (
-                <div key={idx}>{generateResponseBoxes(rs, var_cols, 100)}</div>
+                <div key={idx}>{generateResponseBoxes(rs, var_cols, 100, eval_res_cols !== undefined)}</div>
               );
             } else {
               return <i key={idx}>{empty_cell_text}</i>;
@@ -642,6 +679,11 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
                   {c}
                 </td>
               ))}
+              {eval_cols_vals.map((c, i) => (
+                <td key={`e${i}`} className="inspect-table-score-col">
+                  {c}
+                </td>
+              ))}
             </tr>
           );
         },
@@ -659,6 +701,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           <tbody style={{ verticalAlign: "top" }}>{rows}</tbody>
         </Table>,
       ]);
+
     } else if (viewFormat === "hierarchy") {
       // Now we need to perform groupings by each var in the selected vars list,
       // nesting the groupings (preferrably with custom divs) and sorting within

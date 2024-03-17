@@ -173,7 +173,7 @@ export const CodeEvaluatorComponent = forwardRef(
     const [codeTextOnLastRun, setCodeTextOnLastRun] = useState(false);
 
     // For getting script paths (Python only)
-    const nodes = useStore(state => state.nodes);
+    const nodes = useStore((state) => state.nodes);
     const script_paths = useMemo(() => {
       // Get all the Python script nodes, and get all the folder paths
       // NOTE: Python only!
@@ -185,8 +185,8 @@ export const CodeEvaluatorComponent = forwardRef(
           .flat();
       }
       return paths;
-    }, nodes);
-    
+    }, [nodes]);
+
     // Controlled handle when user edits code
     const handleCodeEdit = (code) => {
       if (codeTextOnLastRun !== false) {

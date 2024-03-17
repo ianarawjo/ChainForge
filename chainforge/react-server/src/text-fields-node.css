@@ -385,13 +385,12 @@ g.ytick text {
   font-weight: 500;
   white-space: pre-wrap;
 }
-.inspect-table-llm-resp {
-  padding-top: 8px;
-  padding-bottom: 20px;
-  min-width: 160px;
-  border-right: 1px solid #eee;
-  padding-left: 8px !important;
-  padding-right: 0px !important;
+.inspect-table-score-col {
+  background-color: rgb(224, 232, 250);
+  padding-top: 10px;
+  border-right: 1px solid #cde;
+  font-weight: 500;
+  white-space: pre-wrap;
 }
 .inspect-responses-drawer {
   position: absolute;
@@ -535,7 +534,7 @@ g.ytick text {
   min-width: 160px;
   border-right: 1px solid #eee;
   padding-left: 8px !important;
-  padding-right: 0px !important;
+  padding-right: 8px !important;
 }
 .inspect-responses-drawer {
   position: absolute;
@@ -646,17 +645,18 @@ g.ytick text {
   cursor: text;
 }
 .small-response-metrics {
-  font-size: 10pt;
+  font-size: 9pt;
   font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   font-weight: 500;
   text-align: center;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
-  padding: 0px 2px 1px 0px;
+  padding: 0px 2px 2px 0px;
   margin: 8px 20% -6px 20%;
   background-color: rgba(255, 255, 255, 0.3);
   color: #333;
+  white-space: pre-wrap;
 }
 .num-same-responses {
   position: relative;
