@@ -11,9 +11,11 @@ import StorageCache from "./backend/cache";
 import useStore from "./store";
 import { deepcopy } from "./backend/utils";
 
-export const getRatingKeyForResponse = (uid, label_name) => `r.${uid}.${label_name}`;
+export const getRatingKeyForResponse = (uid, label_name) =>
+  `r.${uid}.${label_name}`;
 const collapse_ratings = (rating_dict, idxs) => {
-  if (rating_dict === undefined || typeof rating_dict !== "object") return undefined;
+  if (rating_dict === undefined || typeof rating_dict !== "object")
+    return undefined;
   for (let j = 0; j < idxs.length; j++) {
     if (idxs[j] in rating_dict && rating_dict[idxs[j]] !== undefined)
       return rating_dict[idxs[j]];

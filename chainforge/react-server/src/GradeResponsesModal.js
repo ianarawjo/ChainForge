@@ -52,7 +52,10 @@ import {
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
 import { escapeBraces } from "./backend/template";
 import EvaluationFunctionExecutor from "./backend/evalgen/executor";
-import { getRatingKeyForResponse, setCacheLabelForResponse } from "./ResponseRatingToolbar";
+import {
+  getRatingKeyForResponse,
+  setCacheLabelForResponse,
+} from "./ResponseRatingToolbar";
 import useStore from "./store";
 import { DEFAULT_LLM_EVAL_MODEL } from "./LLMEvalNode";
 import StorageCache from "./backend/cache";
@@ -262,34 +265,7 @@ export const PickCriteriaModal = forwardRef(
       else return "Grading Responses";
     }, [screen]);
 
-    const [criteria, setCriteria] = useState([
-      {
-        shortname: "Grammaticality",
-        criteria: "The text is grammatically correct.",
-        eval_method: "expert",
-      },
-      {
-        shortname: "Length",
-        criteria: "The text is 144 characters or less.",
-        eval_method: "code",
-      },
-      {
-        shortname: "Clickbait potential",
-        criteria: "How likely the text is to drive attention as a Tweet.",
-        eval_method: "expert",
-      },
-      {
-        shortname: "Informality",
-        criteria:
-          "Whether the response sounds informal, like a real human tweeted it.",
-        eval_method: "expert",
-      },
-      {
-        shortname: "Toxicity",
-        criteria: "Whether the response sounds overly harmful or toxic.",
-        eval_method: "expert",
-      },
-    ]);
+    const [criteria, setCriteria] = useState([]);
     const [addCriteriaValue, setAddCriteriaValue] = useState("");
     const [isLoadingCriteria, setIsLoadingCriteria] = useState(0);
 
@@ -638,6 +614,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
                   }}
                   variant="gradient"
                   gradient={{ from: "teal", to: "lime", deg: 105 }}
+                  disabled={!criteria || criteria.length === 0}
                 >
                   <IconSparkles />
                   &nbsp;I&apos;m done. Implement it!

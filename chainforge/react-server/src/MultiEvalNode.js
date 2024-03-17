@@ -247,39 +247,58 @@ const MultiEvalNode = ({ data, id }) => {
   const evaluatorComponentRefs = useRef([]);
   const evaluatorComponents = useMemo(() => {
     evaluatorComponentRefs.current = [];
-    const updateEvalState = (idx, transformFunc) => setEvaluators(es => es.map((e, i) => {
-      if (idx === i) transformFunc(e);
-      return e;
-    }));
+    const updateEvalState = (idx, transformFunc) =>
+      setEvaluators((es) =>
+        es.map((e, i) => {
+          if (idx === i) transformFunc(e);
+          return e;
+        }),
+      );
     return evaluators.map((e, idx) => {
       let component;
       if (e.type === "python" || e.type === "javascript") {
         component = (
           <CodeEvaluatorComponent
             ref={(el) =>
-              (evaluatorComponentRefs.current[idx] = { type: "code", name: e.name, ref: el })
+              (evaluatorComponentRefs.current[idx] = {
+                type: "code",
+                name: e.name,
+                ref: el,
+              })
             }
             code={e.state?.code}
             progLang={e.type}
             type="evaluator"
             id={id}
-            onCodeEdit={(code) => updateEvalState(idx, (e) => (e.state.code = code))}
+            onCodeEdit={(code) =>
+              updateEvalState(idx, (e) => (e.state.code = code))
+            }
           />
         );
       } else if (e.type === "llm") {
         component = (
           <LLMEvaluatorComponent
             ref={(el) =>
-              (evaluatorComponentRefs.current[idx] = { type: "llm", name: e.name, ref: el })
+              (evaluatorComponentRefs.current[idx] = {
+                type: "llm",
+                name: e.name,
+                ref: el,
+              })
             }
             prompt={e.state?.prompt}
             grader={e.state?.grader}
             format={e.state?.format}
             id={id}
             showUserInstruction={false}
-            onPromptEdit={(prompt) => updateEvalState(idx, (e) => (e.state.prompt = prompt))}
-            onLLMGraderChange={(grader) => updateEvalState(idx, (e) => (e.state.grader = grader))}
-            onFormatChange={(format) => updateEvalState(idx, (e) => (e.state.format = format))}
+            onPromptEdit={(prompt) =>
+              updateEvalState(idx, (e) => (e.state.prompt = prompt))
+            }
+            onLLMGraderChange={(grader) =>
+              updateEvalState(idx, (e) => (e.state.grader = grader))
+            }
+            onFormatChange={(format) =>
+              updateEvalState(idx, (e) => (e.state.format = format))
+            }
           />
         );
       } else {
@@ -298,11 +317,15 @@ const MultiEvalNode = ({ data, id }) => {
             delete evaluatorComponentRefs.current[idx];
             setEvaluators(evaluators.filter((_, i) => i !== idx));
           }}
-          onChangeTitle={(newTitle) => setEvaluators(evaluators.map((e, i) => {
-            if (i === idx) e.name = newTitle;
-            console.log(e);
-            return e;
-          }))}
+          onChangeTitle={(newTitle) =>
+            setEvaluators(
+              evaluators.map((e, i) => {
+                if (i === idx) e.name = newTitle;
+                console.log(e);
+                return e;
+              }),
+            )
+          }
           padding={e.type === "llm" ? "8px" : undefined}
         >
           {component}
@@ -373,61 +396,64 @@ const MultiEvalNode = ({ data, id }) => {
 
     // Run all evaluators here!
     // TODO
-    const runPromises = evaluatorComponentRefs.current.map(({ type, name, ref }, idx) => {
-      if (ref === null) return { type: "error", name, result: null };
+    const runPromises = evaluatorComponentRefs.current.map(
+      ({ type, name, ref }, idx) => {
+        if (ref === null) return { type: "error", name, result: null };
 
-      // Start loading spinner status on running evaluators
-      updateProgressRing(idx, { success: 0, error: 0 });
+        // Start loading spinner status on running evaluators
+        updateProgressRing(idx, { success: 0, error: 0 });
 
-      // Run each evaluator
-      if (type === "code") {
-        // Run code evaluator
-        // TODO: Change runInSandbox to be user-controlled, for Python code evals (right now it is always sandboxed)
-        return ref.run(pulled_inputs, true).then((ret) => {
-          console.log("Code evaluator done!", ret);
-          updateProgressRing(idx, undefined);
-          return {
-            type: "code",
-            name, 
-            result: ret.responses,
-          };
-        });
-      } else if (type === "llm") {
-        // Run LLM-based evaluator
-        // TODO: Add back live progress, e.g. (progress) => updateProgressRing(idx, progress)) but with appropriate mapping for progress.
-        return ref
-          .run(input_node_ids, () => {
-            /** skip */
-          })
-          .then((ret) => {
-            console.log("LLM evaluator done!", ret);
+        // Run each evaluator
+        if (type === "code") {
+          // Run code evaluator
+          // TODO: Change runInSandbox to be user-controlled, for Python code evals (right now it is always sandboxed)
+          return ref.run(pulled_inputs, true).then((ret) => {
+            console.log("Code evaluator done!", ret);
             updateProgressRing(idx, undefined);
             return {
-              type: "llm",
+              type: "code",
               name,
               result: ret.responses,
             };
           });
-      }
-    });
+        } else {
+          // Run LLM-based evaluator
+          // TODO: Add back live progress, e.g. (progress) => updateProgressRing(idx, progress)) but with appropriate mapping for progress.
+          return ref
+            .run(input_node_ids, () => {
+              /** skip */
+            })
+            .then((ret) => {
+              console.log("LLM evaluator done!", ret);
+              updateProgressRing(idx, undefined);
+              return {
+                type: "llm",
+                name,
+                result: ret.responses,
+              };
+            });
+        }
+      },
+    );
 
     // When all evaluators finish...
     Promise.allSettled(runPromises).then((settled) => {
-      if (settled.some(s => s.status === "rejected")) {
+      if (settled.some((s) => s.status === "rejected")) {
         setStatus("error");
         setLastRunSuccess(false);
+        handleError(s.reason);
         return;
       }
 
       // Ignore null refs
-      settled = settled.filter(s => s.value.result !== null);
+      settled = settled.filter((s) => s.value.result !== null);
 
       // Success -- set the responses for the inspector
-      // First we need to group up all response evals by UID, *within* each evaluator. 
-      const evalResults = settled.map(s => {
+      // First we need to group up all response evals by UID, *within* each evaluator.
+      const evalResults = settled.map((s) => {
         if (s.value.type === "llm") return s.value; // responses are already batched by uid
-        // If code evaluator, for some reason, in this version of CF the code eval has de-batched responses. 
-        // We need to re-batch them by UID before returning, to correct this: 
+        // If code evaluator, for some reason, in this version of CF the code eval has de-batched responses.
+        // We need to re-batch them by UID before returning, to correct this:
         return {
           type: s.value.type,
           name: s.value.name,
@@ -437,26 +463,33 @@ const MultiEvalNode = ({ data, id }) => {
 
       // Now we have a duplicates of each response object, one per evaluator run,
       // with evaluation results per evaluator. They are not yet merged. We now need
-      // to merge the evaluation results within response objects with the same UIDs. 
+      // to merge the evaluation results within response objects with the same UIDs.
       // It *should* be the case (invariant) that response objects with the same UID
-      // have exactly the same number of evaluation results (e.g. n=3 for num resps per prompt=3). 
+      // have exactly the same number of evaluation results (e.g. n=3 for num resps per prompt=3).
       const merged_res_objs_by_uid = {};
       // For each set of evaluation results...
-      evalResults.forEach(({name, result}) => { 
+      evalResults.forEach(({ name, result }) => {
         // For each response obj in the results...
         result.forEach((res_obj) => {
-          // If it's not already in the merged dict, add it: 
+          // If it's not already in the merged dict, add it:
           const uid = res_obj.uid;
           if (!(uid in merged_res_objs_by_uid)) {
             // Transform evaluation results into dict form, indexed by "name" of the evaluator:
-            res_obj.eval_res.items = res_obj.eval_res.items.map((item) => ({[name]: item}));
+            res_obj.eval_res.items = res_obj.eval_res.items.map((item) => ({
+              [name]: item,
+            }));
             res_obj.eval_res.dtype = 3; // "KeyValue_Mixed" enum;
             merged_res_objs_by_uid[uid] = res_obj; // we don't make a copy, to save time
           } else {
             // It is already in the merged dict, so add the new eval results
             // Sanity check that the lengths of eval result lists are equal across evaluators:
-            if (merged_res_objs_by_uid[uid].eval_res.items.length !== res_obj.eval_res?.items?.length) {
-              console.error(`Critical error: Evaluation result lists for response ${uid} do not contain the same number of items per evaluator. Skipping...`);
+            if (
+              merged_res_objs_by_uid[uid].eval_res.items.length !==
+              res_obj.eval_res?.items?.length
+            ) {
+              console.error(
+                `Critical error: Evaluation result lists for response ${uid} do not contain the same number of items per evaluator. Skipping...`,
+              );
               return;
             }
             // Add the new evaluation result, keyed by evaluator name:
@@ -593,7 +626,10 @@ const MultiEvalNode = ({ data, id }) => {
             </Menu.Item>
             {AI_SUPPORT_ENABLED ? <Menu.Divider /> : <></>}
             {AI_SUPPORT_ENABLED ? (
-              <Menu.Item icon={<IconSparkles size="14px" />} onClick={onClickPickCriteria}>
+              <Menu.Item
+                icon={<IconSparkles size="14px" />}
+                onClick={onClickPickCriteria}
+              >
                 Let an AI decide!
               </Menu.Item>
             ) : (
@@ -603,9 +639,14 @@ const MultiEvalNode = ({ data, id }) => {
         </Menu>
       </div>
 
-      {evaluators && evaluators.length === 0 ?
+      {evaluators && evaluators.length === 0 ? (
         <Flex justify="center" gap={12} mt="md">
-          <Tooltip label="Let an AI help you generate criteria and implement evaluation functions." multiline position="bottom" withArrow>
+          <Tooltip
+            label="Let an AI help you generate criteria and implement evaluation functions."
+            multiline
+            position="bottom"
+            withArrow
+          >
             <Button onClick={onClickPickCriteria} variant="outline" size="xs">
               <IconSparkles size="11pt" />
               &nbsp;Generate criteria
@@ -613,7 +654,9 @@ const MultiEvalNode = ({ data, id }) => {
           </Tooltip>
           {/* <Button disabled variant='gradient' gradient={{ from: 'teal', to: 'lime', deg: 105 }}><IconSparkles />&nbsp;Validate</Button> */}
         </Flex>
-      : <></>}
+      ) : (
+        <></>
+      )}
 
       {lastRunSuccess && lastResponses && lastResponses.length > 0 ? (
         <InspectFooter
