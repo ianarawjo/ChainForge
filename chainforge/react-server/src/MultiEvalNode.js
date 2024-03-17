@@ -410,6 +410,7 @@ const MultiEvalNode = ({ data, id }) => {
           return ref.run(pulled_inputs, true).then((ret) => {
             console.log("Code evaluator done!", ret);
             updateProgressRing(idx, undefined);
+            if (ret.error !== undefined) throw new Error(ret.error);
             return {
               type: "code",
               name,
@@ -426,6 +427,7 @@ const MultiEvalNode = ({ data, id }) => {
             .then((ret) => {
               console.log("LLM evaluator done!", ret);
               updateProgressRing(idx, undefined);
+              if (ret.error !== undefined) throw new Error(ret.error);
               return {
                 type: "llm",
                 name,

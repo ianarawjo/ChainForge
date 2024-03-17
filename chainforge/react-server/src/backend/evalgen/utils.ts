@@ -71,7 +71,7 @@ export async function generateLLMEvaluationCriteria(
     );
 
     if (result.errors && Object.keys(result.errors).length > 0)
-      throw new Error(Object.values(result.errors)[0].toString());
+      throw new Error(Object.values(result.errors as Dict)[0].toString());
 
     // Get output (text from LLM response)
     const output = result.responses[0].responses[0];
@@ -172,8 +172,7 @@ export async function execJSFunc(
     // NOTE: EvalGen only supports assertion functions at this time.
     if (typeof eval_res !== "boolean")
       throw new Error(
-        "Non-boolean return value encountered when executing JS eval code. Value: ",
-        eval_res,
+        "Non-boolean return value encountered when executing JS eval code. Value: " + eval_res
       );
 
     return eval_res ? EvalFunctionResult.PASS : EvalFunctionResult.FAIL;
@@ -224,9 +223,7 @@ export async function execPyFunc(
     // NOTE: EvalGen only supports assertion functions at this time.
     if (typeof eval_res !== "boolean")
       throw new Error(
-        "Non-boolean return value encountered when executing JS eval code. Value: ",
-        eval_res,
-      );
+        "Non-boolean return value encountered when executing JS eval code. Value: " + eval_res);
 
     return eval_res ? EvalFunctionResult.PASS : EvalFunctionResult.FAIL;
   } catch (err) {

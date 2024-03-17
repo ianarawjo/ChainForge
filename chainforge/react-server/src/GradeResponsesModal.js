@@ -54,7 +54,6 @@ import { escapeBraces } from "./backend/template";
 import EvaluationFunctionExecutor from "./backend/evalgen/executor";
 import {
   getRatingKeyForResponse,
-  setCacheLabelForResponse,
 } from "./ResponseRatingToolbar";
 import useStore from "./store";
 import { DEFAULT_LLM_EVAL_MODEL } from "./LLMEvalNode";
@@ -375,31 +374,46 @@ Your response should contain a short title for the criteria ("shortname"), a des
       return await generateLLMEvaluationCriteria(inputPromptTemplate, apiKeys);
     }, [responses]);
 
-    // Starts generating implementations for the chosen criteria
-    const beginGenCriteriaImplementations = useCallback(async () => {
-      // Check that an executor isn't already running:
-      if (executor) {
+    // Update the executor whenever samples or eval criteria changes,
+    // as long as the executor is not already running.
+    useEffect(() => {
+      let ex = executor;
+      if (!ex) {
+        ex = new EvaluationFunctionExecutor(
+          getLikelyPromptTemplateAsContext(samples),
+          samples,
+        );
+        setExecutor(ex);
+      }
+      else if (ex.isRunning()) {
         console.error(
-          "Executor already running. Avoiding running duplicate executors.",
+          "Executor already running. Avoiding updating it with new samples or criteria.",
         );
         return;
       }
 
-      // Initialize an object responsible for generating, executing and ranking candidate implementations:
-      const new_executor = new EvaluationFunctionExecutor(
-        getLikelyPromptTemplateAsContext(samples),
-        samples,
-      );
+      ex.setExamples(samples);
+      ex.setEvalCriteria(criteria);
+    }, [samples, criteria]);
 
-      // Set the criteria to be used for generating implementations
-      new_executor.setEvalCriteria(criteria);
+    // Starts generating implementations for the chosen criteria
+    const beginGenCriteriaImplementations = useCallback(async () => {
+      // Check that an executor exists (this should never be triggered)
+      if (!executor) {
+        console.error(
+          "Executor does not exist.",
+        );
+        return;
+      } else if (executor.isRunning()) {
+        console.error(
+          "Executor is already running.",
+        );
+        return;
+      }
 
-      // Save executor, passing it to the GradeResponses window
-      setExecutor(new_executor);
-
-      // Start it in the background
-      new_executor.start();
-    }, [criteria, samples, executor]);
+      // Start the executor in the background
+      executor.start();
+    }, [executor]);
 
     // This gives the parent access to triggering the modal alert
     const trigger = (inputs, _onFinish) => {
@@ -443,7 +457,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
 
     return (
       <Modal
-        size="900px"
+        size="80%"
         opened={opened}
         onClose={close}
         title={
@@ -708,7 +722,7 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
   const numGraded = useMemo(() => Object.keys(grades).length, [grades]);
 
   const [promptReasoning, setPromptReasoning] = useState(null);
-  const [annotation, setAnnotation] = useState(null);
+  const [annotation, setAnnotation] = useState(undefined);
 
   // For updating the global human ratings state
   const setState = useStore((store) => store.setState);
@@ -756,7 +770,7 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
     return Object.entries(combined_vars_metavars).map(([varname, val]) => (
       <div key={varname} className="grade-resp-var-container">
         <span className="response-var-name">{varname}&nbsp;=&nbsp;</span>
-        <span className="response-var-value">{val}</span>
+        <span className="response-var-value linebreaks">{val}</span>
       </div>
     ));
   }, [shownResponse]);
@@ -943,7 +957,7 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
             style={{
               backgroundColor: "#eee",
               width: "80%",
-              maxHeight: "300px",
+              maxHeight: "340px",
               overflowY: "scroll",
               borderColor: "black",
               borderStyle: "solid",
@@ -976,7 +990,7 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
           >
             Vars
             <hr />
-            <div style={{ maxHeight: "300px", overflowY: "scroll" }}>
+            <div style={{ maxHeight: "160px", overflowY: "scroll" }}>
               {varsDivs}
             </div>
           </div>
@@ -991,9 +1005,9 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
             Prompt
             <hr />
             <div
-              className="monofont"
+              className="monofont linebreaks"
               style={{
-                maxHeight: "300px",
+                maxHeight: "160px",
                 overflowY: "scroll",
                 fontSize: "10pt",
                 lineHeight: "1.2",

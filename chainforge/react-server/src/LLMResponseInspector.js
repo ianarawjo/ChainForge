@@ -24,6 +24,7 @@ import {
   Tooltip,
   TextInput,
   Stack,
+  ScrollArea,
 } from "@mantine/core";
 import { useDisclosure, useToggle } from "@mantine/hooks";
 import {
@@ -73,9 +74,9 @@ const getEvalResultStr = (eval_item, hide_prefix) => {
       let val = eval_item[key];
       if (typeof val === "number" && val.toString().indexOf(".") > -1)
         val = val.toFixed(4); // truncate floats to 4 decimal places
-      return `${key}: ${val}`;
+      return <div><span>{key}: </span><span>{getEvalResultStr(val, true)}</span></div>;
     });
-    return strs.join("\n");
+    return <Stack spacing={0}>{strs}</Stack>
   } else {
     const eval_str = eval_item.toString().trim().toLowerCase();
     const color = SUCCESS_EVAL_SCORES.has(eval_str)
@@ -361,10 +362,12 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     const contains_eval_res = batchedResponses.some(
       (res_obj) => res_obj.eval_res !== undefined,
     );
-    const contains_multi_evals = contains_eval_res ? batchedResponses.some((res_obj) => {
-      const items = res_obj.eval_res?.items;
-      return items && items.length > 0 && typeof items[0] === "object";
-    }) : false;
+    const contains_multi_evals = contains_eval_res
+      ? batchedResponses.some((res_obj) => {
+          const items = res_obj.eval_res?.items;
+          return items && items.length > 0 && typeof items[0] === "object";
+        })
+      : false;
     setShowEvalScoreOptions(contains_eval_res);
 
     // Set the variables accessible in the MultiSelect for 'group by'
@@ -387,7 +390,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       !userSelectedTableCol &&
       tableColVar === "$LLM"
     ) {
-      if (contains_multi_evals || (found_llms.length === 1 && contains_eval_res)) {
+      if (
+        contains_multi_evals ||
+        (found_llms.length === 1 && contains_eval_res)
+      ) {
         // Plot eval scores on columns
         setTableColVar("$EVAL_RES");
         return;
@@ -618,22 +624,21 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
 
       // If the user wants to plot eval results in separate column, OR there's only a single LLM to show
       if (
-        tableColVar === "$EVAL_RES" ||
-        (tableColVar === "$LLM" && found_llms.length === 1 && contains_eval_res)
+        tableColVar === "$EVAL_RES"
       ) {
         // Plot evaluation results on separate column(s):
         eval_res_cols = getEvalResCols(responses);
-        if (tableColVar === "$EVAL_RES") {
-          // This adds a column, "Response", abusing the way getColVal and found_sel_var_vals is used
-          // below by making a dummy value (one giant group with all responses in it). We then
-          // sort the responses by LLM, to give a nicer view.
-          colnames = colnames.concat("Response", eval_res_cols);
-          getColVal = () => "_";
-          found_sel_var_vals = ["_"];
-          responses.sort((a, b) => getLLMName(a).localeCompare(getLLMName(b)));
-        } else {
-          colnames = colnames.concat(eval_res_cols);
-        }
+        // if (tableColVar === "$EVAL_RES") {
+        // This adds a column, "Response", abusing the way getColVal and found_sel_var_vals is used
+        // below by making a dummy value (one giant group with all responses in it). We then
+        // sort the responses by LLM, to give a nicer view.
+        colnames = colnames.concat("Response", eval_res_cols);
+        getColVal = () => "_";
+        found_sel_var_vals = ["_"];
+        responses.sort((a, b) => getLLMName(a).localeCompare(getLLMName(b)));
+        // } else {
+        //   colnames = colnames.concat(eval_res_cols);
+        // }
       } else if (tableColVar !== "$LLM") {
         // Get the unique values for the selected variable
         found_sel_var_vals = Array.from(
@@ -718,7 +723,9 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             <tr key={`r${idx}`}>
               {var_cols_vals.map((c, i) => (
                 <td key={`v${i}`} className="inspect-table-var">
+                  <ScrollArea.Autosize mah={600}>
                   {c}
+                  </ScrollArea.Autosize>
                 </td>
               ))}
               {metavar_cols_vals.map((c, i) => (

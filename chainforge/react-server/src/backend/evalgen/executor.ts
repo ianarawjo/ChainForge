@@ -136,7 +136,15 @@ export default class EvaluationFunctionExecutor {
   public async waitForCompletion(): Promise<void> {
     if (this.backgroundTaskPromise) {
       await this.backgroundTaskPromise;
+      this.backgroundTaskPromise = null;
     }
+  }
+
+  /**
+   * Whether the executor is currently running (.start() has been called and is not yet completed).
+   */
+  public isRunning(): boolean {
+    return this.backgroundTaskPromise !== null;
   }
 
   /**
@@ -303,6 +311,7 @@ export default class EvaluationFunctionExecutor {
    */
   public setGradeForExample(exampleId: ResponseUID, grade: boolean): void {
     this.grades.set(exampleId, grade);
+    console.log(this.grades);
   }
 
   /**
@@ -311,6 +320,19 @@ export default class EvaluationFunctionExecutor {
    */
   public setEvalCriteria(evalCriteria: EvalCriteria[]): void {
     this.evalCriteria = evalCriteria;
+  }
+
+  /**
+     * Set examples for the executor.
+     * This method allows the client to change the examples after the executor has been initialized.
+     */
+  public setExamples(examples: StandardizedLLMResponse[]): void {
+    this.examples = examples;
+
+    // Set scores to 0 for each example id
+    for (const example of examples) {
+      this.scores.set(example.uid, 0);
+    }
   }
 
   /**
