@@ -373,20 +373,15 @@ g.ytick text {
 }
 .inspect-table-var {
   background-color: rgb(224, 244, 250);
-  padding-top: 10px;
-  border-right: 1px solid #cde;
   font-weight: 500;
   white-space: pre-wrap;
 }
 .inspect-table-metavar {
   background-color: rgb(224, 232, 250);
-  padding-top: 10px;
-  border-right: 1px solid #cde;
   font-weight: 500;
   white-space: pre-wrap;
 }
 .inspect-table-score-col {
-  background-color: rgb(224, 232, 250);
   padding-top: 10px;
   border-right: 1px solid #cde;
   font-weight: 500;

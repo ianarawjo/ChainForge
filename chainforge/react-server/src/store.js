@@ -66,6 +66,7 @@ const refreshableOutputNodeTypes = new Set([
   "simpleval",
   "join",
   "split",
+  "multieval",
 ]);
 
 export const initLLMProviders = [

@@ -1291,12 +1291,10 @@ export async function evalWithLLM(
   }
 
   // Check if the results are boolean-ish:
+  const boolnames = ["true", "True", "false", "False", "yes", "Yes", "no", "No"];
   if (
-    all_eval_res.size === 2 &&
-    (all_eval_res.has("true") ||
-      all_eval_res.has("false") ||
-      all_eval_res.has("yes") ||
-      all_eval_res.has("no"))
+    all_eval_res.size <= 2 && 
+    boolnames.some(b => all_eval_res.has(b))
   ) {
     // Convert all eval results to boolean datatypes:
     all_evald_responses.forEach((resp_obj) => {

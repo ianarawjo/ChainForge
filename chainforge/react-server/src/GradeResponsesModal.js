@@ -52,10 +52,10 @@ import {
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
 import { escapeBraces } from "./backend/template";
 import EvaluationFunctionExecutor from "./backend/evalgen/executor";
-import { setLabelForResponse } from "./ResponseRatingToolbar";
-import { simpleQueryLLM } from "./backend/backend";
+import { getRatingKeyForResponse, setCacheLabelForResponse } from "./ResponseRatingToolbar";
 import useStore from "./store";
 import { DEFAULT_LLM_EVAL_MODEL } from "./LLMEvalNode";
+import StorageCache from "./backend/cache";
 
 const MANTINE_GREEN = "#40c057";
 
@@ -733,6 +733,18 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
   const [promptReasoning, setPromptReasoning] = useState(null);
   const [annotation, setAnnotation] = useState(null);
 
+  // For updating the global human ratings state
+  const setState = useStore((store) => store.setState);
+  const updateGlobalRating = useCallback(
+    (uid, label, payload) => {
+      const key = getRatingKeyForResponse(uid, label);
+      const safe_payload = deepcopy(payload);
+      setState(key, safe_payload);
+      StorageCache.store(key, safe_payload);
+    },
+    [setState],
+  );
+
   const bottomBar = useMemo(() => {
     const bar = {};
     if (showProgressType === "num_graded") {
@@ -784,8 +796,8 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
       typeof annotation === "string" &&
       annotation.trim().length > 0
     ) {
-      console.log("setting annotation for resp", shownResponse.uid, annotation);
-      setLabelForResponse(shownResponse.uid, "note", { 0: annotation });
+      // console.log("setting annotation for resp", shownResponse.uid, annotation);
+      updateGlobalRating(shownResponse.uid, "note", { 0: annotation });
       setAnnotation(null);
     }
     setPromptReasoning(null);
@@ -833,7 +845,6 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
     if (!inputs) return;
 
     setResponses(inputs);
-    console.warn(inputs);
 
     // Choose the first response to display to the user
     if (inputs?.length > 0) {
@@ -887,10 +898,15 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
     }
   }, [executor, showProgressType]);
 
-  const handleClickGradeButton = (isGoodResponse) => {
-    grades[shownResponseIdx] = isGoodResponse;
+  const updateGrade = (idx, uid, grade) => {
+    grades[idx] = grade;
     setGrades({ ...grades });
-    executor?.setGradeForExample(shownResponse.uid, isGoodResponse);
+    executor?.setGradeForExample(uid, grade);
+    updateGlobalRating(uid, "grade", { 0: grade });
+  };
+
+  const handleClickGradeButton = (isGoodResponse) => {
+    updateGrade(shownResponseIdx, shownResponse.uid, isGoodResponse);
     const explodeFunc = isGoodResponse
       ? setIsGreenExploding
       : setIsRedExploding;

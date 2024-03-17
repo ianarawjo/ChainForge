@@ -64,9 +64,9 @@ const escapeRegExp = (txt) => txt.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
 
 const SUCCESS_EVAL_SCORES = new Set(["true", "yes"]);
 const FAILURE_EVAL_SCORES = new Set(["false", "no"]);
-const getEvalResultStr = (eval_item) => {
+const getEvalResultStr = (eval_item, hide_prefix) => {
   if (Array.isArray(eval_item)) {
-    return "scores: " + eval_item.join(", ");
+    return (hide_prefix ? "" : "scores: ") + eval_item.join(", ");
   } else if (typeof eval_item === "object") {
     const strs = Object.keys(eval_item).map((key) => {
       let val = eval_item[key];
@@ -84,12 +84,40 @@ const getEvalResultStr = (eval_item) => {
         : "black";
     return (
       <>
-        <span style={{ color: "gray" }}>{"score: "}</span>
+        {!hide_prefix && <span style={{ color: "gray" }}>{"score: "}</span>}
         <span style={{ color }}>{eval_str}</span>
       </>
     );
   }
 };
+
+function getEvalResCols(responses) {
+  // Look for + extract any consistent, *named* evaluation metrics (dicts)
+  const metric_names = new Set();
+  const has_unnamed_metric = false;
+  let eval_res_cols = [];
+  responses.forEach(res_obj => {
+    if (res_obj?.eval_res?.items === undefined) return;
+    res_obj.eval_res.items.forEach((item) => {
+      if (typeof item !== "object") {
+        has_unnamed_metric = true;
+        return; 
+      }
+      Object.keys(item).forEach(metric_name => metric_names.add(metric_name));
+    });
+  });
+
+  if (metric_names.size === 0 || has_unnamed_metric)
+    // None found, but there are scores, OR, there is at least one unnamed score. Add a generic col for scores:
+    eval_res_cols.push("Score");
+
+  if (metric_names.size > 0) {
+    // Add a column for each named metric: 
+    eval_res_cols = eval_res_cols.concat(Array.from(metric_names));
+  }
+
+  return eval_res_cols;
+}
 
 function getIndicesOfSubstringMatches(s, substr, caseSensitive) {
   const regex = new RegExp(
@@ -257,7 +285,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
   // The type of view to use to display responses. Can be either hierarchy or table.
-  const [viewFormat, setViewFormat] = useState("hierarchy");
+  const [viewFormat, setViewFormat] = useState(wideFormat ? "table" : "hierarchy");
 
   // The MultiSelect so people can dynamically set what vars they care about
   const [multiSelectVars, setMultiSelectVars] = useState([]);
@@ -293,7 +321,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
   );
 
   // The var name to use for columns in the table view
-  const [tableColVar, setTableColVar] = useState("LLM");
+  const [tableColVar, setTableColVar] = useState("$LLM");
   const [userSelectedTableCol, setUserSelectedTableCol] = useState(false);
 
   // State of the 'only show scores' toggle when eval results are present
@@ -333,13 +361,15 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     setShowEvalScoreOptions(contains_eval_res);
 
     // Set the variables accessible in the MultiSelect for 'group by'
-    const msvars = found_vars
+    let msvars = found_vars
       .map((name) =>
         // We add a $ prefix to mark this as a prompt parameter, and so
         // in the future we can add special types of variables without name collisions
         ({ value: name, label: name }),
       )
-      .concat({ value: "LLM", label: "LLM" });
+      .concat({ value: "$LLM", label: "LLM" });
+    if (contains_eval_res && viewFormat === "table")
+      msvars.push({ value: "$EVAL_RES", label: "Eval results" });
     setMultiSelectVars(msvars);
 
     // If only one LLM is present, and user hasn't manually selected one to plot,
@@ -348,7 +378,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
     if (
       viewFormat === "table" &&
       !userSelectedTableCol &&
-      tableColVar === "LLM" &&
+      tableColVar === "$LLM" &&
       found_llms.length === 1 &&
       found_vars.length > 1
     ) {
@@ -554,48 +584,37 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       let var_cols, colnames, getColVal, found_sel_var_vals, eval_res_cols;
       let metavar_cols = []; // found_metavars; -- Disabling this functionality for now, since it is usually annoying.
 
-      if (tableColVar === "LLM") {
+      if (tableColVar === "$LLM") {
         var_cols = found_vars;
         getColVal = getLLMName;
         found_sel_var_vals = found_llms;
         colnames = var_cols.concat(metavar_cols).concat(found_llms);
-
-        // Special case ---there is only one LLM to display. In only this case
-        // can we plot evaluation results on separate column(s):
-        if (found_llms.length === 1 && contains_eval_res) {
-          // Look for + extract any consistent, *named* evaluation metrics (dicts)
-          const metric_names = new Set();
-          const has_unnamed_metric = false;
-          eval_res_cols = [];
-          responses.forEach(res_obj => {
-            if (res_obj?.eval_res?.items === undefined) return;
-            res_obj.eval_res.items.forEach((item) => {
-              if (typeof item !== "object") {
-                has_unnamed_metric = true;
-                return; 
-              }
-              Object.keys(item).forEach(metric_name => metric_names.add(metric_name));
-            });
-          });
-
-          if (metric_names.size === 0 || has_unnamed_metric)
-            // None found, but there are scores, OR, there is at least one unnamed score. Add a generic col for scores:
-            eval_res_cols.push("Score");
-          if (metric_names.size > 0) {
-            // Add a column for each named metric: 
-            eval_res_cols = eval_res_cols.concat(Array.from(metric_names));
-          }
-
-          colnames = colnames.concat(eval_res_cols);
-        }
-
       } else {
         metavar_cols = [];
         var_cols = found_vars
           .filter((v) => v !== tableColVar)
           .concat(found_llms.length > 1 ? ["LLM"] : []); // only add LLM column if num LLMs > 1
         getColVal = (r) => r.vars[tableColVar];
+        colnames = var_cols;
+        found_sel_var_vals = [];
+      }
 
+      // If the user wants to plot eval results in separate column, OR there's only a single LLM to show
+      if (tableColVar === "$EVAL_RES" || (tableColVar === "$LLM" && found_llms.length === 1 && contains_eval_res)) {
+        // Plot evaluation results on separate column(s):
+        eval_res_cols = getEvalResCols(responses);
+        if (tableColVar === "$EVAL_RES") {
+          // This adds a column, "Response", abusing the way getColVal and found_sel_var_vals is used
+          // below by making a dummy value (one giant group with all responses in it). We then
+          // sort the responses by LLM, to give a nicer view. 
+          colnames = colnames.concat("Response", eval_res_cols);
+          getColVal = () => "_";
+          found_sel_var_vals = ["_"];
+          responses.sort((a, b) => getLLMName(a).localeCompare(getLLMName(b)))
+        } else {
+          colnames = colnames.concat(eval_res_cols);
+        }
+      } else if (tableColVar !== "$LLM") {
         // Get the unique values for the selected variable
         found_sel_var_vals = Array.from(
           responses.reduce((acc, res_obj) => {
@@ -607,7 +626,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             return acc;
           }, new Set()),
         );
-        colnames = var_cols.concat(found_sel_var_vals);
+        colnames = colnames.concat(found_sel_var_vals);
       }
 
       const getVar = (r, v) => (v === "LLM" ? getLLMName(r) : r.vars[v]);
@@ -640,10 +659,10 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
               if (!items) return "(no result)";
               return items.map(item => {
                 if (item === undefined) return "(undefined)";
-                if (typeof item !== "object" && metric_idx === 0 && metric_name === "Score") return item.toString();
-                else if (metric_name in item) return item[metric_name];
+                if (typeof item !== "object" && metric_idx === 0 && metric_name === "Score") return getEvalResultStr(item, true);
+                else if (metric_name in item) return getEvalResultStr(item[metric_name], true);
                 else return "(unspecified)";
-              }).join("\n"); // treat n>1 resps per prompt as multi-line results in the column
+              }); // treat n>1 resps per prompt as multi-line results in the column
             });
           }
           const resp_objs_by_col_var = groupResponsesBy(
@@ -663,7 +682,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           });
 
           return (
-            <tr key={`r${idx}`} style={{ borderBottom: "8px solid #eee" }}>
+            <tr key={`r${idx}`} >
               {var_cols_vals.map((c, i) => (
                 <td key={`v${i}`} className="inspect-table-var">
                   {c}
@@ -690,7 +709,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       );
 
       setResponses([
-        <Table key="table" fontSize={wideFormat ? "sm" : "xs"}>
+        <Table key="table" fontSize={wideFormat ? "sm" : "xs"} horizontalSpacing="xs" verticalSpacing={0} striped>
           <thead>
             <tr>
               {colnames.map((c) => (

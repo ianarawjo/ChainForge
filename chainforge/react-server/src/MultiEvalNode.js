@@ -212,8 +212,8 @@ const MultiEvalNode = ({ data, id }) => {
     pickCriteriaModalRef?.current?.trigger(inputs, (implementations) => {
       // Returned if/when the Pick Criteria modal finishes generating implementations.
       console.warn(implementations);
-      // Override any existing evals with the returned implementations
-      setEvaluators(implementations);
+      // Append the returned implementations to the end of the existing eval list
+      setEvaluators((evs) => evs.concat(implementations));
     });
   };
 
@@ -239,9 +239,9 @@ const MultiEvalNode = ({ data, id }) => {
   );
 
   // Sync evaluator state to stored state of this node
-  const syncEvaluatorsState = useCallback(() => {
+  useEffect(() => {
     setDataPropsForNode(id, { evaluators });
-  }, [evaluators, setDataPropsForNode, id]);
+  }, [evaluators]);
 
   // Generate UI for the evaluator state
   const evaluatorComponentRefs = useRef([]);
@@ -294,7 +294,10 @@ const MultiEvalNode = ({ data, id }) => {
           key={`${e.name}-${idx}`}
           type={EVAL_TYPE_PRETTY_NAME[e.type]}
           progress={e.progress}
-          onDelete={() => setEvaluators(evaluators.filter((_, i) => i !== idx))}
+          onDelete={() => {
+            delete evaluatorComponentRefs.current[idx];
+            setEvaluators(evaluators.filter((_, i) => i !== idx));
+          }}
           onChangeTitle={(newTitle) => setEvaluators(evaluators.map((e, i) => {
             if (i === idx) e.name = newTitle;
             console.log(e);
@@ -371,6 +374,8 @@ const MultiEvalNode = ({ data, id }) => {
     // Run all evaluators here!
     // TODO
     const runPromises = evaluatorComponentRefs.current.map(({ type, name, ref }, idx) => {
+      if (ref === null) return { type: "error", name, result: null };
+
       // Start loading spinner status on running evaluators
       updateProgressRing(idx, { success: 0, error: 0 });
 
@@ -413,6 +418,10 @@ const MultiEvalNode = ({ data, id }) => {
         setLastRunSuccess(false);
         return;
       }
+
+      // Ignore null refs
+      settled = settled.filter(s => s.value.result !== null);
+
       // Success -- set the responses for the inspector
       // First we need to group up all response evals by UID, *within* each evaluator. 
       const evalResults = settled.map(s => {
@@ -532,18 +541,10 @@ const MultiEvalNode = ({ data, id }) => {
         style={{ top: "50%" }}
       />
 
-      <Flex justify="center" gap={12} mb="md">
-        <Button onClick={onClickPickCriteria} variant="outline" size="xs">
-          <IconSparkles size="11pt" />
-          &nbsp;Generate criteria
-        </Button>
-        {/* <Button disabled variant='gradient' gradient={{ from: 'teal', to: 'lime', deg: 105 }}><IconSparkles />&nbsp;Validate</Button> */}
-      </Flex>
-
       <div className="add-text-field-btn">
         <Menu withinPortal position="right-start" shadow="sm">
           <Menu.Target>
-            <Tooltip label="Add evaluator" position="bottom" withArrow>
+            <Tooltip label="Add evaluator" position="left" withArrow>
               <ActionIcon variant="outline" color="gray" size="sm">
                 <IconPlus size="12px" />
               </ActionIcon>
@@ -592,7 +593,7 @@ const MultiEvalNode = ({ data, id }) => {
             </Menu.Item>
             {AI_SUPPORT_ENABLED ? <Menu.Divider /> : <></>}
             {AI_SUPPORT_ENABLED ? (
-              <Menu.Item icon={<IconSparkles size="14px" />}>
+              <Menu.Item icon={<IconSparkles size="14px" />} onClick={onClickPickCriteria}>
                 Let an AI decide!
               </Menu.Item>
             ) : (
@@ -601,6 +602,18 @@ const MultiEvalNode = ({ data, id }) => {
           </Menu.Dropdown>
         </Menu>
       </div>
+
+      {evaluators && evaluators.length === 0 ?
+        <Flex justify="center" gap={12} mt="md">
+          <Tooltip label="Let an AI help you generate criteria and implement evaluation functions." multiline position="bottom" withArrow>
+            <Button onClick={onClickPickCriteria} variant="outline" size="xs">
+              <IconSparkles size="11pt" />
+              &nbsp;Generate criteria
+            </Button>
+          </Tooltip>
+          {/* <Button disabled variant='gradient' gradient={{ from: 'teal', to: 'lime', deg: 105 }}><IconSparkles />&nbsp;Validate</Button> */}
+        </Flex>
+      : <></>}
 
       {lastRunSuccess && lastResponses && lastResponses.length > 0 ? (
         <InspectFooter

@@ -11,9 +11,9 @@ import StorageCache from "./backend/cache";
 import useStore from "./store";
 import { deepcopy } from "./backend/utils";
 
-const getRatingKeyForResponse = (uid, label_name) => `r.${uid}.${label_name}`;
+export const getRatingKeyForResponse = (uid, label_name) => `r.${uid}.${label_name}`;
 const collapse_ratings = (rating_dict, idxs) => {
-  if (rating_dict === undefined) return undefined;
+  if (rating_dict === undefined || typeof rating_dict !== "object") return undefined;
   for (let j = 0; j < idxs.length; j++) {
     if (idxs[j] in rating_dict && rating_dict[idxs[j]] !== undefined)
       return rating_dict[idxs[j]];
@@ -24,7 +24,7 @@ const collapse_ratings = (rating_dict, idxs) => {
 export const getLabelForResponse = (uid, label_name) => {
   return StorageCache.get(getRatingKeyForResponse(uid, label_name));
 };
-export const setLabelForResponse = (uid, label_name, payload) => {
+export const setCacheLabelForResponse = (uid, label_name, payload) => {
   StorageCache.store(getRatingKeyForResponse(uid, label_name), payload);
 };
 
@@ -109,7 +109,7 @@ const ResponseRatingToolbar = ({
   // For human labeling of responses in the inspector
   const onGrade = (grade) => {
     if (uid === undefined) return;
-    const new_grades = gradeState ?? {};
+    const new_grades = typeof gradeState === "object" ? gradeState : {};
     innerIdxs.forEach((idx) => {
       new_grades[idx] = grade;
     });
