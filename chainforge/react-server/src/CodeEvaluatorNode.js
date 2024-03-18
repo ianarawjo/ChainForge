@@ -209,11 +209,7 @@ export const CodeEvaluatorComponent = forwardRef(
 
     // Runs the code evaluator/processor over the inputs, returning the results as a Promise.
     // Errors are raised as a rejected Promise.
-<<<<<<< HEAD
-    const run = (inputs, runInSandbox) => {
-=======
     const run = (inputs, script_paths, runInSandbox) => {
->>>>>>> 0f4275b (Add Claude 3 and Pyodide sandboxing (#237))
       // Double-check that the code includes an 'evaluate' or 'process' function, whichever is needed:
       const find_func_regex =
         node_type === "evaluator"
@@ -245,16 +241,7 @@ export const CodeEvaluatorComponent = forwardRef(
         scope: "response",
         process_type: node_type,
         script_paths,
-<<<<<<< HEAD
-        executor:
-          progLang === "python"
-            ? IS_RUNNING_LOCALLY && runInSandbox
-              ? "pyodide"
-              : "flask"
-            : undefined,
-=======
         executor: executor,
->>>>>>> 0f4275b (Add Claude 3 and Pyodide sandboxing (#237))
       }).then(function (json) {
         // Check if there's an error; if so, bubble it up to user and exit:
         if (!json || json.error) {
@@ -454,11 +441,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
 
     // Run evaluator in backend
     codeEvaluatorRef.current
-<<<<<<< HEAD
-      ?.run(pulled_inputs, runInSandbox)
-=======
       ?.run(pulled_inputs, script_paths, runInSandbox)
->>>>>>> 0f4275b (Add Claude 3 and Pyodide sandboxing (#237))
       .then((json) => {
         if (json?.logs) setLastRunLogs(json.logs.join("\n   > "));
 
