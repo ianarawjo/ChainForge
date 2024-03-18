@@ -91,6 +91,7 @@ const selector = (state) => ({
   setEdges: state.setEdges,
   resetLLMColors: state.resetLLMColors,
   setAPIKeys: state.setAPIKeys,
+  importState: state.importState,
 });
 
 // The initial LLM to use when new flows are created, or upon first load
@@ -202,6 +203,7 @@ const App = () => {
     setEdges,
     resetLLMColors,
     setAPIKeys,
+    importState,
   } = useStore(selector, shallow);
 
   // For saving / loading
@@ -520,6 +522,11 @@ const App = () => {
       if (rf_inst) initAutosaving(rf_inst);
     }
   };
+
+  const importGlobalStateFromCache = useCallback(() => {
+    importState(StorageCache.getAllMatching((key) => key.startsWith("r.")));
+  }, [importState]);
+
   const autosavedFlowExists = () => {
     return window.localStorage.getItem("chainforge-flow") !== null;
   };
@@ -530,6 +537,7 @@ const App = () => {
     );
     if (saved_flow) {
       StorageCache.loadFromLocalStorage("chainforge-state");
+      importGlobalStateFromCache();
       loadFlow(saved_flow, rf_inst);
     }
   };
@@ -577,11 +585,15 @@ const App = () => {
             );
           else if (json.error || json.result === false)
             throw new Error("Error importing cache data:" + json.error);
+
+          // Import global state of human ratings from the cache, to the global Zustand store
+          importGlobalStateFromCache();
+
           // Done!
         })
         .catch(handleError);
     },
-    [handleError],
+    [handleError, importGlobalStateFromCache],
   );
 
   const importFlowFromJSON = useCallback(

@@ -34,6 +34,7 @@ import {
   ChatMessage as BedrockChatMessage,
 } from "@mirai73/bedrock-fm";
 import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
+import StorageCache from "./cache";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
@@ -1853,4 +1854,33 @@ export async function retryAsyncFunc<T>(
 // This method is used to pass around information hidden from the user.
 export function cleanMetavarsFilterFunc() {
   return (key: string) => !(key.startsWith("LLM_") || key.startsWith("__pt"));
+}
+
+// Verify data integrity: check that uids are present for all responses.
+// If they are not present, add it and note the discrepency.
+// NOTE: This modifies the dictionary in place.
+export function repairCachedResponses(
+  data: Dict,
+  storageKey: string,
+  itemSelector?: (data: Dict) => Dict,
+): Dict {
+  let repaired = false;
+  const d = itemSelector ? itemSelector(data) : data;
+  Object.values(d).forEach((val) => {
+    const resps = Array.isArray(val) ? val : [val];
+    resps.forEach((r) => {
+      if (r.uid === undefined) {
+        r.uid = uuid();
+        repaired = true;
+      }
+    });
+  });
+
+  if (repaired) {
+    // The data did not include uids. Flash it back to the cache to repair.
+    // This maintains consistency across re-runs.
+    StorageCache.store(storageKey, data);
+  }
+
+  return data;
 }

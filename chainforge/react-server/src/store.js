@@ -203,6 +203,24 @@ const useStore = create((set, get) => ({
     set({ flags });
   },
 
+  // State shared across the application, for forcing redraws upon change.
+  state: {},
+  setState: (key, value) => {
+    set((st) => ({
+      ...st,
+      state: {
+        ...st.state,
+        [key]: value,
+      },
+    }));
+  },
+  importState: (state) => {
+    set((st) => ({
+      ...st,
+      state,
+    }));
+  },
+
   // Keep track of LLM colors, to ensure color consistency across various plots and displays
   llmColors: initialLLMColors,
 
@@ -343,6 +361,7 @@ const useStore = create((set, get) => ({
       } else {
         // Get the data related to that handle:
         if ("fields" in src_node.data) {
+          console.log(src_node.data);
           if (Array.isArray(src_node.data.fields)) return src_node.data.fields;
           else {
             // We have to filter over a special 'fields_visibility' prop, which
@@ -351,6 +370,7 @@ const useStore = create((set, get) => ({
               return Object.values(
                 transformDict(
                   src_node.data.fields,
+                  // eslint-disable-next-line
                   (fid) => src_node.data.fields_visibility[fid] !== false,
                 ),
               );
