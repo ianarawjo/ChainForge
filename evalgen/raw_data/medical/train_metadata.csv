@@ -1,0 +1,68 @@
+dataset,encounter_id,id,doctor_name,patient_gender,patient_age,patient_firstname,patient_familyname,cc,2nd_complaints
+virtassist,D2N001,VA049,,female,50,Martha,Collins,annual exam,congestive heart failure;depression;hypertension
+virtassist,D2N002,VA054,,male,62,Andrew,Perez,joint pain,kidney transplant;hypothyroidism;arthritis
+virtassist,D2N003,VA004,,male,61,John,Perry,back pain,kidney stones;migraines;gastroesophageal reflux
+virtassist,D2N004,VA051,,male,57,James,Allen,back pain,congestive heart failure;type 2 diabetes
+virtassist,D2N005,VA020,,female,41,,Hills,right middle finger pain,atrial fibrillation
+virtassist,D2N006,VA048,,female,44,Anna,Mitchell,chronic problems,arthritis;gout;reflux
+virtassist,D2N007,VA029,,female,27,Sarah,,annual exam,depression;chronic back pain;cabg
+virtassist,D2N008,VA047,,female,49,Stephanie,Diaz,abnormal labs,congestive heart failure;kidney stones;colonscopy
+virtassist,D2N009,VA010,,male,55,Bryan,Smith,back pain,hx discectomy
+virtassist,D2N010,VA032,,male,58,Keith,,high blood sugar,reflux; hx CHF; right rotator cuff issue
+virtassist,D2N011,VA036,,male,62,Roger,Nelson,ER follow-up for chest pain,
+virtassist,D2N012,VA035,,male,59,Joseph,Fisher,chronic problems,depression;asthma;diabetes type 2
+virtassist,D2N013,VA016,,male,55,John,Brooks,abnormal lab finding,anxiety;epilepsy
+virtassist,D2N014,VA038,,male,58,Louis,Williams,ER follow-up,CHF;hx cataract and skin cancer
+virtassist,D2N015,VA040,,female,48,Rachel,,shortness of breath,smoking;depression;chronic back pain
+virtassist,D2N016,VA011,,male,59,Edward,Butler,chronic problems,depression;hypertension;hx rotator cuff repair
+virtassist,D2N017,VA028,,female,43,,Peterson,right leg pain,atopic eczema; hx colectomy following diverticulosis
+virtassist,D2N018,VA026,Dr. Gutierrez,female,39,,Russell,severe R upper arm pain,hx gallstones and lumber fusion
+virtassist,D2N019,VA027,,female,48,,Hernandez,right elbow pain,anaphylaxis;hx neck surgery
+virtassist,D2N020,VA031,,male,56,Vincent,Young,abnormal labs for anemia,hx lobectomy and knee arthroplasty
+virtscribe,D2N021,VS006,,female ,39,christine,hernandez,hypothyroidism ,weight loss; acne
+virtscribe,D2N022,VS029,,male ,50,philip,gutierrez,right index finger hyperextension ,none
+virtscribe,D2N023,VS039,,male,59,paul,edwards,hypogonadism ,gynecomastia
+virtscribe,D2N024,VS034,,female ,36,pamela,cook,follow up on bilateral reduction mammoplasty ,scar tissue
+virtscribe,D2N025,VS010,,female ,71,nicole,miller,follow up visit ,colonoscopy
+virtscribe,D2N026,VS032,miller,male ,,donald,clark,left arm pain ,hand pain 
+virtscribe,D2N027,VS016,,male ,61,eugene,walker,follow up visit of chronic medical conditions,fatigue; pursed lips breathing; nodule on epididymis 
+virtscribe,D2N028,VS011,edwards,male ,42,patrick,allen,abdominal pain; diarrhea,hepatomegaly
+virtscribe,D2N029,VS028,,female ,57,sophia,jackson,melanoma ,none
+virtscribe,D2N030,VS026,,female ,40,donna,tores,follow-up bilateral breast cysts,anxiety; itchiness
+virtscribe,D2N031,VS027,stewart,female ,75,sophia,brown,right ductal carcinoma in situ,none
+virtscribe,D2N032,VS031,,female ,56,michelle,king,right hip pain,bulging discs
+aci,D2N033,ACI025,,female,,Sophia,,right knee pain,type 2 diabetes
+aci,D2N034,ACI050,,male,69.0,alan,mitchell,left shoulder pain,
+aci,D2N035,ACI069,,female,,christina,,Congestive heart failure,hypertension;kidney disease
+aci,D2N036,ACI001,,male,57.0,George,Lewis,left wrist and hand pain,
+aci,D2N037,ACI073,,male,53.0,dylan,bennett,Bilateral elbow pain,
+aci,D2N038,ACI040,,male,60.0,Bruce,Ward,Hepatitis C,
+aci,D2N039,ACI070,,female,,virginia,,hypertension,
+aci,D2N040,ACI037,,female,34.0,Carolyn,,headache,diabetes mellitus
+aci,D2N041,ACI059,,female,,teresa,,sore throat,hypertension;diabetes
+aci,D2N042,ACI071,,female,38.0,carolyn,jones,Right ankle pain,
+aci,D2N043,ACI044,,male,44.0,,,smoking cessation,
+aci,D2N044,ACI076,,female,,julie,,knee pain,
+aci,D2N045,ACI082,sanchez,female,,abigail,,Right knee pain,
+aci,D2N046,ACI028,,,,,,ovarian cancer,
+aci,D2N047,ACI004,,male,,Billy,,difficulty urinating,coronary artery disease;diabetes
+aci,D2N048,ACI108,,female,76.0,brittany,edwards,right foot,
+aci,D2N049,ACI048,,female,,linda,,left sided back pain,
+aci,D2N050,ACI020,,male,80.0,Mason,Ward,kidney stones,
+aci,D2N051,ACI093,,male,79.0,jeremy,roberts,Right foot ulcer,Diabetes;Coronary artery disease
+aci,D2N052,ACI016,,female,29.0,Anna,Diaz,right-sided back pain,
+aci,D2N053,ACI074,,female,,barbara,,itchy scalp,
+aci,D2N054,ACI102,,male,45.0,elijah,reyes,right foot pain,Hx left ankle surgery
+aci,D2N055,ACI053,,female,3.0,karen,nelson,right eye twitch,
+aci,D2N056,ACI032,,male,,,,recurrent lung infections,
+aci,D2N057,ACI100,,male,58.0,joseph,walker,Right great toe pain,
+aci,D2N058,ACI054,,male,45.0,russell,ramirez,Hospital follow-up after an anterior STEMI,history of CAD status post prior RCA stent;hypertension;diabetes mellitus
+aci,D2N059,ACI035,Cooper,,,,,asthma,mood
+aci,D2N060,ACI080,,female,27.0,jean,martinez,Left foot pain,
+aci,D2N061,ACI038,,female,53.0,Virginia,,Right knee pain,diabetes
+aci,D2N062,ACI104,,male,67.0,raymond,taylor,Difficulty swallowing,
+aci,D2N063,ACI075,,female,46.0,gloria,,dyspnea,back pain
+aci,D2N064,ACI092,,male,20.0,matthew,murphy,left ankle pain,
+aci,D2N065,ACI090,,female,31.0,anna,diaz,Right ankle pain,
+aci,D2N066,ACI027,scott good,male,43.0,gabriel,,back pain,diabetes;hypertension
+aci,D2N067,ACI031,,female,91.0,Elizabeth,Ross,Right knee injury,
