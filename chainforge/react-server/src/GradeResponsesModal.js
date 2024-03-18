@@ -52,9 +52,7 @@ import {
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
 import { escapeBraces } from "./backend/template";
 import EvaluationFunctionExecutor from "./backend/evalgen/executor";
-import {
-  getRatingKeyForResponse,
-} from "./ResponseRatingToolbar";
+import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
 import useStore from "./store";
 import { DEFAULT_LLM_EVAL_MODEL } from "./LLMEvalNode";
 import StorageCache from "./backend/cache";
@@ -306,7 +304,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
       )
         .then((evalCrits) => {
           // Take only the first
-          setCriteria((crit) => 
+          setCriteria((crit) =>
             crit.concat([
               {
                 ...evalCrits[0],
@@ -391,8 +389,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
           samples,
         );
         setExecutor(ex);
-      }
-      else if (ex.isRunning()) {
+      } else if (ex.isRunning()) {
         console.error(
           "Executor already running. Avoiding updating it with new samples or criteria.",
         );
@@ -407,14 +404,10 @@ Your response should contain a short title for the criteria ("shortname"), a des
     const beginGenCriteriaImplementations = useCallback(async () => {
       // Check that an executor exists (this should never be triggered)
       if (!executor) {
-        console.error(
-          "Executor does not exist.",
-        );
+        console.error("Executor does not exist.");
         return;
       } else if (executor.isRunning()) {
-        console.error(
-          "Executor is already running.",
-        );
+        console.error("Executor is already running.");
         return;
       }
 
@@ -757,7 +750,7 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
       bar.buttonStyle = "filled";
     } else {
       bar.progressPerc = Math.min(execProgress, 100);
-      bar.progressLabel = "Generating and selecting implementations..."
+      bar.progressLabel = "Generating and selecting implementations...";
       bar.buttonLabel = bar.progressPerc < 99.5 ? "I'm tired 😴" : "Done";
       bar.buttonDisabled = false;
       bar.buttonStyle = bar.progressPerc < 99.5 ? "outline" : "filled";

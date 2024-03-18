@@ -172,7 +172,8 @@ export async function execJSFunc(
     // NOTE: EvalGen only supports assertion functions at this time.
     if (typeof eval_res !== "boolean")
       throw new Error(
-        "Non-boolean return value encountered when executing JS eval code. Value: " + eval_res
+        "Non-boolean return value encountered when executing JS eval code. Value: " +
+          eval_res,
       );
 
     return eval_res ? EvalFunctionResult.PASS : EvalFunctionResult.FAIL;
@@ -223,7 +224,9 @@ export async function execPyFunc(
     // NOTE: EvalGen only supports assertion functions at this time.
     if (typeof eval_res !== "boolean")
       throw new Error(
-        "Non-boolean return value encountered when executing JS eval code. Value: " + eval_res);
+        "Non-boolean return value encountered when executing JS eval code. Value: " +
+          eval_res,
+      );
 
     return eval_res ? EvalFunctionResult.PASS : EvalFunctionResult.FAIL;
   } catch (err) {

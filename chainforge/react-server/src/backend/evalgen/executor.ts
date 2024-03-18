@@ -127,7 +127,8 @@ export default class EvaluationFunctionExecutor {
     }
 
     // Initiate the background task without awaiting its completion
-    this.backgroundTaskPromise = this.generateAndExecuteEvaluationFunctions(onProgress);
+    this.backgroundTaskPromise =
+      this.generateAndExecuteEvaluationFunctions(onProgress);
   }
 
   /**
@@ -151,9 +152,20 @@ export default class EvaluationFunctionExecutor {
    * Generates and executes evaluation functions for a set of examples based on provided criteria.
    * This method is responsible for initializing the evaluation process and managing the asynchronous execution of functions.
    */
-  public async generateAndExecuteEvaluationFunctions(onProgress?: (progress: QueryProgress) => void): Promise<void> {
+  public async generateAndExecuteEvaluationFunctions(
+    onProgress?: (progress: QueryProgress) => void,
+  ): Promise<void> {
     const emitter = new EventEmitter();
     const numCriteriaToProcess = this.evalCriteria.length;
+
+    // Since we don't know how many implementations the LLM will suggest,
+    // we must estimate it here so we can use this information to stream
+    // "progress" updates back to the client:
+    let funcsExecuted = 0;
+    const estimatedFuncsToExecute =
+      numCriteriaToProcess +
+      this.evalCriteria.length * 5 * this.examples.length;
+
     let criteriaProcessed = 0; // Track the number of criteria processed
     let resolveAllFunctionsGenerated; // To be called when all functions are generated and executed
     const functionExecutionPromises: Promise<any>[] = []; // Track execution promises for function executions
@@ -178,6 +190,14 @@ export default class EvaluationFunctionExecutor {
 
           // Run the function on the example and if there's an error, increment skipped
           const result = await funcToExecute(evalFunction, example);
+
+          funcsExecuted++;
+          if (onProgress) {
+            onProgress({
+              success: (100 * funcsExecuted) / estimatedFuncsToExecute,
+              error: 0,
+            });
+          }
 
           // Put result in cache
           if (!this.resultsCache.has(evalFunction)) {
@@ -220,7 +240,6 @@ export default class EvaluationFunctionExecutor {
     // Listen for a custom 'criteriaProcessed' event to track when each criterion's functions have been generated
     emitter.on("criteriaProcessed", () => {
       criteriaProcessed++;
-      if (onProgress) onProgress({ success: 100 * criteriaProcessed / numCriteriaToProcess, error: 0 });
       if (criteriaProcessed === this.evalCriteria.length) {
         // Ensure all function executions have completed before emitting 'allFunctionsGenerated'
         Promise.all(functionExecutionPromises).then(() => {
@@ -231,6 +250,12 @@ export default class EvaluationFunctionExecutor {
             resolveAllFunctionsGenerated(); // Resolve the promise when all functions have been generated and executed
           }
         });
+
+        if (onProgress)
+          onProgress({
+            success: 100,
+            error: 0,
+          });
       }
     });
 
@@ -325,9 +350,9 @@ export default class EvaluationFunctionExecutor {
   }
 
   /**
-     * Set examples for the executor.
-     * This method allows the client to change the examples after the executor has been initialized.
-     */
+   * Set examples for the executor.
+   * This method allows the client to change the examples after the executor has been initialized.
+   */
   public setExamples(examples: StandardizedLLMResponse[]): void {
     this.examples = examples;
 

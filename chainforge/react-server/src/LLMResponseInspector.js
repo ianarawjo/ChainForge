@@ -70,13 +70,18 @@ const getEvalResultStr = (eval_item, hide_prefix) => {
   if (Array.isArray(eval_item)) {
     return (hide_prefix ? "" : "scores: ") + eval_item.join(", ");
   } else if (typeof eval_item === "object") {
-    const strs = Object.keys(eval_item).map((key) => {
+    const strs = Object.keys(eval_item).map((key, j) => {
       let val = eval_item[key];
       if (typeof val === "number" && val.toString().indexOf(".") > -1)
         val = val.toFixed(4); // truncate floats to 4 decimal places
-      return <div><span>{key}: </span><span>{getEvalResultStr(val, true)}</span></div>;
+      return (
+        <div key={`${key}-${j}`}>
+          <span>{key}: </span>
+          <span>{getEvalResultStr(val, true)}</span>
+        </div>
+      );
     });
-    return <Stack spacing={0}>{strs}</Stack>
+    return <Stack spacing={0}>{strs}</Stack>;
   } else {
     const eval_str = eval_item.toString().trim().toLowerCase();
     const color = SUCCESS_EVAL_SCORES.has(eval_str)
@@ -623,9 +628,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
       }
 
       // If the user wants to plot eval results in separate column, OR there's only a single LLM to show
-      if (
-        tableColVar === "$EVAL_RES"
-      ) {
+      if (tableColVar === "$EVAL_RES") {
         // Plot evaluation results on separate column(s):
         eval_res_cols = getEvalResCols(responses);
         // if (tableColVar === "$EVAL_RES") {
@@ -723,9 +726,7 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
             <tr key={`r${idx}`}>
               {var_cols_vals.map((c, i) => (
                 <td key={`v${i}`} className="inspect-table-var">
-                  <ScrollArea.Autosize mah={600}>
-                  {c}
-                  </ScrollArea.Autosize>
+                  <ScrollArea.Autosize mah={600}>{c}</ScrollArea.Autosize>
                 </td>
               ))}
               {metavar_cols_vals.map((c, i) => (
