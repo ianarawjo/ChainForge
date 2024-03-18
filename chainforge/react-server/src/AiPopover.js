@@ -11,7 +11,7 @@ import {
   Textarea,
   Alert,
 } from "@mantine/core";
-import { autofill, generateAndReplace, AIError } from "./backend/ai";
+import { autofill, generateAndReplace, AIError, getLLM } from "./backend/ai";
 import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
 import AlertModal from "./AlertModal";
 import useStore from "./store";
@@ -127,20 +127,21 @@ export function AIPopover({
 
   // To check for OpenAI API key
   const noOpenAIKeyMessage = useMemo(() => {
-    if (apiKeys && apiKeys.OpenAI) return undefined;
+    if (apiKeys && (apiKeys.OpenAI || apiKeys.AWS_Access_Key_ID))
+      return undefined;
     else
       return (
         <Alert
           variant="light"
           color="grape"
-          title="No OpenAI API key detected."
+          title="No OpenAI API key or AWS Credentials detected."
           mt="xs"
           maw={200}
           fz="xs"
           icon={<IconAlertCircle />}
         >
-          You must set an OpenAI API key before you can use generative AI
-          support features.
+          You must set an OpenAI API key or AWS credentials before you can use
+          generative AI support features.
         </Alert>
       );
   }, [apiKeys]);
@@ -165,7 +166,8 @@ export function AIPopover({
             variant="light"
             leftSection={<IconSparkles size={10} stroke={3} />}
           >
-            Generative AI
+            Generative AI (
+            {getLLM(apiKeys).includes("gpt") ? "GPT3.5" : "Claude 3"})
           </Badge>
           {noOpenAIKeyMessage || children}
         </Stack>
@@ -464,7 +466,7 @@ export function AIGenCodeEvaluatorPopover({
 
     queryLLM(
       replacePrompt,
-      "gpt-4",
+      getLLM(apiKeys),
       1,
       escapeBraces(template),
       {},
@@ -538,7 +540,7 @@ ${currentEvalCode}
 
     queryLLM(
       editPrompt,
-      "gpt-4",
+      getLLM(apiKeys),
       1,
       escapeBraces(template),
       {},

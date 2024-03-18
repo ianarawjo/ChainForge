@@ -21,7 +21,14 @@ export class AIError extends Error {
 export type Row = string;
 
 // LLM to use for AI features.
-const LLM = "gpt-3.5-turbo";
+export const getLLM = function (apiKeys: Dict): string {
+  if (apiKeys && apiKeys.OpenAI) {
+    return "gpt-3.5";
+  } else if (apiKeys && apiKeys.AWS_Access_Key_ID) {
+    return "anthropic.claude-3-haiku-20240307-v1:0";
+  }
+  return "gpt-3.5";
+};
 
 /**
  * Flattens markdown AST to text
@@ -162,7 +169,7 @@ export async function autofill(
 
   const result = await queryLLM(
     /* id= */ id,
-    /* llm= */ LLM,
+    /* llm= */ getLLM(apiKeys),
     /* n= */ 1,
     /* prompt= */ encoded,
     /* vars= */ {},
@@ -221,7 +228,7 @@ export async function generateAndReplace(
 
   const result = await queryLLM(
     /* id= */ id,
-    /* llm= */ LLM,
+    /* llm= */ getLLM(apiKeys),
     /* n= */ 1,
     /* prompt= */ input,
     /* vars= */ {},
