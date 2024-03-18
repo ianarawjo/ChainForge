@@ -620,7 +620,9 @@ Your response should contain a short title for the criteria ("shortname"), a des
                 <Button
                   onClick={() => {
                     // Start generating implementations + transition to next screen
-                    setScreen("wait");
+                    // setScreen("wait");
+                    // For study just go right to grading
+                    setScreen("grade");
                     beginGenCriteriaImplementations();
 
                     // generateLLMEvaluationCriteria(
