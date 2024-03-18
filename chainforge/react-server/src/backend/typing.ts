@@ -131,3 +131,8 @@ export interface StandardizedLLMResponse {
   eval_res?: Dict;
   chat_history?: ChatHistory;
 }
+
+export interface QueryProgress {
+  success: number;
+  error: number;
+}

@@ -270,6 +270,7 @@ export const PickCriteriaModal = forwardRef(
 
     // An object responsible for generating, implementing, and filtering candidate implementations
     const [executor, setExecutor] = useState(null);
+    const [execProgress, setExecProgress] = useState(0);
 
     // The samples to pass the executor / grading responses features. This will be bounded
     // by maxNumSamplesForExecutor, instead of the whole dataset.
@@ -305,8 +306,8 @@ Your response should contain a short title for the criteria ("shortname"), a des
       )
         .then((evalCrits) => {
           // Take only the first
-          setCriteria(
-            criteria.concat([
+          setCriteria((crit) => 
+            crit.concat([
               {
                 ...evalCrits[0],
                 uid: uuid(),
@@ -322,16 +323,22 @@ Your response should contain a short title for the criteria ("shortname"), a des
         });
     };
     const setCriteriaTitle = (title, idx) => {
-      criteria[idx].shortname = title;
-      setCriteria([...criteria]);
+      setCriteria((crit) => {
+        crit[idx].shortname = title;
+        return crit;
+      });
     };
     const setCriteriaDesc = (desc, idx) => {
-      criteria[idx].criteria = desc;
-      setCriteria([...criteria]);
+      setCriteria((crit) => {
+        crit[idx].criteria = desc;
+        return crit;
+      });
     };
     const setCriteriaMethod = (m, idx) => {
-      criteria[idx].eval_method = m;
-      setCriteria([...criteria]);
+      setCriteria((crit) => {
+        crit[idx].eval_method = m;
+        return crit;
+      });
     };
 
     // An estimate of many requests the implementation executor will require (upper bound).
@@ -412,7 +419,10 @@ Your response should contain a short title for the criteria ("shortname"), a des
       }
 
       // Start the executor in the background
-      executor.start();
+      setExecProgress(0);
+      executor.start((progress) => {
+        setExecProgress(progress?.success ?? 0);
+      });
     }, [executor]);
 
     // This gives the parent access to triggering the modal alert
@@ -450,9 +460,10 @@ Your response should contain a short title for the criteria ("shortname"), a des
           onClickDone={handleInitialGradingDone}
           askForAnnotations={screen === "grade_first"}
           onFinish={onFinish}
+          execProgress={execProgress}
         />
       ),
-      [samples, executor, screen, onFinish],
+      [samples, executor, screen, onFinish, execProgress],
     );
 
     return (
@@ -701,7 +712,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
 
 // Pop-up where user grades responses.
 export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
-  { resps, executor, onClickDone, askForAnnotations, onFinish },
+  { resps, executor, onClickDone, askForAnnotations, onFinish, execProgress },
   ref,
 ) {
   // Confetti effects
@@ -745,14 +756,14 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
       bar.buttonDisabled = bar.progressPerc < 100;
       bar.buttonStyle = "filled";
     } else {
-      bar.progressPerc = Math.min((numGraded / minNumGrade) * 100, 100);
-      bar.progressLabel = `${numGraded} / ${minNumGrade} graded`;
-      bar.buttonLabel = "I'm tired 😴";
+      bar.progressPerc = Math.min(execProgress, 100);
+      bar.progressLabel = "Generating and selecting implementations..."
+      bar.buttonLabel = bar.progressPerc < 99.5 ? "I'm tired 😴" : "Done";
       bar.buttonDisabled = false;
-      bar.buttonStyle = "outline";
+      bar.buttonStyle = bar.progressPerc < 99.5 ? "outline" : "filled";
     }
     return bar;
-  }, [showProgressType, numGraded, minNumGrade]);
+  }, [showProgressType, numGraded, minNumGrade, execProgress]);
 
   const responseText = useMemo(() =>
     shownResponse && shownResponse.responses?.length > 0

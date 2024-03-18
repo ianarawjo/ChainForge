@@ -10,7 +10,7 @@ import {
   EvalFunctionReport,
   EvalFunctionSetReport,
 } from "./typing";
-import { StandardizedLLMResponse, ResponseUID } from "../typing";
+import { StandardizedLLMResponse, ResponseUID, QueryProgress } from "../typing";
 import { EventEmitter } from "events";
 
 /**
@@ -111,7 +111,7 @@ export default class EvaluationFunctionExecutor {
    * This method initiates the tasks but does not wait for them to complete.
    * This method should be called after the constructor.
    */
-  public start(): void {
+  public start(onProgress?: (progress: QueryProgress) => void): void {
     // Throw error if there is no eval criteria
     if (this.evalCriteria.length === 0) {
       throw new Error(
@@ -127,7 +127,7 @@ export default class EvaluationFunctionExecutor {
     }
 
     // Initiate the background task without awaiting its completion
-    this.backgroundTaskPromise = this.generateAndExecuteEvaluationFunctions();
+    this.backgroundTaskPromise = this.generateAndExecuteEvaluationFunctions(onProgress);
   }
 
   /**
@@ -151,8 +151,9 @@ export default class EvaluationFunctionExecutor {
    * Generates and executes evaluation functions for a set of examples based on provided criteria.
    * This method is responsible for initializing the evaluation process and managing the asynchronous execution of functions.
    */
-  public async generateAndExecuteEvaluationFunctions(): Promise<void> {
+  public async generateAndExecuteEvaluationFunctions(onProgress?: (progress: QueryProgress) => void): Promise<void> {
     const emitter = new EventEmitter();
+    const numCriteriaToProcess = this.evalCriteria.length;
     let criteriaProcessed = 0; // Track the number of criteria processed
     let resolveAllFunctionsGenerated; // To be called when all functions are generated and executed
     const functionExecutionPromises: Promise<any>[] = []; // Track execution promises for function executions
@@ -219,6 +220,7 @@ export default class EvaluationFunctionExecutor {
     // Listen for a custom 'criteriaProcessed' event to track when each criterion's functions have been generated
     emitter.on("criteriaProcessed", () => {
       criteriaProcessed++;
+      if (onProgress) onProgress({ success: 100 * criteriaProcessed / numCriteriaToProcess, error: 0 });
       if (criteriaProcessed === this.evalCriteria.length) {
         // Ensure all function executions have completed before emitting 'allFunctionsGenerated'
         Promise.all(functionExecutionPromises).then(() => {
