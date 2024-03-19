@@ -1132,8 +1132,14 @@ export async function executepy(
 
     // Create a wrapper to execute the Python code, passing in the ResponseInfo object and outputting the result:
     const code_header = `from collections import namedtuple\nResponseInfo = namedtuple('ResponseInfo', 'text prompt var meta llm')`;
+
     const eval_func = async (resp: ResponseInfo) => {
-      const resp_info_init_code = `__resp_info = ResponseInfo(text=${JSON.stringify(resp.text)}, prompt=${JSON.stringify(resp.prompt)}, var=${JSON.stringify(resp.var)}, meta=${JSON.stringify(resp.meta)}, llm=${JSON.stringify(resp.llm)})`;
+      let metaString = JSON.stringify(resp.meta);
+      metaString = metaString
+        .replace(/:\s*true/g, ":True")
+        .replace(/:\s*false/g, ":False");
+
+      const resp_info_init_code = `__resp_info = ResponseInfo(text=${JSON.stringify(resp.text)}, prompt=${JSON.stringify(resp.prompt)}, var=${JSON.stringify(resp.var)}, meta=${metaString}, llm=${JSON.stringify(resp.llm)})`;
       try {
         // We have to pass in resp_info manually, since providing context via "from js import..." results in a race condition
         const { results, error } = await execPy(

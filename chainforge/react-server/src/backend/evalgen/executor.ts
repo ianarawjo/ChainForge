@@ -368,6 +368,13 @@ export default class EvaluationFunctionExecutor {
     for (const example of examples) {
       this.scores.set(example.uid, 0);
     }
+
+    // Set grades if examples contain them
+    for (const example of examples) {
+      if (example.metavars.grade !== undefined) {
+        this.grades.set(example.uid, example.metavars.grade);
+      }
+    }
   }
 
   /**
@@ -498,12 +505,12 @@ export default class EvaluationFunctionExecutor {
     const evalFunctionReport: Map<EvalCriteria, EvalFunctionReport[]> =
       new Map();
     const coveredFailures = new Set<ResponseUID>();
+    const falseFailures = new Set<ResponseUID>();
 
     // Iterate through each criteria
     // For each criteria, select the function with the highest accuracy rate
     for (const criteria of this.evalCriteria) {
-      let bestFunction: EvalFunction | null = null;
-      let bestCoverage = 0;
+      let scoredFunctions = [];
 
       for (const evalFunction of this.evalFunctions) {
         // Skip functions that don't match the criteria
@@ -547,11 +554,6 @@ export default class EvaluationFunctionExecutor {
               }
             }
           }
-
-          // If the example failed and is covered, add it to the set of covered failures
-          if (result === EvalFunctionResult.FAIL && result === grade) {
-            coveredFailures.add(example.uid);
-          }
         }
 
         // The accuracy how many it got correct out of the total
@@ -567,28 +569,49 @@ export default class EvaluationFunctionExecutor {
         }
         evalFunctionReport.get(criteria)?.push(report);
 
-        // TODO: Revisit this choice
-        // IF false failure rate is above the threshold, skip this function
-        // const falseFailureRate =
-        //   report.false_fail / (report.false_fail + report.true_pass);
-        // if (falseFailureRate > falseFailureRateThreshold) {
-        //   continue;
-        // }
-
         // Calculate coverage
         // NOTE: If there are no resps graded as failing, then technically coverage is 100%; this will pick the first function generated.
         const failureCoverage =
           numFailGrades > 0 ? report.true_fail / numFailGrades : 0.0;
 
-        if (failureCoverage >= bestCoverage) {
-          bestFunction = evalFunction;
-          bestCoverage = failureCoverage;
-        }
+        scoredFunctions.push({
+          evalFunction: evalFunction,
+          failureCoverage: failureCoverage,
+          falseFailureRate: report.false_fail / numFailGrades,
+        });
       }
 
       // Save the best function for this criteria
-      if (bestFunction) {
-        bestEvalFunctions.push(bestFunction);
+      // Maximize failure coverage and minimize false failure rate
+      scoredFunctions.sort((a, b) => {
+        if (a.failureCoverage === b.failureCoverage) {
+          return a.falseFailureRate - b.falseFailureRate;
+        }
+        return b.failureCoverage - a.failureCoverage;
+      });
+
+      if (scoredFunctions.length > 0) {
+        bestEvalFunctions.push(scoredFunctions[0].evalFunction);
+      }
+    }
+
+    // Of the selected functions, calculate the coverage of failures and false failure rate
+    for (const example of gradedExamples) {
+      for (const evalFunction of bestEvalFunctions) {
+        const result = gradedResultMap.get(example.uid)?.get(evalFunction);
+        if (
+          result === EvalFunctionResult.FAIL &&
+          !this.grades.get(example.uid)
+        ) {
+          coveredFailures.add(example.uid);
+        }
+
+        if (
+          result === EvalFunctionResult.FAIL &&
+          this.grades.get(example.uid)
+        ) {
+          falseFailures.add(example.uid);
+        }
       }
     }
 
@@ -597,7 +620,9 @@ export default class EvaluationFunctionExecutor {
       (example) => !this.grades.get(example.uid),
     ).length;
     const coverage = coveredFailures.size / numFailures;
+    const falseFailureRate = falseFailures.size / numFailures;
     console.log(`Failure coverage: ${coverage}`);
+    console.log(`False failure rate: ${falseFailureRate}`);
 
     // Print out missed failures
     const missedFailures = gradedExamples.filter(
@@ -611,6 +636,7 @@ export default class EvaluationFunctionExecutor {
     // Create report of coverage, missed failures, selected functions, and all eval function reports
     const report = {
       failureCoverage: coverage,
+      falseFailureRate: falseFailureRate,
       missedFailures,
       selectedEvalFunctions: bestEvalFunctions,
       allEvalFunctionReports: evalFunctionReport,

@@ -59,9 +59,60 @@ export async function generateLLMEvaluationCriteria(
 
   // Query the LLM (below, we will try this up to 3 times)
   async function _query() {
+    const spec = [
+      {
+        key: "c9fb3b4a-ed01-40ce-a3ae-da30668a8a80",
+        name: "Azure OpenAI",
+        emoji: "🔷",
+        model: "azure-openai",
+        base_model: "azure-openai",
+        temp: 1,
+        deployment_name: "gpt-4",
+        model_type: "chat-completion",
+        api_version: "2023-05-15",
+        system_msg: AssertionWriterSystemMsg,
+        settings: {
+          deployment_name: "gpt-4",
+          model_type: "chat-completion",
+          api_version: "2023-05-15",
+          system_msg: AssertionWriterSystemMsg,
+          temperature: 1,
+          response_format: {
+            type: "text",
+          },
+          functions: [],
+          function_call: "",
+          top_p: 1,
+          stop: [],
+          presence_penalty: 0,
+          frequency_penalty: 0,
+        },
+        formData: {
+          shortname: "Azure OpenAI",
+          deployment_name: "gpt-4",
+          model_type: "chat-completion",
+          api_version: "2023-05-15",
+          system_msg: AssertionWriterSystemMsg,
+          temperature: 1,
+          response_format: "text",
+          functions: "",
+          function_call: "",
+          top_p: 1,
+          stop: "",
+          presence_penalty: 0,
+          frequency_penalty: 0,
+        },
+        progress: {
+          success: 0,
+          error: 0,
+        },
+      },
+    ];
+
     const result = await simpleQueryLLM(
       detailedPrompt, // prompt
-      "gpt-4", // llm
+      // "gpt-4", // llm
+      spec, // llm
       systemMsg !== undefined
         ? systemMsg === null
           ? undefined
@@ -114,10 +165,66 @@ export async function executeLLMEval(
     example.responses[0] +
     "\n```";
 
+  // Sleep a random number of seconds between 1 and 30
+  // const sleep = (ms: number) =>
+  //   new Promise((resolve) => setTimeout(resolve, ms));
+  // await sleep(Math.floor(Math.random() * 30) * 1000);
+
+  const spec = [
+    {
+      key: "c9fb3b4a-ed01-40ce-a3ae-da30668a8a80",
+      name: "Azure OpenAI",
+      emoji: "🔷",
+      model: "azure-openai",
+      base_model: "azure-openai",
+      temp: 1,
+      deployment_name: "gpt-35-turbo-16k",
+      model_type: "chat-completion",
+      api_version: "2023-05-15",
+      system_msg: "You are an expert evaluator.",
+      settings: {
+        deployment_name: "gpt-35-turbo-16k",
+        model_type: "chat-completion",
+        api_version: "2023-05-15",
+        system_msg: "You are an expert evaluator.",
+        temperature: 1,
+        response_format: {
+          type: "text",
+        },
+        functions: [],
+        function_call: "",
+        top_p: 1,
+        stop: [],
+        presence_penalty: 0,
+        frequency_penalty: 0,
+      },
+      formData: {
+        shortname: "Azure OpenAI",
+        deployment_name: "gpt-35-turbo-16k",
+        model_type: "chat-completion",
+        api_version: "2023-05-15",
+        system_msg: "You are an expert evaluator.",
+        temperature: 1,
+        response_format: "text",
+        functions: "",
+        function_call: "",
+        top_p: 1,
+        stop: "",
+        presence_penalty: 0,
+        frequency_penalty: 0,
+      },
+      progress: {
+        success: 0,
+        error: 0,
+      },
+    },
+  ];
+
   // Query an LLM as an evaluator
   const result = await simpleQueryLLM(
     evalPrompt, // prompt
-    "gpt-3.5-turbo", // llm
+    // "gpt-3.5-turbo", // llm
+    spec,
     "You are an expert evaluator.", // system_msg
   );
 
@@ -194,10 +301,13 @@ export async function execPyFunc(
 ): Promise<EvalFunctionResult> {
   try {
     // We need to replace the function name with "evaluate", which is what is expected by backend:
-    const code = evalFunction.code.replace(
+    let code = evalFunction.code.replace(
       `def ${evalFunction.name}`,
       "def evaluate",
     );
+
+    // Add `import re` to the code if it's not already there
+    if (!code.includes("import re")) code = "import re\n" + code;
 
     console.log(`Executing function: ${code}`);
 
@@ -214,6 +324,8 @@ export async function execPyFunc(
 
     // Check for errors
     if (result.error !== undefined) throw new Error(result.error);
+
+    console.log("Result:", result);
 
     // Extract the evaluation result
     const eval_res = result.responses
@@ -256,7 +368,7 @@ export async function generateFunctionsForCriteria(
 
     const modelType =
       criteria.eval_method === "expert" ? "llm_eval" : "python_fn";
-    await streamer.generate(functionGenPrompt, "gpt-35-turbo", modelType);
+    await streamer.generate(functionGenPrompt, "gpt-4", modelType);
   } catch (error) {
     console.error("Error generating function for criteria:", error);
     throw new Error(

@@ -41,6 +41,7 @@ export interface EvalFunctionReport {
 
 export interface EvalFunctionSetReport {
   failureCoverage: number;
+  falseFailureRate: number;
   missedFailures: StandardizedLLMResponse[];
   selectedEvalFunctions: EvalFunction[];
   allEvalFunctionReports: Map<EvalCriteria, EvalFunctionReport[]>; // Map from criteria to function reports

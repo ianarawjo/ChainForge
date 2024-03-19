@@ -582,7 +582,6 @@ Your response should contain a short title for the criteria ("shortname"), a des
         );
         return;
       }
-
       ex.setExamples(samples);
       ex.setEvalCriteria(criteria);
     }, [samples, criteria]);
@@ -607,8 +606,6 @@ Your response should contain a short title for the criteria ("shortname"), a des
 
     // This gives the parent access to triggering the modal alert
     const trigger = (inputs, _onFinish) => {
-      console.log("Triggering EvalGen modal with inputs:", inputs);
-
       setResponses(inputs);
       setScreen("welcome");
       setAddCriteriaValue("");
