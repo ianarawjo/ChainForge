@@ -55,7 +55,7 @@ export async function generateLLMEvaluationCriteria(
   
   \`${prompt}\`
     
-    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should be short, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case.`;
+    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should be short, and the "shortname" should be a very brief title for the criteria. Each evaluation criteria should test a concept that should evaluate to "true" in the ideal case.`;
 
   // Query the LLM (below, we will try this up to 3 times)
   async function _query() {
@@ -336,7 +336,7 @@ export async function execPyFunc(
     // NOTE: EvalGen only supports assertion functions at this time.
     if (typeof eval_res !== "boolean")
       throw new Error(
-        "Non-boolean return value encountered when executing JS eval code. Value: " +
+        "Non-boolean return value encountered when executing Python eval code. Value: " +
           eval_res,
       );
 
@@ -358,6 +358,7 @@ export async function generateFunctionsForCriteria(
     promptTemplate,
     example,
   );
+  console.log("Function generation prompt:", functionGenPrompt);
 
   try {
     const streamer = new AzureOpenAIStreamer();
@@ -385,13 +386,13 @@ function buildFunctionGenPrompt(
   if (criteria.eval_method === "expert")
     return `Given a prompt template for an LLM pipeline, your task is to devise a prompt for an expert to evaluate the pipeline's responses based on the following criteria: ${criteria.criteria}
   
-  Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate the LLM response based on the criteria. Be creative in your prompts. Try different variations/wordings in the question. Return your answers in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
+  You will devise multiple prompts to see which has the best accuracy. Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate entire criteria (don't miss anything in the criteria). Try different variations/wordings in the prompts. Return your prompts in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
   `;
   else
-    return `Given a prompt template for an LLM pipeline, your task is to devise multiple Python functions to evaluate LLM responses based on the criteria "${criteria.shortname}". Create as many implementations as possible.
+    return `Given a prompt template for an LLM pipeline, your task is to devise multiple Python assertions to evaluate LLM responses based on the criteria "${criteria.shortname}". Create as many implementations as possible.
 ${buildGenEvalCodePrompt("python", buildContextPromptForVarsMetavars(getVarsAndMetavars([example])), criteria.criteria, true)}
 
-Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function, including imports at the top of your solution.`;
+Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function. Each function should return only True or False.`;
 
   // Prompt Template:
   // "${promptTemplate}"

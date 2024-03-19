@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import json
 
-DATASET_NAME = "medical"
+DATASET_NAME = "product"
 
 
 def print_json_keys(obj, indent=0):

@@ -456,7 +456,7 @@ export const PickCriteriaModal = forwardRef(
       // The max number of samples (responses) to pass the executor. This controls how many requests will
       // need to be sent off and how many evaluation function executions are performed.
       // TODO: Give the user some control over this.
-      const maxNumSamplesForExecutor = 16;
+      const maxNumSamplesForExecutor = 25;
 
       // Sample from the full set of responses, if needed:
       if (responses.length > maxNumSamplesForExecutor)
@@ -1065,7 +1065,7 @@ export const GradeResponsesScreen = forwardRef(function GradeResponsesScreen(
       await executor?.waitForCompletion();
 
       // Filtering eval funcs by grades and present results
-      const filteredFunctions = await executor?.filterEvaluationFunctions(0.2);
+      const filteredFunctions = await executor?.filterEvaluationFunctions(0.25);
       console.log("Filtered Functions: ", filteredFunctions);
 
       // Return selected implementations to caller
