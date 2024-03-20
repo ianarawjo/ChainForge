@@ -23,6 +23,10 @@ const collapse_ratings = (rating_dict, idxs) => {
   return undefined;
 };
 
+export const extractUIDFromRatingKey = (key) => {
+  return key.substring(2, key.lastIndexOf('.'))
+};
+
 export const getLabelForResponse = (uid, label_name) => {
   return StorageCache.get(getRatingKeyForResponse(uid, label_name));
 };

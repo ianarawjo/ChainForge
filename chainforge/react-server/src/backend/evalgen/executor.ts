@@ -79,11 +79,13 @@ export default class EvaluationFunctionExecutor {
    * @param evalCriteria The criteria used to generate evaluation functions. Provided/confirmed by the developer.
    * @param promptTemplate The prompt demplate for the developer's LLM chain. This is useful for GPT-4 to generate correct evaluation functions.
    * @param examples A set of variable-prompt-response triples that we want the developer to grade (and use for filtering incorrect evaluation functions).
+   * @param existingGrades Optional. A dict in format {uid: grade}, containing existing grades.
    */
   constructor(
     promptTemplate: string,
     examples: StandardizedLLMResponse[],
     evalCriteria: EvalCriteria[] = [],
+    existingGrades?: Record<ResponseUID, boolean>,
   ) {
     this.resultsCache = new Map<
       EvalFunction,
@@ -104,6 +106,13 @@ export default class EvaluationFunctionExecutor {
 
     this.grades = new Map<ResponseUID, boolean>();
     this.evalFunctions = [];
+
+    // Pass in any existing grades
+    if (existingGrades) {
+      Object.entries(existingGrades).forEach(([uid, grade]) => {
+        this.grades.set(uid, grade);
+      });
+    }
   }
 
   /**
@@ -338,7 +347,6 @@ export default class EvaluationFunctionExecutor {
    */
   public setGradeForExample(exampleId: ResponseUID, grade: boolean): void {
     this.grades.set(exampleId, grade);
-    console.log(this.grades);
   }
 
   /**

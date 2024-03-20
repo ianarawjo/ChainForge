@@ -52,7 +52,7 @@ import {
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
 import { escapeBraces } from "./backend/template";
 import EvaluationFunctionExecutor from "./backend/evalgen/executor";
-import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
+import { extractUIDFromRatingKey, getRatingKeyForResponse } from "./ResponseRatingToolbar";
 import useStore from "./store";
 import { DEFAULT_LLM_EVAL_MODEL } from "./LLMEvalNode";
 import StorageCache from "./backend/cache";
@@ -248,6 +248,7 @@ export const PickCriteriaModal = forwardRef(
     const [opened, { open, close }] = useDisclosure(false);
     const [responses, setResponses] = useState([]);
     const apiKeys = useStore((state) => state.apiKeys);
+    const globalState = useStore((store) => store.state);
 
     // Callback to caller when criteria implementations return
     const [onFinish, setOnFinish] = useState(null);
@@ -384,11 +385,31 @@ Your response should contain a short title for the criteria ("shortname"), a des
     useEffect(() => {
       let ex = executor;
       if (!ex) {
+        // Instantiate executor. 
+        // Get the grades from the global state, and transform the dict such that it's in {uid: grade} format. 
+        const existingGrades = transformDict(
+          globalState, 
+          (key) => key.startsWith("r.") && key.endsWith(".grade"), 
+          extractUIDFromRatingKey,
+          (_, val) => {
+            // The grades are in { idx: grade } format. Take only the first, 
+            // as we only take the first response in this iteration of EvalGen:
+            if (typeof val !== "object") return undefined;
+            const gs = Object.values(val);
+            if (gs.length === 0) return undefined;
+            return gs[0];
+          },
+        );
+
+        // Create a new EvalGen executor, passing in the samples and existing grades
         ex = new EvaluationFunctionExecutor(
           getLikelyPromptTemplateAsContext(samples),
           samples,
+          undefined,
+          existingGrades,
         );
         setExecutor(ex);
+
       } else if (ex.isRunning()) {
         console.error(
           "Executor already running. Avoiding updating it with new samples or criteria.",
