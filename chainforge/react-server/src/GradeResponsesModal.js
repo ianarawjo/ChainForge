@@ -321,21 +321,9 @@ Your response should contain a short title for the criteria ("shortname"), a des
           setIsLoadingCriteria((num) => num - 1);
         });
     };
-    const setCriteriaTitle = (title, idx) => {
+    const updateCriteria = (newValue, critIdx, propName) => {
       setCriteria((crit) => {
-        crit[idx].shortname = title;
-        return [...crit];
-      });
-    };
-    const setCriteriaDesc = (desc, idx) => {
-      setCriteria((crit) => {
-        crit[idx].criteria = desc;
-        return [...crit];
-      });
-    };
-    const setCriteriaMethod = (m, idx) => {
-      setCriteria((crit) => {
-        crit[idx].eval_method = m;
+        crit[critIdx][propName] = newValue;
         return [...crit];
       });
     };
@@ -607,10 +595,10 @@ Your response should contain a short title for the criteria ("shortname"), a des
                     description={c.criteria}
                     evalMethod={c.eval_method}
                     key={`cc-${c.uid ?? idx.toString() + c.shortname}`}
-                    onTitleChange={(title) => setCriteriaTitle(title, idx)}
-                    onDescriptionChange={(desc) => setCriteriaDesc(desc, idx)}
+                    onTitleChange={(title) => updateCriteria(title, idx, "shortname")}
+                    onDescriptionChange={(desc) => updateCriteria(desc, idx, "criteria")}
                     onEvalMethodChange={(method) =>
-                      setCriteriaMethod(method, idx)
+                      updateCriteria(method, idx, "eval_method")
                     }
                     onRemove={() =>
                       setCriteria(criteria.filter((v, j) => j !== idx))
