@@ -323,19 +323,19 @@ Your response should contain a short title for the criteria ("shortname"), a des
     const setCriteriaTitle = (title, idx) => {
       setCriteria((crit) => {
         crit[idx].shortname = title;
-        return crit;
+        return [...crit];
       });
     };
     const setCriteriaDesc = (desc, idx) => {
       setCriteria((crit) => {
         crit[idx].criteria = desc;
-        return crit;
+        return [...crit];
       });
     };
     const setCriteriaMethod = (m, idx) => {
       setCriteria((crit) => {
         crit[idx].eval_method = m;
-        return crit;
+        return [...crit];
       });
     };
 
