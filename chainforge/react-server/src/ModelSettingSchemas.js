@@ -1722,11 +1722,8 @@ const MistralSettings = {
         type: "string",
         title: "Model Version",
         description:
-          "Select a version of Command Cohere to query. For more details on the differences, see the Cohere API documentation.",
-        enum: [
-          "mistral.mistral-7b-instruct-v0:2",
-          "mistral.mixtral-8x7b-instruct-v0:1",
-        ],
+          "Select a version of Mistral model to query. For more details on the differences, see the Mistral API documentation.",
+        enum: ["mistral.mistral-7b-instruct-v0:2"],
         default: "mistral.mistral-7b-instruct-v0:2",
       },
       temperature: {
@@ -1813,6 +1810,30 @@ const MistralSettings = {
     },
   },
 };
+
+const MixtralSettings = { ...MistralSettings };
+
+MixtralSettings.schema.properties = {
+  ...MixtralSettings.schema.properties,
+  ...{
+    model: {
+      type: "string",
+      title: "Model Version",
+      description:
+        "Select a version of Mistral model to query. For more details on the differences, see the Mixtral API documentation.",
+      enum: ["mistral.mixtral-8x7b-instruct-v0:1"],
+      default: "mistral.mixtral-8x7b-instruct-v0:1",
+    },
+    shortname: {
+      type: "string",
+      title: "Nickname",
+      description: "Unique identifier to appear in ChainForge. Keep it short.",
+      default: "Mixtral",
+    },
+  },
+};
+
+MixtralSettings.uiSchema.model = { "ui:help": "Defaults to Mixtral" };
 
 const MetaLlama2ChatSettings = {
   fullName: "Llama2Chat (Meta) via Amazon Bedrock",
@@ -1921,7 +1942,7 @@ export const ModelSettings = {
   "amazon.titan": BedrockTitanSettings,
   "cohere.command": BedrockCommandTextSettings,
   "mistral.mistral": MistralSettings,
-  "mistral.mixtral": MistralSettings,
+  "mistral.mixtral": MixtralSettings,
   "meta.llama": MetaLlama2ChatSettings,
 };
 

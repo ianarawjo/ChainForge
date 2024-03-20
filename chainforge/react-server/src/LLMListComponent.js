@@ -16,6 +16,7 @@ import { StrictModeDroppable } from "./StrictModeDroppable";
 import ModelSettingsModal from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import useStore, { initLLMProviders } from "./store";
+import { IconCircleChevronRight } from "@tabler/icons-react";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
@@ -355,6 +356,48 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
     [bgColor],
   );
 
+  const parents = [];
+  const menuItems = AvailableLLMs.map((item) => {
+    if (!item.parent || item.parent === null) {
+      return (
+        <Menu.Item
+          key={item.model}
+          onClick={() => handleSelectModel(item.base_model)}
+          icon={item.emoji}
+        >
+          {item.name}
+        </Menu.Item>
+      );
+    } else {
+      if (!parents.includes(item.parent)) {
+        parents.push(item.parent);
+        return (
+          <Menu key={item.parent} position="right" trigger="hover">
+            <Menu.Target>
+              <Menu.Item icon={<IconCircleChevronRight />}>
+                {item.parent}
+              </Menu.Item>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {AvailableLLMs.filter(
+                (subItem) => subItem.parent === item.parent,
+              ).map((subItem) => (
+                <Menu.Item
+                  key={subItem.model}
+                  onClick={() => handleSelectModel(subItem.base_model)}
+                  icon={subItem.emoji}
+                >
+                  {subItem.name}
+                </Menu.Item>
+              ))}
+            </Menu.Dropdown>
+          </Menu>
+        );
+      }
+    }
+    return undefined;
+  });
+
   return (
     <div className="llm-list-container nowheel" style={_bgStyle}>
       <div className="llm-list-backdrop" style={_bgStyle}>
@@ -364,6 +407,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
             transitionProps={{ transition: "pop-top-left" }}
             width={220}
             position="right"
+            trigger="hover"
             withinPortal={true}
           >
             <Menu.Target>
@@ -371,17 +415,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
                 {modelSelectButtonText || "Add +"}
               </button>
             </Menu.Target>
-            <Menu.Dropdown>
-              {AvailableLLMs.map((item) => (
-                <Menu.Item
-                  key={item.model}
-                  onClick={() => handleSelectModel(item.base_model)}
-                  icon={item.emoji}
-                >
-                  {item.name}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
+            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
           </Menu>
         </div>
       </div>

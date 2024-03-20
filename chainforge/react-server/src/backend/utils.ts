@@ -1317,7 +1317,6 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.Ollama) call_api = call_ollama_provider;
   else if (llm_provider === LLMProvider.Custom) call_api = call_custom_provider;
   else if (llm_provider === LLMProvider.Bedrock) call_api = call_bedrock;
-  console.log(call_api);
   if (call_api === undefined)
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,

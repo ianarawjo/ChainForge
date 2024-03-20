@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import {
   TextInput,
-  Textarea,
   Button,
   Group,
   Box,
@@ -22,6 +21,7 @@ import {
   Badge,
   Card,
   Switch,
+  Select,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
@@ -36,6 +36,7 @@ import useStore from "./store";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 import fetch_from_backend from "./fetch_from_backend";
 import { setCustomProviders } from "./ModelSettingSchemas";
+import { AIFeaturesLLMs } from "./backend/ai";
 
 const _LINK_STYLE = { color: "#1E90FF", textDecoration: "none" };
 
@@ -154,6 +155,8 @@ const GlobalSettingsModal = forwardRef(
     const nodes = useStore((state) => state.nodes);
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const alertModal = props?.alertModal;
+    const setAIFeaturesModel = useStore((state) => state.setAIFeaturesModel);
+    const aiFeaturesModel = useStore((state) => state.aiFeaturesModel);
 
     const [aiSupportActive, setAISupportActive] = useState(
       getFlag("aiSupport"),
@@ -465,6 +468,18 @@ const GlobalSettingsModal = forwardRef(
                     checked={aiAutocompleteActive}
                     onChange={handleAIAutocompleteChecked}
                   />
+                  <Select
+                    label="Model to use"
+                    placeholder="Select the model to use"
+                    comboboxProps={{ shadow: "md" }}
+                    defaultValue={
+                      AIFeaturesLLMs.filter(
+                        (v) => v.value === aiFeaturesModel,
+                      )[0]
+                    }
+                    data={AIFeaturesLLMs}
+                    onChange={setAIFeaturesModel}
+                  ></Select>
                 </Group>
               ) : (
                 <></>
