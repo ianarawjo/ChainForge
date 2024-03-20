@@ -1180,7 +1180,6 @@ export async function call_bedrock(
     region: AWS_REGION,
   };
 
-  console.warn("Params", params, bedrockConfig);
   delete params?.stop;
   const fm = fromModelId(modelName as Models, {
     region: bedrockConfig.region ?? "us-west-2",
@@ -1190,8 +1189,6 @@ export async function call_bedrock(
     topP: params?.top_p ?? 1.0,
     maxTokenCount: params?.max_tokens_to_sample ?? 512,
   });
-
-  console.log(`Querying Bedrock model '${model}' with prompt '${prompt}'...`);
 
   // Determine the system message and whether there's chat history to continue:
   // const chat_history: ChatHistory | undefined = params?.chat_history;
@@ -1221,7 +1218,6 @@ export async function call_bedrock(
     } else {
       response = await fm.generate(prompt, { ...params });
     }
-    console.log("Response", response);
   } catch (error: any) {
     console.error("Error", error);
     if (error?.response) {

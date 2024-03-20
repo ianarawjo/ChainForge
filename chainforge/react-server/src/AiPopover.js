@@ -131,8 +131,8 @@ export function AIPopover({
   const apiKeys = useStore((state) => state.apiKeys);
   const aiFeaturesModel = useStore((state) => state.aiFeaturesModel);
 
-  // To check for OpenAI API key
-  const noOpenAIKeyMessage = useMemo(() => {
+  // To check for model selection and credentials/api keys
+  const invalidAIFeaturesSetup = useMemo(() => {
     if (!aiFeaturesModel) {
       return (
         <Alert
@@ -167,7 +167,7 @@ export function AIPopover({
       aiFeaturesModel.includes("claude") &&
       !(
         apiKeys.AWS_Access_Key_ID &&
-        apiKeys.AWS_Secrect_Access_Key &&
+        apiKeys.AWS_Secret_Access_Key &&
         apiKeys.AWS_Session_Token
       )
     ) {
@@ -181,8 +181,8 @@ export function AIPopover({
           fz="xs"
           icon={<IconAlertCircle />}
         >
-          You must set temporary AWS Credentials key before you can use
-          generative AI support features.
+          You must set temporary AWS Credentials before you can use generative
+          AI support features.
         </Alert>
       );
     }
@@ -219,7 +219,7 @@ export function AIPopover({
             }
             )
           </Badge>
-          {noOpenAIKeyMessage || children}
+          {invalidAIFeaturesSetup || children}
         </Stack>
       </Popover.Dropdown>
     </Popover>
