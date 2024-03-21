@@ -465,7 +465,11 @@ def fetchEnvironAPIKeys():
         'HUGGINGFACE_API_KEY': 'HuggingFace',
         'AZURE_OPENAI_KEY': 'Azure_OpenAI', 
         'AZURE_OPENAI_ENDPOINT': 'Azure_OpenAI_Endpoint',
-        'ALEPH_ALPHA_API_KEY': 'AlephAlpha'
+        'ALEPH_ALPHA_API_KEY': 'AlephAlpha',
+        'AWS_ACCESS_KEY_ID': 'AWS_Access_Key_ID',
+        'AWS_SECRET_ACCESS_KEY': 'AWS_Secret_Access_Key',
+        'AWS_REGION': 'AWS_Region', 
+        'AWS_SESSION_TOKEN': 'AWS_Session_Token'
     }
     d = { alias: os.environ.get(key) for key, alias in keymap.items() }
     ret = jsonify(d)

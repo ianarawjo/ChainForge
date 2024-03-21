@@ -22,7 +22,6 @@ import {
   IconArrowMerge,
   IconArrowsSplit,
   IconForms,
-  IconAbacus,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node

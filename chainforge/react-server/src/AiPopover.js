@@ -11,7 +11,12 @@ import {
   Textarea,
   Alert,
 } from "@mantine/core";
-import { autofill, generateAndReplace, AIError } from "./backend/ai";
+import {
+  autofill,
+  generateAndReplace,
+  AIError,
+  AIFeaturesLLMs,
+} from "./backend/ai";
 import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
 import AlertModal from "./AlertModal";
 import useStore from "./store";
@@ -124,16 +129,30 @@ export function AIPopover({
 }) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
+  const aiFeaturesModel = useStore((state) => state.aiFeaturesModel);
 
-  // To check for OpenAI API key
-  const noOpenAIKeyMessage = useMemo(() => {
-    if (apiKeys && apiKeys.OpenAI) return undefined;
-    else
+  // To check for model selection and credentials/api keys
+  const invalidAIFeaturesSetup = useMemo(() => {
+    if (!aiFeaturesModel) {
       return (
         <Alert
           variant="light"
           color="grape"
-          title="No OpenAI API key detected."
+          title="No model selected"
+          mt="xs"
+          maw={200}
+          fz="xs"
+          icon={<IconAlertCircle />}
+        >
+          You need to select a model in the settings to use this feature
+        </Alert>
+      );
+    } else if (apiKeys && aiFeaturesModel.includes("gpt") && !apiKeys.OpenAI) {
+      return (
+        <Alert
+          variant="light"
+          color="grape"
+          title="No OpenAI API key detected"
           mt="xs"
           maw={200}
           fz="xs"
@@ -143,7 +162,32 @@ export function AIPopover({
           support features.
         </Alert>
       );
-  }, [apiKeys]);
+    } else if (
+      apiKeys &&
+      aiFeaturesModel.includes("claude") &&
+      !(
+        apiKeys.AWS_Access_Key_ID &&
+        apiKeys.AWS_Secret_Access_Key &&
+        apiKeys.AWS_Session_Token
+      )
+    ) {
+      return (
+        <Alert
+          variant="light"
+          color="grape"
+          title="No AWS Credentials detected"
+          mt="xs"
+          maw={200}
+          fz="xs"
+          icon={<IconAlertCircle />}
+        >
+          You must set temporary AWS Credentials before you can use generative
+          AI support features.
+        </Alert>
+      );
+    }
+    return undefined;
+  }, [apiKeys, aiFeaturesModel]);
 
   return (
     <Popover
@@ -165,9 +209,17 @@ export function AIPopover({
             variant="light"
             leftSection={<IconSparkles size={10} stroke={3} />}
           >
-            Generative AI
+            Generative AI (
+            {
+              (
+                AIFeaturesLLMs.filter((v) => v.value === aiFeaturesModel).at(
+                  0,
+                ) ?? { label: "None" }
+              ).label
+            }
+            )
           </Badge>
-          {noOpenAIKeyMessage || children}
+          {invalidAIFeaturesSetup || children}
         </Stack>
       </Popover.Dropdown>
     </Popover>
@@ -425,6 +477,7 @@ export function AIGenCodeEvaluatorPopover({
 }) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
+  const aiFeaturesModel = useStore((state) => state.aiFeaturesModel);
 
   // State
   const [replacePrompt, setReplacePrompt] = useState("");
@@ -464,7 +517,7 @@ export function AIGenCodeEvaluatorPopover({
 
     queryLLM(
       replacePrompt,
-      "gpt-4",
+      aiFeaturesModel,
       1,
       escapeBraces(template),
       {},
@@ -538,7 +591,7 @@ ${currentEvalCode}
 
     queryLLM(
       editPrompt,
-      "gpt-4",
+      aiFeaturesModel,
       1,
       escapeBraces(template),
       {},

@@ -21,6 +21,7 @@ import {
   Badge,
   Card,
   Switch,
+  Select,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
@@ -35,6 +36,7 @@ import useStore from "./store";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 import fetch_from_backend from "./fetch_from_backend";
 import { setCustomProviders } from "./ModelSettingSchemas";
+import { AIFeaturesLLMs } from "./backend/ai";
 
 const _LINK_STYLE = { color: "#1E90FF", textDecoration: "none" };
 
@@ -153,6 +155,8 @@ const GlobalSettingsModal = forwardRef(
     const nodes = useStore((state) => state.nodes);
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const alertModal = props?.alertModal;
+    const setAIFeaturesModel = useStore((state) => state.setAIFeaturesModel);
+    const aiFeaturesModel = useStore((state) => state.aiFeaturesModel);
 
     const [aiSupportActive, setAISupportActive] = useState(
       getFlag("aiSupport"),
@@ -257,6 +261,11 @@ const GlobalSettingsModal = forwardRef(
         Azure_OpenAI_Endpoint: "",
         HuggingFace: "",
         AlephAlpha: "",
+        AWS_Access_Key_ID: "",
+        AWS_Secret_Access_Key: "",
+        AWS_Session_Token: "",
+        AWS_Region: "us-east-1",
+        AmazonBedrock: JSON.stringify({ credentials: {}, region: "us-east-1" }),
       },
 
       validate: {
@@ -287,7 +296,7 @@ const GlobalSettingsModal = forwardRef(
         closeOnClickOutside={false}
         style={{ position: "relative", left: "-5%" }}
       >
-        <Box maw={400} mx="auto">
+        <Box maw={600} mx="auto">
           <Tabs defaultValue="api-keys">
             <Tabs.List>
               <Tabs.Tab value="api-keys">API Keys</Tabs.Tab>
@@ -353,6 +362,44 @@ const GlobalSettingsModal = forwardRef(
                   label="Aleph Alpha API Key"
                   placeholder="Paste your Aleph Alpha API key here"
                   {...form.getInputProps("AlephAlpha")}
+                />
+                <br />
+
+                <Divider
+                  my="xs"
+                  label="Amazon Web Services"
+                  labelPosition="center"
+                />
+                <TextInput
+                  description={
+                    "AWS credentials are used to access the AWS API. You must use" +
+                    "temporary credentials and associated to an IAM role with the" +
+                    "right permission."
+                  }
+                  label="AWS Access Key ID"
+                  placeholder="Paste your AWS Access Key ID here"
+                  {...form.getInputProps("AWS_Access_Key_ID")}
+                  style={{ marginBottom: "8pt" }}
+                />
+
+                <TextInput
+                  label="AWS Secret Access Key"
+                  placeholder="Paste your AWS Secret Access Key here"
+                  {...form.getInputProps("AWS_Secret_Access_Key")}
+                  style={{ marginBottom: "8pt" }}
+                />
+
+                <TextInput
+                  label="AWS Session Token"
+                  placeholder="Paste your AWS Session Token here"
+                  {...form.getInputProps("AWS_Session_Token")}
+                  style={{ marginBottom: "8pt" }}
+                />
+
+                <TextInput
+                  label="AWS Region"
+                  placeholder="Paste your AWS Region here"
+                  {...form.getInputProps("AWS_Region")}
                 />
                 <br />
                 <Divider
@@ -421,6 +468,18 @@ const GlobalSettingsModal = forwardRef(
                     checked={aiAutocompleteActive}
                     onChange={handleAIAutocompleteChecked}
                   />
+                  <Select
+                    label="Model to use"
+                    placeholder="Select the model to use"
+                    comboboxProps={{ shadow: "md" }}
+                    defaultValue={
+                      AIFeaturesLLMs.filter(
+                        (v) => v.value === aiFeaturesModel,
+                      )[0]
+                    }
+                    data={AIFeaturesLLMs}
+                    onChange={setAIFeaturesModel}
+                  ></Select>
                 </Group>
               ) : (
                 <></>

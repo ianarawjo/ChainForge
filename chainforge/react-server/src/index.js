@@ -3,11 +3,14 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
+import { ContextMenuProvider } from "mantine-contextmenu";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
-    <App />
+    <ContextMenuProvider>
+      <App />
+    </ContextMenuProvider>
   </React.StrictMode>,
 );
 
