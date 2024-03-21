@@ -7,6 +7,7 @@ import React, {
   useCallback,
 } from "react";
 import { v4 as uuid } from "uuid";
+import Plot from "react-plotly.js";
 import {
   SimpleGrid,
   Card,
@@ -28,6 +29,9 @@ import {
   Center,
   Tooltip,
   Skeleton,
+  RingProgress,
+  Checkbox,
+  Popover,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -52,12 +56,16 @@ import {
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
 import { escapeBraces } from "./backend/template";
 import EvaluationFunctionExecutor from "./backend/evalgen/executor";
-import { extractUIDFromRatingKey, getRatingKeyForResponse } from "./ResponseRatingToolbar";
+import {
+  extractUIDFromRatingKey,
+  getRatingKeyForResponse,
+} from "./ResponseRatingToolbar";
 import useStore from "./store";
 import { DEFAULT_LLM_EVAL_MODEL } from "./LLMEvalNode";
 import StorageCache from "./backend/cache";
 
 const MANTINE_GREEN = "#40c057";
+const SELECT_EVAL_FUNC_THRESHOLD = 0.4;
 
 const HeaderText = ({ children }) => {
   return (
@@ -65,6 +73,60 @@ const HeaderText = ({ children }) => {
       {children}
     </Text>
   );
+};
+
+const evalgenReportToImplementations = (report) => {
+  // Convert to expected format by MultiEval node
+  return report.selectedEvalFunctions.map((evalFuncSpec) => {
+    if (evalFuncSpec.evalCriteria.eval_method === "code")
+      return {
+        name: evalFuncSpec.evalCriteria.shortname,
+        type: "python", // for now, only generates Python
+        state: {
+          code: evalFuncSpec.code,
+        },
+      };
+    else
+      return {
+        name: evalFuncSpec.evalCriteria.shortname,
+        type: "llm",
+        state: {
+          prompt: evalFuncSpec.code,
+          grader: deepcopy(DEFAULT_LLM_EVAL_MODEL),
+          format: "bin", // for now, only boolean assertions
+        },
+      };
+  });
+};
+
+const accuracyToColor = (acc) => {
+  if (acc > 0.9) return "green";
+  else if (acc > 0.7) return "yellow";
+  else if (acc > 0.5) return "orange";
+  else return "red";
+};
+
+const cmatrixTextAnnotations = (x, y, z) => {
+  const annotations = [];
+  const midVal = Math.max(...z.flat());
+  for (let i = 0; i < y.length; i++) {
+    for (let j = 0; j < x.length; j++) {
+      annotations.push({
+        xref: "x1",
+        yref: "y1",
+        x: x[j],
+        y: y[i],
+        text: z[i][j],
+        font: {
+          // family: "monospace",
+          // size: 12,
+          color: z[i][j] < midVal ? "white" : "black",
+        },
+        showarrow: false,
+      });
+    }
+  }
+  return annotations;
 };
 
 /** Example flows to help users get started and see what CF can do */
@@ -76,10 +138,63 @@ const CriteriaCard = function CriteriaCard({
   onDescriptionChange,
   onEvalMethodChange,
   onRemove,
+  reportMode,
+  evalFuncReport,
 }) {
   const [checked, setChecked] = useState(true);
   const [codeChecked, setCodeChecked] = useState(evalMethod === "code");
   const theme = useMantineTheme();
+
+  // Report card specific
+  const [openedCMatrix, { close: closeCMatrix, open: openCMatrix }] =
+    useDisclosure(false);
+  const cMatrixPlot = useMemo(() => {
+    if (!evalFuncReport) return undefined;
+    const x = ["Pred.<br>fail", "Pred.<br>pass"];
+    const y = ["Human<br>pass", "Human<br>fail"];
+    const z = [
+      [evalFuncReport.false_fail, evalFuncReport.true_pass],
+      [evalFuncReport.true_fail, evalFuncReport.false_pass],
+    ];
+    return (
+      <Plot
+        data={[
+          {
+            z,
+            x,
+            y,
+            xgap: 2,
+            ygap: 2,
+            type: "heatmap",
+            hoverongaps: false,
+            colorscale: "YlOrRd",
+            showscale: false,
+            showlegend: false,
+          },
+        ]}
+        layout={{
+          width: 160,
+          height: 160,
+          margin: { t: 10, b: 40, l: 50, r: 0 },
+          annotations: cmatrixTextAnnotations(x, y, z),
+        }}
+      />
+    );
+  }, [evalFuncReport]);
+  const reportAccuracyRing = useMemo(() => {
+    if (!evalFuncReport) return undefined;
+    return {
+      percent: Math.floor(evalFuncReport.accuracy * 100),
+      color: accuracyToColor(evalFuncReport.accuracy),
+    };
+  }, [evalFuncReport]);
+
+  // Update the checkbox whenever the evalFuncReport changes,
+  // ticking it if the accuracy is over the threshold.
+  useEffect(() => {
+    if (!evalFuncReport) return;
+    setChecked(evalFuncReport.accuracy >= SELECT_EVAL_FUNC_THRESHOLD);
+  }, [evalFuncReport]);
 
   return (
     <Card
@@ -91,20 +206,23 @@ const CriteriaCard = function CriteriaCard({
       withBorder
       style={{ backgroundColor: checked ? "#f2f7fc" : "#fff" }}
     >
-      <UnstyledButton
+      <div
         // onClick={() => setChecked(!checked)}
         onKeyUp={(e) => e.preventDefault()}
         className="checkcard"
       >
-        {/* <Checkbox
-          checked={checked}
-          onChange={() => setChecked(!checked)}
-          tabIndex={-1}
-          size="md"
-          mr="lg"
-          styles={{ input: { cursor: "pointer" } }}
-          aria-hidden
-        /> */}
+        <Tooltip label={checked ? "Don't use this" : "Use this"} withArrow>
+          <Checkbox
+            checked={checked}
+            onChange={() => setChecked(!checked)}
+            tabIndex={-1}
+            size="xs"
+            mr="sm"
+            mt="xs"
+            styles={{ input: { cursor: "pointer" } }}
+            aria-hidden
+          />
+        </Tooltip>
 
         <div style={{ width: "100%" }}>
           <TextInput
@@ -150,53 +268,110 @@ const CriteriaCard = function CriteriaCard({
             mb="xs"
             c="dimmed"
           />
+
+          {reportMode && (
+            <Text size="sm" color="gray">
+              {codeChecked ? "Python" : "LLM"}
+            </Text>
+          )}
         </div>
 
-        <Button
-          size="xs"
-          variant="subtle"
-          compact
-          color="gray"
-          onClick={onRemove}
-          pos="absolute"
-          right="8px"
-          top="8px"
-          style={{ padding: "0px" }}
-        >
-          <IconTrash size={"95%"} />
-        </Button>
+        {!reportMode ? (
+          <Button
+            size="xs"
+            variant="subtle"
+            compact
+            color="gray"
+            onClick={onRemove}
+            pos="absolute"
+            right="8px"
+            top="8px"
+            style={{ padding: "0px" }}
+          >
+            <IconTrash size={"95%"} />
+          </Button>
+        ) : (
+          <></>
+        )}
 
-        <Switch
-          size="lg"
-          color="gray"
-          onLabel="Code"
-          offLabel="LLM"
-          pos="absolute"
-          right="8px"
-          bottom="10px"
-          checked={codeChecked}
-          onChange={(e) => {
-            setCodeChecked(e.currentTarget.checked);
-            if (onEvalMethodChange)
-              onEvalMethodChange(e.currentTarget.checked ? "code" : "expert");
-          }}
-          thumbIcon={
-            codeChecked ? (
-              <IconCode
-                size="0.8rem"
-                color={theme.colors.teal[theme.fn.primaryShade()]}
-                stroke={3}
-              />
-            ) : (
-              <IconRobot
-                size="0.8rem"
-                color={theme.colors.blue[theme.fn.primaryShade()]}
-                stroke={3}
-              />
-            )
-          }
-        />
-      </UnstyledButton>
+        {reportMode && reportAccuracyRing ? (
+          <Stack spacing={0}>
+            <Popover
+              position="right"
+              opened={openedCMatrix}
+              offset={{ crossAxis: -20 }}
+              withinPortal
+              shadow="lg"
+              withArrow
+            >
+              <Popover.Target>
+                <RingProgress
+                  size={100}
+                  sections={[
+                    {
+                      value: reportAccuracyRing.percent,
+                      color: reportAccuracyRing.color,
+                    },
+                  ]}
+                  label={
+                    <Text
+                      color={reportAccuracyRing.color}
+                      weight={700}
+                      align="center"
+                      size="lg"
+                    >
+                      {`${reportAccuracyRing.percent}%`}
+                    </Text>
+                  }
+                  onMouseEnter={openCMatrix}
+                  onMouseLeave={closeCMatrix}
+                />
+              </Popover.Target>
+              <Popover.Dropdown>{cMatrixPlot}</Popover.Dropdown>
+            </Popover>
+            <Text align="center" size="xs" color="gray" maw="90%" lh={1.1}>
+              Alignment with your grades
+            </Text>
+          </Stack>
+        ) : (
+          <></>
+        )}
+
+        {!reportMode ? (
+          <Switch
+            size="lg"
+            color="gray"
+            onLabel="Code"
+            offLabel="LLM"
+            pos="absolute"
+            right="8px"
+            bottom="10px"
+            checked={codeChecked}
+            onChange={(e) => {
+              setCodeChecked(e.currentTarget.checked);
+              if (onEvalMethodChange)
+                onEvalMethodChange(e.currentTarget.checked ? "code" : "expert");
+            }}
+            thumbIcon={
+              codeChecked ? (
+                <IconCode
+                  size="0.8rem"
+                  color={theme.colors.teal[theme.fn.primaryShade()]}
+                  stroke={3}
+                />
+              ) : (
+                <IconRobot
+                  size="0.8rem"
+                  color={theme.colors.blue[theme.fn.primaryShade()]}
+                  stroke={3}
+                />
+              )
+            }
+          />
+        ) : (
+          <></>
+        )}
+      </div>
     </Card>
   );
 };
@@ -260,6 +435,7 @@ export const PickCriteriaModal = forwardRef(
       if (screen === "pick") return "Pick Criteria";
       else if (screen === "welcome") return "Welcome";
       else if (screen === "wait") return "Collecting implementations...";
+      else if (screen === "report") return "EvalGen Report";
       else return "Grading Responses";
     }, [screen]);
 
@@ -267,9 +443,12 @@ export const PickCriteriaModal = forwardRef(
     const [addCriteriaValue, setAddCriteriaValue] = useState("");
     const [isLoadingCriteria, setIsLoadingCriteria] = useState(0);
 
-    // An object responsible for generating, implementing, and filtering candidate implementations
+    // The EvalGen object responsible for generating, implementing, and filtering candidate implementations
     const [executor, setExecutor] = useState(null);
     const [execProgress, setExecProgress] = useState(0);
+
+    // Stores report generated when executor is done
+    const [report, setReport] = useState(null);
 
     // The samples to pass the executor / grading responses features. This will be bounded
     // by maxNumSamplesForExecutor, instead of the whole dataset.
@@ -373,14 +552,14 @@ Your response should contain a short title for the criteria ("shortname"), a des
     useEffect(() => {
       let ex = executor;
       if (!ex) {
-        // Instantiate executor. 
-        // Get the grades from the global state, and transform the dict such that it's in {uid: grade} format. 
+        // Instantiate executor.
+        // Get the grades from the global state, and transform the dict such that it's in {uid: grade} format.
         const existingGrades = transformDict(
-          globalState, 
-          (key) => key.startsWith("r.") && key.endsWith(".grade"), 
+          globalState,
+          (key) => key.startsWith("r.") && key.endsWith(".grade"),
           extractUIDFromRatingKey,
           (_, val) => {
-            // The grades are in { idx: grade } format. Take only the first, 
+            // The grades are in { idx: grade } format. Take only the first,
             // as we only take the first response in this iteration of EvalGen:
             if (typeof val !== "object") return undefined;
             const gs = Object.values(val);
@@ -397,7 +576,6 @@ Your response should contain a short title for the criteria ("shortname"), a des
           existingGrades,
         );
         setExecutor(ex);
-
       } else if (ex.isRunning()) {
         console.error(
           "Executor already running. Avoiding updating it with new samples or criteria.",
@@ -433,9 +611,9 @@ Your response should contain a short title for the criteria ("shortname"), a des
       setScreen("welcome");
       setAddCriteriaValue("");
       setExecutor(null);
-      setOnFinish(() => (implementations) => {
+      setOnFinish(() => (report) => {
         close();
-        if (_onFinish) _onFinish(implementations);
+        if (_onFinish) _onFinish(evalgenReportToImplementations(report));
       });
       open();
     };
@@ -454,14 +632,19 @@ Your response should contain a short title for the criteria ("shortname"), a des
         .finally(() => setIsLoadingCriteria(0));
     };
 
-    const gradeResponsesWindow = useMemo(
+    const transitionToReport = (report) => {
+      setReport(report);
+      setScreen("report");
+    };
+
+    const gradeResponsesScreen = useMemo(
       () => (
-        <GradeResponsesWindow
+        <GradeResponsesScreen
           resps={samples}
           executor={executor}
           onClickDone={handleInitialGradingDone}
           askForAnnotations={screen === "grade_first"}
-          onFinish={onFinish}
+          onFinish={transitionToReport}
           execProgress={execProgress}
         />
       ),
@@ -595,8 +778,12 @@ Your response should contain a short title for the criteria ("shortname"), a des
                     description={c.criteria}
                     evalMethod={c.eval_method}
                     key={`cc-${c.uid ?? idx.toString() + c.shortname}`}
-                    onTitleChange={(title) => updateCriteria(title, idx, "shortname")}
-                    onDescriptionChange={(desc) => updateCriteria(desc, idx, "criteria")}
+                    onTitleChange={(title) =>
+                      updateCriteria(title, idx, "shortname")
+                    }
+                    onDescriptionChange={(desc) =>
+                      updateCriteria(desc, idx, "criteria")
+                    }
                     onEvalMethodChange={(method) =>
                       updateCriteria(method, idx, "eval_method")
                     }
@@ -684,7 +871,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
           <></>
         )}
 
-        {screen === "grade" ? gradeResponsesWindow : <></>}
+        {screen === "grade" ? gradeResponsesScreen : <></>}
         {screen === "grade_first" ? (
           <div>
             <Center>
@@ -704,8 +891,17 @@ Your response should contain a short title for the criteria ("shortname"), a des
               </Text>
             </Center>
             <hr />
-            {gradeResponsesWindow}
+            {gradeResponsesScreen}
           </div>
+        ) : (
+          <></>
+        )}
+
+        {screen === "report" ? (
+          <ReportCardScreen
+            report={report}
+            onClickFinish={(report) => onFinish(report)}
+          />
         ) : (
           <></>
         )}
@@ -714,8 +910,8 @@ Your response should contain a short title for the criteria ("shortname"), a des
   },
 );
 
-// Pop-up where user grades responses.
-export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
+// Screen where the user grades responses.
+export const GradeResponsesScreen = forwardRef(function GradeResponsesScreen(
   { resps, executor, onClickDone, askForAnnotations, onFinish, execProgress },
   ref,
 ) {
@@ -874,33 +1070,7 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
       console.log("Filtered Functions: ", filteredFunctions);
 
       // Return selected implementations to caller
-      if (onFinish) {
-        // Convert to expected format
-        const implementations = filteredFunctions.selectedEvalFunctions.map(
-          (evalFuncSpec) => {
-            if (evalFuncSpec.evalCriteria.eval_method === "code")
-              return {
-                name: evalFuncSpec.evalCriteria.shortname,
-                type: "python", // for now, only generates Python
-                state: {
-                  code: evalFuncSpec.code,
-                },
-              };
-            else
-              return {
-                name: evalFuncSpec.evalCriteria.shortname,
-                type: "llm",
-                state: {
-                  prompt: evalFuncSpec.code,
-                  grader: deepcopy(DEFAULT_LLM_EVAL_MODEL),
-                  format: "bin", // for now, only boolean assertions
-                },
-              };
-          },
-        );
-
-        onFinish(implementations);
-      }
+      if (onFinish) onFinish(filteredFunctions);
     }
   }, [executor, showProgressType]);
 
@@ -1132,3 +1302,60 @@ export const GradeResponsesWindow = forwardRef(function GradeResponsesWindow(
     </Stack>
   );
 });
+
+// Screen after EvalGen finishes, to show a report to the user
+// about the chosen functions and the alignment with their ratings.
+const ReportCardScreen = ({ report, onClickFinish }) => {
+  // The criteria cards, now with report information
+  const cards = useMemo(() => {
+    const res = [];
+
+    // Create a lookup table from EvalCriteria uid to chosen EvalFunction
+    const selectedEvalFuncs = {};
+    report.selectedEvalFunctions.forEach(({ uid, evalCriteria }) => {
+      selectedEvalFuncs[evalCriteria.uid] = uid;
+    });
+
+    for (const [
+      crit,
+      evalFunctionReports,
+    ] of report.allEvalFunctionReports.entries()) {
+      const selFuncID = selectedEvalFuncs[crit.uid];
+      res.push(
+        <CriteriaCard
+          title={crit.shortname}
+          description={crit.criteria}
+          evalMethod={crit.eval_method}
+          key={`cc-${crit.uid ?? res.length.toString() + crit.shortname}`}
+          reportMode={true}
+          evalFuncReport={evalFunctionReports.find(
+            (rep) => rep.evalFunction?.uid === selFuncID,
+          )} // undefined if none was chosen
+        />,
+      );
+    }
+    return res;
+  }, [report]);
+
+  return (
+    report && (
+      <div>
+        <Text align="center" size="lg" pl="sm" mb="lg">
+          Chosen Functions and Alignment
+        </Text>
+
+        <ScrollArea mih={300} h={500} mah={500}>
+          <SimpleGrid cols={3} spacing="sm" verticalSpacing="sm" mb="lg">
+            {cards}
+          </SimpleGrid>
+        </ScrollArea>
+
+        <Flex justify="center" gap={12} mt="xs">
+          <Button onClick={() => onClickFinish(report)}>
+            Finish with selected evaluators
+          </Button>
+        </Flex>
+      </div>
+    )
+  );
+};

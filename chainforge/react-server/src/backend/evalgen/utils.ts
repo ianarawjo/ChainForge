@@ -279,7 +279,7 @@ function buildFunctionGenPrompt(
     return `Given a prompt template for an LLM pipeline, your task is to devise multiple Python functions to evaluate LLM responses based on the criteria "${criteria.shortname}". Create as many implementations as possible.
 ${buildGenEvalCodePrompt("python", buildContextPromptForVarsMetavars(getVarsAndMetavars([example])), criteria.criteria, true)}
 
-Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function.`;
+Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function, including imports at the top of your solution.`;
 
   // Prompt Template:
   // "${promptTemplate}"
@@ -313,6 +313,7 @@ function processAndEmitFunction(
     evalCriteria: criteria,
     code: functionDefinition,
     name: functionDefinition,
+    uid: uuid(),
   };
 
   if (criteria.eval_method === "code") {

@@ -24,7 +24,7 @@ const collapse_ratings = (rating_dict, idxs) => {
 };
 
 export const extractUIDFromRatingKey = (key) => {
-  return key.substring(2, key.lastIndexOf('.'))
+  return key.substring(2, key.lastIndexOf("."));
 };
 
 export const getLabelForResponse = (uid, label_name) => {

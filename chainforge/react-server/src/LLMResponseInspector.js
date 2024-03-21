@@ -723,10 +723,12 @@ const LLMResponseInspector = ({ jsonResponses, wideFormat }) => {
           });
 
           return (
-            <tr key={`r${idx}`}>
+            <tr key={`r${idx}`} style={{ borderBottom: "2px solid #fff" }}>
               {var_cols_vals.map((c, i) => (
                 <td key={`v${i}`} className="inspect-table-var">
-                  <ScrollArea.Autosize mah={600}>{c}</ScrollArea.Autosize>
+                  <ScrollArea.Autosize mt="sm" mah={500} maw={300}>
+                    {c}
+                  </ScrollArea.Autosize>
                 </td>
               ))}
               {metavar_cols_vals.map((c, i) => (

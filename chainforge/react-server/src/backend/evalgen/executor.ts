@@ -491,6 +491,9 @@ export default class EvaluationFunctionExecutor {
     const numFailGrades = gradedExamples.filter(
       (example) => !this.grades.get(example.uid),
     ).length;
+    const numPassGrades = gradedExamples.filter((example) =>
+      this.grades.get(example.uid),
+    ).length;
     const bestEvalFunctions: EvalFunction[] = [];
     const evalFunctionReport: Map<EvalCriteria, EvalFunctionReport[]> =
       new Map();
@@ -504,7 +507,7 @@ export default class EvaluationFunctionExecutor {
 
       for (const evalFunction of this.evalFunctions) {
         // Skip functions that don't match the criteria
-        if (evalFunction.evalCriteria.criteria !== criteria.criteria) {
+        if (evalFunction.evalCriteria.uid !== criteria.uid) {
           continue;
         }
 
@@ -515,6 +518,7 @@ export default class EvaluationFunctionExecutor {
           true_fail: 0,
           false_pass: 0,
           false_fail: 0,
+          accuracy: 0,
           skipped: 0,
         };
 
@@ -550,6 +554,13 @@ export default class EvaluationFunctionExecutor {
           }
         }
 
+        // The accuracy how many it got correct out of the total
+        report.accuracy =
+          numFailGrades > 0 || numPassGrades > 0
+            ? (report.true_pass + report.true_fail) /
+              (numPassGrades + numFailGrades)
+            : undefined;
+
         // Save the report for this function
         if (!evalFunctionReport.has(criteria)) {
           evalFunctionReport.set(criteria, []);
@@ -567,7 +578,7 @@ export default class EvaluationFunctionExecutor {
         // Calculate coverage
         // NOTE: If there are no resps graded as failing, then technically coverage is 100%; this will pick the first function generated.
         const failureCoverage =
-          numFailGrades > 0 ? report.true_fail / numFailGrades : 1.0;
+          numFailGrades > 0 ? report.true_fail / numFailGrades : 0.0;
 
         if (failureCoverage >= bestCoverage) {
           bestFunction = evalFunction;

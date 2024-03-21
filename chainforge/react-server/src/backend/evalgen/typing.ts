@@ -4,6 +4,7 @@ export interface EvalCriteria {
   shortname: string;
   criteria: string;
   eval_method: "code" | "expert";
+  uid: string;
   source?: string;
 }
 
@@ -25,6 +26,7 @@ export interface EvalFunction {
   evalCriteria: EvalCriteria;
   code: string;
   name: string;
+  uid: string;
 }
 
 export interface EvalFunctionReport {
@@ -34,6 +36,7 @@ export interface EvalFunctionReport {
   false_pass: number;
   false_fail: number;
   skipped: number;
+  accuracy?: number;
 }
 
 export interface EvalFunctionSetReport {
