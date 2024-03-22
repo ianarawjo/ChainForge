@@ -202,8 +202,8 @@ const CriteriaCard = function CriteriaCard({
     setChecked(newChecked);
 
     // oncheck is a callback to the parent to update the selected eval functions
-    // oncheck is an awaitable function that returns the updated evalFuncReport
-    if (onCheck && evalFuncReport) onCheck();
+    // oncheck is an awaitable function
+    if (onCheck && evalFuncReport) onCheck(newChecked);
   };
 
   return (
@@ -466,7 +466,7 @@ export const PickCriteriaModal = forwardRef(
       // The max number of samples (responses) to pass the executor. This controls how many requests will
       // need to be sent off and how many evaluation function executions are performed.
       // TODO: Give the user some control over this.
-      const maxNumSamplesForExecutor = 25;
+      const maxNumSamplesForExecutor = 16;
 
       // Sample from the full set of responses, if needed:
       if (responses.length > maxNumSamplesForExecutor)
@@ -648,9 +648,9 @@ Your response should contain a short title for the criteria ("shortname"), a des
 
     const recomputeAlignment = async () => {
       // Get selected criteria
-      // TODO: fix this somehow
-      console.log("criteria", criteria);
-      const selectedCriteria = criteria.filter((c) => c.selected);
+      const selectedCriteria = criteria.filter(
+        (c) => c.selected || c.selected === undefined,
+      );
 
       // Pass this into executor to recompute alignment
       const newReport = await executor?.recomputeAlignment(
@@ -1335,8 +1335,6 @@ const ReportCardScreen = ({ report, recomputeAlignment, onClickFinish }) => {
   // The criteria cards, now with report information
   const cards = useMemo(() => {
     const res = [];
-
-    console.log("Report: ", report);
 
     // Iterate through selected eval functions and create cards
     for (const selectedFunc of report.selectedEvalFunctions) {

@@ -674,13 +674,13 @@ export default class EvaluationFunctionExecutor {
     console.log(`False failure rate: ${falseFailureRate}`);
 
     // Print out missed failures
-    const missedFailures = gradedExamples.filter(
-      (example) =>
-        !this.grades.get(example.uid) && !coveredFailures.has(example.uid),
-    );
-    if (missedFailures.length > 0) {
-      console.log(`Missed failures: ${missedFailures}`);
-    }
+    // const missedFailures = gradedExamples.filter(
+    //   (example) =>
+    //     !this.grades.get(example.uid) && !coveredFailures.has(example.uid),
+    // );
+    // if (missedFailures.length > 0) {
+    //   console.log(`Missed failures: ${missedFailures}`);
+    // }
 
     return [coverage, falseFailureRate];
   }

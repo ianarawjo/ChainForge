@@ -67,12 +67,12 @@ export async function generateLLMEvaluationCriteria(
         model: "azure-openai",
         base_model: "azure-openai",
         temp: 1,
-        deployment_name: "gpt-35-turbo-16k",
+        deployment_name: "gpt-4-turbo",
         model_type: "chat-completion",
         // api_version: "2023-05-15",
         system_msg: AssertionWriterSystemMsg,
         settings: {
-          deployment_name: "gpt-35-turbo-16k",
+          deployment_name: "gpt-4-turbo",
           model_type: "chat-completion",
           // // api_version: "2023-05-15",
           system_msg: AssertionWriterSystemMsg,
@@ -89,7 +89,7 @@ export async function generateLLMEvaluationCriteria(
         },
         formData: {
           shortname: "Azure OpenAI",
-          deployment_name: "gpt-35-turbo-16k",
+          deployment_name: "gpt-4-turbo",
           model_type: "chat-completion",
           // api_version: "2023-05-15",
           system_msg: AssertionWriterSystemMsg,
@@ -369,7 +369,7 @@ export async function generateFunctionsForCriteria(
 
     const modelType =
       criteria.eval_method === "expert" ? "llm_eval" : "python_fn";
-    await streamer.generate(functionGenPrompt, "gpt-35-turbo-16k", modelType);
+    await streamer.generate(functionGenPrompt, "gpt-4-turbo", modelType);
   } catch (error) {
     console.error("Error generating function for criteria:", error);
     throw new Error(
