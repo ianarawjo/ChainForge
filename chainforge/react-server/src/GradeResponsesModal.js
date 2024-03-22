@@ -32,6 +32,7 @@ import {
   RingProgress,
   Checkbox,
   Popover,
+  Group,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -140,6 +141,7 @@ const CriteriaCard = function CriteriaCard({
   onRemove,
   reportMode,
   evalFuncReport,
+  onCheck,
 }) {
   const [checked, setChecked] = useState(true);
   const [codeChecked, setCodeChecked] = useState(evalMethod === "code");
@@ -167,7 +169,7 @@ const CriteriaCard = function CriteriaCard({
             ygap: 2,
             type: "heatmap",
             hoverongaps: false,
-            colorscale: "YlOrRd",
+            colorscale: "Blues",
             showscale: false,
             showlegend: false,
           },
@@ -191,10 +193,18 @@ const CriteriaCard = function CriteriaCard({
 
   // Update the checkbox whenever the evalFuncReport changes,
   // ticking it if the accuracy is over the threshold.
-  useEffect(() => {
-    if (!evalFuncReport) return;
-    setChecked(evalFuncReport.accuracy >= SELECT_EVAL_FUNC_THRESHOLD);
-  }, [evalFuncReport]);
+  // useEffect(() => {
+  //   if (!evalFuncReport) return;
+  //   setChecked(evalFuncReport.accuracy >= SELECT_EVAL_FUNC_THRESHOLD);
+  // }, [evalFuncReport]);
+
+  const setCheckedAndRealign = (newChecked) => {
+    setChecked(newChecked);
+
+    // oncheck is a callback to the parent to update the selected eval functions
+    // oncheck is an awaitable function that returns the updated evalFuncReport
+    if (onCheck && evalFuncReport) onCheck();
+  };
 
   return (
     <Card
@@ -214,7 +224,7 @@ const CriteriaCard = function CriteriaCard({
         <Tooltip label={checked ? "Don't use this" : "Use this"} withArrow>
           <Checkbox
             checked={checked}
-            onChange={() => setChecked(!checked)}
+            onChange={() => setCheckedAndRealign(!checked)}
             tabIndex={-1}
             size="xs"
             mr="sm"
@@ -636,6 +646,22 @@ Your response should contain a short title for the criteria ("shortname"), a des
       setScreen("report");
     };
 
+    const recomputeAlignment = async () => {
+      // Get selected criteria
+      // TODO: fix this somehow
+      console.log("criteria", criteria);
+      const selectedCriteria = criteria.filter((c) => c.selected);
+
+      // Pass this into executor to recompute alignment
+      const newReport = await executor?.recomputeAlignment(
+        selectedCriteria,
+        report,
+      );
+
+      // Update the report
+      setReport(newReport);
+    };
+
     const gradeResponsesScreen = useMemo(
       () => (
         <GradeResponsesScreen
@@ -899,6 +925,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
         {screen === "report" ? (
           <ReportCardScreen
             report={report}
+            recomputeAlignment={recomputeAlignment}
             onClickFinish={(report) => onFinish(report)}
           />
         ) : (
@@ -1304,22 +1331,22 @@ export const GradeResponsesScreen = forwardRef(function GradeResponsesScreen(
 
 // Screen after EvalGen finishes, to show a report to the user
 // about the chosen functions and the alignment with their ratings.
-const ReportCardScreen = ({ report, onClickFinish }) => {
+const ReportCardScreen = ({ report, recomputeAlignment, onClickFinish }) => {
   // The criteria cards, now with report information
   const cards = useMemo(() => {
     const res = [];
 
-    // Create a lookup table from EvalCriteria uid to chosen EvalFunction
-    const selectedEvalFuncs = {};
-    report.selectedEvalFunctions.forEach(({ uid, evalCriteria }) => {
-      selectedEvalFuncs[evalCriteria.uid] = uid;
-    });
+    console.log("Report: ", report);
 
-    for (const [
-      crit,
-      evalFunctionReports,
-    ] of report.allEvalFunctionReports.entries()) {
-      const selFuncID = selectedEvalFuncs[crit.uid];
+    // Iterate through selected eval functions and create cards
+    for (const selectedFunc of report.selectedEvalFunctions) {
+      const crit = selectedFunc.evalCriteria;
+      // Find corresponding report in allEvalFunctionReports map from criteria to list
+      const critEvalFuncReports = report.allEvalFunctionReports.get(crit);
+      const evalFuncReport = critEvalFuncReports.find(
+        (rep) => rep.evalFunction === selectedFunc,
+      );
+
       res.push(
         <CriteriaCard
           title={crit.shortname}
@@ -1327,12 +1354,15 @@ const ReportCardScreen = ({ report, onClickFinish }) => {
           evalMethod={crit.eval_method}
           key={`cc-${crit.uid ?? res.length.toString() + crit.shortname}`}
           reportMode={true}
-          evalFuncReport={evalFunctionReports.find(
-            (rep) => rep.evalFunction?.uid === selFuncID,
-          )} // undefined if none was chosen
+          evalFuncReport={evalFuncReport} // undefined if none was chosen
+          onCheck={(checked) => {
+            crit.selected = checked;
+            recomputeAlignment();
+          }}
         />,
       );
     }
+
     return res;
   }, [report]);
 
@@ -1342,6 +1372,38 @@ const ReportCardScreen = ({ report, onClickFinish }) => {
         <Text align="center" size="lg" pl="sm" mb="lg">
           Chosen Functions and Alignment
         </Text>
+
+        {/* Show coverage and false failure rate numbers */}
+        <Flex justify="center" gap="md" mb="lg">
+          <Group position="center" spacing="xl" style={{ textAlign: "center" }}>
+            <Card
+              shadow="sm"
+              padding="md"
+              radius="md"
+              style={{ backgroundColor: "#f0f0f0" }}
+            >
+              <Text weight={500} size="md">
+                Coverage
+              </Text>
+              <Text color="blue" weight={700} size="md">
+                {report.failureCoverage.toFixed(2)}%
+              </Text>
+            </Card>
+            <Card
+              shadow="sm"
+              padding="md"
+              radius="md"
+              style={{ backgroundColor: "#f0f0f0" }}
+            >
+              <Text weight={500} size="md">
+                False Failure Rate
+              </Text>
+              <Text color="red" weight={700} size="md">
+                {report.falseFailureRate.toFixed(2)}%
+              </Text>
+            </Card>
+          </Group>
+        </Flex>
 
         <ScrollArea mih={300} h={500} mah={500}>
           <SimpleGrid cols={3} spacing="sm" verticalSpacing="sm" mb="lg">
