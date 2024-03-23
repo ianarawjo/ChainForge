@@ -271,6 +271,7 @@ export interface StoreHandles {
   // Global state
   state: Dict;
   setState: (key: string, val: any) => void;
+  importState: (state: Dict) => void;
 
   // The color to represent a specific LLM, to be globally consistent
   llmColors: Dict<string>;

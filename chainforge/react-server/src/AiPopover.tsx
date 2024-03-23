@@ -30,7 +30,7 @@ import { queryLLM } from "./backend/backend";
 import { splitText } from "./SplitNode";
 import { escapeBraces } from "./backend/template";
 import { cleanMetavarsFilterFunc } from "./backend/utils";
-import { VarsContext } from "./backend/typing";
+import { Dict, VarsContext } from "./backend/typing";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -227,8 +227,8 @@ export function AIPopover({
 }
 
 export interface AIGenReplaceItemsPopoverProps {
-  // A list of strings for the Extend feature to use as a basis.
-  values: string[];
+  // Strings for the Extend feature to use as a basis.
+  values: Dict<string> | string[];
   // A function that takes a list of strings that the popover will call to add new values
   onAddValues: (newVals: string[]) => void;
   // A function that takes a list of strings that the popover will call to replace the existing values

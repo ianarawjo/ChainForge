@@ -150,15 +150,17 @@ const ModelSettingsModal = forwardRef<
       // In this case, we auto-change the shortname, to save user's time and nickname models appropriately.
       const modelname = state.formData.model as string | undefined;
       const shortname = state.formData.shortname as string | undefined;
-      if (
-        shortname === initShortname &&
-        modelname !== initModelName
-      ) {
+      if (shortname === initShortname && modelname !== initModelName) {
         // Only change the shortname if there is a distinct model name.
         // If not, let the shortname remain the same for this time, and just remember the model name.
         if (initModelName !== undefined) {
-          const shortname_map = schema.properties?.model?.shortname_map as Dict<string>;
-          if (shortname_map && modelname !== undefined && modelname in shortname_map)
+          const shortname_map = schema.properties?.model
+            ?.shortname_map as Dict<string>;
+          if (
+            shortname_map &&
+            modelname !== undefined &&
+            modelname in shortname_map
+          )
             state.formData.shortname = shortname_map[modelname];
           else state.formData.shortname = modelname;
           setInitShortname(shortname);

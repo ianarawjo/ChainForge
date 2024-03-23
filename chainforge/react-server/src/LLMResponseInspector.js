@@ -4,12 +4,7 @@
  * Separated from ReactFlow node UI so that it can
  * be deployed in multiple locations.
  */
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   MultiSelect,
   Table,

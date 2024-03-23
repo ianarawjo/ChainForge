@@ -4,7 +4,6 @@ import { v4 as uuid } from "uuid";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
-import fetch_from_backend from "./fetch_from_backend";
 import { IconArrowsSplit, IconList } from "@tabler/icons-react";
 import {
   NativeSelect,
@@ -32,12 +31,7 @@ import { fromMarkdown } from "mdast-util-from-markdown";
 import StorageCache from "./backend/cache";
 import { ResponseBox } from "./ResponseBoxes";
 import { Root, RootContent } from "mdast";
-import {
-  Dict,
-  LLMResponse,
-  LLMResponsesByVarDict,
-  TemplateVarInfo,
-} from "./backend/typing";
+import { Dict, TemplateVarInfo } from "./backend/typing";
 import { generatePrompts } from "./backend/backend";
 
 const formattingOptions = [
