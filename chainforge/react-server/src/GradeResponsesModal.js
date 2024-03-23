@@ -80,7 +80,7 @@ const evalgenReportToImplementations = (report) => {
   // Convert to expected format by MultiEval node
   const specs = report.selectedEvalFunctions.map((evalFuncSpec) => {
     // Skip if evalFuncSpec.evalCriteria.selected is false
-    if (!evalFuncSpec.evalCriteria.selected) return null;
+    if (evalFuncSpec.evalCriteria.selected === false) return null;
 
     if (evalFuncSpec.evalCriteria.eval_method === "code")
       return {
