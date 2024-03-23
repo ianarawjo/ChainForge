@@ -4,7 +4,6 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useContext,
 } from "react";
 import { Tooltip } from "@mantine/core";
 import { EditText, onSaveProps } from "react-edit-text";

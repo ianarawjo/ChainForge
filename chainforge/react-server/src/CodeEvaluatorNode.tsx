@@ -9,15 +9,7 @@ import React, {
   useContext,
 } from "react";
 import { Handle, Position } from "reactflow";
-import {
-  Code,
-  Modal,
-  Tooltip,
-  Box,
-  Text,
-  Skeleton,
-  Switch,
-} from "@mantine/core";
+import { Code, Modal, Tooltip, Box, Text, Skeleton } from "@mantine/core";
 import { Prism } from "@mantine/prism";
 import { useDisclosure } from "@mantine/hooks";
 import useStore from "./store";
@@ -523,9 +515,8 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
         setLastContext(getVarsAndMetavars(json.responses));
         setLastRunSuccess(true);
 
-        if (status !== "ready" && !showDrawer) setUninspectedResponses(true);
-
-        setStatus("ready");
+        if (status !== Status.READY && !showDrawer)
+          setUninspectedResponses(true);
 
         setDataPropsForNode(id, {
           fields: json.responses
