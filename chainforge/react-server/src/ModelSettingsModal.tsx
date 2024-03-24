@@ -29,7 +29,9 @@ export interface ModelSettingsModalRef {
 }
 export interface ModelSettingsModalProps {
   model?: LLMSpec;
-  onSettingsSubmit?: () => void;
+  onSettingsSubmit?: (savedItem: LLMSpec,
+    formData: Dict<JSONCompatible>,
+    settingsData: Dict<JSONCompatible>) => void;
 }
 type FormData = LLMSpec["formData"];
 

@@ -11,6 +11,10 @@ import React, {
 import {
   DragDropContext,
   Draggable,
+  DraggableProvided,
+  DraggableRubric,
+  DraggableStateSnapshot,
+  DroppableProvided,
   OnDragEndResponder,
 } from "react-beautiful-dnd";
 import { Menu } from "@mantine/core";
@@ -205,7 +209,7 @@ export function LLMList({
       <DragDropContext onDragEnd={onDragEnd}>
         <StrictModeDroppable
           droppableId="llm-list-droppable"
-          renderClone={(provided, snapshot, rubric) => (
+          renderClone={(provided: DraggableProvided, snapshot: DraggableStateSnapshot, rubric: DraggableRubric) => (
             <LLMListItemClone
               provided={provided}
               snapshot={snapshot}
@@ -214,10 +218,10 @@ export function LLMList({
             />
           )}
         >
-          {(provided) => (
+          {(provided: DroppableProvided) => (
             <div {...provided.droppableProps} ref={provided.innerRef}>
               {items.map((item, index) => (
-                <Draggable key={item.key} draggableId={item.key} index={index}>
+                <Draggable key={item.key} draggableId={item.key ?? index.toString()} index={index}>
                   {(provided, snapshot) => (
                     <LLMListItem
                       provided={provided}
@@ -240,7 +244,27 @@ export function LLMList({
   );
 }
 
-export const LLMListContainer = forwardRef(function LLMListContainer(
+export interface LLMListContainerHandle {
+  resetLLMItemsProgress: () => void;
+  setZeroPercProgress: () => void;
+  updateProgress: (itemProcessorFunc: (llm: LLMSpec) => LLMSpec) => void;
+  ensureLLMItemsErrorProgress: (llm_keys_w_errors: string[]) => void;
+  getLLMListItemForKey: (key: string) => LLMSpec | undefined;
+  refreshLLMProviderList: () => void;
+}
+
+export interface LLMListContainerProps {
+  description: string;
+  modelSelectButtonText: string;
+  initLLMItems: LLMSpec[];
+  onSelectModel: (llm: LLMSpec, new_llms: LLMSpec[]) => void;
+  onItemsChange: (new_llms: LLMSpec[], old_llms: LLMSpec[]) => void;
+  hideTrashIcon: boolean;
+  bgColor: string;
+  selectModelAction?: "add" | "replace";
+}
+
+export const LLMListContainer = forwardRef<LLMListContainerHandle, LLMListContainerProps>(function LLMListContainer(
   {
     description,
     modelSelectButtonText,
@@ -293,16 +317,16 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
     );
   }, [llmItemsCurrState]);
   const updateProgress = useCallback(
-    (itemProcessorFunc: (llms: LLMSpec) => LLMSpec) => {
+    (itemProcessorFunc: (llm: LLMSpec) => LLMSpec) => {
       setLLMItems(llmItemsCurrState.map(itemProcessorFunc));
     },
     [llmItemsCurrState],
   );
   const ensureLLMItemsErrorProgress = useCallback(
-    (llm_keys_w_errors) => {
+    (llm_keys_w_errors: string[]) => {
       setLLMItems(
         llmItemsCurrState.map((item) => {
-          if (llm_keys_w_errors.includes(item.key)) {
+          if (item.key !== undefined && llm_keys_w_errors.includes(item.key)) {
             if (!item.progress) item.progress = { success: 0, error: 100 };
             else {
               const succ_perc = item.progress.success;
@@ -321,7 +345,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
   );
 
   const getLLMListItemForKey = useCallback(
-    (key) => {
+    (key: string) => {
       return llmItemsCurrState.find((item) => item.key === key);
     },
     [llmItemsCurrState],
@@ -353,7 +377,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
       item.name = unique_name;
       item.formData = { shortname: unique_name };
 
-      let new_items;
+      let new_items: LLMSpec[] = [];
       if (selectModelAction === "add" || selectModelAction === undefined) {
         // Add model to the LLM list (regardless of it's present already or not).
         new_items = llmItemsCurrState.concat([item]);

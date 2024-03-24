@@ -80,10 +80,10 @@ export interface LLMListItemProps {
   item: LLMSpec;
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
-  removeCallback: (key: string) => void;
-  onClickSettings: () => void;
+  removeCallback?: (key: string) => void;
+  onClickSettings?: () => void;
   progress?: QueryProgress;
-  hideTrashIcon: boolean;
+  hideTrashIcon?: boolean;
 }
 
 const LLMListItem: React.FC<LLMListItemProps> = ({
@@ -136,7 +136,7 @@ const LLMListItem: React.FC<LLMListItemProps> = ({
           )}
         </CardHeader>
         <LLMItemButtonGroup
-          onClickTrash={() => removeCallback(item.key ?? "undefined")}
+          onClickTrash={() => removeCallback && removeCallback(item.key ?? "undefined")}
           ringProgress={progress}
           onClickSettings={onClickSettings}
           hideTrashIcon={hideTrashIcon}
