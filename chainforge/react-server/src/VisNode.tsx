@@ -861,68 +861,70 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
     // Grab the input node ids
     const input_node_ids = [data.input];
 
-    grabResponses(input_node_ids).then(function (resps) {
-      if (resps && resps.length > 0) {
-        // Store responses and extract + store vars
-        setResponses(resps.toReversed());
+    grabResponses(input_node_ids)
+      .then(function (resps) {
+        if (resps && resps.length > 0) {
+          // Store responses and extract + store vars
+          setResponses(resps.toReversed());
 
-        // Find all vars in responses
-        let varnames: string[] | Set<string> = new Set<string>();
-        let metavars: string[] | Set<string> = new Set<string>();
-        resps.forEach((resp_obj) => {
-          Object.keys(resp_obj.vars).forEach((v) =>
-            (varnames as Set<string>).add(v),
-          );
-          if (resp_obj.metavars)
-            Object.keys(resp_obj.metavars).forEach((v) =>
-              (metavars as Set<string>).add(v),
+          // Find all vars in responses
+          let varnames: string[] | Set<string> = new Set<string>();
+          let metavars: string[] | Set<string> = new Set<string>();
+          resps.forEach((resp_obj) => {
+            Object.keys(resp_obj.vars).forEach((v) =>
+              (varnames as Set<string>).add(v),
             );
-        });
-        varnames = Array.from(varnames);
-        metavars = Array.from(metavars);
+            if (resp_obj.metavars)
+              Object.keys(resp_obj.metavars).forEach((v) =>
+                (metavars as Set<string>).add(v),
+              );
+          });
+          varnames = Array.from(varnames);
+          metavars = Array.from(metavars);
 
-        // Get all vars for the y-axis dropdown, merging metavars and vars into one list,
-        // and excluding any special 'LLM group' metavars:
-        const msvars = [{ value: "LLM (default)", label: "LLM (default)" }]
-          .concat(varnames.map((name) => ({ value: name, label: name })))
-          .concat(
+          // Get all vars for the y-axis dropdown, merging metavars and vars into one list,
+          // and excluding any special 'LLM group' metavars:
+          const msvars = [{ value: "LLM (default)", label: "LLM (default)" }]
+            .concat(varnames.map((name) => ({ value: name, label: name })))
+            .concat(
+              metavars.filter(cleanMetavarsFilterFunc).map((name) => ({
+                value: `__meta_${name}`,
+                label: `${name} (meta)`,
+              })),
+            );
+
+          // Find all the special 'LLM group' metavars and put them in the 'group by' dropdown:
+          const available_llm_groups = [{ value: "LLM", label: "LLM" }].concat(
             metavars.filter(cleanMetavarsFilterFunc).map((name) => ({
-              value: `__meta_${name}`,
-              label: `${name} (meta)`,
+              value: name,
+              label: `LLMs #${parseInt(name.slice(4)) + 1}`,
             })),
           );
+          if (available_llm_groups.length > 1)
+            available_llm_groups[0] = { value: "LLM", label: "LLMs (last)" };
+          setAvailableLLMGroups(available_llm_groups);
 
-        // Find all the special 'LLM group' metavars and put them in the 'group by' dropdown:
-        const available_llm_groups = [{ value: "LLM", label: "LLM" }].concat(
-          metavars.filter(cleanMetavarsFilterFunc).map((name) => ({
-            value: name,
-            label: `LLMs #${parseInt(name.slice(4)) + 1}`,
-          })),
-        );
-        if (available_llm_groups.length > 1)
-          available_llm_groups[0] = { value: "LLM", label: "LLMs (last)" };
-        setAvailableLLMGroups(available_llm_groups);
-
-        // Check for a change in available parameters
-        if (
-          !multiSelectVars ||
-          !multiSelectValue ||
-          !areSetsEqual(
-            new Set(msvars.map((o) => o.value)),
-            new Set(multiSelectVars.map((o) => o.value)),
-          )
-        ) {
-          setMultiSelectValue("LLM (default)");
-          setMultiSelectVars(msvars);
-          setDataPropsForNode(id, {
-            vars: msvars,
-            selected_vars: [],
-            llm_groups: available_llm_groups,
-          });
+          // Check for a change in available parameters
+          if (
+            !multiSelectVars ||
+            !multiSelectValue ||
+            !areSetsEqual(
+              new Set(msvars.map((o) => o.value)),
+              new Set(multiSelectVars.map((o) => o.value)),
+            )
+          ) {
+            setMultiSelectValue("LLM (default)");
+            setMultiSelectVars(msvars);
+            setDataPropsForNode(id, {
+              vars: msvars,
+              selected_vars: [],
+              llm_groups: available_llm_groups,
+            });
+          }
+          // From here a React effect will detect the changes to these values and display a new plot
         }
-        // From here a React effect will detect the changes to these values and display a new plot
-      }
-    }).catch(console.error);
+      })
+      .catch(console.error);
   }, [data]);
 
   if (data.input) {

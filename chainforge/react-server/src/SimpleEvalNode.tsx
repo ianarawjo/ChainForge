@@ -45,7 +45,7 @@ type ResponseFormat = "response" | "response in lowercase";
 const RESPONSE_FORMATS: ResponseFormat[] = [
   "response",
   "response in lowercase",
-] as const;
+];
 
 type Operator =
   | "contains"
@@ -59,7 +59,7 @@ const OPERATORS: Operator[] = [
   "ends with",
   "equals",
   "appears in",
-] as const;
+];
 
 const createJSEvalCodeFor = (
   responseFormat: ResponseFormat,

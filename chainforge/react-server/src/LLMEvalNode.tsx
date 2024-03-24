@@ -23,12 +23,7 @@ import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { stripLLMDetailsFromResponses } from "./backend/utils";
 import { AlertModalContext } from "./AlertModal";
-import {
-  Dict,
-  LLMResponse,
-  LLMSpec,
-  QueryProgress,
-} from "./backend/typing";
+import { Dict, LLMResponse, LLMSpec, QueryProgress } from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
 import { evalWithLLM, grabResponses } from "./backend/backend";
 

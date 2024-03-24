@@ -5,7 +5,7 @@ import { truncStr } from "./backend/utils";
 import { Dict, EvaluationScore, LLMResponse } from "./backend/typing";
 
 // Lazy load the response toolbars
-const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar.js"));
+const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
 
 /* HELPER FUNCTIONS */
 const SUCCESS_EVAL_SCORES = new Set(["true", "yes"]);
@@ -183,7 +183,8 @@ export const genResponseTextsDisplay = (
 
   const same_resp_text_counts = countResponsesBy(responses, (r) => r);
   const same_resp_keys = Object.keys(same_resp_text_counts).sort(
-    (key1, key2) => same_resp_text_counts[key2].length - same_resp_text_counts[key1].length,
+    (key1, key2) =>
+      same_resp_text_counts[key2].length - same_resp_text_counts[key1].length,
   );
 
   return same_resp_keys.map((r, idx) => {

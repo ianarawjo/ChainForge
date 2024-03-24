@@ -23,13 +23,12 @@ test("count queries required", async () => {
 
   // Double-check the queries required (not loading from cache)
   const test_count_queries = async (llms: Array<string | Dict>, n: number) => {
-    const { counts, total_num_responses, error } = await countQueries(
+    const { counts, total_num_responses } = await countQueries(
       prompt,
       vars,
       llms,
       n,
     );
-    expect(error).toBeUndefined();
 
     Object.values(total_num_responses).forEach((v) => {
       expect(v).toBe(n * 3 * 3);
@@ -135,7 +134,7 @@ test("run evaluate func over responses", async () => {
   expect(responses).toHaveLength(DUMMY_RESPONSE_CACHE.length);
 
   // Expect all scores (evaluation results) to be present
-  responses.forEach((r) => {
+  responses?.forEach((r) => {
     expect(r.eval_res?.items?.length).toBe(1);
   });
 

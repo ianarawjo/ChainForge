@@ -9,7 +9,7 @@ import { exportToExcel } from "./LLMResponseInspector";
 import { LLMResponse } from "./backend/typing";
 
 // Lazy load the inspector view
-const LLMResponseInspector = lazy(() => import("./LLMResponseInspector.js"));
+const LLMResponseInspector = lazy(() => import("./LLMResponseInspector"));
 
 export interface LLMResponseInspectorModalRef {
   trigger: () => void;
