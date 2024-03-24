@@ -673,7 +673,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         }
       })
       .catch((err: Error | string) => {
-        console.warn(typeof err === "string" ? err : err?.message); // soft fail
+        console.error(err); // soft fail
         setRunTooltip("Could not reach backend server.");
       });
   };

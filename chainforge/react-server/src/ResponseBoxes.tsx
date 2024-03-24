@@ -139,7 +139,7 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
       }}
     >
       <div className="response-var-inline-container">{var_tags}</div>
-      {llmName !== undefined ? (
+      {llmName === undefined ? (
         children
       ) : (
         <div className="response-item-llm-name-wrapper">{children}</div>
