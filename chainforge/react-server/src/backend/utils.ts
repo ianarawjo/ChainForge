@@ -1594,8 +1594,8 @@ export const transformDict = (
  *
  * Returns empty dict {} if no settings vars found.
  */
-export const extractSettingsVars = (vars: Dict) => {
-  if (Object.keys(vars).some((k) => k.charAt(0) === "=")) {
+export const extractSettingsVars = (vars?: Dict) => {
+  if (vars !== undefined && Object.keys(vars).some((k) => k.charAt(0) === "=")) {
     return transformDict(
       deepcopy(vars),
       (k) => k.charAt(0) === "=",

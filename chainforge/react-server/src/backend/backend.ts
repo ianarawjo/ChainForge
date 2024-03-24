@@ -511,7 +511,7 @@ export async function generatePrompts(
  */
 export async function countQueries(
   prompt: string,
-  vars: Dict,
+  vars: PromptVarsDict,
   llms: Array<Dict | string>,
   n: number,
   chat_histories?:
