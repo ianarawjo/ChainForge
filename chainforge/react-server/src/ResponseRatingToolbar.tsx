@@ -63,7 +63,7 @@ export interface ResponseRatingToolbarProps {
   uid: string;
   wideFormat?: boolean;
   innerIdxs: number[];
-  onUpdateResponses: () => void;
+  onUpdateResponses?: () => void;
 }
 
 const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({

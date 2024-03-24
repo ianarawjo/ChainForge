@@ -42,15 +42,14 @@ const getEvalResultStr = (
 const countResponsesBy = (
   responses: string[],
   keyFunc: (item: string) => string,
-): Dict<number> => {
-  const counts_by_key: Dict<number> = {};
-  responses.forEach((item) => {
+): Dict<number[]> => {
+  const d: Dict<number[]> = {};
+  responses.forEach((item, idx) => {
     const key = keyFunc(item);
-    if (key === null) return;
-    if (key in counts_by_key) counts_by_key[key] += 1;
-    else counts_by_key[key] = 1;
+    if (key in d) d[key].push(idx);
+    else d[key] = [idx];
   });
-  return counts_by_key;
+  return d;
 };
 
 /**
@@ -184,7 +183,7 @@ export const genResponseTextsDisplay = (
 
   const same_resp_text_counts = countResponsesBy(responses, (r) => r);
   const same_resp_keys = Object.keys(same_resp_text_counts).sort(
-    (key1, key2) => same_resp_text_counts[key2] - same_resp_text_counts[key1],
+    (key1, key2) => same_resp_text_counts[key2].length - same_resp_text_counts[key1].length,
   );
 
   return same_resp_keys.map((r, idx) => {
@@ -206,7 +205,6 @@ export const genResponseTextsDisplay = (
               uid={res_obj.uid}
               innerIdxs={origIdxs}
               wideFormat={wideFormat}
-              onUpdateResponses={undefined}
             />
           </Suspense>
           {llmName !== undefined &&
@@ -217,7 +215,7 @@ export const genResponseTextsDisplay = (
             <></>
           )}
         </Flex>
-        {same_resp_text_counts[r] > 1 ? (
+        {same_resp_text_counts[r].length > 1 ? (
           <span className="num-same-responses">
             {same_resp_text_counts[r]} times
           </span>

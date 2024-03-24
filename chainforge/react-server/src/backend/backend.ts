@@ -1216,7 +1216,7 @@ export async function evalWithLLM(
   response_ids: string | string[],
   api_keys?: Dict,
   progress_listener?: (progress: { [key: symbol]: any }) => void,
-): Promise<Dict> {
+): Promise<{ responses?: LLMResponse[]; errors: string[] }> {
   // Check format of response_ids
   if (!Array.isArray(response_ids)) response_ids = [response_ids];
   response_ids = response_ids as Array<string>;
@@ -1230,7 +1230,7 @@ export async function evalWithLLM(
     const cache_id = response_ids[i];
     const fname = `${cache_id}.json`;
     if (!StorageCache.has(fname))
-      return { error: `Did not find cache file for id ${cache_id}` };
+      throw new Error(`Did not find cache file for id ${cache_id}`);
 
     // Load the raw responses from the cache + clone them all:
     const resp_objs = (load_cache_responses(fname) as LLMResponse[]).map((r) =>
