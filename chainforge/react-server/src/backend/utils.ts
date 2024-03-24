@@ -23,6 +23,7 @@ import {
   TemplateVarInfo,
   BaseLLMResponseObject,
   LLMSpec,
+  EvaluationScore,
 } from "./typing";
 import { env as process_env } from "process";
 import { v4 as uuid } from "uuid";
@@ -1651,10 +1652,10 @@ export const truncStr = (
 
 export const groupResponsesBy = (
   responses: LLMResponse[],
-  keyFunc: (item: LLMResponse) => string | null | undefined,
-) => {
-  const responses_by_key: Dict = {};
-  const unspecified_group: Dict[] = [];
+  keyFunc: (item: LLMResponse) => string | number | null | undefined,
+): [Dict<LLMResponse[]>, LLMResponse[]] => {
+  const responses_by_key: Dict<LLMResponse[]> = {};
+  const unspecified_group: LLMResponse[] = [];
   responses.forEach((item) => {
     const key = keyFunc(item);
     if (key === null || key === undefined) {
@@ -1667,22 +1668,28 @@ export const groupResponsesBy = (
   return [responses_by_key, unspecified_group];
 };
 
-export const batchResponsesByUID = (responses: LLMResponse[]) => {
+/**
+ * Merges inner .responses and eval_res.items properties for LLMResponses with the same
+ * uid, returning the (smaller) list of merged items.
+ * @param responses 
+ * @returns 
+ */
+export const batchResponsesByUID = (responses: LLMResponse[]): LLMResponse[] => {
   const [batches, unspecified_id_group] = groupResponsesBy(
     responses,
     (resp_obj) => resp_obj.uid,
   );
   return Object.values(batches)
-    .map((resp_objs: Dict[]) => {
+    .map((resp_objs: LLMResponse[]) => {
       if (resp_objs.length === 1) {
         return resp_objs[0];
       } else {
         const batched = deepcopy_and_modify(resp_objs[0], {
           responses: resp_objs.map((resp_obj) => resp_obj.responses).flat(),
-        });
-        if (batched.eval_res !== undefined) {
+        }) as LLMResponse;
+        if (batched.eval_res?.items !== undefined) {
           batched.eval_res.items = resp_objs
-            .map((resp_obj) => resp_obj.eval_res.items)
+            .map((resp_obj) => resp_obj?.eval_res?.items as EvaluationScore[])
             .flat();
         }
         return batched;
@@ -1776,8 +1783,8 @@ export async function retryAsyncFunc<T>(
 
 // Filters internally used keys LLM_{idx} and __{str} from metavar dictionaries.
 // This method is used to pass around information hidden from the user.
-export function cleanMetavarsFilterFunc() {
-  return (key: string) => !(key.startsWith("LLM_") || key.startsWith("__pt"));
+export function cleanMetavarsFilterFunc(key: string) {
+  return !(key.startsWith("LLM_") || key.startsWith("__pt"));
 }
 
 // Verify data integrity: check that uids are present for all responses.
