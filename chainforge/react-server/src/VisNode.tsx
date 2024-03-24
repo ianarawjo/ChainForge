@@ -836,8 +836,8 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
           setResponses(json.responses.toReversed());
 
           // Find all vars in responses
-          let varnames = new Set();
-          let metavars = new Set();
+          let varnames = new Set<string>();
+          let metavars = new Set<string>();
           json.responses.forEach((resp_obj) => {
             Object.keys(resp_obj.vars).forEach((v) => varnames.add(v));
             if (resp_obj.metavars)
