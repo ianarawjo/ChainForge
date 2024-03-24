@@ -7,7 +7,7 @@ import React, {
   useImperativeHandle,
   useContext,
 } from "react";
-import { Handle } from "reactflow";
+import { Handle, Position } from "reactflow";
 import { Group, NativeSelect, Progress, Text, Textarea } from "@mantine/core";
 import { IconRobot, IconSearch } from "@tabler/icons-react";
 import { v4 as uuid } from "uuid";
@@ -23,6 +23,7 @@ import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { stripLLMDetailsFromResponses } from "./backend/utils";
 import { AlertModalContext } from "./AlertModal";
 import { QueryProgress } from "./backend/typing";
+import { Status } from "./StatusIndicatorComponent";
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
 const PLACEHOLDER_PROMPT =
@@ -175,8 +176,8 @@ export const LLMEvaluatorComponent = forwardRef(function LLMEvaluatorComponent(
             : undefined
         }
         className="prompt-field-fixed nodrag nowheel"
-        minRows="4"
-        maxRows="12"
+        minRows={4}
+        maxRows={12}
         w="100%"
         mb="sm"
         value={promptText}
@@ -213,7 +214,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
   // The inner component storing the UI and logic for running the LLM-based evaluation
   const llmEvaluatorRef = useRef(null);
 
-  const [status, setStatus] = useState("none");
+  const [status, setStatus] = useState<Status>(Status.NONE);
   const showAlert = useContext(AlertModalContext);
 
   const inspectModal = useRef(null);
@@ -241,11 +242,11 @@ const LLMEvaluatorNode = ({ data, id }) => {
       return;
     }
 
-    setStatus("loading");
+    setStatus(Status.LOADING);
     setProgress({ success: 2, error: 0 });
 
-    const handleError = (err) => {
-      setStatus("error");
+    const handleError = (err: Error | string) => {
+      setStatus(Status.ERROR);
       setProgress(undefined);
       if (typeof err !== "string") console.error(err);
       if (showAlert) showAlert(typeof err === "string" ? err : err?.message);
@@ -290,7 +291,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
 
           if (!showDrawer) setUninspectedResponses(true);
 
-          setStatus("ready");
+          setStatus(Status.READY);
           setProgress(undefined);
         })
         .catch(handleError);
@@ -314,7 +315,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
       setDataPropsForNode(id, { refresh: false });
-      setStatus("warning");
+      setStatus(Status.WARNING);
     }
   }, [data]);
 
@@ -327,7 +328,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
       if (json.responses && json.responses.length > 0) {
         // Store responses and set status to green checkmark
         setLastResponses(stripLLMDetailsFromResponses(json.responses));
-        setStatus("ready");
+        setStatus(Status.READY);
       }
     });
   }, []);
@@ -335,7 +336,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
   return (
     <BaseNode classNames="evaluator-node" nodeId={id}>
       <NodeLabel
-        title={data.title || "LLM Scorer"}
+        title={data.title ?? "LLM Scorer"}
         nodeId={id}
         icon={<IconRobot size="16px" />}
         status={status}
@@ -351,9 +352,9 @@ const LLMEvaluatorNode = ({ data, id }) => {
         <LLMEvaluatorComponent
           ref={llmEvaluatorRef}
           prompt={data.prompt}
-          onPromptEdit={(prompt) => {
+          onPromptEdit={(prompt: string) => {
             setDataPropsForNode(id, { prompt });
-            setStatus("warning");
+            setStatus(Status.WARNING);
           }}
           onLLMGraderChange={(new_grader) =>
             setDataPropsForNode(id, { grader: new_grader })
@@ -394,14 +395,14 @@ const LLMEvaluatorNode = ({ data, id }) => {
 
       <Handle
         type="target"
-        position="left"
+        position={Position.Left}
         id="responseBatch"
         className="grouped-handle"
         style={{ top: "50%" }}
       />
       <Handle
         type="source"
-        position="right"
+        position={Position.Right}
         id="output"
         className="grouped-handle"
         style={{ top: "50%" }}
