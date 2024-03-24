@@ -95,8 +95,8 @@ function genSpansForHighlightedValue(text: string, searchValue: string, caseSens
 }
 
 // Export the JSON responses to an excel file (downloads the file):
-export const exportToExcel = (jsonResponses: LLMResponse[], filename: string) => {
-  if (!filename) filename = "responses.xlsx";
+export const exportToExcel = (jsonResponses: LLMResponse[], filename?: string) => {
+  if (filename === undefined) filename = "responses.xlsx";
 
   // Check that there are responses to export:
   if (
