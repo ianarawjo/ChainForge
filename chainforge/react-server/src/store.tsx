@@ -97,6 +97,13 @@ export const initLLMProviders: LLMSpec[] = [
   }, // The base_model designates what settings form will be used, and must be unique.
   { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
   {
+    name: "Dall-E",
+    emoji: "🖼",
+    model: "dall-e-2",
+    base_model: "dall-e",
+    temp: 0.0,
+  },
+  {
     name: "Claude",
     emoji: "📚",
     model: "claude-2",

@@ -38,7 +38,7 @@ import {
   genResponseTextsDisplay,
 } from "./ResponseBoxes";
 import { getLabelForResponse } from "./ResponseRatingToolbar";
-import { Dict, LLMResponse } from "./backend/typing";
+import { Dict, LLMResponse, LLMResponseData } from "./backend/typing";
 
 // Helper funcs
 const getLLMName = (resp_obj: LLMResponse) =>
@@ -143,7 +143,7 @@ export const exportToExcel = (
         const row: Dict<string | number | boolean> = {
           LLM: llm,
           Prompt: prompt,
-          Response: r,
+          Response: typeof r === "string" ? r : r.d,
           "Response Batch Id": res_obj.uid ?? res_obj_idx,
         };
 
@@ -156,8 +156,15 @@ export const exportToExcel = (
         if (ratings) {
           Object.entries(ratings).forEach(([rating_key, label_map]) => {
             if (!label_map) return;
-            if (r_idx in label_map && label_map[r_idx] !== undefined)
-              row[`Human rating: ${rating_key}`] = label_map[r_idx];
+            if (r_idx in label_map && label_map[r_idx] !== undefined) {
+              const rating = label_map[r_idx];
+              row[`Human rating: ${rating_key}`] =
+                typeof rating === "boolean"
+                  ? rating
+                    ? "GOOD"
+                    : "BAD"
+                  : rating;
+            }
           });
         }
 
@@ -337,7 +344,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     // Filter responses by search value, if user has searched
     if (searchValue.length > 0 && filterBySearchValue)
       responses = responses.filter((res_obj) =>
-        res_obj.responses.some(search_regex.test.bind(search_regex)),
+        res_obj.responses.some(
+          (r) => typeof r === "string" && search_regex.test(r),
+        ),
       );
 
     // Functions to associate a color to each LLM in responses
@@ -390,10 +399,10 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       const hide_llm_name = eatenvars.includes("LLM");
       return resps.map((res_obj, res_idx) => {
         // If user has searched for something, further filter the response texts by only those that contain the search term
-        const respsFilterFunc = (responses: string[]) => {
+        const respsFilterFunc = (responses: LLMResponseData[]) => {
           if (searchValue.length === 0) return responses;
           const filtered_resps = responses.filter(
-            search_regex.test.bind(search_regex),
+            (r) => typeof r === "string" && search_regex.test(r),
           );
           numResponsesDisplayed += filtered_resps.length;
           if (filterBySearchValue) return filtered_resps;

@@ -527,7 +527,8 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
               resp_obj.responses.map((r) => {
                 // Carry over the response text, prompt, prompt fill history (vars), and llm data
                 const o: TemplateVarInfo = {
-                  text: escapeBraces(r),
+                  text: typeof r === "string" ? escapeBraces(r) : undefined,
+                  image: typeof r === "object" && r.t === "img" ? r.d : undefined,
                   prompt: resp_obj.prompt,
                   fill_history: resp_obj.vars,
                   metavars: resp_obj.metavars || {},

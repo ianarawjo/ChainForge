@@ -267,7 +267,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
         if (groupByVar !== "A") vars[varname] = var_val;
         return {
           text: joinTexts(
-            resp_objs.map((r) => (typeof r === "string" ? r : r.text)),
+            resp_objs.map((r) => (typeof r === "string" ? r : r.text ?? "")),
             formatting,
           ),
           fill_history: isMetavar ? {} : vars,
@@ -284,7 +284,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
           countNumLLMs(unspecGroup) > 1 ? undefined : unspecGroup[0].llm;
         joined_texts.push({
           text: joinTexts(
-            unspecGroup.map((u) => (typeof u === "string" ? u : u.text)),
+            unspecGroup.map((u) => (typeof u === "string" ? u : u.text ?? "")),
             formatting,
           ),
           fill_history: {},
@@ -337,7 +337,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
           if (nonLLMRespGroup.length > 0)
             joined_texts.push(
               joinTexts(
-                nonLLMRespGroup.map((t) => t.text),
+                nonLLMRespGroup.map((t) => t.text ?? ""),
                 formatting,
               ),
             );
@@ -353,7 +353,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
             setDataPropsForNode(id, { fields: joined_texts });
           } else {
             let joined_texts: string | TemplateVarInfo = joinTexts(
-              resp_objs.map((r) => (typeof r === "string" ? r : r.text)),
+              resp_objs.map((r) => (typeof r === "string" ? r : r.text ?? "")),
               formatting,
             );
 
