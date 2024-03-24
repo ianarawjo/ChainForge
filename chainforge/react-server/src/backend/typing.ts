@@ -193,7 +193,8 @@ export type EvaluationResults = {
     | "Categorical"
     | "Mixed"
     | "Unknown"
-    | "Empty";
+    | "Empty"
+    | "Boolean";
 };
 
 /** A standard response format expected by the front-end. */

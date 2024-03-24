@@ -14,32 +14,47 @@ import { v4 as uuid } from "uuid";
 import useStore, { initLLMProviders } from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
-import fetch_from_backend from "./fetch_from_backend";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import { LLMListContainer } from "./LLMListComponent";
-import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
+import LLMResponseInspectorModal, {
+  LLMResponseInspectorModalRef,
+} from "./LLMResponseInspectorModal";
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { stripLLMDetailsFromResponses } from "./backend/utils";
 import { AlertModalContext } from "./AlertModal";
-import { QueryProgress } from "./backend/typing";
+import {
+  Dict,
+  LLMResponse,
+  LLMSpec,
+  QueryProgress,
+} from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
+import { evalWithLLM, grabResponses } from "./backend/backend";
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
 const PLACEHOLDER_PROMPT =
   "Respond with 'true' if the text has a positive sentiment, 'false' if not.";
 
+enum OutputFormat {
+  Bin = "bin",
+  Cat = "cat",
+  Num = "num",
+  Any = "open",
+}
 const OUTPUT_FORMATS = [
-  { value: "bin", label: "binary (true/false)" },
-  { value: "cat", label: "categorical" },
-  { value: "num", label: "numeric" },
-  { value: "open", label: "open-ended" },
+  { value: OutputFormat.Bin, label: "binary (true/false)" },
+  { value: OutputFormat.Cat, label: "categorical" },
+  { value: OutputFormat.Num, label: "numeric" },
+  { value: OutputFormat.Any, label: "open-ended" },
 ];
 const OUTPUT_FORMAT_PROMPTS = {
-  bin: "Only reply with boolean values true or false, nothing else.",
-  cat: "Only reply with your categorization, nothing else.",
-  num: "Only reply with a numeric value (a number), nothing else.",
-  open: "",
+  [OutputFormat.Bin]:
+    "Only reply with boolean values true or false, nothing else.",
+  [OutputFormat.Cat]: "Only reply with your categorization, nothing else.",
+  [OutputFormat.Num]:
+    "Only reply with a numeric value (a number), nothing else.",
+  [OutputFormat.Any]: "",
 };
 
 // The default LLM annotator is GPT-4 at temperature 0.
@@ -47,18 +62,45 @@ const DEFAULT_LLM_ITEM = (() => {
   const item = [initLLMProviders.find((i) => i.base_model === "gpt-4")].map(
     (i) => ({
       key: uuid(),
-      settings: getDefaultModelSettings(i.base_model),
+      settings: getDefaultModelSettings((i as LLMSpec).base_model),
       ...i,
     }),
   )[0];
   item.settings.temperature = 0.0;
-  return item;
+  return item as LLMSpec;
 })();
+
+export interface LLMEvaluatorComponentRef {
+  run: (
+    input_node_ids: string[],
+    onProgressChange?: (progress: QueryProgress) => void,
+  ) => Promise<LLMResponse[]>;
+  serialize: () => {
+    prompt: string;
+    format: string;
+    grader?: LLMSpec;
+  };
+}
+
+export interface LLMEvaluatorComponentProps {
+  prompt?: string;
+  grader?: LLMSpec;
+  format?: OutputFormat;
+  id?: string;
+  showUserInstruction?: boolean;
+  onPromptEdit?: (newPrompt: string) => void;
+  onLLMGraderChange?: (newGrader: LLMSpec) => void;
+  onFormatChange?: (newFormat: OutputFormat) => void;
+  modelContainerBgColor?: string;
+}
 
 /**
  * Inner component for LLM evaluators, storing the body of the UI (outside of the header and footers).
  */
-export const LLMEvaluatorComponent = forwardRef(function LLMEvaluatorComponent(
+export const LLMEvaluatorComponent = forwardRef<
+  LLMEvaluatorComponentRef,
+  LLMEvaluatorComponentProps
+>(function LLMEvaluatorComponent(
   {
     prompt,
     grader,
@@ -74,11 +116,13 @@ export const LLMEvaluatorComponent = forwardRef(function LLMEvaluatorComponent(
 ) {
   const [promptText, setPromptText] = useState(prompt ?? "");
   const [llmScorers, setLLMScorers] = useState([grader ?? DEFAULT_LLM_ITEM]);
-  const [expectedFormat, setExpectedFormat] = useState(format ?? "bin");
+  const [expectedFormat, setExpectedFormat] = useState<OutputFormat>(
+    format ?? OutputFormat.Bin,
+  );
   const apiKeys = useStore((state) => state.apiKeys);
 
   const handlePromptChange = useCallback(
-    (e) => {
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       // Store prompt text
       setPromptText(e.target.value);
       if (onPromptEdit) onPromptEdit(e.target.value);
@@ -87,7 +131,7 @@ export const LLMEvaluatorComponent = forwardRef(function LLMEvaluatorComponent(
   );
 
   const handleLLMListItemsChange = useCallback(
-    (new_items) => {
+    (new_items: LLMSpec[]) => {
       setLLMScorers(new_items);
 
       if (new_items.length > 0 && onLLMGraderChange)
@@ -97,16 +141,19 @@ export const LLMEvaluatorComponent = forwardRef(function LLMEvaluatorComponent(
   );
 
   const handleFormatChange = useCallback(
-    (e) => {
-      setExpectedFormat(e.target.value);
-      if (onFormatChange) onFormatChange(e.target.value);
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setExpectedFormat(e.target.value as OutputFormat);
+      if (onFormatChange) onFormatChange(e.target.value as OutputFormat);
     },
     [setExpectedFormat, onFormatChange],
   );
 
   // Runs the LLM evaluator over the inputs, returning the results in a Promise.
   // Errors are raised as a rejected Promise.
-  const run = (input_node_ids, onProgressChange) => {
+  const run = (
+    input_node_ids: string[],
+    onProgressChange?: (progress: QueryProgress) => void,
+  ) => {
     // Create prompt template to wrap user-specified scorer prompt and input data
     const formatting_instr = OUTPUT_FORMAT_PROMPTS[expectedFormat] ?? "";
     const template =
@@ -117,33 +164,33 @@ export const LLMEvaluatorComponent = forwardRef(function LLMEvaluatorComponent(
       "\n```\n{input}\n```";
 
     // Keeping track of progress (unpacking the progress state since there's only a single LLM)
-    const llm_key = llmScorers[0].key;
-    const _progress_listener = (progress_by_llm) =>
-      onProgressChange({
-        success: progress_by_llm[llm_key].success,
-        error: progress_by_llm[llm_key].error,
-      });
+    const llm_key = llmScorers[0].key ?? "";
+    const _progress_listener = onProgressChange
+      ? (progress_by_llm: Dict<QueryProgress>) =>
+          onProgressChange({
+            success: progress_by_llm[llm_key].success,
+            error: progress_by_llm[llm_key].error,
+          })
+      : undefined;
 
     // Run LLM as evaluator
-    return fetch_from_backend("evalWithLLM", {
-      id,
-      llm: llmScorers[0],
-      root_prompt: template,
-      responses: input_node_ids,
-      api_keys: apiKeys ?? {},
-      progress_listener: onProgressChange ? _progress_listener : undefined,
-    }).then(function (json) {
+    return evalWithLLM(
+      id ?? Date.now().toString(),
+      llmScorers[0],
+      template,
+      input_node_ids,
+      apiKeys ?? {},
+      _progress_listener,
+    ).then(function (res) {
       // Check if there's an error; if so, bubble it up to user and exit:
-      if (!json || json.error || json.responses === undefined)
+      if (res.errors && res.errors.length > 0) throw new Error(res.errors[0]);
+      else if (res.responses === undefined)
         throw new Error(
-          json?.error ||
-            "Unknown error encountered when requesting evaluations: empty response returned.",
+          "Unknown error encountered when requesting evaluations: empty response returned.",
         );
-      else if (json.errors && json.errors.length > 0)
-        throw new Error(Object.values(json.errors[0])[0]);
 
       // Success!
-      return json;
+      return res.responses;
     });
   };
 
@@ -210,14 +257,25 @@ export const LLMEvaluatorComponent = forwardRef(function LLMEvaluatorComponent(
   );
 });
 
-const LLMEvaluatorNode = ({ data, id }) => {
+export interface LLMEvaluatorNodeProps {
+  data: {
+    prompt: string;
+    grader: LLMSpec;
+    format: OutputFormat;
+    title: string;
+    refresh: boolean;
+  };
+  id: string;
+}
+
+const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
   // The inner component storing the UI and logic for running the LLM-based evaluation
-  const llmEvaluatorRef = useRef(null);
+  const llmEvaluatorRef = useRef<LLMEvaluatorComponentRef>(null);
 
   const [status, setStatus] = useState<Status>(Status.NONE);
   const showAlert = useContext(AlertModalContext);
 
-  const inspectModal = useRef(null);
+  const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
   // eslint-disable-next-line
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -227,7 +285,7 @@ const LLMEvaluatorNode = ({ data, id }) => {
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
 
-  const [lastResponses, setLastResponses] = useState([]);
+  const [lastResponses, setLastResponses] = useState<LLMResponse[]>([]);
 
   // Progress when querying responses
   const [progress, setProgress] = useState<QueryProgress | undefined>(
@@ -253,49 +311,40 @@ const LLMEvaluatorNode = ({ data, id }) => {
     };
 
     // Fetch info about the number of queries we'll need to make
-    fetch_from_backend("grabResponses", {
-      responses: input_node_ids,
-    }).then(function (json) {
-      if (!json?.responses || json.responses.length === 0) {
+    grabResponses(input_node_ids)
+      .then(function (resps) {
+        // Create progress listener
+        const num_resps_required = resps.reduce(
+          (acc, resp_obj) => acc + resp_obj.responses.length,
+          0,
+        );
+        const onProgressChange = (prog: QueryProgress) => {
+          setProgress({
+            success: (100 * prog.success) / num_resps_required,
+            error: (100 * prog.error) / num_resps_required,
+          });
+        };
+
+        // Run LLM evaluator
+        llmEvaluatorRef?.current
+          ?.run(input_node_ids, onProgressChange)
+          .then(function (evald_resps) {
+            // Ping any vis + inspect nodes attached to this node to refresh their contents:
+            pingOutputNodes(id);
+
+            console.log(evald_resps);
+            setLastResponses(evald_resps);
+
+            if (!showDrawer) setUninspectedResponses(true);
+
+            setStatus(Status.READY);
+            setProgress(undefined);
+          })
+          .catch(handleError);
+      })
+      .catch(() => {
         handleError("Error pulling input data for node: No input data found.");
-        return;
-      }
-
-      // Create progress listener
-      const num_resps_required = json.responses.reduce(
-        (acc, resp_obj) => acc + resp_obj.responses.length,
-        0,
-      );
-      const onProgressChange = (prog) => {
-        setProgress({
-          success: (100 * prog.success) / num_resps_required,
-          error: (100 * prog.error) / num_resps_required,
-        });
-      };
-
-      // Run LLM evaluator
-      llmEvaluatorRef?.current
-        ?.run(input_node_ids, onProgressChange)
-        .then(function (json) {
-          if (json?.responses === undefined) {
-            // We shouldn't be able to reach here, but just in case:
-            handleError("Unknown error encounted when running LLM evaluator.");
-            return;
-          }
-
-          // Ping any vis + inspect nodes attached to this node to refresh their contents:
-          pingOutputNodes(id);
-
-          console.log(json.responses);
-          setLastResponses(json.responses);
-
-          if (!showDrawer) setUninspectedResponses(true);
-
-          setStatus(Status.READY);
-          setProgress(undefined);
-        })
-        .catch(handleError);
-    });
+      });
   }, [
     inputEdgesForNode,
     llmEvaluatorRef,
@@ -322,15 +371,15 @@ const LLMEvaluatorNode = ({ data, id }) => {
   // On initialization
   useEffect(() => {
     // Attempt to grab cache'd responses
-    fetch_from_backend("grabResponses", {
-      responses: [id],
-    }).then(function (json) {
-      if (json.responses && json.responses.length > 0) {
+    grabResponses([id])
+      .then(function (resps) {
         // Store responses and set status to green checkmark
-        setLastResponses(stripLLMDetailsFromResponses(json.responses));
+        setLastResponses(stripLLMDetailsFromResponses(resps));
         setStatus(Status.READY);
-      }
-    });
+      })
+      .catch(() => {
+        // soft fail
+      });
   }, []);
 
   return (

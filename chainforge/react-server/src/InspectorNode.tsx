@@ -74,7 +74,7 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
           <button
             className="custom-button"
             key="export-data"
-            onClick={() => exportToExcel(jsonResponses)}
+            onClick={() => exportToExcel(jsonResponses ?? [])}
           >
             Export data
           </button>,
@@ -85,7 +85,7 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
         style={{ marginTop: "-8pt" }}
       >
         <LLMResponseInspector
-          jsonResponses={jsonResponses}
+          jsonResponses={jsonResponses ?? []}
           wideFormat={false}
         />
       </div>

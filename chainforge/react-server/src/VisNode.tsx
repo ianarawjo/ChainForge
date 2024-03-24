@@ -1,15 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Handle } from "reactflow";
+import { Handle, Position } from "reactflow";
 import { NativeSelect } from "@mantine/core";
 import useStore, { colorPalettes } from "./store";
 import Plot from "react-plotly.js";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import PlotLegend from "./PlotLegend";
-import fetch_from_backend from "./fetch_from_backend";
 import { cleanMetavarsFilterFunc, truncStr } from "./backend/utils";
-import { Dict, JSONCompatible, LLMResponse } from "./backend/typing";
+import {
+  Dict,
+  EvaluationResults,
+  EvaluationScore,
+  JSONCompatible,
+  LLMResponse,
+} from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
+import { grabResponses } from "./backend/backend";
 
 // Helper funcs
 const splitAndAddBreaks = (s: string, chunkSize: number) => {
@@ -121,11 +127,11 @@ const calcLeftPaddingForYLabels = (shortnames: string[]) => {
 
 export interface VisNodeProps {
   data: {
-    vars: Dict<string>;
-    selected_vars: string[];
-    llm_groups?: string[];
+    vars: { value: string; label: string }[];
+    selected_vars: string[] | string;
+    llm_groups?: { value: string; label: string }[];
     selected_llm_group?: string;
-    input: JSONCompatible;
+    input: string;
     refresh: boolean;
     title: string;
   };
@@ -138,18 +144,20 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
     (state) => state.getColorForLLMAndSetIfNotFound,
   );
 
-  const [plotlySpec, setPlotlySpec] = useState([]);
+  const [plotlySpec, setPlotlySpec] = useState<Dict[]>([]);
   const [plotlyLayout, setPlotlyLayout] = useState({});
   const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
   const [responses, setResponses] = useState<LLMResponse[]>([]);
   const [status, setStatus] = useState<Status>(Status.NONE);
   const [placeholderText, setPlaceholderText] = useState(<></>);
 
-  const [plotLegend, setPlotLegend] = useState(null);
-  const [selectedLegendItems, setSelectedLegendItems] = useState(null);
+  const [plotLegend, setPlotLegend] = useState<React.ReactNode>(null);
+  const [selectedLegendItems, setSelectedLegendItems] = useState<
+    string[] | null
+  >(null);
 
-  const plotDivRef = useRef(null);
-  const plotlyRef = useRef(null);
+  const plotDivRef = useRef<HTMLDivElement | null>(null);
+  const plotlyRef = useRef<Plot>(null);
 
   // The MultiSelect so people can dynamically set what vars they care about
   const [multiSelectVars, setMultiSelectVars] = useState(data.vars ?? []);
@@ -163,7 +171,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
   // However, when prompts are chained together, the original LLM info is stored in metavars as a key.
   // LLM groups allow you to plot against the original LLMs, even though a 'scorer' LLM might come after.
   const [availableLLMGroups, setAvailableLLMGroups] = useState(
-    data.llm_groups ?? ["LLM"],
+    data.llm_groups ?? [{ value: "LLM", label: "LLM" }],
   );
   const [selectedLLMGroup, setSelectedLLMGroup] = useState(
     data.selected_llm_group ?? "LLM",
@@ -280,10 +288,12 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
     // If categorical type, check if all binary:
     if (typeof_eval_res === "Categorical") {
       const is_all_bools = responses.reduce(
-        (acc0, res_obj) =>
+        (acc0: boolean, res_obj: LLMResponse) =>
           acc0 &&
-          res_obj.eval_res.items.reduce(
-            (acc, cur) => acc && typeof cur === "boolean",
+          res_obj.eval_res !== undefined &&
+          res_obj.eval_res.items?.reduce(
+            (acc: boolean, cur: EvaluationScore) =>
+              acc && typeof cur === "boolean",
             true,
           ),
         true,
@@ -295,14 +305,20 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
     // we might want to plot the result differently:
     let max_num_results_per_prompt = 1;
     responses.forEach((res_obj) => {
-      if (res_obj.eval_res?.items?.length > max_num_results_per_prompt)
+      if (
+        res_obj.eval_res !== undefined &&
+        res_obj.eval_res?.items?.length > max_num_results_per_prompt
+      )
         max_num_results_per_prompt = res_obj.eval_res.items.length;
     });
 
     let plot_legend = null;
-    let metric_axes_labels = [];
+    let metric_axes_labels: string[] = [];
     let num_metrics = 1;
-    if (typeof_eval_res.includes("KeyValue")) {
+    if (
+      typeof_eval_res.includes("KeyValue") &&
+      responses[0].eval_res !== undefined
+    ) {
       metric_axes_labels = Object.keys(responses[0].eval_res.items[0]);
       num_metrics = metric_axes_labels.length;
     }
@@ -329,10 +345,13 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
       else return v;
     };
 
-    const get_items = (eval_res_obj) => {
+    const get_items = (eval_res_obj?: EvaluationResults) => {
       if (eval_res_obj === undefined) return [];
       if (typeof_eval_res.includes("KeyValue"))
-        return eval_res_obj.items.map((item) => item[metric_axes_labels[0]]);
+        return eval_res_obj.items.map(
+          (item) =>
+            (item as Dict<boolean | number | string>)[metric_axes_labels[0]],
+        );
       return eval_res_obj.items;
     };
 
@@ -434,7 +453,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
       if (plotting_categorical_vars) {
         // Get all categories present in the evaluation results
         responses.forEach((r) =>
-          get_items(r.eval_res).forEach((i) => names.add(i)),
+          get_items(r.eval_res).forEach((i) => names.add(i.toString())),
         );
       } else {
         // Get all possible values of the single variable response ('name' vals)
@@ -443,7 +462,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
 
       const shortnames = genUniqueShortnames(names);
       for (const name of names) {
-        let x_items: number[] = [];
+        let x_items: EvaluationScore[] = [];
         let text_items: string[] = [];
 
         if (plotting_categorical_vars) {
@@ -542,9 +561,9 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
         const rs = responses_by_llm[llm];
 
-        let x_items = [];
-        let y_items = [];
-        let text_items = [];
+        let x_items: EvaluationScore[] = [];
+        let y_items: EvaluationScore[] = [];
+        let text_items: string[] = [];
         for (const name of names) {
           rs.forEach((r) => {
             if (resp_to_x(r) !== name) return;
@@ -587,7 +606,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
             text: text_items,
             hovertemplate: "%{text} <b><i>(%{x})</i></b>",
             orientation: "h",
-          };
+          } as Dict;
 
           // If only one result, plot a bar chart:
           if (max_num_results_per_prompt === 1) {
@@ -632,11 +651,13 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         const spec_colors = responses
           .map((resp_obj) => {
             const idx = unique_vals.indexOf(get_var(resp_obj, varnames[0]));
-            return Array(resp_obj.eval_res.items.length).fill(idx);
+            return resp_obj.eval_res
+              ? Array(resp_obj.eval_res.items.length).fill(idx)
+              : [];
           })
           .flat();
 
-        const colorscale = [];
+        const colorscale: [number, string][] = [];
         for (let i = 0; i < unique_vals.length; i++) {
           if (
             !selectedLegendItems ||
@@ -653,11 +674,16 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
             ]);
         }
 
-        const dimensions = [];
+        const dimensions: Dict = [];
         metric_axes_labels.forEach((metric) => {
           const evals = extractEvalResultsForMetric(metric, responses);
           dimensions.push({
-            range: [Math.min(...evals), Math.max(...evals)],
+            range: evals.every((e) => typeof e === "number")
+              ? [
+                  Math.min(...(evals as number[])),
+                  Math.max(...(evals as number[])),
+                ]
+              : undefined,
             label: metric,
             values: evals,
           });
@@ -678,13 +704,13 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         layout.selectedpoints = [];
 
         // There's no built-in legend for parallel coords, unfortunately, so we need to construct our own:
-        const legend_labels = {};
+        const legend_labels: Dict<string> = {};
         unique_vals.forEach((v, idx) => {
           if (!selectedLegendItems || selectedLegendItems.indexOf(v) > -1)
             legend_labels[v] = group_colors[idx % group_colors.length];
           else legend_labels[v] = unselected_line_color;
         });
-        const onClickLegendItem = (label) => {
+        const onClickLegendItem = (label: string) => {
           if (
             selectedLegendItems &&
             selectedLegendItems.length === 1 &&
@@ -745,7 +771,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         } else {
           // There are multiple LLMs in the response; do a grouped box plot by LLM.
           // Note that 'name' is now the LLM, and 'x' stores the value of the var:
-          plot_grouped_boxplot((r) => get_var_and_trim(r, varnames[0]), "var");
+          plot_grouped_boxplot((r) => get_var_and_trim(r, varnames[0]));
         }
       } else if (varnames.length === 2) {
         // Input is 2 vars; numeric eval
@@ -771,8 +797,11 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
               .map((s) => shortnames_1[s]),
             z: responses.map(
               (r) =>
-                get_items(r.eval_res).reduce((acc, val) => acc + val, 0) /
-                r.eval_res.items.length,
+                get_items(r.eval_res).reduce(
+                  (acc: number, val) =>
+                    acc + (typeof val === "number" ? val : 0),
+                  0,
+                ) / (r.eval_res?.items.length ?? 1),
             ), // calculates mean
             mode: "markers",
             marker: {
@@ -793,8 +822,11 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
                 .map((s) => shortnames_1[s]),
               z: resps.map(
                 (r) =>
-                  get_items(r.eval_res).reduce((acc, val) => acc + val, 0) /
-                  r.eval_res.items.length,
+                  get_items(r.eval_res).reduce(
+                    (acc: number, val) =>
+                      acc + (typeof val === "number" ? val : 0),
+                    0,
+                  ) / (r.eval_res?.items.length ?? 1),
               ), // calculates mean
               mode: "markers",
               marker: {
@@ -810,7 +842,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
     if (!Array.isArray(spec)) spec = [spec];
 
     setPlotLegend(plot_legend);
-    setPlotlySpec(spec);
+    setPlotlySpec(spec as Dict[]);
     setPlotlyLayout(layout);
 
     // if (plotDivRef && plotDivRef.current) {
@@ -829,66 +861,68 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
     // Grab the input node ids
     const input_node_ids = [data.input];
 
-    fetch_from_backend("grabResponses", { responses: input_node_ids }).then(
-      function (json) {
-        if (json.responses && json.responses.length > 0) {
-          // Store responses and extract + store vars
-          setResponses(json.responses.toReversed());
+    grabResponses(input_node_ids).then(function (resps) {
+      if (resps && resps.length > 0) {
+        // Store responses and extract + store vars
+        setResponses(resps.toReversed());
 
-          // Find all vars in responses
-          let varnames = new Set<string>();
-          let metavars = new Set<string>();
-          json.responses.forEach((resp_obj) => {
-            Object.keys(resp_obj.vars).forEach((v) => varnames.add(v));
-            if (resp_obj.metavars)
-              Object.keys(resp_obj.metavars).forEach((v) => metavars.add(v));
-          });
-          varnames = Array.from(varnames);
-          metavars = Array.from(metavars);
-
-          // Get all vars for the y-axis dropdown, merging metavars and vars into one list,
-          // and excluding any special 'LLM group' metavars:
-          const msvars = ["LLM (default)"]
-            .concat(varnames.map((name) => ({ value: name, label: name })))
-            .concat(
-              metavars.filter(cleanMetavarsFilterFunc).map((name) => ({
-                value: `__meta_${name}`,
-                label: `${name} (meta)`,
-              })),
+        // Find all vars in responses
+        let varnames: string[] | Set<string> = new Set<string>();
+        let metavars: string[] | Set<string> = new Set<string>();
+        resps.forEach((resp_obj) => {
+          Object.keys(resp_obj.vars).forEach((v) =>
+            (varnames as Set<string>).add(v),
+          );
+          if (resp_obj.metavars)
+            Object.keys(resp_obj.metavars).forEach((v) =>
+              (metavars as Set<string>).add(v),
             );
+        });
+        varnames = Array.from(varnames);
+        metavars = Array.from(metavars);
 
-          // Find all the special 'LLM group' metavars and put them in the 'group by' dropdown:
-          const available_llm_groups = [{ value: "LLM", label: "LLM" }].concat(
+        // Get all vars for the y-axis dropdown, merging metavars and vars into one list,
+        // and excluding any special 'LLM group' metavars:
+        const msvars = [{ value: "LLM (default)", label: "LLM (default)" }]
+          .concat(varnames.map((name) => ({ value: name, label: name })))
+          .concat(
             metavars.filter(cleanMetavarsFilterFunc).map((name) => ({
-              value: name,
-              label: `LLMs #${parseInt(name.slice(4)) + 1}`,
+              value: `__meta_${name}`,
+              label: `${name} (meta)`,
             })),
           );
-          if (available_llm_groups.length > 1)
-            available_llm_groups[0] = { value: "LLM", label: "LLMs (last)" };
-          setAvailableLLMGroups(available_llm_groups);
 
-          // Check for a change in available parameters
-          if (
-            !multiSelectVars ||
-            !multiSelectValue ||
-            !areSetsEqual(
-              new Set(msvars.map((o) => o.value)),
-              new Set(multiSelectVars.map((o) => o.value)),
-            )
-          ) {
-            setMultiSelectValue("LLM (default)");
-            setMultiSelectVars(msvars);
-            setDataPropsForNode(id, {
-              vars: msvars,
-              selected_vars: [],
-              llm_groups: available_llm_groups,
-            });
-          }
-          // From here a React effect will detect the changes to these values and display a new plot
+        // Find all the special 'LLM group' metavars and put them in the 'group by' dropdown:
+        const available_llm_groups = [{ value: "LLM", label: "LLM" }].concat(
+          metavars.filter(cleanMetavarsFilterFunc).map((name) => ({
+            value: name,
+            label: `LLMs #${parseInt(name.slice(4)) + 1}`,
+          })),
+        );
+        if (available_llm_groups.length > 1)
+          available_llm_groups[0] = { value: "LLM", label: "LLMs (last)" };
+        setAvailableLLMGroups(available_llm_groups);
+
+        // Check for a change in available parameters
+        if (
+          !multiSelectVars ||
+          !multiSelectValue ||
+          !areSetsEqual(
+            new Set(msvars.map((o) => o.value)),
+            new Set(multiSelectVars.map((o) => o.value)),
+          )
+        ) {
+          setMultiSelectValue("LLM (default)");
+          setMultiSelectVars(msvars);
+          setDataPropsForNode(id, {
+            vars: msvars,
+            selected_vars: [],
+            llm_groups: available_llm_groups,
+          });
         }
-      },
-    );
+        // From here a React effect will detect the changes to these values and display a new plot
+      }
+    }).catch(console.error);
   }, [data]);
 
   if (data.input) {
@@ -909,7 +943,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
 
   // Resizing the plot when div is resized:
   const setPlotDivRef = useCallback(
-    (elem) => {
+    (elem: HTMLDivElement) => {
       // To listen for resize events of the textarea, we need to use a ResizeObserver.
       // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div wrapping the Plotly vis.
       if (!plotDivRef.current && window.ResizeObserver) {
@@ -917,12 +951,14 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
           if (
             !plotlyRef ||
             !plotlyRef.current ||
+            // @ts-expect-error resizeHandler is a private property we access to force a redraw.
             !plotlyRef.current.resizeHandler ||
             !plotlySpec ||
             plotlySpec.length === 0
           )
             return;
           // The below calls Plotly.Plots.resize() on the specific element
+          // @ts-expect-error resizeHandler is a private property we access to force a redraw.
           plotlyRef.current.resizeHandler();
         });
 
@@ -1039,11 +1075,11 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
             display: plotlySpec && plotlySpec.length > 0 ? "block" : "none",
           }}
         />
-        {plotLegend || <></>}
+        {plotLegend ?? <></>}
       </div>
       <Handle
         type="target"
-        position="left"
+        position={Position.Left}
         id="input"
         className="grouped-handle"
         style={{ top: "50%" }}

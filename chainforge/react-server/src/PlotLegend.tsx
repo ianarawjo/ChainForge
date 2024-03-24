@@ -2,13 +2,12 @@ import React from "react";
 import { Dict } from "./backend/typing";
 import { truncStr } from "./backend/utils";
 
-const PlotLegend = ({
-  labels,
-  onClickLabel,
-}: {
+export interface PlotLegendProps {
   labels: Dict<string>;
   onClickLabel: (label: string) => void;
-}) => {
+}
+
+const PlotLegend: React.FC<PlotLegendProps> = ({ labels, onClickLabel }) => {
   return (
     <div className="plot-legend">
       {Object.entries(labels).map(([label, color]) => (

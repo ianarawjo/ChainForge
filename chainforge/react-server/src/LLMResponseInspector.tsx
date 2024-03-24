@@ -441,7 +441,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       // First get column names as input vars + LLMs:
       let var_cols: string[],
         colnames: string[],
-        getColVal: (r: LLMResponse) => string | number | boolean | undefined,
+        getColVal: (r: LLMResponse) => string | number | undefined,
         found_sel_var_vals: string[];
       let metavar_cols: string[] = []; // found_metavars; -- Disabling this functionality for now, since it is usually annoying.
       if (tableColVar === "LLM") {
@@ -555,7 +555,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         varnames: string[],
         eatenvars: string[],
         header: React.ReactNode,
-      ) => {
+      ): React.ReactNode => {
         if (resps.length === 0) return [];
         if (varnames.length === 0) {
           // Base case. Display n response(s) to each single prompt, back-to-back:
@@ -667,7 +667,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             ) : (
               <div key={group_name}>{grouped_resps_divs}</div>
             )}
-            {leftover_resps_divs.length === 0 ? (
+            {Array.isArray(leftover_resps_divs) &&
+            leftover_resps_divs.length === 0 ? (
               <></>
             ) : (
               <div key={"__unspecified_group"} className="response-group">
@@ -741,6 +742,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               variant={caseSensitive ? "filled" : "light"}
               size={sz}
               mb="4px"
+              // @ts-expect-error Mantine's toggle works here but the types don't match
               onClick={toggleCaseSensitivity}
             >
               <IconLetterCaseToggle />
@@ -755,6 +757,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               variant={filterBySearchValue ? "filled" : "light"}
               size={sz}
               mb="2px"
+              // @ts-expect-error Mantine's toggle works here but the types don't match
               onClick={toggleFilterBySearchValue}
             >
               <IconFilter />
