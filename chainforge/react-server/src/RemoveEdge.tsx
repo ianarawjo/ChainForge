@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from "@reactflow/core";
 import useStore from "./store";
+import { Position } from "reactflow";
+import { Dict } from "./backend/typing";
 
 const EdgePathContainer = styled.g`
   path:nth-child(2) {
@@ -15,6 +17,18 @@ const EdgePathContainer = styled.g`
   }
 `;
 
+export interface CustomEdgeProps {
+  id: string;
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  sourcePosition: Position;
+  targetPosition: Position;
+  style: Dict;
+  markerEnd?: string;
+}
+
 export default function CustomEdge({
   id,
   sourceX,
@@ -25,7 +39,7 @@ export default function CustomEdge({
   targetPosition,
   style = {},
   markerEnd,
-}) {
+}: CustomEdgeProps) {
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -38,7 +52,7 @@ export default function CustomEdge({
   const [hovering, setHovering] = useState(false);
   const removeEdge = useStore((state) => state.removeEdge);
 
-  const onEdgeClick = (evt, id) => {
+  const onEdgeClick = (evt: React.MouseEvent<HTMLButtonElement>, id: string) => {
     evt.stopPropagation();
     removeEdge(id);
   };
