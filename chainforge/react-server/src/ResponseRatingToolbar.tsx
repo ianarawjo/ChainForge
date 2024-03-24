@@ -13,7 +13,8 @@ import { deepcopy } from "./backend/utils";
 
 type RatingDict = Record<number, boolean | string | undefined>;
 
-const getRatingKeyForResponse = (uid: string, label_name: string) => `r.${uid}.${label_name}`;
+const getRatingKeyForResponse = (uid: string, label_name: string) =>
+  `r.${uid}.${label_name}`;
 const collapse_ratings = (rating_dict: RatingDict, idxs: number[]) => {
   if (rating_dict === undefined) return undefined;
   for (let j = 0; j < idxs.length; j++) {
@@ -26,7 +27,11 @@ const collapse_ratings = (rating_dict: RatingDict, idxs: number[]) => {
 export const getLabelForResponse = (uid: string, label_name: string) => {
   return StorageCache.get(getRatingKeyForResponse(uid, label_name));
 };
-export const setLabelForResponse = (uid: string, label_name: string, payload: RatingDict) => {
+export const setLabelForResponse = (
+  uid: string,
+  label_name: string,
+  payload: RatingDict,
+) => {
   StorageCache.store(getRatingKeyForResponse(uid, label_name), payload);
 };
 
@@ -36,24 +41,23 @@ interface ToolbarButtonProps {
   children: React.ReactNode;
 }
 
-const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(function ToolbarButton(
-  { selected, onClick, children },
-  ref,
-) {
-  return (
-    <Button
-      ref={ref}
-      p="0px 2px"
-      size="xs"
-      color={selected ? "dark" : "gray"}
-      onClick={onClick}
-      variant="subtle"
-      compact
-    >
-      {children}
-    </Button>
-  );
-});
+const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
+  function ToolbarButton({ selected, onClick, children }, ref) {
+    return (
+      <Button
+        ref={ref}
+        p="0px 2px"
+        size="xs"
+        color={selected ? "dark" : "gray"}
+        onClick={onClick}
+        variant="subtle"
+        compact
+      >
+        {children}
+      </Button>
+    );
+  },
+);
 
 export interface ResponseRatingToolbarProps {
   uid: string;

@@ -52,7 +52,10 @@ export default function CustomEdge({
   const [hovering, setHovering] = useState(false);
   const removeEdge = useStore((state) => state.removeEdge);
 
-  const onEdgeClick = (evt: React.MouseEvent<HTMLButtonElement>, id: string) => {
+  const onEdgeClick = (
+    evt: React.MouseEvent<HTMLButtonElement>,
+    id: string,
+  ) => {
     evt.stopPropagation();
     removeEdge(id);
   };

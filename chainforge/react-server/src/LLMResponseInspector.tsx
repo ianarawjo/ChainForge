@@ -43,9 +43,14 @@ import { Dict, LLMResponse } from "./backend/typing";
 // Helper funcs
 const getLLMName = (resp_obj: LLMResponse) =>
   typeof resp_obj?.llm === "string" ? resp_obj.llm : resp_obj?.llm?.name;
-const escapeRegExp = (txt: string) => txt.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+const escapeRegExp = (txt: string) =>
+  txt.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
 
-function getIndicesOfSubstringMatches(s: string, substr: string, caseSensitive?: boolean) {
+function getIndicesOfSubstringMatches(
+  s: string,
+  substr: string,
+  caseSensitive?: boolean,
+) {
   const regex = new RegExp(
     escapeRegExp(substr),
     "g" + (caseSensitive ? "" : "i"),
@@ -57,7 +62,11 @@ function getIndicesOfSubstringMatches(s: string, substr: string, caseSensitive?:
 }
 
 // Splits a string by a substring or regex, but includes the delimiter (substring/regex match) elements in the returned array.
-function splitAndIncludeDelimiter(s: string, substr: string, caseSensitive?: boolean) {
+function splitAndIncludeDelimiter(
+  s: string,
+  substr: string,
+  caseSensitive?: boolean,
+) {
   const indices = getIndicesOfSubstringMatches(s, substr, caseSensitive);
   if (indices.length === 0) return [s];
 
@@ -79,7 +88,11 @@ function splitAndIncludeDelimiter(s: string, substr: string, caseSensitive?: boo
 }
 
 // Returns an HTML version of text where 'searchValue' is highlighted.
-function genSpansForHighlightedValue(text: string, searchValue: string, caseSensitive?: boolean) {
+function genSpansForHighlightedValue(
+  text: string,
+  searchValue: string,
+  caseSensitive?: boolean,
+) {
   // Split texts by searchValue and map to <span> and <mark> elements
   return splitAndIncludeDelimiter(text, searchValue, caseSensitive).map(
     (s, idx) => {
@@ -95,7 +108,10 @@ function genSpansForHighlightedValue(text: string, searchValue: string, caseSens
 }
 
 // Export the JSON responses to an excel file (downloads the file):
-export const exportToExcel = (jsonResponses: LLMResponse[], filename?: string) => {
+export const exportToExcel = (
+  jsonResponses: LLMResponse[],
+  filename?: string,
+) => {
   if (filename === undefined) filename = "responses.xlsx";
 
   // Check that there are responses to export:
@@ -174,13 +190,15 @@ export const exportToExcel = (jsonResponses: LLMResponse[], filename?: string) =
   XLSX.writeFile(wb, filename);
 };
 
-
 export interface LLMResponseInspectorProps {
   jsonResponses: LLMResponse[];
   wideFormat?: boolean;
 }
 
-const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonResponses, wideFormat }) => {
+const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
+  jsonResponses,
+  wideFormat,
+}) => {
   // Responses
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
@@ -189,7 +207,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonRespons
   const [viewFormat, setViewFormat] = useState("hierarchy");
 
   // The MultiSelect so people can dynamically set what vars they care about
-  const [multiSelectVars, setMultiSelectVars] = useState<{value: string; label: string}[]>([]);
+  const [multiSelectVars, setMultiSelectVars] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [multiSelectValue, setMultiSelectValue] = useState<string[]>([]);
 
   // Search bar functionality
@@ -247,8 +267,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonRespons
     let found_metavars: Array<string> | Set<string> = new Set<string>();
     let found_llms: Array<string> | Set<string> = new Set<string>();
     batchedResponses.forEach((res_obj) => {
-      Object.keys(res_obj.vars).forEach((v) => (found_vars as Set<string>).add(v));
-      Object.keys(res_obj.metavars).forEach((v) => (found_metavars as Set<string>).add(v));
+      Object.keys(res_obj.vars).forEach((v) =>
+        (found_vars as Set<string>).add(v),
+      );
+      Object.keys(res_obj.metavars).forEach((v) =>
+        (found_metavars as Set<string>).add(v),
+      );
       (found_llms as Set<string>).add(getLLMName(res_obj));
     });
     found_vars = Array.from(found_vars);
@@ -317,7 +341,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonRespons
       );
 
     // Functions to associate a color to each LLM in responses
-    const color_for_llm = (llm: string) => getColorForLLMAndSetIfNotFound(llm) + "99";
+    const color_for_llm = (llm: string) =>
+      getColorForLLMAndSetIfNotFound(llm) + "99";
     const header_bg_colors = ["#e0f4fa", "#c0def9", "#a9c0f9", "#a6b2ea"];
     const response_box_colors = [
       "#eee",
@@ -331,7 +356,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonRespons
     const rgroup_color = (depth: number) =>
       response_box_colors[depth % response_box_colors.length];
 
-    const getHeaderBadge = (key: string, val: string | undefined, depth: number) => {
+    const getHeaderBadge = (
+      key: string,
+      val: string | undefined,
+      depth: number,
+    ) => {
       if (val !== undefined) {
         const s = truncStr(val.trim(), 1024);
         return (
@@ -353,7 +382,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonRespons
       }
     };
 
-    const generateResponseBoxes = (resps: LLMResponse[], eatenvars: string[], fixed_width: number) => {
+    const generateResponseBoxes = (
+      resps: LLMResponse[],
+      eatenvars: string[],
+      fixed_width: number,
+    ) => {
       const hide_llm_name = eatenvars.includes("LLM");
       return resps.map((res_obj, res_idx) => {
         // If user has searched for something, further filter the response texts by only those that contain the search term
@@ -406,7 +439,10 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonRespons
     if (viewFormat === "table") {
       // Generate a table, with default columns for: input vars, LLMs queried
       // First get column names as input vars + LLMs:
-      let var_cols: string[], colnames: string[], getColVal: (r: LLMResponse) => string | number | boolean | undefined, found_sel_var_vals: string[];
+      let var_cols: string[],
+        colnames: string[],
+        getColVal: (r: LLMResponse) => string | number | boolean | undefined,
+        found_sel_var_vals: string[];
       let metavar_cols: string[] = []; // found_metavars; -- Disabling this functionality for now, since it is usually annoying.
       if (tableColVar === "LLM") {
         var_cols = found_vars;
@@ -425,7 +461,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonRespons
           responses.reduce((acc, res_obj) => {
             acc.add(
               tableColVar in res_obj.vars
-                ? res_obj.vars[tableColVar] as string
+                ? (res_obj.vars[tableColVar] as string)
                 : "(unspecified)",
             );
             return acc;
@@ -434,7 +470,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonRespons
         colnames = var_cols.concat(found_sel_var_vals);
       }
 
-      const getVar = (r: LLMResponse, v: string) => (v === "LLM" ? getLLMName(r) : r.vars[v]);
+      const getVar = (r: LLMResponse, v: string) =>
+        v === "LLM" ? getLLMName(r) : r.vars[v];
 
       // Then group responses by prompts. Each prompt will become a separate row of the table (will be treated as unique)
       const responses_by_prompt = groupResponsesBy(responses, (r) =>
@@ -513,7 +550,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonRespons
       // :: nested divs first grouped by LLM (first level), then by var1, then var2 (deepest level).
       let leaf_id = 0;
       let first_opened = false;
-      const groupByVars = (resps: LLMResponse[], varnames: string[], eatenvars: string[], header: React.ReactNode) => {
+      const groupByVars = (
+        resps: LLMResponse[],
+        varnames: string[],
+        eatenvars: string[],
+        header: React.ReactNode,
+      ) => {
         if (resps.length === 0) return [];
         if (varnames.length === 0) {
           // Base case. Display n response(s) to each single prompt, back-to-back:
@@ -576,7 +618,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonRespons
                   {val}
                 </div>
               )
-            : (key: string, val?: string) => getHeaderBadge(key, val, eatenvars.length);
+            : (key: string, val?: string) =>
+                getHeaderBadge(key, val, eatenvars.length);
 
         // Now produce nested divs corresponding to the groups
         const remaining_vars = varnames.slice(1);
@@ -660,12 +703,13 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({ jsonRespons
   // we want to autoclose the multiselect drop-down:
   const multiSelectRef = useRef<HTMLInputElement>(null);
   const handleMultiSelectValueChange = (new_val: string[]) => {
-    if (multiSelectRef?.current) 
-      multiSelectRef.current.blur();
+    if (multiSelectRef?.current) multiSelectRef.current.blur();
     setMultiSelectValue(new_val);
   };
 
-  const handleSearchValueChange = (content: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchValueChange = (
+    content: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     setSearchValue(content.target.value);
   };
 

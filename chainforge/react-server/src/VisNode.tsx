@@ -8,20 +8,22 @@ import NodeLabel from "./NodeLabelComponent";
 import PlotLegend from "./PlotLegend";
 import fetch_from_backend from "./fetch_from_backend";
 import { cleanMetavarsFilterFunc, truncStr } from "./backend/utils";
+import { Dict, JSONCompatible, LLMResponse } from "./backend/typing";
+import { Status } from "./StatusIndicatorComponent";
 
 // Helper funcs
-const splitAndAddBreaks = (s, chunkSize) => {
+const splitAndAddBreaks = (s: string, chunkSize: number) => {
   // Split the input string into chunks of specified size
   const chunks = [];
   for (let i = 0; i < s.length; i += chunkSize) {
     chunks.push(s.slice(i, i + chunkSize));
   }
-
   // Join the chunks with a <br> tag
   return chunks.join("<br>");
 };
+
 // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
-const createHoverTexts = (responses) => {
+const createHoverTexts = (responses: string[]) => {
   const max_len = 500;
   return responses
     .map((s) => {
@@ -30,30 +32,43 @@ const createHoverTexts = (responses) => {
         const s_len = s.length;
         return s.map(
           (substr, idx) =>
-            splitAndAddBreaks(truncStr(substr, max_len), 60) +
+            splitAndAddBreaks(truncStr(substr, max_len) ?? "", 60) +
             `<br><b>(${idx + 1} of ${s_len})</b>`,
         );
-      } else return [splitAndAddBreaks(truncStr(s, max_len), 60)];
+      } else return [splitAndAddBreaks(truncStr(s, max_len) ?? "", 60)];
     })
     .flat();
 };
-const getUniqueKeysInResponses = (responses, keyFunc) => {
-  const ukeys = new Set();
+
+const getUniqueKeysInResponses = (
+  responses: LLMResponse[],
+  keyFunc: (r: LLMResponse) => string,
+) => {
+  const ukeys = new Set<string>();
   responses.forEach((res_obj) => ukeys.add(keyFunc(res_obj)));
   return Array.from(ukeys);
 };
-const extractEvalResultsForMetric = (metric, responses) => {
+
+const extractEvalResultsForMetric = (
+  metric: string,
+  responses: LLMResponse[],
+) => {
   return responses
-    .map((resp_obj) => resp_obj.eval_res.items.map((item) => item[metric]))
+    .map((resp_obj) =>
+      resp_obj?.eval_res?.items?.map((item) =>
+        typeof item === "object" ? item[metric] : undefined,
+      ),
+    )
     .flat();
 };
-const areSetsEqual = (xs, ys) =>
+
+const areSetsEqual = (xs: Set<any>, ys: Set<any>) =>
   xs.size === ys.size && [...xs].every((x) => ys.has(x));
 
-function addLineBreaks(str, max_line_len) {
+function addLineBreaks(str: string, max_line_len: number) {
   if (!str || typeof str !== "string" || str.length === 0) return "";
   let result = "";
-  const is_alphabetical = (s) => /^[A-Za-z]$/.test(s);
+  const is_alphabetical = (s: string) => /^[A-Za-z]$/.test(s);
   for (let i = 0; i < str.length; i++) {
     result += str[i];
     if ((i + 1) % max_line_len === 0) {
@@ -65,14 +80,18 @@ function addLineBreaks(str, max_line_len) {
   }
   return result;
 }
-const genUniqueShortnames = (names, max_chars_per_line = 32) => {
+
+const genUniqueShortnames = (
+  names: Iterable<string>,
+  max_chars_per_line = 32,
+) => {
   // Generate unique 'shortnames' to refer to each name:
-  const past_shortnames_counts = {};
-  const shortnames = {};
+  const past_shortnames_counts: Dict<number> = {};
+  const shortnames: Dict<string> = {};
   const max_lines = 8;
   for (const name of names) {
     // Truncate string up to maximum num of chars
-    let sn = truncStr(name, max_chars_per_line * max_lines - 3);
+    let sn = truncStr(name, max_chars_per_line * max_lines - 3) ?? "";
     // Add <br> tags to spread across multiple lines, where necessary
     sn = addLineBreaks(sn, max_chars_per_line);
     if (sn in past_shortnames_counts) {
@@ -85,7 +104,8 @@ const genUniqueShortnames = (names, max_chars_per_line = 32) => {
   }
   return shortnames;
 };
-const calcMaxCharsPerLine = (shortnames) => {
+
+const calcMaxCharsPerLine = (shortnames: string[]) => {
   let max_chars = 1;
   for (let i = 0; i < shortnames.length; i++) {
     const sn = shortnames[i];
@@ -94,11 +114,25 @@ const calcMaxCharsPerLine = (shortnames) => {
   }
   return Math.max(max_chars, 9);
 };
-const calcLeftPaddingForYLabels = (shortnames) => {
+
+const calcLeftPaddingForYLabels = (shortnames: string[]) => {
   return calcMaxCharsPerLine(shortnames) * 7;
 };
 
-const VisNode = ({ data, id }) => {
+export interface VisNodeProps {
+  data: {
+    vars: Dict<string>;
+    selected_vars: string[];
+    llm_groups?: string[];
+    selected_llm_group?: string;
+    input: JSONCompatible;
+    refresh: boolean;
+    title: string;
+  };
+  id: string;
+}
+
+const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const getColorForLLMAndSetIfNotFound = useStore(
     (state) => state.getColorForLLMAndSetIfNotFound,
@@ -106,9 +140,9 @@ const VisNode = ({ data, id }) => {
 
   const [plotlySpec, setPlotlySpec] = useState([]);
   const [plotlyLayout, setPlotlyLayout] = useState({});
-  const [pastInputs, setPastInputs] = useState([]);
-  const [responses, setResponses] = useState([]);
-  const [status, setStatus] = useState("none");
+  const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
+  const [responses, setResponses] = useState<LLMResponse[]>([]);
+  const [status, setStatus] = useState<Status>(Status.NONE);
   const [placeholderText, setPlaceholderText] = useState(<></>);
 
   const [plotLegend, setPlotLegend] = useState(null);
@@ -118,7 +152,7 @@ const VisNode = ({ data, id }) => {
   const plotlyRef = useRef(null);
 
   // The MultiSelect so people can dynamically set what vars they care about
-  const [multiSelectVars, setMultiSelectVars] = useState(data.vars || []);
+  const [multiSelectVars, setMultiSelectVars] = useState(data.vars ?? []);
   const [multiSelectValue, setMultiSelectValue] = useState(
     Array.isArray(data.selected_vars) && data.selected_vars.length > 0
       ? data.selected_vars[0]
@@ -129,24 +163,28 @@ const VisNode = ({ data, id }) => {
   // However, when prompts are chained together, the original LLM info is stored in metavars as a key.
   // LLM groups allow you to plot against the original LLMs, even though a 'scorer' LLM might come after.
   const [availableLLMGroups, setAvailableLLMGroups] = useState(
-    data.llm_groups || ["LLM"],
+    data.llm_groups ?? ["LLM"],
   );
   const [selectedLLMGroup, setSelectedLLMGroup] = useState(
-    data.selected_llm_group || "LLM",
+    data.selected_llm_group ?? "LLM",
   );
-  const handleChangeLLMGroup = (new_val) => {
+  const handleChangeLLMGroup = (
+    new_val: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
     setSelectedLLMGroup(new_val.target.value);
     setDataPropsForNode(id, { selected_llm_group: new_val.target.value });
   };
 
   // When the user clicks an item in the drop-down,
   // we want to autoclose the multiselect drop-down:
-  const multiSelectRef = useRef(null);
-  const handleMultiSelectValueChange = (new_val) => {
-    if (multiSelectRef) {
+  const multiSelectRef = useRef<HTMLSelectElement>(null);
+  const handleMultiSelectValueChange = (
+    new_val: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    if (multiSelectRef?.current) {
       multiSelectRef.current.blur();
     }
-    setStatus("loading");
+    setStatus(Status.LOADING);
     setMultiSelectValue(new_val.target.value);
     setDataPropsForNode(id, { selected_vars: [new_val.target.value] });
   };
@@ -173,16 +211,16 @@ const VisNode = ({ data, id }) => {
       return;
     }
 
-    setStatus("none");
+    setStatus(Status.NONE);
 
-    const get_llm = (resp_obj) => {
+    const get_llm = (resp_obj: LLMResponse) => {
       if (selectedLLMGroup === "LLM")
         return typeof resp_obj.llm === "string"
           ? resp_obj.llm
           : resp_obj.llm?.name;
-      else return resp_obj.metavars[selectedLLMGroup];
+      else return resp_obj.metavars[selectedLLMGroup] as string;
     };
-    const getLLMsInResponses = (responses) =>
+    const getLLMsInResponses = (responses: LLMResponse[]) =>
       getUniqueKeysInResponses(responses, get_llm);
 
     // Get all LLMs in responses, by selected LLM group
@@ -209,8 +247,8 @@ const VisNode = ({ data, id }) => {
         ? [multiSelectValue]
         : [];
     const varcolors = colorPalettes.var; // ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#cadefc', '#f8f398'];
-    let spec = [];
-    const layout = {
+    let spec: Dict[] | Dict = [];
+    const layout: Dict = {
       autosize: true,
       dragmode: "pan",
       title: "",
@@ -225,7 +263,7 @@ const VisNode = ({ data, id }) => {
     };
 
     // Bucket responses by LLM:
-    const responses_by_llm = {};
+    const responses_by_llm: Dict<LLMResponse[]> = {};
     responses.forEach((item) => {
       const llm = get_llm(item);
       if (llm in responses_by_llm) responses_by_llm[llm].push(item);
@@ -269,7 +307,11 @@ const VisNode = ({ data, id }) => {
       num_metrics = metric_axes_labels.length;
     }
 
-    const get_var = (resp_obj, varname, empty_str_if_undefined = false) => {
+    const get_var = (
+      resp_obj: LLMResponse,
+      varname: string,
+      empty_str_if_undefined = false,
+    ) => {
       const v = varname.startsWith("__meta_")
         ? resp_obj.metavars[varname.slice("__meta_".length)]
         : resp_obj.vars[varname];
@@ -278,8 +320,8 @@ const VisNode = ({ data, id }) => {
     };
 
     const get_var_and_trim = (
-      resp_obj,
-      varname,
+      resp_obj: LLMResponse,
+      varname: string,
       empty_str_if_undefined = false,
     ) => {
       const v = get_var(resp_obj, varname, empty_str_if_undefined);
@@ -295,7 +337,10 @@ const VisNode = ({ data, id }) => {
     };
 
     // Only for Boolean data
-    const plot_accuracy = (resp_to_x, group_type) => {
+    const plot_accuracy = (
+      resp_to_x: (r: LLMResponse) => string,
+      group_type: "var" | "llm",
+    ) => {
       // Plots the percentage of 'true' evaluations out of the total number of evaluations,
       // per category of 'resp_to_x', as a horizontal bar chart, with different colors per category.
       const names = new Set(responses.map(resp_to_x));
@@ -376,8 +421,11 @@ const VisNode = ({ data, id }) => {
         };
     };
 
-    const plot_simple_boxplot = (resp_to_x, group_type) => {
-      let names = new Set();
+    const plot_simple_boxplot = (
+      resp_to_x: (r: LLMResponse) => string,
+      group_type: "var" | "llm",
+    ) => {
+      let names = new Set<string>();
       const plotting_categorical_vars =
         group_type === "var" && typeof_eval_res === "Categorical";
 
@@ -395,8 +443,8 @@ const VisNode = ({ data, id }) => {
 
       const shortnames = genUniqueShortnames(names);
       for (const name of names) {
-        let x_items = [];
-        let text_items = [];
+        let x_items: number[] = [];
+        let text_items: string[] = [];
 
         if (plotting_categorical_vars) {
           responses.forEach((r) => {
@@ -449,7 +497,7 @@ const VisNode = ({ data, id }) => {
         } else {
           // Plot a boxplot for all other cases.
           // x_items = [x_items.reduce((val, acc) => val + acc, 0)];
-          const d = {
+          const d: Dict = {
             name: shortnames[name],
             x: x_items,
             text: text_items,
@@ -485,7 +533,7 @@ const VisNode = ({ data, id }) => {
         };
     };
 
-    const plot_grouped_boxplot = (resp_to_x) => {
+    const plot_grouped_boxplot = (resp_to_x: (r: LLMResponse) => string) => {
       // Get all possible values of the single variable response ('name' vals)
       const names = new Set(responses.map(resp_to_x));
       const shortnames = genUniqueShortnames(names);
