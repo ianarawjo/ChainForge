@@ -285,6 +285,76 @@ const GPT4Settings: ModelSettingsDict = {
   postprocessors: ChatGPTSettings.postprocessors,
 };
 
+const DalleSettings: ModelSettingsDict = {
+  fullName: "Dall-E Image Models (OpenAI)",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "Dalle2",
+      },
+      model: {
+        type: "string",
+        title: "Model Version",
+        description:
+          "Select an OpenAI image model to query. For more details on the differences, see the OpenAI API documentation.",
+        enum: ["dall-e-3", "dall-e-2"],
+        default: "dall-e-2",
+      },
+      size: {
+        type: "string",
+        title: "size",
+        enum: ["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"],
+        description:
+          "The size of the generated images. NOTE: Dalle-2 supports from 256x256 to 1024x1024. Dalle-3 supports 1024x1024 and above. WARNING: Currently, all images are stored in browser memory. Be careful with Dall-E-3: you may run out of memory fast.",
+        default: "256x256",
+      },
+      quality: {
+        type: "string",
+        title: "quality (DALL-E-3 ONLY)",
+        enum: ["standard", "hd"],
+        description:
+          "The quality of the image that will be generated. hd creates images with finer details and greater consistency across the image. NOTE: This param is only supported for dall-e-3.",
+        default: "standard",
+      },
+      style: {
+        type: "string",
+        title: "style (DALL-E-3 ONLY)",
+        enum: ["vivid", "natural"],
+        description:
+          "The style of the generated images. Vivid causes the model to lean towards generating hyper-real and dramatic images. Natural causes the model to produce more natural, less hyper-real looking images. NOTE: Only supported for DALL-E-3.",
+        default: "vivid",
+      },
+    },
+  },
+
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:help": "Defaults to dalle-2.",
+    },
+    size: {
+      "ui:help": "Defaults to 256x256.",
+    },
+    quality: {
+      "ui:help": "Defaults to standard.",
+    },
+    style: {
+      "ui:help": "Defaults to vivid.",
+    },
+  },
+
+  postprocessors: {},
+};
+
 const ClaudeSettings: ModelSettingsDict = {
   fullName: "Claude (Anthropic)",
   schema: {
@@ -1948,6 +2018,7 @@ const MetaLlama2ChatSettings = {
 export const ModelSettings: Dict<ModelSettingsDict> = {
   "gpt-3.5-turbo": ChatGPTSettings,
   "gpt-4": GPT4Settings,
+  "dall-e": DalleSettings,
   "claude-v1": ClaudeSettings,
   "palm2-bison": PaLM2Settings,
   dalai: DalaiModelSettings,

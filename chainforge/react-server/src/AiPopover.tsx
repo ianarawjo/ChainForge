@@ -557,7 +557,7 @@ export function AIGenCodeEvaluatorPopover({
           throw new Error(Object.values(result.errors)[0].toString());
 
         // Extract the first response
-        const response = result.responses[0].responses[0];
+        const response = result.responses[0].responses[0] as string;
         console.log("LLM said: ", response);
 
         // Try to extract out a single code block from the response
@@ -633,7 +633,7 @@ ${currentEvalCode}
         }
 
         // Extract the first response
-        const response = result.responses[0].responses[0];
+        const response = result.responses[0].responses[0] as string;
         console.log("LLM said: ", response);
 
         // Try to extract out a single code block from the response

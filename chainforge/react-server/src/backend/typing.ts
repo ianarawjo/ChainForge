@@ -137,6 +137,7 @@ export type CustomLLMProviderSpec = {
 /** Internal description of model settings, passed to react-json-schema */
 export interface ModelSettingsDict {
   fullName: string;
+  description?: string;
   schema: {
     type: "object";
     required: string[];
@@ -148,6 +149,16 @@ export interface ModelSettingsDict {
 }
 
 export type ResponseUID = string;
+
+/** What kind of data can be each individual response from the model.
+ * string is basic text; but could be images or more data types in the future.
+ */
+export type LLMResponseData =
+  | {
+      t: "img"; // type
+      d: string; // payload
+    }
+  | string;
 
 /** Standard properties that every LLM response object must have. */
 export interface BaseLLMResponseObject {
@@ -172,7 +183,7 @@ export interface RawLLMResponseObject extends BaseLLMResponseObject {
   // The raw JSON response from the LLM
   raw_response: Dict;
   // Extracted responses (1 or more) from raw_response
-  responses: string[];
+  responses: LLMResponseData[];
   // Token lengths (if given)
   tokens?: Dict<number>;
 }
@@ -200,7 +211,7 @@ export type EvaluationResults = {
 /** A standard response format expected by the front-end. */
 export interface LLMResponse extends BaseLLMResponseObject {
   // Extracted responses (1 or more) from raw_response
-  responses: string[];
+  responses: LLMResponseData[];
   // Evaluation results
   eval_res?: EvaluationResults;
   // Token lengths (if given)
@@ -216,8 +227,9 @@ export type EvaluatedResponsesResults = {
 /** The outputs of prompt nodes, text fields or other data passed internally in the front-end and to the PromptTemplate backend.
  * Used to populate prompt templates and carry variables/metavariables along the chain. */
 export interface TemplateVarInfo {
-  text: string;
-  fill_history: Dict<string>;
+  text?: string;
+  image?: string; // base-64 encoding
+  fill_history?: Dict<string>;
   metavars?: Dict<string>;
   associate_id?: string;
   prompt?: string;

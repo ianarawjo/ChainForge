@@ -289,7 +289,7 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
           .map((resp_obj: TemplateVarInfo | string) => {
             if (typeof resp_obj === "string")
               return splitText(resp_obj, formatting, true);
-            const texts = splitText(resp_obj?.text, formatting, true);
+            const texts = splitText(resp_obj?.text ?? "", formatting, true);
             if (texts !== undefined && texts.length >= 1)
               return texts.map(
                 (t: string) =>

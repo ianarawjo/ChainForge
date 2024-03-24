@@ -21,10 +21,14 @@ export enum NativeLLM {
   OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
   OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
 
-  // OpenAI Text Completions
+  // OpenAI Text Completions (deprecated)
   OpenAI_Davinci003 = "text-davinci-003",
   OpenAI_Davinci002 = "text-davinci-002",
   OpenAI_ChatGPT_Instruct = "gpt-3.5-turbo-instruct",
+
+  // OpenAI Image models
+  OpenAI_DallE_2 = "dall-e-2",
+  OpenAI_DallE_3 = "dall-e-3",
 
   // Azure OpenAI Endpoints
   Azure_OpenAI = "azure-openai",
@@ -153,12 +157,14 @@ export const RATE_LIMITS: { [key in LLM]?: [number, number] } = {
   [NativeLLM.OpenAI_ChatGPT_0613]: [30, 10],
   [NativeLLM.OpenAI_ChatGPT_16k]: [30, 10],
   [NativeLLM.OpenAI_ChatGPT_16k_0613]: [30, 10],
-  [NativeLLM.OpenAI_GPT4]: [4, 15], // max 4 requests a batch; wait 15 seconds between
+  [NativeLLM.OpenAI_GPT4]: [8, 2], // max 8 requests every 2 seconds
   [NativeLLM.OpenAI_GPT4_0314]: [4, 15],
   [NativeLLM.OpenAI_GPT4_0613]: [4, 15],
   [NativeLLM.OpenAI_GPT4_32k]: [4, 15],
   [NativeLLM.OpenAI_GPT4_32k_0314]: [4, 15],
   [NativeLLM.OpenAI_GPT4_32k_0613]: [4, 15],
+  [NativeLLM.OpenAI_DallE_2]: [2, 10], // Should be 5 images per minute (1 img per every 10 seconds); here, we've been a bit lenient with it.
+  [NativeLLM.OpenAI_DallE_3]: [2, 10], // This differs per tier, see https://platform.openai.com/docs/guides/rate-limits/usage-tiers?context=tier-one
   [NativeLLM.Azure_OpenAI]: [30, 10],
   [NativeLLM.PaLM2_Text_Bison]: [4, 10], // max 30 requests per minute; so do 4 per batch, 10 seconds between (conservative)
   [NativeLLM.PaLM2_Chat_Bison]: [4, 10],

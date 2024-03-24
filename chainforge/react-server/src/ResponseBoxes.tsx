@@ -2,7 +2,12 @@ import React, { Suspense, useMemo, lazy } from "react";
 import { Collapse, Flex } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { truncStr } from "./backend/utils";
-import { Dict, EvaluationScore, LLMResponse } from "./backend/typing";
+import {
+  Dict,
+  EvaluationScore,
+  LLMResponse,
+  LLMResponseData,
+} from "./backend/typing";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -40,8 +45,8 @@ const getEvalResultStr = (
 };
 
 const countResponsesBy = (
-  responses: string[],
-  keyFunc: (item: string) => string,
+  responses: LLMResponseData[],
+  keyFunc: (item: LLMResponseData) => string,
 ): Dict<number[]> => {
   const d: Dict<number[]> = {};
   responses.forEach((item, idx) => {
@@ -154,7 +159,7 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
  */
 export const genResponseTextsDisplay = (
   res_obj: LLMResponse,
-  filterFunc?: (txts: string[]) => string[],
+  filterFunc?: (txts: LLMResponseData[]) => LLMResponseData[],
   customTextDisplay?: (txt: string) => React.ReactNode,
   onlyShowScores?: boolean,
   llmName?: string,
@@ -178,10 +183,18 @@ export const genResponseTextsDisplay = (
   const resp_str_to_eval_res: Dict<EvaluationScore> = {};
   if (eval_res_items)
     responses.forEach((r, idx) => {
-      resp_str_to_eval_res[r] = eval_res_items[idx];
+      resp_str_to_eval_res[typeof r === "string" ? r : r.d] =
+        eval_res_items[idx];
     });
 
-  const same_resp_text_counts = countResponsesBy(responses, (r) => r);
+  const same_resp_text_counts = countResponsesBy(responses, (r) =>
+    typeof r === "string" ? r : r.d,
+  );
+  const resp_special_type_map: Dict<string> = {};
+  responses.forEach(r => {
+    const key = typeof r === "string" ? r : r.d;
+    if (typeof r === "object") resp_special_type_map[key] = r.t;
+  });
   const same_resp_keys = Object.keys(same_resp_text_counts).sort(
     (key1, key2) =>
       same_resp_text_counts[key2].length - same_resp_text_counts[key1].length,
@@ -189,7 +202,14 @@ export const genResponseTextsDisplay = (
 
   return same_resp_keys.map((r, idx) => {
     const origIdxs = same_resp_text_counts[r];
-    const txt = customTextDisplay ? customTextDisplay(r) : r;
+    let display: React.ReactNode;
+    if (r in resp_special_type_map) {
+      // Right now only images are supported as special types.
+      // Load and display the image:
+      display = <img src={`data:image/png;base64,${r}`} style={{maxWidth: "100%", width: "auto"}} />;
+    } else {
+      display = customTextDisplay ? customTextDisplay(r) : r;
+    }
     return (
       <div key={idx}>
         <Flex justify="right" gap="xs" align="center">
@@ -233,7 +253,7 @@ export const genResponseTextsDisplay = (
         {onlyShowScores ? (
           <pre>{}</pre>
         ) : (
-          <div className="small-response">{txt}</div>
+          <div className="small-response">{display}</div>
         )}
       </div>
     );

@@ -462,7 +462,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         // with the prompt and text of the pulled data as the 2nd-to-last, and last, messages:
         const last_messages = [
           { role: "user", content: info.prompt ?? "" },
-          { role: "assistant", content: info.text },
+          { role: "assistant", content: info.text ?? "" },
         ];
         let updated_chat_hist =
           info.chat_history !== undefined
@@ -482,8 +482,8 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         // ChatHistoryInfo format (see typing.ts)
         return {
           messages: updated_chat_hist,
-          fill_history: info.fill_history,
-          metavars: info.metavars,
+          fill_history: info.fill_history ?? {},
+          metavars: info.metavars ?? {},
           llm: typeof info?.llm === "string" ? info.llm : info?.llm?.name,
           uid: uuid(),
         };
@@ -909,7 +909,9 @@ Soft failing by replacing undefined with empty strings.`,
                 resp_obj.responses.map((r) => {
                   // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
                   const o: TemplateVarInfo = {
-                    text: escapeBraces(r),
+                    text: typeof r === "string" ? escapeBraces(r) : undefined,
+                    image:
+                      typeof r === "object" && r.t === "img" ? r.d : undefined,
                     prompt: resp_obj.prompt,
                     fill_history: resp_obj.vars,
                     llm: _llmItemsCurrState.find(

@@ -207,7 +207,7 @@ export async function autofill(
   if (result.errors && Object.keys(result.errors).length > 0)
     throw new Error(Object.values(result.errors)[0].toString());
 
-  const output = result.responses[0].responses[0];
+  const output = result.responses[0].responses[0] as string;
 
   console.log("LLM said: ", output);
 
@@ -269,6 +269,6 @@ export async function generateAndReplace(
 
   console.log("LLM said: ", result.responses[0].responses[0]);
 
-  const new_items = decode(result.responses[0].responses[0]);
+  const new_items = decode(result.responses[0].responses[0] as string);
   return new_items.slice(0, n);
 }

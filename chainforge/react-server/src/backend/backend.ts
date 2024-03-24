@@ -14,6 +14,7 @@ import {
   EvaluatedResponsesResults,
   TemplateVarInfo,
   CustomLLMProviderSpec,
+  LLMResponseData,
 } from "./typing";
 import { LLM, getEnumName } from "./models";
 import {
@@ -1243,8 +1244,9 @@ export async function evalWithLLM(
     // We can generate var dicts with metadata to store the indices:
     const inputs = resp_objs
       .map((obj, __i) =>
-        obj.responses.map((r: string, __j: number) => ({
-          text: r,
+        obj.responses.map((r: LLMResponseData, __j: number) => ({
+          text: typeof r === "string" ? r : undefined,
+          image: typeof r === "object" && r.t === "img" ? r.d : undefined,
           fill_history: obj.vars,
           metavars: { ...obj.metavars, __i, __j },
         })),

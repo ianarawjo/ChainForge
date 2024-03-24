@@ -24,12 +24,18 @@ import {
   BaseLLMResponseObject,
   LLMSpec,
   EvaluationScore,
+  LLMResponseData,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
 
 /* LLM API SDKs */
-import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
+import {
+  Configuration as OpenAIConfig,
+  OpenAIApi,
+  CreateImageRequest,
+  ImagesResponseDataInner,
+} from "openai";
 import {
   OpenAIClient as AzureOpenAIClient,
   AzureKeyCredential,
@@ -210,7 +216,7 @@ function construct_openai_chat_history(
 }
 
 /**
- * Calls OpenAI models via OpenAI's API.
+ * Calls OpenAI text + chat models via OpenAI's API.
    @returns raw query and response JSON dicts.
  */
 export async function call_chatgpt(
@@ -308,6 +314,72 @@ export async function call_chatgpt(
   }
 
   return [query, response];
+}
+
+/**
+ * Calls OpenAI Image models via OpenAI's API.
+   @returns raw query and response JSON dicts.
+ */
+export async function call_dalle(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature: number,
+  params?: Dict,
+  should_cancel?: () => boolean,
+): Promise<[Dict, Dict]> {
+  if (!OPENAI_API_KEY)
+    throw new Error(
+      "Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  const configuration = new OpenAIConfig({
+    apiKey: OPENAI_API_KEY,
+  });
+  // Since we are running client-side, we need to remove the user-agent header:
+  delete configuration.baseOptions.headers["User-Agent"];
+  const openai = new OpenAIApi(configuration);
+
+  const modelname = model.toString();
+  const is_dalle_3 = modelname.includes("dall-e-3");
+  console.log(
+    `Querying OpenAI image model '${model}' with prompt '${prompt}'...`,
+  );
+
+  const query: Dict = {
+    prompt: prompt,
+    model: modelname,
+    response_format: "b64_json", // request image in base-64 encoded string
+    size: params?.size ?? (is_dalle_3 ? "1024x1024" : "256x256"),
+  };
+
+  if (modelname.includes("dall-e-3")) {
+    // Pass in DALLE-3 specific settings
+    if (params?.quality) query.quality = params.quality;
+    if (params?.style) query.style = params.style;
+  }
+
+  // Try to call OpenAI
+  // Since n doesn't work for DALLE3, we must repeat call n times if n > 1, waiting for each response to come in:
+  const responses: Array<Dict> = [];
+  while (responses.length < n) {
+    let response: Dict = {};
+    try {
+      const completion = await openai.createImage(query as CreateImageRequest);
+      response = completion.data.data[0];
+      responses.push(response);
+    } catch (error: any) {
+      if (error?.response) {
+        throw new Error(error.response.data?.error?.message);
+        // throw new Error(error.response.status);
+      } else {
+        console.log(error?.message || error);
+        throw new Error(error?.message || error);
+      }
+    }
+  }
+
+  return [query, responses];
 }
 
 /**
@@ -1334,8 +1406,13 @@ export async function call_llm(
   if (llm_provider === undefined)
     throw new Error(`Language model ${llm} is not supported.`);
 
-  if (llm_provider === LLMProvider.OpenAI) call_api = call_chatgpt;
-  else if (llm_provider === LLMProvider.Azure_OpenAI)
+  const llm_name = llm.toString().toLowerCase();
+  if (llm_provider === LLMProvider.OpenAI) {
+    if (llm_name.startsWith("dall-e"))
+      call_api = call_dalle;
+    else 
+      call_api = call_chatgpt;
+  } else if (llm_provider === LLMProvider.Azure_OpenAI)
     call_api = call_azure_openai;
   else if (llm_provider === LLMProvider.Google) call_api = call_google_ai;
   else if (llm_provider === LLMProvider.Dalai) call_api = call_dalai;
@@ -1387,6 +1464,20 @@ function _extract_chatgpt_responses(response: Dict): Array<string> {
  */
 function _extract_openai_completion_responses(response: Dict): Array<string> {
   return response.choices.map((c: Dict) => c.text.trim());
+}
+
+/**
+ * Extracts the text part of a response JSON from ChatGPT. If there is more
+ * than 1 response (e.g., asking the LLM to generate multiple responses),
+ * this produces a list of all returned responses.
+ */
+function _extract_openai_image_responses(
+  response: Array<ImagesResponseDataInner>,
+): LLMResponseData[] {
+  return response.map((v) => ({
+    t: "img",
+    d: v.b64_json ?? v.url ?? "[[NO DATA]]",
+  }));
 }
 
 /**
@@ -1464,7 +1555,9 @@ function _extract_alephalpha_responses(response: Dict): Array<string> {
 /**
  * Extracts the text part of a Ollama text completion.
  */
-function _extract_ollama_responses(response: Array<Dict>): Array<string> {
+function _extract_ollama_responses(
+  response: Array<Dict>,
+): Array<LLMResponseData> {
   return response.map((r: any) => r.generated_text.trim());
 }
 
@@ -1475,12 +1568,16 @@ function _extract_ollama_responses(response: Array<Dict>): Array<string> {
 export function extract_responses(
   response: Array<string | Dict> | Dict,
   llm: LLM | string,
-): Array<string> {
+): Array<LLMResponseData> {
   const llm_provider: LLMProvider | undefined = getProvider(llm as LLM);
   const llm_name = llm.toString().toLowerCase();
   switch (llm_provider) {
     case LLMProvider.OpenAI:
-      if (llm_name.includes("davinci") || llm_name.includes("instruct"))
+      if (llm_name.includes("dall-e"))
+        return _extract_openai_image_responses(
+          response as Array<ImagesResponseDataInner>,
+        );
+      else if (llm_name.includes("davinci") || llm_name.includes("instruct"))
         return _extract_openai_completion_responses(response);
       else return _extract_chatgpt_responses(response);
     case LLMProvider.Azure_OpenAI:

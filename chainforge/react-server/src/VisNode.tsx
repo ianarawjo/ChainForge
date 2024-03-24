@@ -477,7 +477,11 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
           responses.forEach((r) => {
             if (resp_to_x(r) !== name) return;
             x_items = x_items.concat(get_items(r.eval_res));
-            text_items = text_items.concat(createHoverTexts(r.responses));
+            text_items = text_items.concat(
+              createHoverTexts(
+                r.responses.map((v) => (typeof v === "string" ? v : v.d)),
+              ),
+            );
           });
         }
 
@@ -569,7 +573,11 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
             if (resp_to_x(r) !== name) return;
             x_items = x_items.concat(get_items(r.eval_res)).flat();
             text_items = text_items
-              .concat(createHoverTexts(r.responses))
+              .concat(
+                createHoverTexts(
+                  r.responses.map((v) => (typeof v === "string" ? v : v.d)),
+                ),
+              )
               .flat();
             y_items = y_items
               .concat(
