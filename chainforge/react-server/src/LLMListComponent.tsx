@@ -209,7 +209,11 @@ export function LLMList({
       <DragDropContext onDragEnd={onDragEnd}>
         <StrictModeDroppable
           droppableId="llm-list-droppable"
-          renderClone={(provided: DraggableProvided, snapshot: DraggableStateSnapshot, rubric: DraggableRubric) => (
+          renderClone={(
+            provided: DraggableProvided,
+            snapshot: DraggableStateSnapshot,
+            rubric: DraggableRubric,
+          ) => (
             <LLMListItemClone
               provided={provided}
               snapshot={snapshot}
@@ -221,7 +225,11 @@ export function LLMList({
           {(provided: DroppableProvided) => (
             <div {...provided.droppableProps} ref={provided.innerRef}>
               {items.map((item, index) => (
-                <Draggable key={item.key} draggableId={item.key ?? index.toString()} index={index}>
+                <Draggable
+                  key={item.key}
+                  draggableId={item.key ?? index.toString()}
+                  index={index}
+                >
                   {(provided, snapshot) => (
                     <LLMListItem
                       provided={provided}
@@ -244,7 +252,7 @@ export function LLMList({
   );
 }
 
-export interface LLMListContainerHandle {
+export interface LLMListContainerRef {
   resetLLMItemsProgress: () => void;
   setZeroPercProgress: () => void;
   updateProgress: (itemProcessorFunc: (llm: LLMSpec) => LLMSpec) => void;
@@ -254,17 +262,20 @@ export interface LLMListContainerHandle {
 }
 
 export interface LLMListContainerProps {
-  description: string;
-  modelSelectButtonText: string;
   initLLMItems: LLMSpec[];
-  onSelectModel: (llm: LLMSpec, new_llms: LLMSpec[]) => void;
-  onItemsChange: (new_llms: LLMSpec[], old_llms: LLMSpec[]) => void;
-  hideTrashIcon: boolean;
-  bgColor: string;
+  description?: string;
+  modelSelectButtonText?: string;
+  onSelectModel?: (llm: LLMSpec, new_llms: LLMSpec[]) => void;
+  onItemsChange?: (new_llms: LLMSpec[], old_llms: LLMSpec[]) => void;
+  hideTrashIcon?: boolean;
+  bgColor?: string;
   selectModelAction?: "add" | "replace";
 }
 
-export const LLMListContainer = forwardRef<LLMListContainerHandle, LLMListContainerProps>(function LLMListContainer(
+export const LLMListContainer = forwardRef<
+  LLMListContainerRef,
+  LLMListContainerProps
+>(function LLMListContainer(
   {
     description,
     modelSelectButtonText,
@@ -486,7 +497,7 @@ export const LLMListContainer = forwardRef<LLMListContainerHandle, LLMListContai
         <LLMList
           llms={llmItems}
           onItemsChange={onLLMListItemsChange}
-          hideTrashIcon={hideTrashIcon}
+          hideTrashIcon={hideTrashIcon ?? false}
         />
       </div>
     </div>

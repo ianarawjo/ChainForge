@@ -377,7 +377,10 @@ const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({
   // For genAI features
   const flags = useStore((state) => state.flags);
   const [isEvalCodeGenerating, setIsEvalCodeGenerating] = useState(false);
-  const [lastContext, setLastContext] = useState<VarsContext>({});
+  const [lastContext, setLastContext] = useState<VarsContext>({
+    vars: [],
+    metavars: [],
+  });
 
   // For displaying error messages to user
   const showAlert = useContext(AlertModalContext);

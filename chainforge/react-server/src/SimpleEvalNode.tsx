@@ -5,7 +5,7 @@ import React, {
   useRef,
   useContext,
 } from "react";
-import { Handle } from "reactflow";
+import { Handle, Position } from "reactflow";
 import {
   NativeSelect,
   TextInput,
@@ -26,9 +26,10 @@ import {
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import InspectFooter from "./InspectFooter";
-import LLMResponseInspectorModal from "./LLMResponseInspectorModal";
+import LLMResponseInspectorModal, {
+  LLMResponseInspectorModalRef,
+} from "./LLMResponseInspectorModal";
 import useStore from "./store";
-import fetch_from_backend from "./fetch_from_backend";
 import {
   cleanMetavarsFilterFunc,
   stripLLMDetailsFromResponses,
@@ -36,13 +37,39 @@ import {
 } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { AlertModalContext } from "./AlertModal";
+import { Status } from "./StatusIndicatorComponent";
+import { JSONCompatible, LLMResponse } from "./backend/typing";
+import { executejs } from "./backend/backend";
 
-const createJSEvalCodeFor = (responseFormat, operation, value, valueType) => {
+type ResponseFormat = "response" | "response in lowercase";
+const RESPONSE_FORMATS: ResponseFormat[] = [
+  "response",
+  "response in lowercase",
+] as const;
+
+type Operator =
+  | "contains"
+  | "starts with"
+  | "ends with"
+  | "equals"
+  | "appears in";
+const OPERATORS: Operator[] = [
+  "contains",
+  "starts with",
+  "ends with",
+  "equals",
+  "appears in",
+] as const;
+
+const createJSEvalCodeFor = (
+  responseFormat: ResponseFormat,
+  operation: Operator,
+  value: string,
+  valueType: "var" | "meta" | "string",
+) => {
   let responseObj = "r.text";
   if (responseFormat === "response in lowercase")
     responseObj = "r.text.toLowerCase()";
-  else if (responseFormat === "length of response")
-    responseObj = "r.text.length";
 
   let valueObj = `${JSON.stringify(value)}`;
   if (valueType === "var") valueObj = `r.var['${value}']`;
@@ -76,57 +103,78 @@ const createJSEvalCodeFor = (responseFormat, operation, value, valueType) => {
   return `function evaluate(r) {\n  return ${returnBody};\n}`;
 };
 
+export interface SimpleEvalNodeProps {
+  data: {
+    responseFormat: ResponseFormat;
+    operation: Operator;
+    textValue: string;
+    varValue: string;
+    varValueType: "var" | "meta";
+    varSelected: boolean;
+    availableVars: string[];
+    availableMetavars: string[];
+    input: JSONCompatible[];
+    refresh: boolean;
+    title: string;
+  };
+  id: string;
+}
+
 /**
  * A no-code evaluator node with a very basic options for scoring responses.
  */
-const SimpleEvalNode = ({ data, id }) => {
+const SimpleEvalNode: React.FC<SimpleEvalNodeProps> = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
-  const [pastInputs, setPastInputs] = useState([]);
+  const [pastInputs, setPastInputs] = useState<JSONCompatible[]>([]);
 
-  const [status, setStatus] = useState("none");
+  const [status, setStatus] = useState<Status>(Status.NONE);
   const showAlert = useContext(AlertModalContext);
 
-  const inspectModal = useRef(null);
+  const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
   // eslint-disable-next-line
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
-  const [lastResponses, setLastResponses] = useState([]);
+  const [lastResponses, setLastResponses] = useState<LLMResponse[]>([]);
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
   const [showDrawer, setShowDrawer] = useState(false);
 
-  const [responseFormat, setResponseFormat] = useState(
-    data.responseFormat || "response",
+  const [responseFormat, setResponseFormat] = useState<ResponseFormat>(
+    data.responseFormat ?? "response",
   );
-  const [operation, setOperation] = useState(data.operation || "contains");
-  const [textValue, setTextValue] = useState(data.textValue || "");
-  const [varValue, setVarValue] = useState(data.varValue || "");
-  const [varValueType, setVarValueType] = useState(data.varValueType || "var");
+  const [operation, setOperation] = useState<Operator>(
+    data.operation ?? "contains",
+  );
+  const [textValue, setTextValue] = useState(data.textValue ?? "");
+  const [varValue, setVarValue] = useState(data.varValue ?? "");
+  const [varValueType, setVarValueType] = useState(data.varValueType ?? "var");
   const [valueFieldDisabled, setValueFieldDisabled] = useState(
-    data.varSelected || false,
+    data.varSelected ?? false,
   );
   const [lastTextValue, setLastTextValue] = useState("");
 
-  const [availableVars, setAvailableVars] = useState(data.availableVars || []);
+  const [availableVars, setAvailableVars] = useState(data.availableVars ?? []);
   const [availableMetavars, setAvailableMetavars] = useState(
-    data.availableMetavars || [],
+    data.availableMetavars ?? [],
   );
 
   const dirtyStatus = useCallback(() => {
-    if (status === "ready") setStatus("warning");
+    if (status === Status.READY) setStatus(Status.WARNING);
   }, [status]);
 
   const handleSetVarAsValue = useCallback(
-    (e, valueType) => {
-      const txt = `of ${e.target.innerText} (${valueType})`;
+    (e: React.MouseEvent<HTMLButtonElement>, valueType: "var" | "meta") => {
+      // @ts-expect-error innerText exists
+      const innerText = e.target.innerText as string;
+      const txt = `of ${innerText} (${valueType})`;
       setLastTextValue(textValue);
       setTextValue(txt);
-      setVarValue(e.target.innerText);
+      setVarValue(innerText);
       setVarValueType(valueType);
       setValueFieldDisabled(true);
       setDataPropsForNode(id, {
-        varValue: e.target.innerText,
+        varValue: innerText,
         varValueType: valueType,
         varSelected: true,
         textValue: txt,
@@ -158,11 +206,12 @@ const SimpleEvalNode = ({ data, id }) => {
     const pulled_inputs = handlePullInputs();
 
     // Set status and created rejection callback
-    setStatus("loading");
+    setStatus(Status.LOADING);
     setLastResponses([]);
 
-    const rejected = (err_msg) => {
-      setStatus("error");
+    const rejected = (err_msg: string) => {
+      setStatus(Status.ERROR);
+      setLastRunSuccess(false);
       if (showAlert) showAlert(err_msg);
     };
 
@@ -172,37 +221,27 @@ const SimpleEvalNode = ({ data, id }) => {
       : createJSEvalCodeFor(responseFormat, operation, textValue, "string");
 
     // Run evaluator in backend
-    fetch_from_backend("executejs", {
-      id,
-      code,
-      responses: pulled_inputs,
-      scope: "response",
-      process_type: "evaluator",
-    })
-      .then(function (json) {
+    executejs(id, code, pulled_inputs, "response", "evaluator")
+      .then(function (res) {
         // Check if there's an error; if so, bubble it up to user and exit:
-        if (!json || json.error) {
-          setLastRunSuccess(false);
-          rejected(
-            json
-              ? json.error
-              : "Unknown error encountered when requesting evaluations: empty response returned.",
-          );
-          return;
-        }
+        const resps = res.responses;
+        if (res.error || resps === undefined) throw new Error(res.error);
 
         // Ping any vis + inspect nodes attached to this node to refresh their contents:
         pingOutputNodes(id);
 
-        console.log(json.responses);
-        setLastResponses(stripLLMDetailsFromResponses(json.responses));
+        console.log(resps);
+        setLastResponses(stripLLMDetailsFromResponses(resps));
         setLastRunSuccess(true);
 
-        if (status !== "ready" && !showDrawer) setUninspectedResponses(true);
+        if (status !== Status.READY && !showDrawer)
+          setUninspectedResponses(true);
 
-        setStatus("ready");
+        setStatus(Status.READY);
       })
-      .catch((err) => rejected(err.message));
+      .catch((err: Error | string) =>
+        rejected(typeof err === "string" ? err : err.message),
+      );
   }, [
     handlePullInputs,
     pingOutputNodes,
@@ -229,8 +268,8 @@ const SimpleEvalNode = ({ data, id }) => {
     const pulled_inputs = handlePullInputs();
     if (pulled_inputs && pulled_inputs.length > 0) {
       // Find all vars and metavars in responses
-      const varnames = new Set();
-      const metavars = new Set();
+      const varnames = new Set<string>();
+      const metavars = new Set<string>();
       pulled_inputs.forEach((resp_obj) => {
         Object.keys(resp_obj.vars).forEach((v) => varnames.add(v));
         if (resp_obj.metavars)
@@ -255,7 +294,7 @@ const SimpleEvalNode = ({ data, id }) => {
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
       setDataPropsForNode(id, { refresh: false });
-      setStatus("warning");
+      setStatus(Status.WARNING);
       handleOnConnect();
     }
   }, [data]);
@@ -282,11 +321,13 @@ const SimpleEvalNode = ({ data, id }) => {
           Return true if
         </Text>
         <NativeSelect
-          data={["response", "response in lowercase"]}
+          data={RESPONSE_FORMATS}
           defaultValue={responseFormat}
           onChange={(e) => {
-            setResponseFormat(e.target.value);
-            setDataPropsForNode(id, { responseFormat: e.target.value });
+            setResponseFormat(e.target.value as ResponseFormat);
+            setDataPropsForNode(id, {
+              responseFormat: e.target.value as ResponseFormat,
+            });
             dirtyStatus();
           }}
         />
@@ -296,17 +337,11 @@ const SimpleEvalNode = ({ data, id }) => {
         <Box w="85px" />
         <NativeSelect
           mt="sm"
-          data={[
-            "contains",
-            "starts with",
-            "ends with",
-            "equals",
-            "appears in",
-          ]}
+          data={OPERATORS}
           defaultValue={operation}
           onChange={(e) => {
-            setOperation(e.target.value);
-            setDataPropsForNode(id, { operation: e.target.value });
+            setOperation(e.target.value as Operator);
+            setDataPropsForNode(id, { operation: e.target.value as Operator });
             dirtyStatus();
           }}
         />
@@ -358,7 +393,7 @@ const SimpleEvalNode = ({ data, id }) => {
               {availableVars.length > 0 ? (
                 <>
                   <Menu.Label>Variables</Menu.Label>
-                  {availableVars.map((v) => (
+                  {availableVars.map((v: string) => (
                     <Menu.Item
                       key={v}
                       icon={<IconHash size={14} />}
@@ -376,7 +411,7 @@ const SimpleEvalNode = ({ data, id }) => {
               {availableMetavars.length > 0 ? (
                 <>
                   <Menu.Label>Metavariables</Menu.Label>
-                  {availableMetavars.map((v) => (
+                  {availableMetavars.map((v: string) => (
                     <Menu.Item
                       key={v}
                       icon={<IconHash size={14} />}
@@ -398,7 +433,7 @@ const SimpleEvalNode = ({ data, id }) => {
 
       <Handle
         type="target"
-        position="left"
+        position={Position.Left}
         id="responseBatch"
         className="grouped-handle"
         style={{ top: "50%" }}
@@ -406,7 +441,7 @@ const SimpleEvalNode = ({ data, id }) => {
       />
       <Handle
         type="source"
-        position="right"
+        position={Position.Right}
         id="output"
         className="grouped-handle"
         style={{ top: "50%" }}

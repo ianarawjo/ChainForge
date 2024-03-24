@@ -27,7 +27,7 @@ import NodeLabel from "./NodeLabelComponent";
 import TemplateHooks, {
   extractBracketedSubstrings,
 } from "./TemplateHooksComponent";
-import { LLMListContainer } from "./LLMListComponent";
+import { LLMListContainer, LLMListContainerRef } from "./LLMListComponent";
 import LLMResponseInspectorModal, {
   LLMResponseInspectorModalRef,
 } from "./LLMResponseInspectorModal";
@@ -111,7 +111,17 @@ const displayPromptInfos = (promptInfos: PromptInfo[], wideFormat: boolean) =>
     </div>
   ));
 
-const PromptListPopover = ({ promptInfos, onHover, onClick }) => {
+export interface PromptListPopoverProps {
+  promptInfos: PromptInfo[];
+  onHover: () => void;
+  onClick: () => void;
+}
+
+const PromptListPopover: React.FC<PromptListPopoverProps> = ({
+  promptInfos,
+  onHover,
+  onClick,
+}) => {
   const [opened, { close, open }] = useDisclosure(false);
 
   const _onHover = useCallback(() => {
@@ -222,7 +232,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   );
 
   // The LLM items container
-  const llmListContainer = useRef(null);
+  const llmListContainer = useRef<LLMListContainerRef>(null);
   const [llmItemsCurrState, setLLMItemsCurrState] = useState<LLMSpec[]>([]);
 
   // For displaying error messages to user
@@ -352,7 +362,9 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       if (!setsAreEqual(found_template_vars, new Set(templateVars))) {
         if (node_type !== "chat") {
           try {
-            updateShowContToggle(pullInputData(found_template_vars, id));
+            updateShowContToggle(
+              pullInputData(Array.from(found_template_vars), id),
+            );
           } catch (err) {
             console.error(err);
           }
@@ -487,7 +499,6 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     prompt: string,
     vars: Dict,
     llms: (string | Dict)[],
-    rejected: (err: string | Error) => void,
     chat_histories?:
       | (ChatHistoryInfo | undefined)[]
       | Dict<(ChatHistoryInfo | undefined)[]>,
@@ -500,11 +511,12 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       chat_histories,
       id,
       node_type !== "chat" ? showContToggle && contWithPriorLLMs : undefined,
-    )
-      .then(function (results) {
-        return [results.counts, results.total_num_responses];
-      })
-      .catch(rejected);
+    ).then(function (results) {
+      return [results.counts, results.total_num_responses] as [
+        Dict<Dict<number>>,
+        Dict<number>,
+      ];
+    });
   };
 
   // On hover over the 'info' button, to preview the prompts that will be sent out
@@ -590,12 +602,12 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       promptText,
       pulled_vars,
       _llmItemsCurrState,
-      (err) => {
-        console.warn(typeof err === "string" ? err : err.message); // soft fail
-      },
       chat_hist_by_llm,
     )
-      .then(([counts]) => {
+      .then((res) => {
+        if (res === undefined) return;
+        const [counts] = res;
+
         // Check for empty counts (means no requests will be sent!)
         const num_llms_missing = Object.keys(counts).length;
         if (num_llms_missing === 0) {
@@ -660,7 +672,8 @@ const PromptNode: React.FC<PromptNodeProps> = ({
           else setRunTooltip(`Will send ${llm_count} ${req} to ${llm_name}`);
         }
       })
-      .catch(() => {
+      .catch((err: Error | string) => {
+        console.warn(typeof err === "string" ? err : err?.message); // soft fail
         setRunTooltip("Could not reach backend server.");
       });
   };
@@ -782,8 +795,7 @@ Soft failing by replacing undefined with empty strings.`,
         prompt_template,
         pulled_data,
         _llmItemsCurrState,
-        rejected,
-        pulled_chats,
+        pulled_chats as ChatHistoryInfo[],
       );
 
     // Initialize progress bars to small amounts
@@ -794,10 +806,12 @@ Soft failing by replacing undefined with empty strings.`,
     let onProgressChange:
       | ((progress_by_llm_key: Dict<QueryProgress>) => void)
       | undefined;
-    const open_progress_listener = ([response_counts, total_num_responses]: [
-      Dict<Dict<number>>,
-      Dict<number>,
-    ]) => {
+    const open_progress_listener = (
+      res: undefined | [Dict<Dict<number>>, Dict<number>],
+    ) => {
+      if (res === undefined) return;
+      const [response_counts, total_num_responses] = res;
+
       setResponsesWillChange(
         !response_counts || Object.keys(response_counts).length === 0,
       );
@@ -830,8 +844,8 @@ Soft failing by replacing undefined with empty strings.`,
 
         // Debounce the progress bars UI update to ensure we don't re-render too often:
         debounce(() => {
-          llmListContainer?.current?.updateProgress((item) => {
-            if (item.key in progress_by_llm_key) {
+          llmListContainer?.current?.updateProgress((item: LLMSpec) => {
+            if (item.key !== undefined && item.key in progress_by_llm_key) {
               item.progress = {
                 success:
                   (progress_by_llm_key[item.key].success / num_resp_per_llm) *
@@ -866,121 +880,120 @@ Soft failing by replacing undefined with empty strings.`,
         onProgressChange,
         node_type !== "chat" ? showContToggle && contWithPriorLLMs : undefined,
         cancelId,
-      )
-        .then(function (json) {
-          // We have to early exit explicitly because we will still enter this function even if 'rejected' is called
-          if (!json && CancelTracker.has(cancelId)) return;
+      ).then(function (json) {
+        // We have to early exit explicitly because we will still enter this function even if 'rejected' is called
+        if (!json && CancelTracker.has(cancelId)) return;
 
-          // Remove progress bars
+        // Remove progress bars
+        setProgress(undefined);
+        setProgressAnimated(false);
+        // eslint-disable-next-line
+        debounce(() => {}, 1)(); // erase any pending debounces
+
+        // Store and log responses (if any)
+        if (json?.responses) {
+          const json_responses = json.responses as LLMResponse[];
+          setJSONResponses(json_responses);
+
+          // Log responses for debugging:
+          console.log(json_responses);
+
+          // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
+          // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
+          // so we can keep track of 'upstream' LLMs (and plot against them) later on:
+          const llm_metavar_key = getUniqueLLMMetavarKey(json_responses);
+
+          setDataPropsForNode(id, {
+            fields: json_responses
+              .map((resp_obj) =>
+                resp_obj.responses.map((r) => {
+                  // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
+                  const o: TemplateVarInfo = {
+                    text: escapeBraces(r),
+                    prompt: resp_obj.prompt,
+                    fill_history: resp_obj.vars,
+                    llm: _llmItemsCurrState.find(
+                      (item) => item.name === resp_obj.llm,
+                    ),
+                    uid: resp_obj.uid,
+                  };
+
+                  // Carry over any metavars
+                  o.metavars = resp_obj.metavars ?? {};
+
+                  // Add a metavar for the prompt *template* in this PromptNode
+                  o.metavars.__pt = prompt_template;
+
+                  // Carry over any chat history
+                  if (resp_obj.chat_history)
+                    o.chat_history = resp_obj.chat_history;
+
+                  // Add a meta var to keep track of which LLM produced this response
+                  o.metavars[llm_metavar_key] =
+                    typeof resp_obj.llm === "string"
+                      ? resp_obj.llm
+                      : resp_obj.llm.name;
+                  return o;
+                }),
+              )
+              .flat(),
+          });
+        }
+
+        // If there was at least one error collecting a response...
+        const llms_w_errors = json?.errors ? Object.keys(json.errors) : [];
+        if (llms_w_errors.length > 0) {
+          // Remove the total progress bar
           setProgress(undefined);
-          setProgressAnimated(false);
-          // eslint-disable-next-line
-          debounce(() => {}, 1)(); // erase any pending debounces
 
-          // Store and log responses (if any)
-          if (json?.responses) {
-            const json_responses = json.responses as LLMResponse[];
-            setJSONResponses(json_responses);
+          // Ensure there's a sliver of error displayed in the progress bar
+          // of every LLM item that has an error:
+          llmListContainer?.current?.ensureLLMItemsErrorProgress(llms_w_errors);
 
-            // Log responses for debugging:
-            console.log(json_responses);
-
-            // Save response texts as 'fields' of data, for any prompt nodes pulling the outputs
-            // We also need to store a unique metavar for the LLM *set* (set of LLM nicknames) that produced these responses,
-            // so we can keep track of 'upstream' LLMs (and plot against them) later on:
-            const llm_metavar_key = getUniqueLLMMetavarKey(json_responses);
-
-            setDataPropsForNode(id, {
-              fields: json_responses
-                .map((resp_obj) =>
-                  resp_obj.responses.map((r) => {
-                    // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
-                    const o = {
-                      text: escapeBraces(r),
-                      prompt: resp_obj.prompt,
-                      fill_history: resp_obj.vars,
-                      llm: _llmItemsCurrState.find(
-                        (item) => item.name === resp_obj.llm,
-                      ),
-                      uid: resp_obj.uid,
-                    };
-
-                    // Carry over any metavars
-                    o.metavars = resp_obj.metavars ?? {};
-
-                    // Add a metavar for the prompt *template* in this PromptNode
-                    o.metavars.__pt = prompt_template;
-
-                    // Carry over any chat history
-                    if (resp_obj.chat_history)
-                      o.chat_history = resp_obj.chat_history;
-
-                    // Add a meta var to keep track of which LLM produced this response
-                    o.metavars[llm_metavar_key] = resp_obj.llm;
-                    return o;
-                  }),
-                )
-                .flat(),
-            });
-          }
-
-          // If there was at least one error collecting a response...
-          const llms_w_errors = json?.errors ? Object.keys(json.errors) : [];
-          if (llms_w_errors.length > 0) {
-            // Remove the total progress bar
-            setProgress(undefined);
-
-            // Ensure there's a sliver of error displayed in the progress bar
-            // of every LLM item that has an error:
-            llmListContainer?.current?.ensureLLMItemsErrorProgress(
-              llms_w_errors,
-            );
-
-            // Set error status
-            setStatus(Status.ERROR);
-            setContChatToggleDisabled(false);
-
-            // Trigger alert and display one error message per LLM of all collected errors:
-            let combined_err_msg = "";
-            llms_w_errors.forEach((llm_key) => {
-              const item = _llmItemsCurrState.find(
-                (item) => item.key === llm_key,
-              );
-              combined_err_msg +=
-                item?.name +
-                ": " +
-                JSON.stringify(json.errors[llm_key][0]) +
-                "\n";
-            });
-            // We trigger the alert directly (don't use triggerAlert) here because we want to keep the progress bar:
-            if (showAlert)
-              showAlert(
-                "Errors collecting responses. Re-run prompt node to retry.\n\n" +
-                  combined_err_msg,
-              );
-
-            return;
-          }
-
-          if (responsesWillChange && !showDrawer) setUninspectedResponses(true);
-
-          setResponsesWillChange(false);
+          // Set error status
+          setStatus(Status.ERROR);
           setContChatToggleDisabled(false);
 
-          // Remove individual progress rings
-          llmListContainer?.current?.resetLLMItemsProgress();
+          // Trigger alert and display one error message per LLM of all collected errors:
+          let combined_err_msg = "";
+          llms_w_errors.forEach((llm_key) => {
+            const item = _llmItemsCurrState.find(
+              (item) => item.key === llm_key,
+            );
+            combined_err_msg +=
+              item?.name +
+              ": " +
+              JSON.stringify(json.errors[llm_key][0]) +
+              "\n";
+          });
+          // We trigger the alert directly (don't use triggerAlert) here because we want to keep the progress bar:
+          if (showAlert)
+            showAlert(
+              "Errors collecting responses. Re-run prompt node to retry.\n\n" +
+                combined_err_msg,
+            );
 
-          // Save prompt text so we remember what prompt we have responses cache'd for:
-          setPromptTextOnLastRun(promptText);
-          setNumGenerationsLastRun(numGenerations);
+          return;
+        }
 
-          // All responses collected! Change status to 'ready':
-          setStatus(Status.READY);
+        if (responsesWillChange && !showDrawer) setUninspectedResponses(true);
 
-          // Ping any inspect nodes attached to this node to refresh their contents:
-          pingOutputNodes(id);
-        })
-        .catch(rejected);
+        setResponsesWillChange(false);
+        setContChatToggleDisabled(false);
+
+        // Remove individual progress rings
+        llmListContainer?.current?.resetLLMItemsProgress();
+
+        // Save prompt text so we remember what prompt we have responses cache'd for:
+        setPromptTextOnLastRun(promptText);
+        setNumGenerationsLastRun(numGenerations);
+
+        // All responses collected! Change status to 'ready':
+        setStatus(Status.READY);
+
+        // Ping any inspect nodes attached to this node to refresh their contents:
+        pingOutputNodes(id);
+      });
     };
 
     // Now put it all together!

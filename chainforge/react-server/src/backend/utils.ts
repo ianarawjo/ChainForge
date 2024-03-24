@@ -1694,7 +1694,16 @@ export const stripLLMDetailsFromResponses = (
   }));
 
 // NOTE: The typing is purposefully general since we are trying to cast to an expected format.
-export const toStandardResponseFormat = (r: Dict) => {
+export const toStandardResponseFormat = (r: Dict | string) => {
+  if (typeof r === "string")
+    return {
+      vars: {},
+      metavars: {},
+      uid: uuid(),
+      prompt: "",
+      responses: [r],
+      tokens: {},
+    } as LLMResponse;
   const resp_obj: LLMResponse = {
     vars: r?.fill_history ?? {},
     metavars: r?.metavars ?? {},
@@ -1785,12 +1794,12 @@ export const truncStr = (
   else return s;
 };
 
-export const groupResponsesBy = (
-  responses: LLMResponse[],
-  keyFunc: (item: LLMResponse) => string | number | null | undefined,
-): [Dict<LLMResponse[]>, LLMResponse[]] => {
-  const responses_by_key: Dict<LLMResponse[]> = {};
-  const unspecified_group: LLMResponse[] = [];
+export const groupResponsesBy = <T>(
+  responses: T[],
+  keyFunc: (item: T) => string | number | null | undefined,
+): [Dict<T[]>, T[]] => {
+  const responses_by_key: Dict<T[]> = {};
+  const unspecified_group: T[] = [];
   responses.forEach((item) => {
     const key = keyFunc(item);
     if (key === null || key === undefined) {
@@ -1806,10 +1815,12 @@ export const groupResponsesBy = (
 /**
  * Merges inner .responses and eval_res.items properties for LLMResponses with the same
  * uid, returning the (smaller) list of merged items.
- * @param responses 
- * @returns 
+ * @param responses
+ * @returns
  */
-export const batchResponsesByUID = (responses: LLMResponse[]): LLMResponse[] => {
+export const batchResponsesByUID = (
+  responses: LLMResponse[],
+): LLMResponse[] => {
   const [batches, unspecified_id_group] = groupResponsesBy(
     responses,
     (resp_obj) => resp_obj.uid,

@@ -3,8 +3,17 @@ import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import { IconSettingsAutomation } from "@tabler/icons-react";
+import { Dict } from "./backend/typing";
 
-const ScriptNode = ({ data, id }) => {
+export interface ScriptNodeProps {
+  data: {
+    scriptFiles: Dict<string>;
+    title: string;
+  };
+  id: string;
+}
+
+const ScriptNode: React.FC<ScriptNodeProps> = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const delButtonId = "del-";
   const [idCounter, setIDCounter] = useState(0);
@@ -15,7 +24,7 @@ const ScriptNode = ({ data, id }) => {
 
   // Handle a change in a scripts' input.
   const handleInputChange = useCallback(
-    (event) => {
+    (event: React.ChangeEvent<HTMLInputElement>) => {
       // Update the data for this script node's id.
       const new_data = { scriptFiles: { ...data.scriptFiles } };
       new_data.scriptFiles[event.target.id] = event.target.value;
@@ -26,10 +35,12 @@ const ScriptNode = ({ data, id }) => {
 
   // Handle delete script file.
   const handleDelete = useCallback(
-    (event) => {
+    (event: React.MouseEvent<HTMLButtonElement>) => {
       // Update the data for this script node's id.
       const new_data = { scriptFiles: { ...data.scriptFiles } };
-      const item_id = event.target.id.substring(delButtonId.length);
+      const item_id = (event.target as HTMLButtonElement).id.substring(
+        delButtonId.length,
+      );
       delete new_data.scriptFiles[item_id];
       // if the new_data is empty, initialize it with one empty field
       if (Object.keys(new_data.scriptFiles).length === 0) {
@@ -41,7 +52,7 @@ const ScriptNode = ({ data, id }) => {
   );
 
   // Initialize fields (run once at init)
-  const [scriptFiles, setScriptFiles] = useState([]);
+  const [scriptFiles, setScriptFiles] = useState<React.ReactNode>([]);
   useEffect(() => {
     if (!data.scriptFiles)
       setDataPropsForNode(id, { scriptFiles: { [get_id()]: "" } });

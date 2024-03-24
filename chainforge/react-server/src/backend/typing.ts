@@ -177,7 +177,11 @@ export interface RawLLMResponseObject extends BaseLLMResponseObject {
   tokens?: Dict<number>;
 }
 
-export type EvaluationScore = boolean | number | string;
+export type EvaluationScore =
+  | boolean
+  | number
+  | string
+  | Dict<boolean | number | string>;
 export type EvaluationResults = {
   items: EvaluationScore[];
   dtype:
@@ -225,12 +229,10 @@ export type LLMResponsesByVarDict = Dict<
   (BaseLLMResponseObject | LLMResponse | TemplateVarInfo | string)[]
 >;
 
-export type VarsContext =
-  | {
-      vars: string[];
-      metavars: string[];
-    }
-  | object;
+export type VarsContext = {
+  vars: string[];
+  metavars: string[];
+};
 
 export type PromptVarType = string | TemplateVarInfo;
 export type PromptVarsDict = {

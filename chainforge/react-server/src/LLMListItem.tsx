@@ -136,7 +136,9 @@ const LLMListItem: React.FC<LLMListItemProps> = ({
           )}
         </CardHeader>
         <LLMItemButtonGroup
-          onClickTrash={() => removeCallback && removeCallback(item.key ?? "undefined")}
+          onClickTrash={() =>
+            removeCallback && removeCallback(item.key ?? "undefined")
+          }
           ringProgress={progress}
           onClickSettings={onClickSettings}
           hideTrashIcon={hideTrashIcon}

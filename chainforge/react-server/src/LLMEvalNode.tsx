@@ -22,6 +22,7 @@ import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { stripLLMDetailsFromResponses } from "./backend/utils";
 import { AlertModalContext } from "./AlertModal";
+import { QueryProgress } from "./backend/typing";
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
 const PLACEHOLDER_PROMPT =
@@ -228,7 +229,9 @@ const LLMEvaluatorNode = ({ data, id }) => {
   const [lastResponses, setLastResponses] = useState([]);
 
   // Progress when querying responses
-  const [progress, setProgress] = useState(undefined);
+  const [progress, setProgress] = useState<QueryProgress | undefined>(
+    undefined,
+  );
 
   const handleRunClick = useCallback(() => {
     // Get the ids from the connected input nodes:
