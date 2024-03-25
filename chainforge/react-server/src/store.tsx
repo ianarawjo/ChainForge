@@ -109,13 +109,6 @@ export const initLLMProviderMenu: (LLMSpec | {group: string, emoji: string, item
     ],
   },
   {
-    name: "Dall-E",
-    emoji: "🖼",
-    model: "dall-e-2",
-    base_model: "dall-e",
-    temp: 0.0,
-  },
-  {
     name: "Claude",
     emoji: "📚",
     model: "claude-2",
@@ -148,6 +141,13 @@ export const initLLMProviderMenu: (LLMSpec | {group: string, emoji: string, item
         temp: 1.0,
       },
     ],
+  },
+  {
+    name: "Dall-E",
+    emoji: "🖼",
+    model: "dall-e-2",
+    base_model: "dall-e",
+    temp: 0.0,
   },
   {
     name: "Aleph Alpha",

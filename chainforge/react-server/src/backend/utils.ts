@@ -363,6 +363,9 @@ export async function call_dalle(
   // Since n doesn't work for DALLE3, we must repeat call n times if n > 1, waiting for each response to come in:
   const responses: Array<Dict> = [];
   while (responses.length < n) {
+    // Abort if canceled
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+    
     let response: Dict = {};
     try {
       const completion = await openai.createImage(query as CreateImageRequest);

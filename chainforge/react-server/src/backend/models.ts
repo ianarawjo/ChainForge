@@ -1,6 +1,8 @@
 /**
  * A list of all model APIs natively supported by ChainForge.
  */
+import Bottleneck from "bottleneck";
+import { UserForcedPrematureExit } from "./errors";
 
 export enum NativeLLM {
   // OpenAI Chat
@@ -151,23 +153,24 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
 #   This 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
 #   If a model is missing from below, it means we must send and receive only 1 request at a time (synchronous).
 #   The following is only a guideline, and a bit on the conservative side.  */
-export const RATE_LIMITS: { [key in LLM]?: [number, number] } = {
-  [NativeLLM.OpenAI_ChatGPT]: [30, 10], // max 30 requests a batch; wait 10 seconds between
-  [NativeLLM.OpenAI_ChatGPT_0301]: [30, 10],
-  [NativeLLM.OpenAI_ChatGPT_0613]: [30, 10],
-  [NativeLLM.OpenAI_ChatGPT_16k]: [30, 10],
-  [NativeLLM.OpenAI_ChatGPT_16k_0613]: [30, 10],
-  [NativeLLM.OpenAI_GPT4]: [8, 2], // max 8 requests every 2 seconds
-  [NativeLLM.OpenAI_GPT4_0314]: [4, 15],
-  [NativeLLM.OpenAI_GPT4_0613]: [4, 15],
-  [NativeLLM.OpenAI_GPT4_32k]: [4, 15],
-  [NativeLLM.OpenAI_GPT4_32k_0314]: [4, 15],
-  [NativeLLM.OpenAI_GPT4_32k_0613]: [4, 15],
-  [NativeLLM.OpenAI_DallE_2]: [2, 10], // Should be 5 images per minute (1 img per every 10 seconds); here, we've been a bit lenient with it.
-  [NativeLLM.OpenAI_DallE_3]: [2, 10], // This differs per tier, see https://platform.openai.com/docs/guides/rate-limits/usage-tiers?context=tier-one
-  [NativeLLM.Azure_OpenAI]: [30, 10],
-  [NativeLLM.PaLM2_Text_Bison]: [4, 10], // max 30 requests per minute; so do 4 per batch, 10 seconds between (conservative)
-  [NativeLLM.PaLM2_Chat_Bison]: [4, 10],
+export const RATE_LIMITS: { [key in LLM]?: number } = {
+  [NativeLLM.OpenAI_ChatGPT]: 1000, // max RPM (API requests per minute)
+  [NativeLLM.OpenAI_ChatGPT_0301]: 1000,
+  [NativeLLM.OpenAI_ChatGPT_0613]: 1000,
+  [NativeLLM.OpenAI_ChatGPT_16k]: 1000,
+  [NativeLLM.OpenAI_ChatGPT_16k_0613]: 1000,
+  [NativeLLM.OpenAI_GPT4]: 500,
+  [NativeLLM.OpenAI_GPT4_0314]: 500,
+  [NativeLLM.OpenAI_GPT4_0613]: 500,
+  [NativeLLM.OpenAI_GPT4_32k]: 500,
+  [NativeLLM.OpenAI_GPT4_32k_0314]: 500,
+  [NativeLLM.OpenAI_GPT4_32k_0613]: 500,
+  [NativeLLM.OpenAI_DallE_2]: 10, // Should be 5 images per minute (1 img per every 10 seconds); here, we've been a bit lenient with it.
+  [NativeLLM.OpenAI_DallE_3]: 10, // This differs per tier, see https://platform.openai.com/docs/guides/rate-limits/usage-tiers?context=tier-one
+  [NativeLLM.Azure_OpenAI]: 500, // conservative
+  [NativeLLM.PaLM2_Text_Bison]: 60, // max 60 requests per minute as of Mar 2023
+  [NativeLLM.PaLM2_Chat_Bison]: 60,
+  [NativeLLM.GEMINI_PRO]: 60,
   [NativeLLM.Bedrock_Jurassic_Mid]: [20, 5],
   [NativeLLM.Bedrock_Jurassic_Ultra]: [5, 5],
   [NativeLLM.Bedrock_Titan_Light]: [40, 5],
@@ -183,6 +186,51 @@ export const RATE_LIMITS: { [key in LLM]?: [number, number] } = {
   [NativeLLM.Bedrock_Mistral_Mixtral]: [20, 5], // 400 RPM
   [NativeLLM.Bedrock_Mistral_Mistral]: [40, 5], // 800 RPM
 };
+
+const DEFAULT_RATE_LIMIT = 100; // RPM for any models not listed above
+
+class RateLimiter {
+  // eslint-disable-next-line no-use-before-define
+  private static instance: RateLimiter;
+  private limiters: Record<LLM, Bottleneck>;
+
+  private constructor() {
+    // Initialize the singleton instance
+    this.limiters = {};
+  }
+
+  /** Gets the rate limiter. Initializes it if the singleton instance does not yet exist. */
+  public static getInstance(): RateLimiter {
+    if (!RateLimiter.instance) {
+      RateLimiter.instance = new RateLimiter();
+    }
+    return RateLimiter.instance;
+  }
+
+  private getLimiter(model: LLM): Bottleneck {
+    // Find if there's an existing limiter for this model
+    if (!(model in this.limiters)) {
+      // If there isn't, make one:
+      const rpm = RATE_LIMITS[model] ?? DEFAULT_RATE_LIMIT;
+      this.limiters[model] = new Bottleneck({
+        reservoir: rpm, // max requests per minute
+        reservoirRefreshAmount: rpm, // refresh up to max requests every minute
+        reservoirRefreshInterval: 60000, // refresh every minute
+        maxConcurrent: Math.ceil(rpm / 2), // throttle max concurrent requests to half, just in case
+        minTime: 20 }); // space out the requests by 20ms, to be safe
+    }
+    return this.limiters[model];
+  }
+
+  /** Throttles the API call for the given model, using Bottleneck */
+  public static throttle<T>(model: LLM, func: () => PromiseLike<T>, should_cancel?: () => boolean): Promise<T> {
+    // Rate limit per model, and abort if the API request takes 3 minutes or more. 
+    return this.getInstance().getLimiter(model).schedule({expiration: 180000}, () => {
+      if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+      return func();
+    }); 
+  }
+}
 
 /** Equivalent to a Python enum's .name property */
 export function getEnumName(
