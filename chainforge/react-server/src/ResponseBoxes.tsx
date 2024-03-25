@@ -191,7 +191,7 @@ export const genResponseTextsDisplay = (
     typeof r === "string" ? r : r.d,
   );
   const resp_special_type_map: Dict<string> = {};
-  responses.forEach(r => {
+  responses.forEach((r) => {
     const key = typeof r === "string" ? r : r.d;
     if (typeof r === "object") resp_special_type_map[key] = r.t;
   });
@@ -206,7 +206,12 @@ export const genResponseTextsDisplay = (
     if (r in resp_special_type_map) {
       // Right now only images are supported as special types.
       // Load and display the image:
-      display = <img src={`data:image/png;base64,${r}`} style={{maxWidth: "100%", width: "auto"}} />;
+      display = (
+        <img
+          src={`data:image/png;base64,${r}`}
+          style={{ maxWidth: "100%", width: "auto" }}
+        />
+      );
     } else {
       display = customTextDisplay ? customTextDisplay(r) : r;
     }

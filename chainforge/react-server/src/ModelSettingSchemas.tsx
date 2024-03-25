@@ -10,7 +10,12 @@
  * Descriptions of OpenAI model parameters copied from OpenAI's official chat completions documentation: https://platform.openai.com/docs/models/model-endpoint-compatibility
  */
 
-import { LLMProvider, RATE_LIMITS, getProvider } from "./backend/models";
+import {
+  LLMProvider,
+  MAX_CONCURRENT,
+  RATE_LIMIT_BY_MODEL,
+  getProvider,
+} from "./backend/models";
 import {
   Dict,
   JSONCompatible,
@@ -2109,7 +2114,7 @@ export const setCustomProvider = (
   name: string,
   emoji: string,
   models?: string[],
-  rate_limit?: number,
+  rate_limit?: number | string,
   settings_schema?: CustomLLMProviderSpec["settings_schema"],
 ) => {
   if (typeof emoji === "string" && (emoji.length === 0 || emoji.length > 2))
@@ -2197,10 +2202,9 @@ export const setCustomProvider = (
     typeof rate_limit === "number" &&
     rate_limit > 0
   ) {
-    if (rate_limit >= 60)
-      RATE_LIMITS[base_model] = [Math.trunc(rate_limit / 60), 1];
-    // for instance, 300 rpm means 5 every second
-    else RATE_LIMITS[base_model] = [1, Math.trunc(60 / rate_limit)]; // for instance, 10 rpm means 1 every 6 seconds
+    RATE_LIMIT_BY_MODEL[base_model] = rate_limit;
+  } else {
+    MAX_CONCURRENT[base_model] = 1;
   }
 
   // Commit changes to LLM list

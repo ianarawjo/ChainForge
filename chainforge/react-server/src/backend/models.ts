@@ -153,7 +153,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
 #   This 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
 #   If a model is missing from below, it means we must send and receive only 1 request at a time (synchronous).
 #   The following is only a guideline, and a bit on the conservative side.  */
-export const RATE_LIMITS: { [key in LLM]?: number } = {
+export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
   [NativeLLM.OpenAI_ChatGPT]: 1000, // max RPM (API requests per minute)
   [NativeLLM.OpenAI_ChatGPT_0301]: 1000,
   [NativeLLM.OpenAI_ChatGPT_0613]: 1000,
@@ -162,6 +162,9 @@ export const RATE_LIMITS: { [key in LLM]?: number } = {
   [NativeLLM.OpenAI_GPT4]: 500,
   [NativeLLM.OpenAI_GPT4_0314]: 500,
   [NativeLLM.OpenAI_GPT4_0613]: 500,
+  [NativeLLM.OpenAI_GPT4_1106_Prev]: 500,
+  [NativeLLM.OpenAI_GPT4_0125_Prev]: 500,
+  [NativeLLM.OpenAI_GPT4_Turbo_Prev]: 500,
   [NativeLLM.OpenAI_GPT4_32k]: 500,
   [NativeLLM.OpenAI_GPT4_32k_0314]: 500,
   [NativeLLM.OpenAI_GPT4_32k_0613]: 500,
@@ -187,9 +190,16 @@ export const RATE_LIMITS: { [key in LLM]?: number } = {
   [NativeLLM.Bedrock_Mistral_Mistral]: [40, 5], // 800 RPM
 };
 
+export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
+  [LLMProvider.Anthropic]: 25, // Tier 1 pricing limit is 50 per minute, across all models; we halve this, to be safe.
+};
+
+// Max concurrent requests. Add to this to further constrain the rate limiter.
+export const MAX_CONCURRENT: { [key in LLM]?: number } = {};
+
 const DEFAULT_RATE_LIMIT = 100; // RPM for any models not listed above
 
-class RateLimiter {
+export class RateLimiter {
   // eslint-disable-next-line no-use-before-define
   private static instance: RateLimiter;
   private limiters: Record<LLM, Bottleneck>;
@@ -199,7 +209,7 @@ class RateLimiter {
     this.limiters = {};
   }
 
-  /** Gets the rate limiter. Initializes it if the singleton instance does not yet exist. */
+  /** Gets the global RateLimiter instance. Initializes it if the singleton instance does not yet exist. */
   public static getInstance(): RateLimiter {
     if (!RateLimiter.instance) {
       RateLimiter.instance = new RateLimiter();
@@ -207,28 +217,46 @@ class RateLimiter {
     return RateLimiter.instance;
   }
 
+  /** Get the Bottleneck limiter for the given model. If it doesn't already exist, instantiates it dynamically. */
   private getLimiter(model: LLM): Bottleneck {
     // Find if there's an existing limiter for this model
     if (!(model in this.limiters)) {
       // If there isn't, make one:
-      const rpm = RATE_LIMITS[model] ?? DEFAULT_RATE_LIMIT;
+      // Find the RPM. First search if the model is present in predefined rate limits; then search for pre-defined RLs by provider; then set to default.
+      const rpm =
+        RATE_LIMIT_BY_MODEL[model] ??
+        RATE_LIMIT_BY_PROVIDER[getProvider(model) ?? LLMProvider.Custom] ??
+        DEFAULT_RATE_LIMIT;
       this.limiters[model] = new Bottleneck({
         reservoir: rpm, // max requests per minute
         reservoirRefreshAmount: rpm, // refresh up to max requests every minute
         reservoirRefreshInterval: 60000, // refresh every minute
-        maxConcurrent: Math.ceil(rpm / 2), // throttle max concurrent requests to half, just in case
-        minTime: 20 }); // space out the requests by 20ms, to be safe
+        maxConcurrent: MAX_CONCURRENT[model] ?? Math.ceil(rpm / 2), // throttle max concurrent requests to half, just in case
+        minTime: 20,
+      }); // space out the requests by 20ms, to be safe
     }
     return this.limiters[model];
   }
 
-  /** Throttles the API call for the given model, using Bottleneck */
-  public static throttle<T>(model: LLM, func: () => PromiseLike<T>, should_cancel?: () => boolean): Promise<T> {
-    // Rate limit per model, and abort if the API request takes 3 minutes or more. 
-    return this.getInstance().getLimiter(model).schedule({expiration: 180000}, () => {
-      if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
-      return func();
-    }); 
+  /** Throttles the API call for the given model, using Bottleneck
+   * @param model The model name, as NativeLLM
+   * @param func The (async) function to call when ready
+   * @param should_cancel Optional. An abort function, that if true, will abort before calling func(), throwing `UserForcedPrematureExit`
+   * @returns A Promise that returns with the return value of func.
+   */
+  public static throttle<T>(
+    model: LLM,
+    func: () => PromiseLike<T>,
+    should_cancel?: () => boolean,
+  ): Promise<T> {
+    // Rate limit per model, and abort if the API request takes 3 minutes or more.
+    return this.getInstance()
+      .getLimiter(model)
+      .schedule({ expiration: 180000 }, () => {
+        if (should_cancel && should_cancel())
+          throw new UserForcedPrematureExit();
+        return func();
+      });
   }
 }
 

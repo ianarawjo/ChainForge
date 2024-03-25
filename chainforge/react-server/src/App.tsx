@@ -568,7 +568,7 @@ const App = () => {
         setIsLoading(false);
 
         const files = event.target.files;
-        if (!files || !Array.isArray(files) || files.length === 0) {
+        if (!files || typeof files !== "object" || files.length === 0) {
           console.error("No files found to load.");
           return;
         }

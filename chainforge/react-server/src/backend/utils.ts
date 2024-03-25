@@ -247,8 +247,7 @@ export async function call_chatgpt(
     (!Array.isArray(params.stop) || params.stop.length === 0)
   )
     delete params.stop;
-  if (params?.seed !== undefined && params.seed.toString().length === 0)
-    delete params?.seed;
+  if (params?.seed && params.seed.toString().length === 0) delete params?.seed;
   if (
     params?.functions !== undefined &&
     (!Array.isArray(params.functions) || params.functions.length === 0)
@@ -365,7 +364,7 @@ export async function call_dalle(
   while (responses.length < n) {
     // Abort if canceled
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
-    
+
     let response: Dict = {};
     try {
       const completion = await openai.createImage(query as CreateImageRequest);
@@ -1411,10 +1410,8 @@ export async function call_llm(
 
   const llm_name = llm.toString().toLowerCase();
   if (llm_provider === LLMProvider.OpenAI) {
-    if (llm_name.startsWith("dall-e"))
-      call_api = call_dalle;
-    else 
-      call_api = call_chatgpt;
+    if (llm_name.startsWith("dall-e")) call_api = call_dalle;
+    else call_api = call_chatgpt;
   } else if (llm_provider === LLMProvider.Azure_OpenAI)
     call_api = call_azure_openai;
   else if (llm_provider === LLMProvider.Google) call_api = call_google_ai;
@@ -1576,7 +1573,7 @@ export function extract_responses(
   const llm_name = llm.toString().toLowerCase();
   switch (llm_provider) {
     case LLMProvider.OpenAI:
-      if (llm_name.includes("dall-e"))
+      if (llm_name.startsWith("dall-e"))
         return _extract_openai_image_responses(
           response as Array<ImagesResponseDataInner>,
         );

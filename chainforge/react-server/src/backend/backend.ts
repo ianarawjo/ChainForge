@@ -1395,7 +1395,7 @@ export async function exportCache(ids: string[]): Promise<Dict<Dict>> {
   const cache_state = StorageCache.getAllMatching((key) =>
     key.startsWith("r."),
   );
-  return { files: { ...cache_files, ...cache_state } };
+  return { ...cache_files, ...cache_state };
 }
 
 /**

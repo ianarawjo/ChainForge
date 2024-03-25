@@ -1,5 +1,5 @@
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
-import { LLM, NativeLLM, RATE_LIMITS } from "./models";
+import { LLM, NativeLLM, RateLimiter } from "./models";
 import {
   Dict,
   LLMResponseError,
@@ -189,9 +189,6 @@ export class PromptPipeline {
 
     // Query LLM with each prompt, yield + cache the responses
     const tasks: Array<Promise<_IntermediateLLMResponseType>> = [];
-    const rate_limit = RATE_LIMITS[llm] || [1, 0];
-    const [max_req, wait_secs] = rate_limit || [1, 0];
-    let num_queries_sent = -1;
 
     // Generate concrete prompts one by one. Yield response from the cache or make async call to LLM.
     for (const prompt of this.gen_prompts(vars)) {
@@ -273,45 +270,15 @@ export class PromptPipeline {
           continue;
         }
 
-        num_queries_sent += 1;
-
-        if (max_req > 1) {
-          // Call the LLM asynchronously to generate a response, sending off
-          // requests in batches of size 'max_req' separated by seconds 'wait_secs' to avoid hitting rate limit
-          tasks.push(
-            this._prompt_llm(
-              llm,
-              prompt,
-              n,
-              temperature,
-              cached_resp,
-              cached_resp_idx,
-              num_queries_sent,
-              max_req,
-              wait_secs,
-              {
-                ...llm_params,
-                ...typecastSettingsDict(
-                  settings_params as ModelSettingsDict,
-                  llm,
-                ),
-              },
-              chat_history,
-              should_cancel,
-            ),
-          );
-        } else {
-          // Block. Await + yield a single LLM call.
-          const result = await this._prompt_llm(
+        // Call the LLM asynchronously to generate a response
+        tasks.push(
+          this._prompt_llm(
             llm,
             prompt,
             n,
             temperature,
             cached_resp,
             cached_resp_idx,
-            undefined,
-            undefined,
-            undefined,
             {
               ...llm_params,
               ...typecastSettingsDict(
@@ -321,9 +288,8 @@ export class PromptPipeline {
             },
             chat_history,
             should_cancel,
-          );
-          yield this.collect_LLM_response(result, llm, responses);
-        }
+          ),
+        );
       }
     }
 
@@ -366,9 +332,6 @@ export class PromptPipeline {
     temperature = 1.0,
     past_resp_obj?: RawLLMResponseObject,
     past_resp_obj_cache_idx?: number,
-    query_number?: number,
-    rate_limit_batch_size?: number,
-    rate_limit_wait_secs?: number,
     llm_params?: Dict,
     chat_history?: ChatHistoryInfo,
     should_cancel?: () => boolean,
@@ -384,27 +347,6 @@ export class PromptPipeline {
     if (llm_params?.temperature !== undefined)
       temperature = llm_params.temperature;
 
-    // Block asynchronously when we exceed rate limits
-    if (
-      query_number !== undefined &&
-      rate_limit_batch_size !== undefined &&
-      rate_limit_wait_secs !== undefined &&
-      rate_limit_batch_size >= 1 &&
-      rate_limit_wait_secs > 0
-    ) {
-      const batch_num = Math.floor(query_number / rate_limit_batch_size);
-      if (batch_num > 0) {
-        // We've exceeded the estimated batch rate limit and need to wait the appropriate seconds before sending off new API calls:
-        const wait_secs = rate_limit_wait_secs * batch_num;
-        if (query_number % rate_limit_batch_size === 0)
-          // Print when we start blocking, for each batch
-          console.log(
-            `Batch rate limit of ${rate_limit_batch_size} reached for LLM ${llm}. Waiting {$wait_secs} seconds until sending request batch #${batch_num}...`,
-          );
-        await sleep(wait_secs);
-      }
-    }
-
     // Now try to call the API. If it fails for whatever reason, 'soft fail' by returning
     // an LLMResponseException object as the 'response'.
     const params = deepcopy(llm_params);
@@ -416,12 +358,19 @@ export class PromptPipeline {
       // When/if we emerge from sleep, check if this process has been canceled in the meantime:
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
       // Call the LLM, returning when the Promise returns (if it does!)
-      [query, response] = await call_llm(
+      // NOTE: This also throttles API calls on a model-specific basis, across global application state, using Bottleneck.
+      //       It's not perfect, but it's simpler than throttling at the call-specific level.
+      [query, response] = await RateLimiter.throttle(
         llm,
-        prompt.toString(),
-        n,
-        temperature,
-        params,
+        () =>
+          call_llm(
+            llm,
+            prompt.toString(),
+            n,
+            temperature,
+            params,
+            should_cancel,
+          ),
         should_cancel,
       );
 
