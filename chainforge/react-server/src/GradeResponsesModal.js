@@ -33,6 +33,10 @@ import {
   Checkbox,
   Popover,
   Group,
+  Collapse,
+  Code,
+  Accordion,
+  Divider,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -147,6 +151,7 @@ const CriteriaCard = function CriteriaCard({
   reportMode,
   evalFuncReport,
   onCheck,
+  otherFuncs,
 }) {
   const [checked, setChecked] = useState(true);
   const [codeChecked, setCodeChecked] = useState(evalMethod === "code");
@@ -155,6 +160,9 @@ const CriteriaCard = function CriteriaCard({
   // Report card specific
   const [openedCMatrix, { close: closeCMatrix, open: openCMatrix }] =
     useDisclosure(false);
+  const [viewedCode, { close: closeViewedCode, open: openViewedCode }] =
+    useDisclosure(false);
+  const [openedOtherFuncs, { toggleOtherFuncs }] = useDisclosure(false);
   const cMatrixPlot = useMemo(() => {
     if (!evalFuncReport) return undefined;
     const x = ["Pred.<br>fail", "Pred.<br>pass"];
@@ -210,6 +218,18 @@ const CriteriaCard = function CriteriaCard({
     // oncheck is an awaitable function
     if (onCheck && evalFuncReport) onCheck(newChecked);
   };
+
+  const unselectedImplementations =
+    otherFuncs !== undefined && otherFuncs.length > 0
+      ? otherFuncs.map((item) => (
+          <div>
+            <Code style={{ whiteSpace: "pre-wrap" }} key={uuid()}>
+              {item.evalFunction.code}
+            </Code>
+            <Divider />
+          </div>
+        ))
+      : null;
 
   return (
     <Card
@@ -285,9 +305,31 @@ const CriteriaCard = function CriteriaCard({
           />
 
           {reportMode && (
-            <Text size="sm" color="gray">
-              {codeChecked ? "Python" : "LLM"}
-            </Text>
+            <Popover
+              opened={viewedCode}
+              // offset={{ crossAxis: -20 }}
+              withinPortal
+              position="bottom"
+              shadow="lg"
+              withArrow
+              width={400}
+            >
+              <Popover.Target>
+                <Text
+                  size="sm"
+                  color="gray"
+                  onMouseEnter={openViewedCode}
+                  onMouseLeave={closeViewedCode}
+                >
+                  {codeChecked ? "Python" : "LLM"}
+                </Text>
+              </Popover.Target>
+              <Popover.Dropdown>
+                <Code style={{ whiteSpace: "pre-wrap" }}>
+                  {evalFuncReport.evalFunction.code}
+                </Code>
+              </Popover.Dropdown>
+            </Popover>
           )}
         </div>
 
@@ -385,6 +427,22 @@ const CriteriaCard = function CriteriaCard({
           />
         ) : (
           <></>
+        )}
+      </div>
+
+      <div>
+        {reportMode && (
+          <Accordion>
+            <Accordion.Item
+              key={"Show Bad Implementations"}
+              value={"Show Bad Implementations"}
+            >
+              <Accordion.Control>
+                <Text size="sm"> Show Bad Implementations </Text>
+              </Accordion.Control>
+              <Accordion.Panel>{unselectedImplementations}</Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
         )}
       </div>
     </Card>
@@ -764,6 +822,11 @@ Your response should contain a short title for the criteria ("shortname"), a des
               Based on your chosen criteria, LLM will generate implementations
               of assertions. Afterwards, an optional human scoring pass can
               better align these implementations with your expectations.
+            </Text>
+
+            <Text size="sm" pl="sm" mb="lg" style={{ fontStyle: "italic" }}>
+              Note: Due to rate limits, please don&apos;t select more than 3
+              criteria to be evaluated by LLMs.
             </Text>
 
             <Flex align="center" gap="lg">
@@ -1350,6 +1413,11 @@ const ReportCardScreen = ({ report, recomputeAlignment, onClickFinish }) => {
         (rep) => rep.evalFunction === selectedFunc,
       );
 
+      // Get the functions that were not selected for this criteria
+      const otherFuncs = critEvalFuncReports.filter(
+        (rep) => rep.evalFunction !== selectedFunc,
+      );
+
       res.push(
         <CriteriaCard
           title={crit.shortname}
@@ -1358,6 +1426,7 @@ const ReportCardScreen = ({ report, recomputeAlignment, onClickFinish }) => {
           key={`cc-${crit.uid ?? res.length.toString() + crit.shortname}`}
           reportMode={true}
           evalFuncReport={evalFuncReport} // undefined if none was chosen
+          otherFuncs={otherFuncs}
           onCheck={(checked) => {
             crit.selected = checked;
             recomputeAlignment();
@@ -1386,7 +1455,7 @@ const ReportCardScreen = ({ report, recomputeAlignment, onClickFinish }) => {
               style={{ backgroundColor: "#f0f0f0" }}
             >
               <Text weight={500} size="md">
-                Coverage
+                Coverage of Bad Responses
               </Text>
               <Text color="blue" weight={700} size="md">
                 {report.failureCoverage.toFixed(2)}%

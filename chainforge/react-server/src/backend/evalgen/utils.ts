@@ -55,7 +55,7 @@ export async function generateLLMEvaluationCriteria(
   
   \`${prompt}\`
     
-    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should be short, and the "shortname" should be a very brief title for the criteria. Each evaluation criteria should test a concept that should evaluate to "true" in the ideal case.`;
+    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). At most 3 criteria should have eval_method as expert. The "criteria" should be short, and the "shortname" should be a very brief title for the criteria. Each evaluation criteria should test a concept that should evaluate to "true" in the ideal case.`;
 
   // Query the LLM (below, we will try this up to 3 times)
   async function _query() {
@@ -67,12 +67,12 @@ export async function generateLLMEvaluationCriteria(
         model: "azure-openai",
         base_model: "azure-openai",
         temp: 1,
-        deployment_name: "gpt-4-turbo",
+        deployment_name: "gpt-4",
         model_type: "chat-completion",
         // api_version: "2023-05-15",
         system_msg: AssertionWriterSystemMsg,
         settings: {
-          deployment_name: "gpt-4-turbo",
+          deployment_name: "gpt-4",
           model_type: "chat-completion",
           // // api_version: "2023-05-15",
           system_msg: AssertionWriterSystemMsg,
@@ -89,7 +89,7 @@ export async function generateLLMEvaluationCriteria(
         },
         formData: {
           shortname: "Azure OpenAI",
-          deployment_name: "gpt-4-turbo",
+          deployment_name: "gpt-4",
           model_type: "chat-completion",
           // api_version: "2023-05-15",
           system_msg: AssertionWriterSystemMsg,
@@ -369,7 +369,7 @@ export async function generateFunctionsForCriteria(
 
     const modelType =
       criteria.eval_method === "expert" ? "llm_eval" : "python_fn";
-    await streamer.generate(functionGenPrompt, "gpt-4-turbo", modelType);
+    await streamer.generate(functionGenPrompt, "gpt-4", modelType);
   } catch (error) {
     console.error("Error generating function for criteria:", error);
     throw new Error(
