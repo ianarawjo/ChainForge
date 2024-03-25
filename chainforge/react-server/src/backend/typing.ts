@@ -127,7 +127,7 @@ export type CustomLLMProviderSpec = {
   name: string;
   emoji: string;
   models?: string[];
-  rate_limit?: number;
+  rate_limit?: number | string;
   settings_schema?: {
     settings: Dict<Dict<JSONCompatible>>;
     ui: Dict<Dict<JSONCompatible>>;
