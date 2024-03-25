@@ -8,7 +8,12 @@ import React, {
 } from "react";
 import { Handle, Position } from "reactflow";
 import { Textarea, Tooltip, Skeleton } from "@mantine/core";
-import { IconTextPlus, IconEye, IconEyeOff } from "@tabler/icons-react";
+import {
+  IconTextPlus,
+  IconEye,
+  IconEyeOff,
+  IconTransform,
+} from "@tabler/icons-react";
 import useStore from "./store";
 import NodeLabel from "./NodeLabelComponent";
 import TemplateHooks, {
@@ -417,10 +422,26 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     [textfieldsValues, placeholders, fieldVisibility],
   );
 
+  const customContextMenuItems = [
+    {
+      key: "to_item_node",
+      icon: <IconTransform size="11pt" />,
+      text: "To Items Node",
+      onClick: () => {
+        console.log("TODO: Convert to items node.");
+      },
+      sadsd
+    },
+  ];
+
   return (
-    <BaseNode classNames="text-fields-node" nodeId={id}>
+    <BaseNode
+      classNames="text-fields-node"
+      nodeId={id}
+      contextMenuItems={customContextMenuItems}
+    >
       <NodeLabel
-        title={data.title || "TextFields Node"}
+        title={data.title ?? "TextFields Node"}
         nodeId={id}
         icon={<IconTextPlus size="16px" />}
         customButtons={

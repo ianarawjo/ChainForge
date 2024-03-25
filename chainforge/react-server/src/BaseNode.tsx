@@ -15,6 +15,12 @@ interface BaseNodeProps {
   nodeId: string;
   classNames?: string;
   style?: React.CSSProperties; // Optional prop for inline styles
+  contextMenuItems?: {
+    key: string;
+    icon: JSX.Element;
+    text: string;
+    onClick: () => void;
+  }[];
 }
 
 export const BaseNode: React.FC<BaseNodeProps> = ({
@@ -22,6 +28,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   classNames,
   nodeId,
   style,
+  contextMenuItems,
 }) => {
   const removeNode = useStore((state) => state.removeNode);
   const duplicateNode = useStore((state) => state.duplicateNode);
@@ -105,6 +112,12 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
       >
         {children}
         <Menu.Dropdown>
+          {contextMenuItems &&
+            contextMenuItems.map(({ key, icon, text, onClick }) => (
+              <Menu.Item key={key} onClick={onClick}>
+                {icon}&nbsp;{text}
+              </Menu.Item>
+            ))}
           <Menu.Item key="duplicate" onClick={handleDuplicateNode}>
             <IconCopy size="10pt" />
             &nbsp;Duplicate Node
