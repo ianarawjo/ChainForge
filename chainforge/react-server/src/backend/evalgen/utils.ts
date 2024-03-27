@@ -18,6 +18,7 @@ import {
   buildContextPromptForVarsMetavars,
   buildGenEvalCodePrompt,
 } from "../../AiPopover";
+import { cleanEscapedBraces } from "../template";
 
 /**
  * Extracts substrings within "```json" and "```" ticks. Excludes the ticks from return.
@@ -111,7 +112,7 @@ export async function executeLLMEval(
     "Evaluate the text below according to this criteria: " +
     evalFunction.code +
     ' Only return "yes" or "no", nothing else.\n\n```\n' +
-    example.responses[0] +
+    cleanEscapedBraces(example.responses[0]) +
     "\n```";
 
   // Query an LLM as an evaluator
