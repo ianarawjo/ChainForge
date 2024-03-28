@@ -24,7 +24,11 @@ import { DebounceRef, genDebounceFunc, setsAreEqual } from "./backend/utils";
 import { Func, Dict } from "./backend/typing";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import AISuggestionsManager from "./backend/aiSuggestionsManager";
-import { ItemsNodeProps, makeSafeForCSLFormat, prepareItemsNodeData } from "./ItemsNode";
+import {
+  ItemsNodeProps,
+  makeSafeForCSLFormat,
+  prepareItemsNodeData,
+} from "./ItemsNode";
 
 // Helper funcs
 const union = (setA: Set<any>, setB: Set<any>) => {
@@ -427,37 +431,41 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     [textfieldsValues, placeholders, fieldVisibility],
   );
 
-  // Add custom context menu options on right-click. 
-  // 1. Convert TextFields to Items Node, for convenience. 
-  const customContextMenuItems = useMemo(() => [
-    {
-      key: "to_item_node",
-      icon: <IconTransform size="11pt" />,
-      text: "To Items Node",
-      onClick: () => {
-        // Convert the fields of this node into Items Node CSL format:
-        const csl_fields = Object.values(textfieldsValues).map(makeSafeForCSLFormat);
-        const text = csl_fields.join(", ");
-        // Duplicate this TextFields node
-        const dup = duplicateNode(id) as Node;
-        // Swap the data for new data:
-        const items_node_data: ItemsNodeProps["data"] = {
-          title: dup.data.title,
-          text,
-          fields: prepareItemsNodeData(text).fields,
-        };
-        // Add the duplicated node, with correct type:
-        addNode({
-          ...dup,
-          id: `csvNode-${Date.now()}`,
-          type: `csv`,
-          data: items_node_data,
-        });
-        // Remove the current TF node on redraw:
-        removeNode(id);
+  // Add custom context menu options on right-click.
+  // 1. Convert TextFields to Items Node, for convenience.
+  const customContextMenuItems = useMemo(
+    () => [
+      {
+        key: "to_item_node",
+        icon: <IconTransform size="11pt" />,
+        text: "To Items Node",
+        onClick: () => {
+          // Convert the fields of this node into Items Node CSL format:
+          const csl_fields =
+            Object.values(textfieldsValues).map(makeSafeForCSLFormat);
+          const text = csl_fields.join(", ");
+          // Duplicate this TextFields node
+          const dup = duplicateNode(id) as Node;
+          // Swap the data for new data:
+          const items_node_data: ItemsNodeProps["data"] = {
+            title: dup.data.title,
+            text,
+            fields: prepareItemsNodeData(text).fields,
+          };
+          // Add the duplicated node, with correct type:
+          addNode({
+            ...dup,
+            id: `csvNode-${Date.now()}`,
+            type: `csv`,
+            data: items_node_data,
+          });
+          // Remove the current TF node on redraw:
+          removeNode(id);
+        },
       },
-    },
-  ], [id, textfieldsValues]);
+    ],
+    [id, textfieldsValues],
+  );
 
   return (
     <BaseNode
