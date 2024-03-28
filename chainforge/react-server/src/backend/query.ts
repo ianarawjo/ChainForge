@@ -50,11 +50,6 @@ async function* yield_as_completed(promises: Array<Promise<any>>) {
   return true;
 }
 
-/** Equivalent to Python's asyncio.sleep */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 /**
  *  Abstract class that captures a generic querying interface to prompt LLMs
  */

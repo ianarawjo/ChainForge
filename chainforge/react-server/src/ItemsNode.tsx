@@ -4,21 +4,23 @@ import React, {
   useCallback,
   useRef,
   KeyboardEventHandler,
+  useMemo,
 } from "react";
 import { Skeleton, Text } from "@mantine/core";
 import useStore from "./store";
 import NodeLabel from "./NodeLabelComponent";
-import { IconForms } from "@tabler/icons-react";
-import { Handle, Position } from "reactflow";
+import { IconForms, IconTransform } from "@tabler/icons-react";
+import { Handle, Node, Position } from "reactflow";
 import BaseNode from "./BaseNode";
 import { DebounceRef, genDebounceFunc, processCSV } from "./backend/utils";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import { cleanEscapedBraces, escapeBraces } from "./backend/template";
+import { TextFieldsNodeProps } from "./TextFieldsNode";
 
 const replaceDoubleQuotesWithSingle = (str: string) => str.replaceAll('"', "'");
 const wrapInQuotesIfContainsComma = (str: string) =>
   str.includes(",") ? `"${str}"` : str;
-const makeSafeForCSLFormat = (str: string) =>
+export const makeSafeForCSLFormat = (str: string) =>
   wrapInQuotesIfContainsComma(replaceDoubleQuotesWithSingle(str));
 const stripWrappingQuotes = (str: string) => {
   if (
@@ -30,8 +32,14 @@ const stripWrappingQuotes = (str: string) => {
     return str.substring(1, str.length - 1);
   else return str;
 };
+export const prepareItemsNodeData = (text: string) => ({
+  text,
+  fields: processCSV(text)
+    .map(stripWrappingQuotes)
+    .map(escapeBraces),
+});
 
-interface ItemsNodeProps {
+export interface ItemsNodeProps {
   data: {
     title?: string;
     text?: string;
@@ -41,6 +49,9 @@ interface ItemsNodeProps {
 }
 
 const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
+  const duplicateNode = useStore((state) => state.duplicateNode);
+  const addNode = useStore((state) => state.addNode);
+  const removeNode = useStore((state) => state.removeNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const flags = useStore((state) => state.flags);
@@ -69,12 +80,7 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
     (text_val: string, no_debounce: boolean) => {
       const _update = (_text_val: string) => {
         // Update the data for this text fields' id.
-        const new_data = {
-          text: _text_val,
-          fields: processCSV(_text_val)
-            .map(stripWrappingQuotes)
-            .map(escapeBraces),
-        };
+        const new_data = prepareItemsNodeData(_text_val);
         setDataPropsForNode(id, new_data);
         pingOutputNodes(id);
       };
@@ -178,8 +184,43 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
     renderCsvDiv();
   }, [id, data]);
 
+  // Add custom context menu options on right-click. 
+  // 1. Convert Items Node to TextFields, for convenience. 
+  const customContextMenuItems = useMemo(() => [
+    {
+      key: "to_tf_node",
+      icon: <IconTransform size="11pt" />,
+      text: "To TextFields Node",
+      onClick: () => {
+        if (!data.fields) return;
+        // Convert the fields of this node into TextFields Node format:
+        const textfields = data.fields.reduce<Record<string, string>>(
+          (acc, curr, idx) => {
+            acc[`f${idx}`] = curr; return acc;
+          },
+        {});
+        // Duplicate this Items Node
+        const dup = duplicateNode(id) as Node;
+        // Swap the data for new data:
+        const tf_node_data: TextFieldsNodeProps["data"] = {
+          title: dup.data.title,
+          fields: textfields,
+        };
+        // Add the duplicated node, with correct type:
+        addNode({
+          ...dup,
+          id: `textFieldsNode-${Date.now()}`,
+          type: `textfields`,
+          data: tf_node_data,
+        });
+        // Remove the current Items Node on redraw:
+        removeNode(id);
+      },
+    },
+  ], [id, data.fields]);
+
   return (
-    <BaseNode classNames="text-fields-node" nodeId={id}>
+    <BaseNode classNames="text-fields-node" nodeId={id} contextMenuExts={customContextMenuItems}>
       <NodeLabel
         title={data.title || "Items Node"}
         nodeId={id}

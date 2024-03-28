@@ -249,7 +249,7 @@ export interface StoreHandles {
   bringNodeToFront: (id: string) => void;
   duplicateNode: (
     id: string,
-    offset: undefined | { x?: number; y?: number },
+    offset?: { x?: number; y?: number },
   ) => Node;
   setNodes: (newnodes: Node[]) => void;
   setEdges: (newedges: Edge[]) => void;
@@ -691,12 +691,7 @@ const useStore = create<StoreHandles>((set, get) => ({
     dup.position.y += offset && offset.y !== undefined ? offset.y : 0;
     // Change id to new unique id
     dup.id = `${dup.type}-${Date.now()}`;
-    // Select it (floats it to top)
-    dup.selected = true;
-    // Deselect all previous nodes
-    get().deselectAllNodes();
-    // Declare new node with copied data, at the shifted position
-    get().addNode(dup);
+    // Return the duplicated node (does not add it to ReactFlow nodes; use addNode for that!)
     return dup;
   },
   setNodes: (newnodes) => {

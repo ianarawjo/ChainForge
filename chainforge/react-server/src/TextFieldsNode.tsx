@@ -6,7 +6,7 @@ import React, {
   useMemo,
   MouseEventHandler,
 } from "react";
-import { Handle, Position } from "reactflow";
+import { Handle, Node, Position } from "reactflow";
 import { Textarea, Tooltip, Skeleton } from "@mantine/core";
 import {
   IconTextPlus,
@@ -24,6 +24,7 @@ import { DebounceRef, genDebounceFunc, setsAreEqual } from "./backend/utils";
 import { Func, Dict } from "./backend/typing";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import AISuggestionsManager from "./backend/aiSuggestionsManager";
+import { ItemsNodeProps, makeSafeForCSLFormat, prepareItemsNodeData } from "./ItemsNode";
 
 // Helper funcs
 const union = (setA: Set<any>, setB: Set<any>) => {
@@ -45,13 +46,17 @@ interface TextFieldsNodeData {
   fields_visibility?: Dict<boolean>;
   refresh?: boolean;
 }
-interface TextFieldsNodeProps {
+
+export interface TextFieldsNodeProps {
   data: TextFieldsNodeData;
   id: string;
 }
 
 const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   const [templateVars, setTemplateVars] = useState(data.vars || []);
+  const duplicateNode = useStore((state) => state.duplicateNode);
+  const addNode = useStore((state) => state.addNode);
+  const removeNode = useStore((state) => state.removeNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const apiKeys = useStore((state) => state.apiKeys);
@@ -422,23 +427,43 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     [textfieldsValues, placeholders, fieldVisibility],
   );
 
-  const customContextMenuItems = [
+  // Add custom context menu options on right-click. 
+  // 1. Convert TextFields to Items Node, for convenience. 
+  const customContextMenuItems = useMemo(() => [
     {
       key: "to_item_node",
       icon: <IconTransform size="11pt" />,
       text: "To Items Node",
       onClick: () => {
-        console.log("TODO: Convert to items node.");
+        // Convert the fields of this node into Items Node CSL format:
+        const csl_fields = Object.values(textfieldsValues).map(makeSafeForCSLFormat);
+        const text = csl_fields.join(", ");
+        // Duplicate this TextFields node
+        const dup = duplicateNode(id) as Node;
+        // Swap the data for new data:
+        const items_node_data: ItemsNodeProps["data"] = {
+          title: dup.data.title,
+          text,
+          fields: prepareItemsNodeData(text).fields,
+        };
+        // Add the duplicated node, with correct type:
+        addNode({
+          ...dup,
+          id: `csvNode-${Date.now()}`,
+          type: `csv`,
+          data: items_node_data,
+        });
+        // Remove the current TF node on redraw:
+        removeNode(id);
       },
-      sadsd
     },
-  ];
+  ], [id, textfieldsValues]);
 
   return (
     <BaseNode
       classNames="text-fields-node"
       nodeId={id}
-      contextMenuItems={customContextMenuItems}
+      contextMenuExts={customContextMenuItems}
     >
       <NodeLabel
         title={data.title ?? "TextFields Node"}

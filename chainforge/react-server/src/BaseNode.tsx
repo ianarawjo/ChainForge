@@ -15,7 +15,7 @@ interface BaseNodeProps {
   nodeId: string;
   classNames?: string;
   style?: React.CSSProperties; // Optional prop for inline styles
-  contextMenuItems?: {
+  contextMenuExts?: {
     key: string;
     icon: JSX.Element;
     text: string;
@@ -28,8 +28,9 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   classNames,
   nodeId,
   style,
-  contextMenuItems,
+  contextMenuExts,
 }) => {
+  const addNode = useStore((state) => state.addNode);
   const removeNode = useStore((state) => state.removeNode);
   const duplicateNode = useStore((state) => state.duplicateNode);
 
@@ -48,7 +49,10 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
 
   // Duplicate the node
   const handleDuplicateNode = useCallback(() => {
-    duplicateNode(nodeId, { x: 28, y: 28 });
+    // Duplicate this node
+    const dupNode = duplicateNode(nodeId, { x: 28, y: 28 });
+    // Add it to the ReactFlow canvas
+    addNode(dupNode);
   }, [nodeId, duplicateNode]);
 
   // Remove the node, after user confirmation dialog
@@ -112,8 +116,8 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
       >
         {children}
         <Menu.Dropdown>
-          {contextMenuItems &&
-            contextMenuItems.map(({ key, icon, text, onClick }) => (
+          {contextMenuExts &&
+            contextMenuExts.map(({ key, icon, text, onClick }) => (
               <Menu.Item key={key} onClick={onClick}>
                 {icon}&nbsp;{text}
               </Menu.Item>
