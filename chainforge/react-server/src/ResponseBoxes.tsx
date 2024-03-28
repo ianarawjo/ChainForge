@@ -208,7 +208,8 @@ export const genResponseTextsDisplay = (
       // Load and display the image:
       display = (
         <img
-          src={`data:image/png;base64,${r}`}
+          className="lazyload"
+          data-src={`data:image/png;base64,${r}`}
           style={{ maxWidth: "100%", width: "auto" }}
         />
       );

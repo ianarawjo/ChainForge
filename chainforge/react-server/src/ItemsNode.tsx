@@ -34,9 +34,7 @@ const stripWrappingQuotes = (str: string) => {
 };
 export const prepareItemsNodeData = (text: string) => ({
   text,
-  fields: processCSV(text)
-    .map(stripWrappingQuotes)
-    .map(escapeBraces),
+  fields: processCSV(text).map(stripWrappingQuotes).map(escapeBraces),
 });
 
 export interface ItemsNodeProps {
@@ -184,43 +182,52 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
     renderCsvDiv();
   }, [id, data]);
 
-  // Add custom context menu options on right-click. 
-  // 1. Convert Items Node to TextFields, for convenience. 
-  const customContextMenuItems = useMemo(() => [
-    {
-      key: "to_tf_node",
-      icon: <IconTransform size="11pt" />,
-      text: "To TextFields Node",
-      onClick: () => {
-        if (!data.fields) return;
-        // Convert the fields of this node into TextFields Node format:
-        const textfields = data.fields.reduce<Record<string, string>>(
-          (acc, curr, idx) => {
-            acc[`f${idx}`] = curr; return acc;
-          },
-        {});
-        // Duplicate this Items Node
-        const dup = duplicateNode(id) as Node;
-        // Swap the data for new data:
-        const tf_node_data: TextFieldsNodeProps["data"] = {
-          title: dup.data.title,
-          fields: textfields,
-        };
-        // Add the duplicated node, with correct type:
-        addNode({
-          ...dup,
-          id: `textFieldsNode-${Date.now()}`,
-          type: `textfields`,
-          data: tf_node_data,
-        });
-        // Remove the current Items Node on redraw:
-        removeNode(id);
+  // Add custom context menu options on right-click.
+  // 1. Convert Items Node to TextFields, for convenience.
+  const customContextMenuItems = useMemo(
+    () => [
+      {
+        key: "to_tf_node",
+        icon: <IconTransform size="11pt" />,
+        text: "To TextFields Node",
+        onClick: () => {
+          if (!data.fields) return;
+          // Convert the fields of this node into TextFields Node format:
+          const textfields = data.fields.reduce<Record<string, string>>(
+            (acc, curr, idx) => {
+              acc[`f${idx}`] = curr;
+              return acc;
+            },
+            {},
+          );
+          // Duplicate this Items Node
+          const dup = duplicateNode(id) as Node;
+          // Swap the data for new data:
+          const tf_node_data: TextFieldsNodeProps["data"] = {
+            title: dup.data.title,
+            fields: textfields,
+          };
+          // Add the duplicated node, with correct type:
+          addNode({
+            ...dup,
+            id: `textFieldsNode-${Date.now()}`,
+            type: `textfields`,
+            data: tf_node_data,
+          });
+          // Remove the current Items Node on redraw:
+          removeNode(id);
+        },
       },
-    },
-  ], [id, data.fields]);
+    ],
+    [id, data.fields],
+  );
 
   return (
-    <BaseNode classNames="text-fields-node" nodeId={id} contextMenuExts={customContextMenuItems}>
+    <BaseNode
+      classNames="text-fields-node"
+      nodeId={id}
+      contextMenuExts={customContextMenuItems}
+    >
       <NodeLabel
         title={data.title || "Items Node"}
         nodeId={id}

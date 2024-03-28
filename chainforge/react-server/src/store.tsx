@@ -164,10 +164,7 @@ export interface StoreHandles {
   removeNode: (id: string) => void;
   deselectAllNodes: () => void;
   bringNodeToFront: (id: string) => void;
-  duplicateNode: (
-    id: string,
-    offset?: { x?: number; y?: number },
-  ) => Node;
+  duplicateNode: (id: string, offset?: { x?: number; y?: number }) => Node;
   setNodes: (newnodes: Node[]) => void;
   setEdges: (newedges: Edge[]) => void;
   removeEdge: (id: string) => void;

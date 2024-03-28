@@ -62,6 +62,9 @@ import { EXAMPLEFLOW_1 } from "./example_flows";
 import "reactflow/dist/style.css"; // reactflow
 import "./text-fields-node.css"; // project
 
+// Lazy loading images
+import "lazysizes";
+
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from "zustand/shallow";
 import useStore, { StoreHandles } from "./store";
