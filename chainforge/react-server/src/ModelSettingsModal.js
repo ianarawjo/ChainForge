@@ -132,11 +132,16 @@ const ModelSettingsModal = forwardRef(function ModelSettingsModal(props, ref) {
         state.formData.shortname === initShortname &&
         state.formData.model !== initModelName
       ) {
-        const shortname_map = schema.properties?.model?.shortname_map;
-        if (shortname_map && state.formData.model in shortname_map)
-          state.formData.shortname = shortname_map[state.formData.model];
-        else state.formData.shortname = state.formData.model;
-        setInitShortname(state.formData.shortname);
+        // Only change the shortname if there is a distinct model name.
+        // If not, let the shortname remain the same for this time, and just remember the model name.
+        if (initModelName !== undefined) {
+          const shortname_map = schema.properties?.model?.shortname_map;
+          if (shortname_map && state.formData.model in shortname_map)
+            state.formData.shortname = shortname_map[state.formData.model];
+          else state.formData.shortname = state.formData.model;
+          setInitShortname(state.formData.shortname);
+        }
+
         setInitModelName(state.formData.model);
       }
 
@@ -154,7 +159,6 @@ const ModelSettingsModal = forwardRef(function ModelSettingsModal(props, ref) {
       const emoji = selection.native;
       setModelEmoji(emoji);
       setEmojiPickerOpen(false);
-      console.log("picked", emoji);
     },
     [setModelEmoji, setEmojiPickerOpen],
   );

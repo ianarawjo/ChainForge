@@ -296,9 +296,10 @@ const ClaudeSettings = {
         enum: [
           "claude-3-opus-20240229",
           "claude-3-sonnet-20240229",
+          "claude-3-haiku-20240307",
+          "claude-2.1",
           "claude-2",
           "claude-2.0",
-          "claude-2.1",
           "claude-instant-1",
           "claude-instant-1.1",
           "claude-instant-1.2",
@@ -314,10 +315,11 @@ const ClaudeSettings = {
           "claude-instant-v1.1-100k",
           "claude-instant-v1.0",
         ],
-        default: "claude-2.1",
+        default: "claude-3-haiku-20240307",
         shortname_map: {
           "claude-3-opus-20240229": "claude-3-opus",
           "claude-3-sonnet-20240229": "claude-3-sonnet",
+          "claude-3-haiku-20240307": "claude-3-haiku",
         },
       },
       system_msg: {
