@@ -160,6 +160,12 @@ export type LLMResponseData =
     }
   | string;
 
+export function isImageResponseData(
+  r: LLMResponseData,
+): r is { t: "img"; d: string } {
+  return typeof r === "object" && r.t === "img";
+}
+
 /** Standard properties that every LLM response object must have. */
 export interface BaseLLMResponseObject {
   /** A unique ID to refer to this response */

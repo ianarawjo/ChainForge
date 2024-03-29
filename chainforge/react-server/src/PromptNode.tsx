@@ -407,7 +407,9 @@ const PromptNode: React.FC<PromptNodeProps> = ({
           setStatus(Status.READY);
         }
       })
-      .catch(console.error); // soft fail
+      .catch(() => {
+        // soft fail
+      });
   }, []);
 
   // On upstream changes

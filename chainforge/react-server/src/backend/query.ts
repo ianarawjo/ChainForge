@@ -1,3 +1,5 @@
+import { v4 as uuid } from "uuid";
+import Compressor from "compressorjs";
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, NativeLLM, RateLimiter } from "./models";
 import {
@@ -7,6 +9,7 @@ import {
   isEqualChatHistory,
   ChatHistoryInfo,
   ModelSettingsDict,
+  isImageResponseData,
 } from "./typing";
 import {
   extract_responses,
@@ -17,10 +20,10 @@ import {
   extractSettingsVars,
   areEqualVarsDicts,
   repairCachedResponses,
+  compressBase64Image,
 } from "./utils";
 import StorageCache from "./cache";
 import { UserForcedPrematureExit } from "./errors";
-import { v4 as uuid } from "uuid";
 import { typecastSettingsDict } from "../ModelSettingSchemas";
 
 interface _IntermediateLLMResponseType {
@@ -68,11 +71,11 @@ export class PromptPipeline {
     return true;
   }
 
-  private collect_LLM_response(
+  private async collect_LLM_response(
     result: _IntermediateLLMResponseType,
     llm: LLM,
     cached_responses: Dict,
-  ): RawLLMResponseObject | LLMResponseError {
+  ): Promise<RawLLMResponseObject | LLMResponseError> {
     const {
       prompt,
       chat_history,
@@ -92,13 +95,41 @@ export class PromptPipeline {
     const info = prompt.fill_history;
     const metavars = prompt.metavars;
 
+    // Extract and format the responses into `LLMResponseData`
+    const extracted_resps = extract_responses(response, llm);
+
+    // Detect any images and downrez them if the user has approved of automatic compression.
+    // This saves a lot of performance and storage. We also need to disable storing the raw response here, to save space.
+    const contains_imgs = extracted_resps.some(isImageResponseData);
+    if (contains_imgs) {
+      for (let r of extracted_resps) {
+        if (isImageResponseData(r)) {
+          try {
+            // Compress asynchronously, then convert back to base64
+            const b64_comp = await compressBase64Image(r.d);
+
+            // DEBUG: Calculate compression ratio
+            console.warn(
+              `Compressed image to ${(b64_comp.length / r.d.length) * 100}% of original b64 size`,
+            );
+
+            // Swap data on original image for compressed
+            r.d = b64_comp;
+          } catch (e) {
+            // If compression fails, we just move on.
+            console.warn("Image compression attempt failed. Error info:", e);
+          }
+        }
+      }
+    }
+
     // Create a response obj to represent the response
     let resp_obj: RawLLMResponseObject = {
       prompt: prompt.toString(),
       query: query ?? {},
       uid: uuid(),
-      responses: extract_responses(response, llm),
-      raw_response: response ?? {},
+      responses: extracted_resps,
+      raw_response: contains_imgs ? {} : response ?? {}, // don't double-store images
       llm,
       vars: mergeDicts(info, chat_history?.fill_history) ?? {},
       metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
@@ -183,7 +214,7 @@ export class PromptPipeline {
         : [undefined];
 
     // Query LLM with each prompt, yield + cache the responses
-    const tasks: Array<Promise<_IntermediateLLMResponseType>> = [];
+    const tasks: Array<Promise<_IntermediateLLMResponseType | LLMResponseError | RawLLMResponseObject>> = [];
 
     // Generate concrete prompts one by one. Yield response from the cache or make async call to LLM.
     for (const prompt of this.gen_prompts(vars)) {
@@ -283,14 +314,14 @@ export class PromptPipeline {
             },
             chat_history,
             should_cancel,
-          ),
+          ).then((result) => this.collect_LLM_response(result, llm, responses)),
         );
       }
     }
 
     // Yield responses as they come in
     for await (const result of yield_as_completed(tasks)) {
-      yield this.collect_LLM_response(result, llm, responses);
+      yield result;
     }
 
     return true;

@@ -678,7 +678,7 @@ const useStore = create<StoreHandles>((set, get) => ({
     const nodes = get().nodes;
     const node = nodes.find((n) => n.id === id);
     if (!node) {
-      console.error(`Could not duplicate node: No node found with id ${id}`);
+      // console.error(`Could not duplicate node: No node found with id ${id}`);
       return undefined;
     }
     // Deep copy node data

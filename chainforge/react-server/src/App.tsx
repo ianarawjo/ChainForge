@@ -64,6 +64,7 @@ import "./text-fields-node.css"; // project
 
 // Lazy loading images
 import "lazysizes";
+import "lazysizes/plugins/attrchange/ls.attrchange";
 
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from "zustand/shallow";
