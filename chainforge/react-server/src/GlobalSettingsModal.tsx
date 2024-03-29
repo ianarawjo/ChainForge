@@ -23,6 +23,7 @@ import {
   Card,
   Switch,
   Select,
+  Checkbox,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
@@ -44,6 +45,7 @@ import {
   removeCustomProvider,
 } from "./backend/backend";
 import { AlertModalContext } from "./AlertModal";
+import StorageCache from "./backend/cache";
 
 const _LINK_STYLE = { color: "#1E90FF", textDecoration: "none" };
 
@@ -179,6 +181,14 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       getFlag("aiAutocomplete") as boolean,
     );
 
+    // Image compression ratio setting. Store this flag in localStorage directly.
+    const [imageCompression, _setImageCompression] = useState<boolean>(true);
+    const setImageCompression = (value: boolean) => {
+      StorageCache.saveToLocalStorage("imageCompression", { value });
+      StorageCache.store("imageCompression", value);
+      _setImageCompression(value);
+    };
+
     const handleAISupportChecked = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
         const checked = e.currentTarget.checked;
@@ -255,6 +265,18 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
           })
           .catch(console.error);
       }
+
+      // Load image compression settings from cache (if possible)
+      const cachedImgCompr = (
+        StorageCache.loadFromLocalStorage("imageCompression") as Dict
+      )?.value as boolean | undefined;
+      if (typeof cachedImgCompr === "boolean") {
+        setImageCompression(cachedImgCompr);
+        StorageCache.store(
+          "imageCompression",
+          cachedImgCompr ?? imageCompression,
+        );
+      }
     }, []);
 
     const form = useForm({
@@ -294,6 +316,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
     return (
       <Modal
+        size="lg"
         keepMounted
         opened={opened}
         onClose={close}
@@ -301,12 +324,13 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         closeOnClickOutside={false}
         style={{ position: "relative", left: "-5%" }}
       >
-        <Box maw={600} mx="auto">
+        <Box mx="auto">
           <Tabs defaultValue="api-keys">
             <Tabs.List>
               <Tabs.Tab value="api-keys">API Keys</Tabs.Tab>
               <Tabs.Tab value="ai-support">AI Support (BETA)</Tabs.Tab>
               <Tabs.Tab value="custom-providers">Custom Providers</Tabs.Tab>
+              <Tabs.Tab value="advanced">Advanced Settings</Tabs.Tab>
             </Tabs.List>
 
             <Tabs.Panel value="api-keys" pt="xs">
@@ -549,6 +573,20 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
             ) : (
               <></>
             )}
+
+            <Tabs.Panel value="advanced" pt="xs">
+              <Box p="md">
+                <Checkbox
+                  label="Image compression"
+                  description="Images are expensive to store in the browser. To help with storage, 
+                  ChainForge automatically compresses images output from LLMs."
+                  checked={imageCompression}
+                  onChange={(event) =>
+                    setImageCompression(event.currentTarget.checked)
+                  }
+                />
+              </Box>
+            </Tabs.Panel>
           </Tabs>
         </Box>
       </Modal>

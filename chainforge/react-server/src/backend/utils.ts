@@ -2093,9 +2093,9 @@ export const blobToBase64 = (blob: Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
     reader.onloadend = () => {
       const res = reader.result as string;
-      resolve(res.substring(res.indexOf(",")+1));
+      resolve(res.substring(res.indexOf(",") + 1));
     };
-    reader.onerror = () => reject("Error reading file");
+    reader.onerror = () => reject(new Error("Error reading file"));
   });
 };
 
@@ -2103,12 +2103,15 @@ export const compressBase64Image = (b64: string): Promise<string> => {
   // Convert base64 to Blob. Compress asynchronously, then convert back to base64.
   return fetch(`data:image/png;base64,${b64}`)
     .then((res) => res.blob())
-    .then((blob) => new Promise((resolve, reject) => {
-      /* eslint-disable no-new */
-      new Compressor(blob, {
-        quality: 0.8,
-        success: resolve,
-        error: reject,
-      });
-    })).then((compressedBlob) => blobToBase64(compressedBlob as Blob));
+    .then(
+      (blob) =>
+        new Promise((resolve, reject) => {
+          /* eslint-disable no-new */
+          new Compressor(blob, {
+            success: resolve,
+            error: reject,
+          });
+        }),
+    )
+    .then((compressedBlob) => blobToBase64(compressedBlob as Blob));
 };

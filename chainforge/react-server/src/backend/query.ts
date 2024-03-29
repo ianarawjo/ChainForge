@@ -1,5 +1,4 @@
 import { v4 as uuid } from "uuid";
-import Compressor from "compressorjs";
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
 import { LLM, NativeLLM, RateLimiter } from "./models";
 import {
@@ -59,10 +58,12 @@ async function* yield_as_completed(promises: Array<Promise<any>>) {
 export class PromptPipeline {
   private _template: string;
   private _storageKey?: string;
+  private _imgCompr: boolean;
 
   constructor(template: string, storageKey?: string) {
     this._template = template;
     this._storageKey = storageKey;
+    this._imgCompr = StorageCache.get("imageCompression") === true;
   }
 
   *gen_prompts(vars: Dict): Generator<PromptTemplate, boolean, undefined> {
@@ -101,17 +102,17 @@ export class PromptPipeline {
     // Detect any images and downrez them if the user has approved of automatic compression.
     // This saves a lot of performance and storage. We also need to disable storing the raw response here, to save space.
     const contains_imgs = extracted_resps.some(isImageResponseData);
-    if (contains_imgs) {
-      for (let r of extracted_resps) {
+    if (contains_imgs && this._imgCompr) {
+      for (const r of extracted_resps) {
         if (isImageResponseData(r)) {
           try {
             // Compress asynchronously, then convert back to base64
             const b64_comp = await compressBase64Image(r.d);
 
             // DEBUG: Calculate compression ratio
-            console.warn(
-              `Compressed image to ${(b64_comp.length / r.d.length) * 100}% of original b64 size`,
-            );
+            // console.warn(
+            //   `Compressed image to ${(b64_comp.length / r.d.length) * 100}% of original b64 size`,
+            // );
 
             // Swap data on original image for compressed
             r.d = b64_comp;
@@ -214,7 +215,11 @@ export class PromptPipeline {
         : [undefined];
 
     // Query LLM with each prompt, yield + cache the responses
-    const tasks: Array<Promise<_IntermediateLLMResponseType | LLMResponseError | RawLLMResponseObject>> = [];
+    const tasks: Array<
+      Promise<
+        _IntermediateLLMResponseType | LLMResponseError | RawLLMResponseObject
+      >
+    > = [];
 
     // Generate concrete prompts one by one. Yield response from the cache or make async call to LLM.
     for (const prompt of this.gen_prompts(vars)) {

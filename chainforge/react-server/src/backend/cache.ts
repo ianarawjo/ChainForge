@@ -23,11 +23,11 @@ export default class StorageCache {
     return StorageCache.instance;
   }
 
-  private getCacheData(key: string): Dict | undefined {
+  private getCacheData(key: string): any {
     return this.data[key] ?? undefined;
   }
 
-  public static get(key: string): Dict | undefined {
+  public static get(key: string): any {
     return StorageCache.getInstance().getCacheData(key);
   }
 
