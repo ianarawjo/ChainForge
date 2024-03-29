@@ -167,7 +167,7 @@ export const initLLMProviders = [
   },
   {
     name: "Mistral Mixtral",
-    emoji: "💨",
+    emoji: "🌪️",
     model: "mistral.mixtral-8x7b-instruct-v0:1",
     base_model: "mistral.mixtral",
     parent: "Bedrock",
@@ -208,9 +208,9 @@ const useStore = create((set, get) => ({
     set({ AvailableLLMs: llmProviderList });
   },
 
-  aiFeaturesModel: undefined,
-  setAIFeaturesModel: (llmModel) => {
-    set({ aiFeaturesModel: llmModel });
+  aiFeaturesProvider: undefined,
+  setAIFeaturesProvider: (llmProvider) => {
+    set({ aiFeaturesProvider: llmProvider });
   },
 
   // Keeping track of LLM API keys

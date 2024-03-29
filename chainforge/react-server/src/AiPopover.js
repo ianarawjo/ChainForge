@@ -15,7 +15,7 @@ import {
   autofill,
   generateAndReplace,
   AIError,
-  AIFeaturesLLMs,
+  getAIFeaturesModels,
 } from "./backend/ai";
 import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
 import AlertModal from "./AlertModal";
@@ -129,16 +129,16 @@ export function AIPopover({
 }) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
-  const aiFeaturesModel = useStore((state) => state.aiFeaturesModel);
+  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
 
-  // To check for model selection and credentials/api keys
+  // To check for provider selection and credentials/api keys
   const invalidAIFeaturesSetup = useMemo(() => {
-    if (!aiFeaturesModel) {
+    if (!aiFeaturesProvider) {
       return (
         <Alert
           variant="light"
           color="grape"
-          title="No model selected"
+          title="No provider selected"
           mt="xs"
           maw={200}
           fz="xs"
@@ -147,7 +147,11 @@ export function AIPopover({
           You need to select a model in the settings to use this feature
         </Alert>
       );
-    } else if (apiKeys && aiFeaturesModel.includes("gpt") && !apiKeys.OpenAI) {
+    } else if (
+      apiKeys &&
+      aiFeaturesProvider.toLowerCase().includes("openai") &&
+      !apiKeys.OpenAI
+    ) {
       return (
         <Alert
           variant="light"
@@ -164,7 +168,7 @@ export function AIPopover({
       );
     } else if (
       apiKeys &&
-      aiFeaturesModel.includes("claude") &&
+      aiFeaturesProvider.toLowerCase().includes("bedrock") &&
       !(
         apiKeys.AWS_Access_Key_ID &&
         apiKeys.AWS_Secret_Access_Key &&
@@ -187,7 +191,7 @@ export function AIPopover({
       );
     }
     return undefined;
-  }, [apiKeys, aiFeaturesModel]);
+  }, [apiKeys, aiFeaturesProvider]);
 
   return (
     <Popover
@@ -209,15 +213,7 @@ export function AIPopover({
             variant="light"
             leftSection={<IconSparkles size={10} stroke={3} />}
           >
-            Generative AI (
-            {
-              (
-                AIFeaturesLLMs.filter((v) => v.value === aiFeaturesModel).at(
-                  0,
-                ) ?? { label: "None" }
-              ).label
-            }
-            )
+            Generative AI ({aiFeaturesProvider ?? "None"})
           </Badge>
           {invalidAIFeaturesSetup || children}
         </Stack>
@@ -243,6 +239,8 @@ export function AIGenReplaceItemsPopover({
 }) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
+
+  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
 
   // Alerts
   const alertModal = useRef(null);
@@ -280,7 +278,12 @@ export function AIGenReplaceItemsPopover({
   const handleCommandFill = () => {
     setIsCommandFillLoading(true);
     setDidCommandFillError(false);
-    autofill(Object.values(values), commandFillNumber, apiKeys)
+    autofill(
+      Object.values(values),
+      commandFillNumber,
+      aiFeaturesProvider,
+      apiKeys,
+    )
       .then(onAddValues)
       .catch((e) => {
         if (e instanceof AIError) {
@@ -300,6 +303,7 @@ export function AIGenReplaceItemsPopover({
       generateAndReplacePrompt,
       generateAndReplaceNumber,
       generateAndReplaceIsUnconventional,
+      aiFeaturesProvider,
       apiKeys,
     )
       .then(onReplaceValues)
@@ -477,7 +481,7 @@ export function AIGenCodeEvaluatorPopover({
 }) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
-  const aiFeaturesModel = useStore((state) => state.aiFeaturesModel);
+  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
 
   // State
   const [replacePrompt, setReplacePrompt] = useState("");
@@ -517,7 +521,7 @@ export function AIGenCodeEvaluatorPopover({
 
     queryLLM(
       replacePrompt,
-      aiFeaturesModel,
+      getAIFeaturesModels(aiFeaturesProvider).large,
       1,
       escapeBraces(template),
       {},
@@ -591,7 +595,7 @@ ${currentEvalCode}
 
     queryLLM(
       editPrompt,
-      aiFeaturesModel,
+      getAIFeaturesModels(aiFeaturesProvider).large,
       1,
       escapeBraces(template),
       {},
