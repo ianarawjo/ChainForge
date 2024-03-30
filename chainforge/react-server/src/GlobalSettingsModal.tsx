@@ -168,6 +168,9 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     const setFlag = useStore((state) => state.setFlag);
     const AvailableLLMs = useStore((state) => state.AvailableLLMs);
     const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
+    const setAIFeaturesProvider = useStore(
+      (state) => state.setAIFeaturesProvider,
+    );
     const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
     const nodes = useStore((state) => state.nodes);
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);

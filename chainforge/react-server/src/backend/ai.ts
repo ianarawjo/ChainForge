@@ -44,14 +44,15 @@ export function getAIFeaturesModelProviders() {
   return AIFeaturesLLMs.map((m) => m.provider);
 }
 
-export function getAIFeaturesModels(
-  provider: string,
-): { small: string; large: string } | undefined {
-  const models = AIFeaturesLLMs.filter((m) => m.provider === provider);
-  if (models.length === 0) return undefined;
+export function getAIFeaturesModels(provider: string): {
+  small: string;
+  large: string;
+} {
+  const model =
+    AIFeaturesLLMs.find((m) => m.provider === provider) ?? AIFeaturesLLMs[0];
   return {
-    small: models[0].small.value,
-    large: models[0].large.value,
+    small: model.small.value,
+    large: model.large.value,
   };
 }
 

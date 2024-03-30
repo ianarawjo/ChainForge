@@ -5,7 +5,7 @@ import useStore, { colorPalettes } from "./store";
 import Plot from "react-plotly.js";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
-import PlotLegend from "./PlotLegend";
+import PlotLegend, { PlotLegendProps } from "./PlotLegend";
 import { cleanMetavarsFilterFunc, truncStr } from "./backend/utils";
 import {
   Dict,
@@ -20,7 +20,7 @@ import { grabResponses } from "./backend/backend";
 // Helper funcs
 const splitAndAddBreaks = (s: string, chunkSize: number) => {
   // Split the input string into chunks of specified size
-  const chunks = [];
+  const chunks: string[] = [];
   for (let i = 0; i < s.length; i += chunkSize) {
     chunks.push(s.slice(i, i + chunkSize));
   }
@@ -312,7 +312,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         max_num_results_per_prompt = res_obj.eval_res.items.length;
     });
 
-    let plot_legend = null;
+    let plot_legend: React.ReactNode | null = null;
     let metric_axes_labels: string[] = [];
     let num_metrics = 1;
     if (
@@ -364,9 +364,9 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
       // per category of 'resp_to_x', as a horizontal bar chart, with different colors per category.
       const names = new Set(responses.map(resp_to_x));
       const shortnames = genUniqueShortnames(names);
-      const x_items = [];
-      const y_items = [];
-      const marker_colors = [];
+      const x_items: number[] = [];
+      const y_items: string[] = [];
+      const marker_colors: string[] = [];
       for (const name of names) {
         // Add a shortened version of the name as the y-tick
         y_items.push(shortnames[name]);
@@ -380,7 +380,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
 
         // Calculate the length of the bar
         x_items.push(
-          responses.reduce((acc, r) => {
+          responses.reduce((acc: number, r: LLMResponse) => {
             if (resp_to_x(r) !== name) return acc;
             else
               return (
@@ -873,6 +873,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
       .then(function (resps) {
         if (resps && resps.length > 0) {
           // Store responses and extract + store vars
+          // @ts-expect-error toReversed exists, but TypeScript does not see it.
           setResponses(resps.toReversed());
 
           // Find all vars in responses

@@ -17,7 +17,6 @@ import {
   DroppableProvided,
   OnDragEndResponder,
 } from "react-beautiful-dnd";
-import { Menu } from "@mantine/core";
 import { v4 as uuid } from "uuid";
 import LLMListItem, { LLMListItemClone } from "./LLMListItem";
 import { StrictModeDroppable } from "./StrictModeDroppable";
@@ -28,6 +27,7 @@ import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
 import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
 import { useContextMenu } from "mantine-contextmenu";
+import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
@@ -54,9 +54,12 @@ const ensureUniqueName = (_name: string, _prev_names: string[]) => {
 };
 
 /** Get position CSS style below and left-aligned to the input element */
-const getPositionCSSStyle = (elem: HTMLButtonElement) => {
+const getPositionCSSStyle = (
+  elem: HTMLButtonElement,
+): ContextMenuItemOptions => {
   const rect = elem.getBoundingClientRect();
   return {
+    key: "contextmenu",
     style: {
       position: "absolute",
       left: `${rect.left}px`,
@@ -427,7 +430,7 @@ export const LLMListContainer = forwardRef<
   );
 
   const menuItems = useMemo(() => {
-    const res = [];
+    const res: ContextMenuItemOptions[] = [];
     for (const item of initLLMProviderMenu) {
       if (!("group" in item)) {
         res.push({

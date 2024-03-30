@@ -1334,7 +1334,7 @@ const OllamaSettings: ModelSettingsDict = {
   },
 };
 
-const BedrockClaudeSettings = {
+const BedrockClaudeSettings: ModelSettingsDict = {
   fullName: "Claude (Anthropic) via Amazon Bedrock",
   schema: {
     type: "object",
@@ -1462,15 +1462,15 @@ const BedrockClaudeSettings = {
 
   postprocessors: {
     stop_sequences: (str) => {
-      if (str.trim().length === 0) return ["\n\nHuman:"];
+      if (typeof str !== "string" || str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
-        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
   },
 };
 
-const BedrockJurassic2Settings = {
+const BedrockJurassic2Settings: ModelSettingsDict = {
   fullName: "Jurassic-2 (Ai21) via Amazon Bedrock",
   schema: {
     type: "object",
@@ -1552,11 +1552,11 @@ const BedrockJurassic2Settings = {
     },
   },
   postprocessors: {
-    stopSequences: (str) => {
-      if (str.trim().length === 0) return [];
+    stop_sequences: (str) => {
+      if (typeof str !== "string" || str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
-        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
   },
   uiSchema: {
@@ -1590,7 +1590,7 @@ const BedrockJurassic2Settings = {
   },
 };
 
-const BedrockTitanSettings = {
+const BedrockTitanSettings: ModelSettingsDict = {
   fullName: "Titan (Amazon) via Amazon Bedrock",
   schema: {
     type: "object",
@@ -1653,11 +1653,11 @@ const BedrockTitanSettings = {
     },
   },
   postprocessors: {
-    stopSequences: (str) => {
-      if (str.trim().length === 0) return [];
+    stop_sequences: (str) => {
+      if (typeof str !== "string" || str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
-        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
   },
   uiSchema: {
@@ -1685,7 +1685,7 @@ const BedrockTitanSettings = {
   },
 };
 
-const BedrockCommandTextSettings = {
+const BedrockCommandTextSettings: ModelSettingsDict = {
   fullName: "Command Text (Cohere) via Amazon Bedrock",
   schema: {
     type: "object",
@@ -1760,10 +1760,10 @@ const BedrockCommandTextSettings = {
   },
   postprocessors: {
     stop_sequences: (str) => {
-      if (str.trim().length === 0) return [];
+      if (typeof str !== "string" || str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
-        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
   },
 
@@ -1798,7 +1798,7 @@ const BedrockCommandTextSettings = {
   },
 };
 
-const MistralSettings = {
+const MistralSettings: ModelSettingsDict = {
   fullName: "Mistral models via Amazon Bedrock",
   schema: {
     type: "object",
@@ -1866,10 +1866,10 @@ const MistralSettings = {
   },
   postprocessors: {
     stop_sequences: (str) => {
-      if (str.trim().length === 0) return [];
+      if (typeof str !== "string" || str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
-        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
   },
 
@@ -1928,7 +1928,7 @@ MixtralSettings.schema.properties = {
 
 MixtralSettings.uiSchema.model = { "ui:help": "Defaults to Mixtral" };
 
-const MetaLlama2ChatSettings = {
+const MetaLlama2ChatSettings: ModelSettingsDict = {
   fullName: "Llama2Chat (Meta) via Amazon Bedrock",
   schema: {
     type: "object",
@@ -1981,10 +1981,10 @@ const MetaLlama2ChatSettings = {
   },
   postprocessors: {
     stop_sequences: (str) => {
-      if (str.trim().length === 0) return [];
+      if (typeof str !== "string" || str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
-        .map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
   },
 
@@ -2045,7 +2045,7 @@ export function getSettingsSchemaForLLM(
 ): ModelSettingsDict | undefined {
   const llm_provider = getProvider(llm_name);
 
-  const provider_to_settings_schema = {
+  const provider_to_settings_schema: { [K in LLMProvider]?: ModelSettingsDict } = {
     [LLMProvider.OpenAI]: GPT4Settings,
     [LLMProvider.Anthropic]: ClaudeSettings,
     [LLMProvider.Google]: PaLM2Settings,

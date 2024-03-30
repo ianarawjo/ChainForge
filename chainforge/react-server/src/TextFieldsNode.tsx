@@ -79,11 +79,11 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
 
   const [aiSuggestionsManager] = useState(
     new AISuggestionsManager(
+      () => aiFeaturesProvider,
       // Do nothing when suggestions are simply updated because we are managing the placeholder state manually here.
       undefined,
       // When suggestions are refreshed, throw out existing placeholders.
       () => setPlaceholders({}),
-      () => aiFeaturesProvider,
       () => apiKeys,
     ),
   );

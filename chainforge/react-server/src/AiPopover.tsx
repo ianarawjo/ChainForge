@@ -42,7 +42,7 @@ const ROW_CONSTANTS = {
 
 const changeFourSpaceTabsToTwo = (code: string) => {
   const lines = code.split("\n");
-  const retabbed_lines = [];
+  const retabbed_lines: string[] = [];
   function countLeadingSpaces(str: string) {
     const match = str.match(/^ */);
     return match ? match[0].length : 0;

@@ -270,9 +270,6 @@ const App = () => {
   // (for some reason the menu doesn't close automatically upon click-off)
   const { hideContextMenu } = useContextMenu();
 
-  // For displaying error messages to user
-  const alertModal = useRef<AlertModalRef>(null);
-
   // For displaying a pending 'loading' status
   const [isLoading, setIsLoading] = useState(true);
 

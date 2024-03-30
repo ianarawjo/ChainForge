@@ -1232,7 +1232,8 @@ export async function call_ollama_provider(
 function to_bedrock_chat_history(
   chat_history: ChatHistory,
 ): BedrockChatMessage[] {
-  const role_map = {
+  
+  const role_map: Dict<string> = {
     assistant: "ai",
     user: "human",
   };
@@ -1243,8 +1244,9 @@ function to_bedrock_chat_history(
       msg,
       undefined,
       (key) => (key === "content" ? "message" : key),
-      (key, val) => {
-        if (key === "role") return role_map[val] ?? val;
+      (key: string, val: string): string => {
+        if (key === "role") return val in role_map ? role_map[val] : val;
+        return val;
       },
     ),
   ) as BedrockChatMessage[];

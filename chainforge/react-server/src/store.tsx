@@ -87,7 +87,10 @@ const refreshableOutputNodeTypes = new Set([
   "split",
 ]);
 
-export const initLLMProviderMenu: (LLMSpec | {group: string, emoji: string, items: LLMSpec[]})[] = [
+export const initLLMProviderMenu: (
+  | LLMSpec
+  | { group: string; emoji: string; items: LLMSpec[] }
+)[] = [
   {
     group: "OpenAI",
     emoji: "🤖",
@@ -105,6 +108,13 @@ export const initLLMProviderMenu: (LLMSpec | {group: string, emoji: string, item
         model: "gpt-4",
         base_model: "gpt-4",
         temp: 1.0,
+      },
+      {
+        name: "Dall-E",
+        emoji: "🖼",
+        model: "dall-e-2",
+        base_model: "dall-e",
+        temp: 0.0,
       },
     ],
   },
@@ -141,13 +151,6 @@ export const initLLMProviderMenu: (LLMSpec | {group: string, emoji: string, item
         temp: 1.0,
       },
     ],
-  },
-  {
-    name: "Dall-E",
-    emoji: "🖼",
-    model: "dall-e-2",
-    base_model: "dall-e",
-    temp: 0.0,
   },
   {
     name: "Aleph Alpha",
@@ -264,7 +267,7 @@ export interface StoreHandles {
   setAPIKeys: (apiKeys: Dict<string>) => void;
 
   // Provider for genAI features
-  aiFeaturesProvider: string,
+  aiFeaturesProvider: string;
   setAIFeaturesProvider: (llmProvider: string) => void;
 
   // Global flags

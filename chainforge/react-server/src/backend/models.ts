@@ -109,6 +109,15 @@ export enum NativeLLM {
 
 export type LLM = string | NativeLLM;
 
+/** Equivalent to a Python enum's .name property */
+export function getEnumName(
+  enumObject: any,
+  enumValue: any,
+): string | undefined {
+  for (const key in enumObject) if (enumObject[key] === enumValue) return key;
+  return undefined;
+}
+
 /**
  * A list of model providers
  */
@@ -149,8 +158,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
 
 /** LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
 #   For a basic organization in OpenAI, GPT3.5 is currently 3500 and GPT4 is 200 RPM (requests per minute).
-#   For Anthropic evaluaton preview of Claude, can only send 1 request at a time (synchronously).
-#   This 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
+#   For Anthropic evaluaton preview of Claude, can only send 1 request at a time (synchronously). See below.
 #   If a model is missing from below, it means we must send and receive only 1 request at a time (synchronous).
 #   The following is only a guideline, and a bit on the conservative side.  */
 export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
@@ -174,20 +182,20 @@ export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
   [NativeLLM.PaLM2_Text_Bison]: 60, // max 60 requests per minute as of Mar 2023
   [NativeLLM.PaLM2_Chat_Bison]: 60,
   [NativeLLM.GEMINI_PRO]: 60,
-  [NativeLLM.Bedrock_Jurassic_Mid]: [20, 5],
-  [NativeLLM.Bedrock_Jurassic_Ultra]: [5, 5],
-  [NativeLLM.Bedrock_Titan_Light]: [40, 5],
-  [NativeLLM.Bedrock_Titan_Express]: [20, 5], // 400 RPM
-  [NativeLLM.Bedrock_Claude_2]: [20, 15], // 100 RPM
-  [NativeLLM.Bedrock_Claude_2_1]: [20, 15], // 100 RPM
-  [NativeLLM.Bedrock_Claude_3_Haiku]: [20, 5], // 100 RPM
-  [NativeLLM.Bedrock_Claude_3_Sonnet]: [20, 15], // 100 RPM
-  [NativeLLM.Bedrock_Command_Text]: [20, 5], // 400 RPM
-  [NativeLLM.Bedrock_Command_Text_Light]: [40, 5], // 800 RPM
-  [NativeLLM.Bedrock_Meta_LLama2Chat_70b]: [20, 5], // 400 RPM
-  [NativeLLM.Bedrock_Meta_LLama2Chat_13b]: [40, 5], // 800 RPM
-  [NativeLLM.Bedrock_Mistral_Mixtral]: [20, 5], // 400 RPM
-  [NativeLLM.Bedrock_Mistral_Mistral]: [40, 5], // 800 RPM
+  [NativeLLM.Bedrock_Jurassic_Mid]: 400,
+  [NativeLLM.Bedrock_Jurassic_Ultra]: 25,
+  [NativeLLM.Bedrock_Titan_Light]: 800,
+  [NativeLLM.Bedrock_Titan_Express]: 400, // 400 RPM
+  [NativeLLM.Bedrock_Claude_2]: 100, // 100 RPM
+  [NativeLLM.Bedrock_Claude_2_1]: 100, // 100 RPM
+  [NativeLLM.Bedrock_Claude_3_Haiku]: 100, // 100 RPM
+  [NativeLLM.Bedrock_Claude_3_Sonnet]: 100, // 100 RPM
+  [NativeLLM.Bedrock_Command_Text]: 400, // 400 RPM
+  [NativeLLM.Bedrock_Command_Text_Light]: 800, // 800 RPM
+  [NativeLLM.Bedrock_Meta_LLama2Chat_70b]: 400, // 400 RPM
+  [NativeLLM.Bedrock_Meta_LLama2Chat_13b]: 800, // 800 RPM
+  [NativeLLM.Bedrock_Mistral_Mixtral]: 400, // 400 RPM
+  [NativeLLM.Bedrock_Mistral_Mistral]: 800, // 800 RPM
 };
 
 export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
@@ -199,6 +207,9 @@ export const MAX_CONCURRENT: { [key in LLM]?: number } = {};
 
 const DEFAULT_RATE_LIMIT = 100; // RPM for any models not listed above
 
+/**
+ * Singleton which all LLM API calls should go through to perform rate limiting via Botteneck.
+ */
 export class RateLimiter {
   // eslint-disable-next-line no-use-before-define
   private static instance: RateLimiter;
@@ -258,13 +269,4 @@ export class RateLimiter {
         return func();
       });
   }
-}
-
-/** Equivalent to a Python enum's .name property */
-export function getEnumName(
-  enumObject: any,
-  enumValue: any,
-): string | undefined {
-  for (const key in enumObject) if (enumObject[key] === enumValue) return key;
-  return undefined;
 }

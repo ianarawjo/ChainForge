@@ -5,7 +5,7 @@ describe("AISuggestionsManager", () => {
   let mockRows: string[];
 
   beforeEach(() => {
-    suggestionsManager = new AISuggestionsManager();
+    suggestionsManager = new AISuggestionsManager(() => "OpenAI");
     mockRows = ["one", "two", "three"];
   });
 
