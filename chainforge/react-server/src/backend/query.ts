@@ -394,7 +394,6 @@ export class PromptPipeline {
     try {
       // When/if we emerge from sleep, check if this process has been canceled in the meantime:
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
-
       // Call the LLM, returning when the Promise returns (if it does!)
       [query, response] = await call_llm(
         llm,

@@ -9,13 +9,15 @@ import React, {
   useMemo,
 } from "react";
 import { DragDropContext, Draggable } from "react-beautiful-dnd";
-import { Menu } from "@mantine/core";
+import { Menu, Text } from "@mantine/core";
 import { v4 as uuid } from "uuid";
 import LLMListItem, { LLMListItemClone } from "./LLMListItem";
 import { StrictModeDroppable } from "./StrictModeDroppable";
 import ModelSettingsModal from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import useStore, { initLLMProviders } from "./store";
+import { IconCircleChevronRight } from "@tabler/icons-react";
+import { useContextMenu } from "mantine-contextmenu";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
@@ -220,7 +222,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
 ) {
   // All available LLM providers, for the dropdown list
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
-
+  const showContextMenu = useContextMenu();
   // For some reason, when the AvailableLLMs list is updated in the store/, it is not
   // immediately updated here. I've tried all kinds of things, but cannot seem to fix this problem.
   // We must force a re-render of the component:
@@ -355,34 +357,46 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
     [bgColor],
   );
 
+  const parents = [];
+  const menuItems = [];
+  for (const item of AvailableLLMs) {
+    if (!item.parent) {
+      menuItems.push({
+        key: item.model,
+        title: `${item.emoji} ${item.name}`,
+        onClick: () => handleSelectModel(item.base_model),
+      });
+    } else if (!parents.includes(item.parent)) {
+      parents.push(item.parent);
+      menuItems.push({
+        key: item.model,
+        title: item.parent,
+        onClick: () => handleSelectModel(item.base_model),
+        items: AvailableLLMs.filter(
+          (subItem) => subItem.parent === item.parent,
+        ).map((subItem) => ({
+          key: subItem.model,
+          title: `${subItem.emoji} ${subItem.name}`,
+          onClick: () => handleSelectModel(subItem.base_model),
+        })),
+      });
+    }
+
+    // return undefined;
+  }
+
   return (
     <div className="llm-list-container nowheel" style={_bgStyle}>
       <div className="llm-list-backdrop" style={_bgStyle}>
         {description || "Models to query:"}
         <div className="add-llm-model-btn nodrag">
-          <Menu
-            transitionProps={{ transition: "pop-top-left" }}
-            position="bottom-start"
-            width={220}
-            withinPortal={true}
+          <button
+            style={_bgStyle}
+            onClick={showContextMenu(menuItems)}
+            onContextMenu={showContextMenu(menuItems)}
           >
-            <Menu.Target>
-              <button style={_bgStyle}>
-                {modelSelectButtonText || "Add +"}
-              </button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              {AvailableLLMs.map((item) => (
-                <Menu.Item
-                  key={item.model}
-                  onClick={() => handleSelectModel(item.base_model)}
-                  icon={item.emoji}
-                >
-                  {item.name}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
+            {modelSelectButtonText ?? "Add +"}
+          </button>
         </div>
       </div>
       <div className="nodrag">
