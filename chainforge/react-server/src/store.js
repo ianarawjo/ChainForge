@@ -408,7 +408,6 @@ const useStore = create((set, get) => ({
       } else {
         // Get the data related to that handle:
         if ("fields" in src_node.data) {
-          console.log(src_node.data);
           if (Array.isArray(src_node.data.fields)) return src_node.data.fields;
           else {
             // We have to filter over a special 'fields_visibility' prop, which

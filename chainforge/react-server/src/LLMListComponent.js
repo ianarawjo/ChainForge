@@ -232,7 +232,8 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
 ) {
   // All available LLM providers, for the dropdown list
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
-  const { showContextMenu, hideContextMenu } = useContextMenu();
+  const { showContextMenu, hideContextMenu, isContextMenuVisible } =
+    useContextMenu();
   // For some reason, when the AvailableLLMs list is updated in the store/, it is not
   // immediately updated here. I've tried all kinds of things, but cannot seem to fix this problem.
   // We must force a re-render of the component:
@@ -394,6 +395,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
   // Mantine ContextMenu does not fix the position of the menu
   // to be below the clicked button, so we must do it ourselves.
   const addBtnRef = useRef(null);
+  const [wasContextMenuToggled, setWasContextMenuToggled] = useState(false);
 
   return (
     <div className="llm-list-container nowheel" style={_bgStyle}>
@@ -403,7 +405,16 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
           <button
             ref={addBtnRef}
             style={_bgStyle}
+            onPointerDownCapture={() => {
+              setWasContextMenuToggled(
+                isContextMenuVisible && wasContextMenuToggled,
+              );
+            }}
             onClick={(evt) => {
+              if (wasContextMenuToggled) {
+                setWasContextMenuToggled(false);
+                return; // abort
+              }
               // This is a hack ---without hiding, the context menu position is not always updated.
               // This is the case even if hideContextMenu() was triggered elsewhere.
               hideContextMenu();
@@ -414,6 +425,10 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
                   ? getPositionCSSStyle(addBtnRef.current)
                   : undefined,
               )(evt);
+
+              // Save whether the context menu was open, before
+              // onPointerDown in App.tsx could auto-close the menu.
+              setWasContextMenuToggled(true);
             }}
           >
             {modelSelectButtonText ?? "Add +"}

@@ -19,7 +19,6 @@ import {
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
-import * as path from "path-browserify";
 
 /* LLM API SDKs */
 import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
@@ -120,8 +119,9 @@ async function route_fetch(
   }
 }
 
-// import { DiscussServiceClient, TextServiceClient } from "@google-ai/generativelanguage";
-// import { GoogleAuth } from "google-auth-library";
+function appendEndSlashIfMissing(path: string) {
+  return path + (path[path.length - 1] === "/" ? "" : "/");
+}
 
 function get_environ(key: string): string | undefined {
   return process.env[key];
@@ -1063,7 +1063,12 @@ export async function call_ollama_provider(
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
-  let url: string = path.join(params?.ollama_url);
+  if (!params?.ollama_url)
+    throw Error(
+      "Could not find a base URL for Ollama model. Double-check that your base URL is set in the model settings.",
+    );
+
+  let url: string = appendEndSlashIfMissing(params?.ollama_url);
   const ollama_model: string = params?.ollamaModel.toString();
   const model_type: string = params?.model_type ?? "text";
   const system_msg: string = params?.system_msg ?? "";
@@ -1463,7 +1468,6 @@ export function extract_responses(
   response: Array<string | Dict> | Dict,
   llm: LLM | string,
 ): Array<string> {
-  console.error(response);
   const llm_provider: LLMProvider | undefined = getProvider(llm as LLM);
   const llm_name = llm.toString().toLowerCase();
   switch (llm_provider) {
