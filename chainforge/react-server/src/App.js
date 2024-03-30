@@ -233,7 +233,7 @@ const App = () => {
 
   // For Mantine Context Menu forced closing
   // (for some reason the menu doesn't close automatically upon click-off)
-  const { hideContextMenu, isContextMenuVisible } = useContextMenu();
+  const { hideContextMenu } = useContextMenu();
 
   // For displaying error messages to user
   const alertModal = useRef(null);

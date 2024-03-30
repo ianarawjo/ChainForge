@@ -108,6 +108,13 @@ export const initLLMProviderMenu = [
     emoji: "🤗",
     items: [
       {
+        name: "Mistral.7B",
+        emoji: "🤗",
+        model: "mistralai/Mistral-7B-Instruct-v0.1",
+        base_model: "hf",
+        temp: 1.0,
+      },
+      {
         name: "Falcon.7B",
         emoji: "🤗",
         model: "tiiuae/falcon-7b-instruct",
