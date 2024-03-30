@@ -449,13 +449,12 @@ const GlobalSettingsModal = forwardRef(
                 AI support features in ChainForge include purple sparkly buttons{" "}
                 <IconSparkles size="10pt" /> and smart autocomplete. By default,
                 AI support features require OpenAI API access to call GPT3.5 and
-                GPT4 models. You can hide, disable, or change these features
-                here.
+                GPT4 models. You can hide, disable, or change these features here.
               </Text>
               <Switch
                 label="AI Support Features"
                 size="sm"
-                description="Adds purple sparkly AI buttons to nodes. Must have OpenAI API key access to use."
+                description="Adds purple sparkly AI buttons to nodes. These buttons allow you to generate in-context data or code."
                 checked={aiSupportActive}
                 onChange={handleAISupportChecked}
               />
@@ -472,8 +471,9 @@ const GlobalSettingsModal = forwardRef(
                   />
                   <Select
                     label="LLM Provider"
-                    placeholder="Select the model provider"
-                    comboboxprops={{ shadow: "md" }}
+                    description="The LLM provider to use for generative AI features. Currently only supports OpenAI and Bedrock (Anthropic). OpenAI will query gpt-3.5 and gpt-4 models. Bedrock will query Claude-3 models. You must have set the relevant API keys to use the provider."
+                    dropdownPosition="bottom"
+                    withinPortal
                     defaultValue={getAIFeaturesModelProviders()[0]}
                     data={getAIFeaturesModelProviders()}
                     value={aiFeaturesProvider}
