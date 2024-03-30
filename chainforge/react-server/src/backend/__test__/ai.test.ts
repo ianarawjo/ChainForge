@@ -50,7 +50,7 @@ describe("autofill-bedrock-anthropic", () => {
   it("should return an array of n rows", async () => {
     const input = ["1", "2", "3", "4", "5"];
     const n = 3;
-    const result = await autofill(input, n, "Bedrock Anthropic", apiKeys);
+    const result = await autofill(input, n, "Bedrock", apiKeys);
     expect(result).toHaveLength(n);
     result.forEach((row) => {
       expect(typeof row).toBe("string");
@@ -69,7 +69,7 @@ describe("generateAndReplace-bedrock-anthropic", () => {
       prompt,
       n,
       false,
-      "Bedrock Anthropic",
+      "Bedrock",
       apiKeys,
     );
     expect(result).toHaveLength(n);

@@ -215,7 +215,7 @@ const useStore = create((set, get) => ({
     set({ AvailableLLMs: llmProviderList });
   },
 
-  aiFeaturesProvider: undefined,
+  aiFeaturesProvider: "OpenAI",
   setAIFeaturesProvider: (llmProvider) => {
     set({ aiFeaturesProvider: llmProvider });
   },

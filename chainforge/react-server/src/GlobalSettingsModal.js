@@ -449,7 +449,8 @@ const GlobalSettingsModal = forwardRef(
                 AI support features in ChainForge include purple sparkly buttons{" "}
                 <IconSparkles size="10pt" /> and smart autocomplete. By default,
                 AI support features require OpenAI API access to call GPT3.5 and
-                GPT4 models. You can hide, disable, or change these features here.
+                GPT4 models. You can hide, disable, or change these features
+                here.
               </Text>
               <Switch
                 label="AI Support Features"

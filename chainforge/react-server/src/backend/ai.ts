@@ -28,7 +28,7 @@ const AIFeaturesLLMs = [
     large: { value: "gpt-4", label: "OpenAI GPT4" },
   },
   {
-    provider: "Bedrock Anthropic",
+    provider: "Bedrock",
     small: {
       value: "anthropic.claude-3-haiku-20240307-v1:0",
       label: "Claude 3 Haiku",
