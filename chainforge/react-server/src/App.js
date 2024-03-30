@@ -11,6 +11,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
+import { useContextMenu } from "mantine-contextmenu";
 import {
   IconSettings,
   IconTextPlus,
@@ -68,7 +69,6 @@ import {
   isEdgeChromium,
   isChromium,
 } from "react-device-detect";
-import { ContextMenuProvider, useContextMenu } from "mantine-contextmenu";
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
     isChromium ||

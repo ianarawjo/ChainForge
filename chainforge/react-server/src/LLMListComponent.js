@@ -20,8 +20,9 @@ import { useContextMenu } from "mantine-contextmenu";
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
 const DEFAULT_INIT_LLMS = [initLLMProviders[0]];
+
 // Helper funcs
-// Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
+/** Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)") */
 const ensureUniqueName = (_name, _prev_names) => {
   // Strip whitespace around names
   const prev_names = _prev_names.map((n) => n.trim());
@@ -38,6 +39,18 @@ const ensureUniqueName = (_name, _prev_names) => {
     new_name = `${name} (${i})`;
   }
   return new_name;
+};
+
+/** Get position CSS style below and left-aligned to the input element */
+const getPositionCSSStyle = (elem) => {
+  const rect = elem.getBoundingClientRect();
+  return {
+    style: {
+      position: "absolute",
+      left: `${rect.left}px`,
+      top: `${rect.bottom}px`,
+    },
+  };
 };
 
 export function LLMList({ llms, onItemsChange, hideTrashIcon }) {
@@ -219,7 +232,7 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
 ) {
   // All available LLM providers, for the dropdown list
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
-  const showContextMenu = useContextMenu();
+  const { showContextMenu, hideContextMenu } = useContextMenu();
   // For some reason, when the AvailableLLMs list is updated in the store/, it is not
   // immediately updated here. I've tried all kinds of things, but cannot seem to fix this problem.
   // We must force a re-render of the component:
@@ -378,12 +391,31 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
     return res;
   }, [AvailableLLMs, handleSelectModel]);
 
+  // Mantine ContextMenu does not fix the position of the menu
+  // to be below the clicked button, so we must do it ourselves.
+  const addBtnRef = useRef(null);
+
   return (
     <div className="llm-list-container nowheel" style={_bgStyle}>
       <div className="llm-list-backdrop" style={_bgStyle}>
         {description || "Models to query:"}
         <div className="add-llm-model-btn nodrag">
-          <button style={_bgStyle} onClick={showContextMenu(menuItems)}>
+          <button
+            ref={addBtnRef}
+            style={_bgStyle}
+            onClick={(evt) => {
+              // This is a hack ---without hiding, the context menu position is not always updated.
+              // This is the case even if hideContextMenu() was triggered elsewhere.
+              hideContextMenu();
+              // Now show the context menu below the button:
+              showContextMenu(
+                menuItems,
+                addBtnRef?.current
+                  ? getPositionCSSStyle(addBtnRef.current)
+                  : undefined,
+              )(evt);
+            }}
+          >
             {modelSelectButtonText ?? "Add +"}
           </button>
         </div>

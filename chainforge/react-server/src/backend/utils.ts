@@ -1140,6 +1140,28 @@ export async function call_ollama_provider(
   return [query, responses];
 }
 
+/** Convert OpenAI chat history to Bedrock format */
+function to_bedrock_chat_history(
+  chat_history: ChatHistory,
+): BedrockChatMessage[] {
+  const role_map = {
+    assistant: "ai",
+    user: "human",
+  };
+
+  // Transform the ChatMessage format in the chat_history array to what is expected by Bedrock
+  return chat_history.map((msg) =>
+    transformDict(
+      msg,
+      undefined,
+      (key) => (key === "content" ? "message" : key),
+      (key, val) => {
+        if (key === "role") return role_map[val] ?? val;
+      },
+    ),
+  ) as BedrockChatMessage[];
+}
+
 /**
  * Calls Bedrock models via Bedrock's API.
    @returns raw query and response JSON dicts.
@@ -1181,55 +1203,53 @@ export async function call_bedrock(
   };
 
   delete params?.stop;
-  const fm = fromModelId(modelName as Models, {
-    region: bedrockConfig.region ?? "us-west-2",
-    credentials: bedrockConfig.credentials,
+
+  const query: Dict = {
     stopSequences: stopWords,
     temperature,
     topP: params?.top_p ?? 1.0,
     maxTokenCount: params?.max_tokens_to_sample ?? 512,
-  });
-
-  // Determine the system message and whether there's chat history to continue:
-  // const chat_history: ChatHistory | undefined = params?.chat_history;
-  // const system_msg: string =
-  //   params?.system_msg !== undefined
-  //     ? params.system_msg
-  //     : "You are a helpful assistant.";
-  // delete params?.system_msg;
-  // delete params?.chat_history;
-
-  const query: Dict = {
-    model: modelName,
-    n,
-    temperature,
-    ...params, // 'the rest' of the settings, passed from the front-end settings
   };
 
-  let response: string;
+  const fm = fromModelId(modelName as Models, {
+    region: bedrockConfig.region ?? "us-west-2",
+    credentials: bedrockConfig.credentials,
+    ...query,
+  });
+
+  const responses: string[] = [];
   try {
-    if (modelName.startsWith("anthropic")) {
-      const conv: BedrockChatMessage[] = [];
-      if (params.system_msg) {
-        conv.push({ role: "system", message: params.system_msg });
+    // Collect n responses, one at a time
+    while (responses.length < n) {
+      // Abort if the user canceled
+      if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+      // Grab the response
+      let response: string;
+      if (modelName.startsWith("anthropic")) {
+        const chat_history: ChatHistory = construct_openai_chat_history(
+          prompt,
+          params?.chat_history,
+          params?.system_msg,
+        );
+        response = (
+          await fm.chat(to_bedrock_chat_history(chat_history), { ...params })
+        ).message;
+      } else {
+        response = await fm.generate(prompt, { ...params });
       }
-      conv.push({ role: "human", message: prompt });
-      response = (await fm.chat(conv, { ...params })).message;
-    } else {
-      response = await fm.generate(prompt, { ...params });
+      responses.push(response);
     }
   } catch (error: any) {
     console.error("Error", error);
-    if (error?.response) {
-      throw new Error(error.response.data?.error?.message);
-      // throw new Error(error.response.status);
-    } else {
-      console.log(error?.message || error);
-      throw new Error(error?.message || error);
-    }
+    throw new Error(
+      error?.response?.data?.error?.message ??
+        error?.message ??
+        error.toString(),
+    );
   }
 
-  return [query, [response]];
+  return [query, responses];
 }
 
 async function call_custom_provider(
