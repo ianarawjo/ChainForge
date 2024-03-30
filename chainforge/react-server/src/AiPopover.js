@@ -11,7 +11,12 @@ import {
   Textarea,
   Alert,
 } from "@mantine/core";
-import { autofill, generateAndReplace, AIError } from "./backend/ai";
+import {
+  autofill,
+  generateAndReplace,
+  AIError,
+  getAIFeaturesModels,
+} from "./backend/ai";
 import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
 import AlertModal from "./AlertModal";
 import useStore from "./store";
@@ -124,16 +129,34 @@ export function AIPopover({
 }) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
+  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
 
-  // To check for OpenAI API key
-  const noOpenAIKeyMessage = useMemo(() => {
-    if (apiKeys && apiKeys.OpenAI) return undefined;
-    else
+  // To check for provider selection and credentials/api keys
+  const invalidAIFeaturesSetup = useMemo(() => {
+    if (!aiFeaturesProvider) {
       return (
         <Alert
           variant="light"
           color="grape"
-          title="No OpenAI API key detected."
+          title="No provider selected"
+          mt="xs"
+          maw={200}
+          fz="xs"
+          icon={<IconAlertCircle />}
+        >
+          You need to select a model in the settings to use this feature
+        </Alert>
+      );
+    } else if (
+      apiKeys &&
+      aiFeaturesProvider.toLowerCase().includes("openai") &&
+      !apiKeys.OpenAI
+    ) {
+      return (
+        <Alert
+          variant="light"
+          color="grape"
+          title="No OpenAI API key detected"
           mt="xs"
           maw={200}
           fz="xs"
@@ -143,7 +166,32 @@ export function AIPopover({
           support features.
         </Alert>
       );
-  }, [apiKeys]);
+    } else if (
+      apiKeys &&
+      aiFeaturesProvider.toLowerCase().includes("bedrock") &&
+      !(
+        apiKeys.AWS_Access_Key_ID &&
+        apiKeys.AWS_Secret_Access_Key &&
+        apiKeys.AWS_Session_Token
+      )
+    ) {
+      return (
+        <Alert
+          variant="light"
+          color="grape"
+          title="No AWS Credentials detected"
+          mt="xs"
+          maw={200}
+          fz="xs"
+          icon={<IconAlertCircle />}
+        >
+          You must set temporary AWS Credentials before you can use generative
+          AI support features.
+        </Alert>
+      );
+    }
+    return undefined;
+  }, [apiKeys, aiFeaturesProvider]);
 
   return (
     <Popover
@@ -165,9 +213,9 @@ export function AIPopover({
             variant="light"
             leftSection={<IconSparkles size={10} stroke={3} />}
           >
-            Generative AI
+            Generative AI ({aiFeaturesProvider ?? "None"})
           </Badge>
-          {noOpenAIKeyMessage || children}
+          {invalidAIFeaturesSetup || children}
         </Stack>
       </Popover.Dropdown>
     </Popover>
@@ -191,6 +239,8 @@ export function AIGenReplaceItemsPopover({
 }) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
+
+  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
 
   // Alerts
   const alertModal = useRef(null);
@@ -228,7 +278,12 @@ export function AIGenReplaceItemsPopover({
   const handleCommandFill = () => {
     setIsCommandFillLoading(true);
     setDidCommandFillError(false);
-    autofill(Object.values(values), commandFillNumber, apiKeys)
+    autofill(
+      Object.values(values),
+      commandFillNumber,
+      aiFeaturesProvider,
+      apiKeys,
+    )
       .then(onAddValues)
       .catch((e) => {
         if (e instanceof AIError) {
@@ -248,6 +303,7 @@ export function AIGenReplaceItemsPopover({
       generateAndReplacePrompt,
       generateAndReplaceNumber,
       generateAndReplaceIsUnconventional,
+      aiFeaturesProvider,
       apiKeys,
     )
       .then(onReplaceValues)
@@ -425,6 +481,7 @@ export function AIGenCodeEvaluatorPopover({
 }) {
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
+  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
 
   // State
   const [replacePrompt, setReplacePrompt] = useState("");
@@ -464,7 +521,7 @@ export function AIGenCodeEvaluatorPopover({
 
     queryLLM(
       replacePrompt,
-      "gpt-4",
+      getAIFeaturesModels(aiFeaturesProvider).large,
       1,
       escapeBraces(template),
       {},
@@ -538,7 +595,7 @@ ${currentEvalCode}
 
     queryLLM(
       editPrompt,
-      "gpt-4",
+      getAIFeaturesModels(aiFeaturesProvider).large,
       1,
       escapeBraces(template),
       {},

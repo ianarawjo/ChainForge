@@ -35,6 +35,7 @@ const TextFieldsNode = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const apiKeys = useStore((state) => state.apiKeys);
+  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
   const flags = useStore((state) => state.flags);
 
   const [textfieldsValues, setTextfieldsValues] = useState(data.fields || {});
@@ -51,6 +52,7 @@ const TextFieldsNode = ({ data, id }) => {
       undefined,
       // When suggestions are refreshed, throw out existing placeholders.
       () => setPlaceholders({}),
+      () => aiFeaturesProvider,
       () => apiKeys,
     ),
   );

@@ -11,6 +11,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
+import { useContextMenu } from "mantine-contextmenu";
 import {
   IconSettings,
   IconTextPlus,
@@ -22,7 +23,6 @@ import {
   IconArrowMerge,
   IconArrowsSplit,
   IconForms,
-  IconAbacus,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -230,6 +230,10 @@ const App = () => {
     title: "Confirm action",
     message: "Are you sure?",
   });
+
+  // For Mantine Context Menu forced closing
+  // (for some reason the menu doesn't close automatically upon click-off)
+  const { hideContextMenu } = useContextMenu();
 
   // For displaying error messages to user
   const alertModal = useRef(null);
@@ -1035,6 +1039,7 @@ const App = () => {
         <div
           id="cf-root-container"
           style={{ display: "flex", height: "100vh" }}
+          onPointerDown={hideContextMenu}
         >
           <div
             style={{ height: "100%", backgroundColor: "#eee", flexGrow: "1" }}

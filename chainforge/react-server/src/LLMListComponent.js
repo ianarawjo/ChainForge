@@ -9,20 +9,20 @@ import React, {
   useMemo,
 } from "react";
 import { DragDropContext, Draggable } from "react-beautiful-dnd";
-import { Menu } from "@mantine/core";
 import { v4 as uuid } from "uuid";
 import LLMListItem, { LLMListItemClone } from "./LLMListItem";
 import { StrictModeDroppable } from "./StrictModeDroppable";
 import ModelSettingsModal from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
-import useStore, { initLLMProviders } from "./store";
+import useStore, { initLLMProviderMenu, initLLMProviders } from "./store";
+import { useContextMenu } from "mantine-contextmenu";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
 const DEFAULT_INIT_LLMS = [initLLMProviders[0]];
 
 // Helper funcs
-// Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
+/** Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)") */
 const ensureUniqueName = (_name, _prev_names) => {
   // Strip whitespace around names
   const prev_names = _prev_names.map((n) => n.trim());
@@ -39,6 +39,18 @@ const ensureUniqueName = (_name, _prev_names) => {
     new_name = `${name} (${i})`;
   }
   return new_name;
+};
+
+/** Get position CSS style below and left-aligned to the input element */
+const getPositionCSSStyle = (elem) => {
+  const rect = elem.getBoundingClientRect();
+  return {
+    style: {
+      position: "absolute",
+      left: `${rect.left}px`,
+      top: `${rect.bottom}px`,
+    },
+  };
 };
 
 export function LLMList({ llms, onItemsChange, hideTrashIcon }) {
@@ -220,7 +232,8 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
 ) {
   // All available LLM providers, for the dropdown list
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
-
+  const { showContextMenu, hideContextMenu, isContextMenuVisible } =
+    useContextMenu();
   // For some reason, when the AvailableLLMs list is updated in the store/, it is not
   // immediately updated here. I've tried all kinds of things, but cannot seem to fix this problem.
   // We must force a re-render of the component:
@@ -355,34 +368,71 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
     [bgColor],
   );
 
+  const menuItems = useMemo(() => {
+    const res = [];
+    for (const item of initLLMProviderMenu) {
+      if (!("group" in item)) {
+        res.push({
+          key: item.model,
+          title: `${item.emoji} ${item.name}`,
+          onClick: () => handleSelectModel(item.base_model),
+        });
+      } else {
+        res.push({
+          key: item.group,
+          title: `${item.emoji} ${item.group}`,
+          items: item.items.map((k) => ({
+            key: k.model,
+            title: `${k.emoji} ${k.name}`,
+            onClick: () => handleSelectModel(k.base_model),
+          })),
+        });
+      }
+    }
+    return res;
+  }, [AvailableLLMs, handleSelectModel]);
+
+  // Mantine ContextMenu does not fix the position of the menu
+  // to be below the clicked button, so we must do it ourselves.
+  const addBtnRef = useRef(null);
+  const [wasContextMenuToggled, setWasContextMenuToggled] = useState(false);
+
   return (
     <div className="llm-list-container nowheel" style={_bgStyle}>
       <div className="llm-list-backdrop" style={_bgStyle}>
         {description || "Models to query:"}
         <div className="add-llm-model-btn nodrag">
-          <Menu
-            transitionProps={{ transition: "pop-top-left" }}
-            position="bottom-start"
-            width={220}
-            withinPortal={true}
+          <button
+            ref={addBtnRef}
+            style={_bgStyle}
+            onPointerDownCapture={() => {
+              setWasContextMenuToggled(
+                isContextMenuVisible && wasContextMenuToggled,
+              );
+            }}
+            onClick={(evt) => {
+              if (wasContextMenuToggled) {
+                setWasContextMenuToggled(false);
+                return; // abort
+              }
+              // This is a hack ---without hiding, the context menu position is not always updated.
+              // This is the case even if hideContextMenu() was triggered elsewhere.
+              hideContextMenu();
+              // Now show the context menu below the button:
+              showContextMenu(
+                menuItems,
+                addBtnRef?.current
+                  ? getPositionCSSStyle(addBtnRef.current)
+                  : undefined,
+              )(evt);
+
+              // Save whether the context menu was open, before
+              // onPointerDown in App.tsx could auto-close the menu.
+              setWasContextMenuToggled(true);
+            }}
           >
-            <Menu.Target>
-              <button style={_bgStyle}>
-                {modelSelectButtonText || "Add +"}
-              </button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              {AvailableLLMs.map((item) => (
-                <Menu.Item
-                  key={item.model}
-                  onClick={() => handleSelectModel(item.base_model)}
-                  icon={item.emoji}
-                >
-                  {item.name}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
+            {modelSelectButtonText ?? "Add +"}
+          </button>
         </div>
       </div>
       <div className="nodrag">

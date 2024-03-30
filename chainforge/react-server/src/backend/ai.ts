@@ -20,8 +20,40 @@ export class AIError extends Error {
 // Input and outputs of autofill are both rows of strings.
 export type Row = string;
 
-// LLM to use for AI features.
-const LLM = "gpt-3.5-turbo";
+// The list of LLMs models that can be used with AI features
+const AIFeaturesLLMs = [
+  {
+    provider: "OpenAI",
+    small: { value: "gpt-3.5-turbo", label: "OpenAI GPT3.5" },
+    large: { value: "gpt-4", label: "OpenAI GPT4" },
+  },
+  {
+    provider: "Bedrock",
+    small: {
+      value: "anthropic.claude-3-haiku-20240307-v1:0",
+      label: "Claude 3 Haiku",
+    },
+    large: {
+      value: "anthropic.claude-3-sonnet-20240229-v1:0",
+      label: "Claude 3 Sonnet",
+    },
+  },
+];
+
+export function getAIFeaturesModelProviders() {
+  return AIFeaturesLLMs.map((m) => m.provider);
+}
+
+export function getAIFeaturesModels(
+  provider: string,
+): { small: string; large: string } | undefined {
+  const models = AIFeaturesLLMs.filter((m) => m.provider === provider);
+  if (models.length === 0) return undefined;
+  return {
+    small: models[0].small.value,
+    large: models[0].large.value,
+  };
+}
 
 /**
  * Flattens markdown AST to text
@@ -137,6 +169,7 @@ function decode(mdText: string): Row[] {
 export async function autofill(
   input: Row[],
   n: number,
+  provider: string,
   apiKeys?: Dict,
 ): Promise<Row[]> {
   // hash the arguments to get a unique id
@@ -162,7 +195,7 @@ export async function autofill(
 
   const result = await queryLLM(
     /* id= */ id,
-    /* llm= */ LLM,
+    /* llm= */ getAIFeaturesModels(provider).small,
     /* n= */ 1,
     /* prompt= */ encoded,
     /* vars= */ {},
@@ -196,8 +229,9 @@ export async function autofill(
 export async function generateAndReplace(
   prompt: string,
   n: number,
-  creative?: boolean,
-  apiKeys?: Dict,
+  creative: boolean,
+  provider: string,
+  apiKeys: Dict,
 ): Promise<Row[]> {
   // hash the arguments to get a unique id
   const id = JSON.stringify([prompt, n]);
@@ -221,7 +255,7 @@ export async function generateAndReplace(
 
   const result = await queryLLM(
     /* id= */ id,
-    /* llm= */ LLM,
+    /* llm= */ getAIFeaturesModels(provider).small,
     /* n= */ 1,
     /* prompt= */ input,
     /* vars= */ {},

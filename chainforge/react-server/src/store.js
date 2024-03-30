@@ -68,15 +68,27 @@ const refreshableOutputNodeTypes = new Set([
   "split",
 ]);
 
-export const initLLMProviders = [
+export const initLLMProviderMenu = [
   {
-    name: "GPT3.5",
+    group: "OpenAI",
     emoji: "🤖",
-    model: "gpt-3.5-turbo",
-    base_model: "gpt-3.5-turbo",
-    temp: 1.0,
-  }, // The base_model designates what settings form will be used, and must be unique.
-  { name: "GPT4", emoji: "🥵", model: "gpt-4", base_model: "gpt-4", temp: 1.0 },
+    items: [
+      {
+        name: "GPT3.5",
+        emoji: "🤖",
+        model: "gpt-3.5-turbo",
+        base_model: "gpt-3.5-turbo",
+        temp: 1.0,
+      }, // The base_model designates what settings form will be used, and must be unique.
+      {
+        name: "GPT4",
+        emoji: "🥵",
+        model: "gpt-4",
+        base_model: "gpt-4",
+        temp: 1.0,
+      },
+    ],
+  },
   {
     name: "Claude",
     emoji: "📚",
@@ -92,11 +104,24 @@ export const initLLMProviders = [
     temp: 0.7,
   },
   {
-    name: "HuggingFace",
+    group: "HuggingFace",
     emoji: "🤗",
-    model: "tiiuae/falcon-7b-instruct",
-    base_model: "hf",
-    temp: 1.0,
+    items: [
+      {
+        name: "Mistral.7B",
+        emoji: "🤗",
+        model: "mistralai/Mistral-7B-Instruct-v0.1",
+        base_model: "hf",
+        temp: 1.0,
+      },
+      {
+        name: "Falcon.7B",
+        emoji: "🤗",
+        model: "tiiuae/falcon-7b-instruct",
+        base_model: "hf",
+        temp: 1.0,
+      },
+    ],
   },
   {
     name: "Aleph Alpha",
@@ -112,19 +137,78 @@ export const initLLMProviders = [
     base_model: "azure-openai",
     temp: 1.0,
   },
+  {
+    group: "Bedrock",
+    emoji: "🪨",
+    items: [
+      {
+        name: "Anthropic Claude",
+        emoji: "👨‍🏫",
+        model: "anthropic.claude-v2:1",
+        base_model: "br.anthropic.claude",
+        temp: 0.9,
+      },
+      {
+        name: "AI21 Jurassic 2",
+        emoji: "🦖",
+        model: "ai21.j2-ultra",
+        base_model: "br.ai21.j2",
+        temp: 0.9,
+      },
+      {
+        name: "Amazon Titan",
+        emoji: "🏛️",
+        model: "amazon.titan-tg1-large",
+        base_model: "br.amazon.titan",
+        temp: 0.9,
+      },
+      {
+        name: "Cohere Command Text 14",
+        emoji: "📚",
+        model: "cohere.command-text-v14",
+        base_model: "br.cohere.command",
+        temp: 0.9,
+      },
+      {
+        name: "Mistral Mistral",
+        emoji: "💨",
+        model: "mistral.mistral-7b-instruct-v0:2",
+        base_model: "br.mistral.mistral",
+        temp: 0.9,
+      },
+      {
+        name: "Mistral Mixtral",
+        emoji: "🌪️",
+        model: "mistral.mixtral-8x7b-instruct-v0:1",
+        base_model: "br.mistral.mixtral",
+        temp: 0.9,
+      },
+      {
+        name: "Meta Llama2 Chat",
+        emoji: "🦙",
+        model: "meta.llama2-13b-chat-v1",
+        base_model: "br.meta.llama2",
+        temp: 0.9,
+      },
+    ],
+  },
 ];
 if (APP_IS_RUNNING_LOCALLY()) {
-  initLLMProviders.push({
+  initLLMProviderMenu.push({
     name: "Ollama",
     emoji: "🦙",
     model: "ollama",
     base_model: "ollama",
+    provider: null,
     temp: 1.0,
   });
   // -- Deprecated provider --
   // initLLMProviders.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
   // -------------------------
 }
+export const initLLMProviders = initLLMProviderMenu
+  .map((item) => (item.group !== undefined ? item.items : item))
+  .flat();
 
 // A global store of variables, used for maintaining state
 // across ChainForge and ReactFlow components.
@@ -136,6 +220,11 @@ const useStore = create((set, get) => ({
   AvailableLLMs: [...initLLMProviders],
   setAvailableLLMs: (llmProviderList) => {
     set({ AvailableLLMs: llmProviderList });
+  },
+
+  aiFeaturesProvider: "OpenAI",
+  setAIFeaturesProvider: (llmProvider) => {
+    set({ aiFeaturesProvider: llmProvider });
   },
 
   // Keeping track of LLM API keys
@@ -319,7 +408,6 @@ const useStore = create((set, get) => ({
       } else {
         // Get the data related to that handle:
         if ("fields" in src_node.data) {
-          console.log(src_node.data);
           if (Array.isArray(src_node.data.fields)) return src_node.data.fields;
           else {
             // We have to filter over a special 'fields_visibility' prop, which

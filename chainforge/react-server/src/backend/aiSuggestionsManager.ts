@@ -50,17 +50,21 @@ class AISuggestionsManager {
   onSuggestionsRefreshed?: (suggestions: Row[]) => void;
   // Fetches API keys from front-end
   getAPIKeys?: () => Dict;
+  // Fetches the model provider from front-end
+  getModelProvider?: () => string;
   // Whether the suggestions are loading.
   isLoading = false;
 
   constructor(
     onSuggestionsChanged?: (suggestions: Row[]) => void,
     onSuggestionsRefreshed?: (suggestions: Row[]) => void,
+    getModelProvider?: () => string,
     getAPIKeys?: () => Dict,
   ) {
     this.onSuggestionsChanged = onSuggestionsChanged;
     this.onSuggestionsRefreshed = onSuggestionsRefreshed;
     this.getAPIKeys = getAPIKeys;
+    this.getModelProvider = getModelProvider;
   }
 
   /**
@@ -105,6 +109,7 @@ class AISuggestionsManager {
     autofill(
       this.base,
       NUM_SUGGESTIONS_TO_CACHE,
+      this.getModelProvider(),
       this.getAPIKeys ? this.getAPIKeys() : undefined,
     )
       // Update suggestions.
