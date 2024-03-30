@@ -9,20 +9,17 @@ import React, {
   useMemo,
 } from "react";
 import { DragDropContext, Draggable } from "react-beautiful-dnd";
-import { Menu, Text } from "@mantine/core";
 import { v4 as uuid } from "uuid";
 import LLMListItem, { LLMListItemClone } from "./LLMListItem";
 import { StrictModeDroppable } from "./StrictModeDroppable";
 import ModelSettingsModal from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
-import useStore, { initLLMProviders } from "./store";
-import { IconCircleChevronRight } from "@tabler/icons-react";
+import useStore, { initLLMProviderMenu, initLLMProviders } from "./store";
 import { useContextMenu } from "mantine-contextmenu";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
 const DEFAULT_INIT_LLMS = [initLLMProviders[0]];
-
 // Helper funcs
 // Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)")
 const ensureUniqueName = (_name, _prev_names) => {
@@ -357,44 +354,36 @@ export const LLMListContainer = forwardRef(function LLMListContainer(
     [bgColor],
   );
 
-  const parents = [];
-  const menuItems = [];
-  for (const item of AvailableLLMs) {
-    if (!item.parent) {
-      menuItems.push({
-        key: item.model,
-        title: `${item.emoji} ${item.name}`,
-        onClick: () => handleSelectModel(item.base_model),
-      });
-    } else if (!parents.includes(item.parent)) {
-      parents.push(item.parent);
-      menuItems.push({
-        key: item.model,
-        title: item.parent,
-        onClick: () => handleSelectModel(item.base_model),
-        items: AvailableLLMs.filter(
-          (subItem) => subItem.parent === item.parent,
-        ).map((subItem) => ({
-          key: subItem.model,
-          title: `${subItem.emoji} ${subItem.name}`,
-          onClick: () => handleSelectModel(subItem.base_model),
-        })),
-      });
+  const menuItems = useMemo(() => {
+    const res = [];
+    for (const item of initLLMProviderMenu) {
+      if (!("group" in item)) {
+        res.push({
+          key: item.model,
+          title: `${item.emoji} ${item.name}`,
+          onClick: () => handleSelectModel(item.base_model),
+        });
+      } else {
+        res.push({
+          key: item.group,
+          title: `${item.emoji} ${item.group}`,
+          items: item.items.map((k) => ({
+            key: k.model,
+            title: `${k.emoji} ${k.name}`,
+            onClick: () => handleSelectModel(k.base_model),
+          })),
+        });
+      }
     }
-
-    // return undefined;
-  }
+    return res;
+  }, [AvailableLLMs, handleSelectModel]);
 
   return (
     <div className="llm-list-container nowheel" style={_bgStyle}>
       <div className="llm-list-backdrop" style={_bgStyle}>
         {description || "Models to query:"}
         <div className="add-llm-model-btn nodrag">
-          <button
-            style={_bgStyle}
-            onClick={showContextMenu(menuItems)}
-            onContextMenu={showContextMenu(menuItems)}
-          >
+          <button style={_bgStyle} onClick={showContextMenu(menuItems)}>
             {modelSelectButtonText ?? "Add +"}
           </button>
         </div>

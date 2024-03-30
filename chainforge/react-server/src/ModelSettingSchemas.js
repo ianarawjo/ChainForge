@@ -1939,13 +1939,13 @@ export const ModelSettings = {
   hf: HuggingFaceTextInferenceSettings,
   "luminous-base": AlephAlphaLuminousSettings,
   ollama: OllamaSettings,
-  "anthropic.claude": BedrockClaudeSettings,
-  "ai21.j2": BedrockJurassic2Settings,
-  "amazon.titan": BedrockTitanSettings,
-  "cohere.command": BedrockCommandTextSettings,
-  "mistral.mistral": MistralSettings,
-  "mistral.mixtral": MixtralSettings,
-  "meta.llama": MetaLlama2ChatSettings,
+  "br.anthropic.claude": BedrockClaudeSettings,
+  "br.ai21.j2": BedrockJurassic2Settings,
+  "br.amazon.titan": BedrockTitanSettings,
+  "br.cohere.command": BedrockCommandTextSettings,
+  "br.mistral.mistral": MistralSettings,
+  "br.mistral.mixtral": MixtralSettings,
+  "br.meta.llama2": MetaLlama2ChatSettings,
 };
 
 export function getSettingsSchemaForLLM(llm_name) {

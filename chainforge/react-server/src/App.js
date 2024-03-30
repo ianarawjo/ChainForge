@@ -68,6 +68,7 @@ import {
   isEdgeChromium,
   isChromium,
 } from "react-device-detect";
+import { ContextMenuProvider, useContextMenu } from "mantine-contextmenu";
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
     isChromium ||
@@ -229,6 +230,10 @@ const App = () => {
     title: "Confirm action",
     message: "Are you sure?",
   });
+
+  // For Mantine Context Menu forced closing
+  // (for some reason the menu doesn't close automatically upon click-off)
+  const { hideContextMenu, isContextMenuVisible } = useContextMenu();
 
   // For displaying error messages to user
   const alertModal = useRef(null);
@@ -1034,6 +1039,7 @@ const App = () => {
         <div
           id="cf-root-container"
           style={{ display: "flex", height: "100vh" }}
+          onPointerDown={hideContextMenu}
         >
           <div
             style={{ height: "100%", backgroundColor: "#eee", flexGrow: "1" }}
