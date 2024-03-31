@@ -38,7 +38,12 @@ import {
   genResponseTextsDisplay,
 } from "./ResponseBoxes";
 import { getLabelForResponse } from "./ResponseRatingToolbar";
-import { Dict, LLMResponse, LLMResponseData } from "./backend/typing";
+import {
+  Dict,
+  LLMResponse,
+  LLMResponseData,
+  isImageResponseData,
+} from "./backend/typing";
 
 // Helper funcs
 const getLLMName = (resp_obj: LLMResponse) =>
@@ -55,8 +60,8 @@ function getIndicesOfSubstringMatches(
     escapeRegExp(substr),
     "g" + (caseSensitive ? "" : "i"),
   );
-  let result;
-  const indices = [];
+  let result: RegExpExecArray | null;
+  const indices: number[] = [];
   while ((result = regex.exec(s))) indices.push(result.index);
   return indices;
 }
@@ -71,9 +76,9 @@ function splitAndIncludeDelimiter(
   if (indices.length === 0) return [s];
 
   const len_sub = substr.length;
-  const results = [];
+  const results: string[] = [];
   let prev_idx = 0;
-  indices.forEach((idx) => {
+  indices.forEach((idx: number) => {
     const pre_delim = s.substring(prev_idx, idx);
     const delim = s.substring(idx, idx + len_sub);
     results.push(pre_delim);
@@ -119,10 +124,21 @@ export const exportToExcel = (
     !jsonResponses ||
     (Array.isArray(jsonResponses) && jsonResponses.length === 0)
   ) {
-    console.warn(
+    throw new Error(
       "No responses to export. Try connecting the inspector node to a prompt node or evaluator node.",
     );
-    return;
+  }
+
+  // Check format of responses
+  // TODO: Support export of images in Excel sheets
+  if (
+    jsonResponses.some(
+      (r) => r.responses.length > 0 && isImageResponseData(r.responses[0]),
+    )
+  ) {
+    throw new Error(
+      "Images cannot be exported to Excel at this time. If you need this feature and you are a developer, please consider submitting a PR to our GitHub repository.",
+    );
   }
 
   // We can construct the data as an array of JSON dicts, with keys as header names:

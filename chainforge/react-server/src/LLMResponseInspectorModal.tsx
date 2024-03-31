@@ -2,11 +2,18 @@
  * A fullscreen version of the Inspect node that
  * appears in a Mantine modal pop-up which takes up much of the screen.
  */
-import React, { forwardRef, useImperativeHandle, lazy, Suspense } from "react";
+import React, {
+  forwardRef,
+  useImperativeHandle,
+  lazy,
+  Suspense,
+  useContext,
+} from "react";
 import { LoadingOverlay, Modal } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { exportToExcel } from "./LLMResponseInspector";
 import { LLMResponse } from "./backend/typing";
+import { AlertModalContext } from "./AlertModal";
 
 // Lazy load the inspector view
 const LLMResponseInspector = lazy(() => import("./LLMResponseInspector"));
@@ -25,6 +32,7 @@ const LLMResponseInspectorModal = forwardRef<
 >(function LLMResponseInspectorModal(props, ref) {
   // const inspectorRef = useRef(null);
   const [opened, { open, close }] = useDisclosure(false);
+  const showAlert = useContext(AlertModalContext);
   // const [openedOnce, setOpenedOnce] = useState(false);
 
   // This gives the parent access to triggering the modal
@@ -50,7 +58,14 @@ const LLMResponseInspectorModal = forwardRef<
           <button
             className="custom-button"
             style={{ marginTop: "auto", marginRight: "14px", float: "right" }}
-            onClick={() => exportToExcel(props.jsonResponses)}
+            onClick={() => {
+              try {
+                exportToExcel(props.jsonResponses);
+              } catch (e) {
+                close();
+                showAlert && showAlert(e as Error);
+              }
+            }}
           >
             Export data to Excel
           </button>

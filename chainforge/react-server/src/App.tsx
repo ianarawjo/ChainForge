@@ -37,7 +37,7 @@ import CodeEvaluatorNode from "./CodeEvaluatorNode";
 import VisNode from "./VisNode";
 import InspectNode from "./InspectorNode";
 import ScriptNode from "./ScriptNode";
-import { AlertModalProvider, AlertModalContext } from "./AlertModal";
+import { AlertModalContext } from "./AlertModal";
 import ItemsNode from "./ItemsNode";
 import TabularDataNode from "./TabularDataNode";
 import JoinNode from "./JoinNode";
@@ -898,7 +898,7 @@ const App = () => {
     );
   } else
     return (
-      <AlertModalProvider>
+      <div>
         <GlobalSettingsModal ref={settingsModal} />
         <LoadingOverlay visible={isLoading} overlayBlur={1} />
         <ExampleFlowsModal
@@ -946,6 +946,10 @@ const App = () => {
               snapToGrid={true}
               snapGrid={snapGrid}
               onInit={onInit}
+              onError={(err) => {
+                // Suppress ReactFlow warnings spamming the console.
+                // console.log(err);
+              }}
             >
               <Background color="#999" gap={16} />
               <Controls showZoom={true} />
@@ -1223,7 +1227,7 @@ const App = () => {
             Send us feedback
           </a>
         </div>
-      </AlertModalProvider>
+      </div>
     );
 };
 

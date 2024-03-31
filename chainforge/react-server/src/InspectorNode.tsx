@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Handle, Position } from "reactflow";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
@@ -6,6 +6,7 @@ import NodeLabel from "./NodeLabelComponent";
 import LLMResponseInspector, { exportToExcel } from "./LLMResponseInspector";
 import { grabResponses } from "./backend/backend";
 import { LLMResponse } from "./backend/typing";
+import { AlertModalContext } from "./AlertModal";
 
 export interface InspectorNodeProps {
   data: {
@@ -26,6 +27,7 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
   const [pastInputs, setPastInputs] = useState<string>("");
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const showAlert = useContext(AlertModalContext);
 
   const handleOnConnect = () => {
     // For some reason, 'on connect' is called twice upon connection.
@@ -74,7 +76,13 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
           <button
             className="custom-button"
             key="export-data"
-            onClick={() => exportToExcel(jsonResponses ?? [])}
+            onClick={() => {
+              try {
+                exportToExcel(jsonResponses ?? []);
+              } catch (e) {
+                showAlert && showAlert(e as Error);
+              }
+            }}
           >
             Export data
           </button>,
