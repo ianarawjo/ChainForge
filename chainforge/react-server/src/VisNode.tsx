@@ -873,8 +873,8 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
       .then(function (resps) {
         if (resps && resps.length > 0) {
           // Store responses and extract + store vars
-          // @ts-expect-error toReversed exists, but TypeScript does not see it.
-          setResponses(resps.toReversed());
+          // toReversed exists, but TypeScript does not see it.
+          setResponses((resps as any).toReversed());
 
           // Find all vars in responses
           let varnames: string[] | Set<string> = new Set<string>();

@@ -1370,6 +1370,23 @@ export async function grabResponses(
 }
 
 /**
+ * Deletes cache data for the responses indexed by 'id'.
+ * @param id The id of the cached responses to clear.
+ */
+export async function clearCachedResponses(id: string): Promise<boolean> {
+  if (!StorageCache.has(`${id}.json`)) {
+    console.error(`Did not find cache data for id ${id}`);
+    return false;
+  }
+  
+  // Clear all cache items related to 'id'
+  for (const k of get_cache_keys_related_to_id(id, true))
+    StorageCache.clear(k);
+
+  return true;
+}
+
+/**
  * Exports the cache'd data relevant to the given node id(s).
  *
  * @param ids the ids of the nodes to export data for

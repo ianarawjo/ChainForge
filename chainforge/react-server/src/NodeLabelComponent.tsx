@@ -21,7 +21,7 @@ export interface NodeLabelProps {
   editable?: boolean;
   status?: Status;
   isRunning?: boolean;
-  customButtons?: React.ReactElement[];
+  customButtons?: React.ReactNode[];
   handleRunClick?: () => void;
   handleStopClick?: (nodeId: string) => void;
   handleRunHover?: () => void;

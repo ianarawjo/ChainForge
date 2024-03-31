@@ -2045,7 +2045,9 @@ export function getSettingsSchemaForLLM(
 ): ModelSettingsDict | undefined {
   const llm_provider = getProvider(llm_name);
 
-  const provider_to_settings_schema: { [K in LLMProvider]?: ModelSettingsDict } = {
+  const provider_to_settings_schema: {
+    [K in LLMProvider]?: ModelSettingsDict;
+  } = {
     [LLMProvider.OpenAI]: GPT4Settings,
     [LLMProvider.Anthropic]: ClaudeSettings,
     [LLMProvider.Google]: PaLM2Settings,

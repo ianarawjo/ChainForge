@@ -1232,7 +1232,6 @@ export async function call_ollama_provider(
 function to_bedrock_chat_history(
   chat_history: ChatHistory,
 ): BedrockChatMessage[] {
-  
   const role_map: Dict<string> = {
     assistant: "ai",
     user: "human",

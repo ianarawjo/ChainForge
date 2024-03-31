@@ -61,12 +61,19 @@ export default class StorageCache {
     StorageCache.getInstance().storeCacheData(key, data);
   }
 
-  private clearCache(): void {
-    this.data = {};
+  private clearCache(key?: string): void {
+    if (key === undefined)
+      this.data = {};
+    else if (key in this.data)
+      delete this.data[key];
   }
 
-  public static clear(): void {
-    StorageCache.getInstance().clearCache();
+  /**
+   * Clears data in the cache.
+   * @param key Optional. A specific key to clear in the storage dict. If undefined, clears all data.
+   */
+  public static clear(key?: string): void {
+    StorageCache.getInstance().clearCache(key);
   }
 
   /**

@@ -449,7 +449,9 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
         setLastResponses(stripLLMDetailsFromResponses(resps));
         setStatus(Status.READY);
       })
-      .catch(handleError);
+      .catch(() => {
+        // soft fail
+      });
   }, []);
 
   // On upstream changes
@@ -701,7 +703,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
 
   // Custom buttons for the node label
   const customButtons = useMemo(() => {
-    const btns = [];
+    const btns: React.ReactNode[] = [];
 
     // If this is Python and we are running locally, the user has
     // two options ---whether to run code in sandbox with pyodide, or from Flask (unsafe):

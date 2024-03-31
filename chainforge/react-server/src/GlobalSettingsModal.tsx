@@ -333,7 +333,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
               <Tabs.Tab value="api-keys">API Keys</Tabs.Tab>
               <Tabs.Tab value="ai-support">AI Support (BETA)</Tabs.Tab>
               <Tabs.Tab value="custom-providers">Custom Providers</Tabs.Tab>
-              <Tabs.Tab value="advanced">Advanced Settings</Tabs.Tab>
+              <Tabs.Tab value="advanced">Advanced</Tabs.Tab>
             </Tabs.List>
 
             <Tabs.Panel value="api-keys" pt="xs">

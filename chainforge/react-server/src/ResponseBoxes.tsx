@@ -244,7 +244,7 @@ export const genResponseTextsDisplay = (
         </Flex>
         {same_resp_text_counts[r].length > 1 ? (
           <span className="num-same-responses">
-            {same_resp_text_counts[r]} times
+            {same_resp_text_counts[r].length} times
           </span>
         ) : (
           <></>

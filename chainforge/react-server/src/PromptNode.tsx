@@ -20,7 +20,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconList } from "@tabler/icons-react";
+import { IconEraser, IconList } from "@tabler/icons-react";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
@@ -56,6 +56,7 @@ import {
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import {
+  clearCachedResponses,
   countQueries,
   generatePrompts,
   grabResponses,
@@ -1073,8 +1074,28 @@ Soft failing by replacing undefined with empty strings.`,
     [textAreaRef],
   );
 
+  // Add custom context menu options on right-click.
+  // 1. Convert TextFields to Items Node, for convenience.
+  const customContextMenuItems = useMemo(
+    () => [
+      {
+        key: "clear_cache",
+        icon: <IconEraser size="11pt" />,
+        text: "Clear cached responses",
+        onClick: () => {
+          // Clear responses associated with this node
+          clearCachedResponses(id);
+          // Remove items and reset status
+          setStatus(Status.NONE);
+          setJSONResponses(null);
+        },
+      },
+    ],
+    [id],
+  );
+
   return (
-    <BaseNode classNames="prompt-node" nodeId={id}>
+    <BaseNode classNames="prompt-node" nodeId={id} contextMenuExts={customContextMenuItems}>
       <NodeLabel
         title={data.title || node_default_title}
         nodeId={id}
