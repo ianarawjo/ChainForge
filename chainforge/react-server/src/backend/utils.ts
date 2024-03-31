@@ -3,12 +3,12 @@
 // from string import Template
 
 // from chainforge.promptengine.models import LLM
+import React from "react";
 import { LLM, LLMProvider, NativeLLM, getProvider } from "./models";
 import {
   Dict,
-  StringDict,
   LLMAPICall,
-  LLMResponseObject,
+  RawLLMResponseObject,
   ChatHistory,
   ChatMessage,
   PaLMChatMessage,
@@ -16,12 +16,26 @@ import {
   HuggingFaceChatHistory,
   GeminiChatContext,
   GeminiChatMessage,
+  LLMResponse,
+  LLMResponsesByVarDict,
+  Func,
+  VarsContext,
+  TemplateVarInfo,
+  BaseLLMResponseObject,
+  LLMSpec,
+  EvaluationScore,
+  LLMResponseData,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
 
 /* LLM API SDKs */
-import { Configuration as OpenAIConfig, OpenAIApi } from "openai";
+import {
+  Configuration as OpenAIConfig,
+  OpenAIApi,
+  CreateImageRequest,
+  ImagesResponseDataInner,
+} from "openai";
 import {
   OpenAIClient as AzureOpenAIClient,
   AzureKeyCredential,
@@ -34,6 +48,7 @@ import {
 } from "@mirai73/bedrock-fm";
 import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
 import StorageCache from "./cache";
+import Compressor from "compressorjs";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
@@ -142,7 +157,7 @@ let AWS_REGION = get_environ("AWS_REGION");
 /**
  * Sets the local API keys for the revelant LLM API(s).
  */
-export function set_api_keys(api_keys: StringDict): void {
+export function set_api_keys(api_keys: Dict<string>): void {
   function key_is_present(name: string): boolean {
     return (
       name in api_keys &&
@@ -202,7 +217,7 @@ function construct_openai_chat_history(
 }
 
 /**
- * Calls OpenAI models via OpenAI's API.
+ * Calls OpenAI text + chat models via OpenAI's API.
    @returns raw query and response JSON dicts.
  */
 export async function call_chatgpt(
@@ -233,8 +248,7 @@ export async function call_chatgpt(
     (!Array.isArray(params.stop) || params.stop.length === 0)
   )
     delete params.stop;
-  if (params?.seed !== undefined && params.seed.toString().length === 0)
-    delete params?.seed;
+  if (params?.seed && params.seed.toString().length === 0) delete params?.seed;
   if (
     params?.functions !== undefined &&
     (!Array.isArray(params.functions) || params.functions.length === 0)
@@ -300,6 +314,75 @@ export async function call_chatgpt(
   }
 
   return [query, response];
+}
+
+/**
+ * Calls OpenAI Image models via OpenAI's API.
+   @returns raw query and response JSON dicts.
+ */
+export async function call_dalle(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature: number,
+  params?: Dict,
+  should_cancel?: () => boolean,
+): Promise<[Dict, Dict]> {
+  if (!OPENAI_API_KEY)
+    throw new Error(
+      "Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  const configuration = new OpenAIConfig({
+    apiKey: OPENAI_API_KEY,
+  });
+  // Since we are running client-side, we need to remove the user-agent header:
+  delete configuration.baseOptions.headers["User-Agent"];
+  const openai = new OpenAIApi(configuration);
+
+  const modelname = model.toString();
+  const is_dalle_3 = modelname.includes("dall-e-3");
+  console.log(
+    `Querying OpenAI image model '${model}' with prompt '${prompt}'...`,
+  );
+
+  const query: Dict = {
+    prompt,
+    model: modelname,
+    response_format: "b64_json", // request image in base-64 encoded string
+    size: params?.size ?? (is_dalle_3 ? "1024x1024" : "256x256"),
+  };
+
+  if (modelname.includes("dall-e-3")) {
+    // Pass in DALLE-3 specific settings
+    if (params?.quality) query.quality = params.quality;
+    if (params?.style) query.style = params.style;
+  }
+
+  // Try to call OpenAI
+  // Since n doesn't work for DALLE3, we must repeat call n times if n > 1, waiting for each response to come in:
+  const responses: Array<Dict> = [];
+  while (responses.length < n) {
+    // Abort if canceled
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+    let response: Dict = {};
+    try {
+      const completion = await openai.createImage(query as CreateImageRequest);
+      response = completion.data.data[0];
+      responses.push(response);
+    } catch (error: any) {
+      if (error?.response) {
+        throw new Error(error.response.data?.error?.message);
+        // throw new Error(error.response.status);
+      } else {
+        console.log(error?.message || error);
+        throw new Error(error?.message || error);
+      }
+    }
+  }
+
+  return [query, responses];
 }
 
 /**
@@ -390,7 +473,7 @@ export async function call_azure_openai(
   let response: Dict = {};
   try {
     response = await openai_call(deployment_name, arg2, query);
-  } catch (error) {
+  } catch (error: any) {
     if (error?.response) {
       throw new Error(error.response.data?.error?.message);
     } else {
@@ -761,7 +844,7 @@ export async function call_google_gemini(
     top_k: "topK",
   };
 
-  const gen_Config = { candidateCount: 1 };
+  const gen_Config: Dict = { candidateCount: 1 };
 
   Object.entries(casemap).forEach(([key, val]) => {
     if (key in query) {
@@ -929,7 +1012,7 @@ export async function call_huggingface(
     params?.custom_model,
   );
 
-  const headers: StringDict = { "Content-Type": "application/json" };
+  const headers: Dict<string> = { "Content-Type": "application/json" };
   // For HuggingFace, technically, the API keys are optional.
   if (HUGGINGFACE_API_KEY !== undefined)
     headers.Authorization = `Bearer ${HUGGINGFACE_API_KEY}`;
@@ -1022,7 +1105,7 @@ export async function call_alephalpha(
     );
 
   const url = "https://api.aleph-alpha.com/complete";
-  const headers: StringDict = {
+  const headers: Dict<string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
   };
@@ -1149,7 +1232,7 @@ export async function call_ollama_provider(
 function to_bedrock_chat_history(
   chat_history: ChatHistory,
 ): BedrockChatMessage[] {
-  const role_map = {
+  const role_map: Dict<string> = {
     assistant: "ai",
     user: "human",
   };
@@ -1160,8 +1243,9 @@ function to_bedrock_chat_history(
       msg,
       undefined,
       (key) => (key === "content" ? "message" : key),
-      (key, val) => {
-        if (key === "role") return role_map[val] ?? val;
+      (key: string, val: string): string => {
+        if (key === "role") return val in role_map ? role_map[val] : val;
+        return val;
       },
     ),
   ) as BedrockChatMessage[];
@@ -1326,8 +1410,11 @@ export async function call_llm(
   if (llm_provider === undefined)
     throw new Error(`Language model ${llm} is not supported.`);
 
-  if (llm_provider === LLMProvider.OpenAI) call_api = call_chatgpt;
-  else if (llm_provider === LLMProvider.Azure_OpenAI)
+  const llm_name = llm.toString().toLowerCase();
+  if (llm_provider === LLMProvider.OpenAI) {
+    if (llm_name.startsWith("dall-e")) call_api = call_dalle;
+    else call_api = call_chatgpt;
+  } else if (llm_provider === LLMProvider.Azure_OpenAI)
     call_api = call_azure_openai;
   else if (llm_provider === LLMProvider.Google) call_api = call_google_ai;
   else if (llm_provider === LLMProvider.Dalai) call_api = call_dalai;
@@ -1379,6 +1466,20 @@ function _extract_chatgpt_responses(response: Dict): Array<string> {
  */
 function _extract_openai_completion_responses(response: Dict): Array<string> {
   return response.choices.map((c: Dict) => c.text.trim());
+}
+
+/**
+ * Extracts the text part of a response JSON from ChatGPT. If there is more
+ * than 1 response (e.g., asking the LLM to generate multiple responses),
+ * this produces a list of all returned responses.
+ */
+function _extract_openai_image_responses(
+  response: Array<ImagesResponseDataInner>,
+): LLMResponseData[] {
+  return response.map((v) => ({
+    t: "img",
+    d: v.b64_json ?? v.url ?? "[[NO DATA]]",
+  }));
 }
 
 /**
@@ -1456,7 +1557,9 @@ function _extract_alephalpha_responses(response: Dict): Array<string> {
 /**
  * Extracts the text part of a Ollama text completion.
  */
-function _extract_ollama_responses(response: Array<Dict>): Array<string> {
+function _extract_ollama_responses(
+  response: Array<Dict>,
+): Array<LLMResponseData> {
   return response.map((r: any) => r.generated_text.trim());
 }
 
@@ -1467,12 +1570,16 @@ function _extract_ollama_responses(response: Array<Dict>): Array<string> {
 export function extract_responses(
   response: Array<string | Dict> | Dict,
   llm: LLM | string,
-): Array<string> {
+): Array<LLMResponseData> {
   const llm_provider: LLMProvider | undefined = getProvider(llm as LLM);
   const llm_name = llm.toString().toLowerCase();
   switch (llm_provider) {
     case LLMProvider.OpenAI:
-      if (llm_name.includes("davinci") || llm_name.includes("instruct"))
+      if (llm_name.startsWith("dall-e"))
+        return _extract_openai_image_responses(
+          response as Array<ImagesResponseDataInner>,
+        );
+      else if (llm_name.includes("davinci") || llm_name.includes("instruct"))
         return _extract_openai_completion_responses(response);
       else return _extract_chatgpt_responses(response);
     case LLMProvider.Azure_OpenAI:
@@ -1514,27 +1621,27 @@ export function extract_responses(
  * If one object is undefined or null, returns the object that is defined, unaltered.
  */
 export function merge_response_objs(
-  resp_obj_A: LLMResponseObject | undefined,
-  resp_obj_B: LLMResponseObject | undefined,
-): LLMResponseObject | undefined {
+  resp_obj_A: RawLLMResponseObject | undefined,
+  resp_obj_B: RawLLMResponseObject | undefined,
+): RawLLMResponseObject | undefined {
   if (!resp_obj_A && !resp_obj_B) {
     console.warn("Warning: Merging two undefined response objects.");
     return undefined;
   } else if (!resp_obj_B && resp_obj_A) return resp_obj_A;
   else if (!resp_obj_A && resp_obj_B) return resp_obj_B;
-  resp_obj_A = resp_obj_A as LLMResponseObject; // required by typescript
-  resp_obj_B = resp_obj_B as LLMResponseObject;
+  resp_obj_A = resp_obj_A as RawLLMResponseObject; // required by typescript
+  resp_obj_B = resp_obj_B as RawLLMResponseObject;
   let raw_resp_A = resp_obj_A.raw_response;
   let raw_resp_B = resp_obj_B.raw_response;
   if (!Array.isArray(raw_resp_A)) raw_resp_A = [raw_resp_A];
   if (!Array.isArray(raw_resp_B)) raw_resp_B = [raw_resp_B];
-  const res: LLMResponseObject = {
+  const res: RawLLMResponseObject = {
     responses: resp_obj_A.responses.concat(resp_obj_B.responses),
     raw_response: raw_resp_A.concat(raw_resp_B),
     prompt: resp_obj_B.prompt,
     query: resp_obj_B.query,
     llm: resp_obj_B.llm,
-    info: resp_obj_B.info,
+    vars: resp_obj_B.vars,
     metavars: resp_obj_B.metavars,
     uid: resp_obj_B.uid,
   };
@@ -1577,7 +1684,7 @@ export const transformDict = (
         ? valTransformFunc(key, dict[key])
         : dict[key];
     return acc;
-  }, {});
+  }, {} as Dict);
 };
 
 /** Extracts only the settings vars (of form like "=system_msg", starts with =) from a vars dict.
@@ -1586,8 +1693,11 @@ export const transformDict = (
  *
  * Returns empty dict {} if no settings vars found.
  */
-export const extractSettingsVars = (vars: Dict) => {
-  if (Object.keys(vars).some((k) => k.charAt(0) === "=")) {
+export const extractSettingsVars = (vars?: Dict) => {
+  if (
+    vars !== undefined &&
+    Object.keys(vars).some((k) => k.charAt(0) === "=")
+  ) {
     return transformDict(
       deepcopy(vars),
       (k) => k.charAt(0) === "=",
@@ -1629,7 +1739,7 @@ export const processCSV = (csv: string): string[] => {
 };
 
 export const countNumLLMs = (
-  resp_objs_or_dict: LLMResponseObject[] | Dict,
+  resp_objs_or_dict: RawLLMResponseObject[] | Dict,
 ): number => {
   const resp_objs = Array.isArray(resp_objs_or_dict)
     ? resp_objs_or_dict
@@ -1650,15 +1760,15 @@ export const setsAreEqual = (setA: Set<any>, setB: Set<any>): boolean => {
   return equal;
 };
 
-export const deepcopy = (v) => JSON.parse(JSON.stringify(v));
-export const deepcopy_and_modify = (v, new_val_dict) => {
+export const deepcopy = <T>(v: T): T => JSON.parse(JSON.stringify(v));
+export const deepcopy_and_modify = (v: Dict, new_val_dict: Dict) => {
   const new_v = deepcopy(v);
   Object.entries(new_val_dict).forEach(([key, val]) => {
     new_v[key] = val;
   });
   return new_v;
 };
-export const dict_excluding_key = (d, key) => {
+export const dict_excluding_key = (d: Dict, key: string) => {
   if (!(key in d)) return d;
   const copy_d = { ...d };
   delete copy_d[key];
@@ -1666,7 +1776,7 @@ export const dict_excluding_key = (d, key) => {
 };
 
 export const getLLMsInPulledInputData = (pulled_data: Dict) => {
-  const found_llms = {};
+  const found_llms: Dict = {};
   Object.values(pulled_data).forEach((_vs) => {
     const vs = Array.isArray(_vs) ? _vs : [_vs];
     vs.forEach((v) => {
@@ -1677,17 +1787,29 @@ export const getLLMsInPulledInputData = (pulled_data: Dict) => {
   return Object.values(found_llms);
 };
 
-export const stripLLMDetailsFromResponses = (resps) =>
+export const stripLLMDetailsFromResponses = (
+  resps: LLMResponse[],
+): LLMResponse[] =>
   resps.map((r) => ({
     ...r,
     llm: typeof r?.llm === "string" ? r?.llm : r?.llm?.name ?? "undefined",
   }));
 
-export const toStandardResponseFormat = (r) => {
-  const resp_obj: Dict = {
+// NOTE: The typing is purposefully general since we are trying to cast to an expected format.
+export const toStandardResponseFormat = (r: Dict | string) => {
+  if (typeof r === "string")
+    return {
+      vars: {},
+      metavars: {},
+      uid: uuid(),
+      prompt: "",
+      responses: [r],
+      tokens: {},
+    } as LLMResponse;
+  const resp_obj: LLMResponse = {
     vars: r?.fill_history ?? {},
     metavars: r?.metavars ?? {},
-    uid: r?.batch_id ?? r?.uid ?? uuid(),
+    uid: r?.uid ?? r?.batch_id ?? uuid(),
     llm: r?.llm ?? undefined,
     prompt: r?.prompt ?? "",
     responses: [typeof r === "string" ? r : r?.text],
@@ -1709,11 +1831,18 @@ export const browserTabIsActive = () => {
   }
 };
 
-export const tagMetadataWithLLM = (input_data) => {
-  const new_data = {};
+export const tagMetadataWithLLM = (input_data: LLMResponsesByVarDict) => {
+  const new_data: LLMResponsesByVarDict = {};
   Object.entries(input_data).forEach(([varname, resp_objs]) => {
-    new_data[varname] = (resp_objs as any[]).map((r) => {
-      if (!r || typeof r === "string" || !r?.llm?.key) return r;
+    new_data[varname] = resp_objs.map((r) => {
+      if (
+        !r ||
+        typeof r === "string" ||
+        !r?.llm ||
+        typeof r.llm === "string" ||
+        !r.llm.key
+      )
+        return r;
       const r_copy = JSON.parse(JSON.stringify(r));
       r_copy.metavars.__LLM_key = r.llm.key;
       return r_copy;
@@ -1722,26 +1851,44 @@ export const tagMetadataWithLLM = (input_data) => {
   return new_data;
 };
 
-export const extractLLMLookup = (input_data) => {
-  const llm_lookup = {};
+export const extractLLMLookup = (
+  input_data: Dict<
+    (string | TemplateVarInfo | BaseLLMResponseObject | LLMResponse)[]
+  >,
+) => {
+  const llm_lookup: Dict<string | LLMSpec> = {};
   Object.values(input_data).forEach((resp_objs) => {
-    (resp_objs as any[]).forEach((r) => {
-      if (typeof r === "string" || !r?.llm?.key || r.llm.key in llm_lookup)
+    resp_objs.forEach((r) => {
+      const llm_name =
+        typeof r === "string"
+          ? undefined
+          : !r.llm || typeof r.llm === "string"
+            ? r.llm
+            : r.llm.key;
+      if (
+        typeof r === "string" ||
+        !r.llm ||
+        !llm_name ||
+        llm_name in llm_lookup
+      )
         return;
-      llm_lookup[r.llm.key] = r.llm;
+      llm_lookup[llm_name] = r.llm;
     });
   });
   return llm_lookup;
 };
 
-export const removeLLMTagFromMetadata = (metavars) => {
+export const removeLLMTagFromMetadata = (metavars: Dict) => {
   if (!("__LLM_key" in metavars)) return metavars;
   const mcopy = JSON.parse(JSON.stringify(metavars));
   delete mcopy.__LLM_key;
   return mcopy;
 };
 
-export const truncStr = (s, maxLen) => {
+export const truncStr = (
+  s: string | undefined,
+  maxLen: number,
+): string | undefined => {
   if (s === undefined) return s;
   if (s.length > maxLen)
     // Cut the name short if it's long
@@ -1749,9 +1896,12 @@ export const truncStr = (s, maxLen) => {
   else return s;
 };
 
-export const groupResponsesBy = (responses: Dict[], keyFunc) => {
-  const responses_by_key: Dict = {};
-  const unspecified_group: Dict[] = [];
+export const groupResponsesBy = <T>(
+  responses: T[],
+  keyFunc: (item: T) => string | number | null | undefined,
+): [Dict<T[]>, T[]] => {
+  const responses_by_key: Dict<T[]> = {};
+  const unspecified_group: T[] = [];
   responses.forEach((item) => {
     const key = keyFunc(item);
     if (key === null || key === undefined) {
@@ -1764,22 +1914,30 @@ export const groupResponsesBy = (responses: Dict[], keyFunc) => {
   return [responses_by_key, unspecified_group];
 };
 
-export const batchResponsesByUID = (responses) => {
+/**
+ * Merges inner .responses and eval_res.items properties for LLMResponses with the same
+ * uid, returning the (smaller) list of merged items.
+ * @param responses
+ * @returns
+ */
+export const batchResponsesByUID = (
+  responses: LLMResponse[],
+): LLMResponse[] => {
   const [batches, unspecified_id_group] = groupResponsesBy(
     responses,
     (resp_obj) => resp_obj.uid,
   );
   return Object.values(batches)
-    .map((resp_objs: Dict[]) => {
+    .map((resp_objs: LLMResponse[]) => {
       if (resp_objs.length === 1) {
         return resp_objs[0];
       } else {
         const batched = deepcopy_and_modify(resp_objs[0], {
           responses: resp_objs.map((resp_obj) => resp_obj.responses).flat(),
-        });
-        if (batched.eval_res !== undefined) {
+        }) as LLMResponse;
+        if (batched.eval_res?.items !== undefined) {
           batched.eval_res.items = resp_objs
-            .map((resp_obj) => resp_obj.eval_res.items)
+            .map((resp_obj) => resp_obj?.eval_res?.items as EvaluationScore[])
             .flat();
         }
         return batched;
@@ -1813,12 +1971,14 @@ export function sampleRandomElements(arr: any[], num_sample: number): any[] {
   // Return the items at the sampled indexes
   return Array.from(idxs).map((idx) => arr[idx]);
 }
-export const getVarsAndMetavars = (input_data) => {
-  // Find all vars and metavars in the input data (if any):
-  const varnames = new Set();
-  const metavars = new Set();
 
-  const add_from_resp_obj = (resp_obj) => {
+export const getVarsAndMetavars = (input_data: Dict): VarsContext => {
+  // Find all vars and metavars in the input data (if any):
+  // NOTE: The typing is purposefully general for some backwards compatibility concenrs.
+  const varnames = new Set<string>();
+  const metavars = new Set<string>();
+
+  const add_from_resp_obj = (resp_obj: Dict) => {
     if (typeof resp_obj === "string") return;
     if (resp_obj?.fill_history)
       Object.keys(resp_obj.fill_history).forEach((v) => varnames.add(v));
@@ -1871,8 +2031,8 @@ export async function retryAsyncFunc<T>(
 
 // Filters internally used keys LLM_{idx} and __{str} from metavar dictionaries.
 // This method is used to pass around information hidden from the user.
-export function cleanMetavarsFilterFunc() {
-  return (key: string) => !(key.startsWith("LLM_") || key.startsWith("__pt"));
+export function cleanMetavarsFilterFunc(key: string) {
+  return !(key.startsWith("LLM_") || key.startsWith("__pt"));
 }
 
 // Verify data integrity: check that uids are present for all responses.
@@ -1903,3 +2063,56 @@ export function repairCachedResponses(
 
   return data;
 }
+
+/**
+ * Generates a function that can be called to debounce another function,
+ * inside a React component. Note that it requires passing (and capturing) a React ref using useRef.
+ * The ref is used so that when the function is called multiple times; it will 'debounce' --cancel any pending call.
+ * @param ref An empty React ref from useRef
+ * @returns A debounce function of signature (func: Func, delay: number), taking an arbitrary function and delay in milliseconds
+ */
+export const genDebounceFunc = (
+  ref: React.MutableRefObject<null | NodeJS.Timeout>,
+) => {
+  return (func: Func, delay: number) => {
+    return (...args: any[]) => {
+      if (ref?.current) {
+        clearTimeout(ref.current);
+      }
+      ref.current = setTimeout(() => {
+        func(...args);
+      }, delay);
+    };
+  };
+};
+export type DebounceRef = React.MutableRefObject<NodeJS.Timeout | null>;
+
+// Thanks to AmerllicA on SO: https://stackoverflow.com/a/61226119
+export const blobToBase64 = (blob: Blob): Promise<string> => {
+  const reader = new FileReader();
+  reader.readAsDataURL(blob);
+  return new Promise((resolve, reject) => {
+    reader.onloadend = () => {
+      const res = reader.result as string;
+      resolve(res.substring(res.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(new Error("Error reading file"));
+  });
+};
+
+export const compressBase64Image = (b64: string): Promise<string> => {
+  // Convert base64 to Blob. Compress asynchronously, then convert back to base64.
+  return fetch(`data:image/png;base64,${b64}`)
+    .then((res) => res.blob())
+    .then(
+      (blob) =>
+        new Promise((resolve, reject) => {
+          /* eslint-disable no-new */
+          new Compressor(blob, {
+            success: resolve,
+            error: reject,
+          });
+        }),
+    )
+    .then((compressedBlob) => blobToBase64(compressedBlob as Blob));
+};

@@ -44,14 +44,15 @@ export function getAIFeaturesModelProviders() {
   return AIFeaturesLLMs.map((m) => m.provider);
 }
 
-export function getAIFeaturesModels(
-  provider: string,
-): { small: string; large: string } | undefined {
-  const models = AIFeaturesLLMs.filter((m) => m.provider === provider);
-  if (models.length === 0) return undefined;
+export function getAIFeaturesModels(provider: string): {
+  small: string;
+  large: string;
+} {
+  const model =
+    AIFeaturesLLMs.find((m) => m.provider === provider) ?? AIFeaturesLLMs[0];
   return {
-    small: models[0].small.value,
-    large: models[0].large.value,
+    small: model.small.value,
+    large: model.large.value,
   };
 }
 
@@ -207,7 +208,7 @@ export async function autofill(
   if (result.errors && Object.keys(result.errors).length > 0)
     throw new Error(Object.values(result.errors)[0].toString());
 
-  const output = result.responses[0].responses[0];
+  const output = result.responses[0].responses[0] as string;
 
   console.log("LLM said: ", output);
 
@@ -269,6 +270,6 @@ export async function generateAndReplace(
 
   console.log("LLM said: ", result.responses[0].responses[0]);
 
-  const new_items = decode(result.responses[0].responses[0]);
+  const new_items = decode(result.responses[0].responses[0] as string);
   return new_items.slice(0, n);
 }

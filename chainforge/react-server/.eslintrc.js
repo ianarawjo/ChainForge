@@ -4,6 +4,7 @@ module.exports = {
     "build/**",
     "craco.config.js",
     "src/backend/pyodide/**",
+    "src/backend/__test__/**",
   ],
   extends: [
     "semistandard",

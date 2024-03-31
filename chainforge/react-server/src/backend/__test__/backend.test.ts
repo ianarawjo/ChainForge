@@ -10,7 +10,7 @@ import {
   ResponseInfo,
   grabResponses,
 } from "../backend";
-import { StandardizedLLMResponse, Dict } from "../typing";
+import { LLMResponse, Dict } from "../typing";
 import StorageCache from "../cache";
 
 test("count queries required", async () => {
@@ -23,13 +23,12 @@ test("count queries required", async () => {
 
   // Double-check the queries required (not loading from cache)
   const test_count_queries = async (llms: Array<string | Dict>, n: number) => {
-    const { counts, total_num_responses, error } = await countQueries(
+    const { counts, total_num_responses } = await countQueries(
       prompt,
       vars,
       llms,
       n,
     );
-    expect(error).toBeUndefined();
 
     Object.values(total_num_responses).forEach((v) => {
       expect(v).toBe(n * 3 * 3);
@@ -88,7 +87,7 @@ test("call three LLMs with a single prompt", async () => {
 
   // Check responses
   expect(responses).toHaveLength(3);
-  responses.forEach((resp_obj: StandardizedLLMResponse) => {
+  responses.forEach((resp_obj: LLMResponse) => {
     expect(resp_obj.prompt).toBe(prompt);
     expect(resp_obj.responses).toHaveLength(1); // since n = 1
     expect(Object.keys(resp_obj.vars)).toHaveLength(0);
@@ -109,7 +108,7 @@ test("run evaluate func over responses", async () => {
 
   const input_resps = (await grabResponses([
     "dummy_response_id",
-  ])) as StandardizedLLMResponse[];
+  ])) as LLMResponse[];
 
   //   const code = `
   // function evaluate(response) {
@@ -135,7 +134,7 @@ test("run evaluate func over responses", async () => {
   expect(responses).toHaveLength(DUMMY_RESPONSE_CACHE.length);
 
   // Expect all scores (evaluation results) to be present
-  responses.forEach((r) => {
+  responses?.forEach((r) => {
     expect(r.eval_res?.items?.length).toBe(1);
   });
 

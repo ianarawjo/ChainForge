@@ -1,4 +1,4 @@
-import { Dict } from "./typing";
+import { Dict, JSONCompatible } from "./typing";
 import LZString from "lz-string";
 
 /**
@@ -23,16 +23,16 @@ export default class StorageCache {
     return StorageCache.instance;
   }
 
-  private getCacheData(key: string): Dict | undefined {
+  private getCacheData(key: string): any {
     return this.data[key] ?? undefined;
   }
 
-  public static get(key: string): Dict | undefined {
+  public static get(key: string): any {
     return StorageCache.getInstance().getCacheData(key);
   }
 
   private getAllCacheData(filterFunc: (key: string) => boolean): Dict {
-    const res = {};
+    const res: Dict = {};
     Object.keys(this.data)
       .filter(filterFunc)
       .forEach((key) => {
@@ -61,12 +61,17 @@ export default class StorageCache {
     StorageCache.getInstance().storeCacheData(key, data);
   }
 
-  private clearCache(): void {
-    this.data = {};
+  private clearCache(key?: string): void {
+    if (key === undefined) this.data = {};
+    else if (key in this.data) delete this.data[key];
   }
 
-  public static clear(): void {
-    StorageCache.getInstance().clearCache();
+  /**
+   * Clears data in the cache.
+   * @param key Optional. A specific key to clear in the storage dict. If undefined, clears all data.
+   */
+  public static clear(key?: string): void {
+    StorageCache.getInstance().clearCache(key);
   }
 
   /**
@@ -98,7 +103,10 @@ export default class StorageCache {
         console.warn("Storage quota exceeded");
       } else {
         // Handle other types of storage-related errors
-        console.error("Error storing data in localStorage:", error.message);
+        console.error(
+          "Error storing data in localStorage:",
+          (error as Error).message,
+        );
       }
       return false;
     }
@@ -114,7 +122,7 @@ export default class StorageCache {
   public static loadFromLocalStorage(
     localStorageKey = "chainforge",
     setStorageCacheData = true,
-  ): boolean {
+  ): JSONCompatible | undefined {
     const compressed = localStorage.getItem(localStorageKey);
     if (!compressed) {
       console.error(
@@ -128,7 +136,7 @@ export default class StorageCache {
       console.log("loaded", data);
       return data;
     } catch (error) {
-      console.error(error.message);
+      console.error((error as Error).message);
       return undefined;
     }
   }

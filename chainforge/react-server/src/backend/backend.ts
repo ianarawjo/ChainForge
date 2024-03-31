@@ -2,12 +2,19 @@ import MarkdownIt from "markdown-it";
 import { v4 as uuid } from "uuid";
 import {
   Dict,
-  StringDict,
   LLMResponseError,
-  LLMResponseObject,
-  StandardizedLLMResponse,
+  RawLLMResponseObject,
+  LLMResponse,
   ChatHistoryInfo,
   isEqualChatHistory,
+  PromptVarsDict,
+  QueryProgress,
+  EvaluationScore,
+  LLMSpec,
+  EvaluatedResponsesResults,
+  TemplateVarInfo,
+  CustomLLMProviderSpec,
+  LLMResponseData,
 } from "./typing";
 import { LLM, getEnumName } from "./models";
 import {
@@ -18,6 +25,7 @@ import {
   extractSettingsVars,
   areEqualVarsDicts,
   repairCachedResponses,
+  deepcopy,
 } from "./utils";
 import StorageCache from "./cache";
 import { PromptPipeline } from "./query";
@@ -70,7 +78,7 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.log) {
     const cl = ORIGINAL_CONSOLE_LOG_FUNCS.log;
-    base_window.console.log = function (...args) {
+    base_window.console.log = function (...args: any[]) {
       const a = args.map((s) => s.toString());
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       cl.apply(this, args);
@@ -79,7 +87,7 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.warn) {
     const cw = ORIGINAL_CONSOLE_LOG_FUNCS.warn;
-    base_window.console.warn = function (...args) {
+    base_window.console.warn = function (...args: any[]) {
       const a = args.map((s) => `warn: ${s.toString()}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       cw.apply(this, args);
@@ -88,7 +96,7 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
 
   if (ORIGINAL_CONSOLE_LOG_FUNCS.error) {
     const ce = ORIGINAL_CONSOLE_LOG_FUNCS.error;
-    base_window.console.error = function (...args) {
+    base_window.console.error = function (...args: any[]) {
       const a = args.map((s) => `error: ${s.toString()}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       ce.apply(this, args);
@@ -141,16 +149,13 @@ export class ResponseInfo {
   }
 }
 
-function to_standard_format(
-  r: LLMResponseObject | Dict,
-): StandardizedLLMResponse {
-  const resp_obj: StandardizedLLMResponse = {
-    vars: r.info,
+function to_standard_format(r: RawLLMResponseObject | Dict): LLMResponse {
+  const resp_obj: LLMResponse = {
+    vars: r.vars,
     metavars: r.metavars ?? {},
     llm: r.llm,
     prompt: r.prompt,
     responses: r.responses,
-    tokens: r.raw_response?.usage ?? {},
     uid: r.uid ?? uuid(),
   };
   if ("eval_res" in r) resp_obj.eval_res = r.eval_res;
@@ -171,8 +176,8 @@ function get_cache_keys_related_to_id(
     );
   else return include_basefile ? [base_file] : [];
 }
-
-export async function setAPIKeys(api_keys: StringDict): Promise<void> {
+// eslint-disable-next-line
+async function setAPIKeys(api_keys: Dict<string>): Promise<void> {
   if (api_keys !== undefined) set_api_keys(api_keys);
 }
 
@@ -184,7 +189,9 @@ function load_from_cache(storageKey: string): Dict {
   return StorageCache.get(storageKey) || {};
 }
 
-function load_cache_responses(storageKey: string): Array<Dict> {
+function load_cache_responses(
+  storageKey: string,
+): Dict<LLMResponse[]> | LLMResponse[] {
   const data = load_from_cache(storageKey);
   if (Array.isArray(data)) return data;
   else if (typeof data === "object" && data.responses_last_run !== undefined) {
@@ -235,15 +242,16 @@ function extract_llm_params(llm_spec: Dict | string): Dict {
   else return {};
 }
 
-function filterVarsByLLM(vars: Dict, llm_key: string): Dict {
-  const _vars = {};
+function filterVarsByLLM(vars: PromptVarsDict, llm_key: string): Dict {
+  const _vars: PromptVarsDict = {};
   Object.entries(vars).forEach(([key, val]) => {
     const vs = Array.isArray(val) ? val : [val];
     _vars[key] = vs.filter(
       (v) =>
         typeof v === "string" ||
         v?.llm === undefined ||
-        v?.llm?.key === llm_key,
+        typeof v.llm === "string" ||
+        v.llm.key === llm_key,
     );
   });
   return _vars;
@@ -383,11 +391,11 @@ function check_typeof_vals(arr: Array<any>): MetricType {
 
 async function run_over_responses(
   process_func: (resp: ResponseInfo) => any,
-  responses: StandardizedLLMResponse[],
+  responses: LLMResponse[],
   process_type: "evaluator" | "processor",
-): Promise<StandardizedLLMResponse[]> {
-  const evald_resps: Promise<StandardizedLLMResponse>[] = responses.map(
-    async (_resp_obj: StandardizedLLMResponse) => {
+): Promise<LLMResponse[]> {
+  const evald_resps: Promise<LLMResponse>[] = responses.map(
+    async (_resp_obj: LLMResponse) => {
       // Deep clone the response object
       const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
 
@@ -480,10 +488,12 @@ async function run_over_responses(
  */
 export async function generatePrompts(
   root_prompt: string,
-  vars: Dict,
+  vars: Dict<(TemplateVarInfo | string)[]>,
 ): Promise<PromptTemplate[]> {
   const gen_prompts = new PromptPermutationGenerator(root_prompt);
-  const all_prompt_permutations = Array.from(gen_prompts.generate(vars));
+  const all_prompt_permutations = Array.from(
+    gen_prompts.generate(deepcopy(vars)),
+  );
   return all_prompt_permutations;
 }
 
@@ -502,32 +512,32 @@ export async function generatePrompts(
  */
 export async function countQueries(
   prompt: string,
-  vars: Dict,
+  vars: PromptVarsDict,
   llms: Array<Dict | string>,
   n: number,
-  chat_histories?: ChatHistoryInfo[] | { [key: string]: ChatHistoryInfo[] },
+  chat_histories?:
+    | (ChatHistoryInfo | undefined)[]
+    | Dict<(ChatHistoryInfo | undefined)[]>,
   id?: string,
   cont_only_w_prior_llms?: boolean,
-): Promise<Dict> {
+): Promise<{ counts: Dict<Dict<number>>; total_num_responses: Dict<number> }> {
   if (chat_histories === undefined) chat_histories = [undefined];
+  vars = deepcopy(vars);
+  llms = deepcopy(llms);
 
-  let gen_prompts: PromptPermutationGenerator;
-  let all_prompt_permutations: Array<PromptTemplate> | Dict;
-  try {
-    gen_prompts = new PromptPermutationGenerator(prompt);
-    if (cont_only_w_prior_llms && Array.isArray(llms)) {
-      all_prompt_permutations = {};
-      llms.forEach((llm_spec) => {
-        const llm_key = extract_llm_key(llm_spec);
-        all_prompt_permutations[llm_key] = Array.from(
-          gen_prompts.generate(filterVarsByLLM(vars, llm_key)),
-        );
-      });
-    } else {
-      all_prompt_permutations = Array.from(gen_prompts.generate(vars));
-    }
-  } catch (err) {
-    return { error: err.message };
+  let all_prompt_permutations: PromptTemplate[] | Dict<PromptTemplate[]>;
+
+  const gen_prompts = new PromptPermutationGenerator(prompt);
+  if (cont_only_w_prior_llms && Array.isArray(llms)) {
+    all_prompt_permutations = {};
+    llms.forEach((llm_spec) => {
+      const llm_key = extract_llm_key(llm_spec);
+      (all_prompt_permutations as Dict<PromptTemplate[]>)[llm_key] = Array.from(
+        gen_prompts.generate(filterVarsByLLM(vars, llm_key)),
+      );
+    });
+  } else {
+    all_prompt_permutations = Array.from(gen_prompts.generate(vars));
   }
 
   let cache_file_lookup: Dict = {};
@@ -536,8 +546,8 @@ export async function countQueries(
     cache_file_lookup = cache_data?.cache_files || {};
   }
 
-  const missing_queries = {};
-  const num_responses_req = {};
+  const missing_queries: Dict<Dict<number>> = {};
+  const num_responses_req: Dict<number> = {};
   const add_to_missing_queries = (
     llm_key: string,
     prompt: string,
@@ -558,8 +568,8 @@ export async function countQueries(
 
     // Get only the relevant prompt permutations
     const _all_prompt_perms = cont_only_w_prior_llms
-      ? all_prompt_permutations[llm_key]
-      : all_prompt_permutations;
+      ? (all_prompt_permutations as Dict<PromptTemplate[]>)[llm_key]
+      : (all_prompt_permutations as PromptTemplate[]);
 
     // Get the relevant chat histories for this LLM:
     const chat_hists = (
@@ -600,7 +610,7 @@ export async function countQueries(
 
             // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
             const cache_bucket = cache_llm_responses[prompt_str];
-            const cached_resps: LLMResponseObject[] = Array.isArray(
+            const cached_resps: RawLLMResponseObject[] = Array.isArray(
               cache_bucket,
             )
               ? cache_bucket
@@ -617,7 +627,7 @@ export async function countQueries(
                 ) &&
                 areEqualVarsDicts(
                   settings_params,
-                  extractSettingsVars(cached_resp.info),
+                  extractSettingsVars(cached_resp.vars),
                 )
               ) {
                 // Match found. Note it and count response length:
@@ -639,7 +649,7 @@ export async function countQueries(
     }
 
     if (!found_cache) {
-      _all_prompt_perms.forEach((perm) => {
+      _all_prompt_perms.forEach((perm: PromptTemplate) => {
         add_to_num_responses_req(llm_key, n * chat_hists.length);
         add_to_missing_queries(llm_key, perm.toString(), n * chat_hists.length);
       });
@@ -651,11 +661,11 @@ export async function countQueries(
 
 interface LLMPrompterResults {
   llm_key: string;
-  responses: Array<LLMResponseObject>;
+  responses: Array<RawLLMResponseObject>;
   errors: Array<string>;
 }
 
-export async function fetchEnvironAPIKeys(): Promise<Dict> {
+export async function fetchEnvironAPIKeys(): Promise<Dict<string>> {
   return fetch(`${FLASK_BASE_URL}app/fetchEnvironAPIKeys`, {
     method: "POST",
     headers: {
@@ -682,11 +692,11 @@ export async function fetchEnvironAPIKeys(): Promise<Dict> {
  * @param progress_listener (optional) a callback whenever an LLM response is collected, on the current progress
  * @param cont_only_w_prior_llms (optional) whether we are continuing using prior LLMs
  * @param cancel_id (optional) the id that would appear in CancelTracker if the user cancels the querying (NOT the same as 'id' --must be unique!)
- * @returns a dictionary in format `{responses: StandardizedLLMResponse[], errors: string[]}`
+ * @returns a dictionary in format `{responses: LLMResponse[], errors: string[]}`
  */
 export async function queryLLM(
   id: string,
-  llm: string | Array<string> | Array<Dict>,
+  llm: string | (string | LLMSpec)[],
   n: number,
   prompt: string,
   vars: Dict,
@@ -695,22 +705,23 @@ export async function queryLLM(
   no_cache?: boolean,
   progress_listener?: (progress: { [key: symbol]: any }) => void,
   cont_only_w_prior_llms?: boolean,
-  cancel_id?: string,
-): Promise<Dict> {
+  cancel_id?: string | number,
+): Promise<{ responses: LLMResponse[]; errors: Dict<string[]> }> {
   // Verify the integrity of the params
   if (typeof id !== "string" || id.trim().length === 0)
-    return { error: "id is improper format (length 0 or not a string)" };
+    throw new Error("id is improper format (length 0 or not a string)");
 
   if (Array.isArray(llm) && llm.length === 0)
-    return {
-      error:
-        "POST data llm is improper format (not string or list, or of length 0).",
-    };
+    throw new Error(
+      "POST data llm is improper format (not string or list, or of length 0).",
+    );
 
   // Ensure llm param is an array
   if (typeof llm === "string") llm = [llm];
 
-  llm = llm as Array<string> | Array<Dict>;
+  // Cast and deep copy these objects as they may be modified
+  llm = deepcopy(llm) as string[] | LLMSpec[];
+  vars = deepcopy(vars);
 
   if (api_keys !== undefined) set_api_keys(api_keys);
 
@@ -721,8 +732,8 @@ export async function queryLLM(
   // Ignore cache if no_cache is present
   if (no_cache) cache = {};
 
-  const llm_to_cache_filename = {};
-  const past_cache_files = {};
+  const llm_to_cache_filename: Dict<string> = {};
+  const past_cache_files: Dict<string | LLMSpec> = {};
   if (typeof cache === "object" && cache.cache_files !== undefined) {
     const past_cache_files: Dict = cache.cache_files;
     const past_cache_filenames: Array<string> = Object.keys(past_cache_files);
@@ -764,7 +775,7 @@ export async function queryLLM(
 
   // Create a Proxy object to 'listen' for changes to a variable (see https://stackoverflow.com/a/50862441)
   // and then stream those changes back to a provided callback used to update progress bars.
-  const progress = {};
+  const progress: { [key: string | symbol]: QueryProgress } = {};
   const progressProxy = new Proxy(progress, {
     set: function (target, key, value) {
       target[key] = value;
@@ -782,8 +793,8 @@ export async function queryLLM(
     cancel_id !== undefined && CancelTracker.has(cancel_id);
 
   // For each LLM, generate and cache responses:
-  const responses: { [key: string]: Array<LLMResponseObject> } = {};
-  const all_errors = {};
+  const responses: { [key: string]: Array<RawLLMResponseObject> } = {};
+  const all_errors: Dict<string[]> = {};
   const num_generations = n ?? 1;
   async function query(llm_spec: string | Dict): Promise<LLMPrompterResults> {
     // Get LLM model name and any params
@@ -815,7 +826,7 @@ export async function queryLLM(
 
     // Prompt the LLM with all permutations of the input prompt template:
     // NOTE: If the responses are already cache'd, this just loads them (no LLM is queried, saving $$$)
-    const resps: Array<LLMResponseObject> = [];
+    const resps: Array<RawLLMResponseObject> = [];
     const errors: Array<string> = [];
     let num_resps = 0;
     let num_errors = 0;
@@ -862,7 +873,7 @@ export async function queryLLM(
         throw e;
       } else {
         console.error(
-          `Error generating responses for ${llm_str}: ${e.message}`,
+          `Error generating responses for ${llm_str}: ${(e as Error).message}`,
         );
         throw e;
       }
@@ -875,21 +886,15 @@ export async function queryLLM(
     };
   }
 
-  try {
-    // Request responses simultaneously across LLMs
-    const tasks: Array<Promise<LLMPrompterResults>> = llms.map(query);
+  // Request responses simultaneously across LLMs
+  const tasks: Array<Promise<LLMPrompterResults>> = llms.map(query);
 
-    // Await the responses from all queried LLMs
-    const llm_results = await Promise.all(tasks);
-    llm_results.forEach((result) => {
-      responses[result.llm_key] = result.responses;
-      if (result.errors.length > 0) all_errors[result.llm_key] = result.errors;
-    });
-  } catch (e) {
-    if (e instanceof UserForcedPrematureExit) throw e;
-    console.error(`Error requesting responses: ${e.message}`);
-    return { error: e.message };
-  }
+  // Await the responses from all queried LLMs
+  const llm_results = await Promise.all(tasks);
+  llm_results.forEach((result) => {
+    responses[result.llm_key] = result.responses;
+    if (result.errors.length > 0) all_errors[result.llm_key] = result.errors;
+  });
 
   // Convert the responses into a more standardized format with less information
   const res = Object.values(responses).flatMap((rs) =>
@@ -920,7 +925,7 @@ export async function queryLLM(
 
   // Save the responses *of this run* to the storage cache, for further recall:
   const cache_filenames = past_cache_files;
-  llms.forEach((llm_spec: string | Dict) => {
+  llms.forEach((llm_spec: string | LLMSpec) => {
     const filename = llm_to_cache_filename[extract_llm_key(llm_spec)];
     cache_filenames[filename] = llm_spec;
   });
@@ -948,7 +953,7 @@ export async function queryLLM(
  */
 export async function simpleQueryLLM(
   prompt: string,
-  llm: string | string[] | Dict[],
+  llm: string | string[] | LLMSpec[],
   system_msg?: string,
   apiKeys?: Dict,
 ) {
@@ -996,10 +1001,10 @@ export async function simpleQueryLLM(
 export async function executejs(
   id: string,
   code: string | ((rinfo: ResponseInfo) => any),
-  responses: StandardizedLLMResponse[],
+  responses: LLMResponse[],
   scope: "response" | "batch",
   process_type: "evaluator" | "processor",
-): Promise<Dict> {
+): Promise<EvaluatedResponsesResults> {
   const req_func_name =
     !process_type || process_type === "evaluator" ? "evaluate" : "process";
 
@@ -1039,14 +1044,14 @@ export async function executejs(
         throw new Error(`${req_func_name}() function is undefined.`);
     } catch (err) {
       return {
-        error: `Could not compile code. Error message:\n${err.message}`,
+        error: `Could not compile code. Error message:\n${(err as Error).message}`,
       };
     }
   }
 
   // Load all responses with the given ID:
   let all_logs: string[] = [];
-  let processed_resps: StandardizedLLMResponse[];
+  let processed_resps: LLMResponse[];
   try {
     // Intercept any calls to console.log, .warn, or .error, so we can store the calls
     // and print them in the 'output' footer of the Evaluator Node:
@@ -1074,7 +1079,7 @@ export async function executejs(
       REVERT_CONSOLE_LOGGING(id, iframe.contentWindow),
     );
     return {
-      error: `Error encountered while trying to run "evaluate" method:\n${err.message}`,
+      error: `Error encountered while trying to run "evaluate" method:\n${(err as Error).message}`,
       logs: all_logs,
     };
   }
@@ -1103,16 +1108,16 @@ export async function executejs(
 export async function executepy(
   id: string,
   code: string | ((rinfo: ResponseInfo) => any),
-  responses: StandardizedLLMResponse[],
+  responses: LLMResponse[],
   scope: "response" | "batch",
   process_type: "evaluator" | "processor",
   script_paths?: string[],
   executor?: "flask" | "pyodide",
-): Promise<Dict> {
+): Promise<EvaluatedResponsesResults> {
   // Determine where we can execute Python
   executor = APP_IS_RUNNING_LOCALLY() ? executor ?? "flask" : "pyodide";
 
-  let exec_response: Dict;
+  let exec_response: Dict = {};
 
   // Execute using Flask backend (unsecure; only use with trusted code)
   if (executor === "flask") {
@@ -1156,7 +1161,8 @@ export async function executepy(
           all_logs.push(error.toString());
           throw new Error("pyodideWorker error: " + error.toString());
         }
-      } catch (e) {
+      } catch (err) {
+        const e = err as Dict;
         if (e.filename) {
           all_logs.push(e.message());
           throw new Error(
@@ -1166,7 +1172,7 @@ export async function executepy(
       }
     };
 
-    let processed_resps: StandardizedLLMResponse[];
+    let processed_resps: LLMResponse[];
     try {
       // Run the user-defined 'evaluate' function over the responses:
       processed_resps = await run_over_responses(
@@ -1176,7 +1182,7 @@ export async function executepy(
       );
     } catch (err) {
       return {
-        error: `Error encountered while trying to run "evaluate" method:\n${err.message}`,
+        error: `Error encountered while trying to run "evaluate" method:\n${(err as Error).message}`,
         logs: all_logs,
       };
     }
@@ -1208,12 +1214,12 @@ export async function executepy(
  */
 export async function evalWithLLM(
   id: string,
-  llm: Dict,
+  llm: string | LLMSpec,
   root_prompt: string,
   response_ids: string | string[],
   api_keys?: Dict,
   progress_listener?: (progress: { [key: symbol]: any }) => void,
-): Promise<Dict> {
+): Promise<{ responses?: LLMResponse[]; errors: string[] }> {
   // Check format of response_ids
   if (!Array.isArray(response_ids)) response_ids = [response_ids];
   response_ids = response_ids as Array<string>;
@@ -1221,25 +1227,26 @@ export async function evalWithLLM(
   if (api_keys !== undefined) set_api_keys(api_keys);
 
   // Load all responses with the given ID:
-  let all_evald_responses: StandardizedLLMResponse[] = [];
+  let all_evald_responses: LLMResponse[] = [];
   let all_errors: string[] = [];
   for (const cache_id of response_ids) {
     const fname = `${cache_id}.json`;
     if (!StorageCache.has(fname))
-      return { error: `Did not find cache file for id ${cache_id}` };
+      throw new Error(`Did not find cache file for id ${cache_id}`);
 
     // Load the raw responses from the cache + clone them all:
-    const resp_objs = load_cache_responses(fname).map((r) =>
+    const resp_objs = (load_cache_responses(fname) as LLMResponse[]).map((r) =>
       JSON.parse(JSON.stringify(r)),
-    ) as StandardizedLLMResponse[];
+    ) as LLMResponse[];
     if (resp_objs.length === 0) continue;
 
     // We need to keep track of the index of each response in the response object.
     // We can generate var dicts with metadata to store the indices:
     const inputs = resp_objs
       .map((obj, __i) =>
-        obj.responses.map((r: string, __j: number) => ({
-          text: r,
+        obj.responses.map((r: LLMResponseData, __j: number) => ({
+          text: typeof r === "string" ? r : undefined,
+          image: typeof r === "object" && r.t === "img" ? r.d : undefined,
           fill_history: obj.vars,
           metavars: { ...obj.metavars, __i, __j },
         })),
@@ -1259,12 +1266,12 @@ export async function evalWithLLM(
       progress_listener,
     );
 
-    const err_vals: string[] = Array.from(Object.values(errors)) as string[];
+    const err_vals: string[] = Object.values(errors).flat();
     if (err_vals.length > 0) all_errors = all_errors.concat(err_vals);
 
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
-    responses.forEach((r: StandardizedLLMResponse) => {
+    responses.forEach((r: LLMResponse) => {
       const resp_obj = resp_objs[r.metavars.__i];
       if (resp_obj.eval_res !== undefined)
         resp_obj.eval_res.items[r.metavars.__j] = r.responses[0];
@@ -1286,7 +1293,8 @@ export async function evalWithLLM(
   for (const resp_obj of all_evald_responses) {
     if (!resp_obj.eval_res) continue;
     for (const score of resp_obj.eval_res.items) {
-      if (score !== undefined) all_eval_res.add(score.trim().toLowerCase());
+      if (score !== undefined)
+        all_eval_res.add(score.toString().trim().toLowerCase());
     }
   }
 
@@ -1301,10 +1309,13 @@ export async function evalWithLLM(
     // Convert all eval results to boolean datatypes:
     all_evald_responses.forEach((resp_obj) => {
       if (!resp_obj.eval_res?.items) return;
-      resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) => {
-        const li = i.toLowerCase();
-        return li === "true" || li === "yes";
-      });
+      resp_obj.eval_res.items = resp_obj.eval_res.items.map(
+        (i: EvaluationScore) => {
+          if (typeof i !== "string") return i;
+          const li = i.toLowerCase();
+          return li === "true" || li === "yes";
+        },
+      );
       resp_obj.eval_res.dtype = "Categorical";
     });
     // Check if the results are all numeric-ish:
@@ -1312,8 +1323,11 @@ export async function evalWithLLM(
     // Convert all eval results to numeric datatypes:
     all_evald_responses.forEach((resp_obj) => {
       if (!resp_obj.eval_res?.items) return;
-      resp_obj.eval_res.items = resp_obj.eval_res.items.map((i: string) =>
-        parseFloat(i),
+      resp_obj.eval_res.items = resp_obj.eval_res.items.map(
+        (i: EvaluationScore) => {
+          if (typeof i !== "string") return i;
+          return parseFloat(i);
+        },
       );
       resp_obj.eval_res.dtype = "Numeric";
     });
@@ -1328,18 +1342,20 @@ export async function evalWithLLM(
 /**
  * Returns all responses with the specified id(s).
  * @param responses the ids to grab
- * @returns If success, a Dict with a single key, 'responses', with an array of StandardizedLLMResponse objects
+ * @returns If success, a Dict with a single key, 'responses', with an array of LLMResponse objects
  *          If failure, a Dict with a single key, 'error', with the error message.
  */
-export async function grabResponses(responses: Array<string>): Promise<Dict> {
+export async function grabResponses(
+  responses: string[],
+): Promise<LLMResponse[]> {
   // Grab all responses with the given ID:
-  let grabbed_resps: Dict[] = [];
+  let grabbed_resps: LLMResponse[] = [];
   for (const cache_id of responses) {
     const storageKey = `${cache_id}.json`;
     if (!StorageCache.has(storageKey))
-      return { error: `Did not find cache data for id ${cache_id}` };
+      throw new Error(`Did not find cache data for id ${cache_id}`);
 
-    let res: Dict | Array<{ [key: string]: Dict }> =
+    let res: LLMResponse[] | Dict<LLMResponse[]> =
       load_cache_responses(storageKey);
     if (typeof res === "object" && !Array.isArray(res)) {
       // Convert to standard response format
@@ -1350,7 +1366,23 @@ export async function grabResponses(responses: Array<string>): Promise<Dict> {
     grabbed_resps = grabbed_resps.concat(res);
   }
 
-  return { responses: grabbed_resps };
+  return grabbed_resps;
+}
+
+/**
+ * Deletes cache data for the responses indexed by 'id'.
+ * @param id The id of the cached responses to clear.
+ */
+export async function clearCachedResponses(id: string): Promise<boolean> {
+  if (!StorageCache.has(`${id}.json`)) {
+    console.error(`Did not find cache data for id ${id}`);
+    return false;
+  }
+
+  // Clear all cache items related to 'id'
+  for (const k of get_cache_keys_related_to_id(id, true)) StorageCache.clear(k);
+
+  return true;
 }
 
 /**
@@ -1359,9 +1391,9 @@ export async function grabResponses(responses: Array<string>): Promise<Dict> {
  * @param ids the ids of the nodes to export data for
  * @returns the cache'd data, as a JSON dict in format `{ files: { filename: <Dict|Array> } }`
  */
-export async function exportCache(ids: string[]) {
+export async function exportCache(ids: string[]): Promise<Dict<Dict>> {
   // For each id, extract relevant cache file data
-  const cache_files = {};
+  const cache_files: Dict = {};
   for (const cache_id of ids) {
     const cache_keys = get_cache_keys_related_to_id(cache_id);
     if (cache_keys.length === 0) {
@@ -1379,7 +1411,7 @@ export async function exportCache(ids: string[]) {
   const cache_state = StorageCache.getAllMatching((key) =>
     key.startsWith("r."),
   );
-  return { files: { ...cache_files, ...cache_state } };
+  return { ...cache_files, ...cache_state };
 }
 
 /**
@@ -1391,7 +1423,7 @@ export async function exportCache(ids: string[]) {
  */
 export async function importCache(files: {
   [key: string]: Dict | Array<any>;
-}): Promise<Dict> {
+}): Promise<void> {
   try {
     // First clear the storage cache and any saved state:
     StorageCache.clear();
@@ -1403,12 +1435,10 @@ export async function importCache(files: {
       StorageCache.store(filename, data);
     });
   } catch (err) {
-    console.error("Error importing from cache:", err.message);
-    return { result: false };
+    throw new Error("Error importing from cache:" + (err as Error).message);
   }
 
   console.log("Imported cache data and stored to cache.");
-  return { result: true };
 }
 
 /**
@@ -1429,9 +1459,18 @@ export async function fetchExampleFlow(evalname: string): Promise<Dict> {
         "Access-Control-Allow-Origin": "*",
       },
       body: JSON.stringify({ name: evalname }),
-    }).then(function (res) {
-      return res.json();
-    });
+    })
+      .then(function (res) {
+        return res.json();
+      })
+      .then(function (json) {
+        if (json?.error !== undefined || !json?.data)
+          throw new Error(
+            (json.error as string) ??
+              "Request to fetch example flow was sent to backend server, but there was no response.",
+          );
+        return json.data as Dict;
+      });
   }
 
   // App is not running locally, but hosted on a site.
@@ -1461,9 +1500,18 @@ export async function fetchOpenAIEval(evalname: string): Promise<Dict> {
         "Access-Control-Allow-Origin": "*",
       },
       body: JSON.stringify({ name: evalname }),
-    }).then(function (res) {
-      return res.json();
-    });
+    })
+      .then(function (res) {
+        return res.json();
+      })
+      .then(function (json) {
+        if (json?.error !== undefined || !json?.data)
+          throw new Error(
+            (json.error as string) ??
+              "Request to fetch OpenAI eval was sent to backend server, but there was no response.",
+          );
+        return json.data as Dict;
+      });
   }
 
   // App is not running locally, but hosted on a site.
@@ -1481,7 +1529,9 @@ export async function fetchOpenAIEval(evalname: string): Promise<Dict> {
  * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success, 
  *          a 'providers' key with a list of all loaded custom provider callbacks, as dicts.
  */
-export async function initCustomProvider(code: string): Promise<Dict> {
+export async function initCustomProvider(
+  code: string,
+): Promise<CustomLLMProviderSpec[]> {
   // Attempt to fetch the example flow from the local filesystem
   // by querying the Flask server:
   return fetch(`${FLASK_BASE_URL}app/initCustomProvider`, {
@@ -1491,9 +1541,15 @@ export async function initCustomProvider(code: string): Promise<Dict> {
       "Access-Control-Allow-Origin": "*",
     },
     body: JSON.stringify({ code }),
-  }).then(function (res) {
-    return res.json();
-  });
+  })
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (json) {
+      if (!json || json.error || !json.providers)
+        throw new Error(json.error ?? "Unknown error");
+      return json.providers as CustomLLMProviderSpec[];
+    });
 }
 
 /**
@@ -1503,7 +1559,7 @@ export async function initCustomProvider(code: string): Promise<Dict> {
  * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success, 
  *          a 'success' key with a true value.
  */
-export async function removeCustomProvider(name: string): Promise<Dict> {
+export async function removeCustomProvider(name: string): Promise<boolean> {
   // Attempt to fetch the example flow from the local filesystem
   // by querying the Flask server:
   return fetch(`${FLASK_BASE_URL}app/removeCustomProvider`, {
@@ -1513,9 +1569,15 @@ export async function removeCustomProvider(name: string): Promise<Dict> {
       "Access-Control-Allow-Origin": "*",
     },
     body: JSON.stringify({ name }),
-  }).then(function (res) {
-    return res.json();
-  });
+  })
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (json) {
+      if (!json || json.error || !json.success)
+        throw new Error(json.error ?? "Unknown error");
+      return true;
+    });
 }
 
 /**
@@ -1524,7 +1586,9 @@ export async function removeCustomProvider(name: string): Promise<Dict> {
  * @returns a Promise with the JSON of the response. Will include 'error' key if error'd; if success,
  *          a 'providers' key with all loaded custom providers in an array. If there were none, returns empty array.
  */
-export async function loadCachedCustomProviders(): Promise<Dict> {
+export async function loadCachedCustomProviders(): Promise<
+  CustomLLMProviderSpec[]
+> {
   return fetch(`${FLASK_BASE_URL}app/loadCachedCustomProviders`, {
     method: "POST",
     headers: {
@@ -1532,7 +1596,16 @@ export async function loadCachedCustomProviders(): Promise<Dict> {
       "Access-Control-Allow-Origin": "*",
     },
     body: "{}",
-  }).then(function (res) {
-    return res.json();
-  });
+  })
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (json) {
+      if (!json || json.error || !json.providers)
+        throw new Error(
+          json.error ??
+            "Could not load custom provider scripts: Error contacting backend.",
+        );
+      return json.providers as CustomLLMProviderSpec[];
+    });
 }

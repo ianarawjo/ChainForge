@@ -51,14 +51,14 @@ class AISuggestionsManager {
   // Fetches API keys from front-end
   getAPIKeys?: () => Dict;
   // Fetches the model provider from front-end
-  getModelProvider?: () => string;
+  getModelProvider: () => string;
   // Whether the suggestions are loading.
   isLoading = false;
 
   constructor(
+    getModelProvider: () => string,
     onSuggestionsChanged?: (suggestions: Row[]) => void,
     onSuggestionsRefreshed?: (suggestions: Row[]) => void,
-    getModelProvider?: () => string,
     getAPIKeys?: () => Dict,
   ) {
     this.onSuggestionsChanged = onSuggestionsChanged;
@@ -130,7 +130,7 @@ class AISuggestionsManager {
    */
 
   // Update what the suggestions are based off of. Debounce included.
-  update: (newBase: Row[]) => void = debounce((newBase) => {
+  update: (newBase: Row[]) => void = debounce((newBase: Row[]) => {
     // Clear suggestions if necessary.
     if (shouldClearSuggestions(newBase)) {
       this.clearSuggestions();

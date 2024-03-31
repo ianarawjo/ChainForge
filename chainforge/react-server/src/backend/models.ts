@@ -1,6 +1,8 @@
 /**
  * A list of all model APIs natively supported by ChainForge.
  */
+import Bottleneck from "bottleneck";
+import { UserForcedPrematureExit } from "./errors";
 
 export enum NativeLLM {
   // OpenAI Chat
@@ -21,10 +23,14 @@ export enum NativeLLM {
   OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
   OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
 
-  // OpenAI Text Completions
+  // OpenAI Text Completions (deprecated)
   OpenAI_Davinci003 = "text-davinci-003",
   OpenAI_Davinci002 = "text-davinci-002",
   OpenAI_ChatGPT_Instruct = "gpt-3.5-turbo-instruct",
+
+  // OpenAI Image models
+  OpenAI_DallE_2 = "dall-e-2",
+  OpenAI_DallE_3 = "dall-e-3",
 
   // Azure OpenAI Endpoints
   Azure_OpenAI = "azure-openai",
@@ -103,6 +109,15 @@ export enum NativeLLM {
 
 export type LLM = string | NativeLLM;
 
+/** Equivalent to a Python enum's .name property */
+export function getEnumName(
+  enumObject: any,
+  enumValue: any,
+): string | undefined {
+  for (const key in enumObject) if (enumObject[key] === enumValue) return key;
+  return undefined;
+}
+
 /**
  * A list of model providers
  */
@@ -143,46 +158,115 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
 
 /** LLM APIs often have rate limits, which control number of requests. E.g., OpenAI: https://platform.openai.com/account/rate-limits
 #   For a basic organization in OpenAI, GPT3.5 is currently 3500 and GPT4 is 200 RPM (requests per minute).
-#   For Anthropic evaluaton preview of Claude, can only send 1 request at a time (synchronously).
-#   This 'cheap' version of controlling for rate limits is to wait a few seconds between batches of requests being sent off.
+#   For Anthropic evaluaton preview of Claude, can only send 1 request at a time (synchronously). See below.
 #   If a model is missing from below, it means we must send and receive only 1 request at a time (synchronous).
 #   The following is only a guideline, and a bit on the conservative side.  */
-export const RATE_LIMITS: { [key in LLM]?: [number, number] } = {
-  [NativeLLM.OpenAI_ChatGPT]: [30, 10], // max 30 requests a batch; wait 10 seconds between
-  [NativeLLM.OpenAI_ChatGPT_0301]: [30, 10],
-  [NativeLLM.OpenAI_ChatGPT_0613]: [30, 10],
-  [NativeLLM.OpenAI_ChatGPT_16k]: [30, 10],
-  [NativeLLM.OpenAI_ChatGPT_16k_0613]: [30, 10],
-  [NativeLLM.OpenAI_GPT4]: [4, 15], // max 4 requests a batch; wait 15 seconds between
-  [NativeLLM.OpenAI_GPT4_0314]: [4, 15],
-  [NativeLLM.OpenAI_GPT4_0613]: [4, 15],
-  [NativeLLM.OpenAI_GPT4_32k]: [4, 15],
-  [NativeLLM.OpenAI_GPT4_32k_0314]: [4, 15],
-  [NativeLLM.OpenAI_GPT4_32k_0613]: [4, 15],
-  [NativeLLM.Azure_OpenAI]: [30, 10],
-  [NativeLLM.PaLM2_Text_Bison]: [4, 10], // max 30 requests per minute; so do 4 per batch, 10 seconds between (conservative)
-  [NativeLLM.PaLM2_Chat_Bison]: [4, 10],
-  [NativeLLM.Bedrock_Jurassic_Mid]: [20, 5],
-  [NativeLLM.Bedrock_Jurassic_Ultra]: [5, 5],
-  [NativeLLM.Bedrock_Titan_Light]: [40, 5],
-  [NativeLLM.Bedrock_Titan_Express]: [20, 5], // 400 RPM
-  [NativeLLM.Bedrock_Claude_2]: [20, 15], // 100 RPM
-  [NativeLLM.Bedrock_Claude_2_1]: [20, 15], // 100 RPM
-  [NativeLLM.Bedrock_Claude_3_Haiku]: [20, 5], // 100 RPM
-  [NativeLLM.Bedrock_Claude_3_Sonnet]: [20, 15], // 100 RPM
-  [NativeLLM.Bedrock_Command_Text]: [20, 5], // 400 RPM
-  [NativeLLM.Bedrock_Command_Text_Light]: [40, 5], // 800 RPM
-  [NativeLLM.Bedrock_Meta_LLama2Chat_70b]: [20, 5], // 400 RPM
-  [NativeLLM.Bedrock_Meta_LLama2Chat_13b]: [40, 5], // 800 RPM
-  [NativeLLM.Bedrock_Mistral_Mixtral]: [20, 5], // 400 RPM
-  [NativeLLM.Bedrock_Mistral_Mistral]: [40, 5], // 800 RPM
+export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
+  [NativeLLM.OpenAI_ChatGPT]: 1000, // max RPM (API requests per minute)
+  [NativeLLM.OpenAI_ChatGPT_0301]: 1000,
+  [NativeLLM.OpenAI_ChatGPT_0613]: 1000,
+  [NativeLLM.OpenAI_ChatGPT_16k]: 1000,
+  [NativeLLM.OpenAI_ChatGPT_16k_0613]: 1000,
+  [NativeLLM.OpenAI_GPT4]: 500,
+  [NativeLLM.OpenAI_GPT4_0314]: 500,
+  [NativeLLM.OpenAI_GPT4_0613]: 500,
+  [NativeLLM.OpenAI_GPT4_1106_Prev]: 500,
+  [NativeLLM.OpenAI_GPT4_0125_Prev]: 500,
+  [NativeLLM.OpenAI_GPT4_Turbo_Prev]: 500,
+  [NativeLLM.OpenAI_GPT4_32k]: 500,
+  [NativeLLM.OpenAI_GPT4_32k_0314]: 500,
+  [NativeLLM.OpenAI_GPT4_32k_0613]: 500,
+  [NativeLLM.OpenAI_DallE_2]: 10, // Should be 5 images per minute (1 img per every 10 seconds); here, we've been a bit lenient with it.
+  [NativeLLM.OpenAI_DallE_3]: 10, // This differs per tier, see https://platform.openai.com/docs/guides/rate-limits/usage-tiers?context=tier-one
+  [NativeLLM.Azure_OpenAI]: 500, // conservative
+  [NativeLLM.PaLM2_Text_Bison]: 60, // max 60 requests per minute as of Mar 2023
+  [NativeLLM.PaLM2_Chat_Bison]: 60,
+  [NativeLLM.GEMINI_PRO]: 60,
+  [NativeLLM.Bedrock_Jurassic_Mid]: 400,
+  [NativeLLM.Bedrock_Jurassic_Ultra]: 25,
+  [NativeLLM.Bedrock_Titan_Light]: 800,
+  [NativeLLM.Bedrock_Titan_Express]: 400, // 400 RPM
+  [NativeLLM.Bedrock_Claude_2]: 100, // 100 RPM
+  [NativeLLM.Bedrock_Claude_2_1]: 100, // 100 RPM
+  [NativeLLM.Bedrock_Claude_3_Haiku]: 100, // 100 RPM
+  [NativeLLM.Bedrock_Claude_3_Sonnet]: 100, // 100 RPM
+  [NativeLLM.Bedrock_Command_Text]: 400, // 400 RPM
+  [NativeLLM.Bedrock_Command_Text_Light]: 800, // 800 RPM
+  [NativeLLM.Bedrock_Meta_LLama2Chat_70b]: 400, // 400 RPM
+  [NativeLLM.Bedrock_Meta_LLama2Chat_13b]: 800, // 800 RPM
+  [NativeLLM.Bedrock_Mistral_Mixtral]: 400, // 400 RPM
+  [NativeLLM.Bedrock_Mistral_Mistral]: 800, // 800 RPM
 };
 
-/** Equivalent to a Python enum's .name property */
-export function getEnumName(
-  enumObject: any,
-  enumValue: any,
-): string | undefined {
-  for (const key in enumObject) if (enumObject[key] === enumValue) return key;
-  return undefined;
+export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
+  [LLMProvider.Anthropic]: 25, // Tier 1 pricing limit is 50 per minute, across all models; we halve this, to be safe.
+};
+
+// Max concurrent requests. Add to this to further constrain the rate limiter.
+export const MAX_CONCURRENT: { [key in LLM]?: number } = {};
+
+const DEFAULT_RATE_LIMIT = 100; // RPM for any models not listed above
+
+/**
+ * Singleton which all LLM API calls should go through to perform rate limiting via Botteneck.
+ */
+export class RateLimiter {
+  // eslint-disable-next-line no-use-before-define
+  private static instance: RateLimiter;
+  private limiters: Record<LLM, Bottleneck>;
+
+  private constructor() {
+    // Initialize the singleton instance
+    this.limiters = {};
+  }
+
+  /** Gets the global RateLimiter instance. Initializes it if the singleton instance does not yet exist. */
+  public static getInstance(): RateLimiter {
+    if (!RateLimiter.instance) {
+      RateLimiter.instance = new RateLimiter();
+    }
+    return RateLimiter.instance;
+  }
+
+  /** Get the Bottleneck limiter for the given model. If it doesn't already exist, instantiates it dynamically. */
+  private getLimiter(model: LLM): Bottleneck {
+    // Find if there's an existing limiter for this model
+    if (!(model in this.limiters)) {
+      // If there isn't, make one:
+      // Find the RPM. First search if the model is present in predefined rate limits; then search for pre-defined RLs by provider; then set to default.
+      const rpm =
+        RATE_LIMIT_BY_MODEL[model] ??
+        RATE_LIMIT_BY_PROVIDER[getProvider(model) ?? LLMProvider.Custom] ??
+        DEFAULT_RATE_LIMIT;
+      this.limiters[model] = new Bottleneck({
+        reservoir: rpm, // max requests per minute
+        reservoirRefreshAmount: rpm, // refresh up to max requests every minute
+        reservoirRefreshInterval: 60000, // refresh every minute
+        maxConcurrent: MAX_CONCURRENT[model] ?? Math.ceil(rpm / 2), // throttle max concurrent requests to half, just in case
+        minTime: 20,
+      }); // space out the requests by 20ms, to be safe
+    }
+    return this.limiters[model];
+  }
+
+  /** Throttles the API call for the given model, using Bottleneck
+   * @param model The model name, as NativeLLM
+   * @param func The (async) function to call when ready
+   * @param should_cancel Optional. An abort function, that if true, will abort before calling func(), throwing `UserForcedPrematureExit`
+   * @returns A Promise that returns with the return value of func.
+   */
+  public static throttle<T>(
+    model: LLM,
+    func: () => PromiseLike<T>,
+    should_cancel?: () => boolean,
+  ): Promise<T> {
+    // Rate limit per model, and abort if the API request takes 3 minutes or more.
+    return this.getInstance()
+      .getLimiter(model)
+      .schedule({ expiration: 180000 }, () => {
+        if (should_cancel && should_cancel())
+          throw new UserForcedPrematureExit();
+        return func();
+      });
+  }
 }
