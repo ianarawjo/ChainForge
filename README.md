@@ -46,6 +46,22 @@ Open [localhost:8000](http://localhost:8000/) in a Google Chrome, Firefox, Micro
 
 You can set your API keys by clicking the Settings icon in the top-right corner. If you prefer to not worry about this everytime you open ChainForge, we recommend that save your OpenAI, Anthropic, Google PaLM API keys and/or Amazon AWS credentials to your local environment. For more details, see the [How to Install](https://chainforge.ai/docs/getting_started/).
 
+## Run using Docker
+
+You can use our [Dockerfile](/Dockerfile) to run `ChainForge` locally using `Docker Desktop`:
+
+- Build the `Dockerfile`:
+  ```shell
+  docker build -t chainforge .
+  ```
+
+- Run the image:
+  ```shell
+  docker run -p 8000:8000 chainforge
+  ```
+
+Now you can open the browser of your choice and open `http://127.0.0.1:8000`.
+
 # Supported providers
 
 - OpenAI
