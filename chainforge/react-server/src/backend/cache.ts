@@ -62,10 +62,8 @@ export default class StorageCache {
   }
 
   private clearCache(key?: string): void {
-    if (key === undefined)
-      this.data = {};
-    else if (key in this.data)
-      delete this.data[key];
+    if (key === undefined) this.data = {};
+    else if (key in this.data) delete this.data[key];
   }
 
   /**

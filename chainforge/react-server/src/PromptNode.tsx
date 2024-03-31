@@ -1095,7 +1095,11 @@ Soft failing by replacing undefined with empty strings.`,
   );
 
   return (
-    <BaseNode classNames="prompt-node" nodeId={id} contextMenuExts={customContextMenuItems}>
+    <BaseNode
+      classNames="prompt-node"
+      nodeId={id}
+      contextMenuExts={customContextMenuItems}
+    >
       <NodeLabel
         title={data.title || node_default_title}
         nodeId={id}

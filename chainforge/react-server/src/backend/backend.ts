@@ -1378,10 +1378,9 @@ export async function clearCachedResponses(id: string): Promise<boolean> {
     console.error(`Did not find cache data for id ${id}`);
     return false;
   }
-  
+
   // Clear all cache items related to 'id'
-  for (const k of get_cache_keys_related_to_id(id, true))
-    StorageCache.clear(k);
+  for (const k of get_cache_keys_related_to_id(id, true)) StorageCache.clear(k);
 
   return true;
 }
