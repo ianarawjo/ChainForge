@@ -946,7 +946,7 @@ const App = () => {
               snapToGrid={true}
               snapGrid={snapGrid}
               onInit={onInit}
-              onError={(err) => {
+              onError={() => {
                 // Suppress ReactFlow warnings spamming the console.
                 // console.log(err);
               }}
