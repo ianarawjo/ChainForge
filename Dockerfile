@@ -1,4 +1,4 @@
-FROM python:3.8.19-slim-bullseye
+FROM python:3.10-slim-bullseye
 
 WORKDIR /chainforge
 
