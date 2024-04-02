@@ -431,8 +431,10 @@ export const LLMListContainer = forwardRef<
 
   const menuItems = useMemo(() => {
     const res: ContextMenuItemOptions[] = [];
+    const initModels: Set<string> = new Set<string>();
     for (const item of initLLMProviderMenu) {
       if (!("group" in item)) {
+        initModels.add(item.base_model);
         res.push({
           key: item.model,
           title: `${item.emoji} ${item.name}`,
@@ -442,13 +444,26 @@ export const LLMListContainer = forwardRef<
         res.push({
           key: item.group,
           title: `${item.emoji} ${item.group}`,
-          items: item.items.map((k) => ({
-            key: k.model,
-            title: `${k.emoji} ${k.name}`,
-            onClick: () => handleSelectModel(k.base_model),
-          })),
+          items: item.items.map((k) => {
+            initModels.add(k.base_model);
+            return {
+              key: k.model,
+              title: `${k.emoji} ${k.name}`,
+              onClick: () => handleSelectModel(k.base_model),
+            };
+          }),
         });
       }
+    }
+    for (const item of AvailableLLMs) {
+      if (initModels.has(item.base_model)) {
+        continue;
+      }
+      res.push({
+        key: item.base_model,
+        title: `${item.emoji} ${item.name}`,
+        onClick: () => handleSelectModel(item.base_model),
+      });
     }
     return res;
   }, [AvailableLLMs, handleSelectModel]);
