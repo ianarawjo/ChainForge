@@ -1263,9 +1263,14 @@ export async function call_bedrock(
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
-  if (!AWS_ACCESS_KEY_ID && !AWS_SESSION_TOKEN && !AWS_REGION) {
+  if (
+    !AWS_ACCESS_KEY_ID ||
+    !AWS_SECRET_ACCESS_KEY ||
+    !AWS_SESSION_TOKEN ||
+    !AWS_REGION
+  ) {
     throw new Error(
-      "Could not find credentials value for the Bedrock API. Double-check that your API key is set in Settings or in your local environment.",
+      "Could not find credentials value for the Bedrock API. Double-check that your AWS Credentials are set in Settings or in your local environment.",
     );
   }
 
@@ -1301,7 +1306,7 @@ export async function call_bedrock(
   };
 
   const fm = fromModelId(modelName as Models, {
-    region: bedrockConfig.region ?? "us-west-2",
+    region: bedrockConfig.region,
     credentials: bedrockConfig.credentials,
     ...query,
   });
