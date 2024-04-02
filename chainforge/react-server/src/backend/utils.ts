@@ -25,6 +25,7 @@ import {
   LLMSpec,
   EvaluationScore,
   LLMResponseData,
+  isImageResponseData,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
@@ -1604,9 +1605,10 @@ export function extract_responses(
       if (
         Array.isArray(response) &&
         response.length > 0 &&
-        typeof response[0] === "string"
+        (typeof response[0] === "string" ||
+          (typeof response[0] === "object" && isImageResponseData(response[0])))
       )
-        return response as string[];
+        return response as LLMResponseData[];
       else
         throw new Error(
           `No method defined to extract responses for LLM ${llm}.`,

@@ -2210,7 +2210,7 @@ export const setCustomProvider = (
   }
 
   // Commit changes to LLM list
-  useStore.getState().setAvailableLLMs(AvailableLLMs);
+  useStore.getState().setAvailableLLMs([...AvailableLLMs]);
 };
 
 export const setCustomProviders = (providers: CustomLLMProviderSpec[]) => {
