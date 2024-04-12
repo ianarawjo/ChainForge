@@ -1275,18 +1275,13 @@ export async function call_bedrock(
   }
 
   const modelName: string = model.toString();
-
   let stopWords = [];
   if (
-    !(
-      params?.stop_sequences !== undefined &&
-      (!Array.isArray(params.stop_sequences) ||
-        params.stop_sequences.length === 0)
-    )
+    params?.stop_sequences !== undefined &&
+    Array.isArray(params.stop_sequences && params.stop_sequences.length > 0)
   ) {
-    stopWords = params?.stop_sequences ?? [];
+    stopWords = params?.stop_sequences;
   }
-
   const bedrockConfig = {
     credentials: {
       accessKeyId: AWS_ACCESS_KEY_ID,
@@ -1296,13 +1291,11 @@ export async function call_bedrock(
     region: AWS_REGION,
   };
 
-  delete params?.stop;
+  delete params?.stop_sequences;
 
   const query: Dict = {
     stopSequences: stopWords,
     temperature,
-    topP: params?.top_p ?? 1.0,
-    maxTokenCount: params?.max_tokens_to_sample ?? 512,
   };
 
   const fm = fromModelId(modelName as Models, {
@@ -1320,27 +1313,29 @@ export async function call_bedrock(
 
       // Grab the response
       let response: string;
-      if (modelName.startsWith("anthropic")) {
+      if (
+        modelName.startsWith("anthropic") ||
+        modelName.startsWith("mistral") ||
+        modelName.startsWith("meta")
+      ) {
         const chat_history: ChatHistory = construct_openai_chat_history(
           prompt,
           params?.chat_history,
           params?.system_msg,
         );
+
         response = (
-          await fm.chat(to_bedrock_chat_history(chat_history), { ...params })
+          await fm.chat(to_bedrock_chat_history(chat_history), {
+            modelArgs: { ...params },
+          })
         ).message;
       } else {
-        response = await fm.generate(prompt, { ...params });
+        response = await fm.generate(prompt, { modelArgs: { ...params } });
       }
       responses.push(response);
     }
   } catch (error: any) {
-    console.error("Error", error);
-    throw new Error(
-      error?.response?.data?.error?.message ??
-        error?.message ??
-        error.toString(),
-    );
+    throw new Error(error?.message ?? error.toString());
   }
 
   return [query, responses];
