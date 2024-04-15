@@ -23,7 +23,7 @@ import {
   ModelSettingsDict,
   LLMSpec,
 } from "./backend/typing";
-import { transformDict } from "./backend/utils";
+import { deepcopy, transformDict } from "./backend/utils";
 import useStore from "./store";
 
 const UI_SUBMIT_BUTTON_SPEC = {
@@ -1511,7 +1511,7 @@ const BedrockJurassic2Settings: ModelSettingsDict = {
       },
       minTokens: {
         type: "integer",
-        title: "maxTokens",
+        title: "minTokens",
         description:
           "The minimum number of tokens to generate for each response.",
         default: 1,
@@ -1524,7 +1524,7 @@ const BedrockJurassic2Settings: ModelSettingsDict = {
         default: 1,
         minimum: 1,
       },
-      stopSequences: {
+      stop_sequences: {
         type: "string",
         title: "stopSequences",
         description:
@@ -1583,7 +1583,7 @@ const BedrockJurassic2Settings: ModelSettingsDict = {
     topP: {
       "ui:help": "Defaults to 1.",
     },
-    stopSequences: {
+    stop_sequences: {
       "ui:widget": "textarea",
       "ui:help": "Defaults to no sequence",
     },
@@ -1633,7 +1633,7 @@ const BedrockTitanSettings: ModelSettingsDict = {
         default: 1024,
         minimum: 1,
       },
-      stopSequences: {
+      stop_sequences: {
         type: "string",
         title: "stopSequences",
         description:
@@ -1678,7 +1678,7 @@ const BedrockTitanSettings: ModelSettingsDict = {
     topP: {
       "ui:help": "Defaults to 1.",
     },
-    stopSequences: {
+    stop_sequences: {
       "ui:widget": "textarea",
       "ui:help": "Defaults to no sequence",
     },
@@ -1816,7 +1816,10 @@ const MistralSettings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select a version of Mistral model to query. For more details on the differences, see the Mistral API documentation.",
-        enum: ["mistral.mistral-7b-instruct-v0:2"],
+        enum: [
+          "mistral.mistral-7b-instruct-v0:2",
+          "mistral.mistral-large-2402-v1:0",
+        ],
         default: "mistral.mistral-7b-instruct-v0:2",
       },
       temperature: {
@@ -1837,7 +1840,7 @@ const MistralSettings: ModelSettingsDict = {
         default: 1024,
         minimum: 1,
       },
-      stop: {
+      stop_sequences: {
         type: "string",
         title: "stop",
         description:
@@ -1904,10 +1907,10 @@ const MistralSettings: ModelSettingsDict = {
   },
 };
 
-const MixtralSettings = { ...MistralSettings };
+const MixtralSettings = deepcopy(MistralSettings);
 
 MixtralSettings.schema.properties = {
-  ...MixtralSettings.schema.properties,
+  ...deepcopy(MixtralSettings.schema.properties),
   ...{
     model: {
       type: "string",

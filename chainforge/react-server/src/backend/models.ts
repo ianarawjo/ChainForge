@@ -104,6 +104,7 @@ export enum NativeLLM {
   Bedrock_Meta_LLama2Chat_13b = "meta.llama2-13b-chat-v1",
   Bedrock_Meta_LLama2Chat_70b = "meta.llama2-70b-chat-v1",
   Bedrock_Mistral_Mistral = "mistral.mistral-7b-instruct-v0:2",
+  Bedrock_Mistral_Mistral_Large = "mistral.mistral-large-2402-v1:0",
   Bedrock_Mistral_Mixtral = "mistral.mixtral-8x7b-instruct-v0:1",
 }
 
@@ -195,6 +196,7 @@ export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
   [NativeLLM.Bedrock_Meta_LLama2Chat_70b]: 400, // 400 RPM
   [NativeLLM.Bedrock_Meta_LLama2Chat_13b]: 800, // 800 RPM
   [NativeLLM.Bedrock_Mistral_Mixtral]: 400, // 400 RPM
+  [NativeLLM.Bedrock_Mistral_Mistral_Large]: 100, // 100 RPM
   [NativeLLM.Bedrock_Mistral_Mistral]: 800, // 800 RPM
 };
 
