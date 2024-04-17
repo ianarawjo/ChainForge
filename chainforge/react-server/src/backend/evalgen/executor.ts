@@ -506,7 +506,7 @@ export default class EvaluationFunctionExecutor {
       new Map();
 
     // Iterate through each criteria
-    // For each criteria, select the function with the highest accuracy rate
+    // For each criteria, select the function with the highest alignment rate
     for (const criteria of this.evalCriteria) {
       let scoredFunctions = [];
 
@@ -523,11 +523,11 @@ export default class EvaluationFunctionExecutor {
           true_fail: 0,
           false_pass: 0,
           false_fail: 0,
-          accuracy: 0,
+          alignment: 0,
           skipped: 0,
         };
 
-        // Calculate accuracy for this function based on the graded examples
+        // Calculate alignment for this function based on the graded examples
         for (const example of gradedExamples) {
           const result = gradedResultMap.get(example.uid)?.get(evalFunction);
           const grade = this.grades.get(example.uid)
@@ -554,11 +554,21 @@ export default class EvaluationFunctionExecutor {
           }
         }
 
-        // The accuracy how many it got correct out of the total
-        report.accuracy =
+        // Calculate coverage
+        const failureCoverage =
+          numFailGrades > 0
+            ? report.true_fail / (report.true_fail + report.false_pass)
+            : 1.0;
+
+        // Calculate false failure rate
+        const falseFailureRate =
+          report.false_fail / (report.true_pass + report.false_fail);
+
+        // The alignment is the F1 score of failure coverage and 1 - false failure rate
+        report.alignment =
           numFailGrades > 0 || numPassGrades > 0
-            ? (report.true_pass + report.true_fail) /
-              (numPassGrades + numFailGrades)
+            ? (2 * failureCoverage * (1 - falseFailureRate)) /
+              (failureCoverage + (1 - falseFailureRate))
             : undefined;
 
         // Save the report for this function
@@ -567,12 +577,6 @@ export default class EvaluationFunctionExecutor {
         }
         evalFunctionReport.get(criteria)?.push(report);
         console.log(report);
-
-        // Calculate coverage
-        const failureCoverage =
-          numFailGrades > 0
-            ? report.true_fail / (report.true_fail + report.false_pass)
-            : 1.0;
 
         scoredFunctions.push({
           evalFunction: evalFunction,

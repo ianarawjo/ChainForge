@@ -199,8 +199,8 @@ const CriteriaCard = function CriteriaCard({
   const reportAccuracyRing = useMemo(() => {
     if (!evalFuncReport) return undefined;
     return {
-      percent: Math.floor(evalFuncReport.accuracy * 100),
-      color: accuracyToColor(evalFuncReport.accuracy),
+      percent: Math.floor(evalFuncReport.alignment * 100),
+      color: accuracyToColor(evalFuncReport.alignment),
     };
   }, [evalFuncReport]);
 
@@ -222,7 +222,7 @@ const CriteriaCard = function CriteriaCard({
   const unselectedImplementations =
     otherFuncs !== undefined && otherFuncs.length > 0
       ? otherFuncs.map((item) => (
-          <div>
+          <div key={uuid()}>
             <Code style={{ whiteSpace: "pre-wrap" }} key={uuid()}>
               {item.evalFunction.code}
             </Code>

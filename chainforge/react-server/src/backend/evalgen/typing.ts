@@ -36,7 +36,7 @@ export interface EvalFunctionReport {
   false_pass: number;
   false_fail: number;
   skipped: number;
-  accuracy?: number;
+  alignment?: number;
 }
 
 export interface EvalFunctionSetReport {
