@@ -1327,11 +1327,13 @@ export async function call_bedrock(
 
         response = (
           await fm.chat(to_bedrock_chat_history(chat_history), {
-            modelArgs: { ...params },
+            modelArgs: { ...(params as Map<string, any>) },
           })
         ).message;
       } else {
-        response = await fm.generate(prompt, { modelArgs: { ...params } });
+        response = await fm.generate(prompt, {
+          modelArgs: { ...(params as Map<string, any>) },
+        });
       }
       responses.push(response);
     }
