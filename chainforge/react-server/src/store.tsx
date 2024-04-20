@@ -221,6 +221,33 @@ export const initLLMProviderMenu: (
       },
     ],
   },
+  {
+    group: "Together",
+    emoji: "👥",
+    items: [
+      {
+        name: "Llama-3 (Chat)",
+        emoji: "🦙",
+        model: "together-chat",
+        base_model: "together-chat",
+        temp: 1.0,
+      }, // The base_model designates what settings form will be used, and must be unique.
+      {
+        name: "Mixtral-8x22B (Text)",
+        emoji: "🌀",
+        model: "together-text",
+        base_model: "together-text",
+        temp: 1.0,
+      },
+      {
+        name: "SD-v1.5 (Image)",
+        emoji: "🖼",
+        model: "together-image",
+        base_model: "together-image",
+        temp: 0.0,
+      },
+    ],
+  },
 ];
 
 if (APP_IS_RUNNING_LOCALLY()) {

@@ -106,6 +106,18 @@ export enum NativeLLM {
   Bedrock_Mistral_Mistral = "mistral.mistral-7b-instruct-v0:2",
   Bedrock_Mistral_Mistral_Large = "mistral.mistral-large-2402-v1:0",
   Bedrock_Mistral_Mixtral = "mistral.mixtral-8x7b-instruct-v0:1",
+
+  // A generic model name for all models at the together.ai endpoint
+  Together_Chat = "together-chat", // chat models
+  Together_Text = "together-text", // completions models
+  Together_Image = "together-image", // image models
+  // Together_01A1 = "together/zero-one-ai/Yi-34B-Chat",
+  // Together_Allen_AI_Olmo = "together/allenai/OLMo-7B",
+  // Together_Allen_AI_Olmo_Instruct = "together/allenai/OLMo-7B-Instruct",
+  // Together_Allen_AI_Olmo_Instruct = "together/allenai/OLMo-7B-Instruct",
+  // Together_Austism = "together/Austism/chronos-hermes-13b",
+  // Together_cognitivecomputations = "together/cognitivecomputations/dolphin-2.5-mixtral-8x7b",
+  // Together_databricks = "databricks/dbrx-instruct",
 }
 
 export type LLM = string | NativeLLM;
@@ -129,6 +141,7 @@ export enum LLMProvider {
   Anthropic = "anthropic",
   Google = "google",
   HuggingFace = "hf",
+  Together = "together",
   Aleph_Alpha = "alephalpha",
   Ollama = "ollama",
   Bedrock = "bedrock",
@@ -148,6 +161,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
     return LLMProvider.Google;
   else if (llm_name?.startsWith("Dalai")) return LLMProvider.Dalai;
   else if (llm_name?.startsWith("HF_")) return LLMProvider.HuggingFace;
+  else if (llm_name?.startsWith("Together")) return LLMProvider.Together;
   else if (llm.toString().startsWith("claude")) return LLMProvider.Anthropic;
   else if (llm_name?.startsWith("Aleph_Alpha")) return LLMProvider.Aleph_Alpha;
   else if (llm_name?.startsWith("Ollama")) return LLMProvider.Ollama;

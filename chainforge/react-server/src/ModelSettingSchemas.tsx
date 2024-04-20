@@ -2022,6 +2022,379 @@ const MetaLlama2ChatSettings: ModelSettingsDict = {
   },
 };
 
+const TogetherAITextCompletionsSettings: ModelSettingsDict = {
+  fullName: "Together AI Completion (Text) Models",
+  schema: {
+    type: "object",
+    required: ["shortname", "max_tokens"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "Mixtral-8x22B",
+      },
+      model_name: {
+        type: "string",
+        title: "model",
+        description:
+          "Select an Together.ai model to query. For more details, see the Together.ai documentation.",
+        enum: [
+          "zero-one-ai/Yi-34B",
+          "zero-one-ai/Yi-6B",
+          "mistralai/Mixtral-8x22B",
+          "google/gemma-2b",
+          "google/gemma-7b",
+          "meta-llama/Llama-2-70b-hf",
+          "meta-llama/Llama-2-13b-hf",
+          "meta-llama/Llama-2-7b-hf",
+          "microsoft/phi-2",
+          "Nexusflow/NexusRaven-V2-13B",
+          "Qwen/Qwen1.5-0.5B",
+          "Qwen/Qwen1.5-1.8B",
+          "Qwen/Qwen1.5-4B",
+          "Qwen/Qwen1.5-7B",
+          "Qwen/Qwen1.5-14B",
+          "Qwen/Qwen1.5-32B",
+          "Qwen/Qwen1.5-72B",
+          "togethercomputer/GPT-JT-Moderation-6B",
+          "togethercomputer/LLaMA-2-7B-32K",
+          "togethercomputer/RedPajama-INCITE-Base-3B-v1",
+          "togethercomputer/RedPajama-INCITE-7B-Base",
+          "togethercomputer/RedPajama-INCITE-Instruct-3B-v1",
+          "togethercomputer/RedPajama-INCITE-7B-Instruct",
+          "togethercomputer/StripedHyena-Hessian-7B",
+          "mistralai/Mistral-7B-v0.1",
+          "mistralai/Mixtral-8x7B-v0.1",
+          "codellama/CodeLlama-70b-Python-hf",
+          "codellama/CodeLlama-34b-Python-hf",
+          "codellama/CodeLlama-13b-Python-hf",
+          "codellama/CodeLlama-7b-Python-hf",
+          "Phind/Phind-CodeLlama-34B-v2",
+          "WizardLM/WizardCoder-Python-34B-V1.0",
+        ],
+        default: "mistralai/Mixtral-8x22B",
+      },
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The maximum number of tokens to generate in the chat completion. (The total length of input tokens and generated tokens is limited by the model's context length.)",
+        default: 200,
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "A decimal number that determines the degree of randomness in the response. A value of 1 will always yield the same output. A temperature less than 1 favors more correctness and is appropriate for question answering or summarization. A value greater than 1 introduces more randomness in the output.",
+        default: 1,
+        minimum: 0,
+        maximum: 4,
+        multipleOf: 0.01,
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description:
+          "The top_p (nucleus) parameter is used to dynamically adjust the number of choices for each predicted token based on the cumulative probabilities. It specifies a probability threshold, below which all less likely tokens are filtered out. This technique helps to maintain diversity and generate more fluent and natural-sounding text.",
+        default: 0.7,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.005,
+      },
+      top_k: {
+        type: "number",
+        title: "top_k",
+        description:
+          "The top_k parameter is used to limit the number of choices for the next predicted word or token. It specifies the maximum number of tokens to consider at each step, based on their probability of occurrence. This technique helps to speed up the generation process and can improve the quality of the generated text by focusing on the most likely options.",
+        default: 50,
+      },
+      repetition_penalty: {
+        type: "number",
+        title: "repetition_penalty",
+        description:
+          "A number that controls the diversity of generated text by reducing the likelihood of repeated sequences. Higher values decrease repetition.",
+      },
+      echo: {
+        type: "boolean",
+        title: "echo",
+        description: "Echo prompt in output.",
+        enum: [true, false],
+        default: false,
+      },
+      safety_model: {
+        type: "string",
+        title: "safety_model",
+        description:
+          "A moderation model to validate tokens. Choice between available moderation models on together.ai site (e.g., Meta-Llama/Llama-Guard-7b).",
+        default: "",
+      },
+      stop: {
+        type: "string",
+        title: "stop sequences",
+        description:
+          'Up to 4 sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: "",
+      },
+    },
+  },
+
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model_name: {
+      "ui:help": "Defaults to meta-llama/Llama-3-70b-chat-hf.",
+    },
+    temperature: {
+      "ui:help": "Defaults to 0.7.",
+      "ui:widget": "range",
+    },
+    top_p: {
+      "ui:help":
+        "Defaults to 0.7. Leave at default if you prefer to set temperature.",
+      "ui:widget": "range",
+    },
+    stop: {
+      "ui:widget": "textarea",
+      "ui:help": "Defaults to empty.",
+    },
+    max_tokens: {
+      "ui:help": "Defaults to infinity.",
+    },
+    echo: {
+      "ui:widget": "radio",
+    },
+  },
+
+  postprocessors: {
+    stop: (str) => {
+      if (typeof str !== "string") return str;
+      if (str.trim().length === 0) return [];
+      return str
+        .match(/"((?:[^"\\]|\\.)*)"/g)
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+  },
+};
+
+const TogetherAIChatModelSettings: ModelSettingsDict = {
+  fullName: "Together AI Chat Models",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      ...TogetherAITextCompletionsSettings.schema.properties,
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "Llama-3",
+      },
+      model_name: {
+        type: "string",
+        title: "model",
+        description:
+          "Select an Together.ai chat model to query. For more details, see the Together.ai documentation.",
+        enum: [
+          "zero-one-ai/Yi-34B-Chat",
+          "allenai/OLMo-7B-Instruct",
+          "allenai/OLMo-7B-Twin-2T",
+          "allenai/OLMo-7B",
+          "zero-one-ai/Yi-34B-Chat",
+          "allenai/OLMo-7B-Instruct",
+          "allenai/OLMo-7B-Twin-2T",
+          "allenai/OLMo-7B",
+          "Austism/chronos-hermes-13b",
+          "cognitivecomputations/dolphin-2.5-mixtral-8x7b",
+          "databricks/dbrx-instruct",
+          "deepseek-ai/deepseek-coder-33b-instruct",
+          "deepseek-ai/deepseek-llm-67b-chat",
+          "garage-bAInd/Platypus2-70B-instruct",
+          "google/gemma-2b-it",
+          "google/gemma-7b-it",
+          "Gryphe/MythoMax-L2-13b",
+          "lmsys/vicuna-13b-v1.5",
+          "lmsys/vicuna-7b-v1.5",
+          "codellama/CodeLlama-13b-Instruct-hf",
+          "codellama/CodeLlama-34b-Instruct-hf",
+          "codellama/CodeLlama-70b-Instruct-hf",
+          "codellama/CodeLlama-7b-Instruct-hf",
+          "meta-llama/Llama-2-70b-chat-hf",
+          "meta-llama/Llama-2-13b-chat-hf",
+          "meta-llama/Llama-2-7b-chat-hf",
+          "meta-llama/Llama-3-8b-chat-hf",
+          "meta-llama/Llama-3-70b-chat-hf",
+          "microsoft/WizardLM-2-8x22B",
+          "mistralai/Mistral-7B-Instruct-v0.1",
+          "mistralai/Mistral-7B-Instruct-v0.2",
+          "mistralai/Mixtral-8x7B-Instruct-v0.1",
+          "mistralai/Mixtral-8x22B-Instruct-v0.1",
+          "NousResearch/Nous-Capybara-7B-V1p9",
+          "NousResearch/Nous-Hermes-2-Mistral-7B-DPO",
+          "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO",
+          "NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT",
+          "NousResearch/Nous-Hermes-llama-2-7b",
+          "NousResearch/Nous-Hermes-Llama2-13b",
+          "NousResearch/Nous-Hermes-2-Yi-34B",
+          "openchat/openchat-3.5-1210",
+          "Open-Orca/Mistral-7B-OpenOrca",
+          "Qwen/Qwen1.5-0.5B-Chat",
+          "Qwen/Qwen1.5-1.8B-Chat",
+          "Qwen/Qwen1.5-4B-Chat",
+          "Qwen/Qwen1.5-7B-Chat",
+          "Qwen/Qwen1.5-14B-Chat",
+          "Qwen/Qwen1.5-32B-Chat",
+          "Qwen/Qwen1.5-72B-Chat",
+          "snorkelai/Snorkel-Mistral-PairRM-DPO",
+          "togethercomputer/alpaca-7b",
+          "teknium/OpenHermes-2-Mistral-7B",
+          "teknium/OpenHermes-2p5-Mistral-7B",
+          "togethercomputer/Llama-2-7B-32K-Instruct",
+          "togethercomputer/RedPajama-INCITE-Chat-3B-v1",
+          "togethercomputer/RedPajama-INCITE-7B-Chat",
+          "togethercomputer/StripedHyena-Nous-7B",
+          "Undi95/ReMM-SLERP-L2-13B",
+          "Undi95/Toppy-M-7B",
+          "WizardLM/WizardLM-13B-V1.2",
+          "upstage/SOLAR-10.7B-Instruct-v1.0",
+        ],
+        default: "meta-llama/Llama-3-70b-chat-hf",
+      },
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The maximum number of tokens to generate in the chat completion. (The total length of input tokens and generated tokens is limited by the model's context length.)",
+      },
+      response_format: {
+        type: "string",
+        title: "response_format",
+        enum: ["text", "json_object"],
+        description:
+          "An object specifying the format that the model must output. Currently, can only be text or JSON. Only works with some GPT models. IMPORTANT: when using JSON mode, you should also instruct the model to produce JSON yourself via a system or user message.",
+        default: "text",
+      },
+      tools: {
+        type: "string",
+        title: "tools",
+        description:
+          "A JSON list (in brackets []) specifying an array of tools, conforming to the OpenAI tools schema.",
+        default: "",
+      },
+      tool_choice: {
+        type: "string",
+        title: "tool_choice",
+        description:
+          "Controls which (if any) function is called by the model. auto means the model can pick between generating a message or calling a function. Specifying a particular function name forces the model to call that function. auto is the default.",
+        default: "",
+      },
+      frequency_penalty: {
+        type: "number",
+        title: "frequency_penalty",
+        description:
+          "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
+        multipleOf: 0.005,
+      },
+      presence_penalty: {
+        type: "number",
+        title: "presence_penalty",
+        description:
+          "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
+        multipleOf: 0.005,
+      },
+    },
+  },
+  uiSchema: {
+    ...TogetherAITextCompletionsSettings.uiSchema,
+    model_name: {
+      "ui:help": "Defaults to Llama-3.",
+    },
+    response_format: {
+      "ui:help": "Defaults to text.",
+    },
+    tools: {
+      "ui:help":
+        "Leave blank to not specify any tools. NOTE: JSON schema MUST NOT have trailing commas.",
+      "ui:widget": "textarea",
+    },
+    tool_choice: {
+      "ui:help":
+        "'none' is the default when no functions are present. 'auto' is the default if functions are present.",
+    },
+    presence_penalty: {
+      "ui:help": "Defaults to 0.",
+      "ui:widget": "range",
+    },
+    frequency_penalty: {
+      "ui:help": "Defaults to 0.",
+      "ui:widget": "range",
+    },
+  },
+  postprocessors: {
+    ...TogetherAITextCompletionsSettings.postprocessors,
+    tools: (str) => {
+      if (typeof str !== "string") return str;
+      if (str.trim().length === 0) return [];
+      return JSON.parse(str); // parse the JSON schema
+    },
+    tool_choice: (str) => {
+      if (typeof str !== "string") return str;
+      const s = str.trim();
+      if (s.length === 0) return "";
+      if (s === "auto" || s === "none") return s;
+      else return { name: s };
+    },
+    response_format: (str) => {
+      return { type: "function", function: { name: str } };
+    },
+  },
+};
+
+const TogetherAIImageModelSettings: ModelSettingsDict = {
+  fullName: "Together AI Image Models",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      ...TogetherAITextCompletionsSettings.schema.properties,
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "SD-v1.5",
+      },
+      model_name: {
+        type: "string",
+        title: "model",
+        description:
+          "Select an Together.ai image model to query. For more details, see the Together.ai documentation.",
+        enum: [
+          "prompthero/openjourney",
+          "runwayml/stable-diffusion-v1-5",
+          "SG161222/Realistic_Vision_V3.0_VAE",
+          "stabilityai/stable-diffusion-2-1",
+          "stabilityai/stable-diffusion-xl-base-1.0",
+          "wavymulder/Analog-Diffusion",
+        ],
+        default: "runwayml/stable-diffusion-v1-5",
+      },
+    },
+  },
+  uiSchema: TogetherAITextCompletionsSettings.uiSchema,
+  postprocessors: TogetherAITextCompletionsSettings.postprocessors,
+};
+
 // A lookup table indexed by base_model.
 export const ModelSettings: Dict<ModelSettingsDict> = {
   "gpt-3.5-turbo": ChatGPTSettings,
@@ -2041,6 +2414,9 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "br.mistral.mistral": MistralSettings,
   "br.mistral.mixtral": MixtralSettings,
   "br.meta.llama2": MetaLlama2ChatSettings,
+  "together-text": TogetherAITextCompletionsSettings,
+  "together-chat": TogetherAIChatModelSettings,
+  "together-image": TogetherAIImageModelSettings,
 };
 
 export function getSettingsSchemaForLLM(
@@ -2066,6 +2442,8 @@ export function getSettingsSchemaForLLM(
     return provider_to_settings_schema[llm_provider];
   else if (llm_provider === LLMProvider.Bedrock) {
     return ModelSettings[llm_name.split("-")[0]];
+  } else if (llm_provider === LLMProvider.Together) {
+    return ModelSettings[llm_name];
   } else {
     console.error(`Could not find provider for llm ${llm_name}`);
     return undefined;
