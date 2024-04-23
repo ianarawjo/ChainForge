@@ -29,6 +29,7 @@ import {
   IconArrowMerge,
   IconArrowsSplit,
   IconForms,
+  IconAbacus,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -88,6 +89,7 @@ import {
   isEdgeChromium,
   isChromium,
 } from "react-device-detect";
+import MultiEvalNode from "./MultiEvalNode";
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -157,6 +159,7 @@ const nodeTypes = {
   simpleval: SimpleEvalNode,
   evaluator: CodeEvaluatorNode,
   llmeval: LLMEvaluatorNode,
+  multieval: MultiEvalNode,
   vis: VisNode,
   inspect: InspectNode,
   script: ScriptNode,
@@ -328,6 +331,7 @@ const App = () => {
   const addTabularDataNode = () => addNode("table");
   const addCommentNode = () => addNode("comment");
   const addLLMEvalNode = () => addNode("llmeval");
+  const addMultiEvalNode = () => addNode("multieval");
   const addJoinNode = () => addNode("join");
   const addSplitNode = () => addNode("split");
   const addProcessorNode = (progLang: string) => {
@@ -1050,6 +1054,15 @@ const App = () => {
                 >
                   {" "}
                   LLM Scorer{" "}
+                </Menu.Item>
+              </MenuTooltip>
+              <MenuTooltip label="Evaluate responses across multiple criteria (multiple code and/or LLM evaluators).">
+                <Menu.Item
+                  onClick={addMultiEvalNode}
+                  icon={<IconAbacus size="16px" />}
+                >
+                  {" "}
+                  Multi-Evaluator{" "}
                 </Menu.Item>
               </MenuTooltip>
               <Menu.Divider />
