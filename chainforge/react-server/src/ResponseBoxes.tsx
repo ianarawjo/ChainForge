@@ -164,10 +164,12 @@ export const genResponseTextsDisplay = (
   onlyShowScores?: boolean,
   llmName?: string,
   wideFormat?: boolean,
+  hideEvalScores?: boolean,
 ): React.ReactNode[] | React.ReactNode => {
   if (!res_obj) return <></>;
 
-  const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
+  const eval_res_items =
+    !hideEvalScores && res_obj.eval_res ? res_obj.eval_res.items : null;
 
   // Bucket responses that have the same text, and sort by the
   // number of same responses so that the top div is the most prevalent response.
