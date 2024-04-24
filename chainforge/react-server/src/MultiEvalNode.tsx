@@ -98,8 +98,8 @@ const EvaluatorContainer: React.FC<EvaluatorContainerProps> = ({
   return (
     <Card
       withBorder
-      shadow="sm"
-      mb="xs"
+      // shadow="sm"
+      mb={4}
       radius="md"
       style={{ cursor: "default" }}
     >
@@ -132,7 +132,7 @@ const EvaluatorContainer: React.FC<EvaluatorContainerProps> = ({
                   padding: "0px",
                   height: "14pt",
                   minHeight: "0pt",
-                  fontWeight: "bold",
+                  fontWeight: 500,
                 },
               }}
             />

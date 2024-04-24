@@ -747,7 +747,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           const defaultOpened =
             !first_opened ||
             eatenvars.length === 0 ||
-            eatenvars[eatenvars.length - 1] === "LLM";
+            eatenvars[eatenvars.length - 1] === "$LLM";
           first_opened = true;
           leaf_id += 1;
           return (
@@ -771,13 +771,13 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         // we also bucket any 'leftover' responses that didn't have the requested variable (a kind of 'soft fail')
         const group_name = varnames[0];
         const [grouped_resps, leftover_resps] =
-          group_name === "LLM"
+          group_name === "$LLM"
             ? groupResponsesBy(resps, getLLMName)
             : groupResponsesBy(resps, (r) =>
                 group_name in r.vars ? r.vars[group_name] : null,
               );
         const get_header =
-          group_name === "LLM"
+          group_name === "$LLM"
             ? (key: string, val?: string) => (
                 <div
                   key={val}
@@ -796,7 +796,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         const defaultOpened =
           !first_opened ||
           eatenvars.length === 0 ||
-          eatenvars[eatenvars.length - 1] === "LLM";
+          eatenvars[eatenvars.length - 1] === "$LLM";
         const grouped_resps_divs = Object.keys(grouped_resps).map((g) =>
           groupByVars(
             grouped_resps[g],
