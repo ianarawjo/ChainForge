@@ -38,11 +38,11 @@ import {
   ResponseBox,
   ResponseGroup,
   genResponseTextsDisplay,
+  getEvalResultStr,
 } from "./ResponseBoxes";
 import { getLabelForResponse } from "./ResponseRatingToolbar";
 import {
   Dict,
-  EvaluationScore,
   LLMResponse,
   LLMResponseData,
   isImageResponseData,
@@ -53,40 +53,6 @@ const getLLMName = (resp_obj: LLMResponse) =>
   typeof resp_obj?.llm === "string" ? resp_obj.llm : resp_obj?.llm?.name;
 const escapeRegExp = (txt: string) =>
   txt.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
-
-const SUCCESS_EVAL_SCORES = new Set(["true", "yes"]);
-const FAILURE_EVAL_SCORES = new Set(["false", "no"]);
-const getEvalResultStr = (eval_item: EvaluationScore, hide_prefix: boolean) => {
-  if (Array.isArray(eval_item)) {
-    return (hide_prefix ? "" : "scores: ") + eval_item.join(", ");
-  } else if (typeof eval_item === "object") {
-    const strs = Object.keys(eval_item).map((key, j) => {
-      let val = eval_item[key];
-      if (typeof val === "number" && val.toString().indexOf(".") > -1)
-        val = val.toFixed(4); // truncate floats to 4 decimal places
-      return (
-        <div key={`${key}-${j}`}>
-          <span>{key}: </span>
-          <span>{getEvalResultStr(val, true)}</span>
-        </div>
-      );
-    });
-    return <Stack spacing={0}>{strs}</Stack>;
-  } else {
-    const eval_str = eval_item.toString().trim().toLowerCase();
-    const color = SUCCESS_EVAL_SCORES.has(eval_str)
-      ? "black"
-      : FAILURE_EVAL_SCORES.has(eval_str)
-        ? "red"
-        : "black";
-    return (
-      <>
-        {!hide_prefix && <span style={{ color: "gray" }}>{"score: "}</span>}
-        <span style={{ color }}>{eval_str}</span>
-      </>
-    );
-  }
-};
 
 function getEvalResCols(responses: LLMResponse[]) {
   // Look for + extract any consistent, *named* evaluation metrics (dicts)
@@ -414,6 +380,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
 
     // If this is the first time receiving responses, set the multiSelectValue to whatever is the first:
     if (!receivedResponsesOnce) {
+      if (contains_multi_evals)
+        // If multiple evals are detected, default to "table" format:
+        setViewFormat("table");
       setMultiSelectValue([msvars[0].value]);
       setReceivedResponsesOnce(true);
     } else if (

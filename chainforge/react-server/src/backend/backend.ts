@@ -1254,7 +1254,6 @@ export async function evalWithLLM(
       .flat();
 
     // Now run all inputs through the LLM grader!:
-    console.log(llm);
     const { responses, errors } = await queryLLM(
       `eval-${id}-${cache_id}`,
       [llm],

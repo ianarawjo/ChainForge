@@ -19,7 +19,6 @@ import {
   Collapse,
   Button,
   Alert,
-  Flex,
   Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -29,7 +28,6 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconDots,
-  IconInfoCircle,
   IconPlus,
   IconRobot,
   IconSearch,
@@ -143,7 +141,6 @@ const EvaluatorContainer: React.FC<EvaluatorContainerProps> = ({
             />
           </Group>
           <Group spacing="4px" ml="auto">
-
             {customButton}
 
             <Text color="#bbb" size="sm" mr="6px">
@@ -294,11 +291,11 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         return e;
       }),
     );
-  }
+  };
 
   // const evaluatorComponents = useMemo(() => {
   //   // evaluatorComponentRefs.current = [];
-    
+
   //   return evaluators.map((e, idx) => {
   //     let component: React.ReactNode;
   //     if (e.type === "python" || e.type === "javascript") {
@@ -437,13 +434,15 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
       progress?: QueryProgress,
     ) => {
       // Update the progress rings, debouncing to avoid too many rerenders
-      debounce((_idx, _progress) => 
-        setEvaluators((evs) => {
-          if (_idx >= evs.length) return evs;
-          evs[_idx].progress = _progress;
-          return [...evs];
-        })
-      , 30)(evaluator_idx, progress);
+      debounce(
+        (_idx, _progress) =>
+          setEvaluators((evs) => {
+            if (_idx >= evs.length) return evs;
+            evs[_idx].progress = _progress;
+            return [...evs];
+          }),
+        30,
+      )(evaluator_idx, progress);
     };
 
     // Run all evaluators here!
@@ -502,13 +501,12 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
       }
 
       // Remove progress rings without errors
-      setEvaluators((evs) => 
-        evs.map(e => {
-          if (e.progress && !e.progress.error)
-            e.progress = undefined;
+      setEvaluators((evs) =>
+        evs.map((e) => {
+          if (e.progress && !e.progress.error) e.progress = undefined;
           return e;
-        })
-      )
+        }),
+      );
 
       // Ignore null refs
       settled = settled.filter(
@@ -638,94 +636,104 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
       <iframe style={{ display: "none" }} id={`${id}-iframe`}></iframe>
 
       {/* {evaluatorComponents} */}
-      {evaluators.map((e, idx) => 
-          <EvaluatorContainer
-            name={e.name}
-            key={`${e.name}-${idx}`}
-            type={EVAL_TYPE_PRETTY_NAME[e.type]}
-            progress={e.progress}
-            customButton={e.state?.sandbox !== undefined ? (
-              <Tooltip label={
-                e.state?.sandbox
-                  ? "Running in sandbox (pyodide)"
-                  : "Running unsandboxed (local Python)"
-              } withinPortal withArrow>
-
-              <button
-                onClick={() => updateEvalState(idx, (e) => (e.state.sandbox = !e.state.sandbox))}
-                className="custom-button"
-                style={{ border: "none", padding: "0px", marginTop: "3px" }}
+      {evaluators.map((e, idx) => (
+        <EvaluatorContainer
+          name={e.name}
+          key={`${e.name}-${idx}`}
+          type={EVAL_TYPE_PRETTY_NAME[e.type]}
+          progress={e.progress}
+          customButton={
+            e.state?.sandbox !== undefined ? (
+              <Tooltip
+                label={
+                  e.state?.sandbox
+                    ? "Running in sandbox (pyodide)"
+                    : "Running unsandboxed (local Python)"
+                }
+                withinPortal
+                withArrow
               >
-                <IconBox
-                  size="12pt"
-                  color={e.state.sandbox ? "orange" : "#999"}
-                />
-                
-              </button>
+                <button
+                  onClick={() =>
+                    updateEvalState(
+                      idx,
+                      (e) => (e.state.sandbox = !e.state.sandbox),
+                    )
+                  }
+                  className="custom-button"
+                  style={{ border: "none", padding: "0px", marginTop: "3px" }}
+                >
+                  <IconBox
+                    size="12pt"
+                    color={e.state.sandbox ? "orange" : "#999"}
+                  />
+                </button>
               </Tooltip>
-            ) : undefined}
-            onDelete={() => {
-              delete evaluatorComponentRefs.current[idx];
-              setEvaluators(evaluators.filter((_, i) => i !== idx));
-            }}
-            onChangeTitle={(newTitle) =>
-              setEvaluators((evs) => 
-                evs.map((e, i) => {
-                  if (i === idx) e.name = newTitle;
-                  console.log(e);
-                  return e;
-                }),
-              )
-            }
-            padding={e.type === "llm" ? "8px" : undefined}
-          >
-            {
-              (e.type === "python" || e.type === "javascript") ? <CodeEvaluatorComponent
-                    ref={(el) =>
-                      (evaluatorComponentRefs.current[idx] = {
-                        type: "code",
-                        name: e.name,
-                        ref: el,
-                      })
-                    }
-                    code={e.state?.code}
-                    progLang={e.type}
-                    sandbox={e.state?.sandbox}
-                    type="evaluator"
-                    id={id}
-                    onCodeEdit={(code) =>
-                      updateEvalState(idx, (e) => (e.state.code = code))
-                    }
-                    showUserInstruction={false}
-                  />
-              : (e.type === "llm") ?
-                  <LLMEvaluatorComponent
-                    ref={(el) =>
-                      (evaluatorComponentRefs.current[idx] = {
-                        type: "llm",
-                        name: e.name,
-                        ref: el,
-                      })
-                    }
-                    prompt={e.state?.prompt}
-                    grader={e.state?.grader}
-                    format={e.state?.format}
-                    id={`${id}-${e.uid}`}
-                    showUserInstruction={false}
-                    onPromptEdit={(prompt) =>
-                      updateEvalState(idx, (e) => (e.state.prompt = prompt))
-                    }
-                    onLLMGraderChange={(grader) =>
-                      updateEvalState(idx, (e) => (e.state.grader = grader))
-                    }
-                    onFormatChange={(format) =>
-                      updateEvalState(idx, (e) => (e.state.format = format))
-                    }
-                  />
-              : <Alert>Error: Unknown evaluator type {e.type}</Alert>
-            }
+            ) : undefined
+          }
+          onDelete={() => {
+            delete evaluatorComponentRefs.current[idx];
+            setEvaluators(evaluators.filter((_, i) => i !== idx));
+          }}
+          onChangeTitle={(newTitle) =>
+            setEvaluators((evs) =>
+              evs.map((e, i) => {
+                if (i === idx) e.name = newTitle;
+                console.log(e);
+                return e;
+              }),
+            )
+          }
+          padding={e.type === "llm" ? "8px" : undefined}
+        >
+          {e.type === "python" || e.type === "javascript" ? (
+            <CodeEvaluatorComponent
+              ref={(el) =>
+                (evaluatorComponentRefs.current[idx] = {
+                  type: "code",
+                  name: e.name,
+                  ref: el,
+                })
+              }
+              code={e.state?.code}
+              progLang={e.type}
+              sandbox={e.state?.sandbox}
+              type="evaluator"
+              id={id}
+              onCodeEdit={(code) =>
+                updateEvalState(idx, (e) => (e.state.code = code))
+              }
+              showUserInstruction={false}
+            />
+          ) : e.type === "llm" ? (
+            <LLMEvaluatorComponent
+              ref={(el) =>
+                (evaluatorComponentRefs.current[idx] = {
+                  type: "llm",
+                  name: e.name,
+                  ref: el,
+                })
+              }
+              prompt={e.state?.prompt}
+              grader={e.state?.grader}
+              format={e.state?.format}
+              id={`${id}-${e.uid}`}
+              showUserInstruction={false}
+              onPromptEdit={(prompt) =>
+                updateEvalState(idx, (e) => (e.state.prompt = prompt))
+              }
+              onLLMGraderChange={(grader) =>
+                updateEvalState(idx, (e) => (e.state.grader = grader))
+              }
+              onFormatChange={(format) =>
+                updateEvalState(idx, (e) => (e.state.format = format))
+              }
+            />
+          ) : (
+            <Alert>Error: Unknown evaluator type {e.type}</Alert>
+          )}
         </EvaluatorContainer>
-      )}
+      ))}
 
       <Handle
         type="target"

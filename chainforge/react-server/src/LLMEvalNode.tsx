@@ -157,7 +157,7 @@ export const LLMEvaluatorComponent = forwardRef<
       " " +
       formatting_instr +
       "\n```\n{input}\n```";
-      const llm_key = llmScorers[0].key ?? "";
+    const llm_key = llmScorers[0].key ?? "";
 
     // Fetch info about the number of queries we'll need to make
     return grabResponses(input_node_ids)
@@ -171,11 +171,14 @@ export const LLMEvaluatorComponent = forwardRef<
         return onProgressChange
           ? (progress_by_llm: Dict<QueryProgress>) =>
               onProgressChange({
-                success: (100 * progress_by_llm[llm_key].success) / num_resps_required,
-                error: (100 * progress_by_llm[llm_key].error) / num_resps_required,
+                success:
+                  (100 * progress_by_llm[llm_key].success) / num_resps_required,
+                error:
+                  (100 * progress_by_llm[llm_key].error) / num_resps_required,
               })
           : undefined;
-      }).then((progress_listener) => {
+      })
+      .then((progress_listener) => {
         // Run LLM as evaluator
         return evalWithLLM(
           id ?? Date.now().toString(),
@@ -184,18 +187,19 @@ export const LLMEvaluatorComponent = forwardRef<
           input_node_ids,
           apiKeys ?? {},
           progress_listener,
-        )
-      }).then(function (res) {
-      // Check if there's an error; if so, bubble it up to user and exit:
-      if (res.errors && res.errors.length > 0) throw new Error(res.errors[0]);
-      else if (res.responses === undefined)
-        throw new Error(
-          "Unknown error encountered when requesting evaluations: empty response returned.",
         );
+      })
+      .then(function (res) {
+        // Check if there's an error; if so, bubble it up to user and exit:
+        if (res.errors && res.errors.length > 0) throw new Error(res.errors[0]);
+        else if (res.responses === undefined)
+          throw new Error(
+            "Unknown error encountered when requesting evaluations: empty response returned.",
+          );
 
-      // Success!
-      return res.responses;
-    });
+        // Success!
+        return res.responses;
+      });
   };
 
   // Export the current internal state as JSON
