@@ -7,6 +7,7 @@ import React, {
   useContext,
 } from "react";
 import { Handle, Position } from "reactflow";
+import { v4 as uuid } from "uuid";
 import {
   TextInput,
   Text,
@@ -198,6 +199,7 @@ const EvaluatorContainer: React.FC<EvaluatorContainerProps> = ({
 
 export interface EvaluatorContainerDesc {
   name: string; // the user's nickname for the evaluator, which displays as the title of the banner
+  uid: string; // a unique identifier for this evaluator, since name can change
   type: "python" | "javascript" | "llm"; // the type of evaluator
   state: Dict; // the internal state necessary for that specific evaluator component (e.g., a prompt for llm eval, or code for code eval)
   progress?: QueryProgress;
@@ -262,7 +264,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   // Add an evaluator to the end of the list
   const addEvaluator = useCallback(
     (name: string, type: EvaluatorContainerDesc["type"], state: Dict) => {
-      setEvaluators(evaluators.concat({ name, type, state }));
+      setEvaluators(evaluators.concat({ name, uid: uuid(), type, state }));
     },
     [setEvaluators, evaluators],
   );
@@ -708,7 +710,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
                     prompt={e.state?.prompt}
                     grader={e.state?.grader}
                     format={e.state?.format}
-                    id={id}
+                    id={`${id}-${e.uid}`}
                     showUserInstruction={false}
                     onPromptEdit={(prompt) =>
                       updateEvalState(idx, (e) => (e.state.prompt = prompt))
