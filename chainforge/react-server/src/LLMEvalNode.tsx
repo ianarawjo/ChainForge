@@ -21,7 +21,7 @@ import LLMResponseInspectorModal, {
 } from "./LLMResponseInspectorModal";
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
-import { stripLLMDetailsFromResponses } from "./backend/utils";
+import { genDebounceFunc, stripLLMDetailsFromResponses } from "./backend/utils";
 import { AlertModalContext } from "./AlertModal";
 import { Dict, LLMResponse, LLMSpec, QueryProgress } from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
@@ -116,11 +116,18 @@ export const LLMEvaluatorComponent = forwardRef<
   );
   const apiKeys = useStore((state) => state.apiKeys);
 
+  // Debounce helpers
+  const debounceTimeoutRef = useRef(null);
+  const debounce = genDebounceFunc(debounceTimeoutRef);
+
   const handlePromptChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       // Store prompt text
       setPromptText(e.target.value);
-      if (onPromptEdit) onPromptEdit(e.target.value);
+
+      // Update the caller, but debounce to reduce the number of callbacks when user is typing
+      if (onPromptEdit) 
+        debounce(() => onPromptEdit(e.target.value), 200)();
     },
     [setPromptText, onPromptEdit],
   );

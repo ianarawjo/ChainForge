@@ -76,6 +76,7 @@ export interface EvaluatorContainerProps {
   progress?: QueryProgress;
   customButton?: React.ReactNode;
   children: React.ReactNode;
+  initiallyOpen?: boolean;
 }
 
 /** A wrapper for a single evaluator, that can be renamed */
@@ -88,8 +89,9 @@ const EvaluatorContainer: React.FC<EvaluatorContainerProps> = ({
   progress,
   customButton,
   children,
+  initiallyOpen,
 }) => {
-  const [opened, { toggle }] = useDisclosure(false);
+  const [opened, { toggle }] = useDisclosure(initiallyOpen ?? false);
   const _padding = useMemo(() => padding ?? "0px", [padding]);
   const [title, setTitle] = useState(name ?? "Criteria");
 
@@ -200,6 +202,7 @@ export interface EvaluatorContainerDesc {
   type: "python" | "javascript" | "llm"; // the type of evaluator
   state: Dict; // the internal state necessary for that specific evaluator component (e.g., a prompt for llm eval, or code for code eval)
   progress?: QueryProgress;
+  justAdded?: boolean;
 }
 
 export interface MultiEvalNodeProps {
@@ -261,14 +264,14 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   // Add an evaluator to the end of the list
   const addEvaluator = useCallback(
     (name: string, type: EvaluatorContainerDesc["type"], state: Dict) => {
-      setEvaluators(evaluators.concat({ name, uid: uuid(), type, state }));
+      setEvaluators(evaluators.concat({ name, uid: uuid(), type, state, justAdded: true }));
     },
-    [setEvaluators, evaluators],
+    [evaluators],
   );
 
   // Sync evaluator state to stored state of this node
   useEffect(() => {
-    setDataPropsForNode(id, { evaluators });
+    setDataPropsForNode(id, { evaluators: evaluators.map((e) => ({...e, justAdded: undefined})) });
   }, [evaluators]);
 
   // Generate UI for the evaluator state
@@ -641,6 +644,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
           name={e.name}
           key={`${e.name}-${idx}`}
           type={EVAL_TYPE_PRETTY_NAME[e.type]}
+          initiallyOpen={e.justAdded}
           progress={e.progress}
           customButton={
             e.state?.sandbox !== undefined ? (

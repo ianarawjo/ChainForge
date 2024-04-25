@@ -33,6 +33,7 @@ import "ace-builds/src-noconflict/theme-xcode";
 import "ace-builds/src-noconflict/ext-language_tools";
 import {
   APP_IS_RUNNING_LOCALLY,
+  genDebounceFunc,
   getVarsAndMetavars,
   stripLLMDetailsFromResponses,
   toStandardResponseFormat,
@@ -217,6 +218,10 @@ export const CodeEvaluatorComponent = forwardRef<
     false,
   );
 
+  // Debounce helpers
+  const debounceTimeoutRef = useRef(null);
+  const debounce = genDebounceFunc(debounceTimeoutRef);
+
   // Controlled handle when user edits code
   const handleCodeEdit = (code: string) => {
     if (codeTextOnLastRun !== false) {
@@ -225,7 +230,10 @@ export const CodeEvaluatorComponent = forwardRef<
       else if (!code_changed && onCodeEqualToLastRun) onCodeEqualToLastRun();
     }
     setCodeText(code);
-    if (onCodeEdit) onCodeEdit(code);
+
+    // Debounce to control number of re-renders to parent, when user is editing/typing:
+    if (onCodeEdit) 
+      debounce(() => onCodeEdit(code), 200)();
   };
 
   // Runs the code evaluator/processor over the inputs, returning the results as a Promise.
@@ -321,7 +329,7 @@ export const CodeEvaluatorComponent = forwardRef<
           mode={progLang}
           theme="xcode"
           onChange={handleCodeEdit}
-          value={code}
+          value={codeText}
           name={"aceeditor_" + id}
           editorProps={{ $blockScrolling: true }}
           width="100%"
