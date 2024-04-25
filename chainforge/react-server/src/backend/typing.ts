@@ -199,6 +199,7 @@ export type EvaluationScore =
   | number
   | string
   | Dict<boolean | number | string>;
+
 export type EvaluationResults = {
   items: EvaluationScore[];
   dtype:
