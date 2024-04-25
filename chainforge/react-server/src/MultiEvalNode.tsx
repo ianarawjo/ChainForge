@@ -24,6 +24,7 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconAbacus,
+  IconBox,
   IconChevronDown,
   IconChevronRight,
   IconDots,
@@ -45,6 +46,7 @@ import useStore from "./store";
 import {
   APP_IS_RUNNING_LOCALLY,
   batchResponsesByUID,
+  genDebounceFunc,
   toStandardResponseFormat,
 } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
@@ -73,6 +75,7 @@ export interface EvaluatorContainerProps {
   onDelete: () => void;
   onChangeTitle: (newTitle: string) => void;
   progress?: QueryProgress;
+  customButton?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -84,6 +87,7 @@ const EvaluatorContainer: React.FC<EvaluatorContainerProps> = ({
   onDelete,
   onChangeTitle,
   progress,
+  customButton,
   children,
 }) => {
   const [opened, { toggle }] = useDisclosure(false);
@@ -138,9 +142,13 @@ const EvaluatorContainer: React.FC<EvaluatorContainerProps> = ({
             />
           </Group>
           <Group spacing="4px" ml="auto">
+
+            {customButton}
+
             <Text color="#bbb" size="sm" mr="6px">
               {evalType}
             </Text>
+
             {progress ? (
               <GatheringResponsesRingProgress progress={progress} />
             ) : (
@@ -162,12 +170,12 @@ const EvaluatorContainer: React.FC<EvaluatorContainerProps> = ({
               </Menu.Target>
 
               <Menu.Dropdown>
-                <Menu.Item icon={<IconSearch size="14px" />}>
+                {/* <Menu.Item icon={<IconSearch size="14px" />}>
                   Inspect scores
                 </Menu.Item>
                 <Menu.Item icon={<IconInfoCircle size="14px" />}>
                   Help / info
-                </Menu.Item>
+                </Menu.Item> */}
                 <Menu.Item
                   icon={<IconTrash size="14px" />}
                   color="red"
@@ -239,6 +247,10 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
   const [showDrawer, setShowDrawer] = useState(false);
 
+  // Debounce helpers
+  const debounceTimeoutRef = useRef(null);
+  const debounce = genDebounceFunc(debounceTimeoutRef);
+
   /** Store evaluators as array of JSON serialized state:
    * {  name: <string>  // the user's nickname for the evaluator, which displays as the title of the banner
    *    type: 'python' | 'javascript' | 'llm'  // the type of evaluator
@@ -268,98 +280,103 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
       ref: CodeEvaluatorComponentRef | LLMEvaluatorComponentRef | null;
     }[]
   >([]);
-  const evaluatorComponents = useMemo(() => {
-    evaluatorComponentRefs.current = [];
-    const updateEvalState = (
-      idx: number,
-      transformFunc: (e: EvaluatorContainerDesc) => void,
-    ) =>
-      setEvaluators((es) =>
-        es.map((e, i) => {
-          if (idx === i) transformFunc(e);
-          return e;
-        }),
-      );
-    return evaluators.map((e, idx) => {
-      let component: React.ReactNode;
-      if (e.type === "python" || e.type === "javascript") {
-        component = (
-          <CodeEvaluatorComponent
-            ref={(el) =>
-              (evaluatorComponentRefs.current[idx] = {
-                type: "code",
-                name: e.name,
-                ref: el,
-              })
-            }
-            code={e.state?.code}
-            progLang={e.type}
-            type="evaluator"
-            id={id}
-            onCodeEdit={(code) =>
-              updateEvalState(idx, (e) => (e.state.code = code))
-            }
-            showUserInstruction={false}
-          />
-        );
-      } else if (e.type === "llm") {
-        component = (
-          <LLMEvaluatorComponent
-            ref={(el) =>
-              (evaluatorComponentRefs.current[idx] = {
-                type: "llm",
-                name: e.name,
-                ref: el,
-              })
-            }
-            prompt={e.state?.prompt}
-            grader={e.state?.grader}
-            format={e.state?.format}
-            id={id}
-            showUserInstruction={false}
-            onPromptEdit={(prompt) =>
-              updateEvalState(idx, (e) => (e.state.prompt = prompt))
-            }
-            onLLMGraderChange={(grader) =>
-              updateEvalState(idx, (e) => (e.state.grader = grader))
-            }
-            onFormatChange={(format) =>
-              updateEvalState(idx, (e) => (e.state.format = format))
-            }
-          />
-        );
-      } else {
-        console.error(
-          `Unknown evaluator type ${e.type} inside multi-evaluator node. Cannot display evaluator UI.`,
-        );
-        component = <Alert>Error: Unknown evaluator type {e.type}</Alert>;
-      }
-      return (
-        <EvaluatorContainer
-          name={e.name}
-          key={`${e.name}-${idx}`}
-          type={EVAL_TYPE_PRETTY_NAME[e.type]}
-          progress={e.progress}
-          onDelete={() => {
-            delete evaluatorComponentRefs.current[idx];
-            setEvaluators(evaluators.filter((_, i) => i !== idx));
-          }}
-          onChangeTitle={(newTitle) =>
-            setEvaluators(
-              evaluators.map((e, i) => {
-                if (i === idx) e.name = newTitle;
-                console.log(e);
-                return e;
-              }),
-            )
-          }
-          padding={e.type === "llm" ? "8px" : undefined}
-        >
-          {component}
-        </EvaluatorContainer>
-      );
-    });
-  }, [evaluators, id]);
+
+  const updateEvalState = (
+    idx: number,
+    transformFunc: (e: EvaluatorContainerDesc) => void,
+  ) => {
+    setStatus(Status.WARNING);
+    setEvaluators((es) =>
+      es.map((e, i) => {
+        if (idx === i) transformFunc(e);
+        return e;
+      }),
+    );
+  }
+
+  // const evaluatorComponents = useMemo(() => {
+  //   // evaluatorComponentRefs.current = [];
+    
+  //   return evaluators.map((e, idx) => {
+  //     let component: React.ReactNode;
+  //     if (e.type === "python" || e.type === "javascript") {
+  //       component = (
+  //         <CodeEvaluatorComponent
+  //           ref={(el) =>
+  //             (evaluatorComponentRefs.current[idx] = {
+  //               type: "code",
+  //               name: e.name,
+  //               ref: el,
+  //             })
+  //           }
+  //           code={e.state?.code}
+  //           progLang={e.type}
+  //           type="evaluator"
+  //           id={id}
+  //           onCodeEdit={(code) =>
+  //             updateEvalState(idx, (e) => (e.state.code = code))
+  //           }
+  //           showUserInstruction={false}
+  //         />
+  //       );
+  //     } else if (e.type === "llm") {
+  //       component = (
+  //         <LLMEvaluatorComponent
+  //           ref={(el) =>
+  //             (evaluatorComponentRefs.current[idx] = {
+  //               type: "llm",
+  //               name: e.name,
+  //               ref: el,
+  //             })
+  //           }
+  //           prompt={e.state?.prompt}
+  //           grader={e.state?.grader}
+  //           format={e.state?.format}
+  //           id={id}
+  //           showUserInstruction={false}
+  //           onPromptEdit={(prompt) =>
+  //             updateEvalState(idx, (e) => (e.state.prompt = prompt))
+  //           }
+  //           onLLMGraderChange={(grader) =>
+  //             updateEvalState(idx, (e) => (e.state.grader = grader))
+  //           }
+  //           onFormatChange={(format) =>
+  //             updateEvalState(idx, (e) => (e.state.format = format))
+  //           }
+  //         />
+  //       );
+  //     } else {
+  //       console.error(
+  //         `Unknown evaluator type ${e.type} inside multi-evaluator node. Cannot display evaluator UI.`,
+  //       );
+  //       component = <Alert>Error: Unknown evaluator type {e.type}</Alert>;
+  //     }
+  //     return (
+  //       <EvaluatorContainer
+  //         name={e.name}
+  //         key={`${e.name}-${idx}`}
+  //         type={EVAL_TYPE_PRETTY_NAME[e.type]}
+  //         progress={e.progress}
+  //         onDelete={() => {
+  //           delete evaluatorComponentRefs.current[idx];
+  //           setEvaluators(evaluators.filter((_, i) => i !== idx));
+  //         }}
+  //         onChangeTitle={(newTitle) =>
+  //           setEvaluators(
+  //             evaluators.map((e, i) => {
+  //               if (i === idx) e.name = newTitle;
+  //               console.log(e);
+  //               return e;
+  //             }),
+  //           )
+  //         }
+  //         padding={e.type === "llm" ? "8px" : undefined}
+  //       >
+  //         {component}
+  //       </EvaluatorContainer>
+  //     );
+  //   });
+  // }, [evaluators, id]);
 
   const handleError = useCallback(
     (err: Error | string) => {
@@ -417,11 +434,14 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
       evaluator_idx: number,
       progress?: QueryProgress,
     ) => {
-      setEvaluators((evs) => {
-        if (evs.length >= evaluator_idx) return evs;
-        evs[evaluator_idx].progress = progress;
-        return [...evs];
-      });
+      // Update the progress rings, debouncing to avoid too many rerenders
+      debounce((_idx, _progress) => 
+        setEvaluators((evs) => {
+          if (_idx >= evs.length) return evs;
+          evs[_idx].progress = _progress;
+          return [...evs];
+        })
+      , 30)(evaluator_idx, progress);
     };
 
     // Run all evaluators here!
@@ -438,7 +458,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
           // Run code evaluator
           // TODO: Change runInSandbox to be user-controlled, for Python code evals (right now it is always sandboxed)
           return (ref as CodeEvaluatorComponentRef)
-            .run(pulled_inputs, undefined, true)
+            .run(pulled_inputs, undefined)
             .then((ret) => {
               console.log("Code evaluator done!", ret);
               updateProgressRing(idx, undefined);
@@ -453,8 +473,8 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
           // Run LLM-based evaluator
           // TODO: Add back live progress, e.g. (progress) => updateProgressRing(idx, progress)) but with appropriate mapping for progress.
           return (ref as LLMEvaluatorComponentRef)
-            .run(input_node_ids, () => {
-              /** skip live progress updates for now */
+            .run(input_node_ids, (progress) => {
+              updateProgressRing(idx, progress);
             })
             .then((ret) => {
               console.log("LLM evaluator done!", ret);
@@ -478,6 +498,15 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         handleError(settled.find((s) => s.status === "rejected").reason);
         return;
       }
+
+      // Remove progress rings without errors
+      setEvaluators((evs) => 
+        evs.map(e => {
+          if (e.progress && !e.progress.error)
+            e.progress = undefined;
+          return e;
+        })
+      )
 
       // Ignore null refs
       settled = settled.filter(
@@ -566,7 +595,6 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
     status,
     showDrawer,
     evaluators,
-    evaluatorComponents,
     evaluatorComponentRefs,
   ]);
 
@@ -607,7 +635,95 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
       {/* <PickCriteriaModal ref={pickCriteriaModalRef} /> */}
       <iframe style={{ display: "none" }} id={`${id}-iframe`}></iframe>
 
-      {evaluatorComponents}
+      {/* {evaluatorComponents} */}
+      {evaluators.map((e, idx) => 
+          <EvaluatorContainer
+            name={e.name}
+            key={`${e.name}-${idx}`}
+            type={EVAL_TYPE_PRETTY_NAME[e.type]}
+            progress={e.progress}
+            customButton={e.state?.sandbox !== undefined ? (
+              <Tooltip label={
+                e.state?.sandbox
+                  ? "Running in sandbox (pyodide)"
+                  : "Running unsandboxed (local Python)"
+              } withinPortal withArrow>
+
+              <button
+                onClick={() => updateEvalState(idx, (e) => (e.state.sandbox = !e.state.sandbox))}
+                className="custom-button"
+                style={{ border: "none", padding: "0px", marginTop: "3px" }}
+              >
+                <IconBox
+                  size="12pt"
+                  color={e.state.sandbox ? "orange" : "#999"}
+                />
+                
+              </button>
+              </Tooltip>
+            ) : undefined}
+            onDelete={() => {
+              delete evaluatorComponentRefs.current[idx];
+              setEvaluators(evaluators.filter((_, i) => i !== idx));
+            }}
+            onChangeTitle={(newTitle) =>
+              setEvaluators((evs) => 
+                evs.map((e, i) => {
+                  if (i === idx) e.name = newTitle;
+                  console.log(e);
+                  return e;
+                }),
+              )
+            }
+            padding={e.type === "llm" ? "8px" : undefined}
+          >
+            {
+              (e.type === "python" || e.type === "javascript") ? <CodeEvaluatorComponent
+                    ref={(el) =>
+                      (evaluatorComponentRefs.current[idx] = {
+                        type: "code",
+                        name: e.name,
+                        ref: el,
+                      })
+                    }
+                    code={e.state?.code}
+                    progLang={e.type}
+                    sandbox={e.state?.sandbox}
+                    type="evaluator"
+                    id={id}
+                    onCodeEdit={(code) =>
+                      updateEvalState(idx, (e) => (e.state.code = code))
+                    }
+                    showUserInstruction={false}
+                  />
+              : (e.type === "llm") ?
+                  <LLMEvaluatorComponent
+                    ref={(el) =>
+                      (evaluatorComponentRefs.current[idx] = {
+                        type: "llm",
+                        name: e.name,
+                        ref: el,
+                      })
+                    }
+                    prompt={e.state?.prompt}
+                    grader={e.state?.grader}
+                    format={e.state?.format}
+                    id={id}
+                    showUserInstruction={false}
+                    onPromptEdit={(prompt) =>
+                      updateEvalState(idx, (e) => (e.state.prompt = prompt))
+                    }
+                    onLLMGraderChange={(grader) =>
+                      updateEvalState(idx, (e) => (e.state.grader = grader))
+                    }
+                    onFormatChange={(format) =>
+                      updateEvalState(idx, (e) => (e.state.format = format))
+                    }
+                  />
+              : <Alert>Error: Unknown evaluator type {e.type}</Alert>
+            }
+        </EvaluatorContainer>
+      )}
 
       <Handle
         type="target"
@@ -616,13 +732,13 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         className="grouped-handle"
         style={{ top: "50%" }}
       />
-      <Handle
+      {/* TO IMPLEMENT <Handle
         type="source"
         position={Position.Right}
         id="output"
         className="grouped-handle"
         style={{ top: "50%" }}
-      />
+      /> */}
 
       <div className="add-text-field-btn">
         <Menu withinPortal position="right-start" shadow="sm">
@@ -655,6 +771,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
                 onClick={() =>
                   addEvaluator(`Criteria ${evaluators.length + 1}`, "python", {
                     code: "def evaluate(r):\n\treturn len(r.text)",
+                    sandbox: true,
                   })
                 }
               >
@@ -674,7 +791,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
             >
               LLM
             </Menu.Item>
-            {AI_SUPPORT_ENABLED ? <Menu.Divider /> : <></>}
+            {/* {AI_SUPPORT_ENABLED ? <Menu.Divider /> : <></>} */}
             {/* {AI_SUPPORT_ENABLED ? (
               <Menu.Item
                 icon={<IconSparkles size="14px" />}

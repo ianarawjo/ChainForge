@@ -157,26 +157,35 @@ export const LLMEvaluatorComponent = forwardRef<
       " " +
       formatting_instr +
       "\n```\n{input}\n```";
+      const llm_key = llmScorers[0].key ?? "";
 
-    // Keeping track of progress (unpacking the progress state since there's only a single LLM)
-    const llm_key = llmScorers[0].key ?? "";
-    const _progress_listener = onProgressChange
-      ? (progress_by_llm: Dict<QueryProgress>) =>
-          onProgressChange({
-            success: progress_by_llm[llm_key].success,
-            error: progress_by_llm[llm_key].error,
-          })
-      : undefined;
-
-    // Run LLM as evaluator
-    return evalWithLLM(
-      id ?? Date.now().toString(),
-      llmScorers[0],
-      template,
-      input_node_ids,
-      apiKeys ?? {},
-      _progress_listener,
-    ).then(function (res) {
+    // Fetch info about the number of queries we'll need to make
+    return grabResponses(input_node_ids)
+      .then(function (resps) {
+        // Create progress listener
+        // Keeping track of progress (unpacking the progress state since there's only a single LLM)
+        const num_resps_required = resps.reduce(
+          (acc, resp_obj) => acc + resp_obj.responses.length,
+          0,
+        );
+        return onProgressChange
+          ? (progress_by_llm: Dict<QueryProgress>) =>
+              onProgressChange({
+                success: (100 * progress_by_llm[llm_key].success) / num_resps_required,
+                error: (100 * progress_by_llm[llm_key].error) / num_resps_required,
+              })
+          : undefined;
+      }).then((progress_listener) => {
+        // Run LLM as evaluator
+        return evalWithLLM(
+          id ?? Date.now().toString(),
+          llmScorers[0],
+          template,
+          input_node_ids,
+          apiKeys ?? {},
+          progress_listener,
+        )
+      }).then(function (res) {
       // Check if there's an error; if so, bubble it up to user and exit:
       if (res.errors && res.errors.length > 0) throw new Error(res.errors[0]);
       else if (res.responses === undefined)
@@ -305,41 +314,22 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
       if (showAlert) showAlert(typeof err === "string" ? err : err?.message);
     };
 
-    // Fetch info about the number of queries we'll need to make
-    grabResponses(input_node_ids)
-      .then(function (resps) {
-        // Create progress listener
-        const num_resps_required = resps.reduce(
-          (acc, resp_obj) => acc + resp_obj.responses.length,
-          0,
-        );
-        const onProgressChange = (prog: QueryProgress) => {
-          setProgress({
-            success: (100 * prog.success) / num_resps_required,
-            error: (100 * prog.error) / num_resps_required,
-          });
-        };
+    // Run LLM evaluator
+    llmEvaluatorRef?.current
+      ?.run(input_node_ids, setProgress)
+      .then(function (evald_resps) {
+        // Ping any vis + inspect nodes attached to this node to refresh their contents:
+        pingOutputNodes(id);
 
-        // Run LLM evaluator
-        llmEvaluatorRef?.current
-          ?.run(input_node_ids, onProgressChange)
-          .then(function (evald_resps) {
-            // Ping any vis + inspect nodes attached to this node to refresh their contents:
-            pingOutputNodes(id);
+        console.log(evald_resps);
+        setLastResponses(evald_resps);
 
-            console.log(evald_resps);
-            setLastResponses(evald_resps);
+        if (!showDrawer) setUninspectedResponses(true);
 
-            if (!showDrawer) setUninspectedResponses(true);
-
-            setStatus(Status.READY);
-            setProgress(undefined);
-          })
-          .catch(handleError);
+        setStatus(Status.READY);
+        setProgress(undefined);
       })
-      .catch(() => {
-        handleError("Error pulling input data for node: No input data found.");
-      });
+      .catch(handleError);
   }, [
     inputEdgesForNode,
     llmEvaluatorRef,

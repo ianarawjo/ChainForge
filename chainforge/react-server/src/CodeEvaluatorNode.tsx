@@ -188,6 +188,7 @@ export interface CodeEvaluatorComponentProps {
   onCodeEdit?: (code: string) => void;
   onCodeChangedFromLastRun?: () => void;
   onCodeEqualToLastRun?: () => void;
+  sandbox?: boolean;
 }
 
 /**
@@ -206,6 +207,7 @@ export const CodeEvaluatorComponent = forwardRef<
     onCodeEdit,
     onCodeChangedFromLastRun,
     onCodeEqualToLastRun,
+    sandbox,
   },
   ref,
 ) {
@@ -233,6 +235,9 @@ export const CodeEvaluatorComponent = forwardRef<
     script_paths?: string[],
     runInSandbox?: boolean,
   ) => {
+    if (runInSandbox === undefined)
+      runInSandbox = sandbox;
+
     // Double-check that the code includes an 'evaluate' or 'process' function, whichever is needed:
     const find_func_regex =
       node_type === "evaluator"
