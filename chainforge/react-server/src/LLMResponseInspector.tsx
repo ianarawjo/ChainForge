@@ -15,6 +15,8 @@ import {
   ActionIcon,
   Tooltip,
   TextInput,
+  Stack,
+  ScrollArea,
 } from "@mantine/core";
 import { useToggle } from "@mantine/hooks";
 import {
@@ -36,6 +38,7 @@ import {
   ResponseBox,
   ResponseGroup,
   genResponseTextsDisplay,
+  getEvalResultStr,
 } from "./ResponseBoxes";
 import { getLabelForResponse } from "./ResponseRatingToolbar";
 import {
@@ -50,6 +53,34 @@ const getLLMName = (resp_obj: LLMResponse) =>
   typeof resp_obj?.llm === "string" ? resp_obj.llm : resp_obj?.llm?.name;
 const escapeRegExp = (txt: string) =>
   txt.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+
+function getEvalResCols(responses: LLMResponse[]) {
+  // Look for + extract any consistent, *named* evaluation metrics (dicts)
+  const metric_names = new Set<string>();
+  let has_unnamed_metric = false;
+  let eval_res_cols = [];
+  responses.forEach((res_obj) => {
+    if (res_obj?.eval_res?.items === undefined) return;
+    res_obj.eval_res.items.forEach((item) => {
+      if (typeof item !== "object") {
+        has_unnamed_metric = true;
+        return;
+      }
+      Object.keys(item).forEach((metric_name) => metric_names.add(metric_name));
+    });
+  });
+
+  if (metric_names.size === 0 || has_unnamed_metric)
+    // None found, but there are scores, OR, there is at least one unnamed score. Add a generic col for scores:
+    eval_res_cols.push("Score");
+
+  if (metric_names.size > 0) {
+    // Add a column for each named metric:
+    eval_res_cols = eval_res_cols.concat(Array.from(metric_names));
+  }
+
+  return eval_res_cols;
+}
 
 function getIndicesOfSubstringMatches(
   s: string,
@@ -265,7 +296,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   );
 
   // The var name to use for columns in the table view
-  const [tableColVar, setTableColVar] = useState("LLM");
+  const [tableColVar, setTableColVar] = useState("$LLM");
   const [userSelectedTableCol, setUserSelectedTableCol] = useState(false);
 
   // State of the 'only show scores' toggle when eval results are present
@@ -306,6 +337,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     const contains_eval_res = batchedResponses.some(
       (res_obj) => res_obj.eval_res !== undefined,
     );
+    const contains_multi_evals = contains_eval_res
+      ? batchedResponses.some((res_obj) => {
+          const items = res_obj.eval_res?.items;
+          return items && items.length > 0 && typeof items[0] === "object";
+        })
+      : false;
     setShowEvalScoreOptions(contains_eval_res);
 
     // Set the variables accessible in the MultiSelect for 'group by'
@@ -315,25 +352,37 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         // in the future we can add special types of variables without name collisions
         ({ value: name, label: name }),
       )
-      .concat({ value: "LLM", label: "LLM" });
+      .concat({ value: "$LLM", label: "LLM" });
+    if (contains_eval_res && viewFormat === "table")
+      msvars.push({ value: "$EVAL_RES", label: "Eval results" });
     setMultiSelectVars(msvars);
 
     // If only one LLM is present, and user hasn't manually selected one to plot,
     // and there's more than one prompt variable as input, default to plotting the
-    // first found prompt variable as columns instead:
+    // eval scores, or the first found prompt variable as columns instead:
     if (
       viewFormat === "table" &&
       !userSelectedTableCol &&
-      tableColVar === "LLM" &&
-      found_llms.length === 1 &&
-      found_vars.length > 1
+      tableColVar === "$LLM"
     ) {
-      setTableColVar(found_vars[0]);
-      return; // useEffect will replot with the new values
+      if (
+        contains_multi_evals ||
+        (found_llms.length === 1 && contains_eval_res)
+      ) {
+        // Plot eval scores on columns
+        setTableColVar("$EVAL_RES");
+        return;
+      } else if (found_llms.length === 1 && found_vars.length > 1) {
+        setTableColVar(found_vars[0]);
+        return; // useEffect will replot with the new values
+      }
     }
 
     // If this is the first time receiving responses, set the multiSelectValue to whatever is the first:
     if (!receivedResponsesOnce) {
+      if (contains_multi_evals)
+        // If multiple evals are detected, default to "table" format:
+        setViewFormat("table");
       setMultiSelectValue([msvars[0].value]);
       setReceivedResponsesOnce(true);
     } else if (
@@ -411,6 +460,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       resps: LLMResponse[],
       eatenvars: string[],
       fixed_width: number,
+      hide_eval_scores?: boolean,
     ) => {
       const hide_llm_name = eatenvars.includes("LLM");
       return resps.map((res_obj, res_idx) => {
@@ -435,6 +485,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           contains_eval_res && onlyShowScores,
           hide_llm_name ? undefined : getLLMName(res_obj),
           wideFormat,
+          hide_eval_scores,
         );
 
         // At the deepest level, there may still be some vars left over. We want to display these
@@ -467,9 +518,10 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       let var_cols: string[],
         colnames: string[],
         getColVal: (r: LLMResponse) => string | number | undefined,
-        found_sel_var_vals: string[];
+        found_sel_var_vals: string[],
+        eval_res_cols: string[];
       let metavar_cols: string[] = []; // found_metavars; -- Disabling this functionality for now, since it is usually annoying.
-      if (tableColVar === "LLM") {
+      if (tableColVar === "$LLM") {
         var_cols = found_vars;
         getColVal = getLLMName;
         found_sel_var_vals = found_llms;
@@ -480,19 +532,38 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           .filter((v) => v !== tableColVar)
           .concat(found_llms.length > 1 ? ["LLM"] : []); // only add LLM column if num LLMs > 1
         getColVal = (r) => r.vars[tableColVar];
+        colnames = var_cols;
+        found_sel_var_vals = [];
+      }
 
+      // If the user wants to plot eval results in separate column, OR there's only a single LLM to show
+      if (tableColVar === "$EVAL_RES") {
+        // Plot evaluation results on separate column(s):
+        eval_res_cols = getEvalResCols(responses);
+        // if (tableColVar === "$EVAL_RES") {
+        // This adds a column, "Response", abusing the way getColVal and found_sel_var_vals is used
+        // below by making a dummy value (one giant group with all responses in it). We then
+        // sort the responses by LLM, to give a nicer view.
+        colnames = colnames.concat("Response", eval_res_cols);
+        getColVal = () => "_";
+        found_sel_var_vals = ["_"];
+        responses.sort((a, b) => getLLMName(a).localeCompare(getLLMName(b)));
+        // } else {
+        //   colnames = colnames.concat(eval_res_cols);
+        // }
+      } else if (tableColVar !== "$LLM") {
         // Get the unique values for the selected variable
         found_sel_var_vals = Array.from(
           responses.reduce((acc, res_obj) => {
             acc.add(
               tableColVar in res_obj.vars
-                ? (res_obj.vars[tableColVar] as string)
+                ? res_obj.vars[tableColVar]
                 : "(unspecified)",
             );
             return acc;
           }, new Set<string>()),
         );
-        colnames = var_cols.concat(found_sel_var_vals);
+        colnames = colnames.concat(found_sel_var_vals);
       }
 
       const getVar = (r: LLMResponse, v: string) =>
@@ -517,6 +588,27 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             const val = resp_objs[0].metavars[v];
             return val !== undefined ? val : "(unspecified)";
           });
+          let eval_cols_vals: React.ReactNode[] = [];
+          if (eval_res_cols && eval_res_cols.length > 0) {
+            // We can assume that there's only one response object, since to
+            // if eval_res_cols is set, there must be only one LLM.
+            eval_cols_vals = eval_res_cols.map((metric_name, metric_idx) => {
+              const items = resp_objs[0].eval_res?.items;
+              if (!items) return "(no result)";
+              return items.map((item) => {
+                if (item === undefined) return "(undefined)";
+                if (
+                  typeof item !== "object" &&
+                  metric_idx === 0 &&
+                  metric_name === "Score"
+                )
+                  return getEvalResultStr(item, true);
+                else if (typeof item === "object" && metric_name in item)
+                  return getEvalResultStr(item[metric_name], true);
+                else return "(unspecified)";
+              }); // treat n>1 resps per prompt as multi-line results in the column
+            });
+          }
           const resp_objs_by_col_var = groupResponsesBy(
             resp_objs,
             getColVal,
@@ -526,7 +618,14 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               const rs = resp_objs_by_col_var[val];
               // Return response divs as response box here:
               return (
-                <div key={idx}>{generateResponseBoxes(rs, var_cols, 100)}</div>
+                <div key={idx}>
+                  {generateResponseBoxes(
+                    rs,
+                    var_cols,
+                    100,
+                    eval_res_cols !== undefined,
+                  )}
+                </div>
               );
             } else {
               return <i key={idx}>{empty_cell_text}</i>;
@@ -534,10 +633,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           });
 
           return (
-            <tr key={`r${idx}`} style={{ borderBottom: "8px solid #eee" }}>
+            <tr key={`r${idx}`} style={{ borderBottom: "2px solid #fff" }}>
               {var_cols_vals.map((c, i) => (
                 <td key={`v${i}`} className="inspect-table-var">
-                  {c}
+                  <ScrollArea.Autosize mt="sm" mah={500} maw={300}>
+                    {c}
+                  </ScrollArea.Autosize>
                 </td>
               ))}
               {metavar_cols_vals.map((c, i) => (
@@ -550,13 +651,25 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                   {c}
                 </td>
               ))}
+              {eval_cols_vals.map((c, i) => (
+                <td key={`e${i}`} className="inspect-table-score-col">
+                  <Stack spacing={0}>{c}</Stack>
+                </td>
+              ))}
             </tr>
           );
         },
       );
 
       setResponseDivs([
-        <Table key="table" fontSize={wideFormat ? "sm" : "xs"}>
+        <Table
+          key="table"
+          fontSize={wideFormat ? "sm" : "xs"}
+          horizontalSpacing="xs"
+          verticalSpacing={0}
+          striped
+          withColumnBorders={true}
+        >
           <thead>
             <tr>
               {colnames.map((c) => (
@@ -603,7 +716,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           const defaultOpened =
             !first_opened ||
             eatenvars.length === 0 ||
-            eatenvars[eatenvars.length - 1] === "LLM";
+            eatenvars[eatenvars.length - 1] === "$LLM";
           first_opened = true;
           leaf_id += 1;
           return (
@@ -627,13 +740,13 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         // we also bucket any 'leftover' responses that didn't have the requested variable (a kind of 'soft fail')
         const group_name = varnames[0];
         const [grouped_resps, leftover_resps] =
-          group_name === "LLM"
+          group_name === "$LLM"
             ? groupResponsesBy(resps, getLLMName)
             : groupResponsesBy(resps, (r) =>
                 group_name in r.vars ? r.vars[group_name] : null,
               );
         const get_header =
-          group_name === "LLM"
+          group_name === "$LLM"
             ? (key: string, val?: string) => (
                 <div
                   key={val}
@@ -652,7 +765,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         const defaultOpened =
           !first_opened ||
           eatenvars.length === 0 ||
-          eatenvars[eatenvars.length - 1] === "LLM";
+          eatenvars[eatenvars.length - 1] === "$LLM";
         const grouped_resps_divs = Object.keys(grouped_resps).map((g) =>
           groupByVars(
             grouped_resps[g],

@@ -1,5 +1,5 @@
 import React, { Suspense, useMemo, lazy } from "react";
-import { Collapse, Flex } from "@mantine/core";
+import { Collapse, Flex, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { truncStr } from "./backend/utils";
 import {
@@ -15,19 +15,25 @@ const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
 /* HELPER FUNCTIONS */
 const SUCCESS_EVAL_SCORES = new Set(["true", "yes"]);
 const FAILURE_EVAL_SCORES = new Set(["false", "no"]);
-const getEvalResultStr = (
-  eval_item: string[] | Dict | string | number | boolean,
+export const getEvalResultStr = (
+  eval_item: EvaluationScore,
+  hide_prefix: boolean,
 ) => {
   if (Array.isArray(eval_item)) {
-    return "scores: " + eval_item.join(", ");
+    return (hide_prefix ? "" : "scores: ") + eval_item.join(", ");
   } else if (typeof eval_item === "object") {
-    const strs = Object.keys(eval_item).map((key) => {
+    const strs = Object.keys(eval_item).map((key, j) => {
       let val = eval_item[key];
       if (typeof val === "number" && val.toString().indexOf(".") > -1)
         val = val.toFixed(4); // truncate floats to 4 decimal places
-      return `${key}: ${val}`;
+      return (
+        <div key={`${key}-${j}`}>
+          <span>{key}: </span>
+          <span>{getEvalResultStr(val, true)}</span>
+        </div>
+      );
     });
-    return strs.join(", ");
+    return <Stack spacing={0}>{strs}</Stack>;
   } else {
     const eval_str = eval_item.toString().trim().toLowerCase();
     const color = SUCCESS_EVAL_SCORES.has(eval_str)
@@ -37,7 +43,7 @@ const getEvalResultStr = (
         : "black";
     return (
       <>
-        <span style={{ color: "gray" }}>{"score: "}</span>
+        {!hide_prefix && <span style={{ color: "gray" }}>{"score: "}</span>}
         <span style={{ color }}>{eval_str}</span>
       </>
     );
@@ -164,10 +170,12 @@ export const genResponseTextsDisplay = (
   onlyShowScores?: boolean,
   llmName?: string,
   wideFormat?: boolean,
+  hideEvalScores?: boolean,
 ): React.ReactNode[] | React.ReactNode => {
   if (!res_obj) return <></>;
 
-  const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
+  const eval_res_items =
+    !hideEvalScores && res_obj.eval_res ? res_obj.eval_res.items : null;
 
   // Bucket responses that have the same text, and sort by the
   // number of same responses so that the top div is the most prevalent response.
@@ -251,7 +259,7 @@ export const genResponseTextsDisplay = (
         )}
         {eval_res_items ? (
           <p className="small-response-metrics">
-            {getEvalResultStr(resp_str_to_eval_res[r])}
+            {getEvalResultStr(resp_str_to_eval_res[r], true)}
           </p>
         ) : (
           <></>

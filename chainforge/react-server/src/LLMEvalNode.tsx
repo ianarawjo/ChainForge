@@ -21,7 +21,7 @@ import LLMResponseInspectorModal, {
 } from "./LLMResponseInspectorModal";
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
-import { stripLLMDetailsFromResponses } from "./backend/utils";
+import { genDebounceFunc, stripLLMDetailsFromResponses } from "./backend/utils";
 import { AlertModalContext } from "./AlertModal";
 import { Dict, LLMResponse, LLMSpec, QueryProgress } from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
@@ -116,11 +116,18 @@ export const LLMEvaluatorComponent = forwardRef<
   );
   const apiKeys = useStore((state) => state.apiKeys);
 
+  // Debounce helpers
+  const debounceTimeoutRef = useRef(null);
+  const debounce = genDebounceFunc(debounceTimeoutRef);
+
   const handlePromptChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       // Store prompt text
       setPromptText(e.target.value);
-      if (onPromptEdit) onPromptEdit(e.target.value);
+
+      // Update the caller, but debounce to reduce the number of callbacks when user is typing
+      if (onPromptEdit) 
+        debounce(() => onPromptEdit(e.target.value), 200)();
     },
     [setPromptText, onPromptEdit],
   );
@@ -157,36 +164,49 @@ export const LLMEvaluatorComponent = forwardRef<
       " " +
       formatting_instr +
       "\n```\n{input}\n```";
-
-    // Keeping track of progress (unpacking the progress state since there's only a single LLM)
     const llm_key = llmScorers[0].key ?? "";
-    const _progress_listener = onProgressChange
-      ? (progress_by_llm: Dict<QueryProgress>) =>
-          onProgressChange({
-            success: progress_by_llm[llm_key].success,
-            error: progress_by_llm[llm_key].error,
-          })
-      : undefined;
 
-    // Run LLM as evaluator
-    return evalWithLLM(
-      id ?? Date.now().toString(),
-      llmScorers[0],
-      template,
-      input_node_ids,
-      apiKeys ?? {},
-      _progress_listener,
-    ).then(function (res) {
-      // Check if there's an error; if so, bubble it up to user and exit:
-      if (res.errors && res.errors.length > 0) throw new Error(res.errors[0]);
-      else if (res.responses === undefined)
-        throw new Error(
-          "Unknown error encountered when requesting evaluations: empty response returned.",
+    // Fetch info about the number of queries we'll need to make
+    return grabResponses(input_node_ids)
+      .then(function (resps) {
+        // Create progress listener
+        // Keeping track of progress (unpacking the progress state since there's only a single LLM)
+        const num_resps_required = resps.reduce(
+          (acc, resp_obj) => acc + resp_obj.responses.length,
+          0,
         );
+        return onProgressChange
+          ? (progress_by_llm: Dict<QueryProgress>) =>
+              onProgressChange({
+                success:
+                  (100 * progress_by_llm[llm_key].success) / num_resps_required,
+                error:
+                  (100 * progress_by_llm[llm_key].error) / num_resps_required,
+              })
+          : undefined;
+      })
+      .then((progress_listener) => {
+        // Run LLM as evaluator
+        return evalWithLLM(
+          id ?? Date.now().toString(),
+          llmScorers[0],
+          template,
+          input_node_ids,
+          apiKeys ?? {},
+          progress_listener,
+        );
+      })
+      .then(function (res) {
+        // Check if there's an error; if so, bubble it up to user and exit:
+        if (res.errors && res.errors.length > 0) throw new Error(res.errors[0]);
+        else if (res.responses === undefined)
+          throw new Error(
+            "Unknown error encountered when requesting evaluations: empty response returned.",
+          );
 
-      // Success!
-      return res.responses;
-    });
+        // Success!
+        return res.responses;
+      });
   };
 
   // Export the current internal state as JSON
@@ -305,41 +325,22 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
       if (showAlert) showAlert(typeof err === "string" ? err : err?.message);
     };
 
-    // Fetch info about the number of queries we'll need to make
-    grabResponses(input_node_ids)
-      .then(function (resps) {
-        // Create progress listener
-        const num_resps_required = resps.reduce(
-          (acc, resp_obj) => acc + resp_obj.responses.length,
-          0,
-        );
-        const onProgressChange = (prog: QueryProgress) => {
-          setProgress({
-            success: (100 * prog.success) / num_resps_required,
-            error: (100 * prog.error) / num_resps_required,
-          });
-        };
+    // Run LLM evaluator
+    llmEvaluatorRef?.current
+      ?.run(input_node_ids, setProgress)
+      .then(function (evald_resps) {
+        // Ping any vis + inspect nodes attached to this node to refresh their contents:
+        pingOutputNodes(id);
 
-        // Run LLM evaluator
-        llmEvaluatorRef?.current
-          ?.run(input_node_ids, onProgressChange)
-          .then(function (evald_resps) {
-            // Ping any vis + inspect nodes attached to this node to refresh their contents:
-            pingOutputNodes(id);
+        console.log(evald_resps);
+        setLastResponses(evald_resps);
 
-            console.log(evald_resps);
-            setLastResponses(evald_resps);
+        if (!showDrawer) setUninspectedResponses(true);
 
-            if (!showDrawer) setUninspectedResponses(true);
-
-            setStatus(Status.READY);
-            setProgress(undefined);
-          })
-          .catch(handleError);
+        setStatus(Status.READY);
+        setProgress(undefined);
       })
-      .catch(() => {
-        handleError("Error pulling input data for node: No input data found.");
-      });
+      .catch(handleError);
   }, [
     inputEdgesForNode,
     llmEvaluatorRef,
