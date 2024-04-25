@@ -36,12 +36,12 @@ export interface EvalFunctionReport {
   false_pass: number;
   false_fail: number;
   skipped: number;
-  accuracy?: number;
+  alignment?: number;
 }
 
 export interface EvalFunctionSetReport {
   failureCoverage: number;
-  missedFailures: StandardizedLLMResponse[];
+  falseFailureRate: number;
   selectedEvalFunctions: EvalFunction[];
   allEvalFunctionReports: Map<EvalCriteria, EvalFunctionReport[]>; // Map from criteria to function reports
 }
