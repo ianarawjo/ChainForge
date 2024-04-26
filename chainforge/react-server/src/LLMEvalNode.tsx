@@ -126,8 +126,7 @@ export const LLMEvaluatorComponent = forwardRef<
       setPromptText(e.target.value);
 
       // Update the caller, but debounce to reduce the number of callbacks when user is typing
-      if (onPromptEdit) 
-        debounce(() => onPromptEdit(e.target.value), 200)();
+      if (onPromptEdit) debounce(() => onPromptEdit(e.target.value), 200)();
     },
     [setPromptText, onPromptEdit],
   );
