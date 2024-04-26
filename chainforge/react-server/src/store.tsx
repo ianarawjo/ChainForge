@@ -337,7 +337,9 @@ const useStore = create<StoreHandles>((set, get) => ({
     // Filter out any empty or incorrectly formatted API key values:
     const new_keys = transformDict(
       apiKeys,
-      (key) => typeof apiKeys[key] === "string" && apiKeys[key].length > 0,
+      (key) =>
+        (typeof apiKeys[key] === "string" && apiKeys[key].length > 0) ||
+        key === "OpenAI_BaseURL",
     );
     // Only update API keys present in the new array; don't delete existing ones:
     set({ apiKeys: { ...get().apiKeys, ...new_keys } });

@@ -285,6 +285,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     const form = useForm({
       initialValues: {
         OpenAI: "",
+        OpenAI_BaseURL: "",
         Anthropic: "",
         Google: "",
         Azure_OpenAI: "",
@@ -369,6 +370,15 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   placeholder="Paste your OpenAI API key here"
                   {...form.getInputProps("OpenAI")}
                 />
+                <br />
+
+                <TextInput
+                  label="OpenAI Base URL"
+                  description="Note: This is rarely changed."
+                  placeholder="Paste a different base URL to use for OpenAI calls"
+                  {...form.getInputProps("OpenAI_BaseURL")}
+                />
+
                 <br />
                 <TextInput
                   label="HuggingFace API Key"

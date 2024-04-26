@@ -144,6 +144,7 @@ function get_environ(key: string): string | undefined {
 }
 
 let OPENAI_API_KEY = get_environ("OPENAI_API_KEY");
+let OPENAI_BASE_URL = get_environ("OPENAI_BASE_URL");
 let ANTHROPIC_API_KEY = get_environ("ANTHROPIC_API_KEY");
 let GOOGLE_PALM_API_KEY = get_environ("PALM_API_KEY");
 let AZURE_OPENAI_KEY = get_environ("AZURE_OPENAI_KEY");
@@ -161,12 +162,15 @@ let AWS_REGION = get_environ("AWS_REGION");
 export function set_api_keys(api_keys: Dict<string>): void {
   function key_is_present(name: string): boolean {
     return (
-      name in api_keys &&
-      api_keys[name] !== undefined &&
-      api_keys[name].trim().length > 0
+      (name in api_keys &&
+        api_keys[name] !== undefined &&
+        api_keys[name].trim().length > 0) ||
+      name === "OpenAI_BaseURL"
     );
   }
   if (key_is_present("OpenAI")) OPENAI_API_KEY = api_keys.OpenAI;
+  if (key_is_present("OpenAI_BaseURL"))
+    OPENAI_BASE_URL = api_keys.OpenAI_BaseURL;
   if (key_is_present("HuggingFace")) HUGGINGFACE_API_KEY = api_keys.HuggingFace;
   if (key_is_present("Anthropic")) ANTHROPIC_API_KEY = api_keys.Anthropic;
   if (key_is_present("Google")) GOOGLE_PALM_API_KEY = api_keys.Google;
@@ -234,8 +238,11 @@ export async function call_chatgpt(
       "Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.",
     );
 
+  console.log(OPENAI_BASE_URL);
+
   const configuration = new OpenAIConfig({
     apiKey: OPENAI_API_KEY,
+    basePath: OPENAI_BASE_URL ?? undefined,
   });
 
   // Since we are running client-side, we need to remove the user-agent header:

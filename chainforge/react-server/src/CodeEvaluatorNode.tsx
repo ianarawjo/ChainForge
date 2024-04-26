@@ -232,8 +232,7 @@ export const CodeEvaluatorComponent = forwardRef<
     setCodeText(code);
 
     // Debounce to control number of re-renders to parent, when user is editing/typing:
-    if (onCodeEdit) 
-      debounce(() => onCodeEdit(code), 200)();
+    if (onCodeEdit) debounce(() => onCodeEdit(code), 200)();
   };
 
   // Runs the code evaluator/processor over the inputs, returning the results as a Promise.

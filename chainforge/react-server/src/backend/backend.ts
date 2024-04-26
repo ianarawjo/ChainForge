@@ -33,6 +33,7 @@ import {
   PromptPermutationGenerator,
   PromptTemplate,
   cleanEscapedBraces,
+  escapeBraces,
 } from "./template";
 import { UserForcedPrematureExit } from "./errors";
 import CancelTracker from "./canceler";
@@ -399,6 +400,9 @@ async function run_over_responses(
       // Deep clone the response object
       const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
 
+      // Clean up any escaped braces
+      resp_obj.responses = resp_obj.responses.map(cleanEscapedBraces);
+
       // Whether the processor function is async or not
       const async_processor =
         process_func?.constructor?.name === "AsyncFunction";
@@ -408,7 +412,7 @@ async function run_over_responses(
       const llm_name = extract_llm_nickname(resp_obj.llm);
       let processed = res.map((r: string) => {
         const r_info = new ResponseInfo(
-          cleanEscapedBraces(r),
+          r,
           resp_obj.prompt,
           resp_obj.vars,
           resp_obj.metavars || {},
@@ -1245,7 +1249,7 @@ export async function evalWithLLM(
     const inputs = resp_objs
       .map((obj, __i) =>
         obj.responses.map((r: LLMResponseData, __j: number) => ({
-          text: typeof r === "string" ? r : undefined,
+          text: typeof r === "string" ? escapeBraces(r) : undefined,
           image: typeof r === "object" && r.t === "img" ? r.d : undefined,
           fill_history: obj.vars,
           metavars: { ...obj.metavars, __i, __j },

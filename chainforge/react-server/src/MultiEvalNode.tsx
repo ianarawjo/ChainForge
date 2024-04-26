@@ -264,14 +264,18 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   // Add an evaluator to the end of the list
   const addEvaluator = useCallback(
     (name: string, type: EvaluatorContainerDesc["type"], state: Dict) => {
-      setEvaluators(evaluators.concat({ name, uid: uuid(), type, state, justAdded: true }));
+      setEvaluators(
+        evaluators.concat({ name, uid: uuid(), type, state, justAdded: true }),
+      );
     },
     [evaluators],
   );
 
   // Sync evaluator state to stored state of this node
   useEffect(() => {
-    setDataPropsForNode(id, { evaluators: evaluators.map((e) => ({...e, justAdded: undefined})) });
+    setDataPropsForNode(id, {
+      evaluators: evaluators.map((e) => ({ ...e, justAdded: undefined })),
+    });
   }, [evaluators]);
 
   // Generate UI for the evaluator state
