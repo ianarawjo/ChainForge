@@ -460,6 +460,7 @@ def fetchOpenAIEval():
 def fetchEnvironAPIKeys():
     keymap = {
         'OPENAI_API_KEY': 'OpenAI', 
+        'OPENAI_BASE_URL': 'OpenAI_BaseURL',
         'ANTHROPIC_API_KEY': 'Anthropic', 
         'PALM_API_KEY': 'Google', 
         'HUGGINGFACE_API_KEY': 'HuggingFace',
@@ -469,7 +470,7 @@ def fetchEnvironAPIKeys():
         'AWS_ACCESS_KEY_ID': 'AWS_Access_Key_ID',
         'AWS_SECRET_ACCESS_KEY': 'AWS_Secret_Access_Key',
         'AWS_REGION': 'AWS_Region', 
-        'AWS_SESSION_TOKEN': 'AWS_Session_Token'
+        'AWS_SESSION_TOKEN': 'AWS_Session_Token',
     }
     d = { alias: os.environ.get(key) for key, alias in keymap.items() }
     ret = jsonify(d)
