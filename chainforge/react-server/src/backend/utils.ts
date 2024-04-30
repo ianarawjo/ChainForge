@@ -163,7 +163,7 @@ export function set_api_keys(api_keys: Dict<string>): void {
   function key_is_present(name: string): boolean {
     return (
       (name in api_keys &&
-        api_keys[name] !== undefined &&
+        api_keys[name] &&
         api_keys[name].trim().length > 0) ||
       name === "OpenAI_BaseURL"
     );
@@ -541,7 +541,7 @@ export async function call_anthropic(
   // Required non-standard params
   const max_tokens_to_sample = params?.max_tokens_to_sample ?? 1024;
   const stop_sequences = params?.stop_sequences ?? [ANTHROPIC_HUMAN_PROMPT];
-  const system_msg = params?.system_msg;
+  let system_msg = params?.system_msg;
 
   delete params?.custom_prompt_wrapper;
   delete params?.max_tokens_to_sample;
@@ -552,7 +552,7 @@ export async function call_anthropic(
 
   // Carry chat history
   // :: See https://docs.anthropic.com/claude/docs/human-and-assistant-formatting#use-human-and-assistant-to-put-words-in-claudes-mouth
-  const chat_history: ChatHistory | undefined = params?.chat_history;
+  let chat_history: ChatHistory | undefined = params?.chat_history;
   if (chat_history !== undefined) {
     // FOR OLD TEXT COMPLETIONS API ONLY: Carry chat history by prepending it to the prompt
     if (!use_messages_api) {
@@ -566,6 +566,13 @@ export async function call_anthropic(
         anthr_chat_context += " " + chat_msg.content;
       }
       wrapped_prompt = anthr_chat_context + wrapped_prompt; // prepend the chat context
+    } else {
+      // The new messages API doesn't allow a first "system" message inside chat history, like OpenAI does.
+      // We need to detect a "system" message and eject it:
+      if (chat_history.some((m) => m.role === "system")) {
+        system_msg = chat_history.filter((m) => m.role === "system")[0].content;
+        chat_history = chat_history.filter((m) => m.role !== "system");
+      }
     }
 
     // For newer models Claude 2.1 and Claude 3, we carry chat history directly below; no need to do anything else.
