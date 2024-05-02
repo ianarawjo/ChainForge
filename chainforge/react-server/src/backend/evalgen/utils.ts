@@ -18,7 +18,6 @@ import {
   buildContextPromptForVarsMetavars,
   buildGenEvalCodePrompt,
 } from "../../AiPopover";
-import { cleanEscapedBraces } from "../template";
 
 /**
  * Extracts substrings within "```json" and "```" ticks. Excludes the ticks from return.
@@ -56,13 +55,64 @@ export async function generateLLMEvaluationCriteria(
   
   \`${prompt}\`
     
-    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should be short, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case.`;
+    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). At most 3 criteria should have eval_method as expert. The "criteria" should be short, and the "shortname" should be a very brief title for the criteria. Each evaluation criteria should test a concept that should evaluate to "true" in the ideal case.`;
 
   // Query the LLM (below, we will try this up to 3 times)
   async function _query() {
+    const spec = [
+      {
+        key: "c9fb3b4a-ed01-40ce-a3ae-da30668a8a80",
+        name: "Azure OpenAI",
+        emoji: "🔷",
+        model: "azure-openai",
+        base_model: "azure-openai",
+        temp: 1,
+        deployment_name: "gpt-4",
+        model_type: "chat-completion",
+        // api_version: "2023-05-15",
+        system_msg: AssertionWriterSystemMsg,
+        settings: {
+          deployment_name: "gpt-4",
+          model_type: "chat-completion",
+          // // api_version: "2023-05-15",
+          system_msg: AssertionWriterSystemMsg,
+          temperature: 1,
+          response_format: {
+            type: "text",
+          },
+          functions: [],
+          function_call: "",
+          top_p: 1,
+          stop: [],
+          presence_penalty: 0,
+          frequency_penalty: 0,
+        },
+        formData: {
+          shortname: "Azure OpenAI",
+          deployment_name: "gpt-4",
+          model_type: "chat-completion",
+          // api_version: "2023-05-15",
+          system_msg: AssertionWriterSystemMsg,
+          temperature: 1,
+          response_format: "text",
+          functions: "",
+          function_call: "",
+          top_p: 1,
+          stop: "",
+          presence_penalty: 0,
+          frequency_penalty: 0,
+        },
+        progress: {
+          success: 0,
+          error: 0,
+        },
+      },
+    ];
+
     const result = await simpleQueryLLM(
       detailedPrompt, // prompt
-      "gpt-4", // llm
+      // "gpt-35-turbo-16k", // llm
+      spec, // llm
       systemMsg !== undefined
         ? systemMsg === null
           ? undefined
@@ -112,13 +162,69 @@ export async function executeLLMEval(
     "Evaluate the text below according to this criteria: " +
     evalFunction.code +
     ' Only return "yes" or "no", nothing else.\n\n```\n' +
-    cleanEscapedBraces(example.responses[0]) +
+    example.responses[0] +
     "\n```";
+
+  // Sleep a random number of seconds between 1 and 30
+  // const sleep = (ms: number) =>
+  //   new Promise((resolve) => setTimeout(resolve, ms));
+  // await sleep(Math.floor(Math.random() * 30) * 1000);
+
+  const spec = [
+    {
+      key: "c9fb3b4a-ed01-40ce-a3ae-da30668a8a80",
+      name: "Azure OpenAI",
+      emoji: "🔷",
+      model: "azure-openai",
+      base_model: "azure-openai",
+      temp: 1,
+      deployment_name: "gpt-35-turbo-16k",
+      model_type: "chat-completion",
+      // api_version: "2023-05-15",
+      system_msg: "You are an expert evaluator.",
+      settings: {
+        deployment_name: "gpt-35-turbo-16k",
+        model_type: "chat-completion",
+        // api_version: "2023-05-15",
+        system_msg: "You are an expert evaluator.",
+        temperature: 1,
+        response_format: {
+          type: "text",
+        },
+        functions: [],
+        function_call: "",
+        top_p: 1,
+        stop: [],
+        presence_penalty: 0,
+        frequency_penalty: 0,
+      },
+      formData: {
+        shortname: "Azure OpenAI",
+        deployment_name: "gpt-35-turbo-16k",
+        model_type: "chat-completion",
+        // api_version: "2023-05-15",
+        system_msg: "You are an expert evaluator.",
+        temperature: 1,
+        response_format: "text",
+        functions: "",
+        function_call: "",
+        top_p: 1,
+        stop: "",
+        presence_penalty: 0,
+        frequency_penalty: 0,
+      },
+      progress: {
+        success: 0,
+        error: 0,
+      },
+    },
+  ];
 
   // Query an LLM as an evaluator
   const result = await simpleQueryLLM(
     evalPrompt, // prompt
-    "gpt-3.5-turbo", // llm
+    // "gpt-3.5-turbo", // llm
+    spec,
     "You are an expert evaluator.", // system_msg
   );
 
@@ -195,10 +301,13 @@ export async function execPyFunc(
 ): Promise<EvalFunctionResult> {
   try {
     // We need to replace the function name with "evaluate", which is what is expected by backend:
-    const code = evalFunction.code.replace(
+    let code = evalFunction.code.replace(
       `def ${evalFunction.name}`,
       "def evaluate",
     );
+
+    // Add `import re` to the code if it's not already there
+    if (!code.includes("import re")) code = "import re\n" + code;
 
     console.log(`Executing function: ${code}`);
 
@@ -216,6 +325,8 @@ export async function execPyFunc(
     // Check for errors
     if (result.error !== undefined) throw new Error(result.error);
 
+    console.log("Result:", result);
+
     // Extract the evaluation result
     const eval_res = result.responses
       ? (result.responses[0] as StandardizedLLMResponse).eval_res?.items[0]
@@ -225,7 +336,7 @@ export async function execPyFunc(
     // NOTE: EvalGen only supports assertion functions at this time.
     if (typeof eval_res !== "boolean")
       throw new Error(
-        "Non-boolean return value encountered when executing JS eval code. Value: " +
+        "Non-boolean return value encountered when executing Python eval code. Value: " +
           eval_res,
       );
 
@@ -247,6 +358,7 @@ export async function generateFunctionsForCriteria(
     promptTemplate,
     example,
   );
+  console.log("Function generation prompt:", functionGenPrompt);
 
   try {
     const streamer = new AzureOpenAIStreamer();
@@ -257,7 +369,7 @@ export async function generateFunctionsForCriteria(
 
     const modelType =
       criteria.eval_method === "expert" ? "llm_eval" : "python_fn";
-    await streamer.generate(functionGenPrompt, "gpt-35-turbo", modelType);
+    await streamer.generate(functionGenPrompt, "gpt-4", modelType);
   } catch (error) {
     console.error("Error generating function for criteria:", error);
     throw new Error(
@@ -272,37 +384,20 @@ function buildFunctionGenPrompt(
   example: StandardizedLLMResponse,
 ): string {
   if (criteria.eval_method === "expert")
-    return `Given a prompt template for an LLM pipeline, your task is to devise a prompt for an expert to evaluate the pipeline's responses based on the following criteria: ${criteria.criteria}
+    return `Given the following prompt template for an LLM pipeline:\n\n ${promptTemplate}\n\n, your task is to devise a prompt for an expert to evaluate the pipeline's responses based on the following criteria: ${criteria.criteria}
   
-  Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate the LLM response based on the criteria. Be creative in your prompts. Try different variations/wordings in the question. Return your answers in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
+  You will devise multiple prompts to see which has the best accuracy. Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate entire criteria (don't miss anything in the criteria). Try different variations/wordings in the prompts. Return your prompts in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
   `;
-  else
-    return `Given a prompt template for an LLM pipeline, your task is to devise multiple Python functions to evaluate LLM responses based on the criteria "${criteria.shortname}". Create as many implementations as possible.
+  else {
+    const prompt = `Given the following prompt template for an LLM pipeline:\n\n ${promptTemplate}\n\n, your task is to devise multiple Python assertions to evaluate LLM responses based on the criteria "${criteria.shortname}". Create as many implementations as possible.
 ${buildGenEvalCodePrompt("python", buildContextPromptForVarsMetavars(getVarsAndMetavars([example])), criteria.criteria, true)}
 
-Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function, including imports at the top of your solution.`;
+Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function. Each function should return only True or False.`;
 
-  // Prompt Template:
-  // "${promptTemplate}"
+    console.log("Function generation prompt:", prompt);
 
-  // Example inputs and outputs of the LLM pipeline:
-  // - Prompt: ${example.prompt}
-  // - LLM Response: ${example.responses[0]}
-
-  // Evaluation Criteria:
-  // - ${criteria.criteria}
-
-  // Function Requirements:
-  // - Develop multiple functions (at least 3) to assess the concept outlined in the criteria.
-  // - Each function must accept three arguments:
-  //   1. \`variables\`: A string representation of the variables for this LLM call.
-  //   2. \`prompt\`: A string representing the input prompt based on the variables.
-  //   3. \`response\`: The LLM response as a string.
-  // - The function should return a boolean value indicating whether the LLM response meets the set criteria.
-  // - Base the implementations on standard coding practices and common Python libraries.
-
-  // Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. All imports (e.g., import re, import nltk) should be done within the function definitions. Include the full implementation of each function.
-  // `;
+    return prompt;
+  }
 }
 
 function processAndEmitFunction(
