@@ -224,7 +224,7 @@ export async function executeLLMEval(
   // Query an LLM as an evaluator
   const result = await simpleQueryLLM(
     evalPrompt, // prompt
-    "gpt-3.5-turbo", // llm
+    "gpt-3.5-turbo-16k", // llm
     // spec,
     "You are an expert evaluator.", // system_msg
   );
