@@ -55,10 +55,12 @@ export async function generateLLMEvaluationCriteria(
   
   \`${prompt}\`
     
-    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). At most 3 criteria should have eval_method as expert. The "criteria" should be short, and the "shortname" should be a very brief title for the criteria. Each evaluation criteria should test a concept that should evaluate to "true" in the ideal case.`;
+    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of approximately 5 criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). At most 3 criteria should have eval_method as expert. The "criteria" should be short, and the "shortname" should be a very brief title for the criteria. Each evaluation criteria should test a concept that should evaluate to "true" in the ideal case.`;
 
   // Query the LLM (below, we will try this up to 3 times)
   async function _query() {
+
+    // TODO: Get rid of this hard-coded spec in favor of regular openai (or another model)
     const spec = [
       {
         key: "c9fb3b4a-ed01-40ce-a3ae-da30668a8a80",
@@ -69,12 +71,10 @@ export async function generateLLMEvaluationCriteria(
         temp: 1,
         deployment_name: "gpt-4",
         model_type: "chat-completion",
-        // api_version: "2023-05-15",
         system_msg: AssertionWriterSystemMsg,
         settings: {
           deployment_name: "gpt-4",
           model_type: "chat-completion",
-          // // api_version: "2023-05-15",
           system_msg: AssertionWriterSystemMsg,
           temperature: 1,
           response_format: {
@@ -91,7 +91,6 @@ export async function generateLLMEvaluationCriteria(
           shortname: "Azure OpenAI",
           deployment_name: "gpt-4",
           model_type: "chat-completion",
-          // api_version: "2023-05-15",
           system_msg: AssertionWriterSystemMsg,
           temperature: 1,
           response_format: "text",
@@ -111,8 +110,8 @@ export async function generateLLMEvaluationCriteria(
 
     const result = await simpleQueryLLM(
       detailedPrompt, // prompt
-      // "gpt-35-turbo-16k", // llm
-      spec, // llm
+      "gpt-4", // llm
+      // spec, // llm
       systemMsg !== undefined
         ? systemMsg === null
           ? undefined
@@ -170,6 +169,8 @@ export async function executeLLMEval(
   //   new Promise((resolve) => setTimeout(resolve, ms));
   // await sleep(Math.floor(Math.random() * 30) * 1000);
 
+  // TODO: Get rid of this hard-coded spec in favor of regular openai (or another model)
+
   const spec = [
     {
       key: "c9fb3b4a-ed01-40ce-a3ae-da30668a8a80",
@@ -223,8 +224,8 @@ export async function executeLLMEval(
   // Query an LLM as an evaluator
   const result = await simpleQueryLLM(
     evalPrompt, // prompt
-    // "gpt-3.5-turbo", // llm
-    spec,
+    "gpt-3.5-turbo-16k", // llm
+    // spec,
     "You are an expert evaluator.", // system_msg
   );
 
