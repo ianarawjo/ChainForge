@@ -164,6 +164,10 @@ export function get_azure_openai_api_keys(): [
   return [AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT];
 }
 
+export function get_openai_api_key(): string | undefined {
+  return OPENAI_API_KEY;
+}
+
 /**
  * Construct an OpenAI format chat history for sending off to an OpenAI API call.
  * @param prompt The next prompt (user message) to append.

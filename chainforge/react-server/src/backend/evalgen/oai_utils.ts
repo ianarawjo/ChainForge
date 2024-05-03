@@ -1,8 +1,7 @@
-import { env as process_env } from "process";
+// import { env as process_env } from "process";
 import { EventEmitter } from "events";
-import { AzureKeyCredential, OpenAIClient } from "@azure/openai";
-import { get_azure_openai_api_keys } from "../utils";
-
+// import { AzureKeyCredential, OpenAIClient } from "@azure/openai";
+import { get_openai_api_key } from "../utils";
 type ContentType = "criteria" | "python_fn" | "llm_eval";
 
 export class AzureOpenAIStreamer extends EventEmitter {
@@ -10,20 +9,31 @@ export class AzureOpenAIStreamer extends EventEmitter {
   private isJsonContentStarted = false;
   private isPythonContentStarted = false;
   private pythonBlockBuffer = "";
-  private client: OpenAIClient;
+  // private client;
+  private openai_api_key;
 
   constructor() {
     super();
 
-    const [AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT] =
-      get_azure_openai_api_keys();
+    const OPENAI_API_KEY = get_openai_api_key();
+    this.openai_api_key = OPENAI_API_KEY;
 
-    this.client = new OpenAIClient(
-      process?.env?.AZURE_OPENAI_ENDPOINT ?? AZURE_OPENAI_ENDPOINT ?? "",
-      new AzureKeyCredential(
-        process?.env?.AZURE_OPENAI_KEY ?? AZURE_OPENAI_KEY ?? "",
-      ),
-    );
+    // this.client = new OpenAIClient(
+    //   process?.env?.AZURE_OPENAI_ENDPOINT ?? AZURE_OPENAI_ENDPOINT ?? "",
+    //   new AzureKeyCredential(
+    //     process?.env?.AZURE_OPENAI_KEY ?? AZURE_OPENAI_KEY ?? "",
+    //   ),
+    // );
+    // const configuration = new OpenAIConfig({
+    //   apiKey: OPENAI_API_KEY,
+    // });
+    // // Since we are running client-side, we need to remove the user-agent header:
+    // delete configuration.baseOptions.headers["User-Agent"];
+
+    // // Set nosniff to false to avoid issues with the OpenAI API
+    // configuration.baseOptions.headers["X-Content-Type-Options"] = "nosniff";
+
+    // this.client = new OpenAIApi(configuration);
   }
 
   private buildMessages(prompt: string): any[] {
@@ -52,24 +62,72 @@ export class AzureOpenAIStreamer extends EventEmitter {
     this.resetBuffer();
     const messages = this.buildMessages(prompt);
 
-    const events = await this.client.listChatCompletions(model, messages, {});
+    // const events = await this.client.listChatCompletions(model, messages, {});
 
-    for await (const event of events) {
-      for (const choice of event.choices) {
-        const delta = choice.delta?.content;
-        if (delta !== undefined) {
-          if (type === "criteria") {
-            this.processCriteriaDelta(delta);
-          } else if (type === "llm_eval") {
-            this.processStringDelta(delta);
-          } else if (type === "python_fn") {
-            this.processFunctionDelta(delta);
-          } else {
-            throw new Error("Invalid type");
-          }
-        }
+
+    // for await (const event of events) {
+    //   for (const choice of event.choices) {
+    //     const delta = choice.delta?.content;
+    //     if (delta !== undefined) {
+    //       if (type === "criteria") {
+    //         this.processCriteriaDelta(delta);
+    //       } else if (type === "llm_eval") {
+    //         this.processStringDelta(delta);
+    //       } else if (type === "python_fn") {
+    //         this.processFunctionDelta(delta);
+    //       } else {
+    //         throw new Error("Invalid type");
+    //       }
+    //     }
+    //   }
+    // }
+
+    // Used restapi as here: https://stackoverflow.com/questions/76137987/openai-completion-stream-with-node-js-and-express-js
+
+    const streamRes = await fetch("https://api.openai.com/v1/chat/completions", {method: "POST", headers: {"Authorization": `Bearer ${this.openai_api_key}`, "Content-Type": "application/json"}, body: JSON.stringify({model: model, messages: messages, stream: true})});
+
+
+    const reader = streamRes.body.getReader();
+    let done = false;
+    let concenattedJsonStrn = '';
+
+    while (!done) {
+      const { value, done: readerDone, } = await reader.read();
+      done = readerDone;
+      const buffer = Buffer.from(value);
+      const textPayload = buffer.toString();
+      concenattedJsonStrn += textPayload;
+      if (!concenattedJsonStrn.includes(`data: `) || !concenattedJsonStrn.includes(`\n\n`)) {
+          continue;
       }
-    }
+      const payloads = concenattedJsonStrn.toString().split("\n\n");
+      concenattedJsonStrn = '';
+  
+      for (const payload of payloads) {
+          if (payload.includes('[DONE]')) return;
+          if (payload.startsWith("data:")) {
+              try {
+                  const data = JSON.parse(payload.replace("data: ", ""));
+                  const delta: undefined | string = data.choices[0].delta?.content;
+                  if (delta !== undefined) {
+                    if (type === "criteria") {
+                      this.processCriteriaDelta(delta);
+                    } else if (type === "llm_eval") {
+                      this.processStringDelta(delta);
+                    } else if (type === "python_fn") {
+                      this.processFunctionDelta(delta);
+                    } else {
+                      throw new Error("Invalid type");
+                    }
+                  }
+              } catch (error) {
+                  console.log(`Error with JSON.parse and ${payload}.\n${error}`);
+                  concenattedJsonStrn += payload;
+              }
+          }
+      }
+  }
+
 
     this.emit("end"); // Signal that streaming is complete
   }
