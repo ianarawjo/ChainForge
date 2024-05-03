@@ -24,14 +24,6 @@ export class AzureOpenAIStreamer extends EventEmitter {
     //     process?.env?.AZURE_OPENAI_KEY ?? AZURE_OPENAI_KEY ?? "",
     //   ),
     // );
-    // const configuration = new OpenAIConfig({
-    //   apiKey: OPENAI_API_KEY,
-    // });
-    // // Since we are running client-side, we need to remove the user-agent header:
-    // delete configuration.baseOptions.headers["User-Agent"];
-
-    // // Set nosniff to false to avoid issues with the OpenAI API
-    // configuration.baseOptions.headers["X-Content-Type-Options"] = "nosniff";
 
     // this.client = new OpenAIApi(configuration);
   }
