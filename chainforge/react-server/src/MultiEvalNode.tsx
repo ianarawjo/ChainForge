@@ -20,6 +20,7 @@ import {
   Button,
   Alert,
   Tooltip,
+  Flex,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -58,6 +59,7 @@ import { GatheringResponsesRingProgress } from "./LLMItemButtonGroup";
 import { Dict, LLMResponse, QueryProgress } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
+import EvalGenModal, { EvalGenModalRef } from "./EvalGenModal";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
@@ -612,6 +614,11 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
     }
   }, [inspectModal, lastResponses]);
 
+  const evalGenModalRef = useRef<EvalGenModalRef>(null);
+  const openEvalGen = () => {
+    evalGenModalRef.current?.trigger();
+  };
+
   // Something changed upstream
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
@@ -639,6 +646,9 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         ref={inspectModal}
         jsonResponses={lastResponses}
       />
+
+      <EvalGenModal ref={evalGenModalRef} responses={[]} />
+
       {/* <PickCriteriaModal ref={pickCriteriaModalRef} /> */}
       <iframe style={{ display: "none" }} id={`${id}-iframe`}></iframe>
 
@@ -824,7 +834,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         </Menu>
       </div>
 
-      {/* EvalGen {evaluators && evaluators.length === 0 ? (
+      {evaluators && evaluators.length === 0 ? (
         <Flex justify="center" gap={12} mt="md">
           <Tooltip
             label="Let an AI help you generate criteria and implement evaluation functions."
@@ -832,11 +842,15 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
             position="bottom"
             withArrow
           >
-            <Button onClick={onClickPickCriteria} variant="outline" size="xs">
+            <Button onClick={openEvalGen} variant="outline" size="xs">
               <IconSparkles size="11pt" />
-              &nbsp;Generate criteria
+              &nbsp;Generate evals with EvalGen
             </Button>
-          </Tooltip> */}
+          </Tooltip>
+        </Flex>
+      ) : (
+        <></>
+      )}
       {/* <Button disabled variant='gradient' gradient={{ from: 'teal', to: 'lime', deg: 105 }}><IconSparkles />&nbsp;Validate</Button> */}
       {/* </Flex>
       ) : (
