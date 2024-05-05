@@ -47,7 +47,6 @@ import {
   fromModelId,
   ChatMessage as BedrockChatMessage,
 } from "@mirai73/bedrock-fm";
-import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
 import StorageCache from "./cache";
 import Compressor from "compressorjs";
 
@@ -1313,7 +1312,7 @@ export async function call_bedrock(
     temperature,
   };
 
-  const fm = fromModelId(modelName as Models, {
+  const fm = fromModelId(modelName, {
     region: bedrockConfig.region,
     credentials: bedrockConfig.credentials,
     ...query,

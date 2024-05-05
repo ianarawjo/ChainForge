@@ -20,7 +20,7 @@
     "@mantine/dropzone": "^6.0.19",
     "@mantine/form": "^6.0.11",
     "@mantine/prism": "^6.0.15",
-    "@mirai73/bedrock-fm": "^0.4.8",
+    "@mirai73/bedrock-fm": "^0.4.10",
     "@reactflow/background": "^11.2.0",
     "@reactflow/controls": "^11.1.11",
     "@reactflow/core": "^11.7.0",
