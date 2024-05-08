@@ -615,7 +615,8 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
 
   const evalGenModalRef = useRef<EvalGenModalRef>(null);
   const openEvalGen = () => {
-    evalGenModalRef.current?.trigger();
+    const resps = handlePullInputs();
+    evalGenModalRef.current?.trigger(resps);
   };
 
   // Something changed upstream
@@ -646,7 +647,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         jsonResponses={lastResponses}
       />
 
-      <EvalGenModal ref={evalGenModalRef} responses={[]} />
+      <EvalGenModal ref={evalGenModalRef} />
 
       {/* <PickCriteriaModal ref={pickCriteriaModalRef} /> */}
       <iframe style={{ display: "none" }} id={`${id}-iframe`}></iframe>

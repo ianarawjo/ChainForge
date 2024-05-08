@@ -17,10 +17,11 @@
  * An AI (LLM call) can also suggest criteria based on the implicit context (inputs, such as the prompt)
  * and user feedback during grading (written feedback about failing outputs whose failure couldn't be classified under the immediate criteria set.)
  */
-import React, { forwardRef, useImperativeHandle, useState } from "react";
+import React, { ReactNode, forwardRef, useImperativeHandle, useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
 import {
   ActionIcon,
+  Box,
   Button,
   Card,
   Collapse,
@@ -29,6 +30,7 @@ import {
   Group,
   Menu,
   Modal,
+  Stack,
   Text,
   TextInput,
   Textarea,
@@ -36,17 +38,20 @@ import {
   rem,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { LLMResponse } from "./backend/typing";
+import { LLMResponse, PromptVarsDict } from "./backend/typing";
 import { EvalCriteria } from "./backend/evalgen/typing";
 import {
   IconChevronDown,
+  IconChevronLeft,
   IconChevronRight,
   IconDots,
   IconRobot,
   IconStarFilled,
   IconTerminal2,
+  IconThumbUp,
   IconTrash,
 } from "@tabler/icons-react";
+import { cleanMetavarsFilterFunc, transformDict } from "./backend/utils";
 
 const INIT_CRITERIA: EvalCriteria[] = [
   {
@@ -77,6 +82,8 @@ export interface CriteriaCardProps {
   onChange: (changedCriteria: EvalCriteria) => void;
   onDelete: () => void;
   initiallyOpen?: boolean;
+  grade: boolean | undefined;
+  onChangeGrade: (newGrade: boolean | undefined) => void;
 }
 
 const CriteriaCard: React.FC<CriteriaCardProps> = ({
@@ -84,6 +91,8 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
   onChange,
   onDelete,
   initiallyOpen,
+  grade,
+  onChangeGrade,
 }) => {
   const [opened, { toggle }] = useDisclosure(initiallyOpen ?? false);
   const [title, setTitle] = useState(criterion.shortname ?? "New Criteria");
@@ -95,12 +104,12 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
           <Group spacing="0px">
             {/* The arrow chevron user can click to collapse/expand */}
             <Button
-              onClick={toggle}
-              variant="subtle"
               color="gray"
-              p="0px"
-              m="0px"
+              p={0}
+              m={0}
+              variant="subtle"
               mr="4px"
+              onClick={toggle}
             >
               {opened ? (
                 <IconChevronDown size="14pt" />
@@ -109,32 +118,35 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
               )}
             </Button>
 
-            {/* Favorite star toggle */}
-            <Tooltip
-              label={
-                criterion.priority <= 0
-                  ? "Make this a deal-breaker"
-                  : "It's a deal-breaker"
-              }
-              withinPortal
-              withArrow
+            {/* Thumbs up/down buttons */}
+            <Button 
+              color={grade === true ? "green" : "gray"} 
+              m={0}
+              p={0}
+              variant="subtle"
+              onClick={() => {
+                // Toggle grade: if on (true), turn 'off' (undefined, for neutral).
+                if (onChangeGrade) onChangeGrade(grade === true ? undefined : true);
+              }}
             >
-              <Button 
-                color={criterion.priority <= 0 ? "gray" : "yellow"} 
-                m={0}
-                p={0}
-                variant="subtle"
-                onClick={() => {
-                  criterion.priority = criterion.priority <= 0 ? 1 : 0;
-                  if (onChange) onChange(criterion);
-                }}
-              >
-                <IconStarFilled
-                  size="14pt"
-                  // color={criterion.priority <= 0 ? "#bbb" : "#bfa940"}
-                />
-              </Button>
-            </Tooltip>
+              <IconThumbUp
+                size="14pt"
+              />
+            </Button>
+            <Button 
+              color={grade === false ? "red" : "gray"} 
+              m={0}
+              p={0}
+              variant="subtle"
+              onClick={() => {
+                // Toggle grade: if on (true), turn 'off' (undefined, for neutral).
+                if (onChangeGrade) onChangeGrade(grade === false ? undefined : false);
+              }}
+            >
+              <IconThumbUp
+                size="14pt"
+              />
+            </Button>
 
             {/* Title of the criteria */}
             <TextInput
@@ -183,6 +195,32 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
               >
                 {criterion.eval_method === "code" ? <Flex style={{userSelect: "none"}}><IconTerminal2 size="14pt" />&nbsp;Python</Flex> : <Flex style={{userSelect: "none"}}><IconRobot size="14pt" />&nbsp;LLM</Flex>}
               </Text>
+            </Tooltip>
+
+            {/* Favorite star toggle */}
+            <Tooltip
+              label={
+                criterion.priority <= 0
+                  ? "Make this a deal-breaker"
+                  : "It's a deal-breaker"
+              }
+              withinPortal
+              withArrow
+            >
+              <Button 
+                color={criterion.priority <= 0 ? "gray" : "yellow"} 
+                m={0}
+                p={0}
+                variant="subtle"
+                onClick={() => {
+                  criterion.priority = criterion.priority <= 0 ? 1 : 0;
+                  if (onChange) onChange(criterion);
+                }}
+              >
+                <IconStarFilled
+                  size="14pt"
+                />
+              </Button>
             </Tooltip>
 
             {/* Delete button (and any other criterion-specific changes in the future) */}
@@ -241,20 +279,23 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
 };
 
 export interface EvalGenModalRef {
-  trigger: () => void;
+  trigger: (resps: LLMResponse[]) => void;
 }
 
 export interface EvalGenModalProps {
-  responses: LLMResponse[];
 }
 
 const EvalGenModal = forwardRef<EvalGenModalRef, EvalGenModalProps>(
-  function EvalGenModal({ responses }, ref) {
+  function EvalGenModal({ }, ref) {
     const [opened, { open, close }] = useDisclosure(false);
     const [criteria, setCriteria] = useState<EvalCriteria[]>(INIT_CRITERIA);
+    const [responses, setResponses] = useState<LLMResponse[]>([]);
 
-    // This gives the parent access to triggering the modal alert
-    const trigger = () => {
+    // Open the EvalGen wizard
+    const trigger = (resps: LLMResponse[]) => {
+      // We pass the responses here manually to ensure they remain the same 
+      // for the duration of one EvalGen operation. 
+      setResponses(resps);
       open();
     };
     useImperativeHandle(ref, () => ({
@@ -291,7 +332,30 @@ const EvalGenModal = forwardRef<EvalGenModalRef, EvalGenModalProps>(
         style={{ position: "relative", left: "-5%" }}
       >
         <Grid h={window?.innerHeight * 0.8}>
-          <Grid.Col span={8}>Grading goes here</Grid.Col>
+          <Grid.Col span={8}>
+            <Stack justify="space-between">
+              {/* View showing the response the user is currently grading */}
+              <GradingView />
+
+              {/* Progress bar */}
+              <Flex justify="left" align="center" gap="md">
+                <Stack w="100%" spacing={4}>
+                  <Text color="#aaa" size="sm">
+                    {bottomBar.progressLabel}
+                  </Text>
+                  <Progress w="100%" value={bottomBar.progressPerc} mb="0px" />
+                </Stack>
+
+                <Button
+                  onClick={handleDone}
+                  variant={bottomBar.buttonStyle}
+                  disabled={bottomBar.buttonDisabled}
+                >
+                  {bottomBar.buttonLabel}
+                </Button>
+              </Flex>
+            </Stack>
+          </Grid.Col>
           <Grid.Col span={4} bg="gray" pt="16px">
             {criteria.map((e) => (
               <CriteriaCard
@@ -309,4 +373,134 @@ const EvalGenModal = forwardRef<EvalGenModalRef, EvalGenModalProps>(
   },
 );
 
+const HeaderText = ({ children }: { children: ReactNode }) => {
+  return (
+    <Text size="xl" fw={500} pl="sm" mb="lg">
+      {children}
+    </Text>
+  );
+};
+
+interface GradingViewProps {
+  shownResponse: LLMResponse;
+  gotoPrevResponse: () => void;
+  gotoNextResponse: () => void;
+}
+
+const GradingView: React.FC<GradingViewProps> = ({ shownResponse, gotoPrevResponse, gotoNextResponse }) => {
+
+  // Calculate inner values only when shownResponse changes
+  const responseText = useMemo(() =>
+    shownResponse && shownResponse.responses?.length > 0
+      ? shownResponse.responses[0].toString()
+      : ""
+  , [shownResponse]);
+  const prompt = useMemo(() => shownResponse?.prompt ?? "", [shownResponse]);
+  const varsDivs = useMemo(() => {
+    const combined_vars_metavars = shownResponse
+      ? {
+          ...shownResponse.vars,
+          ...transformDict(shownResponse.metavars, cleanMetavarsFilterFunc),
+        }
+      : {};
+    return Object.entries(combined_vars_metavars).map(([varname, val]) => (
+      <div key={varname} className="grade-resp-var-container">
+        <span className="response-var-name">{varname}&nbsp;=&nbsp;</span>
+        <span className="response-var-value linebreaks">{val}</span>
+      </div>
+    ));
+  }, [shownResponse]);
+
+  return (
+    <Stack justify="space-between" mih={500}>
+      <Box>
+        {/* Top header */}
+        <Flex justify="center">
+          <HeaderText>
+            What do you think of this response?
+          </HeaderText>
+        </Flex>
+
+        {/* Middle response box with chevron buttons < and > for going back and forward a response */}
+        <Flex justify="center" align="center" mb="sm">
+          {/* Go back to previous response */}
+          <Button variant="white" color="dark" onClick={gotoPrevResponse}>
+            <IconChevronLeft />
+          </Button>
+
+          {/* The response one is currently grading */}
+          <div
+            className="response-box"
+            style={{
+              backgroundColor: "#eee",
+              width: "80%",
+              maxHeight: "340px",
+              overflowY: "scroll",
+              borderColor: "black",
+              borderStyle: "solid",
+            }}
+          >
+            <div className="response-item-llm-name-wrapper">
+              <div
+                className="small-response"
+                style={{ fontSize: "11pt", padding: "12pt" }}
+              >
+                {responseText}
+              </div>
+            </div>
+          </div>
+
+          {/* Go forward to the next response */}
+          <Button variant="white" color="dark" onClick={gotoNextResponse}>
+            <IconChevronRight />
+          </Button>
+        </Flex>
+
+        {/* Views for the vars (inputs) that generated this response, and the concrete prompt */}
+        <Flex justify="center" mb="xl" gap="lg">
+          <div
+            style={{
+              backgroundColor: "#fff",
+              padding: "12px",
+              width: "31%",
+              borderRadius: "12px",
+              borderWidth: "1px",
+              borderStyle: "solid",
+            }}
+          >
+            Vars
+            <hr />
+            <div style={{ maxHeight: "160px", overflowY: "scroll" }}>
+              {varsDivs}
+            </div>
+          </div>
+          <div
+            style={{
+              backgroundColor: "#fff",
+              padding: "12px",
+              width: "41%",
+              borderRadius: "2px",
+            }}
+          >
+            Prompt
+            <hr />
+            <div
+              className="monofont linebreaks"
+              style={{
+                maxHeight: "160px",
+                overflowY: "scroll",
+                fontSize: "10pt",
+                lineHeight: "1.2",
+              }}
+            >
+              {prompt}
+            </div>
+          </div>
+        </Flex>
+      </Box>
+    </Stack>
+  );
+};
+
 export default EvalGenModal;
+
