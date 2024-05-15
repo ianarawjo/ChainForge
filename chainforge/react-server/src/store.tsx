@@ -89,10 +89,7 @@ const refreshableOutputNodeTypes = new Set([
   "split",
 ]);
 
-export const initLLMProviderMenu: (
-  | LLMSpec
-  | LLMGroup
-)[] = [
+export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
   {
     group: "OpenAI",
     emoji: "🤖",
@@ -225,7 +222,8 @@ export const initLLMProviderMenu: (
   },
 ];
 
-const togetherModels = TogetherChatSettings['schema']['properties']['model']['enum'] as string[];
+const togetherModels = TogetherChatSettings.schema.properties.model
+  .enum as string[];
 const togetherGroups = () => {
   const groupNames: string[] = [];
   const groups: { [key: string]: LLMGroup } = {};
@@ -234,10 +232,10 @@ const togetherGroups = () => {
     const spec: LLMSpec = {
       name: modelName,
       emoji: "🤝",
-      model: model,
+      model,
       base_model: "together/" + model,
       temp: 0.9,
-    }
+    };
     if (groupName in groups) {
       (groups[groupName].items as LLMSpec[]).push(spec);
     } else {
@@ -283,7 +281,7 @@ function flattenLLMProviders(providers: (LLMSpec | LLMGroup)[]): LLMSpec[] {
   );
 }
 
-export const initLLMProviders = flattenLLMProviders(initLLMProviderMenu)
+export const initLLMProviders = flattenLLMProviders(initLLMProviderMenu);
 
 export interface StoreHandles {
   // Nodes and edges

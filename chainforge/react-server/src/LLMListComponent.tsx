@@ -444,9 +444,9 @@ export const LLMListContainer = forwardRef<
           key: item.model,
           title: `${item.emoji} ${item.name}`,
           onClick: () => handleSelectModel(item.base_model),
-        }
+        };
       }
-    }
+    };
     const res = initLLMProviderMenu.map(convert);
 
     for (const item of AvailableLLMs) {
