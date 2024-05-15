@@ -27,7 +27,7 @@ import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
 import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { useContextMenu } from "mantine-contextmenu";
-import { ContextMenuOptions, ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
+import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
@@ -430,46 +430,25 @@ export const LLMListContainer = forwardRef<
   );
 
   const menuItems = useMemo(() => {
-    const res: ContextMenuItemOptions[] = [];
     const initModels: Set<string> = new Set<string>();
-    const getMenuItems = (group: LLMGroup) => {
-      const res: ContextMenuItemOptions[] = [];
-      for (const item of group.items) {
-        if (!("group" in item)) {
-          initModels.add(item.base_model);
-          res.push({
-            key: item.model,
-            title: `${item.emoji} ${item.name}`,
-            onClick: () => handleSelectModel(item.base_model),
-          });
-        } else {
-          const a = getMenuItems(item);
-          res.push({
-            key: item.group,
-            title: `${item.emoji} ${item.group}`,
-            items: getMenuItems(item),
-          });
-        }
-      };
-      return res;
-    }
-
-    for (const item of initLLMProviderMenu) {
-      if (!("group" in item)) {
+    const convert = (item: LLMSpec | LLMGroup): ContextMenuItemOptions => {
+      if ("group" in item) {
+        return {
+          key: item.group,
+          title: `${item.emoji} ${item.group}`,
+          items: item.items.map(convert),
+        };
+      } else {
         initModels.add(item.base_model);
-        res.push({
+        return {
           key: item.model,
           title: `${item.emoji} ${item.name}`,
           onClick: () => handleSelectModel(item.base_model),
-        });
-      } else {
-        res.push({
-          key: item.group,
-          title: `${item.emoji} ${item.group}`,
-          items: getMenuItems(item),
-        });
+        }
       }
     }
+    const res = initLLMProviderMenu.map(convert);
+
     for (const item of AvailableLLMs) {
       if (initModels.has(item.base_model)) {
         continue;

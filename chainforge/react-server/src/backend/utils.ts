@@ -1377,12 +1377,12 @@ export async function call_together(
       "Could not find an Together API key. Double-check that your API key is set in Settings or in your local environment.",
     );
 
-  const toegetherBaseUrl = "https://api.together.xyz/v1";
+  const togetherBaseUrl = "https://api.together.xyz/v1";
 
   // Together.ai uses OpenAI's API, so we can use the OpenAI API client to make the call:
   const configuration = new OpenAIConfig({
     apiKey: TOGETHER_API_KEY,
-    basePath: toegetherBaseUrl,
+    basePath: togetherBaseUrl,
   });
 
   // Since we are running client-side, we need to remove the user-agent header:
@@ -1437,7 +1437,7 @@ export async function call_together(
     system_msg,
   );
 
-  // Try to call OpenAI
+  // Try to call Together
   let response: Dict = {};
   try {
     const completion = await together_call(query);

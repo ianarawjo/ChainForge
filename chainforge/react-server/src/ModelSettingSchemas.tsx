@@ -2022,7 +2022,7 @@ const MetaLlama2ChatSettings: ModelSettingsDict = {
   },
 };
 
-const TogetherChatSettings: ModelSettingsDict = {
+export const TogetherChatSettings: ModelSettingsDict = {
   fullName: "Together Chat",
   schema: {
     type: "object",
