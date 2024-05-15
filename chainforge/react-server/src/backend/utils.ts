@@ -155,6 +155,7 @@ let AWS_ACCESS_KEY_ID = get_environ("AWS_ACCESS_KEY_ID");
 let AWS_SECRET_ACCESS_KEY = get_environ("AWS_SECRET_ACCESS_KEY");
 let AWS_SESSION_TOKEN = get_environ("AWS_SESSION_TOKEN");
 let AWS_REGION = get_environ("AWS_REGION");
+let TOGETHER_API_KEY = get_environ("TOGETHER_API_KEY");
 
 /**
  * Sets the local API keys for the revelant LLM API(s).
@@ -186,6 +187,7 @@ export function set_api_keys(api_keys: Dict<string>): void {
   if (key_is_present("AWS_Session_Token"))
     AWS_SESSION_TOKEN = api_keys.AWS_Session_Token;
   if (key_is_present("AWS_Region")) AWS_REGION = api_keys.AWS_Region;
+  if (key_is_present("Together")) TOGETHER_API_KEY = api_keys.Together;
 }
 
 export function get_azure_openai_api_keys(): [
@@ -1358,6 +1360,101 @@ export async function call_bedrock(
   return [query, responses];
 }
 
+/**
+ * Calls Together.ai text + chat models via Together's API.
+   @returns raw query and response JSON dicts.
+ */
+export async function call_together(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+): Promise<[Dict, Dict]> {
+  if (!TOGETHER_API_KEY)
+    throw new Error(
+      "Could not find an Together API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  const toegetherBaseUrl = "https://api.together.xyz/v1";
+
+  // Together.ai uses OpenAI's API, so we can use the OpenAI API client to make the call:
+  const configuration = new OpenAIConfig({
+    apiKey: TOGETHER_API_KEY,
+    basePath: toegetherBaseUrl,
+  });
+
+  // Since we are running client-side, we need to remove the user-agent header:
+  delete configuration.baseOptions.headers["User-Agent"];
+
+  const together = new OpenAIApi(configuration);
+
+  const modelname: string = model.toString();
+  if (
+    params?.stop !== undefined &&
+    (!Array.isArray(params.stop) || params.stop.length === 0)
+  )
+    delete params.stop;
+  if (params?.seed && params.seed.toString().length === 0) delete params?.seed;
+  if (
+    params?.functions !== undefined &&
+    (!Array.isArray(params.functions) || params.functions.length === 0)
+  )
+    delete params?.functions;
+  if (
+    params?.function_call !== undefined &&
+    (!(typeof params.function_call === "string") ||
+      params.function_call.trim().length === 0)
+  )
+    delete params.function_call;
+
+  console.log(`Querying Together model '${model}' with prompt '${prompt}'...`);
+
+  // Determine the system message and whether there's chat history to continue:
+  const chat_history: ChatHistory | undefined = params?.chat_history;
+  const system_msg: string =
+    params?.system_msg !== undefined
+      ? params.system_msg
+      : "You are a helpful assistant.";
+  delete params?.system_msg;
+  delete params?.chat_history;
+
+  const query: Dict = {
+    model: modelname,
+    n,
+    temperature,
+    ...params, // 'the rest' of the settings, passed from the front-end settings
+  };
+
+  // Create call to chat model
+  const together_call: any = together.createChatCompletion.bind(together);
+
+  // Carry over chat history, if present:
+  query.messages = construct_openai_chat_history(
+    prompt,
+    chat_history,
+    system_msg,
+  );
+
+  // Try to call OpenAI
+  let response: Dict = {};
+  try {
+    const completion = await together_call(query);
+    response = completion.data;
+  } catch (error: any) {
+    if (error?.response) {
+      throw new Error(error.response.data?.error?.message);
+      // throw new Error(error.response.status);
+    } else {
+      console.log(error?.message || error);
+      throw new Error(error?.message || error);
+    }
+  }
+
+  return [query, response];
+}
+
 async function call_custom_provider(
   prompt: string,
   model: LLM,
@@ -1442,6 +1539,7 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.Ollama) call_api = call_ollama_provider;
   else if (llm_provider === LLMProvider.Custom) call_api = call_custom_provider;
   else if (llm_provider === LLMProvider.Bedrock) call_api = call_bedrock;
+  else if (llm_provider === LLMProvider.Together) call_api = call_together;
   if (call_api === undefined)
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
@@ -1617,6 +1715,8 @@ export function extract_responses(
       return _extract_ollama_responses(response as Dict[]);
     case LLMProvider.Bedrock:
       return response as Array<string>;
+    case LLMProvider.Together:
+      return _extract_openai_responses(response as Dict[]);
     default:
       if (
         Array.isArray(response) &&

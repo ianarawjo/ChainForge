@@ -106,6 +106,66 @@ export enum NativeLLM {
   Bedrock_Mistral_Mistral = "mistral.mistral-7b-instruct-v0:2",
   Bedrock_Mistral_Mistral_Large = "mistral.mistral-large-2402-v1:0",
   Bedrock_Mistral_Mixtral = "mistral.mixtral-8x7b-instruct-v0:1",
+
+  // Together.ai
+  Together_ZeroOneAI_01ai_Yi_Chat_34B = "zero-one-ai/Yi-34B-Chat",
+  Together_AllenAI_OLMo_Instruct_7B = "allenai/OLMo-7B-Instruct",
+  Together_AllenAI_OLMo_Twin2T_7B = "allenai/OLMo-7B-Twin-2T",
+  Together_AllenAI_OLMo_7B = "allenai/OLMo-7B",
+  Together_Austism_Chronos_Hermes_13B = "Austism/chronos-hermes-13b",
+  Together_cognitivecomputations_Dolphin_2_5_Mixtral_8x7b = "cognitivecomputations/dolphin-2.5-mixtral-8x7b",
+  Together_databricks_DBRX_Instruct = "databricks/dbrx-instruct",
+  Together_DeepSeek_Deepseek_Coder_Instruct_33B = "deepseek-ai/deepseek-coder-33b-instruct",
+  Together_DeepSeek_DeepSeek_LLM_Chat_67B = "deepseek-ai/deepseek-llm-67b-chat",
+  Together_garagebAInd_Platypus2_Instruct_70B = "garage-bAInd/Platypus2-70B-instruct",
+  Together_Google_Gemma_Instruct_2B = "google/gemma-2b-it",
+  Together_Google_Gemma_Instruct_7B = "google/gemma-7b-it",
+  Together_Gryphe_MythoMaxL2_13B = "Gryphe/MythoMax-L2-13b",
+  Together_LMSys_Vicuna_v1_5_13B = "lmsys/vicuna-13b-v1.5",
+  Together_LMSys_Vicuna_v1_5_7B = "lmsys/vicuna-7b-v1.5",
+  Together_Meta_Code_Llama_Instruct_13B = "codellama/CodeLlama-13b-Instruct-hf",
+  Together_Meta_Code_Llama_Instruct_34B = "codellama/CodeLlama-34b-Instruct-hf",
+  Together_Meta_Code_Llama_Instruct_70B = "codellama/CodeLlama-70b-Instruct-hf",
+  Together_Meta_Code_Llama_Instruct_7B = "codellama/CodeLlama-7b-Instruct-hf",
+  Together_Meta_LLaMA2_Chat_70B = "meta-llama/Llama-2-70b-chat-hf",
+  Together_Meta_LLaMA2_Chat_13B = "meta-llama/Llama-2-13b-chat-hf",
+  Together_Meta_LLaMA2_Chat_7B = "meta-llama/Llama-2-7b-chat-hf",
+  Together_Meta_LLaMA3_Chat_8B = "meta-llama/Llama-3-8b-chat-hf",
+  Together_Meta_LLaMA3_Chat_70B = "meta-llama/Llama-3-70b-chat-hf",
+  Together_mistralai_Mistral_7B_Instruct = "mistralai/Mistral-7B-Instruct-v0.1",
+  Together_mistralai_Mistral_7B_Instruct_v0_2 = "mistralai/Mistral-7B-Instruct-v0.2",
+  Together_mistralai_Mixtral8x7B_Instruct_46_7B = "mistralai/Mixtral-8x7B-Instruct-v0.1",
+  Together_mistralai_Mixtral8x22B_Instruct_141B = "mistralai/Mixtral-8x22B-Instruct-v0.1",
+  Together_NousResearch_Nous_Capybara_v1_9_7B = "NousResearch/Nous-Capybara-7B-V1p9",
+  Together_NousResearch_Nous_Hermes_2__Mistral_DPO_7B = "NousResearch/Nous-Hermes-2-Mistral-7B-DPO",
+  Together_NousResearch_Nous_Hermes_2__Mixtral_8x7BDPO_46_7B = "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO",
+  Together_NousResearch_Nous_Hermes_2__Mixtral_8x7BSFT_46_7B = "NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT",
+  Together_NousResearch_Nous_Hermes_LLaMA2_7B = "NousResearch/Nous-Hermes-llama-2-7b",
+  Together_NousResearch_Nous_Hermes_Llama2_13B = "NousResearch/Nous-Hermes-Llama2-13b",
+  Together_NousResearch_Nous_Hermes2_Yi_34B = "NousResearch/Nous-Hermes-2-Yi-34B",
+  Together_OpenChat_OpenChat_3_5_7B = "openchat/openchat-3.5-1210",
+  Together_OpenOrca_OpenOrca_Mistral_7B_8K = "Open-Orca/Mistral-7B-OpenOrca",
+  Together_Qwen_Qwen_1_5_Chat_0_5B = "Qwen/Qwen1.5-0.5B-Chat",
+  Together_Qwen_Qwen_1_5_Chat_1_8B = "Qwen/Qwen1.5-1.8B-Chat",
+  Together_Qwen_Qwen_1_5_Chat_4B = "Qwen/Qwen1.5-4B-Chat",
+  Together_Qwen_Qwen_1_5_Chat_7B = "Qwen/Qwen1.5-7B-Chat",
+  Together_Qwen_Qwen_1_5_Chat_14B = "Qwen/Qwen1.5-14B-Chat",
+  Together_Qwen_Qwen_1_5_Chat_32B = "Qwen/Qwen1.5-32B-Chat",
+  Together_Qwen_Qwen_1_5_Chat_72B = "Qwen/Qwen1.5-72B-Chat",
+  Together_Qwen_Qwen_1_5_Chat_110B = "Qwen/Qwen1.5-110B-Chat",
+  Together_SnorkelAI_Snorkel_Mistral_PairRM_DPO_7B = "snorkelai/Snorkel-Mistral-PairRM-DPO",
+  Together_Snowflake_Snowflake_Arctic_Instruct = "Snowflake/snowflake-arctic-instruct",
+  Together_Stanford_Alpaca_7B = "togethercomputer/alpaca-7b",
+  Together_Teknium_OpenHermes2Mistral_7B = "teknium/OpenHermes-2-Mistral-7B",
+  Together_Teknium_OpenHermes2_5Mistral_7B = "teknium/OpenHermes-2p5-Mistral-7B",
+  Together_LLaMA27B32KInstruct_7B = "togethercomputer/Llama-2-7B-32K-Instruct",
+  Together_RedPajamaINCITE_Chat_3B = "togethercomputer/RedPajama-INCITE-Chat-3B-v1",
+  Together_RedPajamaINCITE_Chat_7B = "togethercomputer/RedPajama-INCITE-7B-Chat",
+  Together_StripedHyena_Nous_7B = "togethercomputer/StripedHyena-Nous-7B",
+  Together_Undi95_ReMM_SLERP_L2_13B = "Undi95/ReMM-SLERP-L2-13B",
+  Together_Undi95_Toppy_M_7B = "Undi95/Toppy-M-7B",
+  Together_WizardLM_WizardLM_v1_2_13B = "WizardLM/WizardLM-13B-V1.2",
+  Together_upstage_Upstage_SOLAR_Instruct_v1_11B = "upstage/SOLAR-10.7B-Instruct-v1.0",
 }
 
 export type LLM = string | NativeLLM;
@@ -132,6 +192,7 @@ export enum LLMProvider {
   Aleph_Alpha = "alephalpha",
   Ollama = "ollama",
   Bedrock = "bedrock",
+  Together = "together",
   Custom = "__custom",
 }
 
@@ -152,6 +213,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   else if (llm_name?.startsWith("Aleph_Alpha")) return LLMProvider.Aleph_Alpha;
   else if (llm_name?.startsWith("Ollama")) return LLMProvider.Ollama;
   else if (llm_name?.startsWith("Bedrock")) return LLMProvider.Bedrock;
+  else if (llm_name?.startsWith("Together")) return LLMProvider.Together;
   else if (llm.toString().startsWith("__custom/")) return LLMProvider.Custom;
 
   return undefined;
@@ -202,6 +264,7 @@ export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
 
 export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
   [LLMProvider.Anthropic]: 25, // Tier 1 pricing limit is 50 per minute, across all models; we halve this, to be safe.
+  [LLMProvider.Together]: 30, // Paid tier limit is 60 per minute, across all models; we halve this, to be safe.
 };
 
 // Max concurrent requests. Add to this to further constrain the rate limiter.

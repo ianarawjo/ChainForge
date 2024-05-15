@@ -25,9 +25,9 @@ import ModelSettingsModal, {
 } from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
-import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
+import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { useContextMenu } from "mantine-contextmenu";
-import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
+import { ContextMenuOptions, ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
@@ -432,6 +432,28 @@ export const LLMListContainer = forwardRef<
   const menuItems = useMemo(() => {
     const res: ContextMenuItemOptions[] = [];
     const initModels: Set<string> = new Set<string>();
+    const getMenuItems = (group: LLMGroup) => {
+      const res: ContextMenuItemOptions[] = [];
+      for (const item of group.items) {
+        if (!("group" in item)) {
+          initModels.add(item.base_model);
+          res.push({
+            key: item.model,
+            title: `${item.emoji} ${item.name}`,
+            onClick: () => handleSelectModel(item.base_model),
+          });
+        } else {
+          const a = getMenuItems(item);
+          res.push({
+            key: item.group,
+            title: `${item.emoji} ${item.group}`,
+            items: getMenuItems(item),
+          });
+        }
+      };
+      return res;
+    }
+
     for (const item of initLLMProviderMenu) {
       if (!("group" in item)) {
         initModels.add(item.base_model);
@@ -444,14 +466,7 @@ export const LLMListContainer = forwardRef<
         res.push({
           key: item.group,
           title: `${item.emoji} ${item.group}`,
-          items: item.items.map((k) => {
-            initModels.add(k.base_model);
-            return {
-              key: k.model,
-              title: `${k.emoji} ${k.name}`,
-              onClick: () => handleSelectModel(k.base_model),
-            };
-          }),
+          items: getMenuItems(item),
         });
       }
     }
