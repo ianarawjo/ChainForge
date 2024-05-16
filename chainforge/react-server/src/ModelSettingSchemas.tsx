@@ -13,6 +13,7 @@
 import {
   LLMProvider,
   MAX_CONCURRENT,
+  NativeLLM,
   RATE_LIMIT_BY_MODEL,
   getProvider,
 } from "./backend/models";
@@ -1356,13 +1357,14 @@ const BedrockClaudeSettings: ModelSettingsDict = {
         description:
           "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
         enum: [
-          "anthropic.claude-3-sonnet-20240229-v1:0",
-          "anthropic.claude-3-haiku-20240307-v1:0",
-          "anthropic.claude-v2:1",
-          "anthropic.claude-v2",
-          "anthropic.claude-instant-v1",
+          NativeLLM.Bedrock_Claude_3_Opus,
+          NativeLLM.Bedrock_Claude_3_Haiku,
+          NativeLLM.Bedrock_Claude_3_Sonnet,
+          NativeLLM.Bedrock_Claude_Instant_1,
+          NativeLLM.Bedrock_Claude_2,
+          NativeLLM.Bedrock_Claude_2_1,
         ],
-        default: "anthropic.claude-3-haiku-20240307-v1:0",
+        default: NativeLLM.Bedrock_Claude_3_Haiku,
         shortname_map: {
           "anthropic.claude-3-sonnet-20240229-v1:0": "claude-3-sonnet",
           "anthropic.claude-3-haiku-20240307-v1:0": "claude-3-haiku",
@@ -1491,8 +1493,11 @@ const BedrockJurassic2Settings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select a version of Jurassic 2 to query. For more details on the differences, see the AI21 API documentation.",
-        enum: ["ai21.j2-ultra", "ai21.j2-mid"],
-        default: "ai21.j2-ultra",
+        enum: [
+          NativeLLM.Bedrock_Jurassic_Mid,
+          NativeLLM.Bedrock_Jurassic_Ultra,
+        ],
+        default: NativeLLM.Bedrock_Jurassic_Ultra,
       },
       temperature: {
         type: "number",
@@ -1612,11 +1617,11 @@ const BedrockTitanSettings: ModelSettingsDict = {
         description:
           "Select a version of Amazon Titan to query. For more details on the differences, see the Amazon Titan API documentation.",
         enum: [
-          "amazon.titan-tg1-large",
-          "amazon.titan-text-lite-v1",
-          "amazon.titan-text-express-v1",
+          NativeLLM.Bedrock_Titan_Large,
+          NativeLLM.Bedrock_Titan_Light,
+          NativeLLM.Bedrock_Titan_Express,
         ],
-        default: "amazon.titan-tg1-large",
+        default: NativeLLM.Bedrock_Titan_Large,
       },
       temperature: {
         type: "number",
@@ -1706,8 +1711,11 @@ const BedrockCommandTextSettings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select a version of Command Cohere to query. For more details on the differences, see the Cohere API documentation.",
-        enum: ["cohere.command-text-v14", "cohere.command-light-text-v14"],
-        default: "cohere.command-text-v14",
+        enum: [
+          NativeLLM.Bedrock_Command_Text,
+          NativeLLM.Bedrock_Command_Text_Light,
+        ],
+        default: NativeLLM.Bedrock_Command_Text,
       },
       temperature: {
         type: "number",
@@ -1820,10 +1828,10 @@ const MistralSettings: ModelSettingsDict = {
         description:
           "Select a version of Mistral model to query. For more details on the differences, see the Mistral API documentation.",
         enum: [
-          "mistral.mistral-7b-instruct-v0:2",
-          "mistral.mistral-large-2402-v1:0",
+          NativeLLM.Bedrock_Mistral_Mistral,
+          NativeLLM.Bedrock_Mistral_Mistral_Large,
         ],
-        default: "mistral.mistral-7b-instruct-v0:2",
+        default: NativeLLM.Bedrock_Mistral_Mistral,
       },
       temperature: {
         type: "number",
@@ -1920,8 +1928,8 @@ MixtralSettings.schema.properties = {
       title: "Model Version",
       description:
         "Select a version of Mistral model to query. For more details on the differences, see the Mixtral API documentation.",
-      enum: ["mistral.mixtral-8x7b-instruct-v0:1"],
-      default: "mistral.mixtral-8x7b-instruct-v0:1",
+      enum: [NativeLLM.Bedrock_Mistral_Mixtral],
+      default: NativeLLM.Bedrock_Mistral_Mixtral,
     },
     shortname: {
       type: "string",
@@ -1934,7 +1942,7 @@ MixtralSettings.schema.properties = {
 
 MixtralSettings.uiSchema.model = { "ui:help": "Defaults to Mixtral" };
 
-const MetaLlama2ChatSettings: ModelSettingsDict = {
+const BedrockLlama2ChatSettings: ModelSettingsDict = {
   fullName: "Llama2Chat (Meta) via Amazon Bedrock",
   schema: {
     type: "object",
@@ -1951,9 +1959,12 @@ const MetaLlama2ChatSettings: ModelSettingsDict = {
         type: "string",
         title: "Model Version",
         description:
-          "Select a version of Command Cohere to query. For more details on the differences, see the Cohere API documentation.",
-        enum: ["meta.llama2-13b-chat-v1", "meta.llama2-70b-chat-v1"],
-        default: "meta.llama2-13b-chat-v1",
+          "Select a version of Meta Llama2 model to query. For more details on the differences, see the Meta Llama API documentation.",
+        enum: [
+          NativeLLM.Bedrock_Meta_LLama2Chat_13b,
+          NativeLLM.Bedrock_Meta_LLama2Chat_70b,
+        ],
+        default: NativeLLM.Bedrock_Meta_LLama2Chat_13b,
       },
       temperature: {
         type: "number",
@@ -2025,6 +2036,35 @@ const MetaLlama2ChatSettings: ModelSettingsDict = {
   },
 };
 
+const BedrockLlama3Settings = deepcopy(BedrockLlama2ChatSettings);
+
+BedrockLlama3Settings.schema.properties = {
+  ...deepcopy(BedrockLlama3Settings.schema.properties),
+  ...{
+    model: {
+      type: "string",
+      title: "Model Version",
+      description:
+        "Select a version of Meta Llama3 model to query. For more details on the differences, see the Meta Llama3 API documentation.",
+      enum: [
+        NativeLLM.Bedrock_Meta_LLama3Instruct_8b,
+        NativeLLM.Bedrock_Meta_LLama3Instruct_70b,
+      ],
+      default: NativeLLM.Bedrock_Meta_LLama3Instruct_8b,
+    },
+    shortname: {
+      type: "string",
+      title: "Nickname",
+      description: "Unique identifier to appear in ChainForge. Keep it short.",
+      default: "Llama3Instruct8b",
+    },
+  },
+};
+
+BedrockLlama3Settings.uiSchema.model = {
+  "ui:help": "Defaults to Llama3Instruct8b",
+};
+
 // A lookup table indexed by base_model.
 export const ModelSettings: Dict<ModelSettingsDict> = {
   "gpt-3.5-turbo": ChatGPTSettings,
@@ -2043,7 +2083,8 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "br.cohere.command": BedrockCommandTextSettings,
   "br.mistral.mistral": MistralSettings,
   "br.mistral.mixtral": MixtralSettings,
-  "br.meta.llama2": MetaLlama2ChatSettings,
+  "br.meta.llama2": BedrockLlama2ChatSettings,
+  "br.meta.llama3": BedrockLlama3Settings,
 };
 
 export function getSettingsSchemaForLLM(

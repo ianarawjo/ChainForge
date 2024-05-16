@@ -96,6 +96,7 @@ export enum NativeLLM {
   Bedrock_Claude_2 = "anthropic.claude-v2",
   Bedrock_Claude_3_Sonnet = "anthropic.claude-3-sonnet-20240229-v1:0",
   Bedrock_Claude_3_Haiku = "anthropic.claude-3-haiku-20240307-v1:0",
+  Bedrock_Claude_3_Opus = "anthropic.claude-3-opus-20240229-v1:0",
   Bedrock_Claude_Instant_1 = "anthropic.claude-instant-v1",
   Bedrock_Jurassic_Ultra = "ai21.j2-ultra",
   Bedrock_Jurassic_Mid = "ai21.j2-mid",
@@ -106,6 +107,8 @@ export enum NativeLLM {
   Bedrock_Command_Text_Light = "cohere.command-light-text-v14",
   Bedrock_Meta_LLama2Chat_13b = "meta.llama2-13b-chat-v1",
   Bedrock_Meta_LLama2Chat_70b = "meta.llama2-70b-chat-v1",
+  Bedrock_Meta_LLama3Instruct_8b = "meta.llama3-8b-instruct-v1:0",
+  Bedrock_Meta_LLama3Instruct_70b = "meta.llama3-70b-instruct-v1:0",
   Bedrock_Mistral_Mistral = "mistral.mistral-7b-instruct-v0:2",
   Bedrock_Mistral_Mistral_Large = "mistral.mistral-large-2402-v1:0",
   Bedrock_Mistral_Mixtral = "mistral.mixtral-8x7b-instruct-v0:1",
@@ -190,16 +193,20 @@ export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
   [NativeLLM.Bedrock_Jurassic_Ultra]: 25,
   [NativeLLM.Bedrock_Titan_Light]: 800,
   [NativeLLM.Bedrock_Titan_Express]: 400, // 400 RPM
-  [NativeLLM.Bedrock_Claude_2]: 100, // 100 RPM
-  [NativeLLM.Bedrock_Claude_2_1]: 100, // 100 RPM
-  [NativeLLM.Bedrock_Claude_3_Haiku]: 100, // 100 RPM
+  [NativeLLM.Bedrock_Claude_2]: 500, // 500 RPM
+  [NativeLLM.Bedrock_Claude_2_1]: 500, // 500 RPM
+  [NativeLLM.Bedrock_Claude_3_Haiku]: 1000, // 1000 RPM
   [NativeLLM.Bedrock_Claude_3_Sonnet]: 100, // 100 RPM
+  [NativeLLM.Bedrock_Claude_3_Opus]: 50, // 50 RPM
+  [NativeLLM.Bedrock_Claude_Instant_1]: 1000, // 1000 RPM
   [NativeLLM.Bedrock_Command_Text]: 400, // 400 RPM
   [NativeLLM.Bedrock_Command_Text_Light]: 800, // 800 RPM
   [NativeLLM.Bedrock_Meta_LLama2Chat_70b]: 400, // 400 RPM
   [NativeLLM.Bedrock_Meta_LLama2Chat_13b]: 800, // 800 RPM
+  [NativeLLM.Bedrock_Meta_LLama3Instruct_8b]: 400, // 400 RPM
+  [NativeLLM.Bedrock_Meta_LLama3Instruct_70b]: 800, // 800 RPM
   [NativeLLM.Bedrock_Mistral_Mixtral]: 400, // 400 RPM
-  [NativeLLM.Bedrock_Mistral_Mistral_Large]: 100, // 100 RPM
+  [NativeLLM.Bedrock_Mistral_Mistral_Large]: 400, // 400 RPM
   [NativeLLM.Bedrock_Mistral_Mistral]: 800, // 800 RPM
 };
 
