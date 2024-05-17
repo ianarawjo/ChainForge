@@ -58,6 +58,7 @@ import {
 import { v4 as uuid } from "uuid";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
+import Chatbot from "./Chatbot";
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
@@ -1240,6 +1241,7 @@ const App = () => {
             Send us feedback
           </a>
         </div>
+        <Chatbot />
       </div>
     );
 };
