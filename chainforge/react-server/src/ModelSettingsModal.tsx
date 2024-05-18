@@ -166,7 +166,7 @@ const ModelSettingsModal = forwardRef<
             modelname in shortname_map
           )
             state.formData.shortname = shortname_map[modelname];
-          else state.formData.shortname = modelname;
+          else state.formData.shortname = modelname?.split("/").at(-1);
           setInitShortname(shortname);
         }
 

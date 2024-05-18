@@ -23,9 +23,12 @@ import { StrictModeDroppable } from "./StrictModeDroppable";
 import ModelSettingsModal, {
   ModelSettingsModalRef,
 } from "./ModelSettingsModal";
-import { getDefaultModelSettings } from "./ModelSettingSchemas";
+import {
+  getDefaultModelFormData,
+  getDefaultModelSettings,
+} from "./ModelSettingSchemas";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
-import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
+import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { useContextMenu } from "mantine-contextmenu";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
 
@@ -134,6 +137,8 @@ export function LLMList({
               if (item.base_model.startsWith("__custom"))
                 // Custom models must always have their base name, to avoid name collisions
                 updated_item.model = item.base_model + "/" + formData.model;
+              else if (item.base_model === "together")
+                updated_item.model = ("together/" + formData.model) as string;
               else updated_item.model = formData.model as string;
             }
             if ("shortname" in formData) {
@@ -366,22 +371,12 @@ export const LLMListContainer = forwardRef<
   );
 
   const handleSelectModel = useCallback(
-    (model: string) => {
-      // Get the item for that model
-      let item = AvailableLLMs.find((llm) => llm.base_model === model);
-      if (!item) {
-        // This should never trigger, but in case it does:
-        console.error(
-          `Could not find model named '${model}' in list of available LLMs.`,
-        );
-        return;
-      }
-
+    (item: LLMSpec) => {
       // Give it a uid as a unique key (this is needed for the draggable list to support multiple same-model items; keys must be unique)
       item = { key: uuid(), ...item };
 
       // Generate the default settings for this model
-      item.settings = getDefaultModelSettings(model);
+      item.settings = getDefaultModelSettings(item.base_model);
 
       // Repair names to ensure they are unique
       const unique_name = ensureUniqueName(
@@ -390,6 +385,10 @@ export const LLMListContainer = forwardRef<
       );
       item.name = unique_name;
       item.formData = { shortname: unique_name };
+
+      // Together models have a substring "together/" that we need to strip:
+      if (item.base_model === "together")
+        item.formData.model = item.model.substring(9);
 
       let new_items: LLMSpec[] = [];
       if (selectModelAction === "add" || selectModelAction === undefined) {
@@ -430,31 +429,25 @@ export const LLMListContainer = forwardRef<
   );
 
   const menuItems = useMemo(() => {
-    const res: ContextMenuItemOptions[] = [];
     const initModels: Set<string> = new Set<string>();
-    for (const item of initLLMProviderMenu) {
-      if (!("group" in item)) {
-        initModels.add(item.base_model);
-        res.push({
-          key: item.model,
-          title: `${item.emoji} ${item.name}`,
-          onClick: () => handleSelectModel(item.base_model),
-        });
-      } else {
-        res.push({
+    const convert = (item: LLMSpec | LLMGroup): ContextMenuItemOptions => {
+      if ("group" in item) {
+        return {
           key: item.group,
           title: `${item.emoji} ${item.group}`,
-          items: item.items.map((k) => {
-            initModels.add(k.base_model);
-            return {
-              key: k.model,
-              title: `${k.emoji} ${k.name}`,
-              onClick: () => handleSelectModel(k.base_model),
-            };
-          }),
-        });
+          items: item.items.map(convert),
+        };
+      } else {
+        initModels.add(item.base_model);
+        return {
+          key: item.model,
+          title: `${item.emoji} ${item.name}`,
+          onClick: () => handleSelectModel(item),
+        };
       }
-    }
+    };
+    const res = initLLMProviderMenu.map(convert);
+
     for (const item of AvailableLLMs) {
       if (initModels.has(item.base_model)) {
         continue;
@@ -462,7 +455,7 @@ export const LLMListContainer = forwardRef<
       res.push({
         key: item.base_model,
         title: `${item.emoji} ${item.name}`,
-        onClick: () => handleSelectModel(item.base_model),
+        onClick: () => handleSelectModel(item),
       });
     }
     return res;

@@ -471,6 +471,7 @@ def fetchEnvironAPIKeys():
         'AWS_SECRET_ACCESS_KEY': 'AWS_Secret_Access_Key',
         'AWS_REGION': 'AWS_Region', 
         'AWS_SESSION_TOKEN': 'AWS_Session_Token',
+        'TOGETHER_API_KEY': 'Together',
     }
     d = { alias: os.environ.get(key) for key, alias in keymap.items() }
     ret = jsonify(d)

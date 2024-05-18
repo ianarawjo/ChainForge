@@ -19,6 +19,7 @@ import {
 import { DuplicateVariableNameError } from "./backend/errors";
 import {
   Dict,
+  LLMGroup,
   LLMSpec,
   PromptVarType,
   PromptVarsDict,
@@ -26,6 +27,8 @@ import {
   TabularDataColType,
   TabularDataRowType,
 } from "./backend/typing";
+import { TogetherChatSettings } from "./ModelSettingSchemas";
+import { NativeLLM } from "./backend/models";
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -87,10 +90,7 @@ const refreshableOutputNodeTypes = new Set([
   "split",
 ]);
 
-export const initLLMProviderMenu: (
-  | LLMSpec
-  | { group: string; emoji: string; items: LLMSpec[] }
-)[] = [
+export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
   {
     group: "OpenAI",
     emoji: "🤖",
@@ -173,55 +173,97 @@ export const initLLMProviderMenu: (
       {
         name: "Anthropic Claude",
         emoji: "👨‍🏫",
-        model: "anthropic.claude-v2:1",
+        model: NativeLLM.Bedrock_Claude_3_Haiku,
         base_model: "br.anthropic.claude",
         temp: 0.9,
       },
       {
         name: "AI21 Jurassic 2",
         emoji: "🦖",
-        model: "ai21.j2-ultra",
+        model: NativeLLM.Bedrock_Jurassic_Ultra,
         base_model: "br.ai21.j2",
         temp: 0.9,
       },
       {
         name: "Amazon Titan",
         emoji: "🏛️",
-        model: "amazon.titan-tg1-large",
+        model: NativeLLM.Bedrock_Titan_Large,
         base_model: "br.amazon.titan",
         temp: 0.9,
       },
       {
         name: "Cohere Command Text 14",
         emoji: "📚",
-        model: "cohere.command-text-v14",
+        model: NativeLLM.Bedrock_Command_Text,
         base_model: "br.cohere.command",
         temp: 0.9,
       },
       {
         name: "Mistral Mistral",
         emoji: "💨",
-        model: "mistral.mistral-7b-instruct-v0:2",
+        model: NativeLLM.Bedrock_Mistral_Mistral,
         base_model: "br.mistral.mistral",
         temp: 0.9,
       },
       {
         name: "Mistral Mixtral",
         emoji: "🌪️",
-        model: "mistral.mixtral-8x7b-instruct-v0:1",
+        model: NativeLLM.Bedrock_Mistral_Mixtral,
         base_model: "br.mistral.mixtral",
         temp: 0.9,
       },
       {
         name: "Meta Llama2 Chat",
         emoji: "🦙",
-        model: "meta.llama2-13b-chat-v1",
+        model: NativeLLM.Bedrock_Meta_LLama2Chat_13b,
         base_model: "br.meta.llama2",
+        temp: 0.9,
+      },
+      {
+        name: "Meta Llama3 Instruct",
+        emoji: "🦙",
+        model: NativeLLM.Bedrock_Meta_LLama3Instruct_8b,
+        base_model: "br.meta.llama3",
         temp: 0.9,
       },
     ],
   },
 ];
+
+const togetherModels = TogetherChatSettings.schema.properties.model
+  .enum as string[];
+const togetherGroups = () => {
+  const groupNames: string[] = [];
+  const groups: { [key: string]: LLMGroup } = {};
+  togetherModels.forEach((model) => {
+    const [groupName, modelName] = model.split("/");
+    const spec: LLMSpec = {
+      name: modelName,
+      emoji: "🤝",
+      model: "together/" + model,
+      base_model: "together",
+      temp: 0.9,
+    };
+    if (groupName in groups) {
+      (groups[groupName].items as LLMSpec[]).push(spec);
+    } else {
+      groups[groupName] = {
+        group: groupName,
+        emoji: "🤝",
+        items: [spec],
+      };
+      groupNames.push(groupName);
+    }
+  });
+  return groupNames.map((name) => groups[name]);
+};
+console.log(togetherGroups());
+const togetherLLMProviderMenu: LLMGroup = {
+  group: "Together",
+  emoji: "🤝",
+  items: togetherGroups(),
+};
+initLLMProviderMenu.push(togetherLLMProviderMenu);
 
 if (APP_IS_RUNNING_LOCALLY()) {
   initLLMProviderMenu.push({
@@ -235,9 +277,20 @@ if (APP_IS_RUNNING_LOCALLY()) {
   // initLLMProviders.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
   // -------------------------
 }
-export const initLLMProviders = initLLMProviderMenu
-  .map((item) => ("group" in item && "items" in item ? item.items : item))
-  .flat();
+
+function flattenLLMGroup(group: LLMGroup): LLMSpec[] {
+  return group.items.flatMap((item) =>
+    "group" in item && "items" in item ? flattenLLMGroup(item) : item,
+  );
+}
+
+function flattenLLMProviders(providers: (LLMSpec | LLMGroup)[]): LLMSpec[] {
+  return providers.flatMap((item) =>
+    "group" in item && "items" in item ? flattenLLMGroup(item) : item,
+  );
+}
+
+export const initLLMProviders = flattenLLMProviders(initLLMProviderMenu);
 
 export interface StoreHandles {
   // Nodes and edges

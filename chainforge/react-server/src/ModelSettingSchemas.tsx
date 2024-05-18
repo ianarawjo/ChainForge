@@ -13,6 +13,7 @@
 import {
   LLMProvider,
   MAX_CONCURRENT,
+  NativeLLM,
   RATE_LIMIT_BY_MODEL,
   getProvider,
 } from "./backend/models";
@@ -1356,13 +1357,14 @@ const BedrockClaudeSettings: ModelSettingsDict = {
         description:
           "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
         enum: [
-          "anthropic.claude-3-sonnet-20240229-v1:0",
-          "anthropic.claude-3-haiku-20240307-v1:0",
-          "anthropic.claude-v2:1",
-          "anthropic.claude-v2",
-          "anthropic.claude-instant-v1",
+          NativeLLM.Bedrock_Claude_3_Opus,
+          NativeLLM.Bedrock_Claude_3_Haiku,
+          NativeLLM.Bedrock_Claude_3_Sonnet,
+          NativeLLM.Bedrock_Claude_Instant_1,
+          NativeLLM.Bedrock_Claude_2,
+          NativeLLM.Bedrock_Claude_2_1,
         ],
-        default: "anthropic.claude-3-haiku-20240307-v1:0",
+        default: NativeLLM.Bedrock_Claude_3_Haiku,
         shortname_map: {
           "anthropic.claude-3-sonnet-20240229-v1:0": "claude-3-sonnet",
           "anthropic.claude-3-haiku-20240307-v1:0": "claude-3-haiku",
@@ -1491,8 +1493,11 @@ const BedrockJurassic2Settings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select a version of Jurassic 2 to query. For more details on the differences, see the AI21 API documentation.",
-        enum: ["ai21.j2-ultra", "ai21.j2-mid"],
-        default: "ai21.j2-ultra",
+        enum: [
+          NativeLLM.Bedrock_Jurassic_Mid,
+          NativeLLM.Bedrock_Jurassic_Ultra,
+        ],
+        default: NativeLLM.Bedrock_Jurassic_Ultra,
       },
       temperature: {
         type: "number",
@@ -1612,11 +1617,11 @@ const BedrockTitanSettings: ModelSettingsDict = {
         description:
           "Select a version of Amazon Titan to query. For more details on the differences, see the Amazon Titan API documentation.",
         enum: [
-          "amazon.titan-tg1-large",
-          "amazon.titan-text-lite-v1",
-          "amazon.titan-text-express-v1",
+          NativeLLM.Bedrock_Titan_Large,
+          NativeLLM.Bedrock_Titan_Light,
+          NativeLLM.Bedrock_Titan_Express,
         ],
-        default: "amazon.titan-tg1-large",
+        default: NativeLLM.Bedrock_Titan_Large,
       },
       temperature: {
         type: "number",
@@ -1706,8 +1711,11 @@ const BedrockCommandTextSettings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select a version of Command Cohere to query. For more details on the differences, see the Cohere API documentation.",
-        enum: ["cohere.command-text-v14", "cohere.command-light-text-v14"],
-        default: "cohere.command-text-v14",
+        enum: [
+          NativeLLM.Bedrock_Command_Text,
+          NativeLLM.Bedrock_Command_Text_Light,
+        ],
+        default: NativeLLM.Bedrock_Command_Text,
       },
       temperature: {
         type: "number",
@@ -1820,10 +1828,10 @@ const MistralSettings: ModelSettingsDict = {
         description:
           "Select a version of Mistral model to query. For more details on the differences, see the Mistral API documentation.",
         enum: [
-          "mistral.mistral-7b-instruct-v0:2",
-          "mistral.mistral-large-2402-v1:0",
+          NativeLLM.Bedrock_Mistral_Mistral,
+          NativeLLM.Bedrock_Mistral_Mistral_Large,
         ],
-        default: "mistral.mistral-7b-instruct-v0:2",
+        default: NativeLLM.Bedrock_Mistral_Mistral,
       },
       temperature: {
         type: "number",
@@ -1920,8 +1928,8 @@ MixtralSettings.schema.properties = {
       title: "Model Version",
       description:
         "Select a version of Mistral model to query. For more details on the differences, see the Mixtral API documentation.",
-      enum: ["mistral.mixtral-8x7b-instruct-v0:1"],
-      default: "mistral.mixtral-8x7b-instruct-v0:1",
+      enum: [NativeLLM.Bedrock_Mistral_Mixtral],
+      default: NativeLLM.Bedrock_Mistral_Mixtral,
     },
     shortname: {
       type: "string",
@@ -1934,7 +1942,7 @@ MixtralSettings.schema.properties = {
 
 MixtralSettings.uiSchema.model = { "ui:help": "Defaults to Mixtral" };
 
-const MetaLlama2ChatSettings: ModelSettingsDict = {
+const BedrockLlama2ChatSettings: ModelSettingsDict = {
   fullName: "Llama2Chat (Meta) via Amazon Bedrock",
   schema: {
     type: "object",
@@ -1951,9 +1959,12 @@ const MetaLlama2ChatSettings: ModelSettingsDict = {
         type: "string",
         title: "Model Version",
         description:
-          "Select a version of Command Cohere to query. For more details on the differences, see the Cohere API documentation.",
-        enum: ["meta.llama2-13b-chat-v1", "meta.llama2-70b-chat-v1"],
-        default: "meta.llama2-13b-chat-v1",
+          "Select a version of Meta Llama2 model to query. For more details on the differences, see the Meta Llama API documentation.",
+        enum: [
+          NativeLLM.Bedrock_Meta_LLama2Chat_13b,
+          NativeLLM.Bedrock_Meta_LLama2Chat_70b,
+        ],
+        default: NativeLLM.Bedrock_Meta_LLama2Chat_13b,
       },
       temperature: {
         type: "number",
@@ -2025,6 +2036,185 @@ const MetaLlama2ChatSettings: ModelSettingsDict = {
   },
 };
 
+export const TogetherChatSettings: ModelSettingsDict = {
+  fullName: "Together Chat",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "TogetherChat",
+      },
+      model: {
+        type: "string",
+        title: "model",
+        description:
+          "Select a version of Together model to query. For more details on the differences, see the Together API documentation.",
+        enum: [
+          "zero-one-ai/Yi-34B-Chat",
+          "allenai/OLMo-7B-Instruct",
+          "allenai/OLMo-7B-Twin-2T",
+          "allenai/OLMo-7B",
+          "Austism/chronos-hermes-13b",
+          "cognitivecomputations/dolphin-2.5-mixtral-8x7b",
+          "databricks/dbrx-instruct",
+          "deepseek-ai/deepseek-coder-33b-instruct",
+          "deepseek-ai/deepseek-llm-67b-chat",
+          "garage-bAInd/Platypus2-70B-instruct",
+          "google/gemma-2b-it",
+          "google/gemma-7b-it",
+          "Gryphe/MythoMax-L2-13b",
+          "lmsys/vicuna-13b-v1.5",
+          "lmsys/vicuna-7b-v1.5",
+          "codellama/CodeLlama-13b-Instruct-hf",
+          "codellama/CodeLlama-34b-Instruct-hf",
+          "codellama/CodeLlama-70b-Instruct-hf",
+          "codellama/CodeLlama-7b-Instruct-hf",
+          "meta-llama/Llama-2-70b-chat-hf",
+          "meta-llama/Llama-2-13b-chat-hf",
+          "meta-llama/Llama-2-7b-chat-hf",
+          "meta-llama/Llama-3-8b-chat-hf",
+          "meta-llama/Llama-3-70b-chat-hf",
+          "mistralai/Mistral-7B-Instruct-v0.1",
+          "mistralai/Mistral-7B-Instruct-v0.2",
+          "mistralai/Mixtral-8x7B-Instruct-v0.1",
+          "mistralai/Mixtral-8x22B-Instruct-v0.1",
+          "NousResearch/Nous-Capybara-7B-V1p9",
+          "NousResearch/Nous-Hermes-2-Mistral-7B-DPO",
+          "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO",
+          "NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT",
+          "NousResearch/Nous-Hermes-llama-2-7b",
+          "NousResearch/Nous-Hermes-Llama2-13b",
+          "NousResearch/Nous-Hermes-2-Yi-34B",
+          "openchat/openchat-3.5-1210",
+          "Open-Orca/Mistral-7B-OpenOrca",
+          "Qwen/Qwen1.5-0.5B-Chat",
+          "Qwen/Qwen1.5-1.8B-Chat",
+          "Qwen/Qwen1.5-4B-Chat",
+          "Qwen/Qwen1.5-7B-Chat",
+          "Qwen/Qwen1.5-14B-Chat",
+          "Qwen/Qwen1.5-32B-Chat",
+          "Qwen/Qwen1.5-72B-Chat",
+          "Qwen/Qwen1.5-110B-Chat",
+          "snorkelai/Snorkel-Mistral-PairRM-DPO",
+          "Snowflake/snowflake-arctic-instruct",
+          "togethercomputer/alpaca-7b",
+          "teknium/OpenHermes-2-Mistral-7B",
+          "teknium/OpenHermes-2p5-Mistral-7B",
+          "togethercomputer/Llama-2-7B-32K-Instruct",
+          "togethercomputer/RedPajama-INCITE-Chat-3B-v1",
+          "togethercomputer/RedPajama-INCITE-7B-Chat",
+          "togethercomputer/StripedHyena-Nous-7B",
+          "Undi95/ReMM-SLERP-L2-13B",
+          "Undi95/Toppy-M-7B",
+          "WizardLM/WizardLM-13B-V1.2",
+          "upstage/SOLAR-10.7B-Instruct-v1.0",
+        ],
+        default: "meta-llama/Llama-2-7b-chat-hf",
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.01,
+      },
+      max_gen_len: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The maximum number of tokens to generate for each response.",
+        default: 1024,
+        minimum: 1,
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description:
+          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
+        default: 1,
+        minimum: 0.01,
+        maximum: 1,
+        multipleOf: 0.001,
+      },
+    },
+  },
+  postprocessors: {
+    stop_sequences: (str) => {
+      if (typeof str !== "string" || str.trim().length === 0) return [];
+      return str
+        .match(/"((?:[^"\\]|\\.)*)"/g)
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+  },
+
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:help": "Defaults to LlamaChat 13B",
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    max_tokens: {
+      "ui:help": "Defaults to 1024.",
+    },
+    num_generations: {
+      "ui:help": "Defaults to 1.",
+    },
+    k: {
+      "ui:help": "Defaults to 0.",
+    },
+    p: {
+      "ui:help": "Defaults to 1.",
+    },
+    stop_sequences: {
+      "ui:widget": "textarea",
+      "ui:help": "Defaults to no sequence",
+    },
+  },
+};
+
+const BedrockLlama3Settings = deepcopy(BedrockLlama2ChatSettings);
+
+BedrockLlama3Settings.schema.properties = {
+  ...deepcopy(BedrockLlama3Settings.schema.properties),
+  ...{
+    model: {
+      type: "string",
+      title: "Model Version",
+      description:
+        "Select a version of Meta Llama3 model to query. For more details on the differences, see the Meta Llama3 API documentation.",
+      enum: [
+        NativeLLM.Bedrock_Meta_LLama3Instruct_8b,
+        NativeLLM.Bedrock_Meta_LLama3Instruct_70b,
+      ],
+      default: NativeLLM.Bedrock_Meta_LLama3Instruct_8b,
+    },
+    shortname: {
+      type: "string",
+      title: "Nickname",
+      description: "Unique identifier to appear in ChainForge. Keep it short.",
+      default: "Llama3Instruct8b",
+    },
+  },
+};
+
+BedrockLlama3Settings.uiSchema.model = {
+  "ui:help": "Defaults to Llama3Instruct8b",
+};
+
 // A lookup table indexed by base_model.
 export const ModelSettings: Dict<ModelSettingsDict> = {
   "gpt-3.5-turbo": ChatGPTSettings,
@@ -2043,7 +2233,9 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "br.cohere.command": BedrockCommandTextSettings,
   "br.mistral.mistral": MistralSettings,
   "br.mistral.mixtral": MixtralSettings,
-  "br.meta.llama2": MetaLlama2ChatSettings,
+  "br.meta.llama2": BedrockLlama2ChatSettings,
+  "br.meta.llama3": BedrockLlama3Settings,
+  together: TogetherChatSettings,
 };
 
 export function getSettingsSchemaForLLM(
@@ -2062,6 +2254,7 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.HuggingFace]: HuggingFaceTextInferenceSettings,
     [LLMProvider.Aleph_Alpha]: AlephAlphaLuminousSettings,
     [LLMProvider.Ollama]: OllamaSettings,
+    [LLMProvider.Together]: TogetherChatSettings,
   };
 
   if (llm_provider === LLMProvider.Custom) return ModelSettings[llm_name];

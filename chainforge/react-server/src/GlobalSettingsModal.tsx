@@ -406,6 +406,12 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   {...form.getInputProps("AlephAlpha")}
                 />
                 <br />
+                <TextInput
+                  label="Together API Key"
+                  placeholder="Paste your Together API key here"
+                  {...form.getInputProps("Together")}
+                />
+                <br />
 
                 <Divider
                   my="xs"
