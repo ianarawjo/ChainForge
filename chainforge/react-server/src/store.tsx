@@ -19,6 +19,7 @@ import {
 import { DuplicateVariableNameError } from "./backend/errors";
 import {
   Dict,
+  LLMGroup,
   LLMSpec,
   PromptVarType,
   PromptVarsDict,
@@ -26,6 +27,7 @@ import {
   TabularDataColType,
   TabularDataRowType,
 } from "./backend/typing";
+import { TogetherChatSettings } from "./ModelSettingSchemas";
 import { NativeLLM } from "./backend/models";
 
 // Initial project settings
@@ -88,10 +90,7 @@ const refreshableOutputNodeTypes = new Set([
   "split",
 ]);
 
-export const initLLMProviderMenu: (
-  | LLMSpec
-  | { group: string; emoji: string; items: LLMSpec[] }
-)[] = [
+export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
   {
     group: "OpenAI",
     emoji: "🤖",
@@ -231,6 +230,40 @@ export const initLLMProviderMenu: (
   },
 ];
 
+const togetherModels = TogetherChatSettings.schema.properties.model
+  .enum as string[];
+const togetherGroups = () => {
+  const groupNames: string[] = [];
+  const groups: { [key: string]: LLMGroup } = {};
+  togetherModels.forEach((model) => {
+    const [groupName, modelName] = model.split("/");
+    const spec: LLMSpec = {
+      name: modelName,
+      emoji: "🤝",
+      model,
+      base_model: "together",
+      temp: 0.9,
+    };
+    if (groupName in groups) {
+      (groups[groupName].items as LLMSpec[]).push(spec);
+    } else {
+      groups[groupName] = {
+        group: groupName,
+        emoji: "🤝",
+        items: [spec],
+      };
+      groupNames.push(groupName);
+    }
+  });
+  return groupNames.map((name) => groups[name]);
+};
+const togetherLLMProviderMenu: LLMGroup = {
+  group: "Together",
+  emoji: "🤝",
+  items: togetherGroups(),
+};
+initLLMProviderMenu.push(togetherLLMProviderMenu);
+
 if (APP_IS_RUNNING_LOCALLY()) {
   initLLMProviderMenu.push({
     name: "Ollama",
@@ -243,9 +276,20 @@ if (APP_IS_RUNNING_LOCALLY()) {
   // initLLMProviders.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
   // -------------------------
 }
-export const initLLMProviders = initLLMProviderMenu
-  .map((item) => ("group" in item && "items" in item ? item.items : item))
-  .flat();
+
+function flattenLLMGroup(group: LLMGroup): LLMSpec[] {
+  return group.items.flatMap((item) =>
+    "group" in item && "items" in item ? flattenLLMGroup(item) : item,
+  );
+}
+
+function flattenLLMProviders(providers: (LLMSpec | LLMGroup)[]): LLMSpec[] {
+  return providers.flatMap((item) =>
+    "group" in item && "items" in item ? flattenLLMGroup(item) : item,
+  );
+}
+
+export const initLLMProviders = flattenLLMProviders(initLLMProviderMenu);
 
 export interface StoreHandles {
   // Nodes and edges

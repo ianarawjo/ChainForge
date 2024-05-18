@@ -25,7 +25,7 @@ import ModelSettingsModal, {
 } from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
-import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
+import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { useContextMenu } from "mantine-contextmenu";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
 
@@ -430,31 +430,25 @@ export const LLMListContainer = forwardRef<
   );
 
   const menuItems = useMemo(() => {
-    const res: ContextMenuItemOptions[] = [];
     const initModels: Set<string> = new Set<string>();
-    for (const item of initLLMProviderMenu) {
-      if (!("group" in item)) {
+    const convert = (item: LLMSpec | LLMGroup): ContextMenuItemOptions => {
+      if ("group" in item) {
+        return {
+          key: item.group,
+          title: `${item.emoji} ${item.group}`,
+          items: item.items.map(convert),
+        };
+      } else {
         initModels.add(item.base_model);
-        res.push({
+        return {
           key: item.model,
           title: `${item.emoji} ${item.name}`,
           onClick: () => handleSelectModel(item.base_model),
-        });
-      } else {
-        res.push({
-          key: item.group,
-          title: `${item.emoji} ${item.group}`,
-          items: item.items.map((k) => {
-            initModels.add(k.base_model);
-            return {
-              key: k.model,
-              title: `${k.emoji} ${k.name}`,
-              onClick: () => handleSelectModel(k.base_model),
-            };
-          }),
-        });
+        };
       }
-    }
+    };
+    const res = initLLMProviderMenu.map(convert);
+
     for (const item of AvailableLLMs) {
       if (initModels.has(item.base_model)) {
         continue;

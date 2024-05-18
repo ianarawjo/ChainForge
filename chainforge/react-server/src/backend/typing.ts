@@ -122,6 +122,12 @@ export type LLMSpec = {
   progress?: QueryProgress; // only used for front-end to display progress collecting responses for this LLM
 };
 
+export type LLMGroup = {
+  group: string;
+  emoji: string;
+  items: LLMSpec[] | LLMGroup[];
+};
+
 /** A spec for a user-defined custom LLM provider */
 export type CustomLLMProviderSpec = {
   name: string;
