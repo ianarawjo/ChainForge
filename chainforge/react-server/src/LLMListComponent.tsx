@@ -23,7 +23,10 @@ import { StrictModeDroppable } from "./StrictModeDroppable";
 import ModelSettingsModal, {
   ModelSettingsModalRef,
 } from "./ModelSettingsModal";
-import { getDefaultModelSettings } from "./ModelSettingSchemas";
+import {
+  getDefaultModelFormData,
+  getDefaultModelSettings,
+} from "./ModelSettingSchemas";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
 import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { useContextMenu } from "mantine-contextmenu";
@@ -134,6 +137,8 @@ export function LLMList({
               if (item.base_model.startsWith("__custom"))
                 // Custom models must always have their base name, to avoid name collisions
                 updated_item.model = item.base_model + "/" + formData.model;
+              else if (item.base_model === "together")
+                updated_item.model = ("together/" + formData.model) as string;
               else updated_item.model = formData.model as string;
             }
             if ("shortname" in formData) {
@@ -366,22 +371,12 @@ export const LLMListContainer = forwardRef<
   );
 
   const handleSelectModel = useCallback(
-    (model: string) => {
-      // Get the item for that model
-      let item = AvailableLLMs.find((llm) => llm.base_model === model);
-      if (!item) {
-        // This should never trigger, but in case it does:
-        console.error(
-          `Could not find model named '${model}' in list of available LLMs.`,
-        );
-        return;
-      }
-
+    (item: LLMSpec) => {
       // Give it a uid as a unique key (this is needed for the draggable list to support multiple same-model items; keys must be unique)
       item = { key: uuid(), ...item };
 
       // Generate the default settings for this model
-      item.settings = getDefaultModelSettings(model);
+      item.settings = getDefaultModelSettings(item.base_model);
 
       // Repair names to ensure they are unique
       const unique_name = ensureUniqueName(
@@ -390,6 +385,10 @@ export const LLMListContainer = forwardRef<
       );
       item.name = unique_name;
       item.formData = { shortname: unique_name };
+
+      // Together models have a substring "together/" that we need to strip:
+      if (item.base_model === "together")
+        item.formData.model = item.model.substring(9);
 
       let new_items: LLMSpec[] = [];
       if (selectModelAction === "add" || selectModelAction === undefined) {
@@ -443,7 +442,7 @@ export const LLMListContainer = forwardRef<
         return {
           key: item.model,
           title: `${item.emoji} ${item.name}`,
-          onClick: () => handleSelectModel(item.base_model),
+          onClick: () => handleSelectModel(item),
         };
       }
     };
@@ -456,7 +455,7 @@ export const LLMListContainer = forwardRef<
       res.push({
         key: item.base_model,
         title: `${item.emoji} ${item.name}`,
-        onClick: () => handleSelectModel(item.base_model),
+        onClick: () => handleSelectModel(item),
       });
     }
     return res;

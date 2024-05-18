@@ -2153,10 +2153,6 @@ export const TogetherChatSettings: ModelSettingsDict = {
         .match(/"((?:[^"\\]|\\.)*)"/g)
         ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
-    model: (str) => {
-      if (typeof str !== "string") return str; 
-      return "together/" + str;
-    },
   },
 
   uiSchema: {
@@ -2237,7 +2233,6 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "br.cohere.command": BedrockCommandTextSettings,
   "br.mistral.mistral": MistralSettings,
   "br.mistral.mixtral": MixtralSettings,
-  "br.meta.llama2": MetaLlama2ChatSettings,
   "br.meta.llama2": BedrockLlama2ChatSettings,
   "br.meta.llama3": BedrockLlama3Settings,
   together: TogetherChatSettings,

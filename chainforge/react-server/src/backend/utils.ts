@@ -49,6 +49,7 @@ import {
 } from "@mirai73/bedrock-fm";
 import StorageCache from "./cache";
 import Compressor from "compressorjs";
+import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
@@ -1314,7 +1315,7 @@ export async function call_bedrock(
     temperature,
   };
 
-  const fm = fromModelId(modelName, {
+  const fm = fromModelId(modelName as Models, {
     region: bedrockConfig.region,
     credentials: bedrockConfig.credentials,
     ...query,
@@ -1389,7 +1390,8 @@ export async function call_together(
 
   const together = new OpenAIApi(configuration);
 
-  const modelname: string = model.toString();
+  // Strip the "together/" prefix:
+  const modelname: string = model.toString().substring(9);
   if (
     params?.stop !== undefined &&
     (!Array.isArray(params.stop) || params.stop.length === 0)
@@ -1408,7 +1410,9 @@ export async function call_together(
   )
     delete params.function_call;
 
-  console.log(`Querying Together model '${model}' with prompt '${prompt}'...`);
+  console.log(
+    `Querying Together model '${modelname}' with prompt '${prompt}'...`,
+  );
 
   // Determine the system message and whether there's chat history to continue:
   const chat_history: ChatHistory | undefined = params?.chat_history;

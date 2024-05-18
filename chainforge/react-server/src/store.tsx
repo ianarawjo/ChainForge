@@ -240,7 +240,7 @@ const togetherGroups = () => {
     const spec: LLMSpec = {
       name: modelName,
       emoji: "🤝",
-      model,
+      model: "together/" + model,
       base_model: "together",
       temp: 0.9,
     };
@@ -257,6 +257,7 @@ const togetherGroups = () => {
   });
   return groupNames.map((name) => groups[name]);
 };
+console.log(togetherGroups());
 const togetherLLMProviderMenu: LLMGroup = {
   group: "Together",
   emoji: "🤝",
