@@ -20,6 +20,7 @@
 import React, {
   ReactNode,
   forwardRef,
+  useCallback,
   useImperativeHandle,
   useMemo,
   useState,
@@ -50,7 +51,7 @@ import {
   rem,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { LLMResponse, PromptVarsDict } from "./backend/typing";
+import { LLMResponse, PromptVarsDict, RatingDict } from "./backend/typing";
 import { EvalCriteria } from "./backend/evalgen/typing";
 import {
   IconChevronDown,
@@ -64,7 +65,10 @@ import {
   IconThumbUp,
   IconTrash,
 } from "@tabler/icons-react";
-import { cleanMetavarsFilterFunc, transformDict } from "./backend/utils";
+import { cleanMetavarsFilterFunc, deepcopy, sampleRandomElements, transformDict } from "./backend/utils";
+import useStore from "./store";
+import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
+import StorageCache from "./backend/cache";
 
 const INIT_CRITERIA: EvalCriteria[] = [
   {
@@ -282,6 +286,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
         <Collapse in={opened}>
           <Textarea
             value={criterion.criteria}
+            placeholder="Describe here."
             onChange={(e) => {
               criterion.criteria = e.target.value;
               if (onChange) onChange(criterion);
@@ -318,7 +323,30 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
   function EvalGenModal(props, ref) {
     const [opened, { open, close }] = useDisclosure(false);
     const [criteria, setCriteria] = useState<EvalCriteria[]>(INIT_CRITERIA);
+
     const [responses, setResponses] = useState<LLMResponse[]>([]);
+    const [shownResponse, setShownResponse] = useState<LLMResponse | undefined>(undefined);
+    const [pastShownResponses, setPastShownResponses] = useState([]);
+    const [shownResponseIdx, setShownResponseIdx] = useState(0);
+
+    const [annotation, setAnnotation] = useState<string | null>(null);
+    const [promptReasoning, setPromptReasoning] = useState<true | null>(null);
+
+    // The EvalGen object responsible for generating, implementing, and filtering candidate implementations
+    const [executor, setExecutor] = useState(null);
+    const [execProgress, setExecProgress] = useState(0);
+
+    // For updating the global human ratings state
+    const setState = useStore((store) => store.setState);
+    const updateGlobalRating = useCallback(
+      (uid: string, label: string, payload: RatingDict) => {
+        const key = getRatingKeyForResponse(uid, label);
+        const safe_payload = deepcopy(payload);
+        setState(key, safe_payload);
+        StorageCache.store(key, safe_payload);
+      },
+      [setState],
+    );
 
     // Open the EvalGen wizard
     const trigger = (resps: LLMResponse[]) => {
@@ -359,6 +387,62 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       });
     };
 
+    // Goto next response in the queue (skipping grading the current one)
+    const nextResponse = () => {
+      if (responses.length === 0) return;
+
+      // Update annotation for current response (if any)
+      // TODO: Fix this for generate case when num resp per prompt > 1
+      if (
+        shownResponse &&
+        annotation &&
+        typeof annotation === "string" &&
+        annotation.trim().length > 0
+      ) {
+        // console.log("setting annotation for resp", shownResponse.uid, annotation);
+        updateGlobalRating(shownResponse.uid, "note", { 0: annotation });
+        setAnnotation(null);
+      }
+      setPromptReasoning(null);
+
+      if (shownResponseIdx < pastShownResponses.length - 1) {
+        // If we are not at the end of the history of shown responses, then show the next response:
+        setShownResponse(pastShownResponses[shownResponseIdx + 1]);
+        setShownResponseIdx(shownResponseIdx + 1); // increment the shown resp idx
+      } else {
+        // We are at the end of the history; pick the next response off the stack:
+        // TODO: Make this unique (maybe by removing picked responses from the list!)
+        let num_tries = 3;
+        let next_resp = executor?.getNextExampleToGrade();
+        while (
+          num_tries > 0 &&
+          (!next_resp || pastShownResponses.some((r) => r.uid === next_resp.uid))
+        ) {
+          // We're presenting a response that's already been shown. Try again.
+          // NOTE: If we're trying again the first time, executor will flip and get the response on the other side of the grading stack, so we try once more:
+          if (next_resp && num_tries === 3)
+            next_resp =
+              executor?.getNextExampleToGrade() ??
+              sampleRandomElements(responses, 1)[0];
+          // Otherwise we just choose a response at random:
+          else next_resp = sampleRandomElements(responses, 1)[0];
+          num_tries -= 1;
+        }
+        // Note that this doesn't guarantee uniqueness here ---it is possible to see a response again.
+        // However, the internal "grades" dict will help us in remembering what grade the user gave the response.
+        setShownResponse(next_resp);
+        setPastShownResponses(pastShownResponses.concat(next_resp));
+        setShownResponseIdx(pastShownResponses.length);
+      }
+    };
+
+    // Go back to previously shown response
+    const prevResponse = () => {
+      if (pastShownResponses.length === 0 || shownResponseIdx === 0) return;
+      setShownResponse(pastShownResponses[shownResponseIdx - 1]);
+      setShownResponseIdx(shownResponseIdx - 1); // decrement shown resp idx
+    };
+
     return (
       <Modal
         size="90%"
@@ -372,7 +456,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
           <Grid.Col span={8}>
             <Stack justify="space-between">
               {/* View showing the response the user is currently grading */}
-              {/* <GradingView /> */}
+              <GradingView shownResponse={shownResponse} gotoNextResponse={nextResponse} gotoPrevResponse={prevResponse} />
 
               {/* Progress bar */}
               {/* <Flex justify="left" align="center" gap="md">
@@ -419,7 +503,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
                   <button onClick={() => {
                     handleAddCriteria({
                       shortname: "New Criteria",
-                      criteria: "Describe here.",
+                      criteria: "",
                       eval_method: "code",
                       priority: 0,
                       uid: uuid(),
@@ -456,7 +540,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
                   onClick={() => {
                     handleAddCriteria({
                       shortname: "Criteria",
-                      criteria: "Describe here.",
+                      criteria: "",
                       eval_method: "code",
                       priority: 0,
                       uid: uuid(),
@@ -483,7 +567,7 @@ const HeaderText = ({ children }: { children: ReactNode }) => {
 };
 
 interface GradingViewProps {
-  shownResponse: LLMResponse;
+  shownResponse: LLMResponse | undefined;
   gotoPrevResponse: () => void;
   gotoNextResponse: () => void;
 }
