@@ -69,6 +69,7 @@ import { cleanMetavarsFilterFunc, deepcopy, sampleRandomElements, transformDict 
 import useStore from "./store";
 import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
 import StorageCache from "./backend/cache";
+import EvaluationFunctionExecutor from "./backend/evalgen/executor";
 
 const INIT_CRITERIA: EvalCriteria[] = [
   {
@@ -326,14 +327,14 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
 
     const [responses, setResponses] = useState<LLMResponse[]>([]);
     const [shownResponse, setShownResponse] = useState<LLMResponse | undefined>(undefined);
-    const [pastShownResponses, setPastShownResponses] = useState([]);
+    const [pastShownResponses, setPastShownResponses] = useState<LLMResponse[]>([]);
     const [shownResponseIdx, setShownResponseIdx] = useState(0);
 
     const [annotation, setAnnotation] = useState<string | null>(null);
     const [promptReasoning, setPromptReasoning] = useState<true | null>(null);
 
     // The EvalGen object responsible for generating, implementing, and filtering candidate implementations
-    const [executor, setExecutor] = useState(null);
+    const [executor, setExecutor] = useState<EvaluationFunctionExecutor | null>(null);
     const [execProgress, setExecProgress] = useState(0);
 
     // For updating the global human ratings state
@@ -416,7 +417,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         let next_resp = executor?.getNextExampleToGrade();
         while (
           num_tries > 0 &&
-          (!next_resp || pastShownResponses.some((r) => r.uid === next_resp.uid))
+          (!next_resp || pastShownResponses.some((r) => r.uid === next_resp?.uid))
         ) {
           // We're presenting a response that's already been shown. Try again.
           // NOTE: If we're trying again the first time, executor will flip and get the response on the other side of the grading stack, so we try once more:
@@ -430,8 +431,9 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         }
         // Note that this doesn't guarantee uniqueness here ---it is possible to see a response again.
         // However, the internal "grades" dict will help us in remembering what grade the user gave the response.
-        setShownResponse(next_resp);
-        setPastShownResponses(pastShownResponses.concat(next_resp));
+        setShownResponse(next_resp ? next_resp : undefined);
+        if (next_resp)
+          setPastShownResponses(pastShownResponses.concat(next_resp));
         setShownResponseIdx(pastShownResponses.length);
       }
     };

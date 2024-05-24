@@ -190,11 +190,8 @@ export function set_api_keys(api_keys: Dict<string>): void {
   if (key_is_present("Together")) TOGETHER_API_KEY = api_keys.Together;
 }
 
-export function get_azure_openai_api_keys(): [
-  string | undefined,
-  string | undefined,
-] {
-  return [AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT];
+export function get_openai_api_key(): string | undefined {
+  return OPENAI_API_KEY;
 }
 
 /**
