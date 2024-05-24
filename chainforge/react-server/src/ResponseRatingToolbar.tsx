@@ -10,10 +10,9 @@ import { IconMessage2, IconThumbDown, IconThumbUp } from "@tabler/icons-react";
 import StorageCache from "./backend/cache";
 import useStore from "./store";
 import { deepcopy } from "./backend/utils";
+import { RatingDict } from "./backend/typing";
 
-type RatingDict = Record<number, boolean | string | undefined>;
-
-const getRatingKeyForResponse = (uid: string, label_name: string) =>
+export const getRatingKeyForResponse = (uid: string, label_name: string) =>
   `r.${uid}.${label_name}`;
 const collapse_ratings = (rating_dict: RatingDict, idxs: number[]) => {
   if (rating_dict === undefined) return undefined;
