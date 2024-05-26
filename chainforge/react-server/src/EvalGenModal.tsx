@@ -592,7 +592,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
                     initiallyOpen={true}
                   />
                 ))}
-                { isLoadingCriteria > 0 ? Array.from({length: isLoadingCriteria}, () => <Skeleton h={80} />) : <></>}
+                { isLoadingCriteria > 0 ? Array.from({length: isLoadingCriteria}, () => <Skeleton h={80} mb={4} />) : <></>}
                 <Center>
                   <button
                     onClick={() => {
