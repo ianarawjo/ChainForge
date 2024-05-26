@@ -28,7 +28,6 @@ import React, {
 import { v4 as uuid } from "uuid";
 import {
   ActionIcon,
-  Affix,
   Box,
   Button,
   Card,
@@ -41,7 +40,7 @@ import {
   Menu,
   Modal,
   Radio,
-  ScrollArea,
+  Skeleton,
   Stack,
   Text,
   TextInput,
@@ -51,7 +50,7 @@ import {
   rem,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { LLMResponse, PromptVarsDict, RatingDict } from "./backend/typing";
+import { Dict, LLMResponse, PromptVarsDict, RatingDict } from "./backend/typing";
 import { EvalCriteria } from "./backend/evalgen/typing";
 import {
   IconChevronDown,
@@ -65,11 +64,17 @@ import {
   IconThumbUp,
   IconTrash,
 } from "@tabler/icons-react";
-import { cleanMetavarsFilterFunc, deepcopy, sampleRandomElements, transformDict } from "./backend/utils";
+import {
+  cleanMetavarsFilterFunc,
+  deepcopy,
+  sampleRandomElements,
+  transformDict,
+} from "./backend/utils";
 import useStore from "./store";
 import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
 import StorageCache from "./backend/cache";
 import EvaluationFunctionExecutor from "./backend/evalgen/executor";
+import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
 
 const INIT_CRITERIA: EvalCriteria[] = [
   {
@@ -115,7 +120,7 @@ const ThumbUpDownButtons = ({
           if (onChangeGrade) onChangeGrade(grade === true ? undefined : true);
         }}
       >
-        <IconThumbUp size="14pt" />
+        <IconThumbUp size="14pt" fill={grade === true ? "#aea" : "white"} />
       </Button>
       <Button
         color={grade === false ? "red" : "gray"}
@@ -127,7 +132,7 @@ const ThumbUpDownButtons = ({
           if (onChangeGrade) onChangeGrade(grade === false ? undefined : false);
         }}
       >
-        <IconThumbDown size="14pt" />
+        <IconThumbDown size="14pt" fill={grade === false ? "pink" : "white"} />
       </Button>
     </>
   );
@@ -323,18 +328,36 @@ export interface EvalGenModalRef {
 const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
   function EvalGenModal(props, ref) {
     const [opened, { open, close }] = useDisclosure(false);
+    const apiKeys = useStore((state) => state.apiKeys);
     const [criteria, setCriteria] = useState<EvalCriteria[]>(INIT_CRITERIA);
 
     const [responses, setResponses] = useState<LLMResponse[]>([]);
-    const [shownResponse, setShownResponse] = useState<LLMResponse | undefined>(undefined);
-    const [pastShownResponses, setPastShownResponses] = useState<LLMResponse[]>([]);
+    const [shownResponse, setShownResponse] = useState<LLMResponse | undefined>(
+      undefined,
+    );
+    const [pastShownResponses, setPastShownResponses] = useState<LLMResponse[]>(
+      [],
+    );
     const [shownResponseIdx, setShownResponseIdx] = useState(0);
 
-    const [annotation, setAnnotation] = useState<string | null>(null);
-    const [promptReasoning, setPromptReasoning] = useState<true | null>(null);
+    const [annotation, setAnnotation] = useState<string | undefined>(undefined);
+    const [holisticGrade, setHolisticGrade] = useState<"good" | "bad" | undefined>(undefined);
+
+    // Per-criteria grades (indexed by uid of response, then uid of criteria)
+    const [grades, setGrades] = useState<Dict<Dict<boolean | undefined>>>({});
+    const setPerCriteriaGrade = (responseUID: string, criteriaUID: string, newGrade: boolean | undefined) => {
+      setGrades((grades) => {
+        if (!grades[responseUID]) grades[responseUID] = {};
+        grades[responseUID][criteriaUID] = newGrade;
+        grades[responseUID] = {...grades[responseUID]};
+        return {...grades};
+      });
+    };
 
     // The EvalGen object responsible for generating, implementing, and filtering candidate implementations
-    const [executor, setExecutor] = useState<EvaluationFunctionExecutor | null>(null);
+    const [executor, setExecutor] = useState<EvaluationFunctionExecutor | null>(
+      null,
+    );
     const [execProgress, setExecProgress] = useState(0);
 
     // For updating the global human ratings state
@@ -354,6 +377,19 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       // We pass the responses here manually to ensure they remain the same
       // for the duration of one EvalGen operation.
       setResponses(resps);
+      setGrades(resps.reduce((acc: Dict<Dict<boolean | undefined>>, curr) => {
+        acc[curr.uid] = {};
+        return acc;
+      }, {}));
+      setShownResponseIdx(0);
+      if (resps.length > 0) {
+        const first_resp = sampleRandomElements(resps, 1)[0];
+        setShownResponse(first_resp);
+        setPastShownResponses([first_resp]);
+      } else {
+        setShownResponse(undefined);
+        setPastShownResponses([]);
+      }
       open();
     };
     useImperativeHandle(ref, () => ({
@@ -388,6 +424,54 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       });
     };
 
+    // Synthesize a new criteria according to the feedback given for the shown response
+    const [isLoadingCriteria, setIsLoadingCriteria] = useState(0);
+    const synthNewCriteriaWithLLM = (response: string, feedback: string, grade: "good" | "bad" | "unknown") => {
+      // Add a loading Skeleton
+      setIsLoadingCriteria((num) => num + 1);
+      // Make async LLM call to expand criteria
+      generateLLMEvaluationCriteria(
+        "",
+        apiKeys,
+        `I've given some feedback on some text output. Use this feedback to decide on a single evaluation criteria with a yes/no answer. I want you to take the criteria and output a JSON object in the format below. 
+
+TEXT OUTPUT: 
+\`\`\`
+${response}
+\`\`\`
+
+GRADE (whether text was good or bad):
+\`\`\`
+${grade}
+\`\`\`
+
+FEEDBACK: 
+\`\`\`
+${feedback}
+\`\`\`
+
+Your response should contain a short title for the criteria ("shortname"), a description of the criteria in 2 sentences ("criteria"), and whether it should be evaluated with "code", or by an "expert" if the criteria is difficult to evaluate ("eval_method"). Your answer should be JSON within a \`\`\`json \`\`\` marker, with the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should expand upon the user's input, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case. Only output JSON, nothing else.`, // prompt
+        "gpt-4-turbo", // llm
+      )
+        .then((evalCrits) => {
+          // Take only the first
+          setCriteria((crit) =>
+            crit.concat([
+              {
+                ...evalCrits[0],
+                uid: uuid(),
+              },
+            ]),
+          );
+          // Remove a loading Skeleton
+          setIsLoadingCriteria((num) => num - 1);
+        })
+        .catch((err) => {
+          console.error(err);
+          setIsLoadingCriteria((num) => num - 1);
+        });
+    };
+
     // Goto next response in the queue (skipping grading the current one)
     const nextResponse = () => {
       if (responses.length === 0) return;
@@ -400,11 +484,12 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         typeof annotation === "string" &&
         annotation.trim().length > 0
       ) {
-        // console.log("setting annotation for resp", shownResponse.uid, annotation);
+        console.log("setting annotation for resp", shownResponse.uid, annotation);
         updateGlobalRating(shownResponse.uid, "note", { 0: annotation });
-        setAnnotation(null);
+        setAnnotation("");
       }
-      setPromptReasoning(null);
+      // @ts-expect-error The only way to deselect the Radio.Group is to set it to null. Undefined doesn't work.
+      setHolisticGrade(null);
 
       if (shownResponseIdx < pastShownResponses.length - 1) {
         // If we are not at the end of the history of shown responses, then show the next response:
@@ -417,7 +502,8 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         let next_resp = executor?.getNextExampleToGrade();
         while (
           num_tries > 0 &&
-          (!next_resp || pastShownResponses.some((r) => r.uid === next_resp?.uid))
+          (!next_resp ||
+            pastShownResponses.some((r) => r.uid === next_resp?.uid))
         ) {
           // We're presenting a response that's already been shown. Try again.
           // NOTE: If we're trying again the first time, executor will flip and get the response on the other side of the grading stack, so we try once more:
@@ -431,7 +517,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         }
         // Note that this doesn't guarantee uniqueness here ---it is possible to see a response again.
         // However, the internal "grades" dict will help us in remembering what grade the user gave the response.
-        setShownResponse(next_resp ? next_resp : undefined);
+        setShownResponse(next_resp ?? undefined);
         if (next_resp)
           setPastShownResponses(pastShownResponses.concat(next_resp));
         setShownResponseIdx(pastShownResponses.length);
@@ -458,7 +544,11 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
           <Grid.Col span={8}>
             <Stack justify="space-between">
               {/* View showing the response the user is currently grading */}
-              <GradingView shownResponse={shownResponse} gotoNextResponse={nextResponse} gotoPrevResponse={prevResponse} />
+              <GradingView
+                shownResponse={shownResponse}
+                gotoNextResponse={nextResponse}
+                gotoPrevResponse={prevResponse}
+              />
 
               {/* Progress bar */}
               {/* <Flex justify="left" align="center" gap="md">
@@ -494,25 +584,30 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
                     key={e.uid}
                     onChange={(newCrit) => handleChangeCriteria(newCrit, e.uid)}
                     onDelete={() => handleDeleteCriteria(e.uid)}
-                    grade={undefined}
-                    onChangeGrade={() => {
-                      console.log("hi");
+                    grade={shownResponse ? grades[shownResponse.uid][e.uid] : undefined}
+                    onChangeGrade={(newGrade) => {
+                      if (shownResponse)
+                        setPerCriteriaGrade(shownResponse.uid, e.uid, newGrade);
                     }}
                     initiallyOpen={true}
                   />
                 ))}
+                { isLoadingCriteria > 0 ? Array.from({length: isLoadingCriteria}, () => <Skeleton h={80} />) : <></>}
                 <Center>
-                  <button onClick={() => {
-                    handleAddCriteria({
-                      shortname: "New Criteria",
-                      criteria: "",
-                      eval_method: "code",
-                      priority: 0,
-                      uid: uuid(),
-                    });
-                  }}>+</button>
+                  <button
+                    onClick={() => {
+                      handleAddCriteria({
+                        shortname: "New Criteria",
+                        criteria: "",
+                        eval_method: "code",
+                        priority: 0,
+                        uid: uuid(),
+                      });
+                    }}
+                  >
+                    +
+                  </button>
                 </Center>
-                
               </div>
 
               <Stack spacing="0px" pl="xs" pr="lg" style={{ flex: 1 }}>
@@ -521,12 +616,16 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
                   Provide Additional Feedback
                 </Title>
                 <Textarea
+                  value={annotation}
+                  onChange={(e) => setAnnotation(e.target.value)}
                   description="How good is this response? Explain anything not captured under your existing criteria. Your feedback will be used to generate new criteria."
                   mb="sm"
                 />
                 <Radio.Group
                   name="favoriteFramework"
                   label="Rate the response holistically:"
+                  value={holisticGrade}
+                  onChange={(v) => setHolisticGrade(v as ("good" | "bad"))}
                   withAsterisk
                   mb="md"
                 >
@@ -539,14 +638,10 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
                 <Button
                   color="green"
                   variant="filled"
+                  disabled={!holisticGrade || (annotation === undefined || annotation.length === 0)}
                   onClick={() => {
-                    handleAddCriteria({
-                      shortname: "Criteria",
-                      criteria: "",
-                      eval_method: "code",
-                      priority: 0,
-                      uid: uuid(),
-                    });
+                    synthNewCriteriaWithLLM(shownResponse?.responses[0].toString() ?? "", annotation ?? "", holisticGrade ?? "unknown")
+                    nextResponse();
                   }}
                 >
                   + Submit Feedback

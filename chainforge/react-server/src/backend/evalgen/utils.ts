@@ -59,7 +59,6 @@ export async function generateLLMEvaluationCriteria(
 
   // Query the LLM (below, we will try this up to 3 times)
   async function _query() {
-
     // TODO: Get rid of this hard-coded spec in favor of regular openai (or another model)
     const spec = [
       {
@@ -140,7 +139,14 @@ export async function generateLLMEvaluationCriteria(
     console.log("Parsed", data);
 
     // Double-check the formatting
-    if (data.every(validEvalCriteriaFormat)) return data;
+    if (data.every(validEvalCriteriaFormat)) {
+      // Initialize any required properties
+      data.forEach(d => {
+        d.uid = uuid();
+        d.priority = 0;
+      });
+      return data;
+    }
     // Incorrect formatting
     else
       throw new Error(
