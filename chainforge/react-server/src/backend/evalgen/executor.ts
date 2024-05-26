@@ -176,7 +176,7 @@ export default class EvaluationFunctionExecutor {
       this.evalCriteria.length * 5 * this.examples.length;
 
     let criteriaProcessed = 0; // Track the number of criteria processed
-    let resolveAllFunctionsGenerated: any = undefined; // To be called when all functions are generated and executed
+    let resolveAllFunctionsGenerated: any; // To be called when all functions are generated and executed
     const functionExecutionPromises: Promise<any>[] = []; // Track execution promises for function executions
 
     // This promise resolves when the 'allFunctionsGenerated' event is emitted

@@ -56,7 +56,6 @@ export class AzureOpenAIStreamer extends EventEmitter {
 
     // const events = await this.client.listChatCompletions(model, messages, {});
 
-
     // for await (const event of events) {
     //   for (const choice of event.choices) {
     //     const delta = choice.delta?.content;
@@ -76,50 +75,70 @@ export class AzureOpenAIStreamer extends EventEmitter {
 
     // Used restapi as here: https://stackoverflow.com/questions/76137987/openai-completion-stream-with-node-js-and-express-js
 
-    const streamRes = await fetch("https://api.openai.com/v1/chat/completions", {method: "POST", headers: {"Authorization": `Bearer ${this.openai_api_key}`, "Content-Type": "application/json"}, body: JSON.stringify({model: model, messages: messages, stream: true})});
-
+    const streamRes = await fetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.openai_api_key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: messages,
+          stream: true,
+        }),
+      },
+    );
 
     const reader = streamRes.body?.getReader();
-    let done = false;
-    let concenattedJsonStrn = '';
+    if (!reader) {
+      console.error("Error initializing reader for OpenAI requests.");
+      return;
+    }
 
-    while (!done && reader) {
-      const { value, done: readerDone, } = await reader.read();
+    let done = false;
+    let concenattedJsonStrn = "";
+
+    while (!done) {
+      const { value, done: readerDone } = await reader.read();
       done = readerDone;
       const buffer = Buffer.from(value as ArrayBuffer);
       const textPayload = buffer.toString();
       concenattedJsonStrn += textPayload;
-      if (!concenattedJsonStrn.includes(`data: `) || !concenattedJsonStrn.includes(`\n\n`)) {
-          continue;
+      if (
+        !concenattedJsonStrn.includes(`data: `) ||
+        !concenattedJsonStrn.includes(`\n\n`)
+      ) {
+        continue;
       }
       const payloads = concenattedJsonStrn.toString().split("\n\n");
-      concenattedJsonStrn = '';
-  
-      for (const payload of payloads) {
-          if (payload.includes('[DONE]')) return;
-          if (payload.startsWith("data:")) {
-              try {
-                  const data = JSON.parse(payload.replace("data: ", ""));
-                  const delta: undefined | string = data.choices[0].delta?.content;
-                  if (delta !== undefined) {
-                    if (type === "criteria") {
-                      this.processCriteriaDelta(delta);
-                    } else if (type === "llm_eval") {
-                      this.processStringDelta(delta);
-                    } else if (type === "python_fn") {
-                      this.processFunctionDelta(delta);
-                    } else {
-                      throw new Error("Invalid type");
-                    }
-                  }
-              } catch (error) {
-                  console.log(`Error with JSON.parse and ${payload}.\n${error}`);
-                  concenattedJsonStrn += payload;
-              }
-          }
-      }
-  }
+      concenattedJsonStrn = "";
 
+      for (const payload of payloads) {
+        if (payload.includes("[DONE]")) return;
+        if (payload.startsWith("data:")) {
+          try {
+            const data = JSON.parse(payload.replace("data: ", ""));
+            const delta: undefined | string = data.choices[0].delta?.content;
+            if (delta !== undefined) {
+              if (type === "criteria") {
+                this.processCriteriaDelta(delta);
+              } else if (type === "llm_eval") {
+                this.processStringDelta(delta);
+              } else if (type === "python_fn") {
+                this.processFunctionDelta(delta);
+              } else {
+                throw new Error("Invalid type");
+              }
+            }
+          } catch (error) {
+            console.log(`Error with JSON.parse and ${payload}.\n${error}`);
+            concenattedJsonStrn += payload;
+          }
+        }
+      }
+    }
 
     this.emit("end"); // Signal that streaming is complete
   }
