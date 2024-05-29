@@ -378,9 +378,10 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       // for the duration of one EvalGen operation.
       setResponses(resps);
       setGrades(resps.reduce((acc: Dict<Dict<boolean | undefined>>, curr) => {
-        acc[curr.uid] = {};
+        if (!(curr.uid in acc))
+          acc[curr.uid] = {};
         return acc;
-      }, {}));
+      }, grades));
       setShownResponseIdx(0);
       if (resps.length > 0) {
         const first_resp = sampleRandomElements(resps, 1)[0];
