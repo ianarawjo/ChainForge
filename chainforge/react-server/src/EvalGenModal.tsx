@@ -50,7 +50,12 @@ import {
   rem,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { Dict, LLMResponse, PromptVarsDict, RatingDict } from "./backend/typing";
+import {
+  Dict,
+  LLMResponse,
+  PromptVarsDict,
+  RatingDict,
+} from "./backend/typing";
 import { EvalCriteria } from "./backend/evalgen/typing";
 import {
   IconChevronDown,
@@ -341,16 +346,22 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
     const [shownResponseIdx, setShownResponseIdx] = useState(0);
 
     const [annotation, setAnnotation] = useState<string | undefined>(undefined);
-    const [holisticGrade, setHolisticGrade] = useState<"good" | "bad" | undefined>(undefined);
+    const [holisticGrade, setHolisticGrade] = useState<
+      "good" | "bad" | undefined
+    >(undefined);
 
     // Per-criteria grades (indexed by uid of response, then uid of criteria)
     const [grades, setGrades] = useState<Dict<Dict<boolean | undefined>>>({});
-    const setPerCriteriaGrade = (responseUID: string, criteriaUID: string, newGrade: boolean | undefined) => {
+    const setPerCriteriaGrade = (
+      responseUID: string,
+      criteriaUID: string,
+      newGrade: boolean | undefined,
+    ) => {
       setGrades((grades) => {
         if (!grades[responseUID]) grades[responseUID] = {};
         grades[responseUID][criteriaUID] = newGrade;
-        grades[responseUID] = {...grades[responseUID]};
-        return {...grades};
+        grades[responseUID] = { ...grades[responseUID] };
+        return { ...grades };
       });
     };
 
@@ -377,11 +388,12 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       // We pass the responses here manually to ensure they remain the same
       // for the duration of one EvalGen operation.
       setResponses(resps);
-      setGrades(resps.reduce((acc: Dict<Dict<boolean | undefined>>, curr) => {
-        if (!(curr.uid in acc))
-          acc[curr.uid] = {};
-        return acc;
-      }, grades));
+      setGrades(
+        resps.reduce((acc: Dict<Dict<boolean | undefined>>, curr) => {
+          if (!(curr.uid in acc)) acc[curr.uid] = {};
+          return acc;
+        }, grades),
+      );
       setShownResponseIdx(0);
       if (resps.length > 0) {
         const first_resp = sampleRandomElements(resps, 1)[0];
@@ -427,7 +439,11 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
 
     // Synthesize a new criteria according to the feedback given for the shown response
     const [isLoadingCriteria, setIsLoadingCriteria] = useState(0);
-    const synthNewCriteriaWithLLM = (response: string, feedback: string, grade: "good" | "bad" | "unknown") => {
+    const synthNewCriteriaWithLLM = (
+      response: string,
+      feedback: string,
+      grade: "good" | "bad" | "unknown",
+    ) => {
       // Add a loading Skeleton
       setIsLoadingCriteria((num) => num + 1);
       // Make async LLM call to expand criteria
@@ -485,7 +501,11 @@ Your response should contain a short title for the criteria ("shortname"), a des
         typeof annotation === "string" &&
         annotation.trim().length > 0
       ) {
-        console.log("setting annotation for resp", shownResponse.uid, annotation);
+        console.log(
+          "setting annotation for resp",
+          shownResponse.uid,
+          annotation,
+        );
         updateGlobalRating(shownResponse.uid, "note", { 0: annotation });
         setAnnotation("");
       }
@@ -585,7 +605,11 @@ Your response should contain a short title for the criteria ("shortname"), a des
                     key={e.uid}
                     onChange={(newCrit) => handleChangeCriteria(newCrit, e.uid)}
                     onDelete={() => handleDeleteCriteria(e.uid)}
-                    grade={shownResponse ? grades[shownResponse.uid][e.uid] : undefined}
+                    grade={
+                      shownResponse
+                        ? grades[shownResponse.uid][e.uid]
+                        : undefined
+                    }
                     onChangeGrade={(newGrade) => {
                       if (shownResponse)
                         setPerCriteriaGrade(shownResponse.uid, e.uid, newGrade);
@@ -593,7 +617,16 @@ Your response should contain a short title for the criteria ("shortname"), a des
                     initiallyOpen={true}
                   />
                 ))}
-                { isLoadingCriteria > 0 ? Array.from({length: isLoadingCriteria}, () => <Skeleton h={80} mb={4} />) : <></>}
+                {isLoadingCriteria > 0 ? (
+                  Array.from(
+                    { length: isLoadingCriteria },
+                    (v: unknown, idx: number) => (
+                      <Skeleton key={idx} h={80} mb={4} />
+                    ),
+                  )
+                ) : (
+                  <></>
+                )}
                 <Center>
                   <button
                     onClick={() => {
@@ -626,7 +659,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
                   name="favoriteFramework"
                   label="Rate the response holistically:"
                   value={holisticGrade}
-                  onChange={(v) => setHolisticGrade(v as ("good" | "bad"))}
+                  onChange={(v) => setHolisticGrade(v as "good" | "bad")}
                   withAsterisk
                   mb="md"
                 >
@@ -639,9 +672,17 @@ Your response should contain a short title for the criteria ("shortname"), a des
                 <Button
                   color="green"
                   variant="filled"
-                  disabled={!holisticGrade || (annotation === undefined || annotation.length === 0)}
+                  disabled={
+                    !holisticGrade ||
+                    annotation === undefined ||
+                    annotation.length === 0
+                  }
                   onClick={() => {
-                    synthNewCriteriaWithLLM(shownResponse?.responses[0].toString() ?? "", annotation ?? "", holisticGrade ?? "unknown")
+                    synthNewCriteriaWithLLM(
+                      shownResponse?.responses[0].toString() ?? "",
+                      annotation ?? "",
+                      holisticGrade ?? "unknown",
+                    );
                     nextResponse();
                   }}
                 >
