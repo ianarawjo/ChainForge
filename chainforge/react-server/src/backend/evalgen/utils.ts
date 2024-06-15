@@ -141,7 +141,7 @@ export async function generateLLMEvaluationCriteria(
     // Double-check the formatting
     if (data.every(validEvalCriteriaFormat)) {
       // Initialize any required properties
-      data.forEach(d => {
+      data.forEach((d) => {
         d.uid = uuid();
         d.priority = 0;
       });
