@@ -13,7 +13,7 @@ import { Dict, LLMResponse } from "../typing";
 import { executejs, executepy, simpleQueryLLM } from "../backend";
 import { getVarsAndMetavars, retryAsyncFunc } from "../utils";
 import { v4 as uuid } from "uuid";
-import { AzureOpenAIStreamer } from "./oai_utils";
+import { OpenAIStreamer } from "./oai_utils";
 import {
   buildContextPromptForVarsMetavars,
   buildGenEvalCodePrompt,
@@ -55,61 +55,13 @@ export async function generateLLMEvaluationCriteria(
   
   \`${prompt}\`
     
-    Based on the content in the prompt, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of approximately 5 criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). At most 3 criteria should have eval_method as expert. The "criteria" should be short, and the "shortname" should be a very brief title for the criteria. Each evaluation criteria should test a concept that should evaluate to "true" in the ideal case.`;
+    Based on the instructions in the prompt that need to be followed, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of 2 or 3 distinct criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). At most 3 criteria should have eval_method as expert. The "criteria" should be short, and the "shortname" should be a very brief title for the criteria. Each evaluation criteria should test a concept that should evaluate to "true" in the ideal case.`;
 
   // Query the LLM (below, we will try this up to 3 times)
   async function _query() {
-    // TODO: Get rid of this hard-coded spec in favor of regular openai (or another model)
-    const spec = [
-      {
-        key: "c9fb3b4a-ed01-40ce-a3ae-da30668a8a80",
-        name: "Azure OpenAI",
-        emoji: "🔷",
-        model: "azure-openai",
-        base_model: "azure-openai",
-        temp: 1,
-        deployment_name: "gpt-4",
-        model_type: "chat-completion",
-        system_msg: AssertionWriterSystemMsg,
-        settings: {
-          deployment_name: "gpt-4",
-          model_type: "chat-completion",
-          system_msg: AssertionWriterSystemMsg,
-          temperature: 1,
-          response_format: {
-            type: "text",
-          },
-          functions: [],
-          function_call: "",
-          top_p: 1,
-          stop: [],
-          presence_penalty: 0,
-          frequency_penalty: 0,
-        },
-        formData: {
-          shortname: "Azure OpenAI",
-          deployment_name: "gpt-4",
-          model_type: "chat-completion",
-          system_msg: AssertionWriterSystemMsg,
-          temperature: 1,
-          response_format: "text",
-          functions: "",
-          function_call: "",
-          top_p: 1,
-          stop: "",
-          presence_penalty: 0,
-          frequency_penalty: 0,
-        },
-        progress: {
-          success: 0,
-          error: 0,
-        },
-      },
-    ];
-
     const result = await simpleQueryLLM(
       detailedPrompt, // prompt
-      "gpt-4", // llm
+      "gpt-4o", // llm
       // spec, // llm
       systemMsg !== undefined
         ? systemMsg === null
@@ -124,7 +76,7 @@ export async function generateLLMEvaluationCriteria(
 
     // Get output (text from LLM response)
     const output = result.responses[0].responses[0];
-    console.log("LLM said: ", output); // for debuggging
+    // console.log("LLM said: ", output); // for debuggging
 
     // Attempt to extract JSON blocks (strings) from input
     const json_blocks = extractJSONBlocks(output.toString());
@@ -136,7 +88,7 @@ export async function generateLLMEvaluationCriteria(
     // Attempt to parse all JSON blocks into objects
     const data: EvalCriteria[] = json_blocks.map((s) => JSON.parse(s)).flat(1);
 
-    console.log("Parsed", data);
+    // console.log("Parsed", data);
 
     // Double-check the formatting
     if (data.every(validEvalCriteriaFormat)) {
@@ -161,6 +113,8 @@ export async function generateLLMEvaluationCriteria(
 export async function executeLLMEval(
   evalFunction: EvalFunction,
   example: LLMResponse,
+  positiveExample: LLMResponse,
+  negativeExample: LLMResponse,
 ): Promise<EvalFunctionResult> {
   // Construct call to an LLM to evaluate the example
   const evalPrompt =
@@ -175,66 +129,17 @@ export async function executeLLMEval(
   //   new Promise((resolve) => setTimeout(resolve, ms));
   // await sleep(Math.floor(Math.random() * 30) * 1000);
 
-  // TODO: Get rid of this hard-coded spec in favor of regular openai (or another model)
-
-  const spec = [
-    {
-      key: "c9fb3b4a-ed01-40ce-a3ae-da30668a8a80",
-      name: "Azure OpenAI",
-      emoji: "🔷",
-      model: "azure-openai",
-      base_model: "azure-openai",
-      temp: 1,
-      deployment_name: "gpt-35-turbo-16k",
-      model_type: "chat-completion",
-      // api_version: "2023-05-15",
-      system_msg: "You are an expert evaluator.",
-      settings: {
-        deployment_name: "gpt-35-turbo-16k",
-        model_type: "chat-completion",
-        // api_version: "2023-05-15",
-        system_msg: "You are an expert evaluator.",
-        temperature: 1,
-        response_format: {
-          type: "text",
-        },
-        functions: [],
-        function_call: "",
-        top_p: 1,
-        stop: [],
-        presence_penalty: 0,
-        frequency_penalty: 0,
-      },
-      formData: {
-        shortname: "Azure OpenAI",
-        deployment_name: "gpt-35-turbo-16k",
-        model_type: "chat-completion",
-        // api_version: "2023-05-15",
-        system_msg: "You are an expert evaluator.",
-        temperature: 1,
-        response_format: "text",
-        functions: "",
-        function_call: "",
-        top_p: 1,
-        stop: "",
-        presence_penalty: 0,
-        frequency_penalty: 0,
-      },
-      progress: {
-        success: 0,
-        error: 0,
-      },
-    },
-  ];
-
   // Query an LLM as an evaluator
+  let systemMessage = "You are an expert evaluator.";
+  if (positiveExample && positiveExample.responses[0] && negativeExample && negativeExample.responses[0]) {
+    systemMessage += " Please consider the following good example: " + positiveExample.responses[0] + " and bad example: " + negativeExample.responses[0] + " when making your evaluation.";
+  }
+
   const result = await simpleQueryLLM(
     evalPrompt, // prompt
     "gpt-3.5-turbo-16k", // llm
-    // spec,
-    "You are an expert evaluator.", // system_msg
+    systemMessage, // system_msg
   );
-
   // Get the output
   const output = result.responses[0].responses[0].toString();
 
@@ -305,6 +210,8 @@ export async function execJSFunc(
 export async function execPyFunc(
   evalFunction: EvalFunction,
   example: LLMResponse,
+  positiveExample: LLMResponse,
+  negativeExample: LLMResponse,
 ): Promise<EvalFunctionResult> {
   try {
     // We need to replace the function name with "evaluate", which is what is expected by backend:
@@ -316,7 +223,7 @@ export async function execPyFunc(
     // Add `import re` to the code if it's not already there
     if (!code.includes("import re")) code = "import re\n" + code;
 
-    console.log(`Executing function: ${code}`);
+    // console.log(`Executing function: ${code}`);
 
     // Execute the function via pyodide
     const result = await executepy(
@@ -332,7 +239,7 @@ export async function execPyFunc(
     // Check for errors
     if (result.error !== undefined) throw new Error(result.error);
 
-    console.log("Result:", result);
+    // console.log("Result:", result);
 
     // Extract the evaluation result
     const eval_res = result.responses
@@ -368,7 +275,7 @@ export async function generateFunctionsForCriteria(
   console.log("Function generation prompt:", functionGenPrompt);
 
   try {
-    const streamer = new AzureOpenAIStreamer();
+    const streamer = new OpenAIStreamer();
 
     streamer.on("function", (functionDefinition: string) => {
       processAndEmitFunction(criteria, functionDefinition, emitter);
@@ -376,7 +283,7 @@ export async function generateFunctionsForCriteria(
 
     const modelType =
       criteria.eval_method === "expert" ? "llm_eval" : "python_fn";
-    await streamer.generate(functionGenPrompt, "gpt-4", modelType);
+    await streamer.generate(functionGenPrompt, "gpt-4o", modelType);
   } catch (error) {
     console.error("Error generating function for criteria:", error);
     throw new Error(
@@ -393,15 +300,15 @@ function buildFunctionGenPrompt(
   if (criteria.eval_method === "expert")
     return `Given the following prompt template for an LLM pipeline:\n\n ${promptTemplate}\n\n, your task is to devise a prompt for an expert to evaluate the pipeline's responses based on the following criteria: ${criteria.criteria}
   
-  You will devise multiple prompts to see which has the best accuracy. Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate entire criteria (don't miss anything in the criteria). Try different variations/wordings in the prompts. Return your prompts in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
+  You will devise 3 prompts to see which has the best accuracy. Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate entire criteria (don't miss anything in the criteria). Try different variations/wordings in the prompts. Return your prompts in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
   `;
   else {
-    const prompt = `Given the following prompt template for an LLM pipeline:\n\n ${promptTemplate}\n\n, your task is to devise multiple Python assertions to evaluate LLM responses based on the criteria "${criteria.shortname}". Create as many implementations as possible.
+    const prompt = `Given the following prompt template for an LLM pipeline:\n\n ${promptTemplate}\n\n, your task is to devise multiple Python assertions to evaluate LLM responses based on the criteria "${criteria.shortname}". Create 3 implementations.
 ${buildGenEvalCodePrompt("python", buildContextPromptForVarsMetavars(getVarsAndMetavars([example])), criteria.criteria, true)}
 
 Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function. Each function should return only True or False.`;
 
-    console.log("Function generation prompt:", prompt);
+    // console.log("Function generation prompt:", prompt);
 
     return prompt;
   }

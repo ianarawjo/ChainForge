@@ -1,10 +1,12 @@
 import { ChatHistoryInfo, Dict } from "../typing";
 
+export type EvalCriteriaUID = string;
+
 export interface EvalCriteria {
   shortname: string;
   criteria: string;
   eval_method: "code" | "expert";
-  uid: string;
+  uid: EvalCriteriaUID;
   priority: number;
   source?: string;
 }

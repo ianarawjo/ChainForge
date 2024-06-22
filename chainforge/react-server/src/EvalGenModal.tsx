@@ -75,11 +75,16 @@ import {
   sampleRandomElements,
   transformDict,
 } from "./backend/utils";
+import {
+  extractUIDFromRatingKey,
+  getRatingKeyForResponse,
+} from "./ResponseRatingToolbar";
 import useStore from "./store";
-import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
 import StorageCache from "./backend/cache";
 import EvaluationFunctionExecutor from "./backend/evalgen/executor";
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
+import { escapeBraces } from "./backend/template";
+import { update } from "lodash";
 
 const INIT_CRITERIA: EvalCriteria[] = [
   {
@@ -334,7 +339,8 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
   function EvalGenModal(props, ref) {
     const [opened, { open, close }] = useDisclosure(false);
     const apiKeys = useStore((state) => state.apiKeys);
-    const [criteria, setCriteria] = useState<EvalCriteria[]>(INIT_CRITERIA);
+    const globalState = useStore((store) => store.state);
+    const [criteria, setCriteria] = useState<EvalCriteria[]>([]);
 
     const [responses, setResponses] = useState<LLMResponse[]>([]);
     const [shownResponse, setShownResponse] = useState<LLMResponse | undefined>(
@@ -363,12 +369,14 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         grades[responseUID] = { ...grades[responseUID] };
         return { ...grades };
       });
+      updateGlobalRating(responseUID, "perCriteriaGrades", grades[responseUID]);
     };
 
     // The EvalGen object responsible for generating, implementing, and filtering candidate implementations
     const [executor, setExecutor] = useState<EvaluationFunctionExecutor | null>(
       null,
     );
+
     const [execProgress, setExecProgress] = useState(0);
 
     // For updating the global human ratings state
@@ -383,17 +391,69 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       [setState],
     );
 
+    // Update executor whenever resps, grades, or criteria change
+    React.useEffect(() => {
+
+      if (criteria.length > 0 && !executor) {
+        const existingGrades = transformDict(
+          globalState,
+          (key) => key.startsWith("r.") && key.endsWith(".grade"),
+          extractUIDFromRatingKey,
+          (_, val) => {
+            // The grades are in { idx: grade } format. Take only the first,
+            // as we only take the first response in this iteration of EvalGen:
+            if (typeof val !== "object") return undefined;
+            const gs = Object.values(val);
+            if (gs.length === 0) return undefined;
+            return gs[0];
+          },
+        );
+
+
+        const ex = new EvaluationFunctionExecutor(
+          getLikelyPromptTemplateAsContext(responses),
+          responses,
+          criteria,
+          existingGrades,
+          grades
+        );
+        setExecutor(ex);
+
+        setExecProgress(0);
+        ex.start((progress) => {
+          setExecProgress(progress?.success ?? 0);
+        });
+
+      } else if (executor) {
+        // Update criteria in executor
+        executor.addCriteria(criteria);
+      }
+
+    }, [criteria]);
+
+
     // Open the EvalGen wizard
     const trigger = (resps: LLMResponse[]) => {
       // We pass the responses here manually to ensure they remain the same
       // for the duration of one EvalGen operation.
       setResponses(resps);
-      setGrades(
-        resps.reduce((acc: Dict<Dict<boolean | undefined>>, curr) => {
-          if (!(curr.uid in acc)) acc[curr.uid] = {};
-          return acc;
-        }, grades),
-      );
+      const firstGrades = resps.reduce((acc: Dict<Dict<boolean | undefined>>, curr) => {
+        if (!(curr.uid in acc)) acc[curr.uid] = {};
+        return acc;
+      }, grades);
+      setGrades(firstGrades);
+
+      // Create criteria
+      setIsLoadingCriteria((num) => num + 3);
+      genCriteriaFromContext(resps)
+        .then((crits) => setCriteria(crits.map((c) => ({ ...c, uid: uuid() }))))
+        .catch((err) => {
+          console.error(err);
+        })
+        .finally(() => {
+          setIsLoadingCriteria((num) => num - 3);
+        });
+
       setShownResponseIdx(0);
       if (resps.length > 0) {
         const first_resp = sampleRandomElements(resps, 1)[0];
@@ -416,6 +476,34 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         return [...cs, newCrit];
       });
     };
+
+    const getLikelyPromptTemplateAsContext = (resps) => {
+      // Attempt to infer the prompt template used to generate the responses:
+      const prompts = new Set();
+      for (const resp_obj of resps) {
+        if (resp_obj?.metavars?.__pt !== undefined) {
+          prompts.add(resp_obj.metavars.__pt);
+        }
+      }
+
+      if (prompts.size === 0) return null;
+
+      // Pick a prompt template at random to serve as context....
+      return escapeBraces(prompts.values().next().value);
+    };
+
+    async function genCriteriaFromContext(responses) {
+      // Get the context from the input responses
+      const inputPromptTemplate = getLikelyPromptTemplateAsContext(responses);
+
+      if (inputPromptTemplate === null) {
+        console.error("No context found. Cannot proceed.");
+        return;
+      }
+
+      // Attempt to generate criteria using an LLM
+      return await generateLLMEvaluationCriteria(inputPromptTemplate, apiKeys);
+    }
 
     // Modify an existing criterion
     const handleChangeCriteria = (newCrit: EvalCriteria, uid: string) => {
@@ -446,15 +534,24 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
     ) => {
       // Add a loading Skeleton
       setIsLoadingCriteria((num) => num + 1);
-      // Make async LLM call to expand criteria
+      // Make async LLM call to expand criteria only if the feedback contains some idea of a constraint on the output and isn't covered by existing criteria
+      const prettyCriteria = criteria.map((crit) => {
+        return `${crit.shortname}: ${crit.criteria}`;
+      }).join('\n');
+
       generateLLMEvaluationCriteria(
         "",
         apiKeys,
-        `I've given some feedback on some text output. Use this feedback to decide on a single evaluation criteria with a yes/no answer. I want you to take the criteria and output a JSON object in the format below. 
+        `I've given some feedback on some text output. Use this feedback to decide on a single new evaluation criteria with a yes/no answer, only if the feedback isn't encompassed by existing criteria. I want you to take the criteria and output a JSON object in the format below. 
 
 TEXT OUTPUT: 
 \`\`\`
 ${response}
+\`\`\`
+
+EXISTING CRITERIA:
+\`\`\`
+${prettyCriteria}
 \`\`\`
 
 GRADE (whether text was good or bad):
@@ -467,19 +564,21 @@ FEEDBACK:
 ${feedback}
 \`\`\`
 
-Your response should contain a short title for the criteria ("shortname"), a description of the criteria in 2 sentences ("criteria"), and whether it should be evaluated with "code", or by an "expert" if the criteria is difficult to evaluate ("eval_method"). Your answer should be JSON within a \`\`\`json \`\`\` marker, with the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should expand upon the user's input, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case. Only output JSON, nothing else.`, // prompt
-        "gpt-4-turbo", // llm
+If you determine the feedback corresponds to a new criteria, your response should contain a short title for the criteria ("shortname"), a description of the criteria in 2 sentences ("criteria"), and whether it should be evaluated with "code", or by an "expert" if the criteria is difficult to evaluate ("eval_method"). Your answer should be JSON within a \`\`\`json \`\`\` marker, with the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should expand upon the user's input, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case. Only output JSON, nothing else. Output an empty list if there is no new evaluation criteria`, // prompt
+        "gpt-4o", // llm
       )
         .then((evalCrits) => {
-          // Take only the first
-          setCriteria((crit) =>
-            crit.concat([
-              {
-                ...evalCrits[0],
-                uid: uuid(),
-              },
-            ]),
-          );
+          // Take only the first if evalCrits has a nonempty list
+          if (evalCrits[0]) {
+            setCriteria((crit) =>
+              crit.concat([
+                {
+                  ...evalCrits[0],
+                  uid: uuid(),
+                },
+              ]),
+            );
+          }
           // Remove a loading Skeleton
           setIsLoadingCriteria((num) => num - 1);
         })
@@ -495,6 +594,16 @@ Your response should contain a short title for the criteria ("shortname"), a des
 
       // Update annotation for current response (if any)
       // TODO: Fix this for generate case when num resp per prompt > 1
+
+      if (grades[shownResponse.uid] || holisticGrade || (annotation && annotation.trim())) {
+        const numNewImplementations = executor?.setGradeForExample(
+          shownResponse.uid,
+          grades[shownResponse.uid],
+          holisticGrade,
+          annotation ? annotation.trim() : null
+        ); // TODO: show this in the UI
+      }
+
       if (
         shownResponse &&
         annotation &&
@@ -509,6 +618,15 @@ Your response should contain a short title for the criteria ("shortname"), a des
         updateGlobalRating(shownResponse.uid, "note", { 0: annotation });
         setAnnotation("");
       }
+
+      if (shownResponse && holisticGrade) {
+        updateGlobalRating(shownResponse.uid, "grade", { 0: holisticGrade === "good" });
+      }
+
+      if (shownResponse && grades[shownResponse.uid]) {
+        updateGlobalRating(shownResponse.uid, "perCriteriaGrades", grades[shownResponse.uid]);
+      }
+
       // @ts-expect-error The only way to deselect the Radio.Group is to set it to null. Undefined doesn't work.
       setHolisticGrade(null);
 
@@ -683,6 +801,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
                       annotation ?? "",
                       holisticGrade ?? "unknown",
                     );
+                    
                     nextResponse();
                   }}
                 >
