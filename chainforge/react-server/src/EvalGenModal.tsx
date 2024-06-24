@@ -379,6 +379,11 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
 
     const [execProgress, setExecProgress] = useState(0);
 
+    // State variables to keep track of GPT call counts
+    const [numGPT4Calls, setNumGPT4Calls] = useState(0);
+    const [numGPT35Calls, setNumGPT35Calls] = useState(0);
+    const [logs, setLogs] = useState<{ date: Date; message: string }[]>([]);
+
     // For updating the global human ratings state
     const setState = useStore((store) => store.setState);
     const updateGlobalRating = useCallback(
@@ -409,13 +414,22 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
           },
         );
 
+        const addLog = (message: string) => {
+          setLogs((prevLogs) => [...prevLogs, { date: new Date(), message }]);
+        };
+
 
         const ex = new EvaluationFunctionExecutor(
           getLikelyPromptTemplateAsContext(responses),
           responses,
           criteria,
+          (gpt4Calls, gpt35Calls) => {  // Callback to update GPT call counts
+            setNumGPT4Calls((num) => num + gpt4Calls);
+            setNumGPT35Calls((num) => num + gpt35Calls);
+          },
+          addLog,
           existingGrades,
-          grades
+          grades,
         );
         setExecutor(ex);
 
@@ -452,6 +466,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         })
         .finally(() => {
           setIsLoadingCriteria((num) => num - 3);
+          setNumGPT4Calls((num) => num + 1);
         });
 
       setShownResponseIdx(0);
@@ -581,6 +596,8 @@ If you determine the feedback corresponds to a new criteria, your response shoul
           }
           // Remove a loading Skeleton
           setIsLoadingCriteria((num) => num - 1);
+
+          setNumGPT4Calls((num) => num + 1);
         })
         .catch((err) => {
           console.error(err);
@@ -596,12 +613,12 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       // TODO: Fix this for generate case when num resp per prompt > 1
 
       if (grades[shownResponse.uid] || holisticGrade || (annotation && annotation.trim())) {
-        const numNewImplementations = executor?.setGradeForExample(
+        executor?.setGradeForExample(
           shownResponse.uid,
           grades[shownResponse.uid],
           holisticGrade,
           annotation ? annotation.trim() : null
-        ); // TODO: show this in the UI
+        ); 
       }
 
       if (
@@ -670,6 +687,12 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       setShownResponseIdx(shownResponseIdx - 1); // decrement shown resp idx
     };
 
+    const estimateGPTCalls = () => {
+      return executor
+        ? `This will trigger around ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT4Calls} GPT-4o and ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT35Calls} GPT-3.5-turbo-16k calls.`
+        : "# estimated GPT calls not available.";
+    }
+
     return (
       <Modal
         size="90%"
@@ -685,8 +708,12 @@ If you determine the feedback corresponds to a new criteria, your response shoul
               {/* View showing the response the user is currently grading */}
               <GradingView
                 shownResponse={shownResponse}
+                numGPT4Calls={numGPT4Calls}
+                numGPT35Calls={numGPT35Calls}
+                logs={logs}
                 gotoNextResponse={nextResponse}
                 gotoPrevResponse={prevResponse}
+                estimateGPTCalls={estimateGPTCalls}
               />
 
               {/* Progress bar */}
@@ -826,14 +853,22 @@ const HeaderText = ({ children }: { children: ReactNode }) => {
 
 interface GradingViewProps {
   shownResponse: LLMResponse | undefined;
+  numGPT4Calls: number;
+  numGPT35Calls: number;
+  logs: { date: Date; message: string }[];
   gotoPrevResponse: () => void;
   gotoNextResponse: () => void;
+  estimateGPTCalls: () => string;
 }
 
 const GradingView: React.FC<GradingViewProps> = ({
   shownResponse,
+  numGPT4Calls,
+  numGPT35Calls,
+  logs,
   gotoPrevResponse,
   gotoNextResponse,
+  estimateGPTCalls,
 }) => {
   // Calculate inner values only when shownResponse changes
   const responseText = useMemo(
@@ -897,9 +932,16 @@ const GradingView: React.FC<GradingViewProps> = ({
           </div>
 
           {/* Go forward to the next response */}
-          <Button variant="white" color="dark" onClick={gotoNextResponse}>
-            <IconChevronRight />
-          </Button>
+          <Tooltip
+            label={
+              estimateGPTCalls()
+            }
+            withArrow
+          >
+            <Button variant="white" color="dark" onClick={gotoNextResponse}>
+              <IconChevronRight />
+            </Button>
+          </Tooltip>
         </Flex>
 
         {/* Views for the vars (inputs) that generated this response, and the concrete prompt */}
@@ -941,6 +983,41 @@ const GradingView: React.FC<GradingViewProps> = ({
             >
               {prompt}
             </div>
+          </div>
+        </Flex>
+        <Flex direction="column">
+          <Flex justify="space-between" align="center">
+            <Text size="lg" weight={500} mb="sm">LLM Activity</Text>
+            {/* GPT Call Tally */}
+            <Text size="sm" color="dark" style={{ fontStyle: "italic" }}>
+              Executed {numGPT4Calls} GPT-4o calls and {numGPT35Calls} GPT-3.5-Turbo-16k calls.
+            </Text>
+          </Flex>
+          <div
+            style={{
+              backgroundColor: "#f0f0f0", 
+              color: "#333",
+              fontFamily: "monospace",
+              padding: "12px",
+              width: "calc(100% - 30px)", 
+              height: "200px",
+              overflowY: "auto",
+              borderRadius: "8px",
+              border: "1px solid #ddd", 
+              marginRight: "20px", // Space on the right
+            }}
+            ref={(el) => {
+              if (el) {
+                el.scrollTop = el.scrollHeight;
+              }
+            }}
+          >
+            {logs.map((log, index) => (
+              <div key={index}>
+                <span style={{ color: '#4A90E2' }}>{log.date.toLocaleString()} - </span> 
+                <span>{log.message}</span>
+              </div>
+            ))}
           </div>
         </Flex>
       </Box>

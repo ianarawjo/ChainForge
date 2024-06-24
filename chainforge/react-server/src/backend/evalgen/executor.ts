@@ -77,6 +77,8 @@ export default class EvaluationFunctionExecutor {
   private backgroundTaskPromise: Promise<void> | null = null; // To keep track of the background task for generating and executing evaluation functions
   private criteriaQueue: EvalCriteria[] = []; // Queue for new criteria to be processed
   private processing = false; // To keep track of whether we are currently processing a criteria
+  private updateGPTCalls: (numGPT4Calls: number, numGPT35Calls: number) => void;
+  private logFunction: (logMessage: string) => void;
 
   /**
    * Initializes a new instance of the EvaluationFunctionExecutor class.
@@ -90,6 +92,8 @@ export default class EvaluationFunctionExecutor {
     promptTemplate: string,
     examples: LLMResponse[],
     evalCriteria: EvalCriteria[] = [],
+    updateGPTCalls: (numGPT4Calls: number, numGPT35Calls: number) => void,
+    addLog: (log: string) => void,
     existingGrades?: Record<ResponseUID, boolean>,
     existingPerCriteriaGrades?: Dict<Dict<boolean | undefined>>,
     annotations?: Dict<string>
@@ -137,6 +141,9 @@ export default class EvaluationFunctionExecutor {
 
     this.criteriaQueue = [];
     this.processing = false;
+
+    this.updateGPTCalls = updateGPTCalls;
+    this.logFunction = addLog;
   }
 
 
@@ -191,6 +198,7 @@ export default class EvaluationFunctionExecutor {
     const functionExecutionPromises: Promise<any>[] = [];
 
     emitter.on("functionGenerated", (evalFunction) => {
+
       const executionPromise = (async () => {
         this.evalFunctions.push(evalFunction);
         const executionPromises = this.examples.map(async (example) => {
@@ -207,6 +215,11 @@ export default class EvaluationFunctionExecutor {
               : executeLLMEval;
 
           const result = await funcToExecute(evalFunction, example, randomPositiveExample, randomNegativeExample);
+
+          // Update GPT-3.5 call count by 1 if the eval method is expert
+          if (evalFunction.evalCriteria.eval_method === "expert") {
+            this.updateGPTCalls(0, 1);
+          }
 
           if (onProgress) {
             onProgress({
@@ -231,16 +244,22 @@ export default class EvaluationFunctionExecutor {
       functionExecutionPromises.push(executionPromise);
     });
 
+    const badExample = this.examples.find(example => this.perCriteriaGrades[criteria.uid]?.[example.uid] === false);
+
   
     await generateFunctionsForCriteria(
       criteria,
       this.promptTemplate,
       this.examples[Math.floor(Math.random() * this.examples.length)],
       emitter,
+      badExample,
     );
+    // Update GPT-4o call count by 1
+    this.updateGPTCalls(1, 0);
 
     console.log(`Generated functions for criteria: ${criteria.shortname}`);
     console.log(`Number of functions generated: ${functionExecutionPromises.length}`);
+    this.logFunction(`Generated ${functionExecutionPromises.length} functions for criteria: ${criteria.shortname}`);
 
     await Promise.all(functionExecutionPromises);
   }
@@ -274,6 +293,8 @@ export default class EvaluationFunctionExecutor {
 
     // Listen for generated functions and execute them as they come in
     emitter.on("functionGenerated", (evalFunction) => {
+      this.logFunction(`Generated a new ${evalFunction.evalCriteria.eval_method === "code" ? "code-based" : "LLM-based"} validator for criteria: ${evalFunction.evalCriteria.shortname}${evalFunction.evalCriteria.eval_method === "expert" ? `, with prompt: ${evalFunction.name}` : ""}. Executing it on ${this.examples.length} examples.`);
+
       // Capture the execution promise of each function
       const executionPromise = (async () => {
         // Add the eval function to the list of functions
@@ -292,6 +313,11 @@ export default class EvaluationFunctionExecutor {
 
           // Run the function on the example and if there's an error, increment skipped
           const result = await funcToExecute(evalFunction, example, randomPositiveExample, randomNegativeExample);
+
+          // Update GPT-3.5 call count by 1 if the eval method is expert
+          if (evalFunction.evalCriteria.eval_method === "expert") {
+            this.updateGPTCalls(0, 1);
+          }
 
           funcsExecuted++;
           if (onProgress) {
@@ -331,6 +357,8 @@ export default class EvaluationFunctionExecutor {
         emitter, // Pass the EventEmitter instance
       ).then(() => {
         emitter.emit("criteriaProcessed");
+        // Update GPT-4o call count by 1
+        this.updateGPTCalls(1, 0);
       });
     });
 
@@ -343,6 +371,7 @@ export default class EvaluationFunctionExecutor {
           console.log(
             "All evaluation functions have been generated and executed.",
           );
+          this.logFunction("All initially-generated evaluation functions have been generated and executed.");
           if (resolveAllFunctionsGenerated) {
             resolveAllFunctionsGenerated(); // Resolve the promise when all functions have been generated and executed
           }
@@ -483,6 +512,29 @@ export default class EvaluationFunctionExecutor {
     return new Map(this.grades);
   }
 
+  public estimateNumGPTCalls(perCriteriaGrades: Dict<boolean>): { numGPT4Calls: number; numGPT35Calls: number }{
+
+    let numGPT4Calls = 0;
+    let numLLMCriteria = 0;
+    for (const criteriaId in perCriteriaGrades) {
+      const currGrade = perCriteriaGrades[criteriaId];
+      const numGradedAsCurrGrade = this.examples.filter(example => this.perCriteriaGrades[example.uid] && this.perCriteriaGrades[example.uid][criteriaId] === currGrade).length;
+      if (Math.random() <= 1 / (numGradedAsCurrGrade + 1)) {
+        numGPT4Calls += 1;
+        const criteria = this.evalCriteria.find(criteria => criteria.uid === criteriaId);
+        if (criteria && criteria.eval_method === "expert") {
+          numLLMCriteria += 1;
+        }
+      }
+    }
+
+    return {
+      numGPT4Calls: numGPT4Calls,
+      numGPT35Calls: numLLMCriteria * 3 * this.examples.length,
+    };
+
+  }
+
   /**
    * Sets a grade for an example based on external input from the developer.
    * This will be used for filtering out incorrect evaluation functions.
@@ -492,7 +544,7 @@ export default class EvaluationFunctionExecutor {
    * @param exampleId The unique ID of the example being graded.
    * @param holisticGrade The developer-provided grade assigned to the example, "good" or "bad" or unknown.
    */
-  public setGradeForExample(exampleId: ResponseUID, perCriteriaGrades?: Dict<boolean | undefined>, holisticGrade?: string, annotation?: string ): number {
+  public setGradeForExample(exampleId: ResponseUID, perCriteriaGrades?: Dict<boolean | undefined>, holisticGrade?: string, annotation?: string ): void {
     if (holisticGrade !== null) {
       const boolHolistic = holisticGrade === "good" ? true : false;
       this.grades.set(exampleId, boolHolistic);
@@ -536,7 +588,6 @@ export default class EvaluationFunctionExecutor {
     }
 
     console.log(`Generated new implementations for ${numCriteriaWithNewImplementations} criteria.`);
-    return numCriteriaWithNewImplementations;
   }
 
   /**
@@ -637,7 +688,6 @@ export default class EvaluationFunctionExecutor {
 
   /**
    * Filters out evaluation functions that are incorrect based on the grades provided by the developer.
-   * TODO: Actually use an ILP solver to do this
    *
    * @param falseFailureRateThreshold The threshold for the failure rate of each selected evaluation functions. The returned function set will only contain functions with a false failure rate below this threshold.
    *

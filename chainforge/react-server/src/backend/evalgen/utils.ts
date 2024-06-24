@@ -266,11 +266,13 @@ export async function generateFunctionsForCriteria(
   promptTemplate: string,
   example: LLMResponse,
   emitter: EventEmitter,
+  badExample?: LLMResponse,
 ): Promise<void> {
   const functionGenPrompt = buildFunctionGenPrompt(
     criteria,
     promptTemplate,
     example,
+    badExample
   );
   console.log("Function generation prompt:", functionGenPrompt);
 
@@ -296,19 +298,29 @@ function buildFunctionGenPrompt(
   criteria: EvalCriteria,
   promptTemplate: string,
   example: LLMResponse,
+  badExample?: LLMResponse,
 ): string {
-  if (criteria.eval_method === "expert")
+  let badExampleSection = "";
+  if (badExample) {
+    badExampleSection = `
+    Here is an example response that DOES NOT meet the criteria:
+    \`\`\`
+    ${badExample.responses[0]}
+    \`\`\`
+    `;
+  }
+
+  if (criteria.eval_method === "expert") {
     return `Given the following prompt template for an LLM pipeline:\n\n ${promptTemplate}\n\n, your task is to devise a prompt for an expert to evaluate the pipeline's responses based on the following criteria: ${criteria.criteria}
-  
-  You will devise 3 prompts to see which has the best accuracy. Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate entire criteria (don't miss anything in the criteria). Try different variations/wordings in the prompts. Return your prompts in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
-  `;
-  else {
-    const prompt = `Given the following prompt template for an LLM pipeline:\n\n ${promptTemplate}\n\n, your task is to devise multiple Python assertions to evaluate LLM responses based on the criteria "${criteria.shortname}". Create 3 implementations.
-${buildGenEvalCodePrompt("python", buildContextPromptForVarsMetavars(getVarsAndMetavars([example])), criteria.criteria, true)}
-
-Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function. Each function should return only True or False.`;
-
-    // console.log("Function generation prompt:", prompt);
+    ${badExampleSection}
+    You will devise 3 prompts for the evaluation criterion to see which has the best accuracy. Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate entire criteria (don't miss anything in the criteria). Try different variations/wordings in the prompts. Return your prompts in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
+    `;
+  } else {
+    const prompt = `Given the following prompt template for an LLM pipeline:\n\n ${promptTemplate}\n\n, your task is to devise multiple Python assertions to evaluate LLM responses based on the criteria "${criteria.shortname}". 
+    ${badExampleSection}
+    Create 3 implementations of the criterion.
+    ${buildGenEvalCodePrompt("python", buildContextPromptForVarsMetavars(getVarsAndMetavars([example])), criteria.criteria, true)}
+    Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function. Each function should return only True or False.`;
 
     return prompt;
   }
