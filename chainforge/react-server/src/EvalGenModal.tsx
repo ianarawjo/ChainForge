@@ -536,13 +536,21 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         const addLog = (message: string) => {
           setLogs((prevLogs) => [...prevLogs, { date: new Date(), message }]);
         };
+<<<<<<< HEAD
+=======
+
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
 
         const ex = new EvaluationFunctionExecutor(
           getLikelyPromptTemplateAsContext(responses),
           responses,
           criteria,
+<<<<<<< HEAD
           (gpt4Calls, gpt35Calls) => {
             // Callback to update GPT call counts
+=======
+          (gpt4Calls, gpt35Calls) => {  // Callback to update GPT call counts
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
             setNumGPT4Calls((num) => num + gpt4Calls);
             setNumGPT35Calls((num) => num + gpt35Calls);
           },
@@ -767,17 +775,26 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       // Update annotation for current response (if any)
       // TODO: Fix this for generate case when num resp per prompt > 1
 
+<<<<<<< HEAD
       if (
         grades[shownResponse.uid] ||
         holisticGrade ||
         (annotation && annotation.trim())
       ) {
+=======
+      if (grades[shownResponse.uid] || holisticGrade || (annotation && annotation.trim())) {
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
         executor?.setGradeForExample(
           shownResponse.uid,
           grades[shownResponse.uid],
           holisticGrade,
+<<<<<<< HEAD
           annotation ? annotation.trim() : null,
         );
+=======
+          annotation ? annotation.trim() : null
+        ); 
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
       }
 
       if (
@@ -854,6 +871,7 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       updateShownResponseUniqueIndex();
     };
 
+<<<<<<< HEAD
     const updateShownResponseUniqueIndex = () => {
       let idx = 0;
       for (const resp of responses) {
@@ -884,10 +902,13 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       setShownResponse(responses[shownResponseIdx]);
     }, [shownResponseIdx]);
 
+=======
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
     const estimateGPTCalls = () => {
       return executor
         ? `This will trigger around ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT4Calls} GPT-4o and ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT35Calls} GPT-3.5-turbo-16k calls.`
         : "# estimated GPT calls not available.";
+<<<<<<< HEAD
     };
 
     const updateCriteriaForDisplay = () => {
@@ -907,6 +928,9 @@ If you determine the feedback corresponds to a new criteria, your response shoul
     };
 
     // const [onFinish, setOnFinish] = useState(null);
+=======
+    }
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
 
     return (
       <Modal
@@ -917,6 +941,7 @@ If you determine the feedback corresponds to a new criteria, your response shoul
         closeOnClickOutside={true}
         style={{ position: "relative", left: "-5%" }}
       >
+<<<<<<< HEAD
         {screen === "response" && (
           <Grid h={window?.innerHeight * 0.8}>
             <Grid.Col span={8}>
@@ -935,6 +960,21 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                   estimateGPTCalls={estimateGPTCalls}
                   gotoNextScreen={gotoNextScreen}
                 />
+=======
+        <Grid h={window?.innerHeight * 0.8}>
+          <Grid.Col span={8}>
+            <Stack justify="space-between">
+              {/* View showing the response the user is currently grading */}
+              <GradingView
+                shownResponse={shownResponse}
+                numGPT4Calls={numGPT4Calls}
+                numGPT35Calls={numGPT35Calls}
+                logs={logs}
+                gotoNextResponse={nextResponse}
+                gotoPrevResponse={prevResponse}
+                estimateGPTCalls={estimateGPTCalls}
+              />
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
 
                 {/* Progress bar */}
                 {/* <Flex justify="left" align="center" gap="md">
@@ -1146,28 +1186,40 @@ const HeaderText = ({ children }: { children: ReactNode }) => {
 
 interface GradingViewProps {
   shownResponse: LLMResponse | undefined;
+<<<<<<< HEAD
   shownResponseIdx: number;
   responseCount: number;
+=======
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
   numGPT4Calls: number;
   numGPT35Calls: number;
   logs: { date: Date; message: string }[];
   gotoPrevResponse: () => void;
   gotoNextResponse: () => void;
   estimateGPTCalls: () => string;
+<<<<<<< HEAD
   gotoNextScreen: (screenName: string) => void;
+=======
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
 }
 
 const GradingView: React.FC<GradingViewProps> = ({
   shownResponse,
+<<<<<<< HEAD
   shownResponseIdx,
   responseCount,
+=======
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
   numGPT4Calls,
   numGPT35Calls,
   logs,
   gotoPrevResponse,
   gotoNextResponse,
   estimateGPTCalls,
+<<<<<<< HEAD
   gotoNextScreen,
+=======
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
 }) => {
   // Calculate inner values only when shownResponse changes
   const responseText = useMemo(
@@ -1257,7 +1309,16 @@ const GradingView: React.FC<GradingViewProps> = ({
           </div>
 
           {/* Go forward to the next response */}
+<<<<<<< HEAD
           <Tooltip label={estimateGPTCalls()} withArrow>
+=======
+          <Tooltip
+            label={
+              estimateGPTCalls()
+            }
+            withArrow
+          >
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
             <Button variant="white" color="dark" onClick={gotoNextResponse}>
               <IconChevronRight />
             </Button>
@@ -1306,6 +1367,7 @@ const GradingView: React.FC<GradingViewProps> = ({
         </Flex>
         <Flex direction="column">
           <Flex justify="space-between" align="center">
+<<<<<<< HEAD
             <Text size="lg" weight={500} mb="sm">
               LLM Activity
             </Text>
@@ -1313,10 +1375,17 @@ const GradingView: React.FC<GradingViewProps> = ({
             <Text size="sm" color="dark" style={{ fontStyle: "italic" }}>
               Executed {numGPT4Calls} GPT-4o calls and {numGPT35Calls}{" "}
               GPT-3.5-Turbo-16k calls.
+=======
+            <Text size="lg" weight={500} mb="sm">LLM Activity</Text>
+            {/* GPT Call Tally */}
+            <Text size="sm" color="dark" style={{ fontStyle: "italic" }}>
+              Executed {numGPT4Calls} GPT-4o calls and {numGPT35Calls} GPT-3.5-Turbo-16k calls.
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
             </Text>
           </Flex>
           <div
             style={{
+<<<<<<< HEAD
               backgroundColor: "#f0f0f0",
               color: "#333",
               fontFamily: "monospace",
@@ -1326,6 +1395,17 @@ const GradingView: React.FC<GradingViewProps> = ({
               overflowY: "auto",
               borderRadius: "8px",
               border: "1px solid #ddd",
+=======
+              backgroundColor: "#f0f0f0", 
+              color: "#333",
+              fontFamily: "monospace",
+              padding: "12px",
+              width: "calc(100% - 30px)", 
+              height: "200px",
+              overflowY: "auto",
+              borderRadius: "8px",
+              border: "1px solid #ddd", 
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
               marginRight: "20px", // Space on the right
             }}
             ref={(el) => {
@@ -1336,9 +1416,13 @@ const GradingView: React.FC<GradingViewProps> = ({
           >
             {logs.map((log, index) => (
               <div key={index}>
+<<<<<<< HEAD
                 <span style={{ color: "#4A90E2" }}>
                   {log.date.toLocaleString()} -{" "}
                 </span>
+=======
+                <span style={{ color: '#4A90E2' }}>{log.date.toLocaleString()} - </span> 
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
                 <span>{log.message}</span>
               </div>
             ))}

@@ -282,7 +282,11 @@ export async function generateFunctionsForCriteria(
     criteria,
     promptTemplate,
     example,
+<<<<<<< HEAD
     badExample,
+=======
+    badExample
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
   );
   console.log("Function generation prompt:", functionGenPrompt);
 

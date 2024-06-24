@@ -197,6 +197,7 @@ export default class EvaluationFunctionExecutor {
     const functionExecutionPromises: Promise<any>[] = [];
 
     emitter.on("functionGenerated", (evalFunction) => {
+
       const executionPromise = (async () => {
         this.evalFunctions.push(evalFunction);
         const executionPromises = this.examples.map(async (example) => {
@@ -228,6 +229,11 @@ export default class EvaluationFunctionExecutor {
             this.updateGPTCalls(0, 1);
           }
 
+          // Update GPT-3.5 call count by 1 if the eval method is expert
+          if (evalFunction.evalCriteria.eval_method === "expert") {
+            this.updateGPTCalls(0, 1);
+          }
+
           if (onProgress) {
             onProgress({
               success:
@@ -253,11 +259,17 @@ export default class EvaluationFunctionExecutor {
       functionExecutionPromises.push(executionPromise);
     });
 
+<<<<<<< HEAD
     const badExample = this.examples.find(
       (example) =>
         this.perCriteriaGrades[criteria.uid]?.[example.uid] === false,
     );
 
+=======
+    const badExample = this.examples.find(example => this.perCriteriaGrades[criteria.uid]?.[example.uid] === false);
+
+  
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
     await generateFunctionsForCriteria(
       criteria,
       this.promptTemplate,
@@ -269,12 +281,17 @@ export default class EvaluationFunctionExecutor {
     this.updateGPTCalls(1, 0);
 
     console.log(`Generated functions for criteria: ${criteria.shortname}`);
+<<<<<<< HEAD
     console.log(
       `Number of functions generated: ${functionExecutionPromises.length}`,
     );
     this.logFunction(
       `Generated ${functionExecutionPromises.length} functions for criteria: ${criteria.shortname}`,
     );
+=======
+    console.log(`Number of functions generated: ${functionExecutionPromises.length}`);
+    this.logFunction(`Generated ${functionExecutionPromises.length} functions for criteria: ${criteria.shortname}`);
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
 
     await Promise.all(functionExecutionPromises);
   }
@@ -308,9 +325,13 @@ export default class EvaluationFunctionExecutor {
 
     // Listen for generated functions and execute them as they come in
     emitter.on("functionGenerated", (evalFunction) => {
+<<<<<<< HEAD
       this.logFunction(
         `Generated a new ${evalFunction.evalCriteria.eval_method === "code" ? "code-based" : "LLM-based"} validator for criteria: ${evalFunction.evalCriteria.shortname}${evalFunction.evalCriteria.eval_method === "expert" ? `, with prompt: ${evalFunction.name}` : ""}. Executing it on ${this.examples.length} examples.`,
       );
+=======
+      this.logFunction(`Generated a new ${evalFunction.evalCriteria.eval_method === "code" ? "code-based" : "LLM-based"} validator for criteria: ${evalFunction.evalCriteria.shortname}${evalFunction.evalCriteria.eval_method === "expert" ? `, with prompt: ${evalFunction.name}` : ""}. Executing it on ${this.examples.length} examples.`);
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
 
       // Capture the execution promise of each function
       const executionPromise = (async () => {
@@ -341,6 +362,11 @@ export default class EvaluationFunctionExecutor {
             randomPositiveExample,
             randomNegativeExample,
           );
+
+          // Update GPT-3.5 call count by 1 if the eval method is expert
+          if (evalFunction.evalCriteria.eval_method === "expert") {
+            this.updateGPTCalls(0, 1);
+          }
 
           // Update GPT-3.5 call count by 1 if the eval method is expert
           if (evalFunction.evalCriteria.eval_method === "expert") {
@@ -398,9 +424,13 @@ export default class EvaluationFunctionExecutor {
           console.log(
             "All evaluation functions have been generated and executed.",
           );
+<<<<<<< HEAD
           this.logFunction(
             "All initially-generated evaluation functions have been generated and executed.",
           );
+=======
+          this.logFunction("All initially-generated evaluation functions have been generated and executed.");
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
           if (resolveAllFunctionsGenerated) {
             resolveAllFunctionsGenerated(); // Resolve the promise when all functions have been generated and executed
           }
@@ -541,14 +571,20 @@ export default class EvaluationFunctionExecutor {
     return new Map(this.grades);
   }
 
+<<<<<<< HEAD
   public estimateNumGPTCalls(perCriteriaGrades: Dict<boolean>): {
     numGPT4Calls: number;
     numGPT35Calls: number;
   } {
+=======
+  public estimateNumGPTCalls(perCriteriaGrades: Dict<boolean>): { numGPT4Calls: number; numGPT35Calls: number }{
+
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
     let numGPT4Calls = 0;
     let numLLMCriteria = 0;
     for (const criteriaId in perCriteriaGrades) {
       const currGrade = perCriteriaGrades[criteriaId];
+<<<<<<< HEAD
       const numGradedAsCurrGrade = this.examples.filter(
         (example) =>
           this.perCriteriaGrades[example.uid] &&
@@ -559,6 +595,12 @@ export default class EvaluationFunctionExecutor {
         const criteria = this.evalCriteria.find(
           (criteria) => criteria.uid === criteriaId,
         );
+=======
+      const numGradedAsCurrGrade = this.examples.filter(example => this.perCriteriaGrades[example.uid] && this.perCriteriaGrades[example.uid][criteriaId] === currGrade).length;
+      if (Math.random() <= 1 / (numGradedAsCurrGrade + 1)) {
+        numGPT4Calls += 1;
+        const criteria = this.evalCriteria.find(criteria => criteria.uid === criteriaId);
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
         if (criteria && criteria.eval_method === "expert") {
           numLLMCriteria += 1;
         }
@@ -566,9 +608,16 @@ export default class EvaluationFunctionExecutor {
     }
 
     return {
+<<<<<<< HEAD
       numGPT4Calls,
       numGPT35Calls: numLLMCriteria * 3 * this.examples.length,
     };
+=======
+      numGPT4Calls: numGPT4Calls,
+      numGPT35Calls: numLLMCriteria * 3 * this.examples.length,
+    };
+
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
   }
 
   /**
@@ -580,12 +629,16 @@ export default class EvaluationFunctionExecutor {
    * @param exampleId The unique ID of the example being graded.
    * @param holisticGrade The developer-provided grade assigned to the example, "good" or "bad" or unknown.
    */
+<<<<<<< HEAD
   public setGradeForExample(
     exampleId: ResponseUID,
     perCriteriaGrades?: Dict<boolean | undefined>,
     holisticGrade?: string,
     annotation?: string,
   ): void {
+=======
+  public setGradeForExample(exampleId: ResponseUID, perCriteriaGrades?: Dict<boolean | undefined>, holisticGrade?: string, annotation?: string ): void {
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
     if (holisticGrade !== null) {
       const boolHolistic = holisticGrade === "good";
       this.grades.set(exampleId, boolHolistic);
@@ -638,9 +691,13 @@ export default class EvaluationFunctionExecutor {
       }
     }
 
+<<<<<<< HEAD
     console.log(
       `Generated new implementations for ${numCriteriaWithNewImplementations} criteria.`,
     );
+=======
+    console.log(`Generated new implementations for ${numCriteriaWithNewImplementations} criteria.`);
+>>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
   }
 
   /**
