@@ -75,11 +75,16 @@ import {
   sampleRandomElements,
   transformDict,
 } from "./backend/utils";
+import {
+  extractUIDFromRatingKey,
+  getRatingKeyForResponse,
+} from "./ResponseRatingToolbar";
 import useStore from "./store";
-import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
 import StorageCache from "./backend/cache";
 import EvaluationFunctionExecutor from "./backend/evalgen/executor";
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
+import { escapeBraces } from "./backend/template";
+import { update } from "lodash";
 
 const INIT_CRITERIA: EvalCriteria[] = [
   {
@@ -334,7 +339,8 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
   function EvalGenModal(props, ref) {
     const [opened, { open, close }] = useDisclosure(false);
     const apiKeys = useStore((state) => state.apiKeys);
-    const [criteria, setCriteria] = useState<EvalCriteria[]>(INIT_CRITERIA);
+    const globalState = useStore((store) => store.state);
+    const [criteria, setCriteria] = useState<EvalCriteria[]>([]);
 
     const [responses, setResponses] = useState<LLMResponse[]>([]);
     const [shownResponse, setShownResponse] = useState<LLMResponse | undefined>(
@@ -363,13 +369,20 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         grades[responseUID] = { ...grades[responseUID] };
         return { ...grades };
       });
+      updateGlobalRating(responseUID, "perCriteriaGrades", grades[responseUID]);
     };
 
     // The EvalGen object responsible for generating, implementing, and filtering candidate implementations
     const [executor, setExecutor] = useState<EvaluationFunctionExecutor | null>(
       null,
     );
+
     const [execProgress, setExecProgress] = useState(0);
+
+    // State variables to keep track of GPT call counts
+    const [numGPT4Calls, setNumGPT4Calls] = useState(0);
+    const [numGPT35Calls, setNumGPT35Calls] = useState(0);
+    const [logs, setLogs] = useState<{ date: Date; message: string }[]>([]);
 
     // For updating the global human ratings state
     const setState = useStore((store) => store.setState);
@@ -383,17 +396,79 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       [setState],
     );
 
+    // Update executor whenever resps, grades, or criteria change
+    React.useEffect(() => {
+
+      if (criteria.length > 0 && !executor) {
+        const existingGrades = transformDict(
+          globalState,
+          (key) => key.startsWith("r.") && key.endsWith(".grade"),
+          extractUIDFromRatingKey,
+          (_, val) => {
+            // The grades are in { idx: grade } format. Take only the first,
+            // as we only take the first response in this iteration of EvalGen:
+            if (typeof val !== "object") return undefined;
+            const gs = Object.values(val);
+            if (gs.length === 0) return undefined;
+            return gs[0];
+          },
+        );
+
+        const addLog = (message: string) => {
+          setLogs((prevLogs) => [...prevLogs, { date: new Date(), message }]);
+        };
+
+
+        const ex = new EvaluationFunctionExecutor(
+          getLikelyPromptTemplateAsContext(responses),
+          responses,
+          criteria,
+          (gpt4Calls, gpt35Calls) => {  // Callback to update GPT call counts
+            setNumGPT4Calls((num) => num + gpt4Calls);
+            setNumGPT35Calls((num) => num + gpt35Calls);
+          },
+          addLog,
+          existingGrades,
+          grades,
+        );
+        setExecutor(ex);
+
+        setExecProgress(0);
+        ex.start((progress) => {
+          setExecProgress(progress?.success ?? 0);
+        });
+
+      } else if (executor) {
+        // Update criteria in executor
+        executor.addCriteria(criteria);
+      }
+
+    }, [criteria]);
+
+
     // Open the EvalGen wizard
     const trigger = (resps: LLMResponse[]) => {
       // We pass the responses here manually to ensure they remain the same
       // for the duration of one EvalGen operation.
       setResponses(resps);
-      setGrades(
-        resps.reduce((acc: Dict<Dict<boolean | undefined>>, curr) => {
-          if (!(curr.uid in acc)) acc[curr.uid] = {};
-          return acc;
-        }, grades),
-      );
+      const firstGrades = resps.reduce((acc: Dict<Dict<boolean | undefined>>, curr) => {
+        if (!(curr.uid in acc)) acc[curr.uid] = {};
+        return acc;
+      }, grades);
+      setGrades(firstGrades);
+
+      // Create criteria
+      setIsLoadingCriteria((num) => num + 3);
+      genCriteriaFromContext(resps)
+        .then((crits) => setCriteria(crits.map((c) => ({ ...c, uid: uuid() }))))
+        .catch((err) => {
+          console.error(err);
+        })
+        .finally(() => {
+          setIsLoadingCriteria((num) => num - 3);
+          setNumGPT4Calls((num) => num + 1);
+        });
+
       setShownResponseIdx(0);
       if (resps.length > 0) {
         const first_resp = sampleRandomElements(resps, 1)[0];
@@ -416,6 +491,34 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         return [...cs, newCrit];
       });
     };
+
+    const getLikelyPromptTemplateAsContext = (resps) => {
+      // Attempt to infer the prompt template used to generate the responses:
+      const prompts = new Set();
+      for (const resp_obj of resps) {
+        if (resp_obj?.metavars?.__pt !== undefined) {
+          prompts.add(resp_obj.metavars.__pt);
+        }
+      }
+
+      if (prompts.size === 0) return null;
+
+      // Pick a prompt template at random to serve as context....
+      return escapeBraces(prompts.values().next().value);
+    };
+
+    async function genCriteriaFromContext(responses) {
+      // Get the context from the input responses
+      const inputPromptTemplate = getLikelyPromptTemplateAsContext(responses);
+
+      if (inputPromptTemplate === null) {
+        console.error("No context found. Cannot proceed.");
+        return;
+      }
+
+      // Attempt to generate criteria using an LLM
+      return await generateLLMEvaluationCriteria(inputPromptTemplate, apiKeys);
+    }
 
     // Modify an existing criterion
     const handleChangeCriteria = (newCrit: EvalCriteria, uid: string) => {
@@ -446,15 +549,24 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
     ) => {
       // Add a loading Skeleton
       setIsLoadingCriteria((num) => num + 1);
-      // Make async LLM call to expand criteria
+      // Make async LLM call to expand criteria only if the feedback contains some idea of a constraint on the output and isn't covered by existing criteria
+      const prettyCriteria = criteria.map((crit) => {
+        return `${crit.shortname}: ${crit.criteria}`;
+      }).join('\n');
+
       generateLLMEvaluationCriteria(
         "",
         apiKeys,
-        `I've given some feedback on some text output. Use this feedback to decide on a single evaluation criteria with a yes/no answer. I want you to take the criteria and output a JSON object in the format below. 
+        `I've given some feedback on some text output. Use this feedback to decide on a single new evaluation criteria with a yes/no answer, only if the feedback isn't encompassed by existing criteria. I want you to take the criteria and output a JSON object in the format below. 
 
 TEXT OUTPUT: 
 \`\`\`
 ${response}
+\`\`\`
+
+EXISTING CRITERIA:
+\`\`\`
+${prettyCriteria}
 \`\`\`
 
 GRADE (whether text was good or bad):
@@ -467,21 +579,25 @@ FEEDBACK:
 ${feedback}
 \`\`\`
 
-Your response should contain a short title for the criteria ("shortname"), a description of the criteria in 2 sentences ("criteria"), and whether it should be evaluated with "code", or by an "expert" if the criteria is difficult to evaluate ("eval_method"). Your answer should be JSON within a \`\`\`json \`\`\` marker, with the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should expand upon the user's input, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case. Only output JSON, nothing else.`, // prompt
-        "gpt-4-turbo", // llm
+If you determine the feedback corresponds to a new criteria, your response should contain a short title for the criteria ("shortname"), a description of the criteria in 2 sentences ("criteria"), and whether it should be evaluated with "code", or by an "expert" if the criteria is difficult to evaluate ("eval_method"). Your answer should be JSON within a \`\`\`json \`\`\` marker, with the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should expand upon the user's input, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case. Only output JSON, nothing else. Output an empty list if there is no new evaluation criteria`, // prompt
+        "gpt-4o", // llm
       )
         .then((evalCrits) => {
-          // Take only the first
-          setCriteria((crit) =>
-            crit.concat([
-              {
-                ...evalCrits[0],
-                uid: uuid(),
-              },
-            ]),
-          );
+          // Take only the first if evalCrits has a nonempty list
+          if (evalCrits[0]) {
+            setCriteria((crit) =>
+              crit.concat([
+                {
+                  ...evalCrits[0],
+                  uid: uuid(),
+                },
+              ]),
+            );
+          }
           // Remove a loading Skeleton
           setIsLoadingCriteria((num) => num - 1);
+
+          setNumGPT4Calls((num) => num + 1);
         })
         .catch((err) => {
           console.error(err);
@@ -495,6 +611,16 @@ Your response should contain a short title for the criteria ("shortname"), a des
 
       // Update annotation for current response (if any)
       // TODO: Fix this for generate case when num resp per prompt > 1
+
+      if (grades[shownResponse.uid] || holisticGrade || (annotation && annotation.trim())) {
+        executor?.setGradeForExample(
+          shownResponse.uid,
+          grades[shownResponse.uid],
+          holisticGrade,
+          annotation ? annotation.trim() : null
+        ); 
+      }
+
       if (
         shownResponse &&
         annotation &&
@@ -509,6 +635,15 @@ Your response should contain a short title for the criteria ("shortname"), a des
         updateGlobalRating(shownResponse.uid, "note", { 0: annotation });
         setAnnotation("");
       }
+
+      if (shownResponse && holisticGrade) {
+        updateGlobalRating(shownResponse.uid, "grade", { 0: holisticGrade === "good" });
+      }
+
+      if (shownResponse && grades[shownResponse.uid]) {
+        updateGlobalRating(shownResponse.uid, "perCriteriaGrades", grades[shownResponse.uid]);
+      }
+
       // @ts-expect-error The only way to deselect the Radio.Group is to set it to null. Undefined doesn't work.
       setHolisticGrade(null);
 
@@ -552,6 +687,12 @@ Your response should contain a short title for the criteria ("shortname"), a des
       setShownResponseIdx(shownResponseIdx - 1); // decrement shown resp idx
     };
 
+    const estimateGPTCalls = () => {
+      return executor
+        ? `This will trigger around ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT4Calls} GPT-4o and ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT35Calls} GPT-3.5-turbo-16k calls.`
+        : "# estimated GPT calls not available.";
+    }
+
     return (
       <Modal
         size="90%"
@@ -567,8 +708,12 @@ Your response should contain a short title for the criteria ("shortname"), a des
               {/* View showing the response the user is currently grading */}
               <GradingView
                 shownResponse={shownResponse}
+                numGPT4Calls={numGPT4Calls}
+                numGPT35Calls={numGPT35Calls}
+                logs={logs}
                 gotoNextResponse={nextResponse}
                 gotoPrevResponse={prevResponse}
+                estimateGPTCalls={estimateGPTCalls}
               />
 
               {/* Progress bar */}
@@ -683,6 +828,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
                       annotation ?? "",
                       holisticGrade ?? "unknown",
                     );
+                    
                     nextResponse();
                   }}
                 >
@@ -707,14 +853,22 @@ const HeaderText = ({ children }: { children: ReactNode }) => {
 
 interface GradingViewProps {
   shownResponse: LLMResponse | undefined;
+  numGPT4Calls: number;
+  numGPT35Calls: number;
+  logs: { date: Date; message: string }[];
   gotoPrevResponse: () => void;
   gotoNextResponse: () => void;
+  estimateGPTCalls: () => string;
 }
 
 const GradingView: React.FC<GradingViewProps> = ({
   shownResponse,
+  numGPT4Calls,
+  numGPT35Calls,
+  logs,
   gotoPrevResponse,
   gotoNextResponse,
+  estimateGPTCalls,
 }) => {
   // Calculate inner values only when shownResponse changes
   const responseText = useMemo(
@@ -778,9 +932,16 @@ const GradingView: React.FC<GradingViewProps> = ({
           </div>
 
           {/* Go forward to the next response */}
-          <Button variant="white" color="dark" onClick={gotoNextResponse}>
-            <IconChevronRight />
-          </Button>
+          <Tooltip
+            label={
+              estimateGPTCalls()
+            }
+            withArrow
+          >
+            <Button variant="white" color="dark" onClick={gotoNextResponse}>
+              <IconChevronRight />
+            </Button>
+          </Tooltip>
         </Flex>
 
         {/* Views for the vars (inputs) that generated this response, and the concrete prompt */}
@@ -822,6 +983,41 @@ const GradingView: React.FC<GradingViewProps> = ({
             >
               {prompt}
             </div>
+          </div>
+        </Flex>
+        <Flex direction="column">
+          <Flex justify="space-between" align="center">
+            <Text size="lg" weight={500} mb="sm">LLM Activity</Text>
+            {/* GPT Call Tally */}
+            <Text size="sm" color="dark" style={{ fontStyle: "italic" }}>
+              Executed {numGPT4Calls} GPT-4o calls and {numGPT35Calls} GPT-3.5-Turbo-16k calls.
+            </Text>
+          </Flex>
+          <div
+            style={{
+              backgroundColor: "#f0f0f0", 
+              color: "#333",
+              fontFamily: "monospace",
+              padding: "12px",
+              width: "calc(100% - 30px)", 
+              height: "200px",
+              overflowY: "auto",
+              borderRadius: "8px",
+              border: "1px solid #ddd", 
+              marginRight: "20px", // Space on the right
+            }}
+            ref={(el) => {
+              if (el) {
+                el.scrollTop = el.scrollHeight;
+              }
+            }}
+          >
+            {logs.map((log, index) => (
+              <div key={index}>
+                <span style={{ color: '#4A90E2' }}>{log.date.toLocaleString()} - </span> 
+                <span>{log.message}</span>
+              </div>
+            ))}
           </div>
         </Flex>
       </Box>

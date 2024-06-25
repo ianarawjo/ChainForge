@@ -4,7 +4,7 @@ import { EventEmitter } from "events";
 import { get_openai_api_key } from "../utils";
 type ContentType = "criteria" | "python_fn" | "llm_eval";
 
-export class AzureOpenAIStreamer extends EventEmitter {
+export class OpenAIStreamer extends EventEmitter {
   private buffer = "";
   private isJsonContentStarted = false;
   private isPythonContentStarted = false;
