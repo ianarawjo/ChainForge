@@ -1334,9 +1334,7 @@ export async function call_bedrock(
             modelId: modelName,
             messages: to_bedrock_chat_history(chat_history),
             inferenceConfig: {
-              //temperature: temperature,
               stopSequences: stopWords,
-              //topP: params?.top_p,
             },
             additionalModelRequestFields: { ...params },
           }),
