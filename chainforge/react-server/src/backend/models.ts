@@ -100,6 +100,7 @@ export enum NativeLLM {
   Bedrock_Claude_Instant_1 = "anthropic.claude-instant-v1",
   Bedrock_Jurassic_Ultra = "ai21.j2-ultra",
   Bedrock_Jurassic_Mid = "ai21.j2-mid",
+  Bedrock_Jamba_Instruct = "ai21.jamba-instruct-v1:0",
   Bedrock_Titan_Light = "amazon.titan-text-lite-v1",
   Bedrock_Titan_Large = "amazon.titan-tg1-large",
   Bedrock_Titan_Express = "amazon.titan-text-express-v1",
@@ -253,6 +254,7 @@ export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
   [NativeLLM.GEMINI_PRO]: 60,
   [NativeLLM.Bedrock_Jurassic_Mid]: 400,
   [NativeLLM.Bedrock_Jurassic_Ultra]: 25,
+  [NativeLLM.Bedrock_Jamba_Instruct]: 100,
   [NativeLLM.Bedrock_Titan_Light]: 800,
   [NativeLLM.Bedrock_Titan_Express]: 400, // 400 RPM
   [NativeLLM.Bedrock_Claude_2]: 500, // 500 RPM
