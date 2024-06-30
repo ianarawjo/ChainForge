@@ -21,6 +21,7 @@ import React, {
   ReactNode,
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
@@ -68,6 +69,8 @@ import {
   IconThumbDown,
   IconThumbUp,
   IconTrash,
+  IconFlagFilled,
+  IconPencil,
 } from "@tabler/icons-react";
 import {
   cleanMetavarsFilterFunc,
@@ -262,7 +265,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
               withArrow
             >
               <Button
-                color={criterion.priority <= 0 ? "gray" : "yellow"}
+                color={criterion.priority <= 0 ? "gray" : "red"}
                 m={0}
                 p={0}
                 variant="subtle"
@@ -271,7 +274,8 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
                   if (onChange) onChange(criterion);
                 }}
               >
-                <IconStarFilled size="14pt" />
+                {/* <IconStarFilled size="14pt" /> */}
+                <IconFlagFilled size="14pt" />
               </Button>
             </Tooltip>
 
@@ -341,6 +345,9 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
     const apiKeys = useStore((state) => state.apiKeys);
     const globalState = useStore((store) => store.state);
     const [criteria, setCriteria] = useState<EvalCriteria[]>([]);
+    const [criteriaForDisplay, setCriteriaForDisplay] = useState<
+      EvalCriteria[]
+    >([]);
 
     const [responses, setResponses] = useState<LLMResponse[]>([]);
     const [shownResponse, setShownResponse] = useState<LLMResponse | undefined>(
@@ -350,6 +357,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       [],
     );
     const [shownResponseIdx, setShownResponseIdx] = useState(0);
+    const [shownResponseUniqueIdx, setShownResponseUniqueIdx] = useState(0);
 
     const [annotation, setAnnotation] = useState<string | undefined>(undefined);
     const [holisticGrade, setHolisticGrade] = useState<
@@ -396,9 +404,10 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       [setState],
     );
 
+    // console.error("criteria", criteria);
+
     // Update executor whenever resps, grades, or criteria change
     React.useEffect(() => {
-
       if (criteria.length > 0 && !executor) {
         const existingGrades = transformDict(
           globalState,
@@ -418,12 +427,12 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
           setLogs((prevLogs) => [...prevLogs, { date: new Date(), message }]);
         };
 
-
         const ex = new EvaluationFunctionExecutor(
           getLikelyPromptTemplateAsContext(responses),
           responses,
           criteria,
-          (gpt4Calls, gpt35Calls) => {  // Callback to update GPT call counts
+          (gpt4Calls, gpt35Calls) => {
+            // Callback to update GPT call counts
             setNumGPT4Calls((num) => num + gpt4Calls);
             setNumGPT35Calls((num) => num + gpt35Calls);
           },
@@ -437,28 +446,32 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         ex.start((progress) => {
           setExecProgress(progress?.success ?? 0);
         });
-
       } else if (executor) {
         // Update criteria in executor
         executor.addCriteria(criteria);
       }
 
+      updateCriteriaForDisplay();
     }, [criteria]);
-
 
     // Open the EvalGen wizard
     const trigger = (resps: LLMResponse[]) => {
       // We pass the responses here manually to ensure they remain the same
       // for the duration of one EvalGen operation.
       setResponses(resps);
-      const firstGrades = resps.reduce((acc: Dict<Dict<boolean | undefined>>, curr) => {
-        if (!(curr.uid in acc)) acc[curr.uid] = {};
-        return acc;
-      }, grades);
+
+      const firstGrades = resps.reduce(
+        (acc: Dict<Dict<boolean | undefined>>, curr) => {
+          if (!(curr.uid in acc)) acc[curr.uid] = {};
+          return acc;
+        },
+        grades,
+      );
       setGrades(firstGrades);
 
       // Create criteria
       setIsLoadingCriteria((num) => num + 3);
+      // console.log("*****************************resps", resps);
       genCriteriaFromContext(resps)
         .then((crits) => setCriteria(crits.map((c) => ({ ...c, uid: uuid() }))))
         .catch((err) => {
@@ -472,12 +485,13 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       setShownResponseIdx(0);
       if (resps.length > 0) {
         const first_resp = sampleRandomElements(resps, 1)[0];
-        setShownResponse(first_resp);
+        // setShownResponse(first_resp);
         setPastShownResponses([first_resp]);
       } else {
-        setShownResponse(undefined);
+        // setShownResponse(undefined);
         setPastShownResponses([]);
       }
+      setShownResponse(resps[shownResponseIdx]);
       open();
     };
     useImperativeHandle(ref, () => ({
@@ -550,9 +564,11 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       // Add a loading Skeleton
       setIsLoadingCriteria((num) => num + 1);
       // Make async LLM call to expand criteria only if the feedback contains some idea of a constraint on the output and isn't covered by existing criteria
-      const prettyCriteria = criteria.map((crit) => {
-        return `${crit.shortname}: ${crit.criteria}`;
-      }).join('\n');
+      const prettyCriteria = criteria
+        .map((crit) => {
+          return `${crit.shortname}: ${crit.criteria}`;
+        })
+        .join("\n");
 
       generateLLMEvaluationCriteria(
         "",
@@ -612,13 +628,17 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       // Update annotation for current response (if any)
       // TODO: Fix this for generate case when num resp per prompt > 1
 
-      if (grades[shownResponse.uid] || holisticGrade || (annotation && annotation.trim())) {
+      if (
+        grades[shownResponse.uid] ||
+        holisticGrade ||
+        (annotation && annotation.trim())
+      ) {
         executor?.setGradeForExample(
           shownResponse.uid,
           grades[shownResponse.uid],
           holisticGrade,
-          annotation ? annotation.trim() : null
-        ); 
+          annotation ? annotation.trim() : null,
+        );
       }
 
       if (
@@ -637,11 +657,17 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       }
 
       if (shownResponse && holisticGrade) {
-        updateGlobalRating(shownResponse.uid, "grade", { 0: holisticGrade === "good" });
+        updateGlobalRating(shownResponse.uid, "grade", {
+          0: holisticGrade === "good",
+        });
       }
 
       if (shownResponse && grades[shownResponse.uid]) {
-        updateGlobalRating(shownResponse.uid, "perCriteriaGrades", grades[shownResponse.uid]);
+        updateGlobalRating(
+          shownResponse.uid,
+          "perCriteriaGrades",
+          grades[shownResponse.uid],
+        );
       }
 
       // @ts-expect-error The only way to deselect the Radio.Group is to set it to null. Undefined doesn't work.
@@ -678,6 +704,7 @@ If you determine the feedback corresponds to a new criteria, your response shoul
           setPastShownResponses(pastShownResponses.concat(next_resp));
         setShownResponseIdx(pastShownResponses.length);
       }
+      updateShownResponseUniqueIndex();
     };
 
     // Go back to previously shown response
@@ -685,13 +712,56 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       if (pastShownResponses.length === 0 || shownResponseIdx === 0) return;
       setShownResponse(pastShownResponses[shownResponseIdx - 1]);
       setShownResponseIdx(shownResponseIdx - 1); // decrement shown resp idx
+      updateShownResponseUniqueIndex();
     };
+
+    const updateShownResponseUniqueIndex = () => {
+      let idx = 0;
+      for (const resp of responses) {
+        if (resp === shownResponse) {
+          setShownResponseUniqueIdx(idx);
+          break;
+        }
+        idx++;
+      }
+    };
+
+    const nextResponse2 = () => {
+      if (responses.length === 0) return;
+      if (shownResponseIdx < responses.length - 1) {
+        // setShownResponse(responses[shownResponseIdx + 1]);
+        setShownResponseIdx(shownResponseIdx + 1);
+      }
+    };
+
+    const prevResponse2 = () => {
+      if (shownResponseIdx > 0) {
+        // setShownResponse(responses[shownResponseIdx - 1]);
+        setShownResponseIdx(shownResponseIdx - 1); // decrement shown resp idx
+      }
+    };
+
+    React.useEffect(() => {
+      console.error("1111111111111111111111111111111111111");
+      setShownResponse(responses[shownResponseIdx]);
+    }, [shownResponseIdx]);
 
     const estimateGPTCalls = () => {
       return executor
         ? `This will trigger around ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT4Calls} GPT-4o and ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT35Calls} GPT-3.5-turbo-16k calls.`
         : "# estimated GPT calls not available.";
-    }
+    };
+
+    const updateCriteriaForDisplay = () => {
+      const highCriteria = criteria.filter((c) => c.priority === 1);
+      const lowCriteria = criteria.filter((c) => c.priority === 0);
+      setCriteriaForDisplay(highCriteria.concat(lowCriteria));
+    };
+    useEffect(() => {
+      const highCriteria = criteria.filter((c) => c.priority === 1);
+      const lowCriteria = criteria.filter((c) => c.priority === 0);
+      setCriteriaForDisplay(highCriteria.concat(lowCriteria));
+    }, [criteria]);
 
     return (
       <Modal
@@ -708,11 +778,14 @@ If you determine the feedback corresponds to a new criteria, your response shoul
               {/* View showing the response the user is currently grading */}
               <GradingView
                 shownResponse={shownResponse}
+                shownResponseIdx={shownResponseIdx}
+                // shownResponseIdx={shownResponseUniqueIdx}
+                responseCount={responses.length}
                 numGPT4Calls={numGPT4Calls}
                 numGPT35Calls={numGPT35Calls}
                 logs={logs}
-                gotoNextResponse={nextResponse}
-                gotoPrevResponse={prevResponse}
+                gotoNextResponse={nextResponse2}
+                gotoPrevResponse={prevResponse2}
                 estimateGPTCalls={estimateGPTCalls}
               />
 
@@ -744,7 +817,7 @@ If you determine the feedback corresponds to a new criteria, your response shoul
               }}
             >
               <div style={{ flex: 2, overflowY: "auto" }}>
-                {criteria.map((e) => (
+                {criteriaForDisplay.map((e) => (
                   <CriteriaCard
                     criterion={e}
                     key={e.uid}
@@ -773,7 +846,7 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                   <></>
                 )}
                 <Center>
-                  <button
+                  {/* <button
                     onClick={() => {
                       handleAddCriteria({
                         shortname: "New Criteria",
@@ -785,7 +858,23 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                     }}
                   >
                     +
-                  </button>
+                  </button> */}
+                  <Button
+                    leftIcon={<IconPencil size={14} />}
+                    variant="filled"
+                    // gradient={{ from: "blue", to: "green", deg: 90 }}
+                    onClick={() => {
+                      handleAddCriteria({
+                        shortname: "New Criteria",
+                        criteria: "",
+                        eval_method: "code",
+                        priority: 0,
+                        uid: uuid(),
+                      });
+                    }}
+                  >
+                    New Criteria
+                  </Button>
                 </Center>
               </div>
 
@@ -828,7 +917,7 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                       annotation ?? "",
                       holisticGrade ?? "unknown",
                     );
-                    
+
                     nextResponse();
                   }}
                 >
@@ -853,6 +942,8 @@ const HeaderText = ({ children }: { children: ReactNode }) => {
 
 interface GradingViewProps {
   shownResponse: LLMResponse | undefined;
+  shownResponseIdx: number;
+  responseCount: number;
   numGPT4Calls: number;
   numGPT35Calls: number;
   logs: { date: Date; message: string }[];
@@ -863,6 +954,8 @@ interface GradingViewProps {
 
 const GradingView: React.FC<GradingViewProps> = ({
   shownResponse,
+  shownResponseIdx,
+  responseCount,
   numGPT4Calls,
   numGPT35Calls,
   logs,
@@ -878,6 +971,7 @@ const GradingView: React.FC<GradingViewProps> = ({
         : "",
     [shownResponse],
   );
+
   const prompt = useMemo(() => shownResponse?.prompt ?? "", [shownResponse]);
   const varsDivs = useMemo(() => {
     const combined_vars_metavars = shownResponse
@@ -886,6 +980,8 @@ const GradingView: React.FC<GradingViewProps> = ({
           ...transformDict(shownResponse.metavars, cleanMetavarsFilterFunc),
         }
       : {};
+
+    // console.log("**************shownResponse", shownResponse);
     return Object.entries(combined_vars_metavars).map(([varname, val]) => (
       <div key={varname} className="grade-resp-var-container">
         <span className="response-var-name">{varname}&nbsp;=&nbsp;</span>
@@ -894,12 +990,36 @@ const GradingView: React.FC<GradingViewProps> = ({
     ));
   }, [shownResponse]);
 
+  // const [shownResponseIdx, setShownResponseIdx] = useState(0);
+  // const [shownResponses, setShownResponses] = useState<LLMResponse[]>([]);
+  // React.useEffect(() => {
+  //   console.error("current response", shownResponse);
+  //   if (shownResponse && !shownResponses.includes(shownResponse)) {
+  //     shownResponses.push(shownResponse);
+  //     setShownResponses(shownResponses);
+  //     setShownResponseIdx(shownResponses.length - 1);
+  //     console.error("current response is saved.", shownResponses.length);
+  //   } else {
+  //     console.error("current response already saved.");
+  //     for (const [idx, resp] of shownResponses.entries()) {
+  //       if (shownResponse === resp) {
+  //         setShownResponseIdx(idx);
+  //         break;
+  //       }
+  //     }
+  //   }
+  // }, [shownResponse]);
+
   return (
     <Stack justify="space-between" mih={500}>
       <Box>
         {/* Top header */}
         <Flex justify="center">
-          <HeaderText>What do you think of this response?</HeaderText>
+          <HeaderText>
+            {/* What do you think of this response? */}
+            What do you think of response #{shownResponseIdx + 1} of{" "}
+            {responseCount}?
+          </HeaderText>
         </Flex>
 
         {/* Middle response box with chevron buttons < and > for going back and forward a response */}
@@ -932,12 +1052,7 @@ const GradingView: React.FC<GradingViewProps> = ({
           </div>
 
           {/* Go forward to the next response */}
-          <Tooltip
-            label={
-              estimateGPTCalls()
-            }
-            withArrow
-          >
+          <Tooltip label={estimateGPTCalls()} withArrow>
             <Button variant="white" color="dark" onClick={gotoNextResponse}>
               <IconChevronRight />
             </Button>
@@ -987,23 +1102,26 @@ const GradingView: React.FC<GradingViewProps> = ({
         </Flex>
         <Flex direction="column">
           <Flex justify="space-between" align="center">
-            <Text size="lg" weight={500} mb="sm">LLM Activity</Text>
+            <Text size="lg" weight={500} mb="sm">
+              LLM Activity
+            </Text>
             {/* GPT Call Tally */}
             <Text size="sm" color="dark" style={{ fontStyle: "italic" }}>
-              Executed {numGPT4Calls} GPT-4o calls and {numGPT35Calls} GPT-3.5-Turbo-16k calls.
+              Executed {numGPT4Calls} GPT-4o calls and {numGPT35Calls}{" "}
+              GPT-3.5-Turbo-16k calls.
             </Text>
           </Flex>
           <div
             style={{
-              backgroundColor: "#f0f0f0", 
+              backgroundColor: "#f0f0f0",
               color: "#333",
               fontFamily: "monospace",
               padding: "12px",
-              width: "calc(100% - 30px)", 
+              width: "calc(100% - 30px)",
               height: "200px",
               overflowY: "auto",
               borderRadius: "8px",
-              border: "1px solid #ddd", 
+              border: "1px solid #ddd",
               marginRight: "20px", // Space on the right
             }}
             ref={(el) => {
@@ -1014,7 +1132,9 @@ const GradingView: React.FC<GradingViewProps> = ({
           >
             {logs.map((log, index) => (
               <div key={index}>
-                <span style={{ color: '#4A90E2' }}>{log.date.toLocaleString()} - </span> 
+                <span style={{ color: "#4A90E2" }}>
+                  {log.date.toLocaleString()} -{" "}
+                </span>
                 <span>{log.message}</span>
               </div>
             ))}
