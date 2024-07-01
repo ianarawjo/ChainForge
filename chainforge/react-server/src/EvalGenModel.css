@@ -1,0 +1,26 @@
+.gradeContainer {
+  position: relative;
+  width: 20px;
+}
+
+/* .gradeIcon {
+  position: absolute;
+  height: 60px;
+  width: 70%;
+  left: 50px;
+  top: 50px;
+} */
+
+.gradeUpCount {
+  position: absolute;
+  left: 12px;
+  top: -5px;
+  font-size: x-small;
+}
+
+.gradeDownCount {
+  position: absolute;
+  left: 13px;
+  top: 13px;
+  font-size: x-small;
+}

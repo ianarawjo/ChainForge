@@ -1,7 +1,7 @@
 /**
  * EvalGen 2.0
  *
- * Ian Arawjo, Shreya Shankar, J.D. Zamf.
+ * Ian Arawjo, Shreya Shankar, J.D. Zamf., Helen Weixu Chen
  *
  * This file concerns the front-end to evaluation generator, EvalGen.
  * EvalGen supports users in generating eval funcs (here binary assertions) and aligning them with their preferences.
@@ -52,10 +52,12 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
+  // CriteriaGradeCount,
   Dict,
   LLMResponse,
   PromptVarsDict,
   RatingDict,
+  ResponseUID,
 } from "./backend/typing";
 import { EvalCriteria } from "./backend/evalgen/typing";
 import {
@@ -88,6 +90,7 @@ import EvaluationFunctionExecutor from "./backend/evalgen/executor";
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
 import { escapeBraces } from "./backend/template";
 import { update } from "lodash";
+import "./EvalGenModel.css";
 
 const INIT_CRITERIA: EvalCriteria[] = [
   {
@@ -116,10 +119,18 @@ const INIT_CRITERIA: EvalCriteria[] = [
 const ThumbUpDownButtons = ({
   grade,
   onChangeGrade,
+  getGradeCount,
 }: {
   grade: boolean | undefined;
   onChangeGrade: (newGrade: boolean | undefined) => void;
+  getGradeCount: (grade: boolean | undefined) => number;
 }) => {
+  // console.log(
+  //   "getGradeCount",
+  //   getGradeCount(true),
+  //   getGradeCount(false),
+  //   getGradeCount(undefined),
+  // );
   return (
     <>
       {/* Thumbs up/down buttons */}
@@ -133,7 +144,10 @@ const ThumbUpDownButtons = ({
           if (onChangeGrade) onChangeGrade(grade === true ? undefined : true);
         }}
       >
-        <IconThumbUp size="14pt" fill={grade === true ? "#aea" : "white"} />
+        <div className="gradeContainer">
+          <IconThumbUp size="14pt" fill={grade === true ? "#aea" : "white"} />
+          <div className="gradeUpCount">{getGradeCount(true)}</div>
+        </div>
       </Button>
       <Button
         color={grade === false ? "red" : "gray"}
@@ -145,7 +159,13 @@ const ThumbUpDownButtons = ({
           if (onChangeGrade) onChangeGrade(grade === false ? undefined : false);
         }}
       >
-        <IconThumbDown size="14pt" fill={grade === false ? "pink" : "white"} />
+        <div className="gradeContainer">
+          <IconThumbDown
+            size="14pt"
+            fill={grade === false ? "pink" : "white"}
+          />
+          <div className="gradeDownCount">{getGradeCount(false)}</div>
+        </div>
       </Button>
     </>
   );
@@ -158,6 +178,7 @@ export interface CriteriaCardProps {
   initiallyOpen?: boolean;
   grade: boolean | undefined;
   onChangeGrade: (newGrade: boolean | undefined) => void;
+  getGradeCount: (grade: boolean | undefined) => number;
 }
 
 const CriteriaCard: React.FC<CriteriaCardProps> = ({
@@ -166,6 +187,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
   onDelete,
   initiallyOpen,
   grade,
+  getGradeCount,
   onChangeGrade,
 }) => {
   const [opened, { toggle }] = useDisclosure(initiallyOpen ?? false);
@@ -193,7 +215,11 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
             </Button>
 
             {/* Thumbs up/down buttons */}
-            <ThumbUpDownButtons grade={grade} onChangeGrade={onChangeGrade} />
+            <ThumbUpDownButtons
+              grade={grade}
+              onChangeGrade={onChangeGrade}
+              getGradeCount={getGradeCount}
+            />
 
             {/* Title of the criteria */}
             <TextInput
@@ -374,10 +400,22 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       setGrades((grades) => {
         if (!grades[responseUID]) grades[responseUID] = {};
         grades[responseUID][criteriaUID] = newGrade;
-        grades[responseUID] = { ...grades[responseUID] };
+        // grades[responseUID] = { ...grades[responseUID] };
+        // console.error("grades-2", grades);
         return { ...grades };
       });
       updateGlobalRating(responseUID, "perCriteriaGrades", grades[responseUID]);
+    };
+    const getGradeCount = (
+      responseUID: string,
+      criteriaUID: string,
+      grade: boolean | undefined,
+    ) => {
+      // console.log("getGradeCount", responseUID, criteriaUID, grade);
+      if (grades[responseUID]) {
+        return grade === grades[responseUID][criteriaUID] ? 1 : 0; // this needs to be changed after the grading feature is fully implemented on server side.
+      }
+      return 0;
     };
 
     // The EvalGen object responsible for generating, implementing, and filtering candidate implementations
@@ -742,7 +780,7 @@ If you determine the feedback corresponds to a new criteria, your response shoul
     };
 
     React.useEffect(() => {
-      console.error("1111111111111111111111111111111111111");
+      // console.error("1111111111111111111111111111111111111");
       setShownResponse(responses[shownResponseIdx]);
     }, [shownResponseIdx]);
 
@@ -828,6 +866,11 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                         ? grades[shownResponse.uid][e.uid]
                         : undefined
                     }
+                    getGradeCount={(grade) => {
+                      return shownResponse
+                        ? getGradeCount(shownResponse.uid, e.uid, grade)
+                        : 0;
+                    }}
                     onChangeGrade={(newGrade) => {
                       if (shownResponse)
                         setPerCriteriaGrade(shownResponse.uid, e.uid, newGrade);
