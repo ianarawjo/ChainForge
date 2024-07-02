@@ -1,7 +1,7 @@
 /**
  * EvalGen 2.0
  *
- * Ian Arawjo, Shreya Shankar, J.D. Zamf., Helen Weixu Chen
+ * Ian Arawjo, Shreya Shankar, J.D. Zamf.
  *
  * This file concerns the front-end to evaluation generator, EvalGen.
  * EvalGen supports users in generating eval funcs (here binary assertions) and aligning them with their preferences.
