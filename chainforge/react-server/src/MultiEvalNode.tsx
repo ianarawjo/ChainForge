@@ -403,8 +403,23 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         console.warn(`No inputs to the Multi-Evaluator node.`);
         return [];
       }
+      // console.log(
+      //   "**************************pulled_inputs.responseBatch",
+      //   pulled_inputs.responseBatch,
+      // );
+      // pulled_inputs.responseBatch = pulled_inputs.responseBatch.map((r) => ({
+      //   ...r,
+      //   uid: uuid(),
+      // }));
       // Convert to standard response format (StandardLLMResponseFormat)
       return pulled_inputs.responseBatch.map(toStandardResponseFormat);
+      // const resps = [];
+      // for (const resp of pulled_inputs.responseBatch) {
+      //   resps.push({ ...resp, uid: uuid() });
+      // }
+      // console.log("111", resps);
+      // setResponses(resps2);
+      // console.log("222", responses);
     } catch (err) {
       handleError(err as Error);
       return [];

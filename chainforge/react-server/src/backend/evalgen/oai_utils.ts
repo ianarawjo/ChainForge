@@ -84,8 +84,8 @@ export class OpenAIStreamer extends EventEmitter {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: model,
-          messages: messages,
+          model,
+          messages,
           stream: true,
         }),
       },
