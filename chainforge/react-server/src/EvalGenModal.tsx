@@ -948,7 +948,7 @@ If you determine the feedback corresponds to a new criteria, your response shoul
               <Stack spacing="0px" pl="xs" pr="lg" style={{ flex: 1 }}>
                 <Divider mt="lg" />
                 <Title mb="0px" order={4}>
-                    Suggest New Criteria Based on the Feedback
+                  Suggest New Criteria Based on the Feedback
                 </Title>
                 <Textarea
                   value={annotation}
