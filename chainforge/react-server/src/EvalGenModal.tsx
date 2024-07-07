@@ -73,6 +73,7 @@ import {
   IconTrash,
   IconFlagFilled,
   IconPencil,
+  IconSparkles,
 } from "@tabler/icons-react";
 import {
   cleanMetavarsFilterFunc,
@@ -90,7 +91,7 @@ import EvaluationFunctionExecutor from "./backend/evalgen/executor";
 import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
 import { escapeBraces } from "./backend/template";
 import { update } from "lodash";
-import "./EvalGenModel.css";
+// import "./EvalGenModel.css";
 
 const INIT_CRITERIA: EvalCriteria[] = [
   {
@@ -383,7 +384,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       [],
     );
     const [shownResponseIdx, setShownResponseIdx] = useState(0);
-    const [shownResponseUniqueIdx, setShownResponseUniqueIdx] = useState(0);
+    // const [shownResponseUniqueIdx, setShownResponseUniqueIdx] = useState(0);
 
     const [annotation, setAnnotation] = useState<string | undefined>(undefined);
     const [holisticGrade, setHolisticGrade] = useState<
@@ -492,11 +493,26 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       updateCriteriaForDisplay();
     }, [criteria]);
 
+    const generateCriteria = (resps) => {
+      // Create criteria
+      // setIsLoadingCriteria((num) => num + 3);
+      genCriteriaFromContext(resps)
+        .then((crits) => setCriteria(crits.map((c) => ({ ...c, uid: uuid() }))))
+        .catch((err) => {
+          console.error(err);
+        })
+        .finally(() => {
+          setIsLoadingCriteria((num) => num - 3);
+          setNumGPT4Calls((num) => num + 1);
+        });
+    };
+
     // Open the EvalGen wizard
     const trigger = (resps: LLMResponse[]) => {
       // We pass the responses here manually to ensure they remain the same
       // for the duration of one EvalGen operation.
       setResponses(resps);
+      // console.log("tigger", resps);
 
       const firstGrades = resps.reduce(
         (acc: Dict<Dict<boolean | undefined>>, curr) => {
@@ -507,18 +523,12 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       );
       setGrades(firstGrades);
 
-      // Create criteria
-      setIsLoadingCriteria((num) => num + 3);
-      // console.log("*****************************resps", resps);
-      genCriteriaFromContext(resps)
-        .then((crits) => setCriteria(crits.map((c) => ({ ...c, uid: uuid() }))))
-        .catch((err) => {
-          console.error(err);
-        })
-        .finally(() => {
-          setIsLoadingCriteria((num) => num - 3);
-          setNumGPT4Calls((num) => num + 1);
-        });
+      console.log("*****************************resps", resps);
+      if (criteria && criteria.length === 0) {
+        generateCriteria(resps);
+      } else {
+        console.log("Shut up!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", criteria.length);
+      }
 
       setShownResponseIdx(0);
       if (resps.length > 0) {
@@ -888,7 +898,8 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                 ) : (
                   <></>
                 )}
-                <Center>
+                {/* <Center> */}
+                <div className="criteriaButtons">
                   {/* <button
                     onClick={() => {
                       handleAddCriteria({
@@ -918,13 +929,26 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                   >
                     New Criteria
                   </Button>
-                </Center>
+                  {/* </Center>
+                <Center> */}
+                  <Button
+                    leftIcon={<IconSparkles size={14} />}
+                    variant="filled"
+                    // gradient={{ from: "blue", to: "green", deg: 90 }}
+                    onClick={() => {
+                      generateCriteria(responses);
+                    }}
+                  >
+                    Suggest Criteria
+                  </Button>
+                  {/* </Center> */}
+                </div>
               </div>
 
               <Stack spacing="0px" pl="xs" pr="lg" style={{ flex: 1 }}>
                 <Divider mt="lg" />
                 <Title mb="0px" order={4}>
-                  Provide Additional Feedback
+                    Suggest New Criteria Based on the Feedback
                 </Title>
                 <Textarea
                   value={annotation}
@@ -943,29 +967,31 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                   <Group mt="xs">
                     <Radio value="good" label="Good" />
                     <Radio value="bad" label="Bad" />
+                    <span>
+                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    </span>
+                    <Button
+                      color="green"
+                      variant="filled"
+                      disabled={
+                        !holisticGrade ||
+                        annotation === undefined ||
+                        annotation.length === 0
+                      }
+                      onClick={() => {
+                        synthNewCriteriaWithLLM(
+                          shownResponse?.responses[0].toString() ?? "",
+                          annotation ?? "",
+                          holisticGrade ?? "unknown",
+                        );
+
+                        nextResponse();
+                      }}
+                    >
+                      + Submit Feedback
+                    </Button>
                   </Group>
                 </Radio.Group>
-
-                <Button
-                  color="green"
-                  variant="filled"
-                  disabled={
-                    !holisticGrade ||
-                    annotation === undefined ||
-                    annotation.length === 0
-                  }
-                  onClick={() => {
-                    synthNewCriteriaWithLLM(
-                      shownResponse?.responses[0].toString() ?? "",
-                      annotation ?? "",
-                      holisticGrade ?? "unknown",
-                    );
-
-                    nextResponse();
-                  }}
-                >
-                  + Submit Feedback
-                </Button>
               </Stack>
             </div>
           </Grid.Col>
