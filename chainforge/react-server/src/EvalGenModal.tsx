@@ -1,7 +1,7 @@
 /**
  * EvalGen 2.0
  *
- * Ian Arawjo, Shreya Shankar, J.D. Zamf.
+ * Ian Arawjo, Shreya Shankar, J.D. Zamf., Helen Weixu Chen
  *
  * This file concerns the front-end to evaluation generator, EvalGen.
  * EvalGen supports users in generating eval funcs (here binary assertions) and aligning them with their preferences.
@@ -28,11 +28,14 @@ import React, {
 } from "react";
 import { v4 as uuid } from "uuid";
 import {
+  Accordion,
   ActionIcon,
   Box,
   Button,
   Card,
   Center,
+  Checkbox,
+  Code,
   Collapse,
   Divider,
   Flex,
@@ -41,6 +44,9 @@ import {
   Menu,
   Modal,
   Radio,
+  RingProgress,
+  ScrollArea,
+  SimpleGrid,
   Skeleton,
   Stack,
   Text,
@@ -59,7 +65,7 @@ import {
   RatingDict,
   ResponseUID,
 } from "./backend/typing";
-import { EvalCriteria } from "./backend/evalgen/typing";
+import { EvalCriteria, EvalGenReport } from "./backend/evalgen/typing";
 import {
   IconChevronDown,
   IconChevronLeft,
@@ -116,6 +122,44 @@ const INIT_CRITERIA: EvalCriteria[] = [
     priority: 0,
   },
 ];
+
+const Contributor = ({
+  getStateValue,
+  style = { size: 22, thickness: 4 },
+}: {
+  getStateValue: (id: number) => number;
+  style: { size: number; thickness: number };
+}) => {
+  return (
+    <RingProgress
+      size={style.size}
+      thickness={style.thickness}
+      // label=""
+      sections={[
+        {
+          value: getStateValue(1),
+          color: "cyan",
+          tooltip: "You have successfully contributed 7 responses.",
+        },
+        {
+          value: getStateValue(2),
+          color: "orange",
+          tooltip: "You have successfully contributed 20 responses.",
+        },
+        {
+          value: getStateValue(3),
+          color: "green",
+          tooltip: "You have gone to buffet 100 times.",
+        },
+        {
+          value: getStateValue(4),
+          color: "grape",
+          tooltip: "You have made 21 nightmare",
+        },
+      ]}
+    />
+  );
+};
 
 const ThumbUpDownButtons = ({
   grade,
@@ -180,6 +224,7 @@ export interface CriteriaCardProps {
   grade: boolean | undefined;
   onChangeGrade: (newGrade: boolean | undefined) => void;
   getGradeCount: (grade: boolean | undefined) => number;
+  getStateValue: (stateId: number) => number;
 }
 
 const CriteriaCard: React.FC<CriteriaCardProps> = ({
@@ -190,6 +235,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
   grade,
   getGradeCount,
   onChangeGrade,
+  getStateValue,
 }) => {
   const [opened, { toggle }] = useDisclosure(initiallyOpen ?? false);
   const [title, setTitle] = useState(criterion.shortname ?? "New Criteria");
@@ -221,6 +267,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
               onChangeGrade={onChangeGrade}
               getGradeCount={getGradeCount}
             />
+            <Contributor getStateValue={getStateValue} />
 
             {/* Title of the criteria */}
             <TextInput
@@ -363,7 +410,10 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
 };
 
 export interface EvalGenModalRef {
-  trigger: (resps: LLMResponse[]) => void;
+  trigger: (
+    resps: LLMResponse[],
+    setFinalReports: (reports: EvalGenReport) => void,
+  ) => void;
 }
 
 const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
@@ -407,16 +457,37 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       });
       updateGlobalRating(responseUID, "perCriteriaGrades", grades[responseUID]);
     };
+    const getStateValue = (stateId: number) => {
+      return Math.floor(Math.random() * 30 + 6);
+    };
     const getGradeCount = (
-      responseUID: string,
+      // responseUID: string,
       criteriaUID: string,
       grade: boolean | undefined,
     ) => {
       // console.log("getGradeCount", responseUID, criteriaUID, grade);
-      if (grades[responseUID]) {
-        return grade === grades[responseUID][criteriaUID] ? 1 : 0; // this needs to be changed after the grading feature is fully implemented on server side.
+      // console.log("getGradeCount", grades);
+
+      let count = 0;
+      for (const respUid in grades) {
+        count += grade === grades[respUid][criteriaUID] ? 1 : 0;
       }
-      return 0;
+      return count;
+
+      // if (grades[responseUID]) {
+      //   let count = 0;
+      //   for (const critUid in grades[responseUID]) {
+      //     count += grades[responseUID][critUid] ? 1 : 0;
+      //   }
+      //   // return grade === grades[responseUID][criteriaUID] ? 1 : 0; // this needs to be changed after the grading feature is fully implemented on server side.
+      //   return count;
+      //   // return 10;
+      // }
+
+      // if (grades[responseUID]) {
+      //   return grade === grades[responseUID][criteriaUID] ? 1 : 0; // this needs to be changed after the grading feature is fully implemented on server side.
+      // }
+      // return 0;
     };
 
     // The EvalGen object responsible for generating, implementing, and filtering candidate implementations
@@ -497,7 +568,12 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       // Create criteria
       // setIsLoadingCriteria((num) => num + 3);
       genCriteriaFromContext(resps)
-        .then((crits) => setCriteria(crits.map((c) => ({ ...c, uid: uuid() }))))
+        .then((crits) => {
+          console.log("crits #1", crits);
+          crits = [...criteria, ...crits];
+          console.log("crits #2", crits);
+          setCriteria(crits.map((c) => ({ ...c, uid: uuid() })));
+        })
         .catch((err) => {
           console.error(err);
         })
@@ -507,12 +583,29 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         });
     };
 
+    // const defaultOnFinish = (reports: string) => {};
+    const [onFinish, setOnFinish] = useState({
+      setFinalRpts: (reports: EvalGenReport) => {
+        // console.log("");
+      },
+    });
+
     // Open the EvalGen wizard
-    const trigger = (resps: LLMResponse[]) => {
+    const trigger = (
+      resps: LLMResponse[],
+      setFinalReports: (reports: EvalGenReport) => void,
+    ) => {
       // We pass the responses here manually to ensure they remain the same
       // for the duration of one EvalGen operation.
       setResponses(resps);
-      // console.log("tigger", resps);
+      gotoNextScreen("response");
+      // setFinalReports("A plenty response");
+      setOnFinish({
+        setFinalRpts: (reports: EvalGenReport) => {
+          close();
+          setFinalReports(reports);
+        },
+      });
 
       const firstGrades = resps.reduce(
         (acc: Dict<Dict<boolean | undefined>>, curr) => {
@@ -790,7 +883,6 @@ If you determine the feedback corresponds to a new criteria, your response shoul
     };
 
     React.useEffect(() => {
-      // console.error("1111111111111111111111111111111111111");
       setShownResponse(responses[shownResponseIdx]);
     }, [shownResponseIdx]);
 
@@ -811,6 +903,13 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       setCriteriaForDisplay(highCriteria.concat(lowCriteria));
     }, [criteria]);
 
+    const [screen, setScreen] = useState("");
+    const gotoNextScreen = (screenName: string) => {
+      setScreen(screenName);
+    };
+
+    // const [onFinish, setOnFinish] = useState(null);
+
     return (
       <Modal
         size="90%"
@@ -820,25 +919,27 @@ If you determine the feedback corresponds to a new criteria, your response shoul
         closeOnClickOutside={true}
         style={{ position: "relative", left: "-5%" }}
       >
-        <Grid h={window?.innerHeight * 0.8}>
-          <Grid.Col span={8}>
-            <Stack justify="space-between">
-              {/* View showing the response the user is currently grading */}
-              <GradingView
-                shownResponse={shownResponse}
-                shownResponseIdx={shownResponseIdx}
-                // shownResponseIdx={shownResponseUniqueIdx}
-                responseCount={responses.length}
-                numGPT4Calls={numGPT4Calls}
-                numGPT35Calls={numGPT35Calls}
-                logs={logs}
-                gotoNextResponse={nextResponse2}
-                gotoPrevResponse={prevResponse2}
-                estimateGPTCalls={estimateGPTCalls}
-              />
+        {screen === "response" && (
+          <Grid h={window?.innerHeight * 0.8}>
+            <Grid.Col span={8}>
+              <Stack justify="space-between">
+                {/* View showing the response the user is currently grading */}
+                <GradingView
+                  shownResponse={shownResponse}
+                  shownResponseIdx={shownResponseIdx}
+                  // shownResponseIdx={shownResponseUniqueIdx}
+                  responseCount={responses.length}
+                  numGPT4Calls={numGPT4Calls}
+                  numGPT35Calls={numGPT35Calls}
+                  logs={logs}
+                  gotoNextResponse={nextResponse2}
+                  gotoPrevResponse={prevResponse2}
+                  estimateGPTCalls={estimateGPTCalls}
+                  gotoNextScreen={gotoNextScreen}
+                />
 
-              {/* Progress bar */}
-              {/* <Flex justify="left" align="center" gap="md">
+                {/* Progress bar */}
+                {/* <Flex justify="left" align="center" gap="md">
                 <Stack w="100%" spacing={4}>
                   <Text color="#aaa" size="sm">
                     {bottomBar.progressLabel}
@@ -854,53 +955,64 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                   {bottomBar.buttonLabel}
                 </Button>
               </Flex> */}
-            </Stack>
-          </Grid.Col>
-          <Grid.Col span={4} bg="#eee" pt="16px" h="100%">
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-              }}
-            >
-              <div style={{ flex: 2, overflowY: "auto" }}>
-                {criteriaForDisplay.map((e) => (
-                  <CriteriaCard
-                    criterion={e}
-                    key={e.uid}
-                    onChange={(newCrit) => handleChangeCriteria(newCrit, e.uid)}
-                    onDelete={() => handleDeleteCriteria(e.uid)}
-                    grade={
-                      shownResponse
-                        ? grades[shownResponse.uid][e.uid]
-                        : undefined
-                    }
-                    getGradeCount={(grade) => {
-                      return shownResponse
-                        ? getGradeCount(shownResponse.uid, e.uid, grade)
-                        : 0;
-                    }}
-                    onChangeGrade={(newGrade) => {
-                      if (shownResponse)
-                        setPerCriteriaGrade(shownResponse.uid, e.uid, newGrade);
-                    }}
-                    initiallyOpen={true}
-                  />
-                ))}
-                {isLoadingCriteria > 0 ? (
-                  Array.from(
-                    { length: isLoadingCriteria },
-                    (v: unknown, idx: number) => (
-                      <Skeleton key={idx} h={80} mb={4} />
-                    ),
-                  )
-                ) : (
-                  <></>
-                )}
-                {/* <Center> */}
-                <div className="criteriaButtons">
-                  {/* <button
+              </Stack>
+            </Grid.Col>
+            <Grid.Col span={4} bg="#eee" pt="16px" h="100%">
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                }}
+              >
+                <div style={{ flex: 2, overflowY: "auto" }}>
+                  {criteriaForDisplay.map((e) => (
+                    <CriteriaCard
+                      criterion={e}
+                      key={e.uid}
+                      onChange={(newCrit) =>
+                        handleChangeCriteria(newCrit, e.uid)
+                      }
+                      onDelete={() => handleDeleteCriteria(e.uid)}
+                      grade={
+                        shownResponse
+                          ? grades[shownResponse.uid][e.uid]
+                          : undefined
+                      }
+                      getGradeCount={(grade) => {
+                        return shownResponse
+                          ? getGradeCount(
+                              // shownResponse.uid,
+                              e.uid,
+                              grade,
+                            )
+                          : 0;
+                      }}
+                      onChangeGrade={(newGrade) => {
+                        if (shownResponse)
+                          setPerCriteriaGrade(
+                            shownResponse.uid,
+                            e.uid,
+                            newGrade,
+                          );
+                      }}
+                      initiallyOpen={true}
+                      getStateValue={(stateId) => getStateValue(stateId)}
+                    />
+                  ))}
+                  {isLoadingCriteria > 0 ? (
+                    Array.from(
+                      { length: isLoadingCriteria },
+                      (v: unknown, idx: number) => (
+                        <Skeleton key={idx} h={80} mb={4} />
+                      ),
+                    )
+                  ) : (
+                    <></>
+                  )}
+                  {/* <Center> */}
+                  <div className="criteriaButtons">
+                    {/* <button
                     onClick={() => {
                       handleAddCriteria({
                         shortname: "New Criteria",
@@ -913,89 +1025,114 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                   >
                     +
                   </button> */}
-                  <Button
-                    leftIcon={<IconPencil size={14} />}
-                    variant="filled"
-                    // gradient={{ from: "blue", to: "green", deg: 90 }}
-                    onClick={() => {
-                      handleAddCriteria({
-                        shortname: "New Criteria",
-                        criteria: "",
-                        eval_method: "code",
-                        priority: 0,
-                        uid: uuid(),
-                      });
-                    }}
-                  >
-                    New Criteria
-                  </Button>
-                  {/* </Center>
-                <Center> */}
-                  <Button
-                    leftIcon={<IconSparkles size={14} />}
-                    variant="filled"
-                    // gradient={{ from: "blue", to: "green", deg: 90 }}
-                    onClick={() => {
-                      generateCriteria(responses);
-                    }}
-                  >
-                    Suggest Criteria
-                  </Button>
-                  {/* </Center> */}
-                </div>
-              </div>
-
-              <Stack spacing="0px" pl="xs" pr="lg" style={{ flex: 1 }}>
-                <Divider mt="lg" />
-                <Title mb="0px" order={4}>
-                  Suggest New Criteria Based on the Feedback
-                </Title>
-                <Textarea
-                  value={annotation}
-                  onChange={(e) => setAnnotation(e.target.value)}
-                  description="How good is this response? Explain anything not captured under your existing criteria. Your feedback will be used to generate new criteria."
-                  mb="sm"
-                />
-                <Radio.Group
-                  name="favoriteFramework"
-                  label="Rate the response holistically:"
-                  value={holisticGrade}
-                  onChange={(v) => setHolisticGrade(v as "good" | "bad")}
-                  withAsterisk
-                  mb="md"
-                >
-                  <Group mt="xs">
-                    <Radio value="good" label="Good" />
-                    <Radio value="bad" label="Bad" />
-                    <span>
-                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    </span>
                     <Button
-                      color="green"
+                      leftIcon={<IconPencil size={14} />}
                       variant="filled"
-                      disabled={
-                        !holisticGrade ||
-                        annotation === undefined ||
-                        annotation.length === 0
-                      }
+                      // gradient={{ from: "blue", to: "green", deg: 90 }}
                       onClick={() => {
-                        synthNewCriteriaWithLLM(
-                          shownResponse?.responses[0].toString() ?? "",
-                          annotation ?? "",
-                          holisticGrade ?? "unknown",
-                        );
-
-                        nextResponse();
+                        handleAddCriteria({
+                          shortname: "New Criteria",
+                          criteria: "",
+                          eval_method: "code",
+                          priority: 0,
+                          uid: uuid(),
+                        });
                       }}
                     >
-                      + Submit Feedback
+                      New Criteria
                     </Button>
-                  </Group>
-                </Radio.Group>
-              </Stack>
-            </div>
-          </Grid.Col>
-        </Grid>
+                    {/* </Center>
+                <Center> */}
+                    <Button
+                      leftIcon={<IconSparkles size={14} />}
+                      variant="filled"
+                      // gradient={{ from: "blue", to: "green", deg: 90 }}
+                      onClick={() => {
+                        generateCriteria(responses);
+                      }}
+                    >
+                      Suggest Criteria
+                    </Button>
+                    {/* </Center> */}
+                  </div>
+                </div>
+
+                <Stack spacing="0px" pl="xs" pr="lg" style={{ flex: 1 }}>
+                  <Divider mt="lg" />
+                  <Title mb="0px" order={4}>
+                    Suggest New Criteria Based on the Feedback
+                  </Title>
+                  <Textarea
+                    value={annotation}
+                    onChange={(e) => setAnnotation(e.target.value)}
+                    description="How good is this response? Explain anything not captured under your existing criteria. Your feedback will be used to generate new criteria."
+                    mb="sm"
+                  />
+                  <Radio.Group
+                    name="favoriteFramework"
+                    label="Rate the response holistically:"
+                    value={holisticGrade}
+                    onChange={(v) => setHolisticGrade(v as "good" | "bad")}
+                    withAsterisk
+                    mb="md"
+                  >
+                    <Group mt="xs">
+                      <Radio value="good" label="Good" />
+                      <Radio value="bad" label="Bad" />
+                      <span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                      </span>
+                      <Button
+                        color="green"
+                        variant="filled"
+                        disabled={
+                          !holisticGrade ||
+                          annotation === undefined ||
+                          annotation.length === 0
+                        }
+                        onClick={() => {
+                          synthNewCriteriaWithLLM(
+                            shownResponse?.responses[0].toString() ?? "",
+                            annotation ?? "",
+                            holisticGrade ?? "unknown",
+                          );
+
+                          nextResponse();
+                        }}
+                      >
+                        + Submit Feedback
+                      </Button>
+                    </Group>
+                  </Radio.Group>
+                </Stack>
+              </div>
+            </Grid.Col>
+          </Grid>
+        )}
+        {screen === "report" && (
+          <Grid>
+            <ReportCardView
+              report={{
+                criteria: criteria,
+                failureCoverage: 99.2,
+                falseFailureRate: 66.7,
+              }}
+              onFinish={(reports: EvalGenReport) => {
+                onFinish.setFinalRpts(reports);
+              }}
+              getGradeCount={(crit: EvalCriteria, grade: boolean) => {
+                return shownResponse
+                  ? getGradeCount(
+                      // shownResponse.uid,
+                      crit.uid,
+                      grade,
+                    )
+                  : 0;
+              }}
+              getStateValue={(stateId) => getStateValue(stateId)}
+            />
+          </Grid>
+        )}
       </Modal>
     );
   },
@@ -1019,6 +1156,7 @@ interface GradingViewProps {
   gotoPrevResponse: () => void;
   gotoNextResponse: () => void;
   estimateGPTCalls: () => string;
+  gotoNextScreen: (screenName: string) => void;
 }
 
 const GradingView: React.FC<GradingViewProps> = ({
@@ -1031,6 +1169,7 @@ const GradingView: React.FC<GradingViewProps> = ({
   gotoPrevResponse,
   gotoNextResponse,
   estimateGPTCalls,
+  gotoNextScreen,
 }) => {
   // Calculate inner values only when shownResponse changes
   const responseText = useMemo(
@@ -1090,7 +1229,6 @@ const GradingView: React.FC<GradingViewProps> = ({
             {responseCount}?
           </HeaderText>
         </Flex>
-
         {/* Middle response box with chevron buttons < and > for going back and forward a response */}
         <Flex justify="center" align="center" mb="sm">
           {/* Go back to previous response */}
@@ -1127,7 +1265,6 @@ const GradingView: React.FC<GradingViewProps> = ({
             </Button>
           </Tooltip>
         </Flex>
-
         {/* Views for the vars (inputs) that generated this response, and the concrete prompt */}
         <Flex justify="center" mb="xl" gap="lg">
           <div
@@ -1210,8 +1347,389 @@ const GradingView: React.FC<GradingViewProps> = ({
           </div>
         </Flex>
       </Box>
+      <div>
+        <Center>
+          <Button
+            leftIcon={<IconSparkles size={14} />}
+            variant="gradient"
+            gradient={{ from: "blue", to: "green", deg: 45 }}
+            onClick={() => {
+              // console.log("(3) gotoNextScreen", gotoNextScreen);
+              gotoNextScreen("report");
+            }}
+          >
+            I&apos;m done. Access EvalGen Report!
+          </Button>
+        </Center>
+      </div>
     </Stack>
   );
 };
 
+interface ReportCardViewProps {
+  report: EvalGenReport;
+  // recomputeAlignment,
+  onFinish: (reports: EvalGenReport) => void;
+  getGradeCount: (crit: EvalCriteria, grade: boolean) => number;
+  getStateValue: (stateId: number) => number;
+}
+
+// const ReportCardScreen = () => {
+const ReportCardView: React.FC<ReportCardViewProps> = ({
+  report,
+  // recomputeAlignment,
+  onFinish,
+  getGradeCount,
+  getStateValue,
+}) => {
+  // The criteria cards, now with report information
+
+  const [finalReport, setFinalReport] = useState(report);
+
+  const onSelect = (criterion: EvalCriteria, isSelected: boolean) => {
+    if (isSelected) {
+      finalReport.criteria.push(criterion);
+    } else {
+      finalReport.criteria = finalReport.criteria.filter(
+        (c) => c !== criterion,
+      );
+    }
+    setFinalReport(finalReport);
+  };
+  const cards = useMemo(() => {
+    const res = [];
+
+    // Iterate through selected eval functions and create cards
+    // for (const selectedFunc of report.selectedEvalFunctions) {
+    //   const crit = selectedFunc.evalCriteria;
+    //   // Find corresponding report in allEvalFunctionReports map from criteria to list
+    //   const critEvalFuncReports = report.allEvalFunctionReports.get(crit);
+    //   const evalFuncReport = critEvalFuncReports.find(
+    //     (rep) => rep.evalFunction === selectedFunc,
+    //   );
+
+    //   // Get the functions that were not selected for this criteria
+    //   const otherFuncs = critEvalFuncReports.filter(
+    //     (rep) => rep.evalFunction !== selectedFunc,
+    //   );
+    for (const crit of report.criteria) {
+      res.push(
+        <ReportCriteriaCard
+          criterion={crit}
+          key={crit.uid}
+          // onCheck={(checked) => {
+          //   crit.selected = checked;
+          //   recomputeAlignment();
+          // }}
+          getGradeCount={getGradeCount}
+          getStateValue={getStateValue}
+          onSelect={onSelect}
+        />,
+      );
+    }
+
+    return res;
+  }, [report]);
+
+  return (
+    report && (
+      <div>
+        <Text align="center" size="lg" pl="sm" mb="lg">
+          Chosen Functions and Alignment
+        </Text>
+
+        {/* Show coverage and false failure rate numbers */}
+        <Flex justify="center" gap="md" mb="lg">
+          <Group position="center" spacing="xl" style={{ textAlign: "center" }}>
+            <Card
+              shadow="sm"
+              padding="md"
+              radius="md"
+              style={{ backgroundColor: "#f0f0f0" }}
+            >
+              <Text weight={500} size="md">
+                Coverage of Bad Responses
+              </Text>
+              <Text color="blue" weight={700} size="md">
+                {report.failureCoverage.toFixed(2)}%
+              </Text>
+            </Card>
+            <Card
+              shadow="sm"
+              padding="md"
+              radius="md"
+              style={{ backgroundColor: "#f0f0f0" }}
+            >
+              <Text weight={500} size="md">
+                False Failure Rate
+              </Text>
+              <Text color="red" weight={700} size="md">
+                {report.falseFailureRate.toFixed(2)}%
+              </Text>
+            </Card>
+          </Group>
+        </Flex>
+
+        <ScrollArea mih={300} h={500} mah={500}>
+          <SimpleGrid cols={3} spacing="sm" verticalSpacing="sm" mb="lg">
+            {cards}
+          </SimpleGrid>
+        </ScrollArea>
+
+        <Flex justify="center" gap={12} mt="xs">
+          <Button
+            onClick={() => {
+              // console.log("finalReport", finalReport);
+              onFinish(finalReport);
+            }}
+          >
+            Finish with selected evaluators
+          </Button>
+        </Flex>
+      </div>
+    )
+  );
+};
+
+interface ReportCriteriaCardProps {
+  criterion: EvalCriteria;
+  // onChange: (changedCriteria: EvalCriteria) => void;
+  // onDelete: () => void;
+  // initiallyOpen?: boolean;
+  // grade: boolean | undefined;
+  // onChangeGrade: (newGrade: boolean | undefined) => void;
+  getGradeCount: (crit: EvalCriteria, grade: boolean) => number;
+  getStateValue: (stateId: number) => number;
+  onSelect: (criterion: EvalCriteria, isChecked: boolean) => void;
+}
+
+const ReportCriteriaCard: React.FC<ReportCriteriaCardProps> = ({
+  criterion,
+  // onChange,
+  // onDelete,
+  // initiallyOpen,
+  // grade,
+  getGradeCount,
+  // onChangeGrade,
+  getStateValue,
+  onSelect,
+}) => {
+  // const [opened, { toggle }] = useDisclosure(true);
+  // const [title, setTitle] = useState(criterion.shortname);
+  const [checked, setChecked] = useState(true);
+
+  // Simulates eval functions that are expected to be passed in later on (TODO)
+  const evalFuncs = [
+    { evalFunction: { code: "To be provided (1) ..." } },
+    { evalFunction: { code: "To be provided (2) ..." } },
+    { evalFunction: { code: "To be provided (3) ..." } },
+  ];
+  const unselectedImplementations = evalFuncs.map((item) => (
+    <div key={uuid()}>
+      <Code style={{ whiteSpace: "pre-wrap" }} key={uuid()}>
+        {item.evalFunction.code}
+      </Code>
+      <Divider />
+    </div>
+  ));
+
+  return (
+    // <Card withBorder mb={4} radius="md" style={{ cursor: "default" }}>
+    <Card
+      shadow="sm"
+      padding="sm"
+      pl="md"
+      pb="xl"
+      radius="md"
+      withBorder
+      style={{ backgroundColor: checked ? "#f2f7fc" : "#fff" }}
+    >
+      <div
+        // onClick={() => setChecked(!checked)}
+        onKeyUp={(e) => e.preventDefault()}
+        className="checkcard"
+      >
+        {/* <Card.Section withBorder pl="8px">
+          <Flex align="center">
+            <Group spacing="0px"> */}
+        {/* The arrow chevron user can click to collapse/expand */}
+        {/* <Button
+                color="gray"
+                p={0}
+                m={0}
+                variant="subtle"
+                mr="4px"
+                onClick={toggle}
+              >
+                {opened ? (
+                  <IconChevronDown size="14pt" />
+                ) : (
+                  <IconChevronRight size="14pt" />
+                )}
+              </Button> */}
+
+        <Tooltip label={checked ? "Don't use this" : "Use this"} withArrow>
+          <Checkbox
+            checked={checked}
+            onChange={() => {
+              setChecked(!checked);
+              if (onSelect) onSelect(criterion, !checked);
+            }}
+            tabIndex={-1}
+            size="xs"
+            mr="sm"
+            mt="xs"
+            styles={{ input: { cursor: "pointer" } }}
+            aria-hidden
+          />
+        </Tooltip>
+
+        {/* Thumbs up/down buttons - disable for now */}
+        {/* <ReadOnlyThumbUpDownButtons
+                  upCount={getGradeCount(criterion, true)}
+                  downCount={getGradeCount(criterion, false)}
+                /> */}
+
+        <div style={{ width: "100%" }}>
+          {/* Title of the criteria */}
+          <TextInput
+            value={criterion.shortname}
+            // placeholder="Criteria name"
+            readOnly
+            variant="unstyled"
+            size="sm"
+            ml="xs"
+            className="nodrag nowheel"
+            styles={{
+              input: {
+                border: "none",
+                borderWidth: "0px",
+                padding: "0px",
+                background: "transparent",
+                fontWeight: 500,
+                fontSize: "12pt",
+                margin: "0px",
+                height: "auto",
+                minHeight: "auto",
+              },
+            }}
+          />
+          {/* </Group> */}
+
+          {/* <Group spacing="4px" ml="auto"> */}
+
+          {/* <Button
+                  color={criterion.priority <= 0 ? "gray" : "red"}
+                  m={0}
+                  p={0}
+                  variant="subtle"
+                >
+                  <IconFlagFilled size="14pt" />
+                </Button> */}
+          {/* </Group>
+            </Flex>
+          </Card.Section> */}
+
+          {/* Description of the criteria */}
+          {/* <Card.Section p="0px"> */}
+          {/* <Collapse in={opened}> */}
+          <Textarea
+            value={criterion.criteria}
+            // placeholder="Describe here."
+            readOnly
+            // onClickCapture={(e) => e.stopPropagation()}
+            styles={{
+              input: {
+                border: "none",
+                borderWidth: "0px",
+                paddingTop: "0px !important",
+                paddingLeft: "0px",
+                margin: "0px",
+                color: "#444",
+                background: "transparent",
+                lineHeight: 1.1,
+              },
+            }}
+            autosize
+            minRows={2}
+            maxRows={5}
+            fz="sm"
+            mb="xs"
+            c="dimmed"
+          />
+
+          {/* Whether this criteria should be implemented with code (function) or an LLM evaluator */}
+          <Text color="#999" size="sm" mr="6px">
+            {criterion.eval_method === "code" ? (
+              <Flex style={{ userSelect: "none" }}>
+                <IconTerminal2 size="14pt" />
+                &nbsp;Python
+              </Flex>
+            ) : (
+              <Flex style={{ userSelect: "none" }}>
+                <IconRobot size="14pt" />
+                &nbsp;LLM
+              </Flex>
+            )}
+          </Text>
+        </div>
+        <Stack spacing={0}>
+          <Contributor
+            getStateValue={getStateValue}
+            style={{ size: 90, thickness: 12 }}
+          />
+          <Text align="center" size="xs" color="gray" maw="90%" lh={1.1}>
+            Alignment with your grades
+          </Text>
+        </Stack>
+      </div>
+      {/* </Collapse> */}
+      {/* </Card.Section> */}
+      <div>
+        <Accordion>
+          <Accordion.Item
+            key={"Show Bad Implementations"}
+            value={"Show Bad Implementations"}
+          >
+            <Accordion.Control>
+              <Text size="sm"> Show Bad Implementations </Text>
+            </Accordion.Control>
+            <Accordion.Panel>{unselectedImplementations}</Accordion.Panel>
+          </Accordion.Item>
+        </Accordion>
+      </div>
+    </Card>
+  );
+};
+
+const ReadOnlyThumbUpDownButtons = ({
+  upCount,
+  downCount,
+}: {
+  upCount: number;
+  downCount: number;
+  // grade: boolean | undefined;
+  // onChangeGrade: (newGrade: boolean | undefined) => void;
+  // getGradeCount: (grade: boolean | undefined) => number;
+}) => {
+  return (
+    <>
+      {/* Thumbs up/down buttons */}
+      <Button color={"green"} m={0} p={0} variant="subtle">
+        <div className="gradeContainer">
+          <IconThumbUp size="14pt" fill={"#aea"} />
+          <div className="gradeUpCount">{upCount}</div>
+        </div>
+      </Button>
+      <Button color={"red"} m={0} p={0} variant="subtle">
+        <div className="gradeContainer">
+          <IconThumbDown size="14pt" fill={"pink"} />
+          <div className="gradeDownCount">{downCount}</div>
+        </div>
+      </Button>
+    </>
+  );
+};
+
+// export default { EvalGenModal, ReportCardScreen };
 export default EvalGenModal;
