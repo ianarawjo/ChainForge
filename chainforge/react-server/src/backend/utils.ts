@@ -1927,7 +1927,8 @@ export const toStandardResponseFormat = (r: Dict | string) => {
   const resp_obj: LLMResponse = {
     vars: r?.fill_history ?? {},
     metavars: r?.metavars ?? {},
-    uid: r?.uid ?? r?.batch_id ?? uuid(),
+    // uid: r?.uid ?? r?.batch_id ?? uuid(),
+    uid: uuid(), // uuid should be unique when it was generated at the backend. For new, regenerate here to make it unique.
     llm: r?.llm ?? undefined,
     prompt: r?.prompt ?? "",
     responses: [typeof r === "string" ? r : r?.text],
