@@ -9,7 +9,7 @@ import {
   EvalFunctionResult,
   EvalFunctionReport,
   EvalFunctionSetReport,
-  EvalCriteriaUID
+  EvalCriteriaUID,
 } from "./typing";
 import { LLMResponse, ResponseUID, QueryProgress, Dict } from "../typing";
 import { EventEmitter } from "events";
@@ -96,9 +96,8 @@ export default class EvaluationFunctionExecutor {
     addLog: (log: string) => void,
     existingGrades?: Record<ResponseUID, boolean>,
     existingPerCriteriaGrades?: Dict<Dict<boolean | undefined>>,
-    annotations?: Dict<string>
+    annotations?: Dict<string>,
   ) {
-
     console.log(evalCriteria);
 
     this.resultsCache = new Map<
@@ -145,8 +144,6 @@ export default class EvaluationFunctionExecutor {
     this.updateGPTCalls = updateGPTCalls;
     this.logFunction = addLog;
   }
-
-
 
   /**
    * Starts the background computation for generating and executing evaluation functions.
@@ -198,23 +195,31 @@ export default class EvaluationFunctionExecutor {
     const functionExecutionPromises: Promise<any>[] = [];
 
     emitter.on("functionGenerated", (evalFunction) => {
-
       const executionPromise = (async () => {
         this.evalFunctions.push(evalFunction);
         const executionPromises = this.examples.map(async (example) => {
-
           // Get random positive and negative examples for this criteria using the perCriteriaGrades
           const criteriaId = criteria.uid;
-          const randomPositiveExample = this.examples.find(example => this.perCriteriaGrades[criteriaId]?.[example.uid] === true);
-          const randomNegativeExample = this.examples.find(example => this.perCriteriaGrades[criteriaId]?.[example.uid] === false);
- 
+          const randomPositiveExample = this.examples.find(
+            (example) =>
+              this.perCriteriaGrades[criteriaId]?.[example.uid] === true,
+          );
+          const randomNegativeExample = this.examples.find(
+            (example) =>
+              this.perCriteriaGrades[criteriaId]?.[example.uid] === false,
+          );
 
           const funcToExecute =
             evalFunction.evalCriteria.eval_method === "code"
               ? execPyFunc
               : executeLLMEval;
 
-          const result = await funcToExecute(evalFunction, example, randomPositiveExample, randomNegativeExample);
+          const result = await funcToExecute(
+            evalFunction,
+            example,
+            randomPositiveExample,
+            randomNegativeExample,
+          );
 
           // Update GPT-3.5 call count by 1 if the eval method is expert
           if (evalFunction.evalCriteria.eval_method === "expert") {
@@ -223,7 +228,9 @@ export default class EvaluationFunctionExecutor {
 
           if (onProgress) {
             onProgress({
-              success: (100 * functionExecutionPromises.length) / this.criteriaQueue.length,
+              success:
+                (100 * functionExecutionPromises.length) /
+                this.criteriaQueue.length,
               error: 0,
             });
           }
@@ -244,9 +251,11 @@ export default class EvaluationFunctionExecutor {
       functionExecutionPromises.push(executionPromise);
     });
 
-    const badExample = this.examples.find(example => this.perCriteriaGrades[criteria.uid]?.[example.uid] === false);
+    const badExample = this.examples.find(
+      (example) =>
+        this.perCriteriaGrades[criteria.uid]?.[example.uid] === false,
+    );
 
-  
     await generateFunctionsForCriteria(
       criteria,
       this.promptTemplate,
@@ -258,8 +267,12 @@ export default class EvaluationFunctionExecutor {
     this.updateGPTCalls(1, 0);
 
     console.log(`Generated functions for criteria: ${criteria.shortname}`);
-    console.log(`Number of functions generated: ${functionExecutionPromises.length}`);
-    this.logFunction(`Generated ${functionExecutionPromises.length} functions for criteria: ${criteria.shortname}`);
+    console.log(
+      `Number of functions generated: ${functionExecutionPromises.length}`,
+    );
+    this.logFunction(
+      `Generated ${functionExecutionPromises.length} functions for criteria: ${criteria.shortname}`,
+    );
 
     await Promise.all(functionExecutionPromises);
   }
@@ -293,7 +306,9 @@ export default class EvaluationFunctionExecutor {
 
     // Listen for generated functions and execute them as they come in
     emitter.on("functionGenerated", (evalFunction) => {
-      this.logFunction(`Generated a new ${evalFunction.evalCriteria.eval_method === "code" ? "code-based" : "LLM-based"} validator for criteria: ${evalFunction.evalCriteria.shortname}${evalFunction.evalCriteria.eval_method === "expert" ? `, with prompt: ${evalFunction.name}` : ""}. Executing it on ${this.examples.length} examples.`);
+      this.logFunction(
+        `Generated a new ${evalFunction.evalCriteria.eval_method === "code" ? "code-based" : "LLM-based"} validator for criteria: ${evalFunction.evalCriteria.shortname}${evalFunction.evalCriteria.eval_method === "expert" ? `, with prompt: ${evalFunction.name}` : ""}. Executing it on ${this.examples.length} examples.`,
+      );
 
       // Capture the execution promise of each function
       const executionPromise = (async () => {
@@ -302,9 +317,15 @@ export default class EvaluationFunctionExecutor {
 
         const executionPromises = this.examples.map(async (example) => {
           // Get random positive and negative examples for this criteria using the perCriteriaGrades
-          const criteriaId =  evalFunction.evalCriteria.uid;
-          const randomPositiveExample = this.examples.find(example => this.perCriteriaGrades[criteriaId]?.[example.uid] === true);
-          const randomNegativeExample = this.examples.find(example => this.perCriteriaGrades[criteriaId]?.[example.uid] === false);
+          const criteriaId = evalFunction.evalCriteria.uid;
+          const randomPositiveExample = this.examples.find(
+            (example) =>
+              this.perCriteriaGrades[criteriaId]?.[example.uid] === true,
+          );
+          const randomNegativeExample = this.examples.find(
+            (example) =>
+              this.perCriteriaGrades[criteriaId]?.[example.uid] === false,
+          );
 
           const funcToExecute =
             evalFunction.evalCriteria.eval_method === "code"
@@ -312,7 +333,12 @@ export default class EvaluationFunctionExecutor {
               : executeLLMEval;
 
           // Run the function on the example and if there's an error, increment skipped
-          const result = await funcToExecute(evalFunction, example, randomPositiveExample, randomNegativeExample);
+          const result = await funcToExecute(
+            evalFunction,
+            example,
+            randomPositiveExample,
+            randomNegativeExample,
+          );
 
           // Update GPT-3.5 call count by 1 if the eval method is expert
           if (evalFunction.evalCriteria.eval_method === "expert") {
@@ -337,7 +363,6 @@ export default class EvaluationFunctionExecutor {
           if (result === EvalFunctionResult.FAIL) {
             this.updateScore(example.uid, evalFunction);
           }
-
         });
 
         await Promise.all(executionPromises);
@@ -371,7 +396,9 @@ export default class EvaluationFunctionExecutor {
           console.log(
             "All evaluation functions have been generated and executed.",
           );
-          this.logFunction("All initially-generated evaluation functions have been generated and executed.");
+          this.logFunction(
+            "All initially-generated evaluation functions have been generated and executed.",
+          );
           if (resolveAllFunctionsGenerated) {
             resolveAllFunctionsGenerated(); // Resolve the promise when all functions have been generated and executed
           }
@@ -388,7 +415,10 @@ export default class EvaluationFunctionExecutor {
     // Wait for the 'allFunctionsGenerated' event, which now waits for all executions
     await allFunctionsGeneratedPromise;
   }
-  public generateNewImplementationsForCriteria(criteriaID: EvalCriteriaUID): void {
+
+  public generateNewImplementationsForCriteria(
+    criteriaID: EvalCriteriaUID,
+  ): void {
     const crit = this.evalCriteria.find((c) => c.uid === criteriaID);
     if (!crit) {
       throw new Error(`Criteria with ID ${criteriaID} not found.`);
@@ -399,13 +429,12 @@ export default class EvaluationFunctionExecutor {
     }
   }
 
-
   /**
    * Adds another evaluation criteria and triggers the generation and execution of evaluation functions for the new criteria.
    * This method allows the client to add new evaluation criteria after the executor has been initialized.
    * The new criteria will be processed in parallel with the existing criteria.
    * The method returns immediately, allowing the client to continue with other tasks.
-   *  
+   *
    * @param criteria The new evaluation criteria to be added.
    */
   public addCriteria(criteriaList: EvalCriteria[]): void {
@@ -418,7 +447,7 @@ export default class EvaluationFunctionExecutor {
       console.log(`Adding new criteria: ${criteria.shortname}`);
       this.criteriaQueue.push(criteria);
       this.evalCriteria.push(criteria);
-    
+
       // Start the generation and execution of functions for the new criteria
       if (!this.processing) {
         this.processNextCriteria();
@@ -512,16 +541,24 @@ export default class EvaluationFunctionExecutor {
     return new Map(this.grades);
   }
 
-  public estimateNumGPTCalls(perCriteriaGrades: Dict<boolean>): { numGPT4Calls: number; numGPT35Calls: number }{
-
+  public estimateNumGPTCalls(perCriteriaGrades: Dict<boolean>): {
+    numGPT4Calls: number;
+    numGPT35Calls: number;
+  } {
     let numGPT4Calls = 0;
     let numLLMCriteria = 0;
     for (const criteriaId in perCriteriaGrades) {
       const currGrade = perCriteriaGrades[criteriaId];
-      const numGradedAsCurrGrade = this.examples.filter(example => this.perCriteriaGrades[example.uid] && this.perCriteriaGrades[example.uid][criteriaId] === currGrade).length;
+      const numGradedAsCurrGrade = this.examples.filter(
+        (example) =>
+          this.perCriteriaGrades[example.uid] &&
+          this.perCriteriaGrades[example.uid][criteriaId] === currGrade,
+      ).length;
       if (Math.random() <= 1 / (numGradedAsCurrGrade + 1)) {
         numGPT4Calls += 1;
-        const criteria = this.evalCriteria.find(criteria => criteria.uid === criteriaId);
+        const criteria = this.evalCriteria.find(
+          (criteria) => criteria.uid === criteriaId,
+        );
         if (criteria && criteria.eval_method === "expert") {
           numLLMCriteria += 1;
         }
@@ -529,10 +566,9 @@ export default class EvaluationFunctionExecutor {
     }
 
     return {
-      numGPT4Calls: numGPT4Calls,
+      numGPT4Calls,
       numGPT35Calls: numLLMCriteria * 3 * this.examples.length,
     };
-
   }
 
   /**
@@ -544,9 +580,14 @@ export default class EvaluationFunctionExecutor {
    * @param exampleId The unique ID of the example being graded.
    * @param holisticGrade The developer-provided grade assigned to the example, "good" or "bad" or unknown.
    */
-  public setGradeForExample(exampleId: ResponseUID, perCriteriaGrades?: Dict<boolean | undefined>, holisticGrade?: string, annotation?: string ): void {
+  public setGradeForExample(
+    exampleId: ResponseUID,
+    perCriteriaGrades?: Dict<boolean | undefined>,
+    holisticGrade?: string,
+    annotation?: string,
+  ): void {
     if (holisticGrade !== null) {
-      const boolHolistic = holisticGrade === "good" ? true : false;
+      const boolHolistic = holisticGrade === "good";
       this.grades.set(exampleId, boolHolistic);
     }
 
@@ -555,7 +596,9 @@ export default class EvaluationFunctionExecutor {
 
       // If holisticGrade was null, set it based on the perCriteriaGrades---if all criteria in the perCriteriaGrades are true, set the holisticGrade to true, else false
       if (holisticGrade === null) {
-        const allTrue = Object.values(perCriteriaGrades).every(value => value === true);
+        const allTrue = Object.values(perCriteriaGrades).every(
+          (value) => value === true,
+        );
         this.grades.set(exampleId, allTrue);
       }
     }
@@ -570,11 +613,19 @@ export default class EvaluationFunctionExecutor {
     for (const criteriaId in perCriteriaGrades) {
       const currGrade = perCriteriaGrades[criteriaId];
       // With probability 1 / # graded examples for this criteria with currGrade, generate new implementations
-      const numGradedAsCurrGrade = this.examples.filter(example => this.perCriteriaGrades[example.uid] && this.perCriteriaGrades[example.uid][criteriaId] === currGrade).length;
+      const numGradedAsCurrGrade = this.examples.filter(
+        (example) =>
+          this.perCriteriaGrades[example.uid] &&
+          this.perCriteriaGrades[example.uid][criteriaId] === currGrade,
+      ).length;
 
       if (Math.random() <= 1 / (numGradedAsCurrGrade + 1)) {
-        console.log(`Generating new implementations for criteria: ${criteriaId}`);
-        const evalCriteria = this.evalCriteria.find(criteria => criteria.uid === criteriaId);
+        console.log(
+          `Generating new implementations for criteria: ${criteriaId}`,
+        );
+        const evalCriteria = this.evalCriteria.find(
+          (criteria) => criteria.uid === criteriaId,
+        );
         if (evalCriteria) {
           this.criteriaQueue.push(evalCriteria);
           if (!this.processing) {
@@ -587,7 +638,9 @@ export default class EvaluationFunctionExecutor {
       }
     }
 
-    console.log(`Generated new implementations for ${numCriteriaWithNewImplementations} criteria.`);
+    console.log(
+      `Generated new implementations for ${numCriteriaWithNewImplementations} criteria.`,
+    );
   }
 
   /**
@@ -819,8 +872,8 @@ export default class EvaluationFunctionExecutor {
         console.log(report);
 
         scoredFunctions.push({
-          evalFunction: evalFunction,
-          failureCoverage: failureCoverage,
+          evalFunction,
+          failureCoverage,
           falseFailureRate:
             report.false_fail / (report.true_pass + report.false_fail),
         });
@@ -860,7 +913,7 @@ export default class EvaluationFunctionExecutor {
     // Create report of coverage, missed failures, selected functions, and all eval function reports
     const report = {
       failureCoverage: coverage,
-      falseFailureRate: falseFailureRate,
+      falseFailureRate,
       selectedEvalFunctions: bestEvalFunctions,
       allEvalFunctionReports: evalFunctionReport,
     };
@@ -988,7 +1041,7 @@ export default class EvaluationFunctionExecutor {
     // Create report of coverage, missed failures, selected functions, and all eval function reports
     const report = {
       failureCoverage: coverage,
-      falseFailureRate: falseFailureRate,
+      falseFailureRate,
       selectedEvalFunctions: oldReport.selectedEvalFunctions,
       allEvalFunctionReports: oldReport.allEvalFunctionReports,
     };
@@ -1029,7 +1082,6 @@ export default class EvaluationFunctionExecutor {
 
       outcomes.set(evalFunction, { passed, failed, skipped });
     }
-
     return outcomes;
   }
 }

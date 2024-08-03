@@ -17,7 +17,6 @@ export class OpenAIStreamer extends EventEmitter {
 
     const OPENAI_API_KEY = get_openai_api_key();
     this.openai_api_key = OPENAI_API_KEY;
-
     // this.client = new OpenAIClient(
     //   process?.env?.AZURE_OPENAI_ENDPOINT ?? AZURE_OPENAI_ENDPOINT ?? "",
     //   new AzureKeyCredential(
@@ -84,8 +83,8 @@ export class OpenAIStreamer extends EventEmitter {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: model,
-          messages: messages,
+          model,
+          messages,
           stream: true,
         }),
       },

@@ -131,8 +131,18 @@ export async function executeLLMEval(
 
   // Query an LLM as an evaluator
   let systemMessage = "You are an expert evaluator.";
-  if (positiveExample && positiveExample.responses[0] && negativeExample && negativeExample.responses[0]) {
-    systemMessage += " Please consider the following good example: " + positiveExample.responses[0] + " and bad example: " + negativeExample.responses[0] + " when making your evaluation.";
+  if (
+    positiveExample &&
+    positiveExample.responses[0] &&
+    negativeExample &&
+    negativeExample.responses[0]
+  ) {
+    systemMessage +=
+      " Please consider the following good example: " +
+      positiveExample.responses[0] +
+      " and bad example: " +
+      negativeExample.responses[0] +
+      " when making your evaluation.";
   }
 
   const result = await simpleQueryLLM(
@@ -272,7 +282,7 @@ export async function generateFunctionsForCriteria(
     criteria,
     promptTemplate,
     example,
-    badExample
+    badExample,
   );
   console.log("Function generation prompt:", functionGenPrompt);
 
@@ -351,6 +361,5 @@ function processAndEmitFunction(
       return; // Skip emitting if no function name could be extracted
     }
   }
-
   emitter.emit("functionGenerated", evalFunction);
 }
