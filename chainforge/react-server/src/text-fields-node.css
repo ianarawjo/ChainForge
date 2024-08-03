@@ -1290,14 +1290,6 @@ th .content-editable-div {
   width: 20px;
 }
 
-/* .gradeIcon {
-  position: absolute;
-  height: 60px;
-  width: 70%;
-  left: 50px;
-  top: 50px;
-} */
-
 .gradeUpCount {
   position: absolute;
   left: 12px;
@@ -1318,8 +1310,4 @@ th .content-editable-div {
   justify-content: space-between;
   padding-left: 50px;
   padding-right: 50px;
-  /* gap: 100px;
-  padding: 10px;
-  column-gap: normal;
-  -moz-column-gap: 100px; */
 }

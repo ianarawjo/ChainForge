@@ -417,13 +417,24 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         return [];
       }
       // console.log(
-      //   "**************************pulled_inputs.responseBatch",
+      //   "(1) **************************pulled_inputs.responseBatch",
       //   pulled_inputs.responseBatch,
       // );
-      // pulled_inputs.responseBatch = pulled_inputs.responseBatch.map((r) => ({
-      //   ...r,
-      //   uid: uuid(),
-      // }));
+      let idxSeed = 0;
+      pulled_inputs.responseBatch = pulled_inputs.responseBatch.map((r) => ({
+        ...r,
+        uid: `${(r?.uid ?? r?.batch_id ?? uuid()) + ++idxSeed}`,
+      }));
+      // console.log(
+      //   "------------------",
+      //   pulled_inputs.responseBatch[0].uid,
+      //   "idxSeed = ",
+      //   idxSeed,
+      // );
+      // console.log(
+      //   "(2) **************************pulled_inputs.responseBatch",
+      //   pulled_inputs.responseBatch,
+      // );
       // Convert to standard response format (StandardLLMResponseFormat)
       return pulled_inputs.responseBatch.map(toStandardResponseFormat);
       // const resps = [];

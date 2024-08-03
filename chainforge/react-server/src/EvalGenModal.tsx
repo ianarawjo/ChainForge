@@ -619,8 +619,6 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       console.log("*****************************resps", resps);
       if (criteria && criteria.length === 0) {
         generateCriteria(resps);
-      } else {
-        console.log("Shut up!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", criteria.length);
       }
 
       setShownResponseIdx(0);

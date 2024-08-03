@@ -1082,7 +1082,6 @@ export default class EvaluationFunctionExecutor {
 
       outcomes.set(evalFunction, { passed, failed, skipped });
     }
-
     return outcomes;
   }
 }

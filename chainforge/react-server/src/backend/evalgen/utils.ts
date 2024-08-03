@@ -361,6 +361,5 @@ function processAndEmitFunction(
       return; // Skip emitting if no function name could be extracted
     }
   }
-
   emitter.emit("functionGenerated", evalFunction);
 }
