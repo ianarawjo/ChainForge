@@ -59,7 +59,11 @@ import { GatheringResponsesRingProgress } from "./LLMItemButtonGroup";
 import { Dict, LLMResponse, QueryProgress } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
-import EvalGenModal, { EvalGenModalRef } from "./EvalGenModal";
+import EvalGenModal, {
+  EvalGenModalRef,
+  ReportCardScreen,
+} from "./EvalGenModal";
+import { EvalGenReport } from "./backend/evalgen/typing";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
@@ -265,9 +269,18 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
 
   // Add an evaluator to the end of the list
   const addEvaluator = useCallback(
-    (name: string, type: EvaluatorContainerDesc["type"], state: Dict) => {
+    (
+      name: string,
+      type: EvaluatorContainerDesc["type"],
+      state: Dict,
+      initiallyOpen = true,
+    ) => {
       setEvaluators(
-        evaluators.concat({ name, uid: uuid(), type, state, justAdded: true }),
+        // evaluators.concat({ name, uid: uuid(), type, state, justAdded: true }),
+        (e) => [
+          ...e,
+          { name, uid: uuid(), type, state, justAdded: initiallyOpen },
+        ],
       );
     },
     [evaluators],
@@ -403,8 +416,38 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         console.warn(`No inputs to the Multi-Evaluator node.`);
         return [];
       }
+      // console.log(
+      //   "(1) **************************pulled_inputs.responseBatch",
+      //   pulled_inputs.responseBatch,
+      // );
+      let idxSeed = 0;
+      pulled_inputs.responseBatch = pulled_inputs.responseBatch.map((r) => ({
+        ...r,
+        uid: `${(r?.uid ?? r?.batch_id ?? uuid()) + ++idxSeed}`,
+      }));
+      // console.log(
+      //   "------------------",
+      //   pulled_inputs.responseBatch[0].uid,
+      //   "idxSeed = ",
+      //   idxSeed,
+      // );
+      // console.log(
+      //   "(2) **************************pulled_inputs.responseBatch",
+      //   pulled_inputs.responseBatch,
+      // );
+      // pulled_inputs.responseBatch = pulled_inputs.responseBatch.map((r) => ({
+      //   ...r,
+      //   uid: uuid(),
+      // }));
       // Convert to standard response format (StandardLLMResponseFormat)
       return pulled_inputs.responseBatch.map(toStandardResponseFormat);
+      // const resps = [];
+      // for (const resp of pulled_inputs.responseBatch) {
+      //   resps.push({ ...resp, uid: uuid() });
+      // }
+      // console.log("111", resps);
+      // setResponses(resps2);
+      // console.log("222", responses);
     } catch (err) {
       handleError(err as Error);
       return [];
@@ -617,7 +660,53 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   const evalGenModalRef = useRef<EvalGenModalRef>(null);
   const openEvalGen = () => {
     const resps = handlePullInputs();
-    evalGenModalRef.current?.trigger(resps);
+    evalGenModalRef.current?.trigger(resps, onFinalReportsReady);
+  };
+
+  const onFinalReportsReady = (reports: EvalGenReport) => {
+    // Placeholder for process the final reports returned from EvalGenModel
+    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!! final reports", reports);
+    // let kkk = 1;
+    for (const crit of reports.criteria) {
+      // setTimeout(() => {
+      // console.log("crit", crit);
+      if (crit.eval_method === "code") {
+        // Python
+        addEvaluator(
+          crit.shortname,
+          "python",
+          {
+            code: "def evaluate(r):\n\treturn len(r.text)", // to be populated once python code is implemented for the criteria
+            sandbox: true,
+          },
+          false,
+        );
+      } else if (crit.eval_method === "expert") {
+        // LLM
+        addEvaluator(
+          crit.shortname,
+          "llm",
+          {
+            // to be populated once LLM code is implemented for the criteria
+            prompt: "",
+            format: "bin",
+          },
+          false,
+        );
+      } else {
+        // JavaScript
+        addEvaluator(
+          crit.shortname,
+          "javascript",
+          {
+            code: "function evaluate(r) {\n\treturn r.text.length;\n}", // to be populated once javascript code is implemented for the criteria
+          },
+          false,
+        );
+      }
+      // }, kkk * 5000);
+      // kkk++;
+    }
   };
 
   // Something changed upstream
