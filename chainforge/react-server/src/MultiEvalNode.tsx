@@ -31,7 +31,6 @@ import {
   IconPlus,
   IconRobot,
   IconSearch,
-  IconSparkles,
   IconTerminal,
   IconTrash,
 } from "@tabler/icons-react";

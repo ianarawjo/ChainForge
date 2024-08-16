@@ -22,6 +22,10 @@ export enum NativeLLM {
   OpenAI_GPT4_Turbo = "gpt-4-turbo",
   OpenAI_GPT4_Turbo_0409 = "gpt-4-turbo-2024-04-09",
   OpenAI_GPT4_O = "gpt-4o",
+  OpenAI_GPT4_O_Mini = "gpt-4o-mini",
+  OpenAI_GPT4_O_0513 = "gpt-4o-2024-05-13",
+  OpenAI_GPT4_O_0806 = "gpt-4o-2024-08-06",
+  OpenAO_ChatGPT4_O = "chatgpt-4o-latest",
   OpenAI_GPT4_32k = "gpt-4-32k",
   OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
   OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
@@ -49,6 +53,7 @@ export enum NativeLLM {
   // Anthropic
   Claude_v3_opus = "claude-3-opus-20240229",
   Claude_v3_sonnet = "claude-3-sonnet-20240229",
+  Claude_v3_5_sonnet = "claude-3-5-sonnet-20240620",
   Claude_v3_haiku = "claude-3-haiku-20240307",
   Claude_v2_1 = "claude-2.1",
   Claude_v2 = "claude-2",
