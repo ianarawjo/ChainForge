@@ -145,6 +145,8 @@ export default class EvaluationFunctionExecutor {
     this.logFunction = addLog;
   }
 
+
+
   /**
    * Starts the background computation for generating and executing evaluation functions.
    * This method initiates the tasks but does not wait for them to complete.
@@ -415,10 +417,7 @@ export default class EvaluationFunctionExecutor {
     // Wait for the 'allFunctionsGenerated' event, which now waits for all executions
     await allFunctionsGeneratedPromise;
   }
-
-  public generateNewImplementationsForCriteria(
-    criteriaID: EvalCriteriaUID,
-  ): void {
+  public generateNewImplementationsForCriteria(criteriaID: EvalCriteriaUID): void {
     const crit = this.evalCriteria.find((c) => c.uid === criteriaID);
     if (!crit) {
       throw new Error(`Criteria with ID ${criteriaID} not found.`);
@@ -428,6 +427,7 @@ export default class EvaluationFunctionExecutor {
       this.processNextCriteria();
     }
   }
+
 
   /**
    * Adds another evaluation criteria and triggers the generation and execution of evaluation functions for the new criteria.
