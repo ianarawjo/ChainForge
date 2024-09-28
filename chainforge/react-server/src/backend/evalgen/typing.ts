@@ -11,12 +11,6 @@ export interface EvalCriteria {
   source?: string;
 }
 
-export interface EvalGenReport {
-  criteria: EvalCriteria[];
-  failureCoverage: number;
-  falseFailureRate: number;
-}
-
 export function validEvalCriteriaFormat(json_obj: Dict) {
   return (
     "criteria" in json_obj &&

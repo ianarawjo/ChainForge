@@ -113,8 +113,8 @@ export async function generateLLMEvaluationCriteria(
 export async function executeLLMEval(
   evalFunction: EvalFunction,
   example: LLMResponse,
-  positiveExample: LLMResponse,
-  negativeExample: LLMResponse,
+  positiveExample?: LLMResponse,
+  negativeExample?: LLMResponse,
 ): Promise<EvalFunctionResult> {
   // Construct call to an LLM to evaluate the example
   const evalPrompt =
@@ -147,7 +147,7 @@ export async function executeLLMEval(
 
   const result = await simpleQueryLLM(
     evalPrompt, // prompt
-    "gpt-3.5-turbo-16k", // llm
+    "gpt-4o-mini", // llm
     systemMessage, // system_msg
   );
   // Get the output
@@ -220,8 +220,8 @@ export async function execJSFunc(
 export async function execPyFunc(
   evalFunction: EvalFunction,
   example: LLMResponse,
-  positiveExample: LLMResponse,
-  negativeExample: LLMResponse,
+  positiveExample?: LLMResponse,
+  negativeExample?: LLMResponse,
 ): Promise<EvalFunctionResult> {
   try {
     // We need to replace the function name with "evaluate", which is what is expected by backend:

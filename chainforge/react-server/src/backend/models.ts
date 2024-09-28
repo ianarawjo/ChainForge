@@ -22,6 +22,7 @@ export enum NativeLLM {
   OpenAI_GPT4_Turbo = "gpt-4-turbo",
   OpenAI_GPT4_Turbo_0409 = "gpt-4-turbo-2024-04-09",
   OpenAI_GPT4_O = "gpt-4o",
+  OpenAI_GPT4_O_mini = "gpt-4o-mini",
   OpenAI_GPT4_32k = "gpt-4-32k",
   OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
   OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
