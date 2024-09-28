@@ -65,7 +65,7 @@ import {
   RatingDict,
   ResponseUID,
 } from "./backend/typing";
-import { EvalCriteria, EvalGenReport } from "./backend/evalgen/typing";
+import { EvalCriteria, EvalFunction, EvalFunctionReport, EvalFunctionSetReport } from "./backend/evalgen/typing";
 import {
   IconChevronDown,
   IconChevronLeft,
@@ -267,7 +267,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
               onChangeGrade={onChangeGrade}
               getGradeCount={getGradeCount}
             />
-            <Contributor getStateValue={getStateValue} />
+            <Contributor getStateValue={getStateValue} style={{ size: 22, thickness: 4 }} />
 
             {/* Title of the criteria */}
             <TextInput
@@ -412,7 +412,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
 export interface EvalGenModalRef {
   trigger: (
     resps: LLMResponse[],
-    setFinalReports: (reports: EvalGenReport) => void,
+    setFinalReports: (selectedFuncs: EvalFunction[]) => void,
   ) => void;
 }
 
@@ -422,6 +422,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
     const apiKeys = useStore((state) => state.apiKeys);
     const globalState = useStore((store) => store.state);
     const [criteria, setCriteria] = useState<EvalCriteria[]>([]);
+    const [reports, setReports] = useState<EvalFunctionSetReport | undefined>(undefined);
     const [criteriaForDisplay, setCriteriaForDisplay] = useState<
       EvalCriteria[]
     >([]);
@@ -536,21 +537,13 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         const addLog = (message: string) => {
           setLogs((prevLogs) => [...prevLogs, { date: new Date(), message }]);
         };
-<<<<<<< HEAD
-=======
-
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
 
         const ex = new EvaluationFunctionExecutor(
           getLikelyPromptTemplateAsContext(responses),
           responses,
           criteria,
-<<<<<<< HEAD
           (gpt4Calls, gpt35Calls) => {
             // Callback to update GPT call counts
-=======
-          (gpt4Calls, gpt35Calls) => {  // Callback to update GPT call counts
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
             setNumGPT4Calls((num) => num + gpt4Calls);
             setNumGPT35Calls((num) => num + gpt35Calls);
           },
@@ -593,7 +586,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
 
     // const defaultOnFinish = (reports: string) => {};
     const [onFinish, setOnFinish] = useState({
-      setFinalRpts: (reports: EvalGenReport) => {
+      setFinalRpts: (reports: EvalFunction[]) => {
         // console.log("");
       },
     });
@@ -601,7 +594,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
     // Open the EvalGen wizard
     const trigger = (
       resps: LLMResponse[],
-      setFinalReports: (reports: EvalGenReport) => void,
+      setFinalReports: (reports: EvalFunction[]) => void,
     ) => {
       // We pass the responses here manually to ensure they remain the same
       // for the duration of one EvalGen operation.
@@ -609,7 +602,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       gotoNextScreen("response");
       // setFinalReports("A plenty response");
       setOnFinish({
-        setFinalRpts: (reports: EvalGenReport) => {
+        setFinalRpts: (reports: EvalFunction[]) => {
           close();
           setFinalReports(reports);
         },
@@ -775,26 +768,17 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       // Update annotation for current response (if any)
       // TODO: Fix this for generate case when num resp per prompt > 1
 
-<<<<<<< HEAD
       if (
         grades[shownResponse.uid] ||
         holisticGrade ||
         (annotation && annotation.trim())
       ) {
-=======
-      if (grades[shownResponse.uid] || holisticGrade || (annotation && annotation.trim())) {
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
         executor?.setGradeForExample(
           shownResponse.uid,
           grades[shownResponse.uid],
           holisticGrade,
-<<<<<<< HEAD
           annotation ? annotation.trim() : null,
         );
-=======
-          annotation ? annotation.trim() : null
-        ); 
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
       }
 
       if (
@@ -871,7 +855,6 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       updateShownResponseUniqueIndex();
     };
 
-<<<<<<< HEAD
     const updateShownResponseUniqueIndex = () => {
       let idx = 0;
       for (const resp of responses) {
@@ -902,13 +885,10 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       setShownResponse(responses[shownResponseIdx]);
     }, [shownResponseIdx]);
 
-=======
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
     const estimateGPTCalls = () => {
       return executor
-        ? `This will trigger around ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT4Calls} GPT-4o and ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT35Calls} GPT-3.5-turbo-16k calls.`
+        ? `This will trigger around ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT4Calls} GPT-4o and ${executor.estimateNumGPTCalls(grades[shownResponse?.uid]).numGPT35Calls} GPT-4o-mini calls.`
         : "# estimated GPT calls not available.";
-<<<<<<< HEAD
     };
 
     const updateCriteriaForDisplay = () => {
@@ -927,10 +907,22 @@ If you determine the feedback corresponds to a new criteria, your response shoul
       setScreen(screenName);
     };
 
+    const handleGradingDone = async () => {
+      await executor?.waitForCompletion();
+      const filteredFunctions = await executor?.filterEvaluationFunctions(0.25);
+      console.log("filteredFunctions", filteredFunctions);
+
+      // schema is {
+      //   failureCoverage: coverage,
+      //   falseFailureRate,
+      //   selectedEvalFunctions: bestEvalFunctions,
+      //   allEvalFunctionReports: evalFunctionReport,
+      // };
+      // set state
+      setReports(filteredFunctions);
+    };
+
     // const [onFinish, setOnFinish] = useState(null);
-=======
-    }
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
 
     return (
       <Modal
@@ -941,7 +933,6 @@ If you determine the feedback corresponds to a new criteria, your response shoul
         closeOnClickOutside={true}
         style={{ position: "relative", left: "-5%" }}
       >
-<<<<<<< HEAD
         {screen === "response" && (
           <Grid h={window?.innerHeight * 0.8}>
             <Grid.Col span={8}>
@@ -959,22 +950,8 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                   gotoPrevResponse={prevResponse2}
                   estimateGPTCalls={estimateGPTCalls}
                   gotoNextScreen={gotoNextScreen}
+                  handleGradingDone={handleGradingDone}
                 />
-=======
-        <Grid h={window?.innerHeight * 0.8}>
-          <Grid.Col span={8}>
-            <Stack justify="space-between">
-              {/* View showing the response the user is currently grading */}
-              <GradingView
-                shownResponse={shownResponse}
-                numGPT4Calls={numGPT4Calls}
-                numGPT35Calls={numGPT35Calls}
-                logs={logs}
-                gotoNextResponse={nextResponse}
-                gotoPrevResponse={prevResponse}
-                estimateGPTCalls={estimateGPTCalls}
-              />
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
 
                 {/* Progress bar */}
                 {/* <Flex justify="left" align="center" gap="md">
@@ -1150,12 +1127,8 @@ If you determine the feedback corresponds to a new criteria, your response shoul
         {screen === "report" && (
           <Grid>
             <ReportCardView
-              report={{
-                criteria: criteria,
-                failureCoverage: 99.2,
-                falseFailureRate: 66.7,
-              }}
-              onFinish={(reports: EvalGenReport) => {
+              report={reports}
+              onFinish={(reports: EvalFunction[]) => {
                 onFinish.setFinalRpts(reports);
               }}
               getGradeCount={(crit: EvalCriteria, grade: boolean) => {
@@ -1186,40 +1159,30 @@ const HeaderText = ({ children }: { children: ReactNode }) => {
 
 interface GradingViewProps {
   shownResponse: LLMResponse | undefined;
-<<<<<<< HEAD
   shownResponseIdx: number;
   responseCount: number;
-=======
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
   numGPT4Calls: number;
   numGPT35Calls: number;
   logs: { date: Date; message: string }[];
   gotoPrevResponse: () => void;
   gotoNextResponse: () => void;
   estimateGPTCalls: () => string;
-<<<<<<< HEAD
   gotoNextScreen: (screenName: string) => void;
-=======
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
+  handleGradingDone: () => void;
 }
 
 const GradingView: React.FC<GradingViewProps> = ({
   shownResponse,
-<<<<<<< HEAD
   shownResponseIdx,
   responseCount,
-=======
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
   numGPT4Calls,
   numGPT35Calls,
   logs,
   gotoPrevResponse,
   gotoNextResponse,
   estimateGPTCalls,
-<<<<<<< HEAD
   gotoNextScreen,
-=======
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
+  handleGradingDone,
 }) => {
   // Calculate inner values only when shownResponse changes
   const responseText = useMemo(
@@ -1309,16 +1272,7 @@ const GradingView: React.FC<GradingViewProps> = ({
           </div>
 
           {/* Go forward to the next response */}
-<<<<<<< HEAD
           <Tooltip label={estimateGPTCalls()} withArrow>
-=======
-          <Tooltip
-            label={
-              estimateGPTCalls()
-            }
-            withArrow
-          >
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
             <Button variant="white" color="dark" onClick={gotoNextResponse}>
               <IconChevronRight />
             </Button>
@@ -1367,25 +1321,17 @@ const GradingView: React.FC<GradingViewProps> = ({
         </Flex>
         <Flex direction="column">
           <Flex justify="space-between" align="center">
-<<<<<<< HEAD
             <Text size="lg" weight={500} mb="sm">
               LLM Activity
             </Text>
             {/* GPT Call Tally */}
             <Text size="sm" color="dark" style={{ fontStyle: "italic" }}>
               Executed {numGPT4Calls} GPT-4o calls and {numGPT35Calls}{" "}
-              GPT-3.5-Turbo-16k calls.
-=======
-            <Text size="lg" weight={500} mb="sm">LLM Activity</Text>
-            {/* GPT Call Tally */}
-            <Text size="sm" color="dark" style={{ fontStyle: "italic" }}>
-              Executed {numGPT4Calls} GPT-4o calls and {numGPT35Calls} GPT-3.5-Turbo-16k calls.
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
+              GPT-4o-mini calls.
             </Text>
           </Flex>
           <div
             style={{
-<<<<<<< HEAD
               backgroundColor: "#f0f0f0",
               color: "#333",
               fontFamily: "monospace",
@@ -1395,17 +1341,6 @@ const GradingView: React.FC<GradingViewProps> = ({
               overflowY: "auto",
               borderRadius: "8px",
               border: "1px solid #ddd",
-=======
-              backgroundColor: "#f0f0f0", 
-              color: "#333",
-              fontFamily: "monospace",
-              padding: "12px",
-              width: "calc(100% - 30px)", 
-              height: "200px",
-              overflowY: "auto",
-              borderRadius: "8px",
-              border: "1px solid #ddd", 
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
               marginRight: "20px", // Space on the right
             }}
             ref={(el) => {
@@ -1416,13 +1351,9 @@ const GradingView: React.FC<GradingViewProps> = ({
           >
             {logs.map((log, index) => (
               <div key={index}>
-<<<<<<< HEAD
                 <span style={{ color: "#4A90E2" }}>
                   {log.date.toLocaleString()} -{" "}
                 </span>
-=======
-                <span style={{ color: '#4A90E2' }}>{log.date.toLocaleString()} - </span> 
->>>>>>> c979cf1 (Adding UI indicators of how many LLM calls are executed)
                 <span>{log.message}</span>
               </div>
             ))}
@@ -1435,8 +1366,10 @@ const GradingView: React.FC<GradingViewProps> = ({
             leftIcon={<IconSparkles size={14} />}
             variant="gradient"
             gradient={{ from: "blue", to: "green", deg: 45 }}
-            onClick={() => {
+            onClick={async () => {
               // console.log("(3) gotoNextScreen", gotoNextScreen);
+              // Get the evaluation functions
+              await handleGradingDone();
               gotoNextScreen("report");
             }}
           >
@@ -1449,9 +1382,9 @@ const GradingView: React.FC<GradingViewProps> = ({
 };
 
 interface ReportCardViewProps {
-  report: EvalGenReport;
+  report: EvalFunctionSetReport;
   // recomputeAlignment,
-  onFinish: (reports: EvalGenReport) => void;
+  onFinish: (reports: EvalFunction[]) => void;
   getGradeCount: (crit: EvalCriteria, grade: boolean) => number;
   getStateValue: (stateId: number) => number;
 }
@@ -1464,41 +1397,44 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({
   getGradeCount,
   getStateValue,
 }) => {
-  // The criteria cards, now with report information
 
-  const [finalReport, setFinalReport] = useState(report);
+  const [selectedEvalFunctions, setSelectedEvalFunctions] = useState<EvalFunction[]>(report.selectedEvalFunctions);
 
   const onSelect = (criterion: EvalCriteria, isSelected: boolean) => {
     if (isSelected) {
-      finalReport.criteria.push(criterion);
+      const matchingFunction = report.selectedEvalFunctions.find(func => func.evalCriteria === criterion);
+      if (matchingFunction && !selectedEvalFunctions.includes(matchingFunction)) {
+        setSelectedEvalFunctions([...selectedEvalFunctions, matchingFunction]);
+      }
     } else {
-      finalReport.criteria = finalReport.criteria.filter(
-        (c) => c !== criterion,
-      );
+      setSelectedEvalFunctions(selectedEvalFunctions.filter(func => func.evalCriteria !== criterion));
     }
-    setFinalReport(finalReport);
-  };
+  }
+
+  // The criteria cards, now with report information
   const cards = useMemo(() => {
     const res = [];
 
     // Iterate through selected eval functions and create cards
-    // for (const selectedFunc of report.selectedEvalFunctions) {
-    //   const crit = selectedFunc.evalCriteria;
-    //   // Find corresponding report in allEvalFunctionReports map from criteria to list
-    //   const critEvalFuncReports = report.allEvalFunctionReports.get(crit);
-    //   const evalFuncReport = critEvalFuncReports.find(
-    //     (rep) => rep.evalFunction === selectedFunc,
-    //   );
+    for (const selectedFunc of report.selectedEvalFunctions) {
+      const crit = selectedFunc.evalCriteria;
+      // Find corresponding report in allEvalFunctionReports map from criteria to list
+      const critEvalFuncReports = report.allEvalFunctionReports.get(crit);
+      const evalFuncReport = critEvalFuncReports.find(
+        (rep) => rep.evalFunction === selectedFunc,
+      );
 
-    //   // Get the functions that were not selected for this criteria
-    //   const otherFuncs = critEvalFuncReports.filter(
-    //     (rep) => rep.evalFunction !== selectedFunc,
-    //   );
-    for (const crit of report.criteria) {
+      // Get the functions that were not selected for this criteria
+      const otherFuncs = critEvalFuncReports.filter(
+        (rep) => rep.evalFunction !== selectedFunc,
+      );
+
       res.push(
         <ReportCriteriaCard
           criterion={crit}
           key={crit.uid}
+          evalFunctionReport={evalFuncReport}
+          otherFunctions={otherFuncs}
           // onCheck={(checked) => {
           //   crit.selected = checked;
           //   recomputeAlignment();
@@ -1562,7 +1498,7 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({
           <Button
             onClick={() => {
               // console.log("finalReport", finalReport);
-              onFinish(finalReport);
+              onFinish(selectedEvalFunctions);
             }}
           >
             Finish with selected evaluators
@@ -1575,6 +1511,8 @@ const ReportCardView: React.FC<ReportCardViewProps> = ({
 
 interface ReportCriteriaCardProps {
   criterion: EvalCriteria;
+  evalFunctionReport: EvalFunctionReport;
+  otherFunctions: EvalFunctionReport[];
   // onChange: (changedCriteria: EvalCriteria) => void;
   // onDelete: () => void;
   // initiallyOpen?: boolean;
@@ -1587,6 +1525,8 @@ interface ReportCriteriaCardProps {
 
 const ReportCriteriaCard: React.FC<ReportCriteriaCardProps> = ({
   criterion,
+  evalFunctionReport,
+  otherFunctions,
   // onChange,
   // onDelete,
   // initiallyOpen,
@@ -1601,12 +1541,12 @@ const ReportCriteriaCard: React.FC<ReportCriteriaCardProps> = ({
   const [checked, setChecked] = useState(true);
 
   // Simulates eval functions that are expected to be passed in later on (TODO)
-  const evalFuncs = [
-    { evalFunction: { code: "To be provided (1) ..." } },
-    { evalFunction: { code: "To be provided (2) ..." } },
-    { evalFunction: { code: "To be provided (3) ..." } },
-  ];
-  const unselectedImplementations = evalFuncs.map((item) => (
+  // const evalFuncs = [
+  //   { evalFunction: { code: "To be provided (1) ..." } },
+  //   { evalFunction: { code: "To be provided (2) ..." } },
+  //   { evalFunction: { code: "To be provided (3) ..." } },
+  // ];
+  const unselectedImplementations = otherFunctions.map((item) => (
     <div key={uuid()}>
       <Code style={{ whiteSpace: "pre-wrap" }} key={uuid()}>
         {item.evalFunction.code}

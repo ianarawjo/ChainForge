@@ -60,10 +60,9 @@ import { Dict, LLMResponse, QueryProgress } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import EvalGenModal, {
-  EvalGenModalRef,
-  ReportCardScreen,
+  EvalGenModalRef
 } from "./EvalGenModal";
-import { EvalGenReport } from "./backend/evalgen/typing";
+import { EvalFunction } from "./backend/evalgen/typing";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
@@ -663,32 +662,33 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
     evalGenModalRef.current?.trigger(resps, onFinalReportsReady);
   };
 
-  const onFinalReportsReady = (reports: EvalGenReport) => {
+
+  const onFinalReportsReady = (selectedFunctions: EvalFunction[]) => {
     // Placeholder for process the final reports returned from EvalGenModel
-    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!! final reports", reports);
+    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!! final functions", selectedFunctions);
     // let kkk = 1;
-    for (const crit of reports.criteria) {
+    for (const func of selectedFunctions) {
       // setTimeout(() => {
       // console.log("crit", crit);
-      if (crit.eval_method === "code") {
+      if (func.evalCriteria.eval_method === "code") {
         // Python
         addEvaluator(
-          crit.shortname,
+          func.evalCriteria.shortname,
           "python",
           {
-            code: "def evaluate(r):\n\treturn len(r.text)", // to be populated once python code is implemented for the criteria
+            code: func.code, // to be populated once python code is implemented for the criteria
             sandbox: true,
           },
           false,
         );
-      } else if (crit.eval_method === "expert") {
+      } else if (func.evalCriteria.eval_method === "expert") {
         // LLM
         addEvaluator(
-          crit.shortname,
+          func.evalCriteria.shortname,
           "llm",
           {
             // to be populated once LLM code is implemented for the criteria
-            prompt: "",
+            prompt: func.code,
             format: "bin",
           },
           false,
@@ -696,10 +696,10 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
       } else {
         // JavaScript
         addEvaluator(
-          crit.shortname,
+          func.evalCriteria.shortname,
           "javascript",
           {
-            code: "function evaluate(r) {\n\treturn r.text.length;\n}", // to be populated once javascript code is implemented for the criteria
+            code: func.code,
           },
           false,
         );
