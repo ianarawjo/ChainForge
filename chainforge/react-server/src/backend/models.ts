@@ -343,7 +343,7 @@ export class RateLimiter {
     // Rate limit per model, and abort if the API request takes 3 minutes or more.
     return this.getInstance()
       .getLimiter(model)
-      .schedule({ expiration: 180000 }, () => {
+      .schedule({}, () => {
         if (should_cancel && should_cancel())
           throw new UserForcedPrematureExit();
         return func();

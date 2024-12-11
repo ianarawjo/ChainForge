@@ -1762,8 +1762,8 @@ export function merge_response_objs(
     prompt: resp_obj_B.prompt,
     query: resp_obj_B.query,
     llm: resp_obj_B.llm,
-    vars: resp_obj_B.vars,
-    metavars: resp_obj_B.metavars,
+    vars: resp_obj_B.vars ?? (resp_obj_B as any).info ?? {}, // backwards compatibility---vars used to be 'info'
+    metavars: resp_obj_B.metavars ?? {},
     uid: resp_obj_B.uid,
   };
   if (resp_obj_B.chat_history !== undefined)
