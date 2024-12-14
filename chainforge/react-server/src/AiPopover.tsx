@@ -30,7 +30,7 @@ import { queryLLM } from "./backend/backend";
 import { splitText } from "./SplitNode";
 import { escapeBraces } from "./backend/template";
 import { cleanMetavarsFilterFunc } from "./backend/utils";
-import { Dict, VarsContext } from "./backend/typing";
+import { Dict, TabularDataColType, VarsContext } from "./backend/typing";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -74,7 +74,7 @@ export const buildGenEvalCodePrompt = (
   specPrompt: string,
   manyFuncs?: boolean,
   onlyBooleanFuncs?: boolean,
-) => `You are to generate ${manyFuncs ? "many different functions" : "one function"} to evaluate textual data, given a user-specified specification. 
+) => `You are to generate ${manyFuncs ? "many different functions" : "one function"} to evaluate textual data, given a user-specified specification.
 The function${manyFuncs ? "s" : ""} will be mapped over an array of objects of type ResponseInfo.
 ${manyFuncs ? "Each" : "Your"} solution must contain a single function called 'evaluate' that takes a single object, 'r', of type ResponseInfo. A ResponseInfo is defined as:
 
@@ -84,8 +84,8 @@ For instance, here is an evaluator that returns the length of a response:
 
 \`\`\`${progLang === "javascript" ? INFO_EXAMPLE_JS : INFO_EXAMPLE_PY}\`\`\`
 
-You can only write in ${progLang.charAt(0).toUpperCase() + progLang.substring(1)}. 
-You ${progLang === "javascript" ? 'CANNOT import any external packages, and always use "let" to define variables instead of "var".' : "can use imports if necessary. Do not include any type hints."} 
+You can only write in ${progLang.charAt(0).toUpperCase() + progLang.substring(1)}.
+You ${progLang === "javascript" ? 'CANNOT import any external packages, and always use "let" to define variables instead of "var".' : "can use imports if necessary. Do not include any type hints."}
 Your function${manyFuncs ? "s" : ""} can ONLY return ${onlyBooleanFuncs ? "boolean" : "boolean, numeric, or string"} values.
 ${context}
 Here is the user's specification:
@@ -226,6 +226,220 @@ export function AIPopover({
   );
 }
 
+export interface AIGenReplaceTablePopoverProps {
+  // TabularDataColType for the Extend feature to use as a basis.
+  values: Dict<TabularDataColType> | TabularDataColType[];
+  // Takes a list of TabularDataColType that the popover will call to add new rows
+  onAddRows: (newRows: TabularDataColType[]) => void;
+  // Takes a list of TabularDataColType that the popover will call to replace the existing rows
+  onReplaceRows: (newRows: TabularDataColType[]) => void;
+  // A boolean that indicates whether the values are in a loading state
+  areValuesLoading: boolean;
+  // A function that takes a boolean that the popover will call to indicate values are loading (true) or finished (false)
+  setValuesLoading: (isLoading: boolean) => void;
+}
+
+/**
+ * AI Popover UI for TablularData nodes
+ */
+export function AIGenReplaceTablePopover({
+  values,
+  onAddRows,
+  onReplaceRows,
+  areValuesLoading,
+  setValuesLoading,
+}: AIGenReplaceTablePopoverProps) {
+  // API keys and provider
+  const apiKeys = useStore((state) => state.apiKeys);
+  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
+
+  // Alert context
+  const showAlert = useContext(AlertModalContext);
+
+  // Command Fill state
+  const [commandFillNumber, setCommandFillNumber] = useState<number>(3);
+  const [isCommandFillLoading, setIsCommandFillLoading] = useState(false);
+  const [didCommandFillError, setDidCommandFillError] = useState(false);
+
+  // Generate and Replace state
+  const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(3);
+  const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState("");
+  const [genDiverseOutputs, setGenDiverseOutputs] = useState(false);
+  const [didGenerateAndReplaceError, setDidGenerateAndReplaceError] =
+    useState(false);
+
+  // Check if there are any non-empty rows
+  const nonEmptyRows = useMemo(
+    () =>
+      Object.values(values).filter((row) => row.header.trim() !== "").length, // Only count rows with non-empty headers
+    [values], // values now holds the TabularDataColType[]
+  );
+
+  // Check if there are enough rows to suggest autofilling
+  const enoughRowsForSuggestions = useMemo(
+    () => nonEmptyRows >= ROW_CONSTANTS.beginAutofilling,
+    [nonEmptyRows],
+  );
+
+  const showWarning = useMemo(
+    () => enoughRowsForSuggestions && nonEmptyRows < ROW_CONSTANTS.warnIfBelow,
+    [enoughRowsForSuggestions, nonEmptyRows],
+  );
+
+  const handleGenerateAndReplace = async () => {
+    setDidGenerateAndReplaceError(false);
+    setValuesLoading(true);
+
+    try {
+      console.log("Generating rows with:", {
+        prompt: generateAndReplacePrompt,
+        count: generateAndReplaceNumber,
+        diverseOutputs: genDiverseOutputs,
+        provider: aiFeaturesProvider,
+      });
+
+      const model = getAIFeaturesModels(aiFeaturesProvider)?.large;
+      if (!model) {
+        throw new Error(
+          `Invalid or missing model for provider: ${aiFeaturesProvider}`,
+        );
+      }
+
+      const newRows = await generateAndReplace(
+        generateAndReplacePrompt,
+        generateAndReplaceNumber,
+        genDiverseOutputs,
+        aiFeaturesProvider,
+        apiKeys,
+      );
+
+      console.log("Generated rows:", newRows);
+      onReplaceRows(
+        newRows.map((row) => ({ key: row, header: row }) as TabularDataColType),
+      );
+    } catch (e) {
+      console.error("Error in generateAndReplace:", e);
+      setDidGenerateAndReplaceError(true);
+      if (e instanceof AIError) {
+        showAlert && showAlert(e.message);
+      } else {
+        showAlert && showAlert("Unknown error occurred. Please try again.");
+      }
+    } finally {
+      setValuesLoading(false);
+    }
+  };
+
+  const handleCommandFill = async () => {
+    setIsCommandFillLoading(true);
+    setDidCommandFillError(false);
+
+    try {
+      const newRows = await autofill(
+        Object.values(values).map((row) => row.header),
+        commandFillNumber,
+        aiFeaturesProvider,
+        apiKeys,
+      );
+      onAddRows(
+        newRows.map((row) => ({ key: row, header: row }) as TabularDataColType),
+      );
+    } catch (error) {
+      setDidCommandFillError(true);
+    } finally {
+      setIsCommandFillLoading(false);
+    }
+  };
+
+  const extendUI = (
+    <Stack>
+      {didCommandFillError && (
+        <Text size="xs" color="red">
+          Failed to generate rows. Please try again.
+        </Text>
+      )}
+      <NumberInput
+        label="Rows to add"
+        mt={5}
+        min={1}
+        max={10}
+        value={commandFillNumber}
+        onChange={(num) => setCommandFillNumber(num || 1)}
+      />
+      {showWarning && (
+        <Text size="xs" color="grape">
+          You may want to add more fields for better suggestions.
+        </Text>
+      )}
+      <Button
+        size="sm"
+        variant="light"
+        color="grape"
+        fullWidth
+        onClick={handleCommandFill}
+        disabled={!enoughRowsForSuggestions}
+        loading={isCommandFillLoading}
+      >
+        Extend
+      </Button>
+    </Stack>
+  );
+
+  const replaceUI = (
+    <Stack>
+      {didGenerateAndReplaceError && (
+        <Text size="xs" color="red">
+          Failed to replace rows. Please try again.
+        </Text>
+      )}
+      <Textarea
+        label="Generate data for..."
+        value={generateAndReplacePrompt}
+        onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}
+      />
+      <NumberInput
+        label="Rows to generate"
+        min={1}
+        max={10}
+        value={generateAndReplaceNumber}
+        onChange={(num) => setGenerateAndReplaceNumber(num || 1)}
+      />
+      <Switch
+        label="Generate diverse outputs"
+        checked={genDiverseOutputs}
+        onChange={(e) => setGenDiverseOutputs(e.currentTarget.checked)}
+      />
+      <Button
+        size="sm"
+        variant="light"
+        color="grape"
+        fullWidth
+        onClick={handleGenerateAndReplace}
+        loading={areValuesLoading}
+      >
+        Replace
+      </Button>
+    </Stack>
+  );
+
+  return (
+    <AIPopover>
+      <Tabs color="grape" defaultValue="replace">
+        <Tabs.List grow>
+          <Tabs.Tab value="replace">Replace</Tabs.Tab>
+          <Tabs.Tab value="extend">Extend</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="extend" pb="xs">
+          {extendUI}
+        </Tabs.Panel>
+        <Tabs.Panel value="replace" pb="xs">
+          {replaceUI}
+        </Tabs.Panel>
+      </Tabs>
+    </AIPopover>
+  );
+}
+
 export interface AIGenReplaceItemsPopoverProps {
   // Strings for the Extend feature to use as a basis.
   values: Dict<string> | string[];
@@ -308,6 +522,7 @@ export function AIGenReplaceItemsPopover({
   const handleGenerateAndReplace = () => {
     setDidGenerateAndReplaceError(false);
     setValuesLoading(true);
+
     generateAndReplace(
       generateAndReplacePrompt,
       generateAndReplaceNumber,
@@ -604,10 +819,10 @@ export function AIGenCodeEvaluatorPopover({
 
     const template = `Edit the code below according to the following: ${editPrompt}
 
-You ${progLang === "javascript" ? "CANNOT import any external packages." : "can use imports if necessary. Do not include any type hints."} 
+You ${progLang === "javascript" ? "CANNOT import any external packages." : "can use imports if necessary. Do not include any type hints."}
 Functions should only return boolean, numeric, or string values. Present the edited code in a single block.
 
-Code: 
+Code:
 \`\`\`${progLang}
 ${currentEvalCode}
 \`\`\``;

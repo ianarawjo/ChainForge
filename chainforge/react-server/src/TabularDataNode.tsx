@@ -5,7 +5,14 @@ import React, {
   useCallback,
   useContext,
 } from "react";
-import { Menu, NumberInput, Switch, Text, Tooltip } from "@mantine/core";
+import {
+  Menu,
+  NumberInput,
+  Switch,
+  Text,
+  Tooltip,
+  Skeleton,
+} from "@mantine/core";
 import EditableTable from "./EditableTable";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
@@ -24,6 +31,8 @@ import useStore from "./store";
 import { sampleRandomElements } from "./backend/utils";
 import { Dict, TabularDataRowType, TabularDataColType } from "./backend/typing";
 import { Position } from "reactflow";
+import { AIGenReplaceTablePopover } from "./AiPopover";
+import AISuggestionsManager from "./backend/aiSuggestionsManager";
 
 const defaultRows: TabularDataRowType[] = [
   {
@@ -499,6 +508,38 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
     [ref],
   );
 
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [rowValues, setRowValues] = useState<string[]>(
+    tableData.map((row) => row.question || ""), // Assuming 'question' column holds data for rows
+  );
+
+  const addMultipleRows = (newRows: TabularDataColType[]) => {
+    const addedRows = newRows.map((value) => {
+      const newRow: TabularDataRowType = { __uid: uuidv4() };
+      tableColumns.forEach((col) => {
+        newRow[col.key] = col.key === "question" ? value.header : ""; // Use `value.header` for 'question' column
+      });
+      return newRow;
+    });
+
+    setTableData((prev) => [...prev, ...addedRows]);
+    setRowValues((prev) => [...prev, ...newRows.map((row) => row.header)]); // Update `rowValues` based on `header`
+  };
+
+  // Function to replace all rows in the table
+  const replaceRows = (newRows: TabularDataColType[]) => {
+    const replacedRows = newRows.map((value) => {
+      const newRow: TabularDataRowType = { __uid: uuidv4() };
+      tableColumns.forEach((col) => {
+        newRow[col.key] = col.key === "question" ? value.header : ""; // Use `value.header` if `newRows` is of type `TabularDataColType[]`
+      });
+      return newRow;
+    });
+    setTableData(replacedRows);
+    setRowValues(newRows.map((row) => row.header)); // Set `rowValues` based on `header`
+  };
+
   return (
     <BaseNode
       classNames="tabular-data-node"
@@ -511,6 +552,14 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
         nodeId={id}
         icon={"🗂️"}
         customButtons={[
+          <AIGenReplaceTablePopover
+            key="ai-popover"
+            values={tableColumns} // Use tableColumns instead of rows
+            onAddRows={addMultipleRows}
+            onReplaceRows={replaceRows}
+            areValuesLoading={isLoading}
+            setValuesLoading={setIsLoading}
+          />,
           <Tooltip
             key={0}
             label="Accepts xlsx, jsonl, and csv files with a header row"
@@ -525,7 +574,13 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
           </Tooltip>,
         ]}
       />
-
+      <Skeleton visible={isLoading}>
+        <div ref={setRef}>
+          {tableColumns.map((col) => (
+            <div key={col.key}>{col.header}</div>
+          ))}
+        </div>
+      </Skeleton>
       <RenameValueModal
         ref={renameColumnModal}
         initialValue={
