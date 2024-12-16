@@ -1585,8 +1585,21 @@ function _extract_openai_chat_choice_content(choice: Dict): string {
   ) {
     const func = choice.message.function_call;
     return "[[FUNCTION]] " + func.name + func.arguments.toString();
+  } else if (
+    choice.finish_reason === "tool_calls" ||
+    ("tool_calls" in choice.message &&
+      choice.message.tool_calls.length > 0)
+  ) {
+    const tools = choice.message.tool_calls;
+    return "[[TOOLS]] " + tools.toString();
   } else {
-    return choice.message.content;
+    // Extract the content. Note that structured outputs in OpenAI's API as of late 2024
+    // can sometimes output a response to a "refusal" key, which is annoying. We check for that here:
+    if ("refusal" in choice.message && typeof choice.message.refusal === "string")
+      return choice.message.refusal;
+    else
+      // General chat outputs
+      return choice.message.content;
   }
 }
 
