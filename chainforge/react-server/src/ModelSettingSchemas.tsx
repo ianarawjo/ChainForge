@@ -106,24 +106,31 @@ const ChatGPTSettings: ModelSettingsDict = {
       response_format: {
         type: "string",
         title: "response_format",
-        enum: ["text", "json_object"],
         description:
-          "An object specifying the format that the model must output. Currently, can only be text or JSON. Only works with newest GPT models. IMPORTANT: when using JSON mode, you must also instruct the model to produce JSON yourself via a system or user message. Without this, the model may generate an unending stream of whitespace until the generation reaches the token limit, resulting in a long-running and seemingly 'stuck' request.",
+          "An object specifying the format that the model must output. Can be 'text' or 'json_object' or (late 2024) can be a JSON schema specifying structured outputs. In ChainForge, you should only specify text, json_object, or the verbatim JSON schema---do not add a JSON object with a 'type' parameter surrounding these values. JSON modes only works with newest GPT models. IMPORTANT: when using JSON mode, you must also instruct the model to produce JSON yourself via a system or user message.",
         default: "text",
       },
-      functions: {
+      tools: {
         type: "string",
-        title: "functions",
+        title: "tools",
         description:
           "A list of JSON schema objects, each with 'name', 'description', and 'parameters' keys, which describe functions the model may generate JSON inputs for. For more info, see https://github.com/openai/openai-cookbook/blob/main/examples/How_to_call_functions_with_chat_models.ipynb",
         default: "",
       },
-      function_call: {
+      tool_choice: {
         type: "string",
-        title: "function_call",
+        title: "tool_choice",
         description:
           "Controls how the model responds to function calls. 'none' means the model does not call a function, and responds to the end-user. 'auto' means the model can pick between an end-user or calling a function. Specifying a particular function name forces the model to call only that function. Leave blank for default behavior.",
         default: "",
+      },
+      parallel_tool_calls: {
+        type: "boolean",
+        title: "parallel_tool_calls",
+        description:
+          "Whether to enable parallel function calling during tool use. Defaults to true.",
+        enum: [true, false],
+        default: true,
       },
       top_p: {
         type: "number",
@@ -203,16 +210,20 @@ const ChatGPTSettings: ModelSettingsDict = {
       "ui:widget": "range",
     },
     response_format: {
-      "ui:help": "Defaults to text.",
-    },
-    functions: {
-      "ui:help":
-        "Leave blank to not specify any functions. NOTE: JSON schema MUST NOT have trailing commas.",
+      "ui:help": "Defaults to 'text'. Set to a JSON schema for structured outputs in newer GPT models.",
       "ui:widget": "textarea",
     },
-    function_call: {
+    tools: {
       "ui:help":
-        "'none' is the default when no functions are present. 'auto' is the default if functions are present.",
+        "Leave blank to not specify any tools. NOTE: JSON schema MUST NOT have trailing commas.",
+      "ui:widget": "textarea",
+    },
+    tool_choice: {
+      "ui:help":
+        "'none' is the default when no tools are present. 'auto' is the default if tools are present.",
+    },
+    parallel_tool_calls: {
+      "ui:widget": "radio",
     },
     top_p: {
       "ui:help":
@@ -264,7 +275,11 @@ const ChatGPTSettings: ModelSettingsDict = {
         ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
     },
     response_format: (str) => {
-      return { type: str };
+      if (typeof str !== "string") return str;
+      if (str.trim().length === 0) return "text";
+      if (str === "text" || str === "json_object") return { type: str };
+      // If it's not one of these options, we assume it's the new structured outputs JSON schema:
+      return { type: "json_schema", json_schema: JSON.parse(str) };
     },
   },
 };
@@ -1279,6 +1294,13 @@ const OllamaSettings: ModelSettingsDict = {
         maximum: 1.0,
         multipleOf: 0.01,
       },
+      format: {
+        type: "string",
+        title: "format",
+        description:
+          "The JSON schema to use for structured outputs. Note that using structured outputs, you should still prompt the model to output JSON. (Supported by Ollama since Dec 6 2024. For more info, see https://ollama.com/blog/structured-outputs)",
+        default: "",
+      },
       raw: {
         type: "boolean",
         title: "raw",
@@ -1328,6 +1350,11 @@ const OllamaSettings: ModelSettingsDict = {
     temperature: {
       "ui:help": "Defaults to 1.0.",
       "ui:widget": "range",
+    },
+    format: {
+      "ui:help":
+        "Leave blank to not specify any structured outputs. NOTE: JSON schemas must NOT have trailing commas.",
+      "ui:widget": "textarea",
     },
     raw: {
       "ui:help": "Defaults to false.",

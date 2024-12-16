@@ -240,8 +240,6 @@ export async function call_chatgpt(
       "Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.",
     );
 
-  console.log(OPENAI_BASE_URL);
-
   const configuration = new OpenAIConfig({
     apiKey: OPENAI_API_KEY,
     basePath: OPENAI_BASE_URL ?? undefined,
@@ -253,6 +251,8 @@ export async function call_chatgpt(
   const openai = new OpenAIApi(configuration);
 
   const modelname: string = model.toString();
+
+  // Remove empty params
   if (
     params?.stop !== undefined &&
     (!Array.isArray(params.stop) || params.stop.length === 0)
@@ -270,6 +270,19 @@ export async function call_chatgpt(
       params.function_call.trim().length === 0)
   )
     delete params.function_call;
+  if (
+    params?.tools !== undefined &&
+    (!Array.isArray(params.tools) || params.tools.length === 0)
+  )
+    delete params?.tools;
+  if (
+    params?.tool_choice !== undefined &&
+    (!(typeof params.tool_choice === "string") ||
+      params.tool_choice.trim().length === 0)
+  )
+    delete params.tool_choice;
+  if (params?.tools === undefined && params?.parallel_tool_calls !== undefined)
+    delete params?.parallel_tool_calls;
 
   console.log(`Querying OpenAI model '${model}' with prompt '${prompt}'...`);
 
@@ -1211,6 +1224,15 @@ export async function call_ollama_provider(
   console.log(
     `Calling Ollama API at ${url} for model '${ollama_model}' with prompt '${prompt}' n=${n} times. Please be patient...`,
   );
+
+  // If there are structured outputs specified, convert to an object:
+  if (typeof query.format === "string" && query.format.trim().length > 0) {
+    try {
+      query.format = JSON.parse(query.format);
+    } catch (err) {
+      throw Error("Cannot parse structured output format into JSON: JSON schema is incorrectly structured.");
+    }
+  }
 
   // Call Ollama API
   const resps: Response[] = [];
