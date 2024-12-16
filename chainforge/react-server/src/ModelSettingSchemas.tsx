@@ -121,7 +121,7 @@ const ChatGPTSettings: ModelSettingsDict = {
         type: "string",
         title: "tool_choice",
         description:
-          "Controls how the model responds to function calls. 'none' means the model does not call a function, and responds to the end-user. 'auto' means the model can pick between an end-user or calling a function. Specifying a particular function name forces the model to call only that function. Leave blank for default behavior.",
+          "Controls how the model responds to function calls. 'none' means the model does not call a function, and responds to the end-user. 'auto' means the model can pick between an end-user or calling a function. 'required' means the model must call one or more tools. Specifying a particular function name forces the model to call only that function. Leave blank for default behavior.",
         default: "",
       },
       parallel_tool_calls: {
@@ -210,7 +210,8 @@ const ChatGPTSettings: ModelSettingsDict = {
       "ui:widget": "range",
     },
     response_format: {
-      "ui:help": "Defaults to 'text'. Set to a JSON schema for structured outputs in newer GPT models.",
+      "ui:help":
+        "Defaults to 'text'. Set to a JSON schema for structured outputs in newer GPT models.",
       "ui:widget": "textarea",
     },
     tools: {
@@ -220,7 +221,7 @@ const ChatGPTSettings: ModelSettingsDict = {
     },
     tool_choice: {
       "ui:help":
-        "'none' is the default when no tools are present. 'auto' is the default if tools are present.",
+        "'none' is the default when no tools are present. 'auto' is the default if tools are present. 'required' means the model must call one or more tools. Specifying a specific tool via its name will force the model to use that tool.",
     },
     parallel_tool_calls: {
       "ui:widget": "radio",
@@ -266,6 +267,18 @@ const ChatGPTSettings: ModelSettingsDict = {
       if (s.length === 0) return "";
       if (s === "auto" || s === "none") return s;
       else return { name: s };
+    },
+    tools: (str) => {
+      if (typeof str !== "string") return str;
+      if (str.trim().length === 0) return [];
+      return JSON.parse(str); // parse the JSON schema
+    },
+    tool_choice: (str) => {
+      if (typeof str !== "string") return str;
+      const s = str.trim();
+      if (s.length === 0) return "";
+      if (s === "auto" || s === "none" || s === "required") return s;
+      else return { type: "function", function: { name: s } };
     },
     stop: (str) => {
       if (typeof str !== "string") return str;
@@ -402,6 +415,9 @@ const ClaudeSettings: ModelSettingsDict = {
         description:
           "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
         enum: [
+          "claude-3-opus-latest",
+          "claude-3-5-sonnet-latest",
+          "claude-3-5-haiku-latest",
           "claude-3-opus-20240229",
           "claude-3-sonnet-20240229",
           "claude-3-5-sonnet-20240620",
@@ -424,12 +440,15 @@ const ClaudeSettings: ModelSettingsDict = {
           "claude-instant-v1.1-100k",
           "claude-instant-v1.0",
         ],
-        default: "claude-3-5-sonnet-20240620",
+        default: "claude-3-5-sonnet-latest",
         shortname_map: {
           "claude-3-opus-20240229": "claude-3-opus",
+          "claude-3-opus-latest": "claude-3-opus",
           "claude-3-sonnet-20240229": "claude-3-sonnet",
           "claude-3-5-sonnet-20240620": "claude-3.5-sonnet",
+          "claude-3-5-sonnet-latest": "claude-3.5-sonnet",
           "claude-3-haiku-20240307": "claude-3-haiku",
+          "claude-3-5-haiku-latest": "claude-3.5-haiku",
         },
       },
       system_msg: {
@@ -448,6 +467,28 @@ const ClaudeSettings: ModelSettingsDict = {
         minimum: 0,
         maximum: 1,
         multipleOf: 0.01,
+      },
+      tools: {
+        type: "string",
+        title: "tools",
+        description:
+          "Definitions of tools that the model may use, as a list of JSON schema. For more info, see the Anthropic documentation: https://docs.anthropic.com/en/docs/build-with-claude/tool-use#example-api-response-with-a-tool-use-content-block",
+        default: "",
+      },
+      tool_choice: {
+        type: "string",
+        title: "tool_choice",
+        description:
+          "How the model should use the provided tools. The model can use a specific tool by its name, any available tool ('any'), or decide by itself whether to use a tool or not ('auto').",
+        default: "",
+      },
+      parallel_tool_calls: {
+        type: "boolean",
+        title: "parallel_tool_calls",
+        description:
+          "Whether to enable parallel function calling during tool use. Defaults to true.",
+        enum: [true, false],
+        default: true,
       },
       max_tokens_to_sample: {
         type: "integer",
@@ -509,6 +550,18 @@ const ClaudeSettings: ModelSettingsDict = {
       "ui:help": "Defaults to 1.0.",
       "ui:widget": "range",
     },
+    tools: {
+      "ui:help":
+        "Leave blank to not specify any tools. NOTE: JSON schema MUST NOT have trailing commas.",
+      "ui:widget": "textarea",
+    },
+    tool_choice: {
+      "ui:help":
+        "'none' is the default when no tools are present. 'auto' is the default if tools are present.",
+    },
+    parallel_tool_calls: {
+      "ui:widget": "radio",
+    },
     max_tokens_to_sample: {
       "ui:help": "Defaults to 1024.",
     },
@@ -536,6 +589,18 @@ const ClaudeSettings: ModelSettingsDict = {
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
         ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+    tools: (str) => {
+      if (typeof str !== "string") return str;
+      if (str.trim().length === 0) return [];
+      return JSON.parse(str); // parse the JSON schema
+    },
+    tool_choice: (str) => {
+      if (typeof str !== "string") return str;
+      const s = str.trim();
+      if (s.length === 0) return "";
+      if (s === "auto" || s === "any") return { type: s };
+      else return { type: "tool", name: s };
     },
   },
 };
