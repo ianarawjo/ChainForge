@@ -123,11 +123,39 @@ function GARSystemMessage(
 }
 
 /**
+ * Generate the system message used for generate and replace table (GART).
+ * @param n number of rows to generate
+ * @param creative whether the output should be diverse
+ * @param generatePrompts whether the output should be commands
+ * @returns the system message
+ */
+function GARTSystemMessage(
+  n: number,
+  creative?: boolean,
+  generatePrompts?: boolean,
+): string {
+  return `Generate a table with exactly ${n} rows. Format your response as a markdown table using. Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be commands that can be given to an AI chat assistant." : ""} If the user has specified items or inputs to their command, generate a template in Jinja format, with single braces {} around the masked variables.`;
+}
+
+/**
  * Returns a string representing the given rows as a markdown list
  * @param rows to encode
  */
 function encode(rows: Row[]): string {
   return escapeBraces(rows.map((row) => `- ${row}`).join("\n"));
+}
+
+/**
+ * Returns a string representing the given rows and columns as a markdown table
+ * @param cols to encode as headers
+ * @param rows to encode as table rows
+ * @returns a string representing the table in markdown format
+ */
+function encodeTable(cols: string[], rows: Row[]): string {
+  const header = `| ${cols.join(" | ")} |`;
+  const divider = `| ${cols.map(() => "---").join(" | ")} |`;
+  const body = rows.map((row) => `| ${row} |`).join("\n");
+  return escapeBraces(`${header}\n${divider}\n${body}`);
 }
 
 /**
@@ -161,6 +189,58 @@ function decode(mdText: string): Row[] {
 
   return result;
 }
+
+/**
+ * Returns an object containing the columns and rows of the table decoded from the given markdown text. Throws an AIError if the string is not in "markdown table format".
+ * @param mdText markdown text to decode
+ * @returns an object containing the columns and rows of the table
+ */
+function decodeTable(mdText: string): { cols: string[]; rows: Row[] } {
+  // Remove code block markers and trim the text
+  const mdTextCleaned = mdText.replace(/```markdown/g, "").replace(/```/g, "").trim();
+
+  // Split the cleaned text into lines
+  const lines = mdTextCleaned.split("\n").map((line) => line.trim());
+
+  // Validate table structure (header, divider, row)
+  if (lines.length < 3) {
+    throw new AIError(`Invalid table format: ${mdText}`);
+  }
+
+  // Extract header and divider
+  const headerLine = lines[0];
+  const dividerLine = lines[1];
+
+  // Regex to validate the divider line
+  if (!/^(\|\s*-+\s*)+\|$/.test(dividerLine)) {
+    throw new AIError(`Invalid table divider line: ${dividerLine}`);
+  }
+
+  // Parse the headers
+  const cols = headerLine
+    .split("|")
+    .map((col) => col.trim())
+    .filter((col) => col.length > 0);
+
+  // Parse the rows
+  const rows = lines.slice(2).map((line) => {
+    const cells = line
+      .split("|")
+      .map((cell) => cell.trim())
+      .filter((cell) => cell.length > 0);
+
+    // Join the cells with " | "
+    return cells.join(" | ");
+  });
+
+  // Validate the parsed content
+  if (cols.length === 0 || rows.length === 0) {
+    throw new AIError(`Failed to decode output: ${mdText}`);
+  }
+
+  return { cols, rows };
+}
+
 
 /**
  * Uses an LLM to interpret the pattern from the given rows as return new rows following the pattern.
@@ -222,6 +302,83 @@ export async function autofill(
 }
 
 /**
+ * Uses an LLM to interpret the pattern from the given table (columns and rows) and generate new rows following the pattern.
+ * @param input Object containing the columns and rows of the input table.
+ * @param n Number of new rows to generate.
+ * @param provider The LLM provider to use.
+ * @param apiKeys API keys required for the LLM query.
+ * @returns A promise resolving to an object containing updated columns and rows.
+ */
+export async function autofillTable(
+  input: { cols: string[]; rows: Row[] },
+  n: number,
+  provider: string,
+  apiKeys: Dict,
+): Promise<{ cols: string[]; rows: Row[] }> {
+
+  // Hash the arguments to get a unique id
+  const id = JSON.stringify([input, n]);
+
+  // Encode the input table to a markdown table
+  const encoded = encodeTable(input.cols, input.rows);
+
+  // Extract template variables from the columns and rows
+  const templateVariables = [
+    ...new Set([
+      ...new StringTemplate(input.rows.join("\n")).get_vars(),
+      ...new StringTemplate(input.cols.join("\n")).get_vars(),
+    ]),
+  ];
+
+  console.log("System message: ", autofillSystemMessage(n, templateVariables));
+
+  const history: ChatHistoryInfo[] = [
+    {
+      messages: [
+        {
+          role: "system",
+          content: autofillSystemMessage(n, templateVariables),
+        },
+      ],
+      fill_history: {},
+    },
+  ];
+
+  try {
+    // Query the LLM
+    const result = await queryLLM(
+      id,
+      getAIFeaturesModels(provider).small,
+      1,
+      encoded,
+      {},
+      history,
+      apiKeys,
+      true,
+    );
+
+    if (result.errors && Object.keys(result.errors).length > 0)
+      throw new Error(Object.values(result.errors)[0].toString());
+
+    const output = result.responses[0].responses[0] as string;
+    console.log("LLM said: ", output);
+
+    const { cols: new_cols, rows: new_rows } = decodeTable(output);
+
+    // Return the updated table with "n" number of rows
+    return {
+      cols: new_cols,
+      rows: new_rows.slice(0, n),
+    };
+  } catch (error) {
+    console.error("Error in autofillTable:", error);
+    throw new AIError(
+      `Failed to autofill table. Details: ${(error as Error).message || error}`,
+    );
+  }
+}
+
+/**
  * Uses an LLM to generate `n` new rows based on the pattern explained in `prompt`.
  * @param prompt
  * @param n
@@ -272,4 +429,76 @@ export async function generateAndReplace(
 
   const new_items = decode(result.responses[0].responses[0] as string);
   return new_items.slice(0, n);
+}
+
+/**
+ * Uses an LLM to generate a table with `n` rows based on the pattern explained in `prompt`.
+ * @param prompt Description or pattern for the table content.
+ * @param n Number of rows to generate.
+ * @param creative Whether the output should be creative or conventional.
+ * @param provider The LLM provider to use.
+ * @param apiKeys API keys required for the LLM query.
+ * @returns A promise resolving to an object containing the columns and rows of the generated table.
+ */
+export async function generateAndReplaceTable(
+  prompt: string,
+  n: number,
+  creative: boolean,
+  provider: string,
+  apiKeys: Dict,
+): Promise<{ cols: string[]; rows: Row[] }> {
+  // Hash the arguments to get a unique id
+  const id = JSON.stringify([prompt, n]);
+
+  // Determine if the prompt includes the word "prompt"
+  const generatePrompts = prompt.toLowerCase().includes("prompt");
+
+  const history: ChatHistoryInfo[] = [
+    {
+      messages: [
+        {
+          role: "system",
+          content: GARTSystemMessage(n, creative, generatePrompts),
+        },
+      ],
+      fill_history: {},
+    },
+  ];
+
+  const input = `Generate a table with data of ${escapeBraces(prompt)}`;
+
+  try {
+    // Query the LLM
+    const result = await queryLLM(
+      id,
+      getAIFeaturesModels(provider).small,
+      1,
+      input,
+      {},
+      history,
+      apiKeys,
+      true,
+    );
+
+    if (result.errors && Object.keys(result.errors).length > 0)
+      throw new Error(Object.values(result.errors)[0].toString());
+
+    console.log("LLM result: ", result);
+    console.log("LLM said: ", result.responses[0].responses[0]);
+
+    const { cols: new_cols, rows: new_rows } = decodeTable(
+      result.responses[0].responses[0] as string,
+    );
+
+    // Return the generated table with "n" number of rows
+    return {
+      cols: new_cols,
+      rows: new_rows.slice(0, n),
+    };
+  } catch (error) {
+    console.error("Error in generateAndReplaceTable:", error);
+    throw new AIError(
+      `Failed to generate and replace table. Details: ${(error as Error).message || error}`,
+    );
+  }
 }
