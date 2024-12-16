@@ -1615,7 +1615,12 @@ function _extract_openai_chat_choice_content(choice: Dict): string {
     ("tool_calls" in choice.message && choice.message.tool_calls.length > 0)
   ) {
     const tools = choice.message.tool_calls;
-    return "[[TOOLS]] " + tools.toString();
+    return (
+      "[[TOOLS]] " +
+      tools
+        .map((t: Dict) => t.function.name + " " + t.function.arguments)
+        .join("\n\n")
+    );
   } else {
     // Extract the content. Note that structured outputs in OpenAI's API as of late 2024
     // can sometimes output a response to a "refusal" key, which is annoying. We check for that here:
