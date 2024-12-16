@@ -16,6 +16,7 @@ import {
   generateAndReplace,
   AIError,
   getAIFeaturesModels,
+  generateAndReplaceTable,
 } from "./backend/ai";
 import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
 import { AlertModalContext } from "./AlertModal";
@@ -30,7 +31,15 @@ import { queryLLM } from "./backend/backend";
 import { splitText } from "./SplitNode";
 import { escapeBraces } from "./backend/template";
 import { cleanMetavarsFilterFunc } from "./backend/utils";
-import { Dict, TabularDataColType, VarsContext } from "./backend/typing";
+import {
+  Dict,
+  TabularDataColType,
+  TabularDataRowType,
+  VarsContext,
+} from "./backend/typing";
+import { on } from "process";
+import { v4 as uuidv4 } from "uuid";
+import { parseTableData } from "./backend/tableUtils";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -227,15 +236,20 @@ export function AIPopover({
 }
 
 export interface AIGenReplaceTablePopoverProps {
-  // TabularDataColType for the Extend feature to use as a basis.
-  values: Dict<TabularDataColType> | TabularDataColType[];
-  // Takes a list of TabularDataColType that the popover will call to add new rows
-  onAddRows: (newRows: TabularDataColType[]) => void;
-  // Takes a list of TabularDataColType that the popover will call to replace the existing rows
-  onReplaceRows: (newRows: TabularDataColType[]) => void;
-  // A boolean that indicates whether the values are in a loading state
+  // Values in the rows of the table's columns
+  values: TabularDataRowType[];
+  // Function to add new rows
+  onAddRows: (newRows: TabularDataRowType[]) => void;
+  // Function to replace the table
+  onReplaceTable: (
+    columns: TabularDataColType[],
+    rows: TabularDataRowType[],
+  ) => void;
+  // Function to add new columns
+  onAddColumns: (newColumns: TabularDataColType[]) => void;
+  // Indicates if values are loading
   areValuesLoading: boolean;
-  // A function that takes a boolean that the popover will call to indicate values are loading (true) or finished (false)
+  // Callback to set loading state
   setValuesLoading: (isLoading: boolean) => void;
 }
 
@@ -245,7 +259,8 @@ export interface AIGenReplaceTablePopoverProps {
 export function AIGenReplaceTablePopover({
   values,
   onAddRows,
-  onReplaceRows,
+  onReplaceTable,
+  onAddColumns,
   areValuesLoading,
   setValuesLoading,
 }: AIGenReplaceTablePopoverProps) {
@@ -265,14 +280,15 @@ export function AIGenReplaceTablePopover({
   const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(3);
   const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState("");
   const [genDiverseOutputs, setGenDiverseOutputs] = useState(false);
-  const [didGenerateAndReplaceError, setDidGenerateAndReplaceError] =
+  const [didGenerateAndReplaceTableError, setDidGenerateAndReplaceTableError] =
     useState(false);
 
   // Check if there are any non-empty rows
   const nonEmptyRows = useMemo(
     () =>
-      Object.values(values).filter((row) => row.header.trim() !== "").length, // Only count rows with non-empty headers
-    [values], // values now holds the TabularDataColType[]
+      values.filter((row) => Object.values(row).some((val) => val?.trim()))
+        .length,
+    [values],
   );
 
   // Check if there are enough rows to suggest autofilling
@@ -286,49 +302,49 @@ export function AIGenReplaceTablePopover({
     [enoughRowsForSuggestions, nonEmptyRows],
   );
 
-  const handleGenerateAndReplace = async () => {
-    setDidGenerateAndReplaceError(false);
+  const handleGenerateAndReplaceTable = async () => {
+    setDidGenerateAndReplaceTableError(false);
     setValuesLoading(true);
 
     try {
-      console.log("Generating rows with:", {
-        prompt: generateAndReplacePrompt,
-        count: generateAndReplaceNumber,
-        diverseOutputs: genDiverseOutputs,
-        provider: aiFeaturesProvider,
-      });
-
-      const model = getAIFeaturesModels(aiFeaturesProvider)?.large;
-      if (!model) {
-        throw new Error(
-          `Invalid or missing model for provider: ${aiFeaturesProvider}`,
-        );
-      }
-
-      const newRows = await generateAndReplace(
+      // Fetch the generated table
+      const generatedTable = await generateAndReplaceTable(
         generateAndReplacePrompt,
         generateAndReplaceNumber,
         genDiverseOutputs,
         aiFeaturesProvider,
-        apiKeys,
+        apiKeys
       );
 
-      console.log("Generated rows:", newRows);
-      onReplaceRows(
-        newRows.map((row) => ({ key: row, header: row }) as TabularDataColType),
-      );
-    } catch (e) {
-      console.error("Error in generateAndReplace:", e);
-      setDidGenerateAndReplaceError(true);
-      if (e instanceof AIError) {
-        showAlert && showAlert(e.message);
-      } else {
-        showAlert && showAlert("Unknown error occurred. Please try again.");
-      }
+      const { cols, rows } = generatedTable;
+
+      // Transform the result into TabularDataNode format
+      const columns = cols.map((col, index) => ({
+        key: `col-${index}`,
+        header: col,
+      }));
+
+      const tabularRows = rows.map((row) => {
+        const rowData: TabularDataRowType = { __uid: uuidv4() };
+        cols.forEach((col, index) => {
+          rowData[`col-${index}`] = row.split(" | ")[index]?.trim() || "";
+        });
+        return rowData;
+      });
+
+      // Update state with the transformed columns and rows
+      onReplaceTable(columns, tabularRows);
+
+      console.log("Generated table:", { columns, tabularRows });
+    } catch (error) {
+      console.error("Error in generateAndReplaceTable:", error);
+      setDidGenerateAndReplaceTableError(true);
+      showAlert && showAlert("An error occurred. Please try again.");
     } finally {
       setValuesLoading(false);
     }
   };
+
 
   const handleCommandFill = async () => {
     setIsCommandFillLoading(true);
@@ -336,13 +352,13 @@ export function AIGenReplaceTablePopover({
 
     try {
       const newRows = await autofill(
-        Object.values(values).map((row) => row.header),
+        values.map((row) => Object.values(row).join(" ")), // Convert row to a string representation,
         commandFillNumber,
         aiFeaturesProvider,
         apiKeys,
       );
       onAddRows(
-        newRows.map((row) => ({ key: row, header: row }) as TabularDataColType),
+        newRows.map((row) => ({ key: row, header: row }) as TabularDataRowType),
       );
     } catch (error) {
       setDidCommandFillError(true);
@@ -387,7 +403,7 @@ export function AIGenReplaceTablePopover({
 
   const replaceUI = (
     <Stack>
-      {didGenerateAndReplaceError && (
+      {didGenerateAndReplaceTableError && (
         <Text size="xs" color="red">
           Failed to replace rows. Please try again.
         </Text>
@@ -414,7 +430,7 @@ export function AIGenReplaceTablePopover({
         variant="light"
         color="grape"
         fullWidth
-        onClick={handleGenerateAndReplace}
+        onClick={handleGenerateAndReplaceTable}
         loading={areValuesLoading}
       >
         Replace
