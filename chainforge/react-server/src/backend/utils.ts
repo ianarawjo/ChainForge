@@ -240,8 +240,6 @@ export async function call_chatgpt(
       "Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.",
     );
 
-  console.log(OPENAI_BASE_URL);
-
   const configuration = new OpenAIConfig({
     apiKey: OPENAI_API_KEY,
     basePath: OPENAI_BASE_URL ?? undefined,
@@ -253,6 +251,8 @@ export async function call_chatgpt(
   const openai = new OpenAIApi(configuration);
 
   const modelname: string = model.toString();
+
+  // Remove empty params
   if (
     params?.stop !== undefined &&
     (!Array.isArray(params.stop) || params.stop.length === 0)
@@ -270,6 +270,19 @@ export async function call_chatgpt(
       params.function_call.trim().length === 0)
   )
     delete params.function_call;
+  if (
+    params?.tools !== undefined &&
+    (!Array.isArray(params.tools) || params.tools.length === 0)
+  )
+    delete params?.tools;
+  if (
+    params?.tool_choice !== undefined &&
+    (!(typeof params.tool_choice === "string") ||
+      params.tool_choice.trim().length === 0)
+  )
+    delete params.tool_choice;
+  if (params?.tools === undefined && params?.parallel_tool_calls !== undefined)
+    delete params?.parallel_tool_calls;
 
   console.log(`Querying OpenAI model '${model}' with prompt '${prompt}'...`);
 
@@ -548,6 +561,25 @@ export async function call_anthropic(
   delete params?.custom_prompt_wrapper;
   delete params?.max_tokens_to_sample;
   delete params?.system_msg;
+
+  // Tool usage -- remove tool params before passing, if they are empty
+  if (
+    params?.tools !== undefined &&
+    (!Array.isArray(params.tools) || params.tools.length === 0)
+  )
+    delete params?.tools;
+  if (
+    params?.tool_choice !== undefined &&
+    (!(typeof params.tool_choice === "string") ||
+      params.tool_choice.trim().length === 0)
+  )
+    delete params.tool_choice;
+  if (params?.tools === undefined) delete params?.parallel_tool_calls;
+  else {
+    if (params?.tool_choice === undefined) params.tool_choice = { type: "any" };
+    params.tool_choice.disable_parallel_tool_use = !params.parallel_tool_calls;
+    delete params?.parallel_tool_calls;
+  }
 
   // Detect whether to use old text completions or new messaging API
   const use_messages_api = is_newer_anthropic_model(model);
@@ -1173,6 +1205,7 @@ export async function call_ollama_provider(
   const model_type: string = params?.model_type ?? "text";
   const system_msg: string = params?.system_msg ?? "";
   const chat_history: ChatHistory | undefined = params?.chat_history;
+  const format: Dict | string | undefined = params?.format;
 
   // Cleanup
   for (const name of [
@@ -1181,6 +1214,7 @@ export async function call_ollama_provider(
     "model_type",
     "system_msg",
     "chat_history",
+    "format",
   ])
     if (params && name in params) delete params[name];
 
@@ -1189,8 +1223,10 @@ export async function call_ollama_provider(
   const query: Dict = {
     model: ollama_model,
     stream: false,
-    temperature,
-    ...params, // 'the rest' of the settings, passed from the front-end settings
+    options: {
+      temperature,
+      ...params, // 'the rest' of the settings, passed from the front-end settings
+    },
   };
 
   // If the model type is explicitly or implicitly set to "chat", pass chat history instead:
@@ -1211,6 +1247,17 @@ export async function call_ollama_provider(
   console.log(
     `Calling Ollama API at ${url} for model '${ollama_model}' with prompt '${prompt}' n=${n} times. Please be patient...`,
   );
+
+  // If there are structured outputs specified, convert to an object:
+  if (typeof format === "string" && format.trim().length > 0) {
+    try {
+      query.format = JSON.parse(format);
+    } catch (err) {
+      throw Error(
+        "Cannot parse structured output format into JSON: JSON schema is incorrectly structured.",
+      );
+    }
+  }
 
   // Call Ollama API
   const resps: Response[] = [];
@@ -1563,8 +1610,27 @@ function _extract_openai_chat_choice_content(choice: Dict): string {
   ) {
     const func = choice.message.function_call;
     return "[[FUNCTION]] " + func.name + func.arguments.toString();
+  } else if (
+    choice.finish_reason === "tool_calls" ||
+    ("tool_calls" in choice.message && choice.message.tool_calls.length > 0)
+  ) {
+    const tools = choice.message.tool_calls;
+    return (
+      "[[TOOLS]] " +
+      tools
+        .map((t: Dict) => t.function.name + " " + t.function.arguments)
+        .join("\n\n")
+    );
   } else {
-    return choice.message.content;
+    // Extract the content. Note that structured outputs in OpenAI's API as of late 2024
+    // can sometimes output a response to a "refusal" key, which is annoying. We check for that here:
+    if (
+      "refusal" in choice.message &&
+      typeof choice.message.refusal === "string"
+    )
+      return choice.message.refusal;
+    // General chat outputs
+    else return choice.message.content;
   }
 }
 
@@ -1646,7 +1712,28 @@ function _extract_gemini_responses(completions: Array<Dict>): Array<string> {
 function _extract_anthropic_chat_responses(
   response: Array<Dict>,
 ): Array<string> {
-  return response.map((r: Dict) => r.content[0].text.trim());
+  return response.map((r: Dict) =>
+    r.content
+      .map((c: Dict) => {
+        // Regular text response
+        if (c?.type === "text") return c.text.trim();
+        // Anthropic tool usage
+        else if (c?.type === "tool_use")
+          return (
+            "[[TOOLS]] " +
+            JSON.stringify({
+              name: c.name,
+              input: c.input,
+            })
+          );
+        // Unknown type of message
+        else
+          throw Error(
+            `Unknown type '${c?.type}' of message found in Anthropic response. If this is a new type, raise an Issue on the ChainForge Github.`,
+          );
+      })
+      .join("\n\n"),
+  );
 }
 
 /**
