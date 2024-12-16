@@ -1205,6 +1205,7 @@ export async function call_ollama_provider(
   const model_type: string = params?.model_type ?? "text";
   const system_msg: string = params?.system_msg ?? "";
   const chat_history: ChatHistory | undefined = params?.chat_history;
+  const format: Dict | string | undefined = params?.format;
 
   // Cleanup
   for (const name of [
@@ -1213,6 +1214,7 @@ export async function call_ollama_provider(
     "model_type",
     "system_msg",
     "chat_history",
+    "format",
   ])
     if (params && name in params) delete params[name];
 
@@ -1221,8 +1223,10 @@ export async function call_ollama_provider(
   const query: Dict = {
     model: ollama_model,
     stream: false,
-    temperature,
-    ...params, // 'the rest' of the settings, passed from the front-end settings
+    options: {
+      temperature,
+      ...params, // 'the rest' of the settings, passed from the front-end settings
+    },
   };
 
   // If the model type is explicitly or implicitly set to "chat", pass chat history instead:
@@ -1245,9 +1249,9 @@ export async function call_ollama_provider(
   );
 
   // If there are structured outputs specified, convert to an object:
-  if (typeof query.format === "string" && query.format.trim().length > 0) {
+  if (typeof format === "string" && format.trim().length > 0) {
     try {
-      query.format = JSON.parse(query.format);
+      query.format = JSON.parse(format);
     } catch (err) {
       throw Error(
         "Cannot parse structured output format into JSON: JSON schema is incorrectly structured.",

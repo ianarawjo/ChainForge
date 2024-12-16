@@ -1366,6 +1366,14 @@ const OllamaSettings: ModelSettingsDict = {
           "The JSON schema to use for structured outputs. Note that using structured outputs, you should still prompt the model to output JSON. (Supported by Ollama since Dec 6 2024. For more info, see https://ollama.com/blog/structured-outputs)",
         default: "",
       },
+      num_ctx: {
+        type: "integer",
+        title: "num_ctx",
+        description:
+          "How many tokens to allow in the *input* to the model. Defaults to Ollama's default setting of 2048. You must increase this if your context is lengthy.",
+        minimum: 1,
+        default: 2048,
+      },
       raw: {
         type: "boolean",
         title: "raw",
