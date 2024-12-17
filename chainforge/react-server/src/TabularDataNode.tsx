@@ -499,13 +499,25 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
 
   // Function to add multiple rows to the table
   const addMultipleRows = (newRows: TabularDataRowType[]) => {
-    const addedRows = newRows.map((value) => {
-      const newRow: TabularDataRowType = { __uid: uuidv4(), ...value };
-      return newRow;
-    });
+    setTableData((prev) => {
+      // Remove the last row of the current table data as it is a blank row (if table is not empty)
+      const newTableData = prev.length > 0 ? prev.slice(0, -1) : [];
 
-    setTableData((prev) => [...prev, ...addedRows]);
-    setRowValues((prev) => [...prev, ...newRows.map((row) => row.value || "")]); // Update `rowValues` based on `value`
+      // Add the new rows to the table
+      const addedRows = newRows.map((value) => {
+        const newRow: TabularDataRowType = { __uid: uuidv4() };
+
+        // Map to correct column keys
+        tableColumns.forEach((col, index) => {
+          newRow[col.key] = value[`col-${index}`] || ""; // If (false, empty, null, etc...), default to empty string
+        });
+
+        return newRow;
+      });
+
+      // Return the updated table data with the new rows
+      return [...newTableData, ...addedRows];
+    });
   };
 
   // Function to replace the entire table (columns and rows)
@@ -582,13 +594,6 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
           </Tooltip>,
         ]}
       />
-      <Skeleton visible={isLoading}>
-        <div ref={setRef}>
-          {tableColumns.map((col) => (
-            <div key={col.key}>{col.header}</div>
-          ))}
-        </div>
-      </Skeleton>
       <RenameValueModal
         ref={renameColumnModal}
         initialValue={

@@ -1315,7 +1315,7 @@ export async function call_bedrock(
     temperature,
   };
 
-  const fm = fromModelId(modelName as string, {
+  const fm = fromModelId(modelName as Models, {
     region: bedrockConfig.region,
     credentials: bedrockConfig.credentials,
     ...query,

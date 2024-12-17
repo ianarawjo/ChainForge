@@ -13,6 +13,7 @@ import {
 } from "@mantine/core";
 import {
   autofill,
+  autofillTable,
   generateAndReplace,
   AIError,
   getAIFeaturesModels,
@@ -37,7 +38,6 @@ import {
   TabularDataRowType,
   VarsContext,
 } from "./backend/typing";
-import { on } from "process";
 import { v4 as uuidv4 } from "uuid";
 import { parseTableData } from "./backend/tableUtils";
 
@@ -313,7 +313,7 @@ export function AIGenReplaceTablePopover({
         generateAndReplaceNumber,
         genDiverseOutputs,
         aiFeaturesProvider,
-        apiKeys
+        apiKeys,
       );
 
       const { cols, rows } = generatedTable;
@@ -345,23 +345,52 @@ export function AIGenReplaceTablePopover({
     }
   };
 
-
   const handleCommandFill = async () => {
     setIsCommandFillLoading(true);
     setDidCommandFillError(false);
 
     try {
-      const newRows = await autofill(
-        values.map((row) => Object.values(row).join(" ")), // Convert row to a string representation,
+
+      // Extract columns from the values, excluding the __uid column
+      const tableColumns = Object.keys(values[0] || {}).filter(
+        (col) => col !== "__uid"
+      );
+
+      // Extract rows as strings, excluding the __uid column and handling empty rows
+      const tableRows = values
+        .slice(0, -1) // Remove the last empty row
+        .map((row) =>
+          tableColumns.map((col) => row[col]?.trim() || "").join(" | ")
+        );
+
+      const tableInput = {
+        cols: tableColumns,
+        rows: tableRows
+      };
+
+      // Fetch new rows from the autofillTable function
+      const result = await autofillTable(
+        tableInput,
         commandFillNumber,
         aiFeaturesProvider,
         apiKeys,
       );
-      onAddRows(
-        newRows.map((row) => ({ key: row, header: row }) as TabularDataRowType),
-      );
+
+      // Transform result.rows into TabularDataNode format
+      const newRows = result.rows.map((row) => {
+        const newRow: TabularDataRowType = { __uid: uuidv4() };
+        row.split(" | ").forEach((cell, index) => {
+          newRow[`col-${index}`] = cell;
+        });
+        return newRow;
+      });
+
+      // Append the new rows to the existing rows
+      onAddRows(newRows);
     } catch (error) {
+      console.error("Error generating rows:", error);
       setDidCommandFillError(true);
+      showAlert && showAlert("Failed to generate new rows. Please try again.");
     } finally {
       setIsCommandFillLoading(false);
     }
