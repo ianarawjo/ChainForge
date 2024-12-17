@@ -10,10 +10,12 @@ import {
   Badge,
   Textarea,
   Alert,
+  Divider,
 } from "@mantine/core";
 import {
   autofill,
   autofillTable,
+  generateColumn,
   generateAndReplace,
   AIError,
   getAIFeaturesModels,
@@ -246,7 +248,10 @@ export interface AIGenReplaceTablePopoverProps {
     rows: TabularDataRowType[],
   ) => void;
   // Function to add new columns
-  onAddColumns: (newColumns: TabularDataColType[]) => void;
+  onAddColumns: (
+    newColumns: TabularDataColType[],
+    rowValues?: string[] // Optional row values
+  ) => void;
   // Indicates if values are loading
   areValuesLoading: boolean;
   // Callback to set loading state
@@ -282,6 +287,11 @@ export function AIGenReplaceTablePopover({
   const [genDiverseOutputs, setGenDiverseOutputs] = useState(false);
   const [didGenerateAndReplaceTableError, setDidGenerateAndReplaceTableError] =
     useState(false);
+
+  // Generate Column state
+  const [isGenerateColumnLoading, setIsGenerateColumnLoading] = useState(false);
+  const [generateColumnPrompt, setGenerateColumnPrompt] = useState("");
+  const [didGenerateColumnError, setDidGenerateColumnError] = useState(false);
 
   // Check if there are any non-empty rows
   const nonEmptyRows = useMemo(
@@ -350,22 +360,21 @@ export function AIGenReplaceTablePopover({
     setDidCommandFillError(false);
 
     try {
-
       // Extract columns from the values, excluding the __uid column
       const tableColumns = Object.keys(values[0] || {}).filter(
-        (col) => col !== "__uid"
+        (col) => col !== "__uid",
       );
 
       // Extract rows as strings, excluding the __uid column and handling empty rows
       const tableRows = values
         .slice(0, -1) // Remove the last empty row
         .map((row) =>
-          tableColumns.map((col) => row[col]?.trim() || "").join(" | ")
+          tableColumns.map((col) => row[col]?.trim() || "").join(" | "),
         );
 
       const tableInput = {
         cols: tableColumns,
-        rows: tableRows
+        rows: tableRows,
       };
 
       // Fetch new rows from the autofillTable function
@@ -396,6 +405,51 @@ export function AIGenReplaceTablePopover({
     }
   };
 
+  const handleGenerateColumn = async () => {
+    setDidGenerateColumnError(false);
+    setIsGenerateColumnLoading(true);
+
+    try {
+      // Extract columns from the values, excluding the __uid column
+      const tableColumns = Object.keys(values[0] || {}).filter(
+        (col) => col !== "__uid",
+      );
+
+      // Extract rows as strings, excluding the __uid column and handling empty rows
+      const tableRows = values
+        .slice(0, -1) // Remove the last empty row
+        .map((row) =>
+          tableColumns.map((col) => row[col]?.trim() || "").join(" | "),
+        );
+
+      const tableInput = {
+        cols: tableColumns,
+        rows: tableRows,
+      };
+      // Fetch the generated column
+      const generatedColumn = await generateColumn(
+        tableInput,
+        generateColumnPrompt,
+        aiFeaturesProvider,
+        apiKeys,
+      );
+
+      const rowValues = generatedColumn.rows;
+
+      // Append the new column to the existing columns
+      onAddColumns(
+        [{ key: `col-${values.length}`, header: generatedColumn.col }],
+        rowValues
+      );
+    } catch (error) {
+      console.error("Error generating column:", error);
+      setDidGenerateColumnError(true);
+      showAlert && showAlert("Failed to generate a new column. Please try again.");
+    } finally {
+      setIsGenerateColumnLoading(false);
+    }
+  };
+
   const extendUI = (
     <Stack>
       {didCommandFillError && (
@@ -403,29 +457,54 @@ export function AIGenReplaceTablePopover({
           Failed to generate rows. Please try again.
         </Text>
       )}
-      <NumberInput
-        label="Rows to add"
-        mt={5}
-        min={1}
-        max={10}
-        value={commandFillNumber}
-        onChange={(num) => setCommandFillNumber(num || 1)}
-      />
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <NumberInput
+          label="Rows to add"
+          mt={5}
+          min={1}
+          max={10}
+          value={commandFillNumber}
+          onChange={(num) => setCommandFillNumber(num || 1)}
+          style={{ flex: 1 }}
+        />
+        <Button
+          size="sm"
+          variant="light"
+          color="grape"
+          onClick={handleCommandFill}
+          disabled={!enoughRowsForSuggestions}
+          loading={isCommandFillLoading}
+          style={{ marginTop: "1.5rem", flex: 1 }}
+        >
+          Extend
+        </Button>
+      </div>
       {showWarning && (
         <Text size="xs" color="grape">
           You may want to add more fields for better suggestions.
         </Text>
       )}
+      <Divider label="OR" labelPosition="center" />
+      {didGenerateColumnError && (
+        <Text size="xs" color="red">
+          Failed to generate column. Please try again.
+        </Text>
+      )}
+      <Textarea
+        label="Generate a column for..."
+        value={generateColumnPrompt}
+        onChange={(e) => setGenerateColumnPrompt(e.currentTarget.value)}
+      />
       <Button
         size="sm"
         variant="light"
         color="grape"
         fullWidth
-        onClick={handleCommandFill}
+        onClick={handleGenerateColumn}
         disabled={!enoughRowsForSuggestions}
-        loading={isCommandFillLoading}
+        loading={isGenerateColumnLoading}
       >
-        Extend
+        Add Column
       </Button>
     </Stack>
   );

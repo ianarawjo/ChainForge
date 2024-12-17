@@ -480,21 +480,53 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
     tableData.map((row) => row.value || ""),
   );
 
-  // This function will add the new columns to the right of the existing columns
-  const addColumns = (newColumns: TabularDataColType[]) => {
-    const updatedColumns = [...tableColumns, ...newColumns];
+  // Function to add new columns to the right of the existing columns (with optional row values)
+  const addColumns = (
+    newColumns: TabularDataColType[],
+    rowValues?: string[] // If values are passed, they will be used to populate the new columns
+  ) => {
+    setTableColumns((prevColumns) => {
+      const updatedColumns = [...prevColumns, ...newColumns];
 
-    // Add blank values for the new column in each row
-    const updatedRows = tableData.map((row) => {
-      const updatedRow = { ...row };
-      newColumns.forEach((col) => {
-        updatedRow[col.key] = ""; // Default value for new column
+      setTableData((prevData) => {
+        let updatedRows: TabularDataRowType[] = [];
+
+        if (prevData.length > 0) {
+          // Update the existing rows with the new column values
+          updatedRows = prevData.map((row, rowIndex) => {
+            const updatedRow = { ...row };
+            newColumns.forEach((col) => {
+              // If rowValues, use them for the new column
+              updatedRow[col.key] =
+                rowValues && rowValues[rowIndex] !== undefined
+                  ? rowValues[rowIndex]
+                  : ""; // Default to empty value
+            });
+            return updatedRow;
+          });
+        } else if (rowValues) {
+          // If no rows exist but rowValues are passed, create new rows
+          updatedRows = rowValues.map((value) => {
+            const newRow: TabularDataRowType = { __uid: uuidv4() };
+            newColumns.forEach((col) => {
+              newRow[col.key] = value || "";
+            });
+            return newRow;
+          });
+        } else {
+          // Create a single blank row
+          const blankRow: TabularDataRowType = { __uid: uuidv4() };
+          newColumns.forEach((col) => {
+            blankRow[col.key] = "";
+          });
+          updatedRows.push(blankRow);
+        }
+
+        return updatedRows; // Update table rows
       });
-      return updatedRow;
-    });
 
-    setTableColumns(updatedColumns);
-    setTableData(updatedRows);
+      return updatedColumns; // Update table columns
+    });
   };
 
   // Function to add multiple rows to the table
