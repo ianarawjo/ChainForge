@@ -43,13 +43,14 @@ import {
 } from "@azure/openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { UserForcedPrematureExit } from "./errors";
-import {
-  fromModelId,
-  ChatMessage as BedrockChatMessage,
-} from "@mirai73/bedrock-fm";
 import StorageCache from "./cache";
 import Compressor from "compressorjs";
-import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
+import {
+  BedrockRuntimeClient,
+  ConverseCommand,
+  Message,
+} from "@aws-sdk/client-bedrock-runtime";
+import { captureRejectionSymbol } from "events";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
@@ -1293,26 +1294,14 @@ export async function call_ollama_provider(
 }
 
 /** Convert OpenAI chat history to Bedrock format */
-function to_bedrock_chat_history(
-  chat_history: ChatHistory,
-): BedrockChatMessage[] {
-  const role_map: Dict<string> = {
-    assistant: "ai",
-    user: "human",
-  };
-
+function to_bedrock_chat_history(chat_history: ChatHistory): Message[] {
   // Transform the ChatMessage format in the chat_history array to what is expected by Bedrock
-  return chat_history.map((msg) =>
-    transformDict(
-      msg,
-      undefined,
-      (key) => (key === "content" ? "message" : key),
-      (key: string, val: string): string => {
-        if (key === "role") return val in role_map ? role_map[val] : val;
-        return val;
-      },
-    ),
-  ) as BedrockChatMessage[];
+  return chat_history
+    .filter((msg) => msg.role !== "system")
+    .map((msg) => ({
+      role: msg.role,
+      content: [{ text: msg.content }],
+    })) as Message[];
 }
 
 /**
@@ -1338,6 +1327,13 @@ export async function call_bedrock(
     );
   }
 
+  const query: Dict = {
+    model: model,
+    stream: false,
+    temperature,
+    ...params, // 'the rest' of the settings, passed from the front-end settings
+  };
+
   const modelName: string = model.toString();
   let stopWords = [];
   if (
@@ -1357,15 +1353,9 @@ export async function call_bedrock(
 
   delete params?.stop_sequences;
 
-  const query: Dict = {
-    stopSequences: stopWords,
-    temperature,
-  };
-
-  const fm = fromModelId(modelName as Models, {
+  const fm = new BedrockRuntimeClient({
     region: bedrockConfig.region,
     credentials: bedrockConfig.credentials,
-    ...query,
   });
 
   const responses: string[] = [];
@@ -1376,29 +1366,32 @@ export async function call_bedrock(
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
       // Grab the response
-      let response: string;
-      if (
-        modelName.startsWith("anthropic") ||
-        modelName.startsWith("mistral") ||
-        modelName.startsWith("meta")
-      ) {
-        const chat_history: ChatHistory = construct_openai_chat_history(
-          prompt,
-          params?.chat_history,
-          params?.system_msg,
-        );
+      const chat_history: ChatHistory = construct_openai_chat_history(
+        prompt,
+        params?.chat_history,
+      );
 
-        response = (
-          await fm.chat(to_bedrock_chat_history(chat_history), {
-            modelArgs: { ...(params as Map<string, any>) },
-          })
-        ).message;
-      } else {
-        response = await fm.generate(prompt, {
-          modelArgs: { ...(params as Map<string, any>) },
-        });
+      if (modelName.includes("titan")) {
+        params = { textGenerationConfig: { ...params } };
       }
-      responses.push(response);
+
+      const response = (
+        await fm.send(
+          new ConverseCommand({
+            modelId: modelName,
+            messages: to_bedrock_chat_history(chat_history),
+            inferenceConfig: {
+              stopSequences: stopWords,
+            },
+            additionalModelRequestFields: { ...params },
+          }),
+        )
+      ).output?.message?.content;
+      if (response === undefined) {
+        throw new Error("Bedrock API returned an empty response.");
+      } else {
+        responses.push(response[0].text ?? "");
+      }
     }
   } catch (error: any) {
     throw new Error(error?.message ?? error.toString());

@@ -1476,9 +1476,9 @@ const BedrockClaudeSettings: ModelSettingsDict = {
           "anthropic.claude-3-haiku-20240307-v1:0": "claude-3-haiku",
         },
       },
-      system_msg: {
+      system: {
         type: "string",
-        title: "system_msg",
+        title: "system",
         description: "A system message to use with the model",
         default: "",
       },
@@ -1492,23 +1492,13 @@ const BedrockClaudeSettings: ModelSettingsDict = {
         maximum: 1,
         multipleOf: 0.01,
       },
-      max_tokens_to_sample: {
+      max_tokens: {
         type: "integer",
-        title: "max_tokens_to_sample",
+        title: "max_tokens",
         description:
           "A maximum number of tokens to generate before stopping. Lower this if you want shorter responses. By default, ChainForge uses the value 1024, although the Anthropic API does not specify a default value.",
         default: 1024,
         minimum: 1,
-      },
-      custom_prompt_wrapper: {
-        type: "string",
-        title: "Prompt Wrapper (ChainForge)",
-        description:
-          // eslint-disable-next-line no-template-curly-in-string
-          'Anthropic models expect prompts in the form "\\n\\nHuman: ${prompt}\\n\\nAssistant:". ChainForge wraps all prompts in this template by default. If you wish to' +
-          // eslint-disable-next-line no-template-curly-in-string
-          "explore custom prompt wrappers that deviate, write a Python template here with a single variable, ${prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)",
-        default: "",
       },
       stop_sequences: {
         type: "string",
@@ -1551,7 +1541,7 @@ const BedrockClaudeSettings: ModelSettingsDict = {
       "ui:help": "Defaults to 1.0.",
       "ui:widget": "range",
     },
-    max_tokens_to_sample: {
+    max_tokens: {
       "ui:help": "Defaults to 1024.",
     },
     top_k: {
@@ -1563,11 +1553,6 @@ const BedrockClaudeSettings: ModelSettingsDict = {
     stop_sequences: {
       "ui:widget": "textarea",
       "ui:help": 'Defaults to one stop sequence, "\\n\\nHuman: "',
-    },
-    custom_prompt_wrapper: {
-      "ui:widget": "textarea",
-      "ui:help":
-        'Defaults to Anthropic\'s internal wrapper "\\n\\nHuman: {prompt}\\n\\nAssistant".',
     },
   },
 
@@ -1696,6 +1681,123 @@ const BedrockJurassic2Settings: ModelSettingsDict = {
     },
     topP: {
       "ui:help": "Defaults to 1.",
+    },
+    stop_sequences: {
+      "ui:widget": "textarea",
+      "ui:help": "Defaults to no sequence",
+    },
+  },
+};
+
+const BedrockJambaInstruct: ModelSettingsDict = {
+  fullName: "Jamba Instruct (Ai21) via Amazon Bedrock",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "JambaInstruct",
+      },
+      model: {
+        type: "string",
+        title: "Model Version",
+        description:
+          "Select a version of Jamba Instruct to query. For more details on the differences, see the AI21 API documentation.",
+        enum: [NativeLLM.Bedrock_Jamba_Instruct],
+        default: NativeLLM.Bedrock_Jamba_Instruct,
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.01,
+      },
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The maximum number of tokens to generate for each response.",
+        default: 1024,
+        minimum: 1,
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description:
+          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
+        default: 1,
+        minimum: 0.01,
+        maximum: 1,
+        multipleOf: 0.001,
+      },
+      stop_sequences: {
+        type: "string",
+        title: "stop",
+        description:
+          'Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: "",
+      },
+      frequency_penalty: {
+        type: "number",
+        title: "frequency_penalty",
+        description:
+          "How much to penalize new tokens based on their existing frequency in the text. Must be between -2.0 and 2.0.",
+        minimum: -2.0,
+        maximum: 2.0,
+        multipleOf: 0.01,
+        default: 0,
+      },
+      presence_penalty: {
+        type: "number",
+        title: "presence_penalty",
+        description:
+          "How much to penalize new tokens based on whether they appear in the text so far. Must be between -2.0 and 2.0.",
+        minimum: -2.0,
+        maximum: 2.0,
+        multipleOf: 0.01,
+        default: 0,
+      },
+    },
+  },
+  postprocessors: {
+    stop_sequences: (str) => {
+      if (typeof str !== "string" || str.trim().length === 0) return [];
+      return str
+        .match(/"((?:[^"\\]|\\.)*)"/g)
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+  },
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:help": "Defaults to Jurassic 2 Ultra. ",
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    max_tokens: {
+      "ui:help": "Defaults to 1024.",
+    },
+    top_p: {
+      "ui:help": "Defaults to 1.",
+    },
+    frequency_penalty: {
+      "ui:help": "Defaults to 0.",
+    },
+    presence_penalty: {
+      "ui:help": "Defaults to 0.",
     },
     stop_sequences: {
       "ui:widget": "textarea",
@@ -1963,14 +2065,6 @@ const MistralSettings: ModelSettingsDict = {
         description:
           'Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
         default: "",
-      },
-      top_k: {
-        type: "integer",
-        title: "top_k",
-        description:
-          "The number of top-scoring tokens to consider for each generation step.",
-        minimum: 0,
-        default: 0,
       },
       top_p: {
         type: "number",
@@ -2335,6 +2429,7 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   ollama: OllamaSettings,
   "br.anthropic.claude": BedrockClaudeSettings,
   "br.ai21.j2": BedrockJurassic2Settings,
+  "br.ai21.jamba": BedrockJambaInstruct,
   "br.amazon.titan": BedrockTitanSettings,
   "br.cohere.command": BedrockCommandTextSettings,
   "br.mistral.mistral": MistralSettings,
