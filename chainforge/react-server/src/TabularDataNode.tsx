@@ -24,6 +24,8 @@ import useStore from "./store";
 import { sampleRandomElements } from "./backend/utils";
 import { Dict, TabularDataRowType, TabularDataColType } from "./backend/typing";
 import { Position } from "reactflow";
+import { AIGenReplaceTablePopover } from "./AiPopover";
+import { parseTableData } from "./backend/tableUtils";
 
 const defaultRows: TabularDataRowType[] = [
   {
@@ -304,43 +306,8 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   // NOTE: JSON objects should be in row format, with keys
   //       as the header names. The internal keys of the columns will use uids to be unique.
   const importJSONList = (jsonl: unknown) => {
-    if (!Array.isArray(jsonl)) {
-      throw new Error(
-        "Imported tabular data is not in array format: " +
-          (jsonl !== undefined ? (jsonl as object).toString() : ""),
-      );
-    }
-
-    // Extract unique column names
-    const headers = new Set<string>();
-    jsonl.forEach((o) => Object.keys(o).forEach((key) => headers.add(key)));
-
-    // Create new columns with unique ids c0, c1 etc
-    const cols = Array.from(headers).map((h, idx) => ({
-      header: h,
-      key: `c${idx.toString()}`,
-    }));
-
-    // Construct a lookup table from header name to our new key uid
-    const col_key_lookup: Dict<string> = {};
-    cols.forEach((c) => {
-      col_key_lookup[c.header] = c.key;
-    });
-
-    // Construct the table rows by swapping the header names for our new columm keys
-    const rows = jsonl.map((o) => {
-      const row: TabularDataRowType = { __uid: uuidv4() };
-      Object.keys(o).forEach((header) => {
-        const raw_val = o[header];
-        const val =
-          typeof raw_val === "object" ? JSON.stringify(raw_val) : raw_val;
-        row[col_key_lookup[header]] = val.toString();
-      });
-      return row;
-    });
-
-    // Save the new columns and rows
-    setTableColumns(cols);
+    const { columns, rows } = parseTableData(jsonl as any[]);
+    setTableColumns(columns);
     setTableData(rows);
     pingOutputNodes(id);
   };
@@ -499,6 +466,141 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
     [ref],
   );
 
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [rowValues, setRowValues] = useState<string[]>(
+    tableData.map((row) => row.value || ""),
+  );
+
+  // Function to add new columns to the right of the existing columns (with optional row values)
+  const addColumns = (
+    newColumns: TabularDataColType[],
+    rowValues?: string[], // If values are passed, they will be used to populate the new columns
+  ) => {
+    setTableColumns((prevColumns) => {
+      // Filter out columns that already exist
+      const filteredNewColumns = newColumns.filter(
+        (col) =>
+          !prevColumns.some((existingCol) => existingCol.key === col.key),
+      );
+
+      // If no genuinely new columns, return previous columns
+      if (filteredNewColumns.length === 0) return prevColumns;
+
+      const updatedColumns = [...prevColumns, ...filteredNewColumns];
+
+      setTableData((prevData) => {
+        let updatedRows: TabularDataRowType[] = [];
+
+        if (prevData.length > 0) {
+          // Update the existing rows with the new column values
+          updatedRows = prevData.map((row, rowIndex) => {
+            const updatedRow = { ...row };
+
+            // Set the value for each new column
+            filteredNewColumns.forEach((col) => {
+              // Only set the value if it's not already set
+              if (updatedRow[col.key] === undefined) {
+                updatedRow[col.key] =
+                  rowValues && rowValues[rowIndex] !== undefined
+                    ? rowValues[rowIndex]
+                    : "";
+              }
+            });
+            return updatedRow;
+          });
+        } else if (rowValues && rowValues.length > 0) {
+          // If no rows exist, create rows using rowValues
+          updatedRows = rowValues.map((value) => {
+            const newRow: TabularDataRowType = { __uid: uuidv4() };
+            filteredNewColumns.forEach((col) => {
+              newRow[col.key] = value || "";
+            });
+            return newRow;
+          });
+        } else {
+          // If no rows and no rowValues, create a single blank row
+          const blankRow: TabularDataRowType = { __uid: uuidv4() };
+          filteredNewColumns.forEach((col) => {
+            blankRow[col.key] = "";
+          });
+          updatedRows.push(blankRow);
+        }
+
+        return updatedRows; // Update table rows
+      });
+
+      return updatedColumns; // Update table columns
+    });
+  };
+
+  // Function to add multiple rows to the table
+  const addMultipleRows = (newRows: TabularDataRowType[]) => {
+    setTableData((prev) => {
+      // Remove the last row of the current table data as it is a blank row (if table is not empty)
+      let newTableData = prev;
+      if (prev.length > 0) {
+        const lastRow = prev[prev.length - 1]; // Get the last row
+        const emptyLastRow = Object.values(lastRow).every((val) => !val); // Check if the last row is empty
+        if (emptyLastRow) newTableData = prev.slice(0, -1); // Remove the last row if it is empty
+      }
+
+      // Add the new rows to the table
+      const addedRows = newRows.map((value) => {
+        const newRow: TabularDataRowType = { __uid: uuidv4() };
+
+        // Map to correct column keys
+        tableColumns.forEach((col, index) => {
+          newRow[col.key] = value[`col-${index}`] || ""; // If (false, empty, null, etc...), default to empty string
+        });
+
+        return newRow;
+      });
+
+      // Return the updated table data with the new rows
+      return [...newTableData, ...addedRows];
+    });
+  };
+
+  // Function to replace the entire table (columns and rows)
+  const replaceTable = (
+    columns: TabularDataColType[],
+    rows: TabularDataRowType[],
+  ) => {
+    // Validate columns
+    if (!Array.isArray(columns) || columns.length === 0) {
+      console.error("Invalid columns provided for table replacement.");
+      return;
+    }
+
+    // Validate rows
+    if (!Array.isArray(rows)) {
+      console.error("Invalid rows provided for table replacement.");
+      return;
+    }
+
+    // Replace columns
+    const updatedColumns = columns.map((col, idx) => ({
+      header: col.header,
+      key: col.key || `c${idx}`, // Ensure each column has a uid
+    }));
+
+    // Replace rows
+    const updatedRows = rows.map((row) => {
+      const newRow: TabularDataRowType = { __uid: uuidv4() };
+
+      updatedColumns.forEach((column) => {
+        // Map row data to columns, default to empty strings for missing values
+        newRow[column.key] = row[column.key] || "";
+      });
+      return newRow;
+    });
+
+    setTableColumns(updatedColumns); // Replace table columns
+    setTableData(updatedRows); // Replace table rows
+    setRowValues(updatedRows.map((row) => JSON.stringify(row))); // Update row values
+  };
+
   return (
     <BaseNode
       classNames="tabular-data-node"
@@ -511,6 +613,16 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
         nodeId={id}
         icon={"🗂️"}
         customButtons={[
+          <AIGenReplaceTablePopover
+            key="ai-popover"
+            values={tableData}
+            colValues={tableColumns}
+            onAddRows={addMultipleRows}
+            onAddColumns={addColumns}
+            onReplaceTable={replaceTable}
+            areValuesLoading={isLoading}
+            setValuesLoading={setIsLoading}
+          />,
           <Tooltip
             key={0}
             label="Accepts xlsx, jsonl, and csv files with a header row"
@@ -525,7 +637,6 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
           </Tooltip>,
         ]}
       />
-
       <RenameValueModal
         ref={renameColumnModal}
         initialValue={

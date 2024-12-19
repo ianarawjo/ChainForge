@@ -10,12 +10,17 @@ import {
   Badge,
   Textarea,
   Alert,
+  Divider,
+  Tooltip,
 } from "@mantine/core";
 import {
   autofill,
+  autofillTable,
+  generateColumn,
   generateAndReplace,
   AIError,
   getAIFeaturesModels,
+  generateAndReplaceTable,
 } from "./backend/ai";
 import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
 import { AlertModalContext } from "./AlertModal";
@@ -30,7 +35,13 @@ import { queryLLM } from "./backend/backend";
 import { splitText } from "./SplitNode";
 import { escapeBraces } from "./backend/template";
 import { cleanMetavarsFilterFunc } from "./backend/utils";
-import { Dict, VarsContext } from "./backend/typing";
+import {
+  Dict,
+  TabularDataColType,
+  TabularDataRowType,
+  VarsContext,
+} from "./backend/typing";
+import { v4 as uuidv4 } from "uuid";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -74,7 +85,7 @@ export const buildGenEvalCodePrompt = (
   specPrompt: string,
   manyFuncs?: boolean,
   onlyBooleanFuncs?: boolean,
-) => `You are to generate ${manyFuncs ? "many different functions" : "one function"} to evaluate textual data, given a user-specified specification. 
+) => `You are to generate ${manyFuncs ? "many different functions" : "one function"} to evaluate textual data, given a user-specified specification.
 The function${manyFuncs ? "s" : ""} will be mapped over an array of objects of type ResponseInfo.
 ${manyFuncs ? "Each" : "Your"} solution must contain a single function called 'evaluate' that takes a single object, 'r', of type ResponseInfo. A ResponseInfo is defined as:
 
@@ -84,8 +95,8 @@ For instance, here is an evaluator that returns the length of a response:
 
 \`\`\`${progLang === "javascript" ? INFO_EXAMPLE_JS : INFO_EXAMPLE_PY}\`\`\`
 
-You can only write in ${progLang.charAt(0).toUpperCase() + progLang.substring(1)}. 
-You ${progLang === "javascript" ? 'CANNOT import any external packages, and always use "let" to define variables instead of "var".' : "can use imports if necessary. Do not include any type hints."} 
+You can only write in ${progLang.charAt(0).toUpperCase() + progLang.substring(1)}.
+You ${progLang === "javascript" ? 'CANNOT import any external packages, and always use "let" to define variables instead of "var".' : "can use imports if necessary. Do not include any type hints."}
 Your function${manyFuncs ? "s" : ""} can ONLY return ${onlyBooleanFuncs ? "boolean" : "boolean, numeric, or string"} values.
 ${context}
 Here is the user's specification:
@@ -226,6 +237,335 @@ export function AIPopover({
   );
 }
 
+export interface AIGenReplaceTablePopoverProps {
+  // Values in the rows of the table's columns
+  values: TabularDataRowType[];
+  // Names of the table's columns
+  colValues: TabularDataColType[];
+  // Function to add new rows
+  onAddRows: (newRows: TabularDataRowType[]) => void;
+  // Function to replace the table
+  onReplaceTable: (
+    columns: TabularDataColType[],
+    rows: TabularDataRowType[],
+  ) => void;
+  // Function to add new columns
+  onAddColumns: (
+    newColumns: TabularDataColType[],
+    rowValues?: string[], // Optional row values
+  ) => void;
+  // Indicates if values are loading
+  areValuesLoading: boolean;
+  // Callback to set loading state
+  setValuesLoading: (isLoading: boolean) => void;
+}
+
+/**
+ * AI Popover UI for TablularData nodes
+ */
+export function AIGenReplaceTablePopover({
+  values,
+  colValues,
+  onAddRows,
+  onReplaceTable,
+  onAddColumns,
+  areValuesLoading,
+  setValuesLoading,
+}: AIGenReplaceTablePopoverProps) {
+  // API keys and provider
+  const apiKeys = useStore((state) => state.apiKeys);
+  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
+
+  // Alert context
+  const showAlert = useContext(AlertModalContext);
+
+  // Command Fill state
+  const [commandFillNumber, setCommandFillNumber] = useState<number>(5);
+  const [isCommandFillLoading, setIsCommandFillLoading] = useState(false);
+  const [didCommandFillError, setDidCommandFillError] = useState(false);
+
+  // Generate and Replace state
+  const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(5);
+  const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState("");
+  const [didGenerateAndReplaceTableError, setDidGenerateAndReplaceTableError] =
+    useState(false);
+
+  // Generate Column state
+  const [isGenerateColumnLoading, setIsGenerateColumnLoading] = useState(false);
+  const [generateColumnPrompt, setGenerateColumnPrompt] = useState("");
+  const [didGenerateColumnError, setDidGenerateColumnError] = useState(false);
+
+  // Check if there are any non-empty rows
+  const nonEmptyRows = useMemo(
+    () =>
+      values.filter((row) => Object.values(row).some((val) => val?.trim()))
+        .length,
+    [values],
+  );
+
+  // Check if there are enough rows to suggest autofilling
+  const enoughRowsForSuggestions = useMemo(
+    () => nonEmptyRows >= ROW_CONSTANTS.beginAutofilling,
+    [nonEmptyRows],
+  );
+
+  const showWarning = useMemo(
+    () => enoughRowsForSuggestions && nonEmptyRows < ROW_CONSTANTS.warnIfBelow,
+    [enoughRowsForSuggestions, nonEmptyRows],
+  );
+
+  const handleGenerateAndReplaceTable = async () => {
+    setDidGenerateAndReplaceTableError(false);
+    setValuesLoading(true);
+
+    try {
+      // Fetch the generated table
+      const generatedTable = await generateAndReplaceTable(
+        generateAndReplacePrompt,
+        generateAndReplaceNumber,
+        aiFeaturesProvider,
+        apiKeys,
+      );
+
+      const { cols, rows } = generatedTable;
+
+      // Transform the result into TabularDataNode format
+      const columns = cols.map((col, index) => ({
+        key: `col-${index}`,
+        header: col,
+      }));
+
+      const tabularRows = rows.map((row) => {
+        const rowData: TabularDataRowType = { __uid: uuidv4() };
+        cols.forEach((col, index) => {
+          rowData[`col-${index}`] = row.split(" | ")[index]?.trim() || "";
+        });
+        return rowData;
+      });
+
+      // Update state with the transformed columns and rows
+      onReplaceTable(columns, tabularRows);
+
+      console.log("Generated table:", { columns, tabularRows });
+    } catch (error) {
+      console.error("Error in generateAndReplaceTable:", error);
+      setDidGenerateAndReplaceTableError(true);
+      showAlert && showAlert("An error occurred. Please try again.");
+    } finally {
+      setValuesLoading(false);
+    }
+  };
+
+  const handleCommandFill = async () => {
+    setIsCommandFillLoading(true);
+    setDidCommandFillError(false);
+
+    try {
+      // Extract columns from the values, excluding the __uid column
+      const tableColumns = colValues.map((col) => col.key);
+
+      // Extract rows as strings, excluding the __uid column and handling empty rows
+      const tableRows = values
+        .slice(0, -1) // Remove the last empty row
+        .map((row) =>
+          tableColumns.map((col) => row[col]?.trim() || "").join(" | "),
+        );
+
+      const tableInput = {
+        cols: tableColumns,
+        rows: tableRows,
+      };
+
+      // Fetch new rows from the autofillTable function
+      const result = await autofillTable(
+        tableInput,
+        commandFillNumber,
+        aiFeaturesProvider,
+        apiKeys,
+      );
+
+      // Transform result.rows into TabularDataNode format
+      const newRows = result.rows.map((row) => {
+        const newRow: TabularDataRowType = { __uid: uuidv4() };
+        row.split(" | ").forEach((cell, index) => {
+          newRow[`col-${index}`] = cell;
+        });
+        return newRow;
+      });
+
+      // Append the new rows to the existing rows
+      onAddRows(newRows);
+    } catch (error) {
+      console.error("Error generating rows:", error);
+      setDidCommandFillError(true);
+      showAlert && showAlert("Failed to generate new rows. Please try again.");
+    } finally {
+      setIsCommandFillLoading(false);
+    }
+  };
+
+  const handleGenerateColumn = async () => {
+    setDidGenerateColumnError(false);
+    setIsGenerateColumnLoading(true);
+
+    try {
+      // Extract columns from the values, excluding the __uid column
+      const tableColumns = colValues;
+
+      // Extract rows as strings, excluding the __uid column and handling empty rows
+      const lastRow = values[values.length - 1]; // Get the last row
+      const emptyLastRow = Object.values(lastRow).every((val) => !val); // Check if the last row is empty
+      const tableRows = values
+        .slice(0, emptyLastRow ? -1 : values.length)
+        .map((row) =>
+          tableColumns.map((col) => row[col.key]?.trim() || "").join(" | "),
+        );
+
+      const tableInput = {
+        cols: tableColumns,
+        rows: tableRows,
+      };
+
+      // Fetch the generated column
+      const generatedColumn = await generateColumn(
+        tableInput,
+        generateColumnPrompt,
+        aiFeaturesProvider,
+        apiKeys,
+      );
+
+      const rowValues = generatedColumn.rows;
+
+      // Append the new column to the existing columns
+      onAddColumns(
+        [{ key: `col-${tableColumns.length}`, header: generatedColumn.col }], // set key to length of columns
+        rowValues,
+      );
+    } catch (error) {
+      console.error("Error generating column:", error);
+      setDidGenerateColumnError(true);
+      showAlert &&
+        showAlert("Failed to generate a new column. Please try again.");
+    } finally {
+      setIsGenerateColumnLoading(false);
+    }
+  };
+
+  const extendUI = (
+    <Stack>
+      {didCommandFillError && (
+        <Text size="xs" color="red">
+          Failed to generate rows. Please try again.
+        </Text>
+      )}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <NumberInput
+          label="Rows to add"
+          mt={5}
+          min={1}
+          max={10}
+          value={commandFillNumber}
+          onChange={(num) => setCommandFillNumber(num || 1)}
+          style={{ flex: 1 }}
+        />
+        <Button
+          size="sm"
+          variant="light"
+          color="grape"
+          onClick={handleCommandFill}
+          disabled={!enoughRowsForSuggestions}
+          loading={isCommandFillLoading}
+          style={{ marginTop: "1.5rem", flex: 1 }}
+        >
+          Extend
+        </Button>
+      </div>
+      {showWarning && (
+        <Text size="xs" color="grape">
+          You may want to add more fields for better suggestions.
+        </Text>
+      )}
+      <Divider label="OR" labelPosition="center" />
+      {didGenerateColumnError && (
+        <Text size="xs" color="red">
+          Failed to generate column. Please try again.
+        </Text>
+      )}
+      <Textarea
+        label="Generate a column for..."
+        value={generateColumnPrompt}
+        onChange={(e) => setGenerateColumnPrompt(e.currentTarget.value)}
+      />
+      <Tooltip
+        label="Can take awhile if you have many rows. Please be patient."
+        withArrow
+        position="bottom"
+      >
+        <Button
+          size="sm"
+          variant="light"
+          color="grape"
+          fullWidth
+          onClick={handleGenerateColumn}
+          disabled={!enoughRowsForSuggestions}
+          loading={isGenerateColumnLoading}
+        >
+          Add Column
+        </Button>
+      </Tooltip>
+    </Stack>
+  );
+
+  const replaceUI = (
+    <Stack>
+      {didGenerateAndReplaceTableError && (
+        <Text size="xs" color="red">
+          Failed to replace rows. Please try again.
+        </Text>
+      )}
+      <Textarea
+        label="Generate data for..."
+        value={generateAndReplacePrompt}
+        onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}
+      />
+      <NumberInput
+        label="Rows to generate"
+        min={1}
+        max={50}
+        value={generateAndReplaceNumber}
+        onChange={(num) => setGenerateAndReplaceNumber(num || 1)}
+      />
+      <Button
+        size="sm"
+        variant="light"
+        color="grape"
+        fullWidth
+        onClick={handleGenerateAndReplaceTable}
+        loading={areValuesLoading}
+      >
+        Replace
+      </Button>
+    </Stack>
+  );
+
+  return (
+    <AIPopover>
+      <Tabs color="grape" defaultValue="replace">
+        <Tabs.List grow>
+          <Tabs.Tab value="replace">Replace</Tabs.Tab>
+          <Tabs.Tab value="extend">Extend</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="extend" pb="xs">
+          {extendUI}
+        </Tabs.Panel>
+        <Tabs.Panel value="replace" pb="xs">
+          {replaceUI}
+        </Tabs.Panel>
+      </Tabs>
+    </AIPopover>
+  );
+}
+
 export interface AIGenReplaceItemsPopoverProps {
   // Strings for the Extend feature to use as a basis.
   values: Dict<string> | string[];
@@ -308,6 +648,7 @@ export function AIGenReplaceItemsPopover({
   const handleGenerateAndReplace = () => {
     setDidGenerateAndReplaceError(false);
     setValuesLoading(true);
+
     generateAndReplace(
       generateAndReplacePrompt,
       generateAndReplaceNumber,
@@ -604,10 +945,10 @@ export function AIGenCodeEvaluatorPopover({
 
     const template = `Edit the code below according to the following: ${editPrompt}
 
-You ${progLang === "javascript" ? "CANNOT import any external packages." : "can use imports if necessary. Do not include any type hints."} 
+You ${progLang === "javascript" ? "CANNOT import any external packages." : "can use imports if necessary. Do not include any type hints."}
 Functions should only return boolean, numeric, or string values. Present the edited code in a single block.
 
-Code: 
+Code:
 \`\`\`${progLang}
 ${currentEvalCode}
 \`\`\``;
