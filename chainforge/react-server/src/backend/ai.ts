@@ -148,12 +148,8 @@ function GARSystemMessage(
  * @param generatePrompts whether the output should be commands
  * @returns the system message
  */
-function GARTSystemMessage(
-  n: number,
-  creative?: boolean,
-  generatePrompts?: boolean,
-): string {
-  return `Generate a table with exactly ${n} rows. Format your response as a markdown table using. Do not ever repeat anything.${creative ? "Be unconventional with your outputs." : ""} ${generatePrompts ? "Your outputs should be commands that can be given to an AI chat assistant." : ""} If the user has specified items or inputs to their command, generate a template in Jinja format, with single braces {} around the masked variables.`;
+function GARTSystemMessage(n: number, generatePrompts?: boolean): string {
+  return `Generate a table with exactly ${n} rows. Format your response as a markdown table using. Do not ever repeat anything. ${generatePrompts ? "Your outputs should be commands that can be given to an AI chat assistant." : ""} If the user has specified items or inputs to their command, generate a template in Jinja format, with single braces {} around the masked variables.`;
 }
 
 /**
@@ -587,7 +583,6 @@ export async function generateAndReplace(
  * Uses an LLM to generate a table with `n` rows based on the pattern explained in `prompt`.
  * @param prompt Description or pattern for the table content.
  * @param n Number of rows to generate.
- * @param creative Whether the output should be creative or conventional.
  * @param provider The LLM provider to use.
  * @param apiKeys API keys required for the LLM query.
  * @returns A promise resolving to an object containing the columns and rows of the generated table.
@@ -595,7 +590,6 @@ export async function generateAndReplace(
 export async function generateAndReplaceTable(
   prompt: string,
   n: number,
-  creative: boolean,
   provider: string,
   apiKeys: Dict,
 ): Promise<{ cols: string[]; rows: Row[] }> {
@@ -610,7 +604,7 @@ export async function generateAndReplaceTable(
       messages: [
         {
           role: "system",
-          content: GARTSystemMessage(n, creative, generatePrompts),
+          content: GARTSystemMessage(n, generatePrompts),
         },
       ],
       fill_history: {},

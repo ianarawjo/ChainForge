@@ -287,7 +287,6 @@ export function AIGenReplaceTablePopover({
   // Generate and Replace state
   const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(5);
   const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState("");
-  const [genDiverseOutputs, setGenDiverseOutputs] = useState(false);
   const [didGenerateAndReplaceTableError, setDidGenerateAndReplaceTableError] =
     useState(false);
 
@@ -324,7 +323,6 @@ export function AIGenReplaceTablePopover({
       const generatedTable = await generateAndReplaceTable(
         generateAndReplacePrompt,
         generateAndReplaceNumber,
-        genDiverseOutputs,
         aiFeaturesProvider,
         apiKeys,
       );
@@ -536,11 +534,6 @@ export function AIGenReplaceTablePopover({
         max={50}
         value={generateAndReplaceNumber}
         onChange={(num) => setGenerateAndReplaceNumber(num || 1)}
-      />
-      <Switch
-        label="Generate diverse outputs"
-        checked={genDiverseOutputs}
-        onChange={(e) => setGenDiverseOutputs(e.currentTarget.checked)}
       />
       <Button
         size="sm"
