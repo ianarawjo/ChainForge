@@ -128,11 +128,8 @@ function autofillTableSystemMessage(
  * @param templateVariables list of template variables to use
  * @param prompt description or pattern for the column content
  */
-function generateColumnSystemMessage(
-  templateVariables?: string[],
-  prompt?: string,
-): string {
-  return `Here is a table. Generate exactly one column with an appropriate header given the prompt: ${prompt} and one divider with the appropriate commands or items and the same amount of rows. Output the formatted labled markdown column, with each command or item as a new row. ${templateVariables && templateVariables.length > 0 ? templateVariableMessage(templateVariables) : ""}`;
+function generateColumnSystemMessage(): string {
+  return `You are a helpful assistant. Given partial row data and a prompt for a missing field, produce only the new field's value. No extra formatting or explanations, just the value itself.`;
 }
 
 /**
@@ -221,7 +218,10 @@ function decode(mdText: string): Row[] {
  */
 function decodeTable(mdText: string): { cols: string[]; rows: Row[] } {
   // Remove code block markers and trim the text
-  const mdTextCleaned = mdText.replace(/```markdown/g, "").replace(/```/g, "").trim();
+  const mdTextCleaned = mdText
+    .replace(/```markdown/g, "")
+    .replace(/```/g, "")
+    .trim();
 
   // Split into lines and clean up whitespace
   const lines = mdTextCleaned.split("\n").map((line) => line.trim());
@@ -273,7 +273,6 @@ function decodeTable(mdText: string): { cols: string[]; rows: Row[] } {
 
   return { cols, rows };
 }
-
 
 /**
  * Uses an LLM to interpret the pattern from the given rows as return new rows following the pattern.
@@ -348,7 +347,6 @@ export async function autofillTable(
   provider: string,
   apiKeys: Dict,
 ): Promise<{ cols: string[]; rows: Row[] }> {
-
   // Hash the arguments to get a unique id
   const id = JSON.stringify([input.cols, input.rows, n]);
 
@@ -409,6 +407,60 @@ export async function autofillTable(
   }
 }
 
+// Queries the model for a single row’s missing field:
+async function fillMissingFieldForRow(
+  existingRowData: Record<string, string>, // Key-value pairs for the row
+  prompt: string, // The user prompt describing what the missing field should be
+  provider: string,
+  apiKeys: Dict,
+): Promise<string> {
+  // Generate a user prompt for the LLM pass over existing row data in list format
+  const userPrompt = `
+  You are given partial data for a row in a table. Here is the data:
+  ${Object.entries(existingRowData)
+    .map(([key, val]) => `- ${key}: ${val}`)
+    .join("\n")}
+
+  This is the requirement of the new column:"${prompt}", produce a single appropriate value for the item.
+
+
+  Respond with just the new field’s value, and nothing else.
+  `;
+
+  const history: ChatHistoryInfo[] = [
+    {
+      messages: [
+        {
+          role: "system",
+          content: generateColumnSystemMessage(),
+        },
+      ],
+      fill_history: {},
+    },
+  ];
+
+  const id = JSON.stringify([existingRowData, prompt]);
+
+  const result = await queryLLM(
+    id,
+    getAIFeaturesModels(provider).small,
+    1,
+    userPrompt,
+    {},
+    history,
+    apiKeys,
+    true,
+  );
+
+  // Handle any errors in the response
+  if (result.errors && Object.keys(result.errors).length > 0) {
+    throw new AIError(Object.values(result.errors)[0].toString());
+  }
+
+  const output = result.responses[0].responses[0] as string;
+  return output.trim();
+}
+
 /**
  * Uses an LLM to generate one new column with data based on the pattern explained in `prompt`.
  * @param prompt Description or pattern for the column content.
@@ -417,72 +469,64 @@ export async function autofillTable(
  * @returns A promise resolving to an array of strings (column values).
  */
 export async function generateColumn(
-  tableData: { cols: string[]; rows: Row[] },
+  tableData: { cols: string[]; rows: string[] },
   prompt: string,
   provider: string,
   apiKeys: Dict,
-): Promise<{col: string; rows: string[]}> {
+): Promise<{ col: string; rows: string[] }> {
 
-  // Build a unique ID based on the input prompt
-  const id = JSON.stringify([prompt]);
-
-  // Encode the input table to a markdown table
-  const encoded = encodeTable(tableData.cols, tableData.rows);
-
-  // Extract template variables from the columns and rows
-  const templateVariables = [
-    ...new Set([
-      ...new StringTemplate(tableData.rows.join("\n")).get_vars(),
-      ...new StringTemplate(tableData.cols.join("\n")).get_vars(),
-    ]),
-  ];
-
-  // History for the system message to set up LLM behavior
-  const history: ChatHistoryInfo[] = [
-    {
-      messages: [
-        {
-          role: "system",
-          content: generateColumnSystemMessage(templateVariables, prompt),
-        },
-      ],
-      fill_history: {},
-    },
-  ];
-
-  try {
-    // Query the LLM
+  // If the length of the prompt is less than 20 characters, use the prompt
+  // Else, use the LLM to generate an appropriate column name for the prompt
+  let colName: string;
+  if (prompt.length <= 20) {
+    colName = prompt;
+  } else {
     const result = await queryLLM(
-      id,
-      getAIFeaturesModels(provider).small, // Use the small model
+      JSON.stringify([prompt]),
+      getAIFeaturesModels(provider).small,
       1,
-      encoded,
+      `Generate an appropriate column name for the prompt: "${prompt}"`,
       {},
-      history,
-      apiKeys,
+      [],
+      [],
       true,
     );
-
-    // Handle any errors in the response
-    if (result.errors && Object.keys(result.errors).length > 0) {
-      throw new Error(Object.values(result.errors)[0].toString());
-    }
-
-    console.log("LLM said: ", result.responses[0].responses[0]);
-
-    // Decode the LLM response as a column in a markdown table
-    const columnValues = decodeTable(result.responses[0].responses[0] as string);
-
-    return {
-      col:columnValues.cols[0],
-      rows: columnValues.rows
-    };
-  } catch (error) {
-    console.error("Error in generateColumn:", error);
-    throw new AIError(
-      `Failed to generate column. Details: ${(error as Error).message || error}`,
-    );
+    colName = result.responses[0].responses[0] as string;
   }
+
+  // Remove any leading/trailing whitespace from the column name as well as any double quotes
+  colName = colName.trim().replace(/"/g, "");
+
+  // Parse the existing table into mark down row objects
+  const columnNames = tableData.cols;
+  const parsedRows = tableData.rows.map((rowStr) => {
+    // Remove leading/trailing "|" along with any whitespace
+    const cells = rowStr.replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+    const rowData: Record<string, string> = {};
+    columnNames.forEach((colName, index) => {
+      rowData[colName] = cells[index] || "";
+    });
+    return rowData;
+  });
+
+  const newColumnValues: string[] = [];
+
+  for (const rowData of parsedRows) {
+    // For each row, we request a new field from the LLM:
+    const newValue = await fillMissingFieldForRow(
+      rowData,
+      prompt,
+      provider,
+      apiKeys
+    );
+    newColumnValues.push(newValue);
+  }
+
+  // Return the new column name and values
+  return {
+    col: colName,
+    rows: newColumnValues,
+  };
 }
 
 /**

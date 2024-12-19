@@ -5,14 +5,7 @@ import React, {
   useCallback,
   useContext,
 } from "react";
-import {
-  Menu,
-  NumberInput,
-  Switch,
-  Text,
-  Tooltip,
-  Skeleton,
-} from "@mantine/core";
+import { Menu, NumberInput, Switch, Text, Tooltip } from "@mantine/core";
 import EditableTable from "./EditableTable";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
@@ -486,7 +479,15 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
     rowValues?: string[] // If values are passed, they will be used to populate the new columns
   ) => {
     setTableColumns((prevColumns) => {
-      const updatedColumns = [...prevColumns, ...newColumns];
+      // Filter out columns that already exist
+      const filteredNewColumns = newColumns.filter(
+        (col) => !prevColumns.some((existingCol) => existingCol.key === col.key)
+      );
+
+      // If no genuinely new columns, return previous columns
+      if (filteredNewColumns.length === 0) return prevColumns;
+
+      const updatedColumns = [...prevColumns, ...filteredNewColumns];
 
       setTableData((prevData) => {
         let updatedRows: TabularDataRowType[] = [];
@@ -495,28 +496,32 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
           // Update the existing rows with the new column values
           updatedRows = prevData.map((row, rowIndex) => {
             const updatedRow = { ...row };
-            newColumns.forEach((col) => {
-              // If rowValues, use them for the new column
-              updatedRow[col.key] =
-                rowValues && rowValues[rowIndex] !== undefined
-                  ? rowValues[rowIndex]
-                  : ""; // Default to empty value
+
+            // Set the value for each new column
+            filteredNewColumns.forEach((col) => {
+              // Only set the value if it's not already set
+              if (updatedRow[col.key] === undefined) {
+                updatedRow[col.key] =
+                  rowValues && rowValues[rowIndex] !== undefined
+                    ? rowValues[rowIndex]
+                    : "";
+              }
             });
             return updatedRow;
           });
-        } else if (rowValues) {
-          // If no rows exist but rowValues are passed, create new rows
+        } else if (rowValues && rowValues.length > 0) {
+          // If no rows exist, create rows using rowValues
           updatedRows = rowValues.map((value) => {
             const newRow: TabularDataRowType = { __uid: uuidv4() };
-            newColumns.forEach((col) => {
+            filteredNewColumns.forEach((col) => {
               newRow[col.key] = value || "";
             });
             return newRow;
           });
         } else {
-          // Create a single blank row
+          // If no rows and no rowValues, create a single blank row
           const blankRow: TabularDataRowType = { __uid: uuidv4() };
-          newColumns.forEach((col) => {
+          filteredNewColumns.forEach((col) => {
             blankRow[col.key] = "";
           });
           updatedRows.push(blankRow);

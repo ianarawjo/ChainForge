@@ -41,7 +41,6 @@ import {
   VarsContext,
 } from "./backend/typing";
 import { v4 as uuidv4 } from "uuid";
-import { parseTableData } from "./backend/tableUtils";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -250,7 +249,7 @@ export interface AIGenReplaceTablePopoverProps {
   // Function to add new columns
   onAddColumns: (
     newColumns: TabularDataColType[],
-    rowValues?: string[] // Optional row values
+    rowValues?: string[], // Optional row values
   ) => void;
   // Indicates if values are loading
   areValuesLoading: boolean;
@@ -416,8 +415,10 @@ export function AIGenReplaceTablePopover({
       );
 
       // Extract rows as strings, excluding the __uid column and handling empty rows
+      const lastRow = values[values.length - 1]; // Get the last row
+      const emptyLastRow = Object.values(lastRow).every((val) => !val); // Check if the last row is empty
       const tableRows = values
-        .slice(0, -1) // Remove the last empty row
+        .slice(0, emptyLastRow ? -1 : values.length)
         .map((row) =>
           tableColumns.map((col) => row[col]?.trim() || "").join(" | "),
         );
@@ -438,13 +439,14 @@ export function AIGenReplaceTablePopover({
 
       // Append the new column to the existing columns
       onAddColumns(
-        [{ key: `col-${values.length}`, header: generatedColumn.col }],
-        rowValues
+        [{ key: `col-${tableColumns.length}`, header: generatedColumn.col }], // set key to length of columns
+        rowValues,
       );
     } catch (error) {
       console.error("Error generating column:", error);
       setDidGenerateColumnError(true);
-      showAlert && showAlert("Failed to generate a new column. Please try again.");
+      showAlert &&
+        showAlert("Failed to generate a new column. Please try again.");
     } finally {
       setIsGenerateColumnLoading(false);
     }
