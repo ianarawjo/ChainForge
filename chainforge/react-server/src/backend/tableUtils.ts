@@ -8,7 +8,6 @@ export function parseTableData(rawTableData: any[]): {
   columns: TabularDataColType[];
   rows: TabularDataRowType[];
 } {
-
   if (!Array.isArray(rawTableData)) {
     throw new Error(
       "Table data is not in array format: " +

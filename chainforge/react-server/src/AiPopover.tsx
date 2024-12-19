@@ -11,6 +11,7 @@ import {
   Textarea,
   Alert,
   Divider,
+  Tooltip,
 } from "@mantine/core";
 import {
   autofill,
@@ -239,6 +240,8 @@ export function AIPopover({
 export interface AIGenReplaceTablePopoverProps {
   // Values in the rows of the table's columns
   values: TabularDataRowType[];
+  // Names of the table's columns
+  colValues: TabularDataColType[];
   // Function to add new rows
   onAddRows: (newRows: TabularDataRowType[]) => void;
   // Function to replace the table
@@ -262,6 +265,7 @@ export interface AIGenReplaceTablePopoverProps {
  */
 export function AIGenReplaceTablePopover({
   values,
+  colValues,
   onAddRows,
   onReplaceTable,
   onAddColumns,
@@ -276,12 +280,12 @@ export function AIGenReplaceTablePopover({
   const showAlert = useContext(AlertModalContext);
 
   // Command Fill state
-  const [commandFillNumber, setCommandFillNumber] = useState<number>(3);
+  const [commandFillNumber, setCommandFillNumber] = useState<number>(5);
   const [isCommandFillLoading, setIsCommandFillLoading] = useState(false);
   const [didCommandFillError, setDidCommandFillError] = useState(false);
 
   // Generate and Replace state
-  const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(3);
+  const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(5);
   const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState("");
   const [genDiverseOutputs, setGenDiverseOutputs] = useState(false);
   const [didGenerateAndReplaceTableError, setDidGenerateAndReplaceTableError] =
@@ -360,9 +364,7 @@ export function AIGenReplaceTablePopover({
 
     try {
       // Extract columns from the values, excluding the __uid column
-      const tableColumns = Object.keys(values[0] || {}).filter(
-        (col) => col !== "__uid",
-      );
+      const tableColumns = colValues.map((col) => col.key);
 
       // Extract rows as strings, excluding the __uid column and handling empty rows
       const tableRows = values
@@ -410,9 +412,7 @@ export function AIGenReplaceTablePopover({
 
     try {
       // Extract columns from the values, excluding the __uid column
-      const tableColumns = Object.keys(values[0] || {}).filter(
-        (col) => col !== "__uid",
-      );
+      const tableColumns = colValues;
 
       // Extract rows as strings, excluding the __uid column and handling empty rows
       const lastRow = values[values.length - 1]; // Get the last row
@@ -420,13 +420,14 @@ export function AIGenReplaceTablePopover({
       const tableRows = values
         .slice(0, emptyLastRow ? -1 : values.length)
         .map((row) =>
-          tableColumns.map((col) => row[col]?.trim() || "").join(" | "),
+          tableColumns.map((col) => row[col.key]?.trim() || "").join(" | "),
         );
 
       const tableInput = {
         cols: tableColumns,
         rows: tableRows,
       };
+
       // Fetch the generated column
       const generatedColumn = await generateColumn(
         tableInput,
@@ -497,17 +498,23 @@ export function AIGenReplaceTablePopover({
         value={generateColumnPrompt}
         onChange={(e) => setGenerateColumnPrompt(e.currentTarget.value)}
       />
-      <Button
-        size="sm"
-        variant="light"
-        color="grape"
-        fullWidth
-        onClick={handleGenerateColumn}
-        disabled={!enoughRowsForSuggestions}
-        loading={isGenerateColumnLoading}
+      <Tooltip
+        label="Can take awhile if you have many rows. Please be patient."
+        withArrow
+        position="bottom"
       >
-        Add Column
-      </Button>
+        <Button
+          size="sm"
+          variant="light"
+          color="grape"
+          fullWidth
+          onClick={handleGenerateColumn}
+          disabled={!enoughRowsForSuggestions}
+          loading={isGenerateColumnLoading}
+        >
+          Add Column
+        </Button>
+      </Tooltip>
     </Stack>
   );
 
@@ -526,7 +533,7 @@ export function AIGenReplaceTablePopover({
       <NumberInput
         label="Rows to generate"
         min={1}
-        max={10}
+        max={50}
         value={generateAndReplaceNumber}
         onChange={(num) => setGenerateAndReplaceNumber(num || 1)}
       />

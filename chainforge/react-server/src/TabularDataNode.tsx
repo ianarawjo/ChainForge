@@ -25,7 +25,6 @@ import { sampleRandomElements } from "./backend/utils";
 import { Dict, TabularDataRowType, TabularDataColType } from "./backend/typing";
 import { Position } from "reactflow";
 import { AIGenReplaceTablePopover } from "./AiPopover";
-import AISuggestionsManager from "./backend/aiSuggestionsManager";
 import { parseTableData } from "./backend/tableUtils";
 
 const defaultRows: TabularDataRowType[] = [
@@ -476,12 +475,13 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   // Function to add new columns to the right of the existing columns (with optional row values)
   const addColumns = (
     newColumns: TabularDataColType[],
-    rowValues?: string[] // If values are passed, they will be used to populate the new columns
+    rowValues?: string[], // If values are passed, they will be used to populate the new columns
   ) => {
     setTableColumns((prevColumns) => {
       // Filter out columns that already exist
       const filteredNewColumns = newColumns.filter(
-        (col) => !prevColumns.some((existingCol) => existingCol.key === col.key)
+        (col) =>
+          !prevColumns.some((existingCol) => existingCol.key === col.key),
       );
 
       // If no genuinely new columns, return previous columns
@@ -538,7 +538,12 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   const addMultipleRows = (newRows: TabularDataRowType[]) => {
     setTableData((prev) => {
       // Remove the last row of the current table data as it is a blank row (if table is not empty)
-      const newTableData = prev.length > 0 ? prev.slice(0, -1) : [];
+      let newTableData = prev;
+      if (prev.length > 0) {
+        const lastRow = prev[prev.length - 1]; // Get the last row
+        const emptyLastRow = Object.values(lastRow).every((val) => !val); // Check if the last row is empty
+        if (emptyLastRow) newTableData = prev.slice(0, -1); // Remove the last row if it is empty
+      }
 
       // Add the new rows to the table
       const addedRows = newRows.map((value) => {
@@ -611,6 +616,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
           <AIGenReplaceTablePopover
             key="ai-popover"
             values={tableData}
+            colValues={tableColumns}
             onAddRows={addMultipleRows}
             onAddColumns={addColumns}
             onReplaceTable={replaceTable}

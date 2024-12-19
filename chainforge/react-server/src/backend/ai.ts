@@ -7,8 +7,9 @@ import {
   escapeBraces,
   containsSameTemplateVariables,
 } from "./template";
-import { ChatHistoryInfo, Dict } from "./typing";
+import { ChatHistoryInfo, Dict, TabularDataColType } from "./typing";
 import { fromMarkdown } from "mdast-util-from-markdown";
+import { sampleRandomElements } from "./utils";
 
 export class AIError extends Error {
   constructor(message: string) {
@@ -24,7 +25,7 @@ export type Row = string;
 const AIFeaturesLLMs = [
   {
     provider: "OpenAI",
-    small: { value: "gpt-3.5-turbo", label: "OpenAI GPT3.5" },
+    small: { value: "gpt-4o", label: "OpenAI GPT4o" },
     large: { value: "gpt-4", label: "OpenAI GPT4" },
   },
   {
@@ -116,11 +117,8 @@ function autofillSystemMessage(
  * @param n number of rows to generate
  * @param templateVariables list of template variables to use
  */
-function autofillTableSystemMessage(
-  n: number,
-  templateVariables?: string[],
-): string {
-  return `Here is a table. Generate ${n} more commands or items following the pattern. You must format your response as a markdown table with labeled columns and a divider with only the next ${n} generated commands or items of the table. ${templateVariables && templateVariables.length > 0 ? templateVariableMessage(templateVariables) : ""}`;
+function autofillTableSystemMessage(n: number): string {
+  return `Here is a table. Generate ${n} more commands or items following the pattern. You must format your response as a markdown table with labeled columns and a divider with only the next ${n} generated commands or items of the table.`;
 }
 
 /**
@@ -347,26 +345,23 @@ export async function autofillTable(
   provider: string,
   apiKeys: Dict,
 ): Promise<{ cols: string[]; rows: Row[] }> {
+  // Get a random sample of the table rows, if there are more than 30 (as an estimate):
+  // TODO: This is a temporary solution to avoid sending large tables to the LLM. In future, check the number of characters too.
+  const sampleRows =
+    input.rows.length > 30 ? sampleRandomElements(input.rows, 30) : input.rows;
+
   // Hash the arguments to get a unique id
-  const id = JSON.stringify([input.cols, input.rows, n]);
+  const id = JSON.stringify([input.cols, sampleRows, n]);
 
   // Encode the input table to a markdown table
-  const encoded = encodeTable(input.cols, input.rows);
-
-  // Extract template variables from the columns and rows
-  const templateVariables = [
-    ...new Set([
-      ...new StringTemplate(input.rows.join("\n")).get_vars(),
-      ...new StringTemplate(input.cols.join("\n")).get_vars(),
-    ]),
-  ];
+  const encoded = encodeTable(input.cols, sampleRows);
 
   const history: ChatHistoryInfo[] = [
     {
       messages: [
         {
           role: "system",
-          content: autofillTableSystemMessage(n, templateVariables),
+          content: autofillTableSystemMessage(n),
         },
       ],
       fill_history: {},
@@ -415,17 +410,18 @@ async function fillMissingFieldForRow(
   apiKeys: Dict,
 ): Promise<string> {
   // Generate a user prompt for the LLM pass over existing row data in list format
-  const userPrompt = `
-  You are given partial data for a row in a table. Here is the data:
-  ${Object.entries(existingRowData)
-    .map(([key, val]) => `- ${key}: ${val}`)
-    .join("\n")}
+  //   const userPrompt = `You are given partial data for a row of a table. Here is the data:
+  // ${Object.entries(existingRowData)
+  //   .map(([key, val]) => `- ${key}: ${val}`)
+  //   .join("\n")}
 
-  This is the requirement of the new column:"${prompt}", produce a single appropriate value for the item.
+  // This is the requirement of the new column: "${prompt}". Produce an appropriate value for the item. Respond with just the new field's value, and nothing else.`;
 
-
-  Respond with just the new field’s value, and nothing else.
-  `;
+  const userPrompt = `Fill in the last piece of information. Respond with just the missing information, nothing else.
+${Object.entries(existingRowData)
+  .map(([key, val]) => `${key}: ${val}`)
+  .join("\n")}
+${prompt}: ?`;
 
   const history: ChatHistoryInfo[] = [
     {
@@ -452,6 +448,8 @@ async function fillMissingFieldForRow(
     true,
   );
 
+  console.log("LLM said: ", result.responses[0].responses[0]);
+
   // Handle any errors in the response
   if (result.errors && Object.keys(result.errors).length > 0) {
     throw new AIError(Object.values(result.errors)[0].toString());
@@ -469,12 +467,11 @@ async function fillMissingFieldForRow(
  * @returns A promise resolving to an array of strings (column values).
  */
 export async function generateColumn(
-  tableData: { cols: string[]; rows: string[] },
+  tableData: { cols: TabularDataColType[]; rows: string[] },
   prompt: string,
   provider: string,
   apiKeys: Dict,
 ): Promise<{ col: string; rows: string[] }> {
-
   // If the length of the prompt is less than 20 characters, use the prompt
   // Else, use the LLM to generate an appropriate column name for the prompt
   let colName: string;
@@ -485,23 +482,27 @@ export async function generateColumn(
       JSON.stringify([prompt]),
       getAIFeaturesModels(provider).small,
       1,
-      `Generate an appropriate column name for the prompt: "${prompt}"`,
+      `You produce column names for a table. The column names must be short, less than 20 characters, and in natural language, like "Column Name." Return only the column name. Generate an appropriate column name for the prompt: "${prompt}"`,
       {},
       [],
-      [],
+      apiKeys,
       true,
     );
-    colName = result.responses[0].responses[0] as string;
+    colName = (result.responses[0].responses[0] as string).replace("_", " ");
   }
 
   // Remove any leading/trailing whitespace from the column name as well as any double quotes
   colName = colName.trim().replace(/"/g, "");
 
   // Parse the existing table into mark down row objects
-  const columnNames = tableData.cols;
+  const columnNames = tableData.cols.map((col) => col.header);
   const parsedRows = tableData.rows.map((rowStr) => {
     // Remove leading/trailing "|" along with any whitespace
-    const cells = rowStr.replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+    const cells = rowStr
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((cell) => cell.trim());
     const rowData: Record<string, string> = {};
     columnNames.forEach((colName, index) => {
       rowData[colName] = cells[index] || "";
@@ -517,7 +518,7 @@ export async function generateColumn(
       rowData,
       prompt,
       provider,
-      apiKeys
+      apiKeys,
     );
     newColumnValues.push(newValue);
   }
