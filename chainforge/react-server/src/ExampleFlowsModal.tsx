@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle } from "react";
-import { SimpleGrid, Card, Modal, Text, Button, Tabs } from "@mantine/core";
+import { SimpleGrid, Card, Modal, Text, Button, Tabs, Group } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconChartDots3 } from "@tabler/icons-react";
 import { Dict } from "./backend/typing";
@@ -332,11 +332,11 @@ const ExampleFlowCard: React.FC<ExampleFlowCardProps> = ({
 }) => {
   return (
     <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Text mb="xs" weight={500}>
+      <Text mb="xs" weight={500} lh={1.1} align="center">
         {title}
       </Text>
 
-      <Text size="sm" color="dimmed" lh={1.3}>
+      <Text size="sm" color="dimmed" lh={1.3} align="center">
         {description}
       </Text>
 
@@ -414,39 +414,105 @@ const ExampleFlowsModal = forwardRef<
         <Tabs.Panel value="examples" pt="xs">
           <SimpleGrid cols={3} spacing="sm" verticalSpacing="sm">
             <ExampleFlowCard
-              title="Compare length of responses across LLMs"
-              description="A simple evaluation with a prompt template, some inputs, and three models to prompt. Visualizes variability in response length."
-              filename="basic-comparison"
+              title="📑 Compare between prompt templates"
+              description="Compare between prompt templates using template chaining. Visualize the variability in response quality."
+              filename="compare-prompts"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="Robustness to prompt injection attacks"
-              description="Get a sense of different model's robustness against prompt injection attacks."
-              filename="prompt-injection-test"
+              title="📊 Compare prompt performance across models"
+              description="Compare performance of a prompt template across models. Visualize response quality."
+              filename="compare-models"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="Chain prompts together"
+              title="🤖 Compare system prompts"
+              description="Compares response quality across different system prompts. Visualizes how well it sticks to the instructions to only print Racket code."
+              filename="comparing-system-msg"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🧪 Audit models for gender bias"
+              description="Checks for gender bias across LLMs on job description task."
+              filename="audit-gender-bias"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="⛓️ Extract data with prompt chaining"
               description="Chain one prompt into another to extract entities from a text response. Plots number of entities."
               filename="chaining-prompts"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="Measure impact of system message on response"
-              description="Compares response quality across different ChatGPT system prompts. Visualizes how well it sticks to the instructions to only print Racket code."
-              filename="comparing-system-msg"
+              title="🛑 Red-teaming of stereotypes about nationalities"
+              description="Check for whether models refuse to generate stereotypes about people from different countries."
+              filename="red-team-stereotypes"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="Ground truth evaluation for math problems"
+              title="📗 Testing model knowledge of book beginnings"
+              description="Test whether different LLMs know the first sentences of famous books."
+              filename="book-beginnings"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🐦 Multi-evals of prompt to extract structured data from tweets"
+              description="Extracts named entities from a dataset of tweets, and double-checks the output against multiple eval criteria."
+              filename="multi-eval-tweets"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="💬🙇 Estimate chat model sycophancy"
+              description="Estimate how sycophantic a chat model is: ask it for the answer to a well-known question, then tell it it's wrong, and check whether it agrees with you."
+              filename="chat-sycophancy"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🧮 Produce structured outputs"
+              description="Extract information from a dataset and output it in a structured JSON format using OpenAI's structured outputs feature."
+              filename="structured-outputs"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🔨 Detect whether tool is triggered"
+              description="Basic example showing whether a given prompt triggered tool usage."
+              filename="basic-function-calls"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🇫🇷 Testing French language tutor prompts"
+              description="Real example of a haphazard flow used to prompt engineer an AI tutor to help practice French."
+              filename="french-tutor"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🧑‍💻️ HumanEvals Python coding benchmark"
+              description="Run the HumanEvals Python coding benchmark to evaluate LLMs on Python code completion, entirely in your browser. A classic!"
+              filename="coding-human-evals"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="📏 Compare length of responses across LLMs"
+              description="A simple evaluation with a prompt template, some inputs, and three models to prompt. Visualizes variability in response length."
+              filename="basic-comparison"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🗯 Check robustness to prompt injection attacks"
+              description="Get a sense of different model's robustness against prompt injection attacks."
+              filename="prompt-injection-test"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🔢 Ground truth evaluation for math problems"
               description="Uses a tabular data node to evaluate LLM performance on basic math problems. Compares responses to expected answer and plots performance across LLMs."
               filename="basic-math"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="Detect whether OpenAI function call was triggered"
-              description="Basic example showing whether a given prompt triggered an OpenAI function call. Also shows difference between ChatGPT prior to function calls, and function call version."
-              filename="basic-function-calls"
+              title="🦟 Test knowledge of mosquitos"
+              description="Uses an LLM scorer to test whether LLMs know the difference between lifetimes of male and female mosquitos."
+              filename="mosquito-knowledge"
               onSelect={onSelect}
             />
           </SimpleGrid>
@@ -462,10 +528,10 @@ const ExampleFlowsModal = forwardRef<
             >
               OpenAI evals
             </a>
-            {`benchmarking package. We currently load evals with a common system
+            {` benchmarking package. We currently load evals with a common system
             message, a single 'turn' (prompt), and evaluation types of
             'includes', 'match', and 'fuzzy match', and a reasonable number of
-            prompts. &nbsp;`}
+            prompts. `}
             <i>
               Warning: some evals include tables with 1000 prompts or more.{" "}
             </i>
