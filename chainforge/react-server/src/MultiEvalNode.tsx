@@ -32,6 +32,7 @@ import {
   IconPlus,
   IconRobot,
   IconSearch,
+  IconSparkles,
   IconTerminal,
   IconTrash,
 } from "@tabler/icons-react";
@@ -55,13 +56,15 @@ import {
 } from "./CodeEvaluatorNode";
 import { LLMEvaluatorComponent, LLMEvaluatorComponentRef } from "./LLMEvalNode";
 import { GatheringResponsesRingProgress } from "./LLMItemButtonGroup";
-import { Dict, LLMResponse, QueryProgress } from "./backend/typing";
+import {
+  Dict,
+  LLMResponse,
+  QueryProgress,
+  TemplateVarInfo,
+} from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
-import EvalGenModal, {
-  EvalGenModalRef,
-  ReportCardScreen,
-} from "./EvalGenModal";
+import EvalGenModal, { EvalGenModalRef } from "./EvalGenModal";
 import { EvalGenReport } from "./backend/evalgen/typing";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
@@ -420,10 +423,13 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
       //   pulled_inputs.responseBatch,
       // );
       let idxSeed = 0;
-      pulled_inputs.responseBatch = pulled_inputs.responseBatch.map((r) => ({
-        ...r,
-        uid: `${(r?.uid ?? r?.batch_id ?? uuid()) + ++idxSeed}`,
-      }));
+      pulled_inputs.responseBatch = pulled_inputs.responseBatch.map((_r) => {
+        const r = _r as TemplateVarInfo;
+        return {
+          ...r,
+          uid: `${(r?.uid ?? uuid()) + ++idxSeed}`,
+        };
+      });
       // console.log(
       //   "------------------",
       //   pulled_inputs.responseBatch[0].uid,
@@ -611,7 +617,6 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
             // Sanity check that the lengths of eval result lists are equal across evaluators:
             if (merged_res_objs_by_uid[uid].eval_res === undefined) return;
             else if (
-              // @ts-expect-error We've already checked that eval_res is defined, yet TS throws an error anyway... skip it:
               merged_res_objs_by_uid[uid].eval_res.items.length !==
               res_obj.eval_res?.items?.length
             ) {
@@ -621,7 +626,6 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
               return;
             }
             // Add the new evaluation result, keyed by evaluator name:
-            // @ts-expect-error We've already checked that eval_res is defined, yet TS throws an error anyway... skip it:
             merged_res_objs_by_uid[uid].eval_res.items.forEach((item, idx) => {
               if (typeof item === "object") {
                 let v = res_obj.eval_res?.items[idx];
