@@ -199,6 +199,13 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         temp: 0.9,
       },
       {
+        name: "AI21 Jamba Instruct",
+        emoji: "🐍",
+        model: NativeLLM.Bedrock_Jamba_Instruct,
+        base_model: "br.ai21.jamba",
+        temp: 0.9,
+      },
+      {
         name: "Amazon Titan",
         emoji: "🏛️",
         model: NativeLLM.Bedrock_Titan_Large,
