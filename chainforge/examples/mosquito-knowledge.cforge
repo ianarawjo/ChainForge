@@ -1,0 +1,1677 @@
+{
+  "flow": {
+    "nodes": [
+      {
+        "width": 312,
+        "height": 435,
+        "id": "prompt-1690229030038",
+        "type": "prompt",
+        "data": {
+          "prompt": "Tell me about the lifespan of a mosquito.",
+          "n": 3,
+          "llms": [
+            {
+              "key": "bc35833c-c594-44ee-bc18-f56d0f268ed2",
+              "name": "GPT3.5",
+              "emoji": "🤖",
+              "model": "gpt-3.5-turbo",
+              "base_model": "gpt-3.5-turbo",
+              "temp": 1,
+              "settings": {
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 1,
+                "functions": [],
+                "function_call": "",
+                "top_p": 1,
+                "stop": [],
+                "presence_penalty": 0,
+                "frequency_penalty": 0
+              },
+              "formData": {
+                "shortname": "GPT3.5"
+              }
+            },
+            {
+              "key": "f26a2dfb-e34d-4bb4-ab82-432240302587",
+              "name": "Claude",
+              "emoji": "📚",
+              "model": "claude-2",
+              "base_model": "claude-v1",
+              "temp": 0.5,
+              "settings": {
+                "temperature": 1,
+                "max_tokens_to_sample": 1024,
+                "custom_prompt_wrapper": "",
+                "stop_sequences": [
+                  "\n\nHuman:"
+                ],
+                "top_k": -1,
+                "top_p": -1
+              },
+              "formData": {
+                "shortname": "Claude"
+              }
+            },
+            {
+              "key": "283c3149-626f-4b6d-abf8-195799866c61",
+              "name": "GPT4",
+              "emoji": "🥵",
+              "model": "gpt-4",
+              "base_model": "gpt-4",
+              "temp": 1,
+              "settings": {
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 1,
+                "functions": [],
+                "function_call": "",
+                "top_p": 1,
+                "stop": [],
+                "presence_penalty": 0,
+                "frequency_penalty": 0
+              },
+              "formData": {
+                "shortname": "GPT4"
+              }
+            },
+            {
+              "key": "398fbcc8-d17e-4eb8-8c25-527dbfbeb67d",
+              "name": "Gemini",
+              "emoji": "🦬",
+              "model": "gemini-pro",
+              "base_model": "palm2-bison",
+              "temp": 0.7,
+              "settings": {
+                "temperature": 0.46,
+                "top_k": -1,
+                "top_p": -1,
+                "max_output_tokens": 512,
+                "stop_sequences": []
+              },
+              "formData": {
+                "shortname": "Gemini",
+                "model": "gemini-pro",
+                "temperature": 0.46,
+                "top_k": -1,
+                "top_p": -1,
+                "max_output_tokens": 512,
+                "stop_sequences": ""
+              }
+            },
+            {
+              "key": "bf342b14-b441-4446-8070-760660c3fd69",
+              "name": "Falcon.7B",
+              "emoji": "🤗",
+              "model": "tiiuae/falcon-7b-instruct",
+              "base_model": "hf",
+              "temp": 1,
+              "settings": {
+                "custom_model": "",
+                "model_type": "text",
+                "temperature": 1,
+                "num_continuations": 0,
+                "top_k": -1,
+                "top_p": -1,
+                "repetition_penalty": -1,
+                "max_new_tokens": 250,
+                "do_sample": true,
+                "use_cache": false
+              },
+              "formData": {
+                "shortname": "Falcon.7B"
+              }
+            }
+          ],
+          "fields": [
+            {
+              "text": "The lifespan of a mosquito can vary depending on the species and environmental factors. On average, adult mosquitoes typically live for about 2 to 4 weeks. However, female mosquitoes usually have a shorter lifespan compared to males, as they typically live for 1 to 2 weeks.\n\nDuring their relatively short lifetime, female mosquitoes mate and lay eggs multiple times. After taking a blood meal from a host, female mosquitoes use the proteins obtained to develop and mature their eggs. They lay their eggs in standing water or other suitable breeding sites.\n\nThe eggs hatch into larvae, commonly known as wigglers. The larvae spend their time feeding on organic matter in the water and molting through several stages before reaching the pupal stage. The pupa is a non-feeding and non-mobile stage in the mosquito life cycle.\n\nAfter a few days, adult mosquitoes emerge from the pupa. They usually rest on the water's surface until their wings are dry and fully developed. Once they can fly, they search for mates and sources of energy, including nectar from flowers. For female mosquitoes, this also involves seeking out blood meals to nourish their eggs.\n\nIt's worth noting that not all mosquitoes transmit diseases, but those that do can have a significant impact on human and animal health. It is thus essential to take measures to prevent mosquito breeding and protect yourself from mosquito bites, particularly in areas where mosquito-borne diseases are prevalent.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "bc35833c-c594-44ee-bc18-f56d0f268ed2",
+                "name": "GPT3.5",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "bd57beb7-47da-4b4f-97f2-2f69a8ec8334",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "GPT3.5"
+              }
+            },
+            {
+              "text": "The lifespan of a mosquito can vary depending on the species and environmental conditions. On average, a mosquito's lifespan can range from a few weeks to several months. However, it's important to note that not all mosquitoes live long enough to complete their entire lifespan due to various factors such as predation or disease.\n\nFemale mosquitoes, which are the ones that bite and transmit diseases, generally live longer than their male counterparts. After mating, female mosquitoes typically require a blood meal to obtain the necessary nutrients for egg development. Once they have successfully laid their eggs, their lifespan will usually decrease significantly.\n\nIn favorable conditions, some mosquito species can complete their lifecycle within a week or two. However, in colder climates or during the winter season, mosquitoes may enter a dormant state or overwinter as adults or as eggs, depending on the species.\n\nOverall, the lifespan of a mosquito is relatively short, but they are capable of reproducing quickly, which contributes to their ability to thrive and multiply in various habitats.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "bc35833c-c594-44ee-bc18-f56d0f268ed2",
+                "name": "GPT3.5",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "bd57beb7-47da-4b4f-97f2-2f69a8ec8334",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "GPT3.5"
+              }
+            },
+            {
+              "text": "The lifespan of a mosquito can vary depending on the species, environmental conditions, and available food sources. However, on average, mosquitoes typically live for about 2 to 4 weeks. \n\nThere are four stages in a mosquito's life cycle: egg, larva, pupa, and adult. After a female mosquito lays her eggs in water, they hatch into larvae within a few days. The larvae feed on organic matter in the water and molt several times as they grow. This larval stage typically lasts for about 5 to 14 days.\n\nFollowing the larval stage, the mosquitoes enter the pupal stage, during which they do not eat and are relatively immobile. The pupal stage typically lasts for about 1 to 4 days. During this period, the mosquito transforms into its adult form.\n\nOnce the adult mosquito emerges from the pupa, it needs to find a blood meal to develop eggs (only female mosquitoes feed on blood). Female mosquitoes can feed on a variety of hosts such as humans, animals, or birds. Male mosquitoes, on the other hand, primarily feed on nectar for their energy needs.\n\nAfter mating and getting a blood meal, a female mosquito will lay eggs, starting the life cycle anew. This process can be repeated several times within the mosquito's lifespan, allowing them to reproduce and continue their population.\n\nIt's worth noting that temperature and environmental conditions significantly influence mosquito development and lifespan. Warmer temperatures tend to expedite their life cycle, while cooler temperatures can prolong it. Additionally, certain species of mosquitoes can hibernate during unfavorable conditions, extending their lifespan beyond typical seasonal limitations.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "bc35833c-c594-44ee-bc18-f56d0f268ed2",
+                "name": "GPT3.5",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "GPT3.5"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "bd57beb7-47da-4b4f-97f2-2f69a8ec8334",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "GPT3.5"
+              }
+            },
+            {
+              "text": "Here are some key points about the typical lifespan of a mosquito:\n\n- Adult mosquitoes usually live for around 2-4 weeks. Females tend to live longer than males.\n\n- Mosquitoes go through four distinct life stages: egg, larva, pupa, and adult. The egg, larva, and pupa stages are aquatic and together typically last 5-14 days depending on the species and water temperature.\n\n- Once a female mosquito emerges as an adult, her priority is to find a blood meal in order to get the protein needed to produce eggs. Males feed on plant nectar.\n\n- After mating, the female will lay her eggs (typically 100-200 eggs at a time) in standing water or very slow moving water. Good egg-laying sites include ponds, flooded areas, marshes, and even small containers or tree holes that hold water.\n\n- Mosquitoes breed quickly in warm weather. The full lifecycle from egg to adult can be completed in as little as 4-7 days in ideal warm conditions. Cooler temperatures slow down their development.\n\n- Most mosquitoes die soon after laying their eggs. Only females hibernate over the winter, hiding out in places like barns or basements.\n\n- Factors impacting their lifespan include predation, weather conditions, and pesticide application. Mosquitoes have many natural predators including birds, bats, dragonflies, and spiders.\n\nSo in summary, the short adult mosquito lifespan of just a few weeks belies their rapid breeding capabilities under the right conditions. This enables mosquito populations to explode during warm seasons.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "f26a2dfb-e34d-4bb4-ab82-432240302587",
+                "name": "Claude",
+                "emoji": "📚",
+                "model": "claude-2",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "temperature": 1,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "1ea85afc-7352-47bb-b28c-1aa0bc16c5b3",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "Claude"
+              }
+            },
+            {
+              "text": "Here are some key points about the lifespan of a mosquito:\n\n- Mosquitoes go through four distinct stages in their lifecycle: egg, larva, pupa, and adult. \n\n- Eggs are laid by adult female mosquitoes, usually in clusters on the surface of stagnant water. Eggs hatch into larvae within a few days.\n\n- The larval stage lasts 4-10 days. Larvae, also called \"wigglers,\" live in the water and feed on organic matter. They molt several times as they grow.\n\n- Pupae then develop from the final larval stage. The pupal stage lasts 2-3 days. Pupae, also called \"tumblers,\" are inactive and do not feed.\n\n- Adult mosquitoes emerge from the pupal case after metamorphosis. The lifespan of adult mosquitoes varies by species, but is often quite short, ranging from a week to a month. \n\n- Only female mosquitoes bite and feed on blood, which they need to develop eggs. Male mosquitoes feed on nectar.\n\n- Factors impacting adult lifespan include temperature, humidity, predators, and if/when they are able to take a blood meal from a host. Mosquitoes die shortly after laying eggs if they cannot find a blood meal.\n\nSo in summary, the full mosquito lifecycle lasts about 1-2 weeks from egg to adult death, though adult lifespan alone may only be up to 1 month under ideal conditions. The stages from egg through pupae occur in water.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "f26a2dfb-e34d-4bb4-ab82-432240302587",
+                "name": "Claude",
+                "emoji": "📚",
+                "model": "claude-2",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "temperature": 1,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "1ea85afc-7352-47bb-b28c-1aa0bc16c5b3",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "Claude"
+              }
+            },
+            {
+              "text": "Here are some key points about the typical lifespan of a mosquito:\n\n- Adult mosquitoes usually live for 2-4 weeks. Females tend to live longer than males, since they require a blood meal for reproducing.\n\n- The lifecycle begins when eggs are laid in stagnant water or moist soil. They hatch into larvae within a few days. \n\n- The larval stage lasts 4-10 days. Larvae molt several times as they grow, eventually becoming pupae.\n\n- Pupae live for 1-4 days before emerging as adult mosquitoes. This process is called metamorphosis.\n\n- Newly emerged adult mosquitoes rest on the water surface for a day or two before taking their first flight. They reach sexual maturity within a few days.\n\n- Adult females seek out a blood meal from animals or humans shortly after mating. This provides protein for egg production.\n\n- Some species can lay multiple batches of eggs over their lifespan, sometimes laying eggs every 3-4 days. Others lay eggs only once.\n\n- Factors like temperature, predation, and geographic location can influence lifespan. Mosquitoes in warmer tropical climates may live shorter than those in milder temperate regions.\n\n- Some mosquitoes survive the winter as mated adult females and live for many months by hibernating in sheltered spots. These are known as overwintering mosquitoes.\n\nSo in general, the mosquito lifecycle lasts around 1-6 weeks from egg to adult depending on species and conditions. Females live the longest, for 2-4 weeks in ideal conditions.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "f26a2dfb-e34d-4bb4-ab82-432240302587",
+                "name": "Claude",
+                "emoji": "📚",
+                "model": "claude-2",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "temperature": 1,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "1ea85afc-7352-47bb-b28c-1aa0bc16c5b3",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "Claude"
+              }
+            },
+            {
+              "text": "The lifespan of a mosquito heavily depends on the species and the environment in which it lives. In general, mosquitos have a life cycle composed of four stages: egg, larva, pupa, and adult.\n\nEggs laid by female mosquitos can hatch into larvae in a couple of days, or they can overwinter and hatch the following year. The larval stage itself lasts about 7-10 days before entering the pupa stage.\n\nThe pupa stage usually lasts 1-2 days under optimal conditions. After that, the pupa emerges as a fully grown mosquito.\n\nAdult mosquitoes typically live for a few weeks, but this can vary greatly. Male mosquitoes, for example, usually live only about a week or so, while females can live for a month and sometimes longer, especially in captivity. However, in the wild, most mosquitoes won't live that long due to predators, weather, and human intervention.\n\nSomething worth noting is that only female mosquitoes bite. They need the protein in blood to help develop their eggs, while males feed on nectar from plants.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "283c3149-626f-4b6d-abf8-195799866c61",
+                "name": "GPT4",
+                "emoji": "🥵",
+                "model": "gpt-4",
+                "base_model": "gpt-4",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "19d9be8b-c949-4df7-8a5e-076971cba1dc",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "GPT4"
+              }
+            },
+            {
+              "text": "The lifespan of a mosquito can considerably vary depending on species, habitat, and climatic conditions. \n\nOn average, female mosquitoes live 2 to 3 weeks, but they can live up to a month in captivity. Male mosquitoes have a shorter lifespan, typically living less than a week. Factors such as temperature and humidity can greatly influence the lifespan of mosquitoes.\n\nThe mosquito lifecycle includes four stages: egg, larva, pupa, and adult. From the time an egg is laid until it reaches adulthood can range from a few days to a few weeks, depending on conditions such as temperature and food availability. \n\nIt's important to note that while adult mosquitoes have a relatively short lifespan, mosquito populations persist due to the constant cycle of development from egg to adult. Female mosquitoes can lay up to 200 eggs at a time, and under ideal conditions, these can start becoming biting adults in as little as a week.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "283c3149-626f-4b6d-abf8-195799866c61",
+                "name": "GPT4",
+                "emoji": "🥵",
+                "model": "gpt-4",
+                "base_model": "gpt-4",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "19d9be8b-c949-4df7-8a5e-076971cba1dc",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "GPT4"
+              }
+            },
+            {
+              "text": "Different species of mosquitoes have varying lifespans, but an average mosquito's lifespan is usually two weeks to six months. The lifespan of a mosquito can significantly be impacted by surrounding environmental conditions such as temperature and humidity.\n\nThe mosquito lifespan begins from an egg, developing into a larva, then a pupa, and finally an adult mosquito. As larvae, mosquitoes live in water for 4 to 14 days, depending upon the species and environmental conditions. As adults, they do not live longer than a few weeks, with females generally living longer than males.\n\nMales live for about 10 days or less, whereas females can live for up to two months. However, this is all under optimal conditions. In colder climates, mosquitoes can live up to 9 months by hibernation (especially female mosquitoes). \n\nFemales tend to feed on plant nectars and blood from hosts to obtain proteins for the development of their eggs, while males only feed on plant nectars.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "283c3149-626f-4b6d-abf8-195799866c61",
+                "name": "GPT4",
+                "emoji": "🥵",
+                "model": "gpt-4",
+                "base_model": "gpt-4",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "GPT4"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "19d9be8b-c949-4df7-8a5e-076971cba1dc",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "GPT4"
+              }
+            },
+            {
+              "text": "**Adult Mosquito lifespan:**\n\n* Female: 2-4 weeks\n* Male: 1-2 weeks\n\n**Factors affecting lifespan:**\n\n* **Temperature:** Warmer temperatures shorten lifespan.\n* **Humidity:** Low humidity shortens lifespan.\n* **Food availability:** Blood meals prolong lifespan.\n* **Nutritional status of host:** Mosquitoes that feed on hosts with higher nutritional value have longer lifespans.\n* **Predators and parasites:** Predators and parasites can reduce lifespan.\n\n**Lifecycle Stages:**\n\n**Egg:**\n\n* Laid in water\n* Hatch within 24-48 hours\n\n**Larva (Wiggler):**\n\n* Lives in water\n* Feeds on microorganisms\n* Develops through 4 instars over 5-14 days\n\n**Pupa (Tumbler):**\n\n* Rests on the water surface\n* Non-feeding stage\n* Lasts for 2-7 days\n\n**Emerged adult:**\n\n* Male mosquitoes emerge and mate within a few hours of emergence.\n* Female mosquitoes find a host, feed on blood, and lay eggs.\n\n**Lifespan after blood meal:**\n\n* Female mosquitoes live for several days after a blood meal, while males typically die within a few days.\n* Blood meals provide the nutrients necessary for egg production and prolong female lifespan.\n\n**Overwintering:**\n\n* In temperate regions, some species of mosquitoes overwinter as adult females.\n* They enter a dormant state during cold months and resume activity in spring.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "398fbcc8-d17e-4eb8-8c25-527dbfbeb67d",
+                "name": "Gemini",
+                "emoji": "🦬",
+                "model": "gemini-pro",
+                "base_model": "palm2-bison",
+                "temp": 0.7,
+                "settings": {
+                  "temperature": 0.46,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
+                },
+                "formData": {
+                  "shortname": "Gemini",
+                  "model": "gemini-pro",
+                  "temperature": 0.46,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": ""
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "6d7d2f44-10d9-49e2-979e-89865a91177f",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "Gemini"
+              }
+            },
+            {
+              "text": "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on species, temperature, and availability of food and water. However, in general:\n\n**Female Mosquitoes:**\n\n* **Average lifespan:** 14-28 days\n* **Maximum lifespan:** Up to 2 months\n\n**Male Mosquitoes:**\n\n* **Average lifespan:** 5-10 days\n* **Maximum lifespan:** Up to 3 weeks\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures generally shorten lifespan.\n* **Food availability:** Mosquitoes that have access to blood meals live longer.\n* **Water availability:** Mosquitoes need water to lay their eggs, so access to water can increase lifespan.\n* **Competition:** In crowded environments, mosquitoes may compete for food and resources, reducing lifespan.\n* **Predators:** Predators such as birds, bats, and dragonflies prey on mosquitoes, reducing their lifespan.\n\n**Life Cycle Stages:**\n\nThe mosquito life cycle consists of four stages:\n\n1. **Egg:** Laid in water, eggs typically hatch within 2-7 days.\n2. **Larva (Wiggler):** Grows in water, feeding on microorganisms.\n3. **Pupa (Tumbler):** Rests in water, transforming into an adult.\n4. **Adult Mosquito:** Emerges from the pupa and seeks blood meals for egg production.\n\n**End of Lifespan:**\n\nMosquitoes typically die when they are:\n\n* Starved (for lack of blood meals)\n* Dehydrated (for lack of water)\n* Killed by predators or diseases\n* Become too old and weak",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "398fbcc8-d17e-4eb8-8c25-527dbfbeb67d",
+                "name": "Gemini",
+                "emoji": "🦬",
+                "model": "gemini-pro",
+                "base_model": "palm2-bison",
+                "temp": 0.7,
+                "settings": {
+                  "temperature": 0.46,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
+                },
+                "formData": {
+                  "shortname": "Gemini",
+                  "model": "gemini-pro",
+                  "temperature": 0.46,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": ""
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "6d7d2f44-10d9-49e2-979e-89865a91177f",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "Gemini"
+              }
+            },
+            {
+              "text": "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on the species and environmental conditions, but typically ranges from a few days to a few months:\n\n**Adult Mosquitoes:**\n\n* **Male Mosquitoes:** 7-10 days\n* **Female Mosquitoes:** 2-4 weeks\n\n**Larval and Pupal Stages:**\n\n* **Eggs:** 1-3 weeks\n* **Larvae:** 7-14 days\n* **Pupae:** 2-4 days\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures accelerate mosquito development, while cooler temperatures slow it down.\n* **Humidity:** High humidity promotes mosquito survival and egg-laying.\n* **Availability of Food:** Blood meals for female mosquitoes are essential for egg production and survival.\n* **Predators and Parasites:** Mosquitoes have natural enemies such as dragonflies, birds, frogs, and parasitic wasps.\n* **Environmental Conditions:** Drought, flooding, and chemical treatments can reduce mosquito populations.\n\n**General Life Cycle of a Mosquito:**\n\n1. **Egg:** Female mosquitoes lay eggs in standing water, such as puddles, ponds, or containers.\n2. **Larva (Wiggler):** Eggs hatch into larvae, which feed on microorganisms in the water.\n3. **Pupa (Tumbler):** After several larval stages, the pupa develops inside a protective casing.\n4. **Adult Mosquito:** The pupae emerge as adult mosquitoes, which seek blood meals for reproduction.\n5. **Death:** Adult mosquitoes eventually die due to natural causes, predators, or environmental factors.\n\n**Additional Notes:**\n\n* Female mosquitoes can lay multiple batches of eggs during their lifespan.\n* Mosquitoes are active primarily during the morning and evening hours.\n* Overwintering mosquito species can survive the cold months in hibernation.\n* The lifespan of mosquitoes has implications for disease transmission, as they can spread diseases such as malaria, dengue fever, and Zika virus.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "398fbcc8-d17e-4eb8-8c25-527dbfbeb67d",
+                "name": "Gemini",
+                "emoji": "🦬",
+                "model": "gemini-pro",
+                "base_model": "palm2-bison",
+                "temp": 0.7,
+                "settings": {
+                  "temperature": 0.46,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
+                },
+                "formData": {
+                  "shortname": "Gemini",
+                  "model": "gemini-pro",
+                  "temperature": 0.46,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": ""
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "6d7d2f44-10d9-49e2-979e-89865a91177f",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "Gemini"
+              }
+            },
+            {
+              "text": "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "bf342b14-b441-4446-8070-760660c3fd69",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "uid": "ba247a5f-2915-4dfd-98c1-9e18e6138740",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "Falcon.7B"
+              }
+            },
+            {
+              "text": "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "bf342b14-b441-4446-8070-760660c3fd69",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "uid": "ba247a5f-2915-4dfd-98c1-9e18e6138740",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "Falcon.7B"
+              }
+            },
+            {
+              "text": "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months.",
+              "prompt": "Tell me about the lifespan of a mosquito.",
+              "fill_history": {},
+              "llm": {
+                "key": "bf342b14-b441-4446-8070-760660c3fd69",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
+                "progress": {
+                  "success": 0,
+                  "error": 0
+                }
+              },
+              "uid": "ba247a5f-2915-4dfd-98c1-9e18e6138740",
+              "metavars": {
+                "__pt": "Tell me about the lifespan of a mosquito.",
+                "LLM_0": "Falcon.7B"
+              }
+            }
+          ]
+        },
+        "position": {
+          "x": 224,
+          "y": 0
+        },
+        "selected": false,
+        "dragging": false,
+        "positionAbsolute": {
+          "x": 224,
+          "y": 0
+        }
+      },
+      {
+        "width": 312,
+        "height": 357,
+        "id": "llmeval-1690229533039",
+        "type": "llmeval",
+        "data": {
+          "grader": {
+            "key": "8dc833ce-0d2b-4098-bbbd-7238e3fb3305",
+            "settings": {
+              "system_msg": "You are a helpful assistant.",
+              "temperature": 0,
+              "functions": [],
+              "function_call": "",
+              "top_p": 1,
+              "stop": [],
+              "presence_penalty": 0,
+              "frequency_penalty": 0
+            },
+            "name": "GPT4",
+            "emoji": "🥵",
+            "model": "gpt-4",
+            "base_model": "gpt-4",
+            "temp": 1
+          },
+          "prompt": "Respond with \"true\" if the response says male mosquitos live longer than female mosquitos. ",
+          "refresh": false
+        },
+        "position": {
+          "x": 624,
+          "y": 32
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": 624,
+          "y": 32
+        },
+        "dragging": false
+      },
+      {
+        "width": 722,
+        "height": 557,
+        "id": "visNode-1690301604573",
+        "type": "vis",
+        "data": {
+          "input": "llmeval-1690229533039",
+          "refresh": false,
+          "vars": [
+            {
+              "value": "LLM (default)",
+              "label": "LLM (default)"
+            }
+          ],
+          "selected_vars": [],
+          "llm_groups": [
+            {
+              "value": "LLM",
+              "label": "LLM"
+            }
+          ],
+          "title": "Factual errors (saying males live longer)"
+        },
+        "position": {
+          "x": 1040,
+          "y": -32
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": 1040,
+          "y": -32
+        },
+        "dragging": false
+      }
+    ],
+    "edges": [
+      {
+        "source": "prompt-1690229030038",
+        "sourceHandle": "prompt",
+        "target": "llmeval-1690229533039",
+        "targetHandle": "responseBatch",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-prompt-1690229030038prompt-llmeval-1690229533039responseBatch"
+      },
+      {
+        "source": "prompt-1690229030038",
+        "sourceHandle": "prompt",
+        "target": "chatTurn-1690298943695",
+        "targetHandle": "__past_chats",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-prompt-1690229030038prompt-chatTurn-1690298943695__past_chats"
+      },
+      {
+        "source": "llmeval-1690229533039",
+        "sourceHandle": "output",
+        "target": "visNode-1690301604573",
+        "targetHandle": "input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-llmeval-1690229533039output-visNode-1690301604573input"
+      }
+    ],
+    "viewport": {
+      "x": -109.14545454545419,
+      "y": 256.3909090909092,
+      "zoom": 1
+    }
+  },
+  "cache": {
+    "prompt-1690229030038_1.json": {
+      "Tell me about the lifespan of an ant.": {
+        "prompt": "Tell me about the lifespan of an ant.",
+        "query": {
+          "model": "gpt-3.5-turbo",
+          "n": 3,
+          "temperature": 1,
+          "top_p": 1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "Tell me about the lifespan of an ant."
+            }
+          ]
+        },
+        "responses": [
+          "The lifespan of an ant can vary greatly depending on the species. Generally, worker ants live for a few months to a few years. However, some ant queens have incredibly long lifespans, with some species living for up to 30 years or even longer. Queen ants are responsible for laying eggs and maintaining the colony's population. Male ants, also known as drones, have much shorter lifespans, typically living for only a few weeks. It's important to note that the lifespan of an ant can be influenced by various environmental factors such as food availability, predation, and overall colony health.",
+          "The lifespan of an ant can vary depending on the species. On average, worker ants typically live for a few months to a couple of years. However, the queen ant, which is responsible for laying eggs and starting new colonies, can live for much longer. Some queen ants can survive for several years or even a couple of decades, depending on the species and environmental conditions. It's important to note that the lifespan of ants can also be influenced by factors such as food availability, predator threats, and the overall health of the ant colony.",
+          "The lifespan of an ant can vary depending on the species. Worker ants, which are responsible for tasks like foraging, nest-building, and caring for the colony, typically live for a few months to a couple of years. Queens, on the other hand, can have significantly longer lifespans, ranging from a few years to several decades, depending on the species.\n\nThere are more than 12,000 known species of ants, and different species have different lifespans. Some common species, like pavement ants and carpenter ants, typically have worker lifespans of a few months to a year. However, the lifespan of an individual worker ant can vary based on its role and the needs of the colony.\n\nIt's important to note that ant lifespans can also be influenced by various factors, such as environmental conditions, availability of food, and threat from predators. Additionally, the lifespan of an ant can also be affected by its social role within the colony."
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7fw5eqTcYxq64vBOdu3gTiYZO5ULv",
+          "object": "chat.completion",
+          "created": 1690229102,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The lifespan of an ant can vary greatly depending on the species. Generally, worker ants live for a few months to a few years. However, some ant queens have incredibly long lifespans, with some species living for up to 30 years or even longer. Queen ants are responsible for laying eggs and maintaining the colony's population. Male ants, also known as drones, have much shorter lifespans, typically living for only a few weeks. It's important to note that the lifespan of an ant can be influenced by various environmental factors such as food availability, predation, and overall colony health."
+              },
+              "finish_reason": "stop"
+            },
+            {
+              "index": 1,
+              "message": {
+                "role": "assistant",
+                "content": "The lifespan of an ant can vary depending on the species. On average, worker ants typically live for a few months to a couple of years. However, the queen ant, which is responsible for laying eggs and starting new colonies, can live for much longer. Some queen ants can survive for several years or even a couple of decades, depending on the species and environmental conditions. It's important to note that the lifespan of ants can also be influenced by factors such as food availability, predator threats, and the overall health of the ant colony."
+              },
+              "finish_reason": "stop"
+            },
+            {
+              "index": 2,
+              "message": {
+                "role": "assistant",
+                "content": "The lifespan of an ant can vary depending on the species. Worker ants, which are responsible for tasks like foraging, nest-building, and caring for the colony, typically live for a few months to a couple of years. Queens, on the other hand, can have significantly longer lifespans, ranging from a few years to several decades, depending on the species.\n\nThere are more than 12,000 known species of ants, and different species have different lifespans. Some common species, like pavement ants and carpenter ants, typically have worker lifespans of a few months to a year. However, the lifespan of an individual worker ant can vary based on its role and the needs of the colony.\n\nIt's important to note that ant lifespans can also be influenced by various factors, such as environmental conditions, availability of food, and threat from predators. Additionally, the lifespan of an ant can also be affected by its social role within the colony."
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 26,
+            "completion_tokens": 424,
+            "total_tokens": 450
+          }
+        },
+        "llm": "GPT3.5",
+        "info": {},
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "5c3e80d5-1c47-49ba-85b3-59bc11c453a7"
+      },
+      "Tell me about the lifespan of a mosquito.": {
+        "prompt": "Tell me about the lifespan of a mosquito.",
+        "query": {
+          "model": "gpt-3.5-turbo",
+          "n": 3,
+          "temperature": 1,
+          "top_p": 1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "Tell me about the lifespan of a mosquito."
+            }
+          ]
+        },
+        "responses": [
+          "The lifespan of a mosquito can vary depending on the species and environmental factors. On average, adult mosquitoes typically live for about 2 to 4 weeks. However, female mosquitoes usually have a shorter lifespan compared to males, as they typically live for 1 to 2 weeks.\n\nDuring their relatively short lifetime, female mosquitoes mate and lay eggs multiple times. After taking a blood meal from a host, female mosquitoes use the proteins obtained to develop and mature their eggs. They lay their eggs in standing water or other suitable breeding sites.\n\nThe eggs hatch into larvae, commonly known as wigglers. The larvae spend their time feeding on organic matter in the water and molting through several stages before reaching the pupal stage. The pupa is a non-feeding and non-mobile stage in the mosquito life cycle.\n\nAfter a few days, adult mosquitoes emerge from the pupa. They usually rest on the water's surface until their wings are dry and fully developed. Once they can fly, they search for mates and sources of energy, including nectar from flowers. For female mosquitoes, this also involves seeking out blood meals to nourish their eggs.\n\nIt's worth noting that not all mosquitoes transmit diseases, but those that do can have a significant impact on human and animal health. It is thus essential to take measures to prevent mosquito breeding and protect yourself from mosquito bites, particularly in areas where mosquito-borne diseases are prevalent.",
+          "The lifespan of a mosquito can vary depending on the species and environmental conditions. On average, a mosquito's lifespan can range from a few weeks to several months. However, it's important to note that not all mosquitoes live long enough to complete their entire lifespan due to various factors such as predation or disease.\n\nFemale mosquitoes, which are the ones that bite and transmit diseases, generally live longer than their male counterparts. After mating, female mosquitoes typically require a blood meal to obtain the necessary nutrients for egg development. Once they have successfully laid their eggs, their lifespan will usually decrease significantly.\n\nIn favorable conditions, some mosquito species can complete their lifecycle within a week or two. However, in colder climates or during the winter season, mosquitoes may enter a dormant state or overwinter as adults or as eggs, depending on the species.\n\nOverall, the lifespan of a mosquito is relatively short, but they are capable of reproducing quickly, which contributes to their ability to thrive and multiply in various habitats.",
+          "The lifespan of a mosquito can vary depending on the species, environmental conditions, and available food sources. However, on average, mosquitoes typically live for about 2 to 4 weeks. \n\nThere are four stages in a mosquito's life cycle: egg, larva, pupa, and adult. After a female mosquito lays her eggs in water, they hatch into larvae within a few days. The larvae feed on organic matter in the water and molt several times as they grow. This larval stage typically lasts for about 5 to 14 days.\n\nFollowing the larval stage, the mosquitoes enter the pupal stage, during which they do not eat and are relatively immobile. The pupal stage typically lasts for about 1 to 4 days. During this period, the mosquito transforms into its adult form.\n\nOnce the adult mosquito emerges from the pupa, it needs to find a blood meal to develop eggs (only female mosquitoes feed on blood). Female mosquitoes can feed on a variety of hosts such as humans, animals, or birds. Male mosquitoes, on the other hand, primarily feed on nectar for their energy needs.\n\nAfter mating and getting a blood meal, a female mosquito will lay eggs, starting the life cycle anew. This process can be repeated several times within the mosquito's lifespan, allowing them to reproduce and continue their population.\n\nIt's worth noting that temperature and environmental conditions significantly influence mosquito development and lifespan. Warmer temperatures tend to expedite their life cycle, while cooler temperatures can prolong it. Additionally, certain species of mosquitoes can hibernate during unfavorable conditions, extending their lifespan beyond typical seasonal limitations."
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7fw8OBUR5srcz8wXTTnrVGdE34hPO",
+          "object": "chat.completion",
+          "created": 1690229272,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The lifespan of a mosquito can vary depending on the species and environmental factors. On average, adult mosquitoes typically live for about 2 to 4 weeks. However, female mosquitoes usually have a shorter lifespan compared to males, as they typically live for 1 to 2 weeks.\n\nDuring their relatively short lifetime, female mosquitoes mate and lay eggs multiple times. After taking a blood meal from a host, female mosquitoes use the proteins obtained to develop and mature their eggs. They lay their eggs in standing water or other suitable breeding sites.\n\nThe eggs hatch into larvae, commonly known as wigglers. The larvae spend their time feeding on organic matter in the water and molting through several stages before reaching the pupal stage. The pupa is a non-feeding and non-mobile stage in the mosquito life cycle.\n\nAfter a few days, adult mosquitoes emerge from the pupa. They usually rest on the water's surface until their wings are dry and fully developed. Once they can fly, they search for mates and sources of energy, including nectar from flowers. For female mosquitoes, this also involves seeking out blood meals to nourish their eggs.\n\nIt's worth noting that not all mosquitoes transmit diseases, but those that do can have a significant impact on human and animal health. It is thus essential to take measures to prevent mosquito breeding and protect yourself from mosquito bites, particularly in areas where mosquito-borne diseases are prevalent."
+              },
+              "finish_reason": "stop"
+            },
+            {
+              "index": 1,
+              "message": {
+                "role": "assistant",
+                "content": "The lifespan of a mosquito can vary depending on the species and environmental conditions. On average, a mosquito's lifespan can range from a few weeks to several months. However, it's important to note that not all mosquitoes live long enough to complete their entire lifespan due to various factors such as predation or disease.\n\nFemale mosquitoes, which are the ones that bite and transmit diseases, generally live longer than their male counterparts. After mating, female mosquitoes typically require a blood meal to obtain the necessary nutrients for egg development. Once they have successfully laid their eggs, their lifespan will usually decrease significantly.\n\nIn favorable conditions, some mosquito species can complete their lifecycle within a week or two. However, in colder climates or during the winter season, mosquitoes may enter a dormant state or overwinter as adults or as eggs, depending on the species.\n\nOverall, the lifespan of a mosquito is relatively short, but they are capable of reproducing quickly, which contributes to their ability to thrive and multiply in various habitats."
+              },
+              "finish_reason": "stop"
+            },
+            {
+              "index": 2,
+              "message": {
+                "role": "assistant",
+                "content": "The lifespan of a mosquito can vary depending on the species, environmental conditions, and available food sources. However, on average, mosquitoes typically live for about 2 to 4 weeks. \n\nThere are four stages in a mosquito's life cycle: egg, larva, pupa, and adult. After a female mosquito lays her eggs in water, they hatch into larvae within a few days. The larvae feed on organic matter in the water and molt several times as they grow. This larval stage typically lasts for about 5 to 14 days.\n\nFollowing the larval stage, the mosquitoes enter the pupal stage, during which they do not eat and are relatively immobile. The pupal stage typically lasts for about 1 to 4 days. During this period, the mosquito transforms into its adult form.\n\nOnce the adult mosquito emerges from the pupa, it needs to find a blood meal to develop eggs (only female mosquitoes feed on blood). Female mosquitoes can feed on a variety of hosts such as humans, animals, or birds. Male mosquitoes, on the other hand, primarily feed on nectar for their energy needs.\n\nAfter mating and getting a blood meal, a female mosquito will lay eggs, starting the life cycle anew. This process can be repeated several times within the mosquito's lifespan, allowing them to reproduce and continue their population.\n\nIt's worth noting that temperature and environmental conditions significantly influence mosquito development and lifespan. Warmer temperatures tend to expedite their life cycle, while cooler temperatures can prolong it. Additionally, certain species of mosquitoes can hibernate during unfavorable conditions, extending their lifespan beyond typical seasonal limitations."
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 26,
+            "completion_tokens": 808,
+            "total_tokens": 834
+          }
+        },
+        "llm": "GPT3.5",
+        "info": {},
+        "metavars": {
+          "LLM_0": "GPT3.5"
+        },
+        "uid": "bd57beb7-47da-4b4f-97f2-2f69a8ec8334"
+      }
+    },
+    "prompt-1690229030038_3.json": {
+      "Tell me about the lifespan of an ant.": {
+        "prompt": "Tell me about the lifespan of an ant.",
+        "query": {
+          "model": "claude-2",
+          "prompt": "\n\nHuman: Tell me about the lifespan of an ant.\n\nAssistant:",
+          "max_tokens_to_sample": 1024,
+          "stop_sequences": [
+            "\n\nHuman:"
+          ],
+          "temperature": 1,
+          "top_k": -1,
+          "top_p": -1
+        },
+        "responses": [
+          "Here are some key points about the lifespan of ants:\n\n- Worker ants typically live from a few weeks to a few months. Their main purpose is to work hard for the colony, and they often die from predation or exhaustion. \n\n- Queen ants can live for many years, even decades in some species. The queen's sole purpose is to reproduce and lay eggs that will become the new workers and drones. Queens are cared for and protected by the workers.\n\n- Male ants (drones) live for a few weeks or months. Their only purpose is to mate with new queen ants during the nuptial flight. Once they mate, the males quickly die.\n\n- Different ant species have varying lifespans. For example, Harvester ants typically live for about a year, while Carpenter ants may live for 5-7 years.\n\n- Ants kept in captivity can live longer than their wild counterparts. Without the stresses and dangers of the natural world, certain queen ants have lived for 20-30 years in laboratories.\n\n- The lifespan of an ant colony can far exceed that of individual ants. Some ant colonies have been continuously active for 20-50 years. New ants are born to replace dying members.\n\nSo in summary, worker ants live short lives focused on service, queens can live for many years reproducing, and the colony itself functions as a superorganism with an extended lifespan. Factors like caste, species, and environment influence individual ant longevity.",
+          "Here's a brief overview of the typical lifespan of an ant:\n\n- Worker ants live around 4-6 weeks on average. These are the ants that forage, build and maintain the nest, and care for the queen and brood. Their lifespans are the shortest in the colony.\n\n- Male ants live for a few weeks. Their only purpose is to mate with new queens during the mating flight. Once they mate, the males quickly die.\n\n- Queen ants can live for many years, often over a decade. The queen is essential for laying eggs and founding new colonies. Some queen ants have been observed to live for 20-30 years in laboratory colonies.\n\n- In some ant species, there are also soldier ants that protect and defend the colony. Soldier ants tend to live a bit longer than worker ants, up to a few months. \n\n- Ant lifespans vary by species. Tropical species often live longer than ants in temperate regions. Diet, nest conditions, and hazards in the environment also impact an ant's longevity.\n\n- When a queen ant dies, the colony can only survive a short time before the workers die out. The queen's presence provides chemical signals essential for the colony's survival. Without a queen, the colony has no way to reproduce new ants.\n\nSo in summary, queens live the longest, workers have short lifespans, and males live only to mate. The queen ant is the foundation of the colony and key to its survival over many years.",
+          "Here are some key points about the lifespan of ants:\n\n- Worker ants typically live from a few weeks to a few months. Males live slightly longer, up to a few months. Queens live much longer, from several years to over a decade in some species.\n\n- The lifecycle begins with an egg laid by the queen. It hatches into a larva, then a pupa, before emerging as an adult ant. Workers pass through incomplete metamorphosis with egg, larva, pupa and adult stages.\n\n- Queens can live over 10 years in some species. Their sole purpose is to lay eggs and keep the colony going. Queens of fire ants may live up to 7 years. Harvester ant queens can live 15-20 years.\n\n- Male ants exist only to mate. After mating, males quickly die within weeks or months. The sperm from mating is stored by the queen to fertilize eggs. \n\n- Worker ants forage for food, defend the nest, care for the queen and tend to the young. Their life expectancy varies by caste and species. Minor worker ants may only live a few weeks. Larger worker ants can survive several months to a year.\n\n- The lifespan of an ant colony can exceed 20-30 years for some species. Though individual ants are short-lived, the colony itself persists by producing new generations of ants.\n\nIn summary, queens live the longest, males the shortest, and workers have intermediate lifespans of a few weeks to months depending on their role. The colony as a whole can survive for decades."
+        ],
+        "raw_response": [
+          {
+            "completion": " Here are some key points about the lifespan of ants:\n\n- Worker ants typically live from a few weeks to a few months. Their main purpose is to work hard for the colony, and they often die from predation or exhaustion. \n\n- Queen ants can live for many years, even decades in some species. The queen's sole purpose is to reproduce and lay eggs that will become the new workers and drones. Queens are cared for and protected by the workers.\n\n- Male ants (drones) live for a few weeks or months. Their only purpose is to mate with new queen ants during the nuptial flight. Once they mate, the males quickly die.\n\n- Different ant species have varying lifespans. For example, Harvester ants typically live for about a year, while Carpenter ants may live for 5-7 years.\n\n- Ants kept in captivity can live longer than their wild counterparts. Without the stresses and dangers of the natural world, certain queen ants have lived for 20-30 years in laboratories.\n\n- The lifespan of an ant colony can far exceed that of individual ants. Some ant colonies have been continuously active for 20-50 years. New ants are born to replace dying members.\n\nSo in summary, worker ants live short lives focused on service, queens can live for many years reproducing, and the colony itself functions as a superorganism with an extended lifespan. Factors like caste, species, and environment influence individual ant longevity.",
+            "log_id": "1507d9883798368756ec3e010119301eb4542d62d26be3a6c04af5af761ad8a3",
+            "model": "claude-2.0",
+            "stop": "\n\nHuman:",
+            "stop_reason": "stop_sequence"
+          },
+          {
+            "completion": " Here's a brief overview of the typical lifespan of an ant:\n\n- Worker ants live around 4-6 weeks on average. These are the ants that forage, build and maintain the nest, and care for the queen and brood. Their lifespans are the shortest in the colony.\n\n- Male ants live for a few weeks. Their only purpose is to mate with new queens during the mating flight. Once they mate, the males quickly die.\n\n- Queen ants can live for many years, often over a decade. The queen is essential for laying eggs and founding new colonies. Some queen ants have been observed to live for 20-30 years in laboratory colonies.\n\n- In some ant species, there are also soldier ants that protect and defend the colony. Soldier ants tend to live a bit longer than worker ants, up to a few months. \n\n- Ant lifespans vary by species. Tropical species often live longer than ants in temperate regions. Diet, nest conditions, and hazards in the environment also impact an ant's longevity.\n\n- When a queen ant dies, the colony can only survive a short time before the workers die out. The queen's presence provides chemical signals essential for the colony's survival. Without a queen, the colony has no way to reproduce new ants.\n\nSo in summary, queens live the longest, workers have short lifespans, and males live only to mate. The queen ant is the foundation of the colony and key to its survival over many years.",
+            "log_id": "bd3d351f88cf377f0d17bdb55cc18336dd3a32e2c8a44d946e54fc023b43244a",
+            "model": "claude-2.0",
+            "stop": "\n\nHuman:",
+            "stop_reason": "stop_sequence"
+          },
+          {
+            "completion": " Here are some key points about the lifespan of ants:\n\n- Worker ants typically live from a few weeks to a few months. Males live slightly longer, up to a few months. Queens live much longer, from several years to over a decade in some species.\n\n- The lifecycle begins with an egg laid by the queen. It hatches into a larva, then a pupa, before emerging as an adult ant. Workers pass through incomplete metamorphosis with egg, larva, pupa and adult stages.\n\n- Queens can live over 10 years in some species. Their sole purpose is to lay eggs and keep the colony going. Queens of fire ants may live up to 7 years. Harvester ant queens can live 15-20 years.\n\n- Male ants exist only to mate. After mating, males quickly die within weeks or months. The sperm from mating is stored by the queen to fertilize eggs. \n\n- Worker ants forage for food, defend the nest, care for the queen and tend to the young. Their life expectancy varies by caste and species. Minor worker ants may only live a few weeks. Larger worker ants can survive several months to a year.\n\n- The lifespan of an ant colony can exceed 20-30 years for some species. Though individual ants are short-lived, the colony itself persists by producing new generations of ants.\n\nIn summary, queens live the longest, males the shortest, and workers have intermediate lifespans of a few weeks to months depending on their role. The colony as a whole can survive for decades.",
+            "log_id": "d1be621c3e7c8ac303050dfc6057cd7670b79a3aa6ea493ee49802e3ba73201d",
+            "model": "claude-2.0",
+            "stop": "\n\nHuman:",
+            "stop_reason": "stop_sequence"
+          }
+        ],
+        "llm": "Claude",
+        "info": {},
+        "metavars": {
+          "LLM_0": "Claude"
+        },
+        "uid": "108bb70c-4630-4d74-bc8a-935b7481ef2a"
+      },
+      "Tell me about the lifespan of a mosquito.": {
+        "prompt": "Tell me about the lifespan of a mosquito.",
+        "query": {
+          "model": "claude-2",
+          "prompt": "\n\nHuman: Tell me about the lifespan of a mosquito.\n\nAssistant:",
+          "max_tokens_to_sample": 1024,
+          "stop_sequences": [
+            "\n\nHuman:"
+          ],
+          "temperature": 1,
+          "top_k": -1,
+          "top_p": -1
+        },
+        "responses": [
+          "Here are some key points about the typical lifespan of a mosquito:\n\n- Adult mosquitoes usually live for around 2-4 weeks. Females tend to live longer than males.\n\n- Mosquitoes go through four distinct life stages: egg, larva, pupa, and adult. The egg, larva, and pupa stages are aquatic and together typically last 5-14 days depending on the species and water temperature.\n\n- Once a female mosquito emerges as an adult, her priority is to find a blood meal in order to get the protein needed to produce eggs. Males feed on plant nectar.\n\n- After mating, the female will lay her eggs (typically 100-200 eggs at a time) in standing water or very slow moving water. Good egg-laying sites include ponds, flooded areas, marshes, and even small containers or tree holes that hold water.\n\n- Mosquitoes breed quickly in warm weather. The full lifecycle from egg to adult can be completed in as little as 4-7 days in ideal warm conditions. Cooler temperatures slow down their development.\n\n- Most mosquitoes die soon after laying their eggs. Only females hibernate over the winter, hiding out in places like barns or basements.\n\n- Factors impacting their lifespan include predation, weather conditions, and pesticide application. Mosquitoes have many natural predators including birds, bats, dragonflies, and spiders.\n\nSo in summary, the short adult mosquito lifespan of just a few weeks belies their rapid breeding capabilities under the right conditions. This enables mosquito populations to explode during warm seasons.",
+          "Here are some key points about the lifespan of a mosquito:\n\n- Mosquitoes go through four distinct stages in their lifecycle: egg, larva, pupa, and adult. \n\n- Eggs are laid by adult female mosquitoes, usually in clusters on the surface of stagnant water. Eggs hatch into larvae within a few days.\n\n- The larval stage lasts 4-10 days. Larvae, also called \"wigglers,\" live in the water and feed on organic matter. They molt several times as they grow.\n\n- Pupae then develop from the final larval stage. The pupal stage lasts 2-3 days. Pupae, also called \"tumblers,\" are inactive and do not feed.\n\n- Adult mosquitoes emerge from the pupal case after metamorphosis. The lifespan of adult mosquitoes varies by species, but is often quite short, ranging from a week to a month. \n\n- Only female mosquitoes bite and feed on blood, which they need to develop eggs. Male mosquitoes feed on nectar.\n\n- Factors impacting adult lifespan include temperature, humidity, predators, and if/when they are able to take a blood meal from a host. Mosquitoes die shortly after laying eggs if they cannot find a blood meal.\n\nSo in summary, the full mosquito lifecycle lasts about 1-2 weeks from egg to adult death, though adult lifespan alone may only be up to 1 month under ideal conditions. The stages from egg through pupae occur in water.",
+          "Here are some key points about the typical lifespan of a mosquito:\n\n- Adult mosquitoes usually live for 2-4 weeks. Females tend to live longer than males, since they require a blood meal for reproducing.\n\n- The lifecycle begins when eggs are laid in stagnant water or moist soil. They hatch into larvae within a few days. \n\n- The larval stage lasts 4-10 days. Larvae molt several times as they grow, eventually becoming pupae.\n\n- Pupae live for 1-4 days before emerging as adult mosquitoes. This process is called metamorphosis.\n\n- Newly emerged adult mosquitoes rest on the water surface for a day or two before taking their first flight. They reach sexual maturity within a few days.\n\n- Adult females seek out a blood meal from animals or humans shortly after mating. This provides protein for egg production.\n\n- Some species can lay multiple batches of eggs over their lifespan, sometimes laying eggs every 3-4 days. Others lay eggs only once.\n\n- Factors like temperature, predation, and geographic location can influence lifespan. Mosquitoes in warmer tropical climates may live shorter than those in milder temperate regions.\n\n- Some mosquitoes survive the winter as mated adult females and live for many months by hibernating in sheltered spots. These are known as overwintering mosquitoes.\n\nSo in general, the mosquito lifecycle lasts around 1-6 weeks from egg to adult depending on species and conditions. Females live the longest, for 2-4 weeks in ideal conditions."
+        ],
+        "raw_response": [
+          {
+            "completion": " Here are some key points about the typical lifespan of a mosquito:\n\n- Adult mosquitoes usually live for around 2-4 weeks. Females tend to live longer than males.\n\n- Mosquitoes go through four distinct life stages: egg, larva, pupa, and adult. The egg, larva, and pupa stages are aquatic and together typically last 5-14 days depending on the species and water temperature.\n\n- Once a female mosquito emerges as an adult, her priority is to find a blood meal in order to get the protein needed to produce eggs. Males feed on plant nectar.\n\n- After mating, the female will lay her eggs (typically 100-200 eggs at a time) in standing water or very slow moving water. Good egg-laying sites include ponds, flooded areas, marshes, and even small containers or tree holes that hold water.\n\n- Mosquitoes breed quickly in warm weather. The full lifecycle from egg to adult can be completed in as little as 4-7 days in ideal warm conditions. Cooler temperatures slow down their development.\n\n- Most mosquitoes die soon after laying their eggs. Only females hibernate over the winter, hiding out in places like barns or basements.\n\n- Factors impacting their lifespan include predation, weather conditions, and pesticide application. Mosquitoes have many natural predators including birds, bats, dragonflies, and spiders.\n\nSo in summary, the short adult mosquito lifespan of just a few weeks belies their rapid breeding capabilities under the right conditions. This enables mosquito populations to explode during warm seasons.",
+            "log_id": "06ee35b94e6fc212d181de6e97ec631108adcd499f6e06338009e6946170be62",
+            "model": "claude-2.0",
+            "stop": "\n\nHuman:",
+            "stop_reason": "stop_sequence"
+          },
+          {
+            "completion": " Here are some key points about the lifespan of a mosquito:\n\n- Mosquitoes go through four distinct stages in their lifecycle: egg, larva, pupa, and adult. \n\n- Eggs are laid by adult female mosquitoes, usually in clusters on the surface of stagnant water. Eggs hatch into larvae within a few days.\n\n- The larval stage lasts 4-10 days. Larvae, also called \"wigglers,\" live in the water and feed on organic matter. They molt several times as they grow.\n\n- Pupae then develop from the final larval stage. The pupal stage lasts 2-3 days. Pupae, also called \"tumblers,\" are inactive and do not feed.\n\n- Adult mosquitoes emerge from the pupal case after metamorphosis. The lifespan of adult mosquitoes varies by species, but is often quite short, ranging from a week to a month. \n\n- Only female mosquitoes bite and feed on blood, which they need to develop eggs. Male mosquitoes feed on nectar.\n\n- Factors impacting adult lifespan include temperature, humidity, predators, and if/when they are able to take a blood meal from a host. Mosquitoes die shortly after laying eggs if they cannot find a blood meal.\n\nSo in summary, the full mosquito lifecycle lasts about 1-2 weeks from egg to adult death, though adult lifespan alone may only be up to 1 month under ideal conditions. The stages from egg through pupae occur in water.",
+            "log_id": "7d867de0ef156b94ea993018243c4e9e6842d090f4c4738155add51e727ec1ed",
+            "model": "claude-2.0",
+            "stop": "\n\nHuman:",
+            "stop_reason": "stop_sequence"
+          },
+          {
+            "completion": " Here are some key points about the typical lifespan of a mosquito:\n\n- Adult mosquitoes usually live for 2-4 weeks. Females tend to live longer than males, since they require a blood meal for reproducing.\n\n- The lifecycle begins when eggs are laid in stagnant water or moist soil. They hatch into larvae within a few days. \n\n- The larval stage lasts 4-10 days. Larvae molt several times as they grow, eventually becoming pupae.\n\n- Pupae live for 1-4 days before emerging as adult mosquitoes. This process is called metamorphosis.\n\n- Newly emerged adult mosquitoes rest on the water surface for a day or two before taking their first flight. They reach sexual maturity within a few days.\n\n- Adult females seek out a blood meal from animals or humans shortly after mating. This provides protein for egg production.\n\n- Some species can lay multiple batches of eggs over their lifespan, sometimes laying eggs every 3-4 days. Others lay eggs only once.\n\n- Factors like temperature, predation, and geographic location can influence lifespan. Mosquitoes in warmer tropical climates may live shorter than those in milder temperate regions.\n\n- Some mosquitoes survive the winter as mated adult females and live for many months by hibernating in sheltered spots. These are known as overwintering mosquitoes.\n\nSo in general, the mosquito lifecycle lasts around 1-6 weeks from egg to adult depending on species and conditions. Females live the longest, for 2-4 weeks in ideal conditions.",
+            "log_id": "be1457b3666cac33efab9907e4a978dbdde633515a376b833f1bc37ad5e6bab0",
+            "model": "claude-2.0",
+            "stop": "\n\nHuman:",
+            "stop_reason": "stop_sequence"
+          }
+        ],
+        "llm": "Claude",
+        "info": {},
+        "metavars": {
+          "LLM_0": "Claude"
+        },
+        "uid": "1ea85afc-7352-47bb-b28c-1aa0bc16c5b3"
+      }
+    },
+    "prompt-1690229030038_2.json": {
+      "Tell me about the lifespan of an ant.": {
+        "prompt": "Tell me about the lifespan of an ant.",
+        "query": {
+          "model": "gpt-4",
+          "n": 3,
+          "temperature": 1,
+          "top_p": 1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "Tell me about the lifespan of an ant."
+            }
+          ]
+        },
+        "responses": [
+          "The lifespan of an ant depends on its role within the colony. Worker ants, which are the sterile females in the group, tend to live for several months, although this can vary significantly between species. Queen ants, the reproductive females, have a much longer lifespan and can live for several years. Some queen ants have been known to live for up to 30 years, making them one of the longest living insects. Male ants, on the other hand, have the shortest lifespan, often living only a few weeks and dying after mating.",
+          "An ant's lifespan can vary greatly depending on its species and role within the colony. Worker ants, which are the sterile, female ants that do most of the foraging and nest maintenance, typically live for a few months to a year. However, in some species, they can live for several years. \n\nQueen ants, which lay all the eggs in a colony, live much longer than worker ants. They can live for many years, even decades in some species. Queen ants of the Lasius niger species, for example, are known to live for up to 30 years, which is one of the longest lifespans recorded for any eusocial insect.\n\nMale ants, on the other hand, have the shortest lifespan. They are typically born during a specific mating season and only live for a few weeks. Their sole purpose is to mate with a queen, after which they die. \n\nHowever, it's worth mentioning that lifespan can also be influenced by factors such as the ant's diet, the presence of predators, disease, climate, and environmental conditions.",
+          "The lifespan of an ant varies significantly depending on the species and the ant's role within its colony. Worker ants, which are the sterile females that do most of the foraging and colony maintenance, typically live for a few months to a year. Male ants, which exist solely to mate with the queen, usually die shortly after mating.\n\nThe queen ant has the longest lifespan. A queen ant can live for several years, and there have been reports of queen ants living for up to 30 years in some species. This long lifespan is due to their sheltered life inside the nest and their unique physiological characteristics, which allow them to withstand aging more effectively than other ants within the colony."
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7fw5ex7iyqsROmuIQxZ2ERhW3TaBW",
+          "object": "chat.completion",
+          "created": 1690229102,
+          "model": "gpt-4-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The lifespan of an ant depends on its role within the colony. Worker ants, which are the sterile females in the group, tend to live for several months, although this can vary significantly between species. Queen ants, the reproductive females, have a much longer lifespan and can live for several years. Some queen ants have been known to live for up to 30 years, making them one of the longest living insects. Male ants, on the other hand, have the shortest lifespan, often living only a few weeks and dying after mating."
+              },
+              "finish_reason": "stop"
+            },
+            {
+              "index": 1,
+              "message": {
+                "role": "assistant",
+                "content": "An ant's lifespan can vary greatly depending on its species and role within the colony. Worker ants, which are the sterile, female ants that do most of the foraging and nest maintenance, typically live for a few months to a year. However, in some species, they can live for several years. \n\nQueen ants, which lay all the eggs in a colony, live much longer than worker ants. They can live for many years, even decades in some species. Queen ants of the Lasius niger species, for example, are known to live for up to 30 years, which is one of the longest lifespans recorded for any eusocial insect.\n\nMale ants, on the other hand, have the shortest lifespan. They are typically born during a specific mating season and only live for a few weeks. Their sole purpose is to mate with a queen, after which they die. \n\nHowever, it's worth mentioning that lifespan can also be influenced by factors such as the ant's diet, the presence of predators, disease, climate, and environmental conditions."
+              },
+              "finish_reason": "stop"
+            },
+            {
+              "index": 2,
+              "message": {
+                "role": "assistant",
+                "content": "The lifespan of an ant varies significantly depending on the species and the ant's role within its colony. Worker ants, which are the sterile females that do most of the foraging and colony maintenance, typically live for a few months to a year. Male ants, which exist solely to mate with the queen, usually die shortly after mating.\n\nThe queen ant has the longest lifespan. A queen ant can live for several years, and there have been reports of queen ants living for up to 30 years in some species. This long lifespan is due to their sheltered life inside the nest and their unique physiological characteristics, which allow them to withstand aging more effectively than other ants within the colony."
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 26,
+            "completion_tokens": 459,
+            "total_tokens": 485
+          }
+        },
+        "llm": "GPT4",
+        "info": {},
+        "metavars": {
+          "LLM_0": "GPT4"
+        },
+        "uid": "8cf49d3d-4053-4352-bd83-c88cd6f85935"
+      },
+      "Tell me about the lifespan of a mosquito.": {
+        "prompt": "Tell me about the lifespan of a mosquito.",
+        "query": {
+          "model": "gpt-4",
+          "n": 3,
+          "temperature": 1,
+          "top_p": 1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "Tell me about the lifespan of a mosquito."
+            }
+          ]
+        },
+        "responses": [
+          "The lifespan of a mosquito heavily depends on the species and the environment in which it lives. In general, mosquitos have a life cycle composed of four stages: egg, larva, pupa, and adult.\n\nEggs laid by female mosquitos can hatch into larvae in a couple of days, or they can overwinter and hatch the following year. The larval stage itself lasts about 7-10 days before entering the pupa stage.\n\nThe pupa stage usually lasts 1-2 days under optimal conditions. After that, the pupa emerges as a fully grown mosquito.\n\nAdult mosquitoes typically live for a few weeks, but this can vary greatly. Male mosquitoes, for example, usually live only about a week or so, while females can live for a month and sometimes longer, especially in captivity. However, in the wild, most mosquitoes won't live that long due to predators, weather, and human intervention.\n\nSomething worth noting is that only female mosquitoes bite. They need the protein in blood to help develop their eggs, while males feed on nectar from plants.",
+          "The lifespan of a mosquito can considerably vary depending on species, habitat, and climatic conditions. \n\nOn average, female mosquitoes live 2 to 3 weeks, but they can live up to a month in captivity. Male mosquitoes have a shorter lifespan, typically living less than a week. Factors such as temperature and humidity can greatly influence the lifespan of mosquitoes.\n\nThe mosquito lifecycle includes four stages: egg, larva, pupa, and adult. From the time an egg is laid until it reaches adulthood can range from a few days to a few weeks, depending on conditions such as temperature and food availability. \n\nIt's important to note that while adult mosquitoes have a relatively short lifespan, mosquito populations persist due to the constant cycle of development from egg to adult. Female mosquitoes can lay up to 200 eggs at a time, and under ideal conditions, these can start becoming biting adults in as little as a week.",
+          "Different species of mosquitoes have varying lifespans, but an average mosquito's lifespan is usually two weeks to six months. The lifespan of a mosquito can significantly be impacted by surrounding environmental conditions such as temperature and humidity.\n\nThe mosquito lifespan begins from an egg, developing into a larva, then a pupa, and finally an adult mosquito. As larvae, mosquitoes live in water for 4 to 14 days, depending upon the species and environmental conditions. As adults, they do not live longer than a few weeks, with females generally living longer than males.\n\nMales live for about 10 days or less, whereas females can live for up to two months. However, this is all under optimal conditions. In colder climates, mosquitoes can live up to 9 months by hibernation (especially female mosquitoes). \n\nFemales tend to feed on plant nectars and blood from hosts to obtain proteins for the development of their eggs, while males only feed on plant nectars."
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7fw8Q7sqqE7QMXCPrkoFrtm4AmUfJ",
+          "object": "chat.completion",
+          "created": 1690229274,
+          "model": "gpt-4-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The lifespan of a mosquito heavily depends on the species and the environment in which it lives. In general, mosquitos have a life cycle composed of four stages: egg, larva, pupa, and adult.\n\nEggs laid by female mosquitos can hatch into larvae in a couple of days, or they can overwinter and hatch the following year. The larval stage itself lasts about 7-10 days before entering the pupa stage.\n\nThe pupa stage usually lasts 1-2 days under optimal conditions. After that, the pupa emerges as a fully grown mosquito.\n\nAdult mosquitoes typically live for a few weeks, but this can vary greatly. Male mosquitoes, for example, usually live only about a week or so, while females can live for a month and sometimes longer, especially in captivity. However, in the wild, most mosquitoes won't live that long due to predators, weather, and human intervention.\n\nSomething worth noting is that only female mosquitoes bite. They need the protein in blood to help develop their eggs, while males feed on nectar from plants."
+              },
+              "finish_reason": "stop"
+            },
+            {
+              "index": 1,
+              "message": {
+                "role": "assistant",
+                "content": "The lifespan of a mosquito can considerably vary depending on species, habitat, and climatic conditions. \n\nOn average, female mosquitoes live 2 to 3 weeks, but they can live up to a month in captivity. Male mosquitoes have a shorter lifespan, typically living less than a week. Factors such as temperature and humidity can greatly influence the lifespan of mosquitoes.\n\nThe mosquito lifecycle includes four stages: egg, larva, pupa, and adult. From the time an egg is laid until it reaches adulthood can range from a few days to a few weeks, depending on conditions such as temperature and food availability. \n\nIt's important to note that while adult mosquitoes have a relatively short lifespan, mosquito populations persist due to the constant cycle of development from egg to adult. Female mosquitoes can lay up to 200 eggs at a time, and under ideal conditions, these can start becoming biting adults in as little as a week."
+              },
+              "finish_reason": "stop"
+            },
+            {
+              "index": 2,
+              "message": {
+                "role": "assistant",
+                "content": "Different species of mosquitoes have varying lifespans, but an average mosquito's lifespan is usually two weeks to six months. The lifespan of a mosquito can significantly be impacted by surrounding environmental conditions such as temperature and humidity.\n\nThe mosquito lifespan begins from an egg, developing into a larva, then a pupa, and finally an adult mosquito. As larvae, mosquitoes live in water for 4 to 14 days, depending upon the species and environmental conditions. As adults, they do not live longer than a few weeks, with females generally living longer than males.\n\nMales live for about 10 days or less, whereas females can live for up to two months. However, this is all under optimal conditions. In colder climates, mosquitoes can live up to 9 months by hibernation (especially female mosquitoes). \n\nFemales tend to feed on plant nectars and blood from hosts to obtain proteins for the development of their eggs, while males only feed on plant nectars."
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 26,
+            "completion_tokens": 602,
+            "total_tokens": 628
+          }
+        },
+        "llm": "GPT4",
+        "info": {},
+        "metavars": {
+          "LLM_0": "GPT4"
+        },
+        "uid": "19d9be8b-c949-4df7-8a5e-076971cba1dc"
+      }
+    },
+    "prompt-1690229030038_6.json": {
+      "Tell me about the lifespan of a mosquito.": [
+        {
+          "prompt": "Tell me about the lifespan of a mosquito.",
+          "query": {
+            "model": "models/gemini-pro",
+            "temperature": 0.46,
+            "stopSequences": [],
+            "candidateCount": 3,
+            "maxOutputTokens": 512,
+            "topP": -1,
+            "topK": -1
+          },
+          "uid": "6d7d2f44-10d9-49e2-979e-89865a91177f",
+          "responses": [
+            "**Adult Mosquito lifespan:**\n\n* Female: 2-4 weeks\n* Male: 1-2 weeks\n\n**Factors affecting lifespan:**\n\n* **Temperature:** Warmer temperatures shorten lifespan.\n* **Humidity:** Low humidity shortens lifespan.\n* **Food availability:** Blood meals prolong lifespan.\n* **Nutritional status of host:** Mosquitoes that feed on hosts with higher nutritional value have longer lifespans.\n* **Predators and parasites:** Predators and parasites can reduce lifespan.\n\n**Lifecycle Stages:**\n\n**Egg:**\n\n* Laid in water\n* Hatch within 24-48 hours\n\n**Larva (Wiggler):**\n\n* Lives in water\n* Feeds on microorganisms\n* Develops through 4 instars over 5-14 days\n\n**Pupa (Tumbler):**\n\n* Rests on the water surface\n* Non-feeding stage\n* Lasts for 2-7 days\n\n**Emerged adult:**\n\n* Male mosquitoes emerge and mate within a few hours of emergence.\n* Female mosquitoes find a host, feed on blood, and lay eggs.\n\n**Lifespan after blood meal:**\n\n* Female mosquitoes live for several days after a blood meal, while males typically die within a few days.\n* Blood meals provide the nutrients necessary for egg production and prolong female lifespan.\n\n**Overwintering:**\n\n* In temperate regions, some species of mosquitoes overwinter as adult females.\n* They enter a dormant state during cold months and resume activity in spring.",
+            "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on species, temperature, and availability of food and water. However, in general:\n\n**Female Mosquitoes:**\n\n* **Average lifespan:** 14-28 days\n* **Maximum lifespan:** Up to 2 months\n\n**Male Mosquitoes:**\n\n* **Average lifespan:** 5-10 days\n* **Maximum lifespan:** Up to 3 weeks\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures generally shorten lifespan.\n* **Food availability:** Mosquitoes that have access to blood meals live longer.\n* **Water availability:** Mosquitoes need water to lay their eggs, so access to water can increase lifespan.\n* **Competition:** In crowded environments, mosquitoes may compete for food and resources, reducing lifespan.\n* **Predators:** Predators such as birds, bats, and dragonflies prey on mosquitoes, reducing their lifespan.\n\n**Life Cycle Stages:**\n\nThe mosquito life cycle consists of four stages:\n\n1. **Egg:** Laid in water, eggs typically hatch within 2-7 days.\n2. **Larva (Wiggler):** Grows in water, feeding on microorganisms.\n3. **Pupa (Tumbler):** Rests in water, transforming into an adult.\n4. **Adult Mosquito:** Emerges from the pupa and seeks blood meals for egg production.\n\n**End of Lifespan:**\n\nMosquitoes typically die when they are:\n\n* Starved (for lack of blood meals)\n* Dehydrated (for lack of water)\n* Killed by predators or diseases\n* Become too old and weak",
+            "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on the species and environmental conditions, but typically ranges from a few days to a few months:\n\n**Adult Mosquitoes:**\n\n* **Male Mosquitoes:** 7-10 days\n* **Female Mosquitoes:** 2-4 weeks\n\n**Larval and Pupal Stages:**\n\n* **Eggs:** 1-3 weeks\n* **Larvae:** 7-14 days\n* **Pupae:** 2-4 days\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures accelerate mosquito development, while cooler temperatures slow it down.\n* **Humidity:** High humidity promotes mosquito survival and egg-laying.\n* **Availability of Food:** Blood meals for female mosquitoes are essential for egg production and survival.\n* **Predators and Parasites:** Mosquitoes have natural enemies such as dragonflies, birds, frogs, and parasitic wasps.\n* **Environmental Conditions:** Drought, flooding, and chemical treatments can reduce mosquito populations.\n\n**General Life Cycle of a Mosquito:**\n\n1. **Egg:** Female mosquitoes lay eggs in standing water, such as puddles, ponds, or containers.\n2. **Larva (Wiggler):** Eggs hatch into larvae, which feed on microorganisms in the water.\n3. **Pupa (Tumbler):** After several larval stages, the pupa develops inside a protective casing.\n4. **Adult Mosquito:** The pupae emerge as adult mosquitoes, which seek blood meals for reproduction.\n5. **Death:** Adult mosquitoes eventually die due to natural causes, predators, or environmental factors.\n\n**Additional Notes:**\n\n* Female mosquitoes can lay multiple batches of eggs during their lifespan.\n* Mosquitoes are active primarily during the morning and evening hours.\n* Overwintering mosquito species can survive the cold months in hibernation.\n* The lifespan of mosquitoes has implications for disease transmission, as they can spread diseases such as malaria, dengue fever, and Zika virus."
+          ],
+          "raw_response": [
+            {
+              "text": "**Adult Mosquito lifespan:**\n\n* Female: 2-4 weeks\n* Male: 1-2 weeks\n\n**Factors affecting lifespan:**\n\n* **Temperature:** Warmer temperatures shorten lifespan.\n* **Humidity:** Low humidity shortens lifespan.\n* **Food availability:** Blood meals prolong lifespan.\n* **Nutritional status of host:** Mosquitoes that feed on hosts with higher nutritional value have longer lifespans.\n* **Predators and parasites:** Predators and parasites can reduce lifespan.\n\n**Lifecycle Stages:**\n\n**Egg:**\n\n* Laid in water\n* Hatch within 24-48 hours\n\n**Larva (Wiggler):**\n\n* Lives in water\n* Feeds on microorganisms\n* Develops through 4 instars over 5-14 days\n\n**Pupa (Tumbler):**\n\n* Rests on the water surface\n* Non-feeding stage\n* Lasts for 2-7 days\n\n**Emerged adult:**\n\n* Male mosquitoes emerge and mate within a few hours of emergence.\n* Female mosquitoes find a host, feed on blood, and lay eggs.\n\n**Lifespan after blood meal:**\n\n* Female mosquitoes live for several days after a blood meal, while males typically die within a few days.\n* Blood meals provide the nutrients necessary for egg production and prolong female lifespan.\n\n**Overwintering:**\n\n* In temperate regions, some species of mosquitoes overwinter as adult females.\n* They enter a dormant state during cold months and resume activity in spring.",
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "**Adult Mosquito lifespan:**\n\n* Female: 2-4 weeks\n* Male: 1-2 weeks\n\n**Factors affecting lifespan:**\n\n* **Temperature:** Warmer temperatures shorten lifespan.\n* **Humidity:** Low humidity shortens lifespan.\n* **Food availability:** Blood meals prolong lifespan.\n* **Nutritional status of host:** Mosquitoes that feed on hosts with higher nutritional value have longer lifespans.\n* **Predators and parasites:** Predators and parasites can reduce lifespan.\n\n**Lifecycle Stages:**\n\n**Egg:**\n\n* Laid in water\n* Hatch within 24-48 hours\n\n**Larva (Wiggler):**\n\n* Lives in water\n* Feeds on microorganisms\n* Develops through 4 instars over 5-14 days\n\n**Pupa (Tumbler):**\n\n* Rests on the water surface\n* Non-feeding stage\n* Lasts for 2-7 days\n\n**Emerged adult:**\n\n* Male mosquitoes emerge and mate within a few hours of emergence.\n* Female mosquitoes find a host, feed on blood, and lay eggs.\n\n**Lifespan after blood meal:**\n\n* Female mosquitoes live for several days after a blood meal, while males typically die within a few days.\n* Blood meals provide the nutrients necessary for egg production and prolong female lifespan.\n\n**Overwintering:**\n\n* In temperate regions, some species of mosquitoes overwinter as adult females.\n* They enter a dormant state during cold months and resume activity in spring."
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "text": "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on species, temperature, and availability of food and water. However, in general:\n\n**Female Mosquitoes:**\n\n* **Average lifespan:** 14-28 days\n* **Maximum lifespan:** Up to 2 months\n\n**Male Mosquitoes:**\n\n* **Average lifespan:** 5-10 days\n* **Maximum lifespan:** Up to 3 weeks\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures generally shorten lifespan.\n* **Food availability:** Mosquitoes that have access to blood meals live longer.\n* **Water availability:** Mosquitoes need water to lay their eggs, so access to water can increase lifespan.\n* **Competition:** In crowded environments, mosquitoes may compete for food and resources, reducing lifespan.\n* **Predators:** Predators such as birds, bats, and dragonflies prey on mosquitoes, reducing their lifespan.\n\n**Life Cycle Stages:**\n\nThe mosquito life cycle consists of four stages:\n\n1. **Egg:** Laid in water, eggs typically hatch within 2-7 days.\n2. **Larva (Wiggler):** Grows in water, feeding on microorganisms.\n3. **Pupa (Tumbler):** Rests in water, transforming into an adult.\n4. **Adult Mosquito:** Emerges from the pupa and seeks blood meals for egg production.\n\n**End of Lifespan:**\n\nMosquitoes typically die when they are:\n\n* Starved (for lack of blood meals)\n* Dehydrated (for lack of water)\n* Killed by predators or diseases\n* Become too old and weak",
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on species, temperature, and availability of food and water. However, in general:\n\n**Female Mosquitoes:**\n\n* **Average lifespan:** 14-28 days\n* **Maximum lifespan:** Up to 2 months\n\n**Male Mosquitoes:**\n\n* **Average lifespan:** 5-10 days\n* **Maximum lifespan:** Up to 3 weeks\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures generally shorten lifespan.\n* **Food availability:** Mosquitoes that have access to blood meals live longer.\n* **Water availability:** Mosquitoes need water to lay their eggs, so access to water can increase lifespan.\n* **Competition:** In crowded environments, mosquitoes may compete for food and resources, reducing lifespan.\n* **Predators:** Predators such as birds, bats, and dragonflies prey on mosquitoes, reducing their lifespan.\n\n**Life Cycle Stages:**\n\nThe mosquito life cycle consists of four stages:\n\n1. **Egg:** Laid in water, eggs typically hatch within 2-7 days.\n2. **Larva (Wiggler):** Grows in water, feeding on microorganisms.\n3. **Pupa (Tumbler):** Rests in water, transforming into an adult.\n4. **Adult Mosquito:** Emerges from the pupa and seeks blood meals for egg production.\n\n**End of Lifespan:**\n\nMosquitoes typically die when they are:\n\n* Starved (for lack of blood meals)\n* Dehydrated (for lack of water)\n* Killed by predators or diseases\n* Become too old and weak"
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "text": "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on the species and environmental conditions, but typically ranges from a few days to a few months:\n\n**Adult Mosquitoes:**\n\n* **Male Mosquitoes:** 7-10 days\n* **Female Mosquitoes:** 2-4 weeks\n\n**Larval and Pupal Stages:**\n\n* **Eggs:** 1-3 weeks\n* **Larvae:** 7-14 days\n* **Pupae:** 2-4 days\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures accelerate mosquito development, while cooler temperatures slow it down.\n* **Humidity:** High humidity promotes mosquito survival and egg-laying.\n* **Availability of Food:** Blood meals for female mosquitoes are essential for egg production and survival.\n* **Predators and Parasites:** Mosquitoes have natural enemies such as dragonflies, birds, frogs, and parasitic wasps.\n* **Environmental Conditions:** Drought, flooding, and chemical treatments can reduce mosquito populations.\n\n**General Life Cycle of a Mosquito:**\n\n1. **Egg:** Female mosquitoes lay eggs in standing water, such as puddles, ponds, or containers.\n2. **Larva (Wiggler):** Eggs hatch into larvae, which feed on microorganisms in the water.\n3. **Pupa (Tumbler):** After several larval stages, the pupa develops inside a protective casing.\n4. **Adult Mosquito:** The pupae emerge as adult mosquitoes, which seek blood meals for reproduction.\n5. **Death:** Adult mosquitoes eventually die due to natural causes, predators, or environmental factors.\n\n**Additional Notes:**\n\n* Female mosquitoes can lay multiple batches of eggs during their lifespan.\n* Mosquitoes are active primarily during the morning and evening hours.\n* Overwintering mosquito species can survive the cold months in hibernation.\n* The lifespan of mosquitoes has implications for disease transmission, as they can spread diseases such as malaria, dengue fever, and Zika virus.",
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on the species and environmental conditions, but typically ranges from a few days to a few months:\n\n**Adult Mosquitoes:**\n\n* **Male Mosquitoes:** 7-10 days\n* **Female Mosquitoes:** 2-4 weeks\n\n**Larval and Pupal Stages:**\n\n* **Eggs:** 1-3 weeks\n* **Larvae:** 7-14 days\n* **Pupae:** 2-4 days\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures accelerate mosquito development, while cooler temperatures slow it down.\n* **Humidity:** High humidity promotes mosquito survival and egg-laying.\n* **Availability of Food:** Blood meals for female mosquitoes are essential for egg production and survival.\n* **Predators and Parasites:** Mosquitoes have natural enemies such as dragonflies, birds, frogs, and parasitic wasps.\n* **Environmental Conditions:** Drought, flooding, and chemical treatments can reduce mosquito populations.\n\n**General Life Cycle of a Mosquito:**\n\n1. **Egg:** Female mosquitoes lay eggs in standing water, such as puddles, ponds, or containers.\n2. **Larva (Wiggler):** Eggs hatch into larvae, which feed on microorganisms in the water.\n3. **Pupa (Tumbler):** After several larval stages, the pupa develops inside a protective casing.\n4. **Adult Mosquito:** The pupae emerge as adult mosquitoes, which seek blood meals for reproduction.\n5. **Death:** Adult mosquitoes eventually die due to natural causes, predators, or environmental factors.\n\n**Additional Notes:**\n\n* Female mosquitoes can lay multiple batches of eggs during their lifespan.\n* Mosquitoes are active primarily during the morning and evening hours.\n* Overwintering mosquito species can survive the cold months in hibernation.\n* The lifespan of mosquitoes has implications for disease transmission, as they can spread diseases such as malaria, dengue fever, and Zika virus."
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "llm": "Gemini",
+          "vars": {},
+          "metavars": {
+            "__pt": "Tell me about the lifespan of a mosquito.",
+            "LLM_0": "Gemini"
+          }
+        }
+      ]
+    },
+    "prompt-1690229030038_8.json": {
+      "Tell me about the lifespan of a mosquito.": [
+        {
+          "prompt": "Tell me about the lifespan of a mosquito.",
+          "query": {
+            "temperature": 1,
+            "max_new_tokens": 250,
+            "return_full_text": false
+          },
+          "uid": "ba247a5f-2915-4dfd-98c1-9e18e6138740",
+          "responses": [
+            "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months.",
+            "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months.",
+            "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months."
+          ],
+          "raw_response": [
+            {
+              "generated_text": "\nThe lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months."
+            },
+            {
+              "generated_text": "\nThe lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months."
+            },
+            {
+              "generated_text": "\nThe lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months."
+            }
+          ],
+          "llm": "Falcon.7B",
+          "vars": {},
+          "metavars": {
+            "__pt": "Tell me about the lifespan of a mosquito.",
+            "LLM_0": "Falcon.7B"
+          }
+        }
+      ]
+    },
+    "prompt-1690229030038.json": {
+      "cache_files": {
+        "prompt-1690229030038_1.json": {
+          "key": "bc35833c-c594-44ee-bc18-f56d0f268ed2",
+          "name": "GPT3.5",
+          "emoji": "🤖",
+          "model": "gpt-3.5-turbo",
+          "base_model": "gpt-3.5-turbo",
+          "temp": 1,
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "functions": [],
+            "function_call": "",
+            "top_p": 1,
+            "stop": [],
+            "presence_penalty": 0,
+            "frequency_penalty": 0
+          },
+          "formData": {
+            "shortname": "GPT3.5"
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt-1690229030038_3.json": {
+          "key": "f26a2dfb-e34d-4bb4-ab82-432240302587",
+          "name": "Claude",
+          "emoji": "📚",
+          "model": "claude-2",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "temperature": 1,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "Claude"
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt-1690229030038_2.json": {
+          "key": "283c3149-626f-4b6d-abf8-195799866c61",
+          "name": "GPT4",
+          "emoji": "🥵",
+          "model": "gpt-4",
+          "base_model": "gpt-4",
+          "temp": 1,
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "functions": [],
+            "function_call": "",
+            "top_p": 1,
+            "stop": [],
+            "presence_penalty": 0,
+            "frequency_penalty": 0
+          },
+          "formData": {
+            "shortname": "GPT4"
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt-1690229030038_6.json": {
+          "key": "398fbcc8-d17e-4eb8-8c25-527dbfbeb67d",
+          "name": "Gemini",
+          "emoji": "🦬",
+          "model": "gemini-pro",
+          "base_model": "palm2-bison",
+          "temp": 0.7,
+          "settings": {
+            "temperature": 0.46,
+            "top_k": -1,
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
+          },
+          "formData": {
+            "shortname": "Gemini",
+            "model": "gemini-pro",
+            "temperature": 0.46,
+            "top_k": -1,
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": ""
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt-1690229030038_8.json": {
+          "key": "bf342b14-b441-4446-8070-760660c3fd69",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
+          "settings": {
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
+            "top_k": -1,
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
+          },
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        }
+      },
+      "responses_last_run": [
+        {
+          "vars": {},
+          "metavars": {
+            "__pt": "Tell me about the lifespan of a mosquito.",
+            "LLM_0": "GPT3.5"
+          },
+          "llm": "GPT3.5",
+          "prompt": "Tell me about the lifespan of a mosquito.",
+          "responses": [
+            "The lifespan of a mosquito can vary depending on the species and environmental factors. On average, adult mosquitoes typically live for about 2 to 4 weeks. However, female mosquitoes usually have a shorter lifespan compared to males, as they typically live for 1 to 2 weeks.\n\nDuring their relatively short lifetime, female mosquitoes mate and lay eggs multiple times. After taking a blood meal from a host, female mosquitoes use the proteins obtained to develop and mature their eggs. They lay their eggs in standing water or other suitable breeding sites.\n\nThe eggs hatch into larvae, commonly known as wigglers. The larvae spend their time feeding on organic matter in the water and molting through several stages before reaching the pupal stage. The pupa is a non-feeding and non-mobile stage in the mosquito life cycle.\n\nAfter a few days, adult mosquitoes emerge from the pupa. They usually rest on the water's surface until their wings are dry and fully developed. Once they can fly, they search for mates and sources of energy, including nectar from flowers. For female mosquitoes, this also involves seeking out blood meals to nourish their eggs.\n\nIt's worth noting that not all mosquitoes transmit diseases, but those that do can have a significant impact on human and animal health. It is thus essential to take measures to prevent mosquito breeding and protect yourself from mosquito bites, particularly in areas where mosquito-borne diseases are prevalent.",
+            "The lifespan of a mosquito can vary depending on the species and environmental conditions. On average, a mosquito's lifespan can range from a few weeks to several months. However, it's important to note that not all mosquitoes live long enough to complete their entire lifespan due to various factors such as predation or disease.\n\nFemale mosquitoes, which are the ones that bite and transmit diseases, generally live longer than their male counterparts. After mating, female mosquitoes typically require a blood meal to obtain the necessary nutrients for egg development. Once they have successfully laid their eggs, their lifespan will usually decrease significantly.\n\nIn favorable conditions, some mosquito species can complete their lifecycle within a week or two. However, in colder climates or during the winter season, mosquitoes may enter a dormant state or overwinter as adults or as eggs, depending on the species.\n\nOverall, the lifespan of a mosquito is relatively short, but they are capable of reproducing quickly, which contributes to their ability to thrive and multiply in various habitats.",
+            "The lifespan of a mosquito can vary depending on the species, environmental conditions, and available food sources. However, on average, mosquitoes typically live for about 2 to 4 weeks. \n\nThere are four stages in a mosquito's life cycle: egg, larva, pupa, and adult. After a female mosquito lays her eggs in water, they hatch into larvae within a few days. The larvae feed on organic matter in the water and molt several times as they grow. This larval stage typically lasts for about 5 to 14 days.\n\nFollowing the larval stage, the mosquitoes enter the pupal stage, during which they do not eat and are relatively immobile. The pupal stage typically lasts for about 1 to 4 days. During this period, the mosquito transforms into its adult form.\n\nOnce the adult mosquito emerges from the pupa, it needs to find a blood meal to develop eggs (only female mosquitoes feed on blood). Female mosquitoes can feed on a variety of hosts such as humans, animals, or birds. Male mosquitoes, on the other hand, primarily feed on nectar for their energy needs.\n\nAfter mating and getting a blood meal, a female mosquito will lay eggs, starting the life cycle anew. This process can be repeated several times within the mosquito's lifespan, allowing them to reproduce and continue their population.\n\nIt's worth noting that temperature and environmental conditions significantly influence mosquito development and lifespan. Warmer temperatures tend to expedite their life cycle, while cooler temperatures can prolong it. Additionally, certain species of mosquitoes can hibernate during unfavorable conditions, extending their lifespan beyond typical seasonal limitations."
+          ],
+          "uid": "bd57beb7-47da-4b4f-97f2-2f69a8ec8334"
+        },
+        {
+          "vars": {},
+          "metavars": {
+            "__pt": "Tell me about the lifespan of a mosquito.",
+            "LLM_0": "Claude"
+          },
+          "llm": "Claude",
+          "prompt": "Tell me about the lifespan of a mosquito.",
+          "responses": [
+            "Here are some key points about the typical lifespan of a mosquito:\n\n- Adult mosquitoes usually live for around 2-4 weeks. Females tend to live longer than males.\n\n- Mosquitoes go through four distinct life stages: egg, larva, pupa, and adult. The egg, larva, and pupa stages are aquatic and together typically last 5-14 days depending on the species and water temperature.\n\n- Once a female mosquito emerges as an adult, her priority is to find a blood meal in order to get the protein needed to produce eggs. Males feed on plant nectar.\n\n- After mating, the female will lay her eggs (typically 100-200 eggs at a time) in standing water or very slow moving water. Good egg-laying sites include ponds, flooded areas, marshes, and even small containers or tree holes that hold water.\n\n- Mosquitoes breed quickly in warm weather. The full lifecycle from egg to adult can be completed in as little as 4-7 days in ideal warm conditions. Cooler temperatures slow down their development.\n\n- Most mosquitoes die soon after laying their eggs. Only females hibernate over the winter, hiding out in places like barns or basements.\n\n- Factors impacting their lifespan include predation, weather conditions, and pesticide application. Mosquitoes have many natural predators including birds, bats, dragonflies, and spiders.\n\nSo in summary, the short adult mosquito lifespan of just a few weeks belies their rapid breeding capabilities under the right conditions. This enables mosquito populations to explode during warm seasons.",
+            "Here are some key points about the lifespan of a mosquito:\n\n- Mosquitoes go through four distinct stages in their lifecycle: egg, larva, pupa, and adult. \n\n- Eggs are laid by adult female mosquitoes, usually in clusters on the surface of stagnant water. Eggs hatch into larvae within a few days.\n\n- The larval stage lasts 4-10 days. Larvae, also called \"wigglers,\" live in the water and feed on organic matter. They molt several times as they grow.\n\n- Pupae then develop from the final larval stage. The pupal stage lasts 2-3 days. Pupae, also called \"tumblers,\" are inactive and do not feed.\n\n- Adult mosquitoes emerge from the pupal case after metamorphosis. The lifespan of adult mosquitoes varies by species, but is often quite short, ranging from a week to a month. \n\n- Only female mosquitoes bite and feed on blood, which they need to develop eggs. Male mosquitoes feed on nectar.\n\n- Factors impacting adult lifespan include temperature, humidity, predators, and if/when they are able to take a blood meal from a host. Mosquitoes die shortly after laying eggs if they cannot find a blood meal.\n\nSo in summary, the full mosquito lifecycle lasts about 1-2 weeks from egg to adult death, though adult lifespan alone may only be up to 1 month under ideal conditions. The stages from egg through pupae occur in water.",
+            "Here are some key points about the typical lifespan of a mosquito:\n\n- Adult mosquitoes usually live for 2-4 weeks. Females tend to live longer than males, since they require a blood meal for reproducing.\n\n- The lifecycle begins when eggs are laid in stagnant water or moist soil. They hatch into larvae within a few days. \n\n- The larval stage lasts 4-10 days. Larvae molt several times as they grow, eventually becoming pupae.\n\n- Pupae live for 1-4 days before emerging as adult mosquitoes. This process is called metamorphosis.\n\n- Newly emerged adult mosquitoes rest on the water surface for a day or two before taking their first flight. They reach sexual maturity within a few days.\n\n- Adult females seek out a blood meal from animals or humans shortly after mating. This provides protein for egg production.\n\n- Some species can lay multiple batches of eggs over their lifespan, sometimes laying eggs every 3-4 days. Others lay eggs only once.\n\n- Factors like temperature, predation, and geographic location can influence lifespan. Mosquitoes in warmer tropical climates may live shorter than those in milder temperate regions.\n\n- Some mosquitoes survive the winter as mated adult females and live for many months by hibernating in sheltered spots. These are known as overwintering mosquitoes.\n\nSo in general, the mosquito lifecycle lasts around 1-6 weeks from egg to adult depending on species and conditions. Females live the longest, for 2-4 weeks in ideal conditions."
+          ],
+          "uid": "1ea85afc-7352-47bb-b28c-1aa0bc16c5b3"
+        },
+        {
+          "vars": {},
+          "metavars": {
+            "__pt": "Tell me about the lifespan of a mosquito.",
+            "LLM_0": "GPT4"
+          },
+          "llm": "GPT4",
+          "prompt": "Tell me about the lifespan of a mosquito.",
+          "responses": [
+            "The lifespan of a mosquito heavily depends on the species and the environment in which it lives. In general, mosquitos have a life cycle composed of four stages: egg, larva, pupa, and adult.\n\nEggs laid by female mosquitos can hatch into larvae in a couple of days, or they can overwinter and hatch the following year. The larval stage itself lasts about 7-10 days before entering the pupa stage.\n\nThe pupa stage usually lasts 1-2 days under optimal conditions. After that, the pupa emerges as a fully grown mosquito.\n\nAdult mosquitoes typically live for a few weeks, but this can vary greatly. Male mosquitoes, for example, usually live only about a week or so, while females can live for a month and sometimes longer, especially in captivity. However, in the wild, most mosquitoes won't live that long due to predators, weather, and human intervention.\n\nSomething worth noting is that only female mosquitoes bite. They need the protein in blood to help develop their eggs, while males feed on nectar from plants.",
+            "The lifespan of a mosquito can considerably vary depending on species, habitat, and climatic conditions. \n\nOn average, female mosquitoes live 2 to 3 weeks, but they can live up to a month in captivity. Male mosquitoes have a shorter lifespan, typically living less than a week. Factors such as temperature and humidity can greatly influence the lifespan of mosquitoes.\n\nThe mosquito lifecycle includes four stages: egg, larva, pupa, and adult. From the time an egg is laid until it reaches adulthood can range from a few days to a few weeks, depending on conditions such as temperature and food availability. \n\nIt's important to note that while adult mosquitoes have a relatively short lifespan, mosquito populations persist due to the constant cycle of development from egg to adult. Female mosquitoes can lay up to 200 eggs at a time, and under ideal conditions, these can start becoming biting adults in as little as a week.",
+            "Different species of mosquitoes have varying lifespans, but an average mosquito's lifespan is usually two weeks to six months. The lifespan of a mosquito can significantly be impacted by surrounding environmental conditions such as temperature and humidity.\n\nThe mosquito lifespan begins from an egg, developing into a larva, then a pupa, and finally an adult mosquito. As larvae, mosquitoes live in water for 4 to 14 days, depending upon the species and environmental conditions. As adults, they do not live longer than a few weeks, with females generally living longer than males.\n\nMales live for about 10 days or less, whereas females can live for up to two months. However, this is all under optimal conditions. In colder climates, mosquitoes can live up to 9 months by hibernation (especially female mosquitoes). \n\nFemales tend to feed on plant nectars and blood from hosts to obtain proteins for the development of their eggs, while males only feed on plant nectars."
+          ],
+          "uid": "19d9be8b-c949-4df7-8a5e-076971cba1dc"
+        },
+        {
+          "vars": {},
+          "metavars": {
+            "__pt": "Tell me about the lifespan of a mosquito.",
+            "LLM_0": "Gemini"
+          },
+          "llm": "Gemini",
+          "prompt": "Tell me about the lifespan of a mosquito.",
+          "responses": [
+            "**Adult Mosquito lifespan:**\n\n* Female: 2-4 weeks\n* Male: 1-2 weeks\n\n**Factors affecting lifespan:**\n\n* **Temperature:** Warmer temperatures shorten lifespan.\n* **Humidity:** Low humidity shortens lifespan.\n* **Food availability:** Blood meals prolong lifespan.\n* **Nutritional status of host:** Mosquitoes that feed on hosts with higher nutritional value have longer lifespans.\n* **Predators and parasites:** Predators and parasites can reduce lifespan.\n\n**Lifecycle Stages:**\n\n**Egg:**\n\n* Laid in water\n* Hatch within 24-48 hours\n\n**Larva (Wiggler):**\n\n* Lives in water\n* Feeds on microorganisms\n* Develops through 4 instars over 5-14 days\n\n**Pupa (Tumbler):**\n\n* Rests on the water surface\n* Non-feeding stage\n* Lasts for 2-7 days\n\n**Emerged adult:**\n\n* Male mosquitoes emerge and mate within a few hours of emergence.\n* Female mosquitoes find a host, feed on blood, and lay eggs.\n\n**Lifespan after blood meal:**\n\n* Female mosquitoes live for several days after a blood meal, while males typically die within a few days.\n* Blood meals provide the nutrients necessary for egg production and prolong female lifespan.\n\n**Overwintering:**\n\n* In temperate regions, some species of mosquitoes overwinter as adult females.\n* They enter a dormant state during cold months and resume activity in spring.",
+            "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on species, temperature, and availability of food and water. However, in general:\n\n**Female Mosquitoes:**\n\n* **Average lifespan:** 14-28 days\n* **Maximum lifespan:** Up to 2 months\n\n**Male Mosquitoes:**\n\n* **Average lifespan:** 5-10 days\n* **Maximum lifespan:** Up to 3 weeks\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures generally shorten lifespan.\n* **Food availability:** Mosquitoes that have access to blood meals live longer.\n* **Water availability:** Mosquitoes need water to lay their eggs, so access to water can increase lifespan.\n* **Competition:** In crowded environments, mosquitoes may compete for food and resources, reducing lifespan.\n* **Predators:** Predators such as birds, bats, and dragonflies prey on mosquitoes, reducing their lifespan.\n\n**Life Cycle Stages:**\n\nThe mosquito life cycle consists of four stages:\n\n1. **Egg:** Laid in water, eggs typically hatch within 2-7 days.\n2. **Larva (Wiggler):** Grows in water, feeding on microorganisms.\n3. **Pupa (Tumbler):** Rests in water, transforming into an adult.\n4. **Adult Mosquito:** Emerges from the pupa and seeks blood meals for egg production.\n\n**End of Lifespan:**\n\nMosquitoes typically die when they are:\n\n* Starved (for lack of blood meals)\n* Dehydrated (for lack of water)\n* Killed by predators or diseases\n* Become too old and weak",
+            "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on the species and environmental conditions, but typically ranges from a few days to a few months:\n\n**Adult Mosquitoes:**\n\n* **Male Mosquitoes:** 7-10 days\n* **Female Mosquitoes:** 2-4 weeks\n\n**Larval and Pupal Stages:**\n\n* **Eggs:** 1-3 weeks\n* **Larvae:** 7-14 days\n* **Pupae:** 2-4 days\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures accelerate mosquito development, while cooler temperatures slow it down.\n* **Humidity:** High humidity promotes mosquito survival and egg-laying.\n* **Availability of Food:** Blood meals for female mosquitoes are essential for egg production and survival.\n* **Predators and Parasites:** Mosquitoes have natural enemies such as dragonflies, birds, frogs, and parasitic wasps.\n* **Environmental Conditions:** Drought, flooding, and chemical treatments can reduce mosquito populations.\n\n**General Life Cycle of a Mosquito:**\n\n1. **Egg:** Female mosquitoes lay eggs in standing water, such as puddles, ponds, or containers.\n2. **Larva (Wiggler):** Eggs hatch into larvae, which feed on microorganisms in the water.\n3. **Pupa (Tumbler):** After several larval stages, the pupa develops inside a protective casing.\n4. **Adult Mosquito:** The pupae emerge as adult mosquitoes, which seek blood meals for reproduction.\n5. **Death:** Adult mosquitoes eventually die due to natural causes, predators, or environmental factors.\n\n**Additional Notes:**\n\n* Female mosquitoes can lay multiple batches of eggs during their lifespan.\n* Mosquitoes are active primarily during the morning and evening hours.\n* Overwintering mosquito species can survive the cold months in hibernation.\n* The lifespan of mosquitoes has implications for disease transmission, as they can spread diseases such as malaria, dengue fever, and Zika virus."
+          ],
+          "uid": "6d7d2f44-10d9-49e2-979e-89865a91177f"
+        },
+        {
+          "vars": {},
+          "metavars": {
+            "__pt": "Tell me about the lifespan of a mosquito.",
+            "LLM_0": "Falcon.7B"
+          },
+          "llm": "Falcon.7B",
+          "prompt": "Tell me about the lifespan of a mosquito.",
+          "responses": [
+            "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months.",
+            "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months.",
+            "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months."
+          ],
+          "uid": "ba247a5f-2915-4dfd-98c1-9e18e6138740"
+        }
+      ]
+    },
+    "llmeval-1690229533039.json": [
+      {
+        "vars": {},
+        "metavars": {
+          "__pt": "Tell me about the lifespan of a mosquito.",
+          "LLM_0": "GPT3.5"
+        },
+        "llm": "GPT3.5",
+        "prompt": "Tell me about the lifespan of a mosquito.",
+        "responses": [
+          "The lifespan of a mosquito can vary depending on the species and environmental factors. On average, adult mosquitoes typically live for about 2 to 4 weeks. However, female mosquitoes usually have a shorter lifespan compared to males, as they typically live for 1 to 2 weeks.\n\nDuring their relatively short lifetime, female mosquitoes mate and lay eggs multiple times. After taking a blood meal from a host, female mosquitoes use the proteins obtained to develop and mature their eggs. They lay their eggs in standing water or other suitable breeding sites.\n\nThe eggs hatch into larvae, commonly known as wigglers. The larvae spend their time feeding on organic matter in the water and molting through several stages before reaching the pupal stage. The pupa is a non-feeding and non-mobile stage in the mosquito life cycle.\n\nAfter a few days, adult mosquitoes emerge from the pupa. They usually rest on the water's surface until their wings are dry and fully developed. Once they can fly, they search for mates and sources of energy, including nectar from flowers. For female mosquitoes, this also involves seeking out blood meals to nourish their eggs.\n\nIt's worth noting that not all mosquitoes transmit diseases, but those that do can have a significant impact on human and animal health. It is thus essential to take measures to prevent mosquito breeding and protect yourself from mosquito bites, particularly in areas where mosquito-borne diseases are prevalent.",
+          "The lifespan of a mosquito can vary depending on the species and environmental conditions. On average, a mosquito's lifespan can range from a few weeks to several months. However, it's important to note that not all mosquitoes live long enough to complete their entire lifespan due to various factors such as predation or disease.\n\nFemale mosquitoes, which are the ones that bite and transmit diseases, generally live longer than their male counterparts. After mating, female mosquitoes typically require a blood meal to obtain the necessary nutrients for egg development. Once they have successfully laid their eggs, their lifespan will usually decrease significantly.\n\nIn favorable conditions, some mosquito species can complete their lifecycle within a week or two. However, in colder climates or during the winter season, mosquitoes may enter a dormant state or overwinter as adults or as eggs, depending on the species.\n\nOverall, the lifespan of a mosquito is relatively short, but they are capable of reproducing quickly, which contributes to their ability to thrive and multiply in various habitats.",
+          "The lifespan of a mosquito can vary depending on the species, environmental conditions, and available food sources. However, on average, mosquitoes typically live for about 2 to 4 weeks. \n\nThere are four stages in a mosquito's life cycle: egg, larva, pupa, and adult. After a female mosquito lays her eggs in water, they hatch into larvae within a few days. The larvae feed on organic matter in the water and molt several times as they grow. This larval stage typically lasts for about 5 to 14 days.\n\nFollowing the larval stage, the mosquitoes enter the pupal stage, during which they do not eat and are relatively immobile. The pupal stage typically lasts for about 1 to 4 days. During this period, the mosquito transforms into its adult form.\n\nOnce the adult mosquito emerges from the pupa, it needs to find a blood meal to develop eggs (only female mosquitoes feed on blood). Female mosquitoes can feed on a variety of hosts such as humans, animals, or birds. Male mosquitoes, on the other hand, primarily feed on nectar for their energy needs.\n\nAfter mating and getting a blood meal, a female mosquito will lay eggs, starting the life cycle anew. This process can be repeated several times within the mosquito's lifespan, allowing them to reproduce and continue their population.\n\nIt's worth noting that temperature and environmental conditions significantly influence mosquito development and lifespan. Warmer temperatures tend to expedite their life cycle, while cooler temperatures can prolong it. Additionally, certain species of mosquitoes can hibernate during unfavorable conditions, extending their lifespan beyond typical seasonal limitations."
+        ],
+        "uid": "bd57beb7-47da-4b4f-97f2-2f69a8ec8334",
+        "eval_res": {
+          "items": [
+            true,
+            false,
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {},
+        "metavars": {
+          "__pt": "Tell me about the lifespan of a mosquito.",
+          "LLM_0": "Claude"
+        },
+        "llm": "Claude",
+        "prompt": "Tell me about the lifespan of a mosquito.",
+        "responses": [
+          "Here are some key points about the typical lifespan of a mosquito:\n\n- Adult mosquitoes usually live for around 2-4 weeks. Females tend to live longer than males.\n\n- Mosquitoes go through four distinct life stages: egg, larva, pupa, and adult. The egg, larva, and pupa stages are aquatic and together typically last 5-14 days depending on the species and water temperature.\n\n- Once a female mosquito emerges as an adult, her priority is to find a blood meal in order to get the protein needed to produce eggs. Males feed on plant nectar.\n\n- After mating, the female will lay her eggs (typically 100-200 eggs at a time) in standing water or very slow moving water. Good egg-laying sites include ponds, flooded areas, marshes, and even small containers or tree holes that hold water.\n\n- Mosquitoes breed quickly in warm weather. The full lifecycle from egg to adult can be completed in as little as 4-7 days in ideal warm conditions. Cooler temperatures slow down their development.\n\n- Most mosquitoes die soon after laying their eggs. Only females hibernate over the winter, hiding out in places like barns or basements.\n\n- Factors impacting their lifespan include predation, weather conditions, and pesticide application. Mosquitoes have many natural predators including birds, bats, dragonflies, and spiders.\n\nSo in summary, the short adult mosquito lifespan of just a few weeks belies their rapid breeding capabilities under the right conditions. This enables mosquito populations to explode during warm seasons.",
+          "Here are some key points about the lifespan of a mosquito:\n\n- Mosquitoes go through four distinct stages in their lifecycle: egg, larva, pupa, and adult. \n\n- Eggs are laid by adult female mosquitoes, usually in clusters on the surface of stagnant water. Eggs hatch into larvae within a few days.\n\n- The larval stage lasts 4-10 days. Larvae, also called \"wigglers,\" live in the water and feed on organic matter. They molt several times as they grow.\n\n- Pupae then develop from the final larval stage. The pupal stage lasts 2-3 days. Pupae, also called \"tumblers,\" are inactive and do not feed.\n\n- Adult mosquitoes emerge from the pupal case after metamorphosis. The lifespan of adult mosquitoes varies by species, but is often quite short, ranging from a week to a month. \n\n- Only female mosquitoes bite and feed on blood, which they need to develop eggs. Male mosquitoes feed on nectar.\n\n- Factors impacting adult lifespan include temperature, humidity, predators, and if/when they are able to take a blood meal from a host. Mosquitoes die shortly after laying eggs if they cannot find a blood meal.\n\nSo in summary, the full mosquito lifecycle lasts about 1-2 weeks from egg to adult death, though adult lifespan alone may only be up to 1 month under ideal conditions. The stages from egg through pupae occur in water.",
+          "Here are some key points about the typical lifespan of a mosquito:\n\n- Adult mosquitoes usually live for 2-4 weeks. Females tend to live longer than males, since they require a blood meal for reproducing.\n\n- The lifecycle begins when eggs are laid in stagnant water or moist soil. They hatch into larvae within a few days. \n\n- The larval stage lasts 4-10 days. Larvae molt several times as they grow, eventually becoming pupae.\n\n- Pupae live for 1-4 days before emerging as adult mosquitoes. This process is called metamorphosis.\n\n- Newly emerged adult mosquitoes rest on the water surface for a day or two before taking their first flight. They reach sexual maturity within a few days.\n\n- Adult females seek out a blood meal from animals or humans shortly after mating. This provides protein for egg production.\n\n- Some species can lay multiple batches of eggs over their lifespan, sometimes laying eggs every 3-4 days. Others lay eggs only once.\n\n- Factors like temperature, predation, and geographic location can influence lifespan. Mosquitoes in warmer tropical climates may live shorter than those in milder temperate regions.\n\n- Some mosquitoes survive the winter as mated adult females and live for many months by hibernating in sheltered spots. These are known as overwintering mosquitoes.\n\nSo in general, the mosquito lifecycle lasts around 1-6 weeks from egg to adult depending on species and conditions. Females live the longest, for 2-4 weeks in ideal conditions."
+        ],
+        "uid": "1ea85afc-7352-47bb-b28c-1aa0bc16c5b3",
+        "eval_res": {
+          "items": [
+            false,
+            false,
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {},
+        "metavars": {
+          "__pt": "Tell me about the lifespan of a mosquito.",
+          "LLM_0": "GPT4"
+        },
+        "llm": "GPT4",
+        "prompt": "Tell me about the lifespan of a mosquito.",
+        "responses": [
+          "The lifespan of a mosquito heavily depends on the species and the environment in which it lives. In general, mosquitos have a life cycle composed of four stages: egg, larva, pupa, and adult.\n\nEggs laid by female mosquitos can hatch into larvae in a couple of days, or they can overwinter and hatch the following year. The larval stage itself lasts about 7-10 days before entering the pupa stage.\n\nThe pupa stage usually lasts 1-2 days under optimal conditions. After that, the pupa emerges as a fully grown mosquito.\n\nAdult mosquitoes typically live for a few weeks, but this can vary greatly. Male mosquitoes, for example, usually live only about a week or so, while females can live for a month and sometimes longer, especially in captivity. However, in the wild, most mosquitoes won't live that long due to predators, weather, and human intervention.\n\nSomething worth noting is that only female mosquitoes bite. They need the protein in blood to help develop their eggs, while males feed on nectar from plants.",
+          "The lifespan of a mosquito can considerably vary depending on species, habitat, and climatic conditions. \n\nOn average, female mosquitoes live 2 to 3 weeks, but they can live up to a month in captivity. Male mosquitoes have a shorter lifespan, typically living less than a week. Factors such as temperature and humidity can greatly influence the lifespan of mosquitoes.\n\nThe mosquito lifecycle includes four stages: egg, larva, pupa, and adult. From the time an egg is laid until it reaches adulthood can range from a few days to a few weeks, depending on conditions such as temperature and food availability. \n\nIt's important to note that while adult mosquitoes have a relatively short lifespan, mosquito populations persist due to the constant cycle of development from egg to adult. Female mosquitoes can lay up to 200 eggs at a time, and under ideal conditions, these can start becoming biting adults in as little as a week.",
+          "Different species of mosquitoes have varying lifespans, but an average mosquito's lifespan is usually two weeks to six months. The lifespan of a mosquito can significantly be impacted by surrounding environmental conditions such as temperature and humidity.\n\nThe mosquito lifespan begins from an egg, developing into a larva, then a pupa, and finally an adult mosquito. As larvae, mosquitoes live in water for 4 to 14 days, depending upon the species and environmental conditions. As adults, they do not live longer than a few weeks, with females generally living longer than males.\n\nMales live for about 10 days or less, whereas females can live for up to two months. However, this is all under optimal conditions. In colder climates, mosquitoes can live up to 9 months by hibernation (especially female mosquitoes). \n\nFemales tend to feed on plant nectars and blood from hosts to obtain proteins for the development of their eggs, while males only feed on plant nectars."
+        ],
+        "uid": "19d9be8b-c949-4df7-8a5e-076971cba1dc",
+        "eval_res": {
+          "items": [
+            false,
+            false,
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {},
+        "metavars": {
+          "__pt": "Tell me about the lifespan of a mosquito.",
+          "LLM_0": "Gemini"
+        },
+        "llm": "Gemini",
+        "prompt": "Tell me about the lifespan of a mosquito.",
+        "responses": [
+          "**Adult Mosquito lifespan:**\n\n* Female: 2-4 weeks\n* Male: 1-2 weeks\n\n**Factors affecting lifespan:**\n\n* **Temperature:** Warmer temperatures shorten lifespan.\n* **Humidity:** Low humidity shortens lifespan.\n* **Food availability:** Blood meals prolong lifespan.\n* **Nutritional status of host:** Mosquitoes that feed on hosts with higher nutritional value have longer lifespans.\n* **Predators and parasites:** Predators and parasites can reduce lifespan.\n\n**Lifecycle Stages:**\n\n**Egg:**\n\n* Laid in water\n* Hatch within 24-48 hours\n\n**Larva (Wiggler):**\n\n* Lives in water\n* Feeds on microorganisms\n* Develops through 4 instars over 5-14 days\n\n**Pupa (Tumbler):**\n\n* Rests on the water surface\n* Non-feeding stage\n* Lasts for 2-7 days\n\n**Emerged adult:**\n\n* Male mosquitoes emerge and mate within a few hours of emergence.\n* Female mosquitoes find a host, feed on blood, and lay eggs.\n\n**Lifespan after blood meal:**\n\n* Female mosquitoes live for several days after a blood meal, while males typically die within a few days.\n* Blood meals provide the nutrients necessary for egg production and prolong female lifespan.\n\n**Overwintering:**\n\n* In temperate regions, some species of mosquitoes overwinter as adult females.\n* They enter a dormant state during cold months and resume activity in spring.",
+          "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on species, temperature, and availability of food and water. However, in general:\n\n**Female Mosquitoes:**\n\n* **Average lifespan:** 14-28 days\n* **Maximum lifespan:** Up to 2 months\n\n**Male Mosquitoes:**\n\n* **Average lifespan:** 5-10 days\n* **Maximum lifespan:** Up to 3 weeks\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures generally shorten lifespan.\n* **Food availability:** Mosquitoes that have access to blood meals live longer.\n* **Water availability:** Mosquitoes need water to lay their eggs, so access to water can increase lifespan.\n* **Competition:** In crowded environments, mosquitoes may compete for food and resources, reducing lifespan.\n* **Predators:** Predators such as birds, bats, and dragonflies prey on mosquitoes, reducing their lifespan.\n\n**Life Cycle Stages:**\n\nThe mosquito life cycle consists of four stages:\n\n1. **Egg:** Laid in water, eggs typically hatch within 2-7 days.\n2. **Larva (Wiggler):** Grows in water, feeding on microorganisms.\n3. **Pupa (Tumbler):** Rests in water, transforming into an adult.\n4. **Adult Mosquito:** Emerges from the pupa and seeks blood meals for egg production.\n\n**End of Lifespan:**\n\nMosquitoes typically die when they are:\n\n* Starved (for lack of blood meals)\n* Dehydrated (for lack of water)\n* Killed by predators or diseases\n* Become too old and weak",
+          "**Lifespan of a Mosquito**\n\nThe lifespan of a mosquito varies depending on the species and environmental conditions, but typically ranges from a few days to a few months:\n\n**Adult Mosquitoes:**\n\n* **Male Mosquitoes:** 7-10 days\n* **Female Mosquitoes:** 2-4 weeks\n\n**Larval and Pupal Stages:**\n\n* **Eggs:** 1-3 weeks\n* **Larvae:** 7-14 days\n* **Pupae:** 2-4 days\n\n**Factors Affecting Lifespan:**\n\n* **Temperature:** Warmer temperatures accelerate mosquito development, while cooler temperatures slow it down.\n* **Humidity:** High humidity promotes mosquito survival and egg-laying.\n* **Availability of Food:** Blood meals for female mosquitoes are essential for egg production and survival.\n* **Predators and Parasites:** Mosquitoes have natural enemies such as dragonflies, birds, frogs, and parasitic wasps.\n* **Environmental Conditions:** Drought, flooding, and chemical treatments can reduce mosquito populations.\n\n**General Life Cycle of a Mosquito:**\n\n1. **Egg:** Female mosquitoes lay eggs in standing water, such as puddles, ponds, or containers.\n2. **Larva (Wiggler):** Eggs hatch into larvae, which feed on microorganisms in the water.\n3. **Pupa (Tumbler):** After several larval stages, the pupa develops inside a protective casing.\n4. **Adult Mosquito:** The pupae emerge as adult mosquitoes, which seek blood meals for reproduction.\n5. **Death:** Adult mosquitoes eventually die due to natural causes, predators, or environmental factors.\n\n**Additional Notes:**\n\n* Female mosquitoes can lay multiple batches of eggs during their lifespan.\n* Mosquitoes are active primarily during the morning and evening hours.\n* Overwintering mosquito species can survive the cold months in hibernation.\n* The lifespan of mosquitoes has implications for disease transmission, as they can spread diseases such as malaria, dengue fever, and Zika virus."
+        ],
+        "uid": "6d7d2f44-10d9-49e2-979e-89865a91177f",
+        "eval_res": {
+          "items": [
+            false,
+            false,
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {},
+        "metavars": {
+          "__pt": "Tell me about the lifespan of a mosquito.",
+          "LLM_0": "Falcon.7B"
+        },
+        "llm": "Falcon.7B",
+        "prompt": "Tell me about the lifespan of a mosquito.",
+        "responses": [
+          "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months.",
+          "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months.",
+          "The lifespan of a mosquito varies depending on the species. Generally, adult female mosquitoes live for a few weeks, while male mosquitoes typically only live for a few days. However, some species of mosquitoes can live for several months."
+        ],
+        "uid": "ba247a5f-2915-4dfd-98c1-9e18e6138740",
+        "eval_res": {
+          "items": [
+            false,
+            false,
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      }
+    ],
+    "visNode-1690301604573.json": {}
+  }
+}

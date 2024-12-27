@@ -1,5 +1,13 @@
 import React, { forwardRef, useImperativeHandle } from "react";
-import { SimpleGrid, Card, Modal, Text, Button, Tabs } from "@mantine/core";
+import {
+  SimpleGrid,
+  Card,
+  Modal,
+  Text,
+  Button,
+  Tabs,
+  Stack,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconChartDots3 } from "@tabler/icons-react";
 import { Dict } from "./backend/typing";
@@ -331,28 +339,38 @@ const ExampleFlowCard: React.FC<ExampleFlowCardProps> = ({
   onSelect,
 }) => {
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Text mb="xs" weight={500}>
-        {title}
-      </Text>
+    <Card
+      shadow="sm"
+      radius="md"
+      withBorder
+      style={{ padding: "16px 10px 16px 10px" }}
+    >
+      <Stack justify="space-between" spacing="sm" h={160}>
+        <div>
+          <Text mb="xs" weight={500} lh={1.1} align="center">
+            {title}
+          </Text>
 
-      <Text size="sm" color="dimmed" lh={1.3}>
-        {description}
-      </Text>
+          <Text size="sm" color="dimmed" lh={1.1} align="center">
+            {description}
+          </Text>
+        </div>
 
-      <Button
-        onClick={() => {
-          if (onSelect) onSelect(filename);
-        }}
-        variant="light"
-        color="blue"
-        fullWidth
-        size="sm"
-        mt="md"
-        radius="md"
-      >
-        {buttonText ?? "Try me"}
-      </Button>
+        <Button
+          onClick={() => {
+            if (onSelect) onSelect(filename);
+          }}
+          variant="light"
+          color="blue"
+          h={32}
+          mih={32}
+          fullWidth
+          size="sm"
+          radius="md"
+        >
+          {buttonText ?? "Try me"}
+        </Button>
+      </Stack>
     </Card>
   );
 };
@@ -414,39 +432,105 @@ const ExampleFlowsModal = forwardRef<
         <Tabs.Panel value="examples" pt="xs">
           <SimpleGrid cols={3} spacing="sm" verticalSpacing="sm">
             <ExampleFlowCard
-              title="Compare length of responses across LLMs"
+              title="📑 Compare between prompt templates"
+              description="Compare between prompt templates using template chaining. Visualize response quality across models."
+              filename="compare-prompts"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="📊 Compare prompt across models"
               description="A simple evaluation with a prompt template, some inputs, and three models to prompt. Visualizes variability in response length."
               filename="basic-comparison"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="Robustness to prompt injection attacks"
-              description="Get a sense of different model's robustness against prompt injection attacks."
-              filename="prompt-injection-test"
+              title="🤖 Compare system prompts"
+              description="Compares response quality across different system prompts. Visualizes how well it sticks to the instructions to only print Racket code."
+              filename="comparing-system-msg"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="Chain prompts together"
+              title="📗 Testing knowledge of book beginnings"
+              description="Test whether different LLMs know the first sentences of famous books."
+              filename="book-beginnings"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="⛓️ Extract data with prompt chaining"
               description="Chain one prompt into another to extract entities from a text response. Plots number of entities."
               filename="chaining-prompts"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="Measure impact of system message on response"
-              description="Compares response quality across different ChatGPT system prompts. Visualizes how well it sticks to the instructions to only print Racket code."
-              filename="comparing-system-msg"
+              title="💬🙇 Estimate chat model sycophancy"
+              description="Estimate how sycophantic a chat model is: ask it for a well-known fact, then tell it it's wrong, and check whether it apologizes or changes its answer."
+              filename="chat-sycophancy"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="Ground truth evaluation for math problems"
-              description="Uses a tabular data node to evaluate LLM performance on basic math problems. Compares responses to expected answer and plots performance across LLMs."
+              title="🧪 Audit models for gender bias"
+              description="Asks an LLM to estimate the gender of a person, given a profession and salary."
+              filename="audit-bias"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🛑 Red-teaming of stereotypes about nationalities"
+              description="Check for whether models refuse to generate stereotypes about people from different countries."
+              filename="red-team-stereotypes"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🐦 Multi-evals of prompt to extract structured data from tweets"
+              description="Extracts named entities from a dataset of tweets, and double-checks the output against multiple eval criteria."
+              filename="tweet-multi-eval"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🧮 Produce structured outputs"
+              description="Extract information from a dataset and output it in a structured JSON format using OpenAI's structured outputs feature."
+              filename="structured-outputs"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🔨 Detect whether tool is triggered"
+              description="Basic example showing whether a given prompt triggered tool usage."
+              filename="basic-function-calls"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="📑 Compare output format"
+              description="Check whether asking for a different format (YAML, XML, JSON, etc.) changes the content."
+              filename="comparing-formats"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🧑‍💻️ HumanEvals Python coding benchmark"
+              description="Run the HumanEvals Python coding benchmark to evaluate LLMs on Python code completion, entirely in your browser. A classic!"
+              filename="python-coding-eval"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🗯 Check robustness to prompt injection attacks"
+              description="Get a sense of different model's robustness against prompt injection attacks."
+              filename="prompt-injection-test"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🔢 Ground truth evaluation for math problems"
+              description="Uses a Tabular Data Node to evaluate LLM performance on basic math problems. Compares responses to expected answer and plots performance."
               filename="basic-math"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="Detect whether OpenAI function call was triggered"
-              description="Basic example showing whether a given prompt triggered an OpenAI function call. Also shows difference between ChatGPT prior to function calls, and function call version."
-              filename="basic-function-calls"
+              title="🦟 Test knowledge of mosquitos"
+              description="Uses an LLM scorer to test whether LLMs know the difference between lifetimes of male and female mosquitos."
+              filename="mosquito-knowledge"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🖼 Generate images of animals"
+              description="Shows images of a fox, sparrow, and a pig as a computer scientist and a gamer, using Dall-E2."
+              filename="animal-images"
               onSelect={onSelect}
             />
           </SimpleGrid>
@@ -462,10 +546,10 @@ const ExampleFlowsModal = forwardRef<
             >
               OpenAI evals
             </a>
-            {`benchmarking package. We currently load evals with a common system
+            {` benchmarking package. We currently load evals with a common system
             message, a single 'turn' (prompt), and evaluation types of
             'includes', 'match', and 'fuzzy match', and a reasonable number of
-            prompts. &nbsp;`}
+            prompts. `}
             <i>
               Warning: some evals include tables with 1000 prompts or more.{" "}
             </i>

@@ -1,0 +1,1287 @@
+{
+  "flow": {
+    "nodes": [
+      {
+        "width": 312,
+        "height": 330,
+        "id": "prompt-1735331949349",
+        "type": "prompt",
+        "data": {
+          "prompt": "{details}",
+          "n": 1,
+          "llms": [
+            {
+              "key": "256931c7-2691-43f7-9edb-5c1018e20ea8",
+              "name": "gpt-4o",
+              "emoji": "🥵",
+              "model": "gpt-4o",
+              "base_model": "gpt-4",
+              "temp": 1,
+              "settings": {
+                "system_msg": "Extract the event details.",
+                "temperature": 1,
+                "response_format": {
+                  "type": "json_schema",
+                  "json_schema": {
+                    "name": "CalendarEvent",
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "The name of the event."
+                        },
+                        "place": {
+                          "type": "string",
+                          "description": "Where the event will take place."
+                        },
+                        "date": {
+                          "type": "string",
+                          "description": "The date of the event.",
+                          "format": "date-time"
+                        },
+                        "participants": {
+                          "type": "array",
+                          "description": "A list of participants in the event.",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "date",
+                        "participants"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "tools": [],
+                "tool_choice": "",
+                "parallel_tool_calls": true,
+                "top_p": 1,
+                "stop": [],
+                "presence_penalty": 0,
+                "frequency_penalty": 0
+              },
+              "formData": {
+                "shortname": "gpt-4o",
+                "model": "gpt-4o",
+                "system_msg": "Extract the event details.",
+                "temperature": 1,
+                "response_format": "{\n  \"name\": \"CalendarEvent\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"properties\": {\n    \"name\": {\n      \"type\": \"string\",\n      \"description\": \"The name of the event.\"\n    },\n    \"place\": {\n      \"type\": \"string\",\n      \"description\": \"Where the event will take place.\"\n    },\n    \"date\": {\n      \"type\": \"string\",\n      \"description\": \"The date of the event.\",\n      \"format\": \"date-time\"\n    },\n    \"participants\": {\n      \"type\": \"array\",\n      \"description\": \"A list of participants in the event.\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }},\n    \"required\": [\"name\", \"date\", \"participants\"],\n    \"additionalProperties\": false\n  }\n}",
+                "tools": "",
+                "tool_choice": "",
+                "parallel_tool_calls": true,
+                "top_p": 1,
+                "stop": "",
+                "presence_penalty": 0,
+                "frequency_penalty": 0
+              }
+            }
+          ],
+          "fields": [
+            {
+              "text": "\\{\"name\":\"Jazz Concert\",\"place\":\"Downtown Theater\",\"date\":\"Thursday evening\",\"participants\":[\"Alex\",\"Jamie\"]\\}",
+              "prompt": "On a rainy Thursday evening, Alex and Jamie attended a jazz concert at the downtown theater.",
+              "fill_history": {
+                "details": "On a rainy Thursday evening, Alex and Jamie attended a jazz concert at the downtown theater."
+              },
+              "llm": {
+                "key": "256931c7-2691-43f7-9edb-5c1018e20ea8",
+                "name": "gpt-4o",
+                "emoji": "🥵",
+                "model": "gpt-4o",
+                "base_model": "gpt-4",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "Extract the event details.",
+                  "temperature": 1,
+                  "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                      "name": "CalendarEvent",
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "The name of the event."
+                          },
+                          "place": {
+                            "type": "string",
+                            "description": "Where the event will take place."
+                          },
+                          "date": {
+                            "type": "string",
+                            "description": "The date of the event.",
+                            "format": "date-time"
+                          },
+                          "participants": {
+                            "type": "array",
+                            "description": "A list of participants in the event.",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "date",
+                          "participants"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "gpt-4o",
+                  "model": "gpt-4o",
+                  "system_msg": "Extract the event details.",
+                  "temperature": 1,
+                  "response_format": "{\n  \"name\": \"CalendarEvent\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"properties\": {\n    \"name\": {\n      \"type\": \"string\",\n      \"description\": \"The name of the event.\"\n    },\n    \"place\": {\n      \"type\": \"string\",\n      \"description\": \"Where the event will take place.\"\n    },\n    \"date\": {\n      \"type\": \"string\",\n      \"description\": \"The date of the event.\",\n      \"format\": \"date-time\"\n    },\n    \"participants\": {\n      \"type\": \"array\",\n      \"description\": \"A list of participants in the event.\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }},\n    \"required\": [\"name\", \"date\", \"participants\"],\n    \"additionalProperties\": false\n  }\n}",
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "0a50ec7d-376b-4703-bbbe-943769f92f91",
+              "metavars": {
+                "__pt": "{details}",
+                "LLM_0": "gpt-4o"
+              }
+            },
+            {
+              "text": "\\{\"name\":\"Annual Art Festival\",\"place\":\"the park\",\"date\":\"Saturday\",\"participants\":[\"Sarah\",\"Michael\"]\\}",
+              "prompt": "Sarah and Michael spent their Saturday afternoon at the annual art festival in the park.",
+              "fill_history": {
+                "details": "Sarah and Michael spent their Saturday afternoon at the annual art festival in the park."
+              },
+              "llm": {
+                "key": "256931c7-2691-43f7-9edb-5c1018e20ea8",
+                "name": "gpt-4o",
+                "emoji": "🥵",
+                "model": "gpt-4o",
+                "base_model": "gpt-4",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "Extract the event details.",
+                  "temperature": 1,
+                  "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                      "name": "CalendarEvent",
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "The name of the event."
+                          },
+                          "place": {
+                            "type": "string",
+                            "description": "Where the event will take place."
+                          },
+                          "date": {
+                            "type": "string",
+                            "description": "The date of the event.",
+                            "format": "date-time"
+                          },
+                          "participants": {
+                            "type": "array",
+                            "description": "A list of participants in the event.",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "date",
+                          "participants"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "gpt-4o",
+                  "model": "gpt-4o",
+                  "system_msg": "Extract the event details.",
+                  "temperature": 1,
+                  "response_format": "{\n  \"name\": \"CalendarEvent\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"properties\": {\n    \"name\": {\n      \"type\": \"string\",\n      \"description\": \"The name of the event.\"\n    },\n    \"place\": {\n      \"type\": \"string\",\n      \"description\": \"Where the event will take place.\"\n    },\n    \"date\": {\n      \"type\": \"string\",\n      \"description\": \"The date of the event.\",\n      \"format\": \"date-time\"\n    },\n    \"participants\": {\n      \"type\": \"array\",\n      \"description\": \"A list of participants in the event.\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }},\n    \"required\": [\"name\", \"date\", \"participants\"],\n    \"additionalProperties\": false\n  }\n}",
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "01017d9d-165f-4646-be8d-820b58af7b33",
+              "metavars": {
+                "__pt": "{details}",
+                "LLM_0": "gpt-4o"
+              }
+            },
+            {
+              "text": "\\{\"name\":\"Book Launch Event\",\"place\":\"Local Bookstore\",\"date\":\"Tuesday Night\",\"participants\":[\"Emily\",\"Jack\"]\\}",
+              "prompt": "Emily and Jack were thrilled to join the book launch event on Tuesday night at the local bookstore.",
+              "fill_history": {
+                "details": "Emily and Jack were thrilled to join the book launch event on Tuesday night at the local bookstore."
+              },
+              "llm": {
+                "key": "256931c7-2691-43f7-9edb-5c1018e20ea8",
+                "name": "gpt-4o",
+                "emoji": "🥵",
+                "model": "gpt-4o",
+                "base_model": "gpt-4",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "Extract the event details.",
+                  "temperature": 1,
+                  "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                      "name": "CalendarEvent",
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "The name of the event."
+                          },
+                          "place": {
+                            "type": "string",
+                            "description": "Where the event will take place."
+                          },
+                          "date": {
+                            "type": "string",
+                            "description": "The date of the event.",
+                            "format": "date-time"
+                          },
+                          "participants": {
+                            "type": "array",
+                            "description": "A list of participants in the event.",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "date",
+                          "participants"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "gpt-4o",
+                  "model": "gpt-4o",
+                  "system_msg": "Extract the event details.",
+                  "temperature": 1,
+                  "response_format": "{\n  \"name\": \"CalendarEvent\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"properties\": {\n    \"name\": {\n      \"type\": \"string\",\n      \"description\": \"The name of the event.\"\n    },\n    \"place\": {\n      \"type\": \"string\",\n      \"description\": \"Where the event will take place.\"\n    },\n    \"date\": {\n      \"type\": \"string\",\n      \"description\": \"The date of the event.\",\n      \"format\": \"date-time\"\n    },\n    \"participants\": {\n      \"type\": \"array\",\n      \"description\": \"A list of participants in the event.\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }},\n    \"required\": [\"name\", \"date\", \"participants\"],\n    \"additionalProperties\": false\n  }\n}",
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "906b29f8-360b-4f9c-ab6f-512795661bd8",
+              "metavars": {
+                "__pt": "{details}",
+                "LLM_0": "gpt-4o"
+              }
+            },
+            {
+              "text": "\\{\"name\":\"Soccer Match\",\"place\":\"City Stadium\",\"date\":\"Sunday morning\",\"participants\":[\"Grace\",\"Tom\"]\\}",
+              "prompt": "Grace and Tom enjoyed a lively soccer match on Sunday morning at the city stadium.",
+              "fill_history": {
+                "details": "Grace and Tom enjoyed a lively soccer match on Sunday morning at the city stadium."
+              },
+              "llm": {
+                "key": "256931c7-2691-43f7-9edb-5c1018e20ea8",
+                "name": "gpt-4o",
+                "emoji": "🥵",
+                "model": "gpt-4o",
+                "base_model": "gpt-4",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "Extract the event details.",
+                  "temperature": 1,
+                  "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                      "name": "CalendarEvent",
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "The name of the event."
+                          },
+                          "place": {
+                            "type": "string",
+                            "description": "Where the event will take place."
+                          },
+                          "date": {
+                            "type": "string",
+                            "description": "The date of the event.",
+                            "format": "date-time"
+                          },
+                          "participants": {
+                            "type": "array",
+                            "description": "A list of participants in the event.",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "date",
+                          "participants"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "gpt-4o",
+                  "model": "gpt-4o",
+                  "system_msg": "Extract the event details.",
+                  "temperature": 1,
+                  "response_format": "{\n  \"name\": \"CalendarEvent\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"properties\": {\n    \"name\": {\n      \"type\": \"string\",\n      \"description\": \"The name of the event.\"\n    },\n    \"place\": {\n      \"type\": \"string\",\n      \"description\": \"Where the event will take place.\"\n    },\n    \"date\": {\n      \"type\": \"string\",\n      \"description\": \"The date of the event.\",\n      \"format\": \"date-time\"\n    },\n    \"participants\": {\n      \"type\": \"array\",\n      \"description\": \"A list of participants in the event.\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }},\n    \"required\": [\"name\", \"date\", \"participants\"],\n    \"additionalProperties\": false\n  }\n}",
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "94b100b0-9ab8-422e-a73f-d5a5249b1b34",
+              "metavars": {
+                "__pt": "{details}",
+                "LLM_0": "gpt-4o"
+              }
+            },
+            {
+              "text": "\\{\"name\":\"Charity Gala\",\"place\":\"Elegant Ballroom\",\"date\":\"Friday night\",\"participants\":[\"Rachel\",\"Leo\"]\\}",
+              "prompt": "Rachel and Leo took part in the charity gala on Friday night at the elegant ballroom.",
+              "fill_history": {
+                "details": "Rachel and Leo took part in the charity gala on Friday night at the elegant ballroom."
+              },
+              "llm": {
+                "key": "256931c7-2691-43f7-9edb-5c1018e20ea8",
+                "name": "gpt-4o",
+                "emoji": "🥵",
+                "model": "gpt-4o",
+                "base_model": "gpt-4",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "Extract the event details.",
+                  "temperature": 1,
+                  "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                      "name": "CalendarEvent",
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "The name of the event."
+                          },
+                          "place": {
+                            "type": "string",
+                            "description": "Where the event will take place."
+                          },
+                          "date": {
+                            "type": "string",
+                            "description": "The date of the event.",
+                            "format": "date-time"
+                          },
+                          "participants": {
+                            "type": "array",
+                            "description": "A list of participants in the event.",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "date",
+                          "participants"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "gpt-4o",
+                  "model": "gpt-4o",
+                  "system_msg": "Extract the event details.",
+                  "temperature": 1,
+                  "response_format": "{\n  \"name\": \"CalendarEvent\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"properties\": {\n    \"name\": {\n      \"type\": \"string\",\n      \"description\": \"The name of the event.\"\n    },\n    \"place\": {\n      \"type\": \"string\",\n      \"description\": \"Where the event will take place.\"\n    },\n    \"date\": {\n      \"type\": \"string\",\n      \"description\": \"The date of the event.\",\n      \"format\": \"date-time\"\n    },\n    \"participants\": {\n      \"type\": \"array\",\n      \"description\": \"A list of participants in the event.\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }},\n    \"required\": [\"name\", \"date\", \"participants\"],\n    \"additionalProperties\": false\n  }\n}",
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "a48cab76-9931-44a9-9976-2ed808ddf97a",
+              "metavars": {
+                "__pt": "{details}",
+                "LLM_0": "gpt-4o"
+              }
+            }
+          ],
+          "refresh": false
+        },
+        "position": {
+          "x": 224,
+          "y": 192
+        },
+        "selected": false,
+        "dragging": false,
+        "positionAbsolute": {
+          "x": 224,
+          "y": 192
+        }
+      },
+      {
+        "width": 312,
+        "height": 428,
+        "id": "textFieldsNode-1735332585533",
+        "type": "textfields",
+        "data": {
+          "fields": {
+            "f1": "On a rainy Thursday evening, Alex and Jamie attended a jazz concert at the downtown theater.",
+            "f2": "Sarah and Michael spent their Saturday afternoon at the annual art festival in the park.",
+            "f3": "Emily and Jack were thrilled to join the book launch event on Tuesday night at the local bookstore.",
+            "f4": "Grace and Tom enjoyed a lively soccer match on Sunday morning at the city stadium.",
+            "f5": "Rachel and Leo took part in the charity gala on Friday night at the elegant ballroom."
+          }
+        },
+        "position": {
+          "x": -144,
+          "y": 112
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": -144,
+          "y": 112
+        },
+        "dragging": false
+      },
+      {
+        "width": 282,
+        "height": 275,
+        "id": "comment-1735332749815",
+        "type": "comment",
+        "data": {
+          "text": "This uses OpenAI's new Structured Outputs feature on GPT-4o+ models by setting the response_format field to a JSON Schema. Note that we must set the schema directly; if you'd prefer support for Zod or Pydantic-style inputs, please raise an Issue or submit a PR to the ChainForge GitHub."
+        },
+        "position": {
+          "x": 224,
+          "y": -112
+        },
+        "selected": true,
+        "positionAbsolute": {
+          "x": 224,
+          "y": -112
+        },
+        "dragging": false
+      }
+    ],
+    "edges": [
+      {
+        "source": "textFieldsNode-1735332585533",
+        "sourceHandle": "output",
+        "target": "prompt-1735331949349",
+        "targetHandle": "details",
+        "interactionWidth": 40,
+        "markerEnd": {
+          "type": "arrow",
+          "width": 22,
+          "height": 22
+        },
+        "type": "default",
+        "id": "reactflow__edge-textFieldsNode-1735332585533output-prompt-1735331949349details"
+      }
+    ],
+    "viewport": {
+      "x": 322,
+      "y": 213,
+      "zoom": 1
+    }
+  },
+  "cache": {
+    "prompt-1735331949349_13.json": {
+      "On a rainy Thursday evening, Alex and Jamie attended a jazz concert at the downtown theater.": [
+        {
+          "prompt": "On a rainy Thursday evening, Alex and Jamie attended a jazz concert at the downtown theater.",
+          "query": {
+            "model": "gpt-4o",
+            "n": 1,
+            "temperature": 1,
+            "response_format": {
+              "type": "json_schema",
+              "json_schema": {
+                "name": "CalendarEvent",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the event."
+                    },
+                    "place": {
+                      "type": "string",
+                      "description": "Where the event will take place."
+                    },
+                    "date": {
+                      "type": "string",
+                      "description": "The date of the event.",
+                      "format": "date-time"
+                    },
+                    "participants": {
+                      "type": "array",
+                      "description": "A list of participants in the event.",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "date",
+                    "participants"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "top_p": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "messages": [
+              {
+                "role": "system",
+                "content": "Extract the event details."
+              },
+              {
+                "role": "user",
+                "content": "On a rainy Thursday evening, Alex and Jamie attended a jazz concert at the downtown theater."
+              }
+            ]
+          },
+          "uid": "0a50ec7d-376b-4703-bbbe-943769f92f91",
+          "responses": [
+            "{\"name\":\"Jazz Concert\",\"place\":\"Downtown Theater\",\"date\":\"Thursday evening\",\"participants\":[\"Alex\",\"Jamie\"]}"
+          ],
+          "raw_response": {
+            "id": "chatcmpl-AjBbWkx2QsYMqEjusWCVFH81gQpns",
+            "object": "chat.completion",
+            "created": 1735332730,
+            "model": "gpt-4o-2024-08-06",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "{\"name\":\"Jazz Concert\",\"place\":\"Downtown Theater\",\"date\":\"Thursday evening\",\"participants\":[\"Alex\",\"Jamie\"]}",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 122,
+              "completion_tokens": 25,
+              "total_tokens": 147,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "audio_tokens": 0
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0
+              }
+            },
+            "system_fingerprint": "fp_5f20662549"
+          },
+          "llm": "gpt-4o",
+          "vars": {
+            "details": "On a rainy Thursday evening, Alex and Jamie attended a jazz concert at the downtown theater."
+          },
+          "metavars": {
+            "__pt": "{details}",
+            "LLM_0": "gpt-4o"
+          }
+        }
+      ],
+      "Sarah and Michael spent their Saturday afternoon at the annual art festival in the park.": [
+        {
+          "prompt": "Sarah and Michael spent their Saturday afternoon at the annual art festival in the park.",
+          "query": {
+            "model": "gpt-4o",
+            "n": 1,
+            "temperature": 1,
+            "response_format": {
+              "type": "json_schema",
+              "json_schema": {
+                "name": "CalendarEvent",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the event."
+                    },
+                    "place": {
+                      "type": "string",
+                      "description": "Where the event will take place."
+                    },
+                    "date": {
+                      "type": "string",
+                      "description": "The date of the event.",
+                      "format": "date-time"
+                    },
+                    "participants": {
+                      "type": "array",
+                      "description": "A list of participants in the event.",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "date",
+                    "participants"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "top_p": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "messages": [
+              {
+                "role": "system",
+                "content": "Extract the event details."
+              },
+              {
+                "role": "user",
+                "content": "Sarah and Michael spent their Saturday afternoon at the annual art festival in the park."
+              }
+            ]
+          },
+          "uid": "01017d9d-165f-4646-be8d-820b58af7b33",
+          "responses": [
+            "{\"name\":\"Annual Art Festival\",\"place\":\"the park\",\"date\":\"Saturday\",\"participants\":[\"Sarah\",\"Michael\"]}"
+          ],
+          "raw_response": {
+            "id": "chatcmpl-AjBbWlGLF3SgVJxE7l69TEuW6YfMl",
+            "object": "chat.completion",
+            "created": 1735332730,
+            "model": "gpt-4o-2024-08-06",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "{\"name\":\"Annual Art Festival\",\"place\":\"the park\",\"date\":\"Saturday\",\"participants\":[\"Sarah\",\"Michael\"]}",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 120,
+              "completion_tokens": 24,
+              "total_tokens": 144,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "audio_tokens": 0
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0
+              }
+            },
+            "system_fingerprint": "fp_5f20662549"
+          },
+          "llm": "gpt-4o",
+          "vars": {
+            "details": "Sarah and Michael spent their Saturday afternoon at the annual art festival in the park."
+          },
+          "metavars": {
+            "__pt": "{details}",
+            "LLM_0": "gpt-4o"
+          }
+        }
+      ],
+      "Rachel and Leo took part in the charity gala on Friday night at the elegant ballroom.": [
+        {
+          "prompt": "Rachel and Leo took part in the charity gala on Friday night at the elegant ballroom.",
+          "query": {
+            "model": "gpt-4o",
+            "n": 1,
+            "temperature": 1,
+            "response_format": {
+              "type": "json_schema",
+              "json_schema": {
+                "name": "CalendarEvent",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the event."
+                    },
+                    "place": {
+                      "type": "string",
+                      "description": "Where the event will take place."
+                    },
+                    "date": {
+                      "type": "string",
+                      "description": "The date of the event.",
+                      "format": "date-time"
+                    },
+                    "participants": {
+                      "type": "array",
+                      "description": "A list of participants in the event.",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "date",
+                    "participants"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "top_p": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "messages": [
+              {
+                "role": "system",
+                "content": "Extract the event details."
+              },
+              {
+                "role": "user",
+                "content": "Rachel and Leo took part in the charity gala on Friday night at the elegant ballroom."
+              }
+            ]
+          },
+          "uid": "a48cab76-9931-44a9-9976-2ed808ddf97a",
+          "responses": [
+            "{\"name\":\"Charity Gala\",\"place\":\"Elegant Ballroom\",\"date\":\"Friday night\",\"participants\":[\"Rachel\",\"Leo\"]}"
+          ],
+          "raw_response": {
+            "id": "chatcmpl-AjBbWqsDDaJX7CwOXG9KTlbNHcHso",
+            "object": "chat.completion",
+            "created": 1735332730,
+            "model": "gpt-4o-2024-08-06",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "{\"name\":\"Charity Gala\",\"place\":\"Elegant Ballroom\",\"date\":\"Friday night\",\"participants\":[\"Rachel\",\"Leo\"]}",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 121,
+              "completion_tokens": 25,
+              "total_tokens": 146,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "audio_tokens": 0
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0
+              }
+            },
+            "system_fingerprint": "fp_d28bcae782"
+          },
+          "llm": "gpt-4o",
+          "vars": {
+            "details": "Rachel and Leo took part in the charity gala on Friday night at the elegant ballroom."
+          },
+          "metavars": {
+            "__pt": "{details}",
+            "LLM_0": "gpt-4o"
+          }
+        }
+      ],
+      "Grace and Tom enjoyed a lively soccer match on Sunday morning at the city stadium.": [
+        {
+          "prompt": "Grace and Tom enjoyed a lively soccer match on Sunday morning at the city stadium.",
+          "query": {
+            "model": "gpt-4o",
+            "n": 1,
+            "temperature": 1,
+            "response_format": {
+              "type": "json_schema",
+              "json_schema": {
+                "name": "CalendarEvent",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the event."
+                    },
+                    "place": {
+                      "type": "string",
+                      "description": "Where the event will take place."
+                    },
+                    "date": {
+                      "type": "string",
+                      "description": "The date of the event.",
+                      "format": "date-time"
+                    },
+                    "participants": {
+                      "type": "array",
+                      "description": "A list of participants in the event.",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "date",
+                    "participants"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "top_p": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "messages": [
+              {
+                "role": "system",
+                "content": "Extract the event details."
+              },
+              {
+                "role": "user",
+                "content": "Grace and Tom enjoyed a lively soccer match on Sunday morning at the city stadium."
+              }
+            ]
+          },
+          "uid": "94b100b0-9ab8-422e-a73f-d5a5249b1b34",
+          "responses": [
+            "{\"name\":\"Soccer Match\",\"place\":\"City Stadium\",\"date\":\"Sunday morning\",\"participants\":[\"Grace\",\"Tom\"]}"
+          ],
+          "raw_response": {
+            "id": "chatcmpl-AjBbWYpSLFwExSVL4DiyT5TtO12oI",
+            "object": "chat.completion",
+            "created": 1735332730,
+            "model": "gpt-4o-2024-08-06",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "{\"name\":\"Soccer Match\",\"place\":\"City Stadium\",\"date\":\"Sunday morning\",\"participants\":[\"Grace\",\"Tom\"]}",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 120,
+              "completion_tokens": 25,
+              "total_tokens": 145,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "audio_tokens": 0
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0
+              }
+            },
+            "system_fingerprint": "fp_5f20662549"
+          },
+          "llm": "gpt-4o",
+          "vars": {
+            "details": "Grace and Tom enjoyed a lively soccer match on Sunday morning at the city stadium."
+          },
+          "metavars": {
+            "__pt": "{details}",
+            "LLM_0": "gpt-4o"
+          }
+        }
+      ],
+      "Emily and Jack were thrilled to join the book launch event on Tuesday night at the local bookstore.": [
+        {
+          "prompt": "Emily and Jack were thrilled to join the book launch event on Tuesday night at the local bookstore.",
+          "query": {
+            "model": "gpt-4o",
+            "n": 1,
+            "temperature": 1,
+            "response_format": {
+              "type": "json_schema",
+              "json_schema": {
+                "name": "CalendarEvent",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the event."
+                    },
+                    "place": {
+                      "type": "string",
+                      "description": "Where the event will take place."
+                    },
+                    "date": {
+                      "type": "string",
+                      "description": "The date of the event.",
+                      "format": "date-time"
+                    },
+                    "participants": {
+                      "type": "array",
+                      "description": "A list of participants in the event.",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "date",
+                    "participants"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "top_p": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "messages": [
+              {
+                "role": "system",
+                "content": "Extract the event details."
+              },
+              {
+                "role": "user",
+                "content": "Emily and Jack were thrilled to join the book launch event on Tuesday night at the local bookstore."
+              }
+            ]
+          },
+          "uid": "906b29f8-360b-4f9c-ab6f-512795661bd8",
+          "responses": [
+            "{\"name\":\"Book Launch Event\",\"place\":\"Local Bookstore\",\"date\":\"Tuesday Night\",\"participants\":[\"Emily\",\"Jack\"]}"
+          ],
+          "raw_response": {
+            "id": "chatcmpl-AjBbW7mNS0cGqUjdhKH26paVuDH5E",
+            "object": "chat.completion",
+            "created": 1735332730,
+            "model": "gpt-4o-2024-08-06",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "{\"name\":\"Book Launch Event\",\"place\":\"Local Bookstore\",\"date\":\"Tuesday Night\",\"participants\":[\"Emily\",\"Jack\"]}",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 123,
+              "completion_tokens": 26,
+              "total_tokens": 149,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "audio_tokens": 0
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0
+              }
+            },
+            "system_fingerprint": "fp_d28bcae782"
+          },
+          "llm": "gpt-4o",
+          "vars": {
+            "details": "Emily and Jack were thrilled to join the book launch event on Tuesday night at the local bookstore."
+          },
+          "metavars": {
+            "__pt": "{details}",
+            "LLM_0": "gpt-4o"
+          }
+        }
+      ]
+    },
+    "prompt-1735331949349.json": {
+      "cache_files": {
+        "prompt-1735331949349_13.json": {
+          "key": "256931c7-2691-43f7-9edb-5c1018e20ea8",
+          "name": "gpt-4o",
+          "emoji": "🥵",
+          "model": "gpt-4o",
+          "base_model": "gpt-4",
+          "temp": 1,
+          "settings": {
+            "system_msg": "Extract the event details.",
+            "temperature": 1,
+            "response_format": {
+              "type": "json_schema",
+              "json_schema": {
+                "name": "CalendarEvent",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the event."
+                    },
+                    "place": {
+                      "type": "string",
+                      "description": "Where the event will take place."
+                    },
+                    "date": {
+                      "type": "string",
+                      "description": "The date of the event.",
+                      "format": "date-time"
+                    },
+                    "participants": {
+                      "type": "array",
+                      "description": "A list of participants in the event.",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "date",
+                    "participants"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "top_p": 1,
+            "stop": [],
+            "presence_penalty": 0,
+            "frequency_penalty": 0
+          },
+          "formData": {
+            "shortname": "gpt-4o",
+            "model": "gpt-4o",
+            "system_msg": "Extract the event details.",
+            "temperature": 1,
+            "response_format": "{\n  \"name\": \"CalendarEvent\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"properties\": {\n    \"name\": {\n      \"type\": \"string\",\n      \"description\": \"The name of the event.\"\n    },\n    \"place\": {\n      \"type\": \"string\",\n      \"description\": \"Where the event will take place.\"\n    },\n    \"date\": {\n      \"type\": \"string\",\n      \"description\": \"The date of the event.\",\n      \"format\": \"date-time\"\n    },\n    \"participants\": {\n      \"type\": \"array\",\n      \"description\": \"A list of participants in the event.\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }},\n    \"required\": [\"name\", \"date\", \"participants\"],\n    \"additionalProperties\": false\n  }\n}",
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "top_p": 1,
+            "stop": "",
+            "presence_penalty": 0,
+            "frequency_penalty": 0
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        }
+      },
+      "responses_last_run": [
+        {
+          "vars": {
+            "details": "On a rainy Thursday evening, Alex and Jamie attended a jazz concert at the downtown theater."
+          },
+          "metavars": {
+            "__pt": "{details}",
+            "LLM_0": "gpt-4o"
+          },
+          "llm": "gpt-4o",
+          "prompt": "On a rainy Thursday evening, Alex and Jamie attended a jazz concert at the downtown theater.",
+          "responses": [
+            "{\"name\":\"Jazz Concert\",\"place\":\"Downtown Theater\",\"date\":\"Thursday evening\",\"participants\":[\"Alex\",\"Jamie\"]}"
+          ],
+          "uid": "0a50ec7d-376b-4703-bbbe-943769f92f91"
+        },
+        {
+          "vars": {
+            "details": "Sarah and Michael spent their Saturday afternoon at the annual art festival in the park."
+          },
+          "metavars": {
+            "__pt": "{details}",
+            "LLM_0": "gpt-4o"
+          },
+          "llm": "gpt-4o",
+          "prompt": "Sarah and Michael spent their Saturday afternoon at the annual art festival in the park.",
+          "responses": [
+            "{\"name\":\"Annual Art Festival\",\"place\":\"the park\",\"date\":\"Saturday\",\"participants\":[\"Sarah\",\"Michael\"]}"
+          ],
+          "uid": "01017d9d-165f-4646-be8d-820b58af7b33"
+        },
+        {
+          "vars": {
+            "details": "Emily and Jack were thrilled to join the book launch event on Tuesday night at the local bookstore."
+          },
+          "metavars": {
+            "__pt": "{details}",
+            "LLM_0": "gpt-4o"
+          },
+          "llm": "gpt-4o",
+          "prompt": "Emily and Jack were thrilled to join the book launch event on Tuesday night at the local bookstore.",
+          "responses": [
+            "{\"name\":\"Book Launch Event\",\"place\":\"Local Bookstore\",\"date\":\"Tuesday Night\",\"participants\":[\"Emily\",\"Jack\"]}"
+          ],
+          "uid": "906b29f8-360b-4f9c-ab6f-512795661bd8"
+        },
+        {
+          "vars": {
+            "details": "Grace and Tom enjoyed a lively soccer match on Sunday morning at the city stadium."
+          },
+          "metavars": {
+            "__pt": "{details}",
+            "LLM_0": "gpt-4o"
+          },
+          "llm": "gpt-4o",
+          "prompt": "Grace and Tom enjoyed a lively soccer match on Sunday morning at the city stadium.",
+          "responses": [
+            "{\"name\":\"Soccer Match\",\"place\":\"City Stadium\",\"date\":\"Sunday morning\",\"participants\":[\"Grace\",\"Tom\"]}"
+          ],
+          "uid": "94b100b0-9ab8-422e-a73f-d5a5249b1b34"
+        },
+        {
+          "vars": {
+            "details": "Rachel and Leo took part in the charity gala on Friday night at the elegant ballroom."
+          },
+          "metavars": {
+            "__pt": "{details}",
+            "LLM_0": "gpt-4o"
+          },
+          "llm": "gpt-4o",
+          "prompt": "Rachel and Leo took part in the charity gala on Friday night at the elegant ballroom.",
+          "responses": [
+            "{\"name\":\"Charity Gala\",\"place\":\"Elegant Ballroom\",\"date\":\"Friday night\",\"participants\":[\"Rachel\",\"Leo\"]}"
+          ],
+          "uid": "a48cab76-9931-44a9-9976-2ed808ddf97a"
+        }
+      ]
+    },
+    "textFieldsNode-1735332585533.json": {},
+    "comment-1735332749815.json": {}
+  }
+}
