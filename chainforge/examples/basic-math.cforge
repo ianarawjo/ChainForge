@@ -3,7 +3,7 @@
     "nodes": [
       {
         "width": 312,
-        "height": 411,
+        "height": 464,
         "data": {
           "fields": [
             {
@@ -28,11 +28,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "568b5331-f9e5-462f-8314-a0d48bdbbe34",
+              "uid": "568b5331-f9e5-462f-8314-a0d48bdbbe34",
               "metavars": {
                 "Expected": "4",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -61,11 +61,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "568b5331-f9e5-462f-8314-a0d48bdbbe34",
+              "uid": "568b5331-f9e5-462f-8314-a0d48bdbbe34",
               "metavars": {
                 "Expected": "4",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -97,11 +97,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "3e4d4071-7768-4ef1-aba4-04f97da8e3c8",
+              "uid": "3e4d4071-7768-4ef1-aba4-04f97da8e3c8",
               "metavars": {
                 "Expected": "4",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -133,15 +133,85 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "3e4d4071-7768-4ef1-aba4-04f97da8e3c8",
+              "uid": "3e4d4071-7768-4ef1-aba4-04f97da8e3c8",
               "metavars": {
                 "Expected": "4",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
                 "LLM_0": "GPT4"
+              }
+            },
+            {
+              "text": "4",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+              "fill_history": {
+                "question": "What is 2 + 2?"
+              },
+              "llm": {
+                "key": "0b3606a1-109d-448d-aa72-98f612750092",
+                "name": "Gemini",
+                "emoji": "♊",
+                "model": "gemini-pro",
+                "base_model": "palm2-bison",
+                "temp": 0.7,
+                "settings": {
+                  "temperature": 0.5,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
+                },
+                "formData": {
+                  "shortname": "Gemini"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "14721e37-f7d7-4c42-b350-cca63fa887a6",
+              "metavars": {
+                "Expected": "4",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "Gemini"
+              }
+            },
+            {
+              "text": "4",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+              "fill_history": {
+                "question": "What is 2 + 2?"
+              },
+              "llm": {
+                "key": "0b3606a1-109d-448d-aa72-98f612750092",
+                "name": "Gemini",
+                "emoji": "♊",
+                "model": "gemini-pro",
+                "base_model": "palm2-bison",
+                "temp": 0.7,
+                "settings": {
+                  "temperature": 0.5,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
+                },
+                "formData": {
+                  "shortname": "Gemini"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "14721e37-f7d7-4c42-b350-cca63fa887a6",
+              "metavars": {
+                "Expected": "4",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "Gemini"
               }
             },
             {
@@ -151,67 +221,183 @@
                 "question": "What is 2 + 2?"
               },
               "llm": {
-                "base_model": "palm2-bison",
-                "emoji": "🦬",
-                "formData": {
-                  "shortname": "PaLM2"
-                },
-                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-                "model": "chat-bison-001",
-                "name": "PaLM2",
+                "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
                 "settings": {
-                  "max_output_tokens": 512,
-                  "stop_sequences": [],
-                  "temperature": 0.5,
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
                   "top_k": -1,
-                  "top_p": -1
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
                 },
-                "temp": 0.7,
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
                 "progress": {
-                  "success": 0,
+                  "success": 80,
                   "error": 0
                 }
               },
-              "batch_id": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661",
+              "uid": "ea431926-edea-4006-83fb-67dae766ba0e",
               "metavars": {
                 "Expected": "4",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-                "LLM_0": "PaLM2"
+                "LLM_0": "Falcon.7B"
               }
             },
             {
-              "text": "2+2=4",
+              "text": "2 + 2 = 4",
               "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
               "fill_history": {
                 "question": "What is 2 + 2?"
               },
               "llm": {
-                "base_model": "palm2-bison",
-                "emoji": "🦬",
-                "formData": {
-                  "shortname": "PaLM2"
-                },
-                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-                "model": "chat-bison-001",
-                "name": "PaLM2",
+                "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
                 "settings": {
-                  "max_output_tokens": 512,
-                  "stop_sequences": [],
-                  "temperature": 0.5,
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
                   "top_k": -1,
-                  "top_p": -1
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
                 },
-                "temp": 0.7,
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
                 "progress": {
-                  "success": 0,
+                  "success": 80,
                   "error": 0
                 }
               },
-              "batch_id": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661",
+              "uid": "ea431926-edea-4006-83fb-67dae766ba0e",
               "metavars": {
                 "Expected": "4",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-                "LLM_0": "PaLM2"
+                "LLM_0": "Falcon.7B"
+              }
+            },
+            {
+              "text": "4",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+              "fill_history": {
+                "question": "What is 2 + 2?"
+              },
+              "llm": {
+                "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+                "name": "claude-3.5-haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "claude-3.5-haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "653a2dbd-6d2c-4322-aa93-0dc04210f244",
+              "metavars": {
+                "Expected": "4",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "claude-3.5-haiku"
+              }
+            },
+            {
+              "text": "4",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+              "fill_history": {
+                "question": "What is 2 + 2?"
+              },
+              "llm": {
+                "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+                "name": "claude-3.5-haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "claude-3.5-haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "653a2dbd-6d2c-4322-aa93-0dc04210f244",
+              "metavars": {
+                "Expected": "4",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "claude-3.5-haiku"
               }
             },
             {
@@ -236,11 +422,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "49a4841f-98c5-46aa-92a7-416cfe8f041b",
+              "uid": "49a4841f-98c5-46aa-92a7-416cfe8f041b",
               "metavars": {
                 "Expected": "3",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -269,11 +455,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "49a4841f-98c5-46aa-92a7-416cfe8f041b",
+              "uid": "49a4841f-98c5-46aa-92a7-416cfe8f041b",
               "metavars": {
                 "Expected": "3",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -305,11 +491,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "8aa01880-0342-4e2a-bed5-c0e893b68f3f",
+              "uid": "8aa01880-0342-4e2a-bed5-c0e893b68f3f",
               "metavars": {
                 "Expected": "3",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -341,11 +527,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "8aa01880-0342-4e2a-bed5-c0e893b68f3f",
+              "uid": "8aa01880-0342-4e2a-bed5-c0e893b68f3f",
               "metavars": {
                 "Expected": "3",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -353,38 +539,73 @@
               }
             },
             {
-              "text": "The square root of 9 is 3.",
+              "text": "3",
               "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
               "fill_history": {
                 "question": "What is the square root of 9?"
               },
               "llm": {
+                "key": "0b3606a1-109d-448d-aa72-98f612750092",
+                "name": "Gemini",
+                "emoji": "♊",
+                "model": "gemini-pro",
                 "base_model": "palm2-bison",
-                "emoji": "🦬",
-                "formData": {
-                  "shortname": "PaLM2"
-                },
-                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-                "model": "chat-bison-001",
-                "name": "PaLM2",
+                "temp": 0.7,
                 "settings": {
-                  "max_output_tokens": 512,
-                  "stop_sequences": [],
                   "temperature": 0.5,
                   "top_k": -1,
-                  "top_p": -1
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
                 },
-                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemini"
+                },
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603",
+              "uid": "d73153fb-5451-41e7-80ad-558a1b591c97",
               "metavars": {
                 "Expected": "3",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-                "LLM_0": "PaLM2"
+                "LLM_0": "Gemini"
+              }
+            },
+            {
+              "text": "3",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+              "fill_history": {
+                "question": "What is the square root of 9?"
+              },
+              "llm": {
+                "key": "0b3606a1-109d-448d-aa72-98f612750092",
+                "name": "Gemini",
+                "emoji": "♊",
+                "model": "gemini-pro",
+                "base_model": "palm2-bison",
+                "temp": 0.7,
+                "settings": {
+                  "temperature": 0.5,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
+                },
+                "formData": {
+                  "shortname": "Gemini"
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "d73153fb-5451-41e7-80ad-558a1b591c97",
+              "metavars": {
+                "Expected": "3",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "Gemini"
               }
             },
             {
@@ -394,32 +615,183 @@
                 "question": "What is the square root of 9?"
               },
               "llm": {
-                "base_model": "palm2-bison",
-                "emoji": "🦬",
-                "formData": {
-                  "shortname": "PaLM2"
-                },
-                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-                "model": "chat-bison-001",
-                "name": "PaLM2",
+                "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
                 "settings": {
-                  "max_output_tokens": 512,
-                  "stop_sequences": [],
-                  "temperature": 0.5,
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
                   "top_k": -1,
-                  "top_p": -1
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
                 },
-                "temp": 0.7,
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
                 "progress": {
-                  "success": 0,
+                  "success": 80,
                   "error": 0
                 }
               },
-              "batch_id": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603",
+              "uid": "fc0cae18-4b1f-4c97-813c-c04bcb0cc7e7",
               "metavars": {
                 "Expected": "3",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-                "LLM_0": "PaLM2"
+                "LLM_0": "Falcon.7B"
+              }
+            },
+            {
+              "text": "The square root of 9 is 3.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+              "fill_history": {
+                "question": "What is the square root of 9?"
+              },
+              "llm": {
+                "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "fc0cae18-4b1f-4c97-813c-c04bcb0cc7e7",
+              "metavars": {
+                "Expected": "3",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "Falcon.7B"
+              }
+            },
+            {
+              "text": "3",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+              "fill_history": {
+                "question": "What is the square root of 9?"
+              },
+              "llm": {
+                "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+                "name": "claude-3.5-haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "claude-3.5-haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "409dbe3e-cc82-4037-a4f4-040aed417de6",
+              "metavars": {
+                "Expected": "3",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "claude-3.5-haiku"
+              }
+            },
+            {
+              "text": "3",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+              "fill_history": {
+                "question": "What is the square root of 9?"
+              },
+              "llm": {
+                "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+                "name": "claude-3.5-haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "claude-3.5-haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "409dbe3e-cc82-4037-a4f4-040aed417de6",
+              "metavars": {
+                "Expected": "3",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "claude-3.5-haiku"
               }
             },
             {
@@ -444,11 +816,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "e11f0ed2-41ed-4d53-ad8a-510c7836fadc",
+              "uid": "e11f0ed2-41ed-4d53-ad8a-510c7836fadc",
               "metavars": {
                 "Expected": "1997",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -477,11 +849,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "e11f0ed2-41ed-4d53-ad8a-510c7836fadc",
+              "uid": "e11f0ed2-41ed-4d53-ad8a-510c7836fadc",
               "metavars": {
                 "Expected": "1997",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -513,11 +885,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "55136cbc-c5f1-4c5c-876e-d76a3efaff0f",
+              "uid": "55136cbc-c5f1-4c5c-876e-d76a3efaff0f",
               "metavars": {
                 "Expected": "1997",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -549,11 +921,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "55136cbc-c5f1-4c5c-876e-d76a3efaff0f",
+              "uid": "55136cbc-c5f1-4c5c-876e-d76a3efaff0f",
               "metavars": {
                 "Expected": "1997",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -561,73 +933,259 @@
               }
             },
             {
-              "text": "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997.",
+              "text": "1997",
               "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
               "fill_history": {
                 "question": "What year was the 50th anniversary of the invention of the transistor?"
               },
               "llm": {
+                "key": "0b3606a1-109d-448d-aa72-98f612750092",
+                "name": "Gemini",
+                "emoji": "♊",
+                "model": "gemini-pro",
                 "base_model": "palm2-bison",
-                "emoji": "🦬",
-                "formData": {
-                  "shortname": "PaLM2"
-                },
-                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-                "model": "chat-bison-001",
-                "name": "PaLM2",
+                "temp": 0.7,
                 "settings": {
-                  "max_output_tokens": 512,
-                  "stop_sequences": [],
                   "temperature": 0.5,
                   "top_k": -1,
-                  "top_p": -1
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
                 },
-                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemini"
+                },
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "33d5aa12-cfe2-4806-89fb-f66789e90ea4",
+              "uid": "b988dd5c-8cc1-4395-9d03-d549fee7b627",
               "metavars": {
                 "Expected": "1997",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-                "LLM_0": "PaLM2"
+                "LLM_0": "Gemini"
               }
             },
             {
-              "text": "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997.",
+              "text": "2001",
               "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
               "fill_history": {
                 "question": "What year was the 50th anniversary of the invention of the transistor?"
               },
               "llm": {
+                "key": "0b3606a1-109d-448d-aa72-98f612750092",
+                "name": "Gemini",
+                "emoji": "♊",
+                "model": "gemini-pro",
                 "base_model": "palm2-bison",
-                "emoji": "🦬",
-                "formData": {
-                  "shortname": "PaLM2"
-                },
-                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-                "model": "chat-bison-001",
-                "name": "PaLM2",
+                "temp": 0.7,
                 "settings": {
-                  "max_output_tokens": 512,
-                  "stop_sequences": [],
                   "temperature": 0.5,
                   "top_k": -1,
-                  "top_p": -1
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
                 },
-                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemini"
+                },
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "33d5aa12-cfe2-4806-89fb-f66789e90ea4",
+              "uid": "b988dd5c-8cc1-4395-9d03-d549fee7b627",
               "metavars": {
                 "Expected": "1997",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-                "LLM_0": "PaLM2"
+                "LLM_0": "Gemini"
+              }
+            },
+            {
+              "text": "The 50th anniversary of the invention of the transistor in 1962.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+              "fill_history": {
+                "question": "What year was the 50th anniversary of the invention of the transistor?"
+              },
+              "llm": {
+                "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "61974590-9a02-43b0-9adb-3669c4b2809b",
+              "metavars": {
+                "Expected": "1997",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "Falcon.7B"
+              }
+            },
+            {
+              "text": "The 50th anniversary of the invention of the transistor in 1962.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+              "fill_history": {
+                "question": "What year was the 50th anniversary of the invention of the transistor?"
+              },
+              "llm": {
+                "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "61974590-9a02-43b0-9adb-3669c4b2809b",
+              "metavars": {
+                "Expected": "1997",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "Falcon.7B"
+              }
+            },
+            {
+              "text": "2008",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+              "fill_history": {
+                "question": "What year was the 50th anniversary of the invention of the transistor?"
+              },
+              "llm": {
+                "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+                "name": "claude-3.5-haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "claude-3.5-haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "1e38094d-c615-4b1d-a2d7-87efec494a2f",
+              "metavars": {
+                "Expected": "1997",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "claude-3.5-haiku"
+              }
+            },
+            {
+              "text": "2047",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+              "fill_history": {
+                "question": "What year was the 50th anniversary of the invention of the transistor?"
+              },
+              "llm": {
+                "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+                "name": "claude-3.5-haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "claude-3.5-haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "1e38094d-c615-4b1d-a2d7-87efec494a2f",
+              "metavars": {
+                "Expected": "1997",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "claude-3.5-haiku"
               }
             },
             {
@@ -652,11 +1210,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "9905585e-ac2c-4e70-b307-dcce305bc9ae",
+              "uid": "9905585e-ac2c-4e70-b307-dcce305bc9ae",
               "metavars": {
                 "Expected": "125",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -685,11 +1243,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "9905585e-ac2c-4e70-b307-dcce305bc9ae",
+              "uid": "9905585e-ac2c-4e70-b307-dcce305bc9ae",
               "metavars": {
                 "Expected": "125",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -721,11 +1279,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "7b46d7b2-3e20-4cfa-9e83-20bf184f05fa",
+              "uid": "7b46d7b2-3e20-4cfa-9e83-20bf184f05fa",
               "metavars": {
                 "Expected": "125",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -757,11 +1315,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "7b46d7b2-3e20-4cfa-9e83-20bf184f05fa",
+              "uid": "7b46d7b2-3e20-4cfa-9e83-20bf184f05fa",
               "metavars": {
                 "Expected": "125",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -769,73 +1327,259 @@
               }
             },
             {
-              "text": "5 to the power of 3 is 125.",
+              "text": "125",
               "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
               "fill_history": {
                 "question": "What is 5 to the power of 3?"
               },
               "llm": {
+                "key": "0b3606a1-109d-448d-aa72-98f612750092",
+                "name": "Gemini",
+                "emoji": "♊",
+                "model": "gemini-pro",
                 "base_model": "palm2-bison",
-                "emoji": "🦬",
-                "formData": {
-                  "shortname": "PaLM2"
-                },
-                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-                "model": "chat-bison-001",
-                "name": "PaLM2",
+                "temp": 0.7,
                 "settings": {
-                  "max_output_tokens": 512,
-                  "stop_sequences": [],
                   "temperature": 0.5,
                   "top_k": -1,
-                  "top_p": -1
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
                 },
-                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemini"
+                },
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2",
+              "uid": "994b02fe-50cc-448c-937e-afa05e5c9130",
               "metavars": {
                 "Expected": "125",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-                "LLM_0": "PaLM2"
+                "LLM_0": "Gemini"
               }
             },
             {
-              "text": "5 to the power of 3 is 125.",
+              "text": "125",
               "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
               "fill_history": {
                 "question": "What is 5 to the power of 3?"
               },
               "llm": {
+                "key": "0b3606a1-109d-448d-aa72-98f612750092",
+                "name": "Gemini",
+                "emoji": "♊",
+                "model": "gemini-pro",
                 "base_model": "palm2-bison",
-                "emoji": "🦬",
-                "formData": {
-                  "shortname": "PaLM2"
-                },
-                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-                "model": "chat-bison-001",
-                "name": "PaLM2",
+                "temp": 0.7,
                 "settings": {
-                  "max_output_tokens": 512,
-                  "stop_sequences": [],
                   "temperature": 0.5,
                   "top_k": -1,
-                  "top_p": -1
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
                 },
-                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemini"
+                },
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2",
+              "uid": "994b02fe-50cc-448c-937e-afa05e5c9130",
               "metavars": {
                 "Expected": "125",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-                "LLM_0": "PaLM2"
+                "LLM_0": "Gemini"
+              }
+            },
+            {
+              "text": "5 to the power of 3 is 625.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+              "fill_history": {
+                "question": "What is 5 to the power of 3?"
+              },
+              "llm": {
+                "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "aaf7358a-1604-4a36-a33b-9872fe74549d",
+              "metavars": {
+                "Expected": "125",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "Falcon.7B"
+              }
+            },
+            {
+              "text": "5 to the power of 3 is 625.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+              "fill_history": {
+                "question": "What is 5 to the power of 3?"
+              },
+              "llm": {
+                "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "aaf7358a-1604-4a36-a33b-9872fe74549d",
+              "metavars": {
+                "Expected": "125",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "Falcon.7B"
+              }
+            },
+            {
+              "text": "125",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+              "fill_history": {
+                "question": "What is 5 to the power of 3?"
+              },
+              "llm": {
+                "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+                "name": "claude-3.5-haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "claude-3.5-haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "3e14fc18-ace2-47c6-bb6f-6ba1b3dacf79",
+              "metavars": {
+                "Expected": "125",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "claude-3.5-haiku"
+              }
+            },
+            {
+              "text": "125",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+              "fill_history": {
+                "question": "What is 5 to the power of 3?"
+              },
+              "llm": {
+                "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+                "name": "claude-3.5-haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "claude-3.5-haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "3e14fc18-ace2-47c6-bb6f-6ba1b3dacf79",
+              "metavars": {
+                "Expected": "125",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "claude-3.5-haiku"
               }
             },
             {
@@ -860,11 +1604,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "33b1f438-e9d7-4627-be1f-2c6677412f58",
+              "uid": "33b1f438-e9d7-4627-be1f-2c6677412f58",
               "metavars": {
                 "Expected": "18",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -893,11 +1637,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "33b1f438-e9d7-4627-be1f-2c6677412f58",
+              "uid": "33b1f438-e9d7-4627-be1f-2c6677412f58",
               "metavars": {
                 "Expected": "18",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -929,11 +1673,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "4e23bba3-879b-4c9d-aa7f-25a5e9202a4d",
+              "uid": "4e23bba3-879b-4c9d-aa7f-25a5e9202a4d",
               "metavars": {
                 "Expected": "18",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -965,11 +1709,11 @@
                 },
                 "temp": 1,
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "4e23bba3-879b-4c9d-aa7f-25a5e9202a4d",
+              "uid": "4e23bba3-879b-4c9d-aa7f-25a5e9202a4d",
               "metavars": {
                 "Expected": "18",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
@@ -977,73 +1721,259 @@
               }
             },
             {
-              "text": "2 multiplied by the cubic root of 729 is 27.",
+              "text": "18",
               "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
               "fill_history": {
                 "question": "What is 2 multiplied by the cubic root of 729?"
               },
               "llm": {
+                "key": "0b3606a1-109d-448d-aa72-98f612750092",
+                "name": "Gemini",
+                "emoji": "♊",
+                "model": "gemini-pro",
                 "base_model": "palm2-bison",
-                "emoji": "🦬",
-                "formData": {
-                  "shortname": "PaLM2"
-                },
-                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-                "model": "chat-bison-001",
-                "name": "PaLM2",
+                "temp": 0.7,
                 "settings": {
-                  "max_output_tokens": 512,
-                  "stop_sequences": [],
                   "temperature": 0.5,
                   "top_k": -1,
-                  "top_p": -1
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
                 },
-                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemini"
+                },
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "2387013d-aa6c-4e61-8960-ee27309823b6",
+              "uid": "7f746549-4e3f-4058-8498-80724188d53d",
               "metavars": {
                 "Expected": "18",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-                "LLM_0": "PaLM2"
+                "LLM_0": "Gemini"
               }
             },
             {
-              "text": "2 multiplied by the cubic root of 729 is 27.",
+              "text": "36",
               "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
               "fill_history": {
                 "question": "What is 2 multiplied by the cubic root of 729?"
               },
               "llm": {
+                "key": "0b3606a1-109d-448d-aa72-98f612750092",
+                "name": "Gemini",
+                "emoji": "♊",
+                "model": "gemini-pro",
                 "base_model": "palm2-bison",
-                "emoji": "🦬",
-                "formData": {
-                  "shortname": "PaLM2"
-                },
-                "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-                "model": "chat-bison-001",
-                "name": "PaLM2",
+                "temp": 0.7,
                 "settings": {
-                  "max_output_tokens": 512,
-                  "stop_sequences": [],
                   "temperature": 0.5,
                   "top_k": -1,
-                  "top_p": -1
+                  "top_p": -1,
+                  "max_output_tokens": 512,
+                  "stop_sequences": []
                 },
-                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemini"
+                },
                 "progress": {
-                  "success": 0,
+                  "success": 100,
                   "error": 0
                 }
               },
-              "batch_id": "2387013d-aa6c-4e61-8960-ee27309823b6",
+              "uid": "7f746549-4e3f-4058-8498-80724188d53d",
               "metavars": {
                 "Expected": "18",
                 "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-                "LLM_0": "PaLM2"
+                "LLM_0": "Gemini"
+              }
+            },
+            {
+              "text": "The answer is 2 x (√729) = 2 x 27 = 810.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+              "fill_history": {
+                "question": "What is 2 multiplied by the cubic root of 729?"
+              },
+              "llm": {
+                "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "2de3a046-04f0-4316-aaad-d89ec08a34fe",
+              "metavars": {
+                "Expected": "18",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "Falcon.7B"
+              }
+            },
+            {
+              "text": "The answer is 2 x (√729) = 2 x 27 = 810.",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+              "fill_history": {
+                "question": "What is 2 multiplied by the cubic root of 729?"
+              },
+              "llm": {
+                "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+                "name": "Falcon.7B",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "model_type": "text",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7B"
+                },
+                "progress": {
+                  "success": 80,
+                  "error": 0
+                }
+              },
+              "uid": "2de3a046-04f0-4316-aaad-d89ec08a34fe",
+              "metavars": {
+                "Expected": "18",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "Falcon.7B"
+              }
+            },
+            {
+              "text": "18",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+              "fill_history": {
+                "question": "What is 2 multiplied by the cubic root of 729?"
+              },
+              "llm": {
+                "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+                "name": "claude-3.5-haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "claude-3.5-haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "e0240f4c-ab55-4026-a38a-3da7def0dbb7",
+              "metavars": {
+                "Expected": "18",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "claude-3.5-haiku"
+              }
+            },
+            {
+              "text": "18",
+              "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+              "fill_history": {
+                "question": "What is 2 multiplied by the cubic root of 729?"
+              },
+              "llm": {
+                "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+                "name": "claude-3.5-haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "claude-3.5-haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "e0240f4c-ab55-4026-a38a-3da7def0dbb7",
+              "metavars": {
+                "Expected": "18",
+                "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+                "LLM_0": "claude-3.5-haiku"
               }
             }
           ],
@@ -1084,22 +2014,81 @@
               "temp": 1
             },
             {
+              "key": "0b3606a1-109d-448d-aa72-98f612750092",
+              "name": "Gemini",
+              "emoji": "♊",
+              "model": "gemini-pro",
               "base_model": "palm2-bison",
-              "emoji": "🦬",
-              "formData": {
-                "shortname": "PaLM2"
-              },
-              "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-              "model": "chat-bison-001",
-              "name": "PaLM2",
+              "temp": 0.7,
               "settings": {
-                "max_output_tokens": 512,
-                "stop_sequences": [],
                 "temperature": 0.5,
+                "top_k": -1,
+                "top_p": -1,
+                "max_output_tokens": 512,
+                "stop_sequences": []
+              },
+              "formData": {
+                "shortname": "Gemini"
+              }
+            },
+            {
+              "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+              "name": "Falcon.7B",
+              "emoji": "🤗",
+              "model": "tiiuae/falcon-7b-instruct",
+              "base_model": "hf",
+              "temp": 1,
+              "settings": {
+                "custom_model": "",
+                "model_type": "text",
+                "temperature": 1,
+                "num_continuations": 0,
+                "top_k": -1,
+                "top_p": -1,
+                "repetition_penalty": -1,
+                "max_new_tokens": 250,
+                "do_sample": true,
+                "use_cache": false
+              },
+              "formData": {
+                "shortname": "Falcon.7B"
+              }
+            },
+            {
+              "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+              "name": "claude-3.5-haiku",
+              "emoji": "📚",
+              "model": "claude-3-5-haiku-latest",
+              "base_model": "claude-v1",
+              "temp": 0.5,
+              "settings": {
+                "system_msg": "",
+                "temperature": 1,
+                "tools": [],
+                "tool_choice": "",
+                "parallel_tool_calls": true,
+                "max_tokens_to_sample": 1024,
+                "custom_prompt_wrapper": "",
+                "stop_sequences": [
+                  "\n\nHuman:"
+                ],
                 "top_k": -1,
                 "top_p": -1
               },
-              "temp": 0.7
+              "formData": {
+                "shortname": "claude-3.5-haiku",
+                "model": "claude-3-5-haiku-latest",
+                "system_msg": "",
+                "temperature": 1,
+                "tools": "",
+                "tool_choice": "",
+                "parallel_tool_calls": true,
+                "max_tokens_to_sample": 1024,
+                "custom_prompt_wrapper": "",
+                "stop_sequences": "\"\n\nHuman:\"",
+                "top_k": -1,
+                "top_p": -1
+              }
             }
           ],
           "n": 2,
@@ -1131,21 +2120,16 @@
             {
               "value": "Expected",
               "label": "LLMs #NaN"
-            },
-            {
-              "value": "__pt",
-              "label": "LLMs #NaN"
-            },
-            {
-              "value": "LLM_0",
-              "label": "LLMs #1"
             }
           ],
           "refresh": false,
           "selected_vars": [],
           "title": "How correct each LLM was on the math questions",
           "vars": [
-            "LLM (default)",
+            {
+              "value": "LLM (default)",
+              "label": "LLM (default)"
+            },
             {
               "value": "question",
               "label": "question"
@@ -1153,14 +2137,6 @@
             {
               "value": "__meta_Expected",
               "label": "Expected (meta)"
-            },
-            {
-              "value": "__meta___pt",
-              "label": "__pt (meta)"
-            },
-            {
-              "value": "__meta_LLM_0",
-              "label": "LLM_0 (meta)"
             }
           ]
         },
@@ -1258,15 +2234,13 @@
         "height": 230,
         "data": {
           "availableMetavars": [
-            "Expected",
-            "__pt",
-            "LLM_0"
+            "Expected"
           ],
           "availableVars": [
             "question"
           ],
           "input": "prompt-1686496332028",
-          "operation": "starts with",
+          "operation": "contains",
           "refresh": false,
           "textValue": "of Expected (meta)",
           "varSelected": true,
@@ -1420,8 +2394,8 @@
       }
     ],
     "viewport": {
-      "x": 145,
-      "y": 65.30621910095215,
+      "x": 101,
+      "y": 56.30621910095215,
       "zoom": 1
     }
   },
@@ -2230,330 +3204,1054 @@
         }
       ]
     },
-    "prompt-1686496332028_1.json": {
-      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?": [
+    "prompt-1686496332028_3.json": {
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?": [
         {
-          "info": {
-            "question": "What is 2 + 2?"
-          },
-          "llm": "PaLM2",
-          "metavars": {
-            "Expected Answer": "4",
-            "LLM_0": "PaLM2"
-          },
-          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
           "query": {
-            "candidate_count": 1,
-            "model": "models/chat-bison-001",
-            "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
-            "temperature": 0.5
+            "model": "models/gemini-pro",
+            "temperature": 0.5,
+            "stopSequences": [],
+            "candidateCount": 2,
+            "maxOutputTokens": 512,
+            "topP": -1,
+            "topK": -1
           },
+          "uid": "d73153fb-5451-41e7-80ad-558a1b591c97",
+          "responses": [
+            "3",
+            "3"
+          ],
           "raw_response": [
             {
+              "text": "3",
               "candidates": [
                 {
-                  "author": "1",
-                  "content": "2 + 2 = 4"
-                }
-              ],
-              "messages": [
-                {
-                  "author": "0",
-                  "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?"
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "3"
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
                 }
               ]
             },
             {
-              "candidate_count": 1,
+              "text": "3",
               "candidates": [
                 {
-                  "author": "1",
-                  "content": "2+2=4"
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "3"
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
                 }
-              ],
-              "context": "",
-              "examples": [],
-              "messages": [
-                {
-                  "author": "0",
-                  "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?"
-                },
-                {
-                  "author": "1",
-                  "content": "2+2=4"
-                }
-              ],
-              "model": "models/chat-bison-001",
-              "temperature": 0.5,
-              "top_k": null,
-              "top_p": null
+              ]
             }
           ],
+          "llm": "Gemini",
+          "vars": {
+            "question": "What is the square root of 9?"
+          },
+          "metavars": {
+            "Expected": "3",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Gemini"
+          }
+        }
+      ],
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?": [
+        {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+          "query": {
+            "model": "models/gemini-pro",
+            "temperature": 0.5,
+            "stopSequences": [],
+            "candidateCount": 2,
+            "maxOutputTokens": 512,
+            "topP": -1,
+            "topK": -1
+          },
+          "uid": "14721e37-f7d7-4c42-b350-cca63fa887a6",
           "responses": [
-            "2 + 2 = 4",
-            "2+2=4"
+            "4",
+            "4"
           ],
-          "uid": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661"
+          "raw_response": [
+            {
+              "text": "4",
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "4"
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "text": "4",
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "4"
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "llm": "Gemini",
+          "vars": {
+            "question": "What is 2 + 2?"
+          },
+          "metavars": {
+            "Expected": "4",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Gemini"
+          }
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?": [
         {
-          "info": {
-            "question": "What is 2 multiplied by the cubic root of 729?"
-          },
-          "llm": "PaLM2",
-          "metavars": {
-            "Expected Answer": "18",
-            "LLM_0": "PaLM2"
-          },
           "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
           "query": {
-            "candidate_count": 1,
-            "model": "models/chat-bison-001",
-            "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
-            "temperature": 0.5
+            "model": "models/gemini-pro",
+            "temperature": 0.5,
+            "stopSequences": [],
+            "candidateCount": 2,
+            "maxOutputTokens": 512,
+            "topP": -1,
+            "topK": -1
           },
+          "uid": "7f746549-4e3f-4058-8498-80724188d53d",
+          "responses": [
+            "18",
+            "36"
+          ],
           "raw_response": [
             {
+              "text": "18",
               "candidates": [
                 {
-                  "author": "1",
-                  "content": "2 multiplied by the cubic root of 729 is 27."
-                }
-              ],
-              "messages": [
-                {
-                  "author": "0",
-                  "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?"
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "18"
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
                 }
               ]
             },
             {
-              "candidate_count": 1,
+              "text": "36",
               "candidates": [
                 {
-                  "author": "1",
-                  "content": "2 multiplied by the cubic root of 729 is 27."
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "36"
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
                 }
-              ],
-              "context": "",
-              "examples": [],
-              "messages": [
-                {
-                  "author": "0",
-                  "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?"
-                },
-                {
-                  "author": "1",
-                  "content": "2 multiplied by the cubic root of 729 is 27."
-                }
-              ],
-              "model": "models/chat-bison-001",
-              "temperature": 0.5,
-              "top_k": null,
-              "top_p": null
+              ]
             }
           ],
-          "responses": [
-            "2 multiplied by the cubic root of 729 is 27.",
-            "2 multiplied by the cubic root of 729 is 27."
-          ],
-          "uid": "2387013d-aa6c-4e61-8960-ee27309823b6"
+          "llm": "Gemini",
+          "vars": {
+            "question": "What is 2 multiplied by the cubic root of 729?"
+          },
+          "metavars": {
+            "Expected": "18",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Gemini"
+          }
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?": [
         {
-          "info": {
-            "question": "What is 5 to the power of 3?"
-          },
-          "llm": "PaLM2",
-          "metavars": {
-            "Expected Answer": "125",
-            "LLM_0": "PaLM2"
-          },
           "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
           "query": {
-            "candidate_count": 1,
-            "model": "models/chat-bison-001",
-            "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
-            "temperature": 0.5
+            "model": "models/gemini-pro",
+            "temperature": 0.5,
+            "stopSequences": [],
+            "candidateCount": 2,
+            "maxOutputTokens": 512,
+            "topP": -1,
+            "topK": -1
           },
+          "uid": "994b02fe-50cc-448c-937e-afa05e5c9130",
+          "responses": [
+            "125",
+            "125"
+          ],
           "raw_response": [
             {
+              "text": "125",
               "candidates": [
                 {
-                  "author": "1",
-                  "content": "5 to the power of 3 is 125."
-                }
-              ],
-              "messages": [
-                {
-                  "author": "0",
-                  "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?"
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "125"
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
                 }
               ]
             },
             {
-              "candidate_count": 1,
+              "text": "125",
               "candidates": [
                 {
-                  "author": "1",
-                  "content": "5 to the power of 3 is 125."
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "125"
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
                 }
-              ],
-              "context": "",
-              "examples": [],
-              "messages": [
-                {
-                  "author": "0",
-                  "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?"
-                },
-                {
-                  "author": "1",
-                  "content": "5 to the power of 3 is 125."
-                }
-              ],
-              "model": "models/chat-bison-001",
-              "temperature": 0.5,
-              "top_k": null,
-              "top_p": null
+              ]
             }
           ],
-          "responses": [
-            "5 to the power of 3 is 125.",
-            "5 to the power of 3 is 125."
-          ],
-          "uid": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2"
-        }
-      ],
-      "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?": [
-        {
-          "info": {
-            "question": "What is the square root of 9?"
+          "llm": "Gemini",
+          "vars": {
+            "question": "What is 5 to the power of 3?"
           },
-          "llm": "PaLM2",
           "metavars": {
-            "Expected Answer": "3",
-            "LLM_0": "PaLM2"
-          },
-          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
-          "query": {
-            "candidate_count": 1,
-            "model": "models/chat-bison-001",
-            "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
-            "temperature": 0.5
-          },
-          "raw_response": [
-            {
-              "candidates": [
-                {
-                  "author": "1",
-                  "content": "The square root of 9 is 3."
-                }
-              ],
-              "messages": [
-                {
-                  "author": "0",
-                  "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?"
-                }
-              ]
-            },
-            {
-              "candidate_count": 1,
-              "candidates": [
-                {
-                  "author": "1",
-                  "content": "The square root of 9 is 3."
-                }
-              ],
-              "context": "",
-              "examples": [],
-              "messages": [
-                {
-                  "author": "0",
-                  "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?"
-                },
-                {
-                  "author": "1",
-                  "content": "The square root of 9 is 3."
-                }
-              ],
-              "model": "models/chat-bison-001",
-              "temperature": 0.5,
-              "top_k": null,
-              "top_p": null
-            }
-          ],
-          "responses": [
-            "The square root of 9 is 3.",
-            "The square root of 9 is 3."
-          ],
-          "uid": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603"
+            "Expected": "125",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Gemini"
+          }
         }
       ],
       "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?": [
         {
-          "info": {
-            "question": "What year was the 50th anniversary of the invention of the transistor?"
-          },
-          "llm": "PaLM2",
-          "metavars": {
-            "Expected Answer": "1997",
-            "LLM_0": "PaLM2"
-          },
           "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
           "query": {
-            "candidate_count": 1,
-            "model": "models/chat-bison-001",
-            "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
-            "temperature": 0.5
+            "model": "models/gemini-pro",
+            "temperature": 0.5,
+            "stopSequences": [],
+            "candidateCount": 2,
+            "maxOutputTokens": 512,
+            "topP": -1,
+            "topK": -1
           },
+          "uid": "b988dd5c-8cc1-4395-9d03-d549fee7b627",
+          "responses": [
+            "1997",
+            "2001"
+          ],
           "raw_response": [
             {
+              "text": "1997",
               "candidates": [
                 {
-                  "author": "1",
-                  "content": "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
-                }
-              ],
-              "messages": [
-                {
-                  "author": "0",
-                  "content": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?"
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "1997"
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
                 }
               ]
             },
             {
-              "candidate_count": 1,
+              "text": "2001",
               "candidates": [
                 {
-                  "author": "1",
-                  "content": "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
+                  "content": {
+                    "parts": [
+                      {
+                        "text": "2001"
+                      }
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP",
+                  "index": 0,
+                  "safetyRatings": [
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "probability": "NEGLIGIBLE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                      "probability": "NEGLIGIBLE"
+                    }
+                  ]
                 }
-              ],
-              "context": "",
-              "examples": [],
-              "messages": [
-                {
-                  "author": "0",
-                  "content": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?"
-                },
-                {
-                  "author": "1",
-                  "content": "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
-                }
-              ],
-              "model": "models/chat-bison-001",
-              "temperature": 0.5,
-              "top_k": null,
-              "top_p": null
+              ]
             }
           ],
+          "llm": "Gemini",
+          "vars": {
+            "question": "What year was the 50th anniversary of the invention of the transistor?"
+          },
+          "metavars": {
+            "Expected": "1997",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Gemini"
+          }
+        }
+      ]
+    },
+    "prompt-1686496332028_4.json": {
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?": [
+        {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+          "query": {
+            "temperature": 1,
+            "max_new_tokens": 250,
+            "return_full_text": false
+          },
+          "uid": "ea431926-edea-4006-83fb-67dae766ba0e",
           "responses": [
-            "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997.",
-            "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
+            "2 + 2 = 4",
+            "2 + 2 = 4"
           ],
-          "uid": "33d5aa12-cfe2-4806-89fb-f66789e90ea4"
+          "raw_response": [
+            {
+              "generated_text": "\n2 + 2 = 4"
+            },
+            {
+              "generated_text": "\n2 + 2 = 4"
+            }
+          ],
+          "llm": "Falcon.7B",
+          "vars": {
+            "question": "What is 2 + 2?"
+          },
+          "metavars": {
+            "Expected": "4",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Falcon.7B"
+          }
+        }
+      ],
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?": [
+        {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+          "query": {
+            "temperature": 1,
+            "max_new_tokens": 250,
+            "return_full_text": false
+          },
+          "uid": "fc0cae18-4b1f-4c97-813c-c04bcb0cc7e7",
+          "responses": [
+            "The square root of 9 is 3.",
+            "The square root of 9 is 3."
+          ],
+          "raw_response": [
+            {
+              "generated_text": "\nThe square root of 9 is 3."
+            },
+            {
+              "generated_text": "\nThe square root of 9 is 3."
+            }
+          ],
+          "llm": "Falcon.7B",
+          "vars": {
+            "question": "What is the square root of 9?"
+          },
+          "metavars": {
+            "Expected": "3",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Falcon.7B"
+          }
+        }
+      ],
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?": [
+        {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+          "query": {
+            "temperature": 1,
+            "max_new_tokens": 250,
+            "return_full_text": false
+          },
+          "uid": "aaf7358a-1604-4a36-a33b-9872fe74549d",
+          "responses": [
+            "5 to the power of 3 is 625.",
+            "5 to the power of 3 is 625."
+          ],
+          "raw_response": [
+            {
+              "generated_text": "\n5 to the power of 3 is 625."
+            },
+            {
+              "generated_text": "\n5 to the power of 3 is 625."
+            }
+          ],
+          "llm": "Falcon.7B",
+          "vars": {
+            "question": "What is 5 to the power of 3?"
+          },
+          "metavars": {
+            "Expected": "125",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Falcon.7B"
+          }
+        }
+      ],
+      "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?": [
+        {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+          "query": {
+            "temperature": 1,
+            "max_new_tokens": 250,
+            "return_full_text": false
+          },
+          "uid": "61974590-9a02-43b0-9adb-3669c4b2809b",
+          "responses": [
+            "The 50th anniversary of the invention of the transistor in 1962.",
+            "The 50th anniversary of the invention of the transistor in 1962."
+          ],
+          "raw_response": [
+            {
+              "generated_text": "\nThe 50th anniversary of the invention of the transistor in 1962."
+            },
+            {
+              "generated_text": "\nThe 50th anniversary of the invention of the transistor in 1962."
+            }
+          ],
+          "llm": "Falcon.7B",
+          "vars": {
+            "question": "What year was the 50th anniversary of the invention of the transistor?"
+          },
+          "metavars": {
+            "Expected": "1997",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Falcon.7B"
+          }
+        }
+      ],
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?": [
+        {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+          "query": {
+            "temperature": 1,
+            "max_new_tokens": 250,
+            "return_full_text": false
+          },
+          "uid": "2de3a046-04f0-4316-aaad-d89ec08a34fe",
+          "responses": [
+            "The answer is 2 x (√729) = 2 x 27 = 810.",
+            "The answer is 2 x (√729) = 2 x 27 = 810."
+          ],
+          "raw_response": [
+            {
+              "generated_text": "\nThe answer is 2 x (√729) = 2 x 27 = 810."
+            },
+            {
+              "generated_text": "\nThe answer is 2 x (√729) = 2 x 27 = 810."
+            }
+          ],
+          "llm": "Falcon.7B",
+          "vars": {
+            "question": "What is 2 multiplied by the cubic root of 729?"
+          },
+          "metavars": {
+            "Expected": "18",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Falcon.7B"
+          }
+        }
+      ]
+    },
+    "prompt-1686496332028_5.json": {
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?": [
+        {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?"
+              }
+            ]
+          },
+          "uid": "3e14fc18-ace2-47c6-bb6f-6ba1b3dacf79",
+          "responses": [
+            "125",
+            "125"
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "125",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01PQUzDw5Hk5oE1726K9Ngqw",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 38,
+                "output_tokens": 5
+              }
+            },
+            {
+              "content": [
+                {
+                  "text": "125",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01WMRKEh13H5wy6cu4p76iMj",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 38,
+                "output_tokens": 5
+              }
+            }
+          ],
+          "llm": "claude-3.5-haiku",
+          "vars": {
+            "question": "What is 5 to the power of 3?"
+          },
+          "metavars": {
+            "Expected": "125",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "claude-3.5-haiku"
+          }
+        }
+      ],
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?": [
+        {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?"
+              }
+            ]
+          },
+          "uid": "e0240f4c-ab55-4026-a38a-3da7def0dbb7",
+          "responses": [
+            "18",
+            "18"
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "18",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01PbkiARdZztUpFHPszheVjV",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 41,
+                "output_tokens": 5
+              }
+            },
+            {
+              "content": [
+                {
+                  "text": "18",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01CFt4sS9CZ7QDnhVZjYW2cD",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 41,
+                "output_tokens": 5
+              }
+            }
+          ],
+          "llm": "claude-3.5-haiku",
+          "vars": {
+            "question": "What is 2 multiplied by the cubic root of 729?"
+          },
+          "metavars": {
+            "Expected": "18",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "claude-3.5-haiku"
+          }
+        }
+      ],
+      "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?": [
+        {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?"
+              }
+            ]
+          },
+          "uid": "1e38094d-c615-4b1d-a2d7-87efec494a2f",
+          "responses": [
+            "2008",
+            "2047"
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "2008",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01LYeoPwNVTRoqARnkmyT1Xf",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 42,
+                "output_tokens": 6
+              }
+            },
+            {
+              "content": [
+                {
+                  "text": "2047",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01R3dEKSVJa14RtwokEiHmwm",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 42,
+                "output_tokens": 6
+              }
+            }
+          ],
+          "llm": "claude-3.5-haiku",
+          "vars": {
+            "question": "What year was the 50th anniversary of the invention of the transistor?"
+          },
+          "metavars": {
+            "Expected": "1997",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "claude-3.5-haiku"
+          }
+        }
+      ],
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?": [
+        {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?"
+              }
+            ]
+          },
+          "uid": "409dbe3e-cc82-4037-a4f4-040aed417de6",
+          "responses": [
+            "3",
+            "3"
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "3",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01CqTybAnpN8rxHMbeTd4uLR",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 35,
+                "output_tokens": 5
+              }
+            },
+            {
+              "content": [
+                {
+                  "text": "3",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01GaQvUTx9jZhc84maMNRSv5",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 35,
+                "output_tokens": 5
+              }
+            }
+          ],
+          "llm": "claude-3.5-haiku",
+          "vars": {
+            "question": "What is the square root of 9?"
+          },
+          "metavars": {
+            "Expected": "3",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "claude-3.5-haiku"
+          }
+        }
+      ],
+      "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?": [
+        {
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?"
+              }
+            ]
+          },
+          "uid": "653a2dbd-6d2c-4322-aa93-0dc04210f244",
+          "responses": [
+            "4",
+            "4"
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "4",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01VhYD5rT6o1T7MonYpHkcY8",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 35,
+                "output_tokens": 5
+              }
+            },
+            {
+              "content": [
+                {
+                  "text": "4",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01WQfQzAPHAwcK8dyNoCrmUZ",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 35,
+                "output_tokens": 5
+              }
+            }
+          ],
+          "llm": "claude-3.5-haiku",
+          "vars": {
+            "question": "What is 2 + 2?"
+          },
+          "metavars": {
+            "Expected": "4",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "claude-3.5-haiku"
+          }
         }
       ]
     },
@@ -2602,23 +4300,90 @@
             "error": 0
           }
         },
-        "prompt-1686496332028_1.json": {
+        "prompt-1686496332028_3.json": {
+          "key": "0b3606a1-109d-448d-aa72-98f612750092",
+          "name": "Gemini",
+          "emoji": "♊",
+          "model": "gemini-pro",
           "base_model": "palm2-bison",
-          "emoji": "🦬",
-          "formData": {
-            "shortname": "PaLM2"
-          },
-          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-          "model": "chat-bison-001",
-          "name": "PaLM2",
+          "temp": 0.7,
           "settings": {
-            "max_output_tokens": 512,
-            "stop_sequences": [],
             "temperature": 0.5,
+            "top_k": -1,
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
+          },
+          "formData": {
+            "shortname": "Gemini"
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt-1686496332028_4.json": {
+          "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
+          "settings": {
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
+            "top_k": -1,
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
+          },
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt-1686496332028_5.json": {
+          "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+          "name": "claude-3.5-haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
             "top_k": -1,
             "top_p": -1
           },
-          "temp": 0.7,
+          "formData": {
+            "shortname": "claude-3.5-haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
           "progress": {
             "success": 0,
             "error": 0
@@ -2641,7 +4406,6 @@
             "4",
             "4."
           ],
-          "tokens": {},
           "uid": "568b5331-f9e5-462f-8314-a0d48bdbbe34"
         },
         {
@@ -2659,7 +4423,6 @@
             "4",
             "4"
           ],
-          "tokens": {},
           "uid": "3e4d4071-7768-4ef1-aba4-04f97da8e3c8"
         },
         {
@@ -2669,16 +4432,49 @@
           "metavars": {
             "Expected": "4",
             "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-            "LLM_0": "PaLM2"
+            "LLM_0": "Gemini"
           },
-          "llm": "PaLM2",
+          "llm": "Gemini",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+          "responses": [
+            "4",
+            "4"
+          ],
+          "uid": "14721e37-f7d7-4c42-b350-cca63fa887a6"
+        },
+        {
+          "vars": {
+            "question": "What is 2 + 2?"
+          },
+          "metavars": {
+            "Expected": "4",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Falcon.7B"
+          },
+          "llm": "Falcon.7B",
           "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
           "responses": [
             "2 + 2 = 4",
-            "2+2=4"
+            "2 + 2 = 4"
           ],
-          "tokens": {},
-          "uid": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661"
+          "uid": "ea431926-edea-4006-83fb-67dae766ba0e"
+        },
+        {
+          "vars": {
+            "question": "What is 2 + 2?"
+          },
+          "metavars": {
+            "Expected": "4",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "claude-3.5-haiku"
+          },
+          "llm": "claude-3.5-haiku",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+          "responses": [
+            "4",
+            "4"
+          ],
+          "uid": "653a2dbd-6d2c-4322-aa93-0dc04210f244"
         },
         {
           "vars": {
@@ -2695,7 +4491,6 @@
             "3",
             "3"
           ],
-          "tokens": {},
           "uid": "49a4841f-98c5-46aa-92a7-416cfe8f041b"
         },
         {
@@ -2713,7 +4508,6 @@
             "3",
             "3"
           ],
-          "tokens": {},
           "uid": "8aa01880-0342-4e2a-bed5-c0e893b68f3f"
         },
         {
@@ -2723,16 +4517,49 @@
           "metavars": {
             "Expected": "3",
             "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-            "LLM_0": "PaLM2"
+            "LLM_0": "Gemini"
           },
-          "llm": "PaLM2",
+          "llm": "Gemini",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+          "responses": [
+            "3",
+            "3"
+          ],
+          "uid": "d73153fb-5451-41e7-80ad-558a1b591c97"
+        },
+        {
+          "vars": {
+            "question": "What is the square root of 9?"
+          },
+          "metavars": {
+            "Expected": "3",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Falcon.7B"
+          },
+          "llm": "Falcon.7B",
           "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
           "responses": [
             "The square root of 9 is 3.",
             "The square root of 9 is 3."
           ],
-          "tokens": {},
-          "uid": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603"
+          "uid": "fc0cae18-4b1f-4c97-813c-c04bcb0cc7e7"
+        },
+        {
+          "vars": {
+            "question": "What is the square root of 9?"
+          },
+          "metavars": {
+            "Expected": "3",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "claude-3.5-haiku"
+          },
+          "llm": "claude-3.5-haiku",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+          "responses": [
+            "3",
+            "3"
+          ],
+          "uid": "409dbe3e-cc82-4037-a4f4-040aed417de6"
         },
         {
           "vars": {
@@ -2749,7 +4576,6 @@
             "1997",
             "1997."
           ],
-          "tokens": {},
           "uid": "e11f0ed2-41ed-4d53-ad8a-510c7836fadc"
         },
         {
@@ -2767,7 +4593,6 @@
             "1997",
             "1997"
           ],
-          "tokens": {},
           "uid": "55136cbc-c5f1-4c5c-876e-d76a3efaff0f"
         },
         {
@@ -2777,16 +4602,49 @@
           "metavars": {
             "Expected": "1997",
             "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-            "LLM_0": "PaLM2"
+            "LLM_0": "Gemini"
           },
-          "llm": "PaLM2",
+          "llm": "Gemini",
           "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
           "responses": [
-            "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997.",
-            "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
+            "1997",
+            "2001"
           ],
-          "tokens": {},
-          "uid": "33d5aa12-cfe2-4806-89fb-f66789e90ea4"
+          "uid": "b988dd5c-8cc1-4395-9d03-d549fee7b627"
+        },
+        {
+          "vars": {
+            "question": "What year was the 50th anniversary of the invention of the transistor?"
+          },
+          "metavars": {
+            "Expected": "1997",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Falcon.7B"
+          },
+          "llm": "Falcon.7B",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+          "responses": [
+            "The 50th anniversary of the invention of the transistor in 1962.",
+            "The 50th anniversary of the invention of the transistor in 1962."
+          ],
+          "uid": "61974590-9a02-43b0-9adb-3669c4b2809b"
+        },
+        {
+          "vars": {
+            "question": "What year was the 50th anniversary of the invention of the transistor?"
+          },
+          "metavars": {
+            "Expected": "1997",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "claude-3.5-haiku"
+          },
+          "llm": "claude-3.5-haiku",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+          "responses": [
+            "2008",
+            "2047"
+          ],
+          "uid": "1e38094d-c615-4b1d-a2d7-87efec494a2f"
         },
         {
           "vars": {
@@ -2803,7 +4661,6 @@
             "125",
             "125"
           ],
-          "tokens": {},
           "uid": "9905585e-ac2c-4e70-b307-dcce305bc9ae"
         },
         {
@@ -2821,7 +4678,6 @@
             "125",
             "125"
           ],
-          "tokens": {},
           "uid": "7b46d7b2-3e20-4cfa-9e83-20bf184f05fa"
         },
         {
@@ -2831,16 +4687,49 @@
           "metavars": {
             "Expected": "125",
             "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-            "LLM_0": "PaLM2"
+            "LLM_0": "Gemini"
           },
-          "llm": "PaLM2",
+          "llm": "Gemini",
           "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
           "responses": [
-            "5 to the power of 3 is 125.",
-            "5 to the power of 3 is 125."
+            "125",
+            "125"
           ],
-          "tokens": {},
-          "uid": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2"
+          "uid": "994b02fe-50cc-448c-937e-afa05e5c9130"
+        },
+        {
+          "vars": {
+            "question": "What is 5 to the power of 3?"
+          },
+          "metavars": {
+            "Expected": "125",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Falcon.7B"
+          },
+          "llm": "Falcon.7B",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+          "responses": [
+            "5 to the power of 3 is 625.",
+            "5 to the power of 3 is 625."
+          ],
+          "uid": "aaf7358a-1604-4a36-a33b-9872fe74549d"
+        },
+        {
+          "vars": {
+            "question": "What is 5 to the power of 3?"
+          },
+          "metavars": {
+            "Expected": "125",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "claude-3.5-haiku"
+          },
+          "llm": "claude-3.5-haiku",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+          "responses": [
+            "125",
+            "125"
+          ],
+          "uid": "3e14fc18-ace2-47c6-bb6f-6ba1b3dacf79"
         },
         {
           "vars": {
@@ -2857,7 +4746,6 @@
             "18",
             "54"
           ],
-          "tokens": {},
           "uid": "33b1f438-e9d7-4627-be1f-2c6677412f58"
         },
         {
@@ -2875,7 +4763,6 @@
             "36",
             "12"
           ],
-          "tokens": {},
           "uid": "4e23bba3-879b-4c9d-aa7f-25a5e9202a4d"
         },
         {
@@ -2885,16 +4772,49 @@
           "metavars": {
             "Expected": "18",
             "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-            "LLM_0": "PaLM2"
+            "LLM_0": "Gemini"
           },
-          "llm": "PaLM2",
+          "llm": "Gemini",
           "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
           "responses": [
-            "2 multiplied by the cubic root of 729 is 27.",
-            "2 multiplied by the cubic root of 729 is 27."
+            "18",
+            "36"
           ],
-          "tokens": {},
-          "uid": "2387013d-aa6c-4e61-8960-ee27309823b6"
+          "uid": "7f746549-4e3f-4058-8498-80724188d53d"
+        },
+        {
+          "vars": {
+            "question": "What is 2 multiplied by the cubic root of 729?"
+          },
+          "metavars": {
+            "Expected": "18",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "Falcon.7B"
+          },
+          "llm": "Falcon.7B",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+          "responses": [
+            "The answer is 2 x (√729) = 2 x 27 = 810.",
+            "The answer is 2 x (√729) = 2 x 27 = 810."
+          ],
+          "uid": "2de3a046-04f0-4316-aaad-d89ec08a34fe"
+        },
+        {
+          "vars": {
+            "question": "What is 2 multiplied by the cubic root of 729?"
+          },
+          "metavars": {
+            "Expected": "18",
+            "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+            "LLM_0": "claude-3.5-haiku"
+          },
+          "llm": "claude-3.5-haiku",
+          "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+          "responses": [
+            "18",
+            "18"
+          ],
+          "uid": "e0240f4c-ab55-4026-a38a-3da7def0dbb7"
         }
       ]
     },
@@ -2928,7 +4848,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -2970,7 +4890,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3015,7 +4935,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3060,7 +4980,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3083,39 +5003,39 @@
         "metavars": {
           "Expected": "4",
           "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-          "LLM_0": "PaLM2"
+          "LLM_0": "Gemini"
         },
-        "uid": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661",
+        "uid": "14721e37-f7d7-4c42-b350-cca63fa887a6",
         "llm": {
+          "key": "0b3606a1-109d-448d-aa72-98f612750092",
+          "name": "Gemini",
+          "emoji": "♊",
+          "model": "gemini-pro",
           "base_model": "palm2-bison",
-          "emoji": "🦬",
-          "formData": {
-            "shortname": "PaLM2"
-          },
-          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-          "model": "chat-bison-001",
-          "name": "PaLM2",
+          "temp": 0.7,
           "settings": {
-            "max_output_tokens": 512,
-            "stop_sequences": [],
             "temperature": 0.5,
             "top_k": -1,
-            "top_p": -1
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
           },
-          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemini"
+          },
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
         "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
         "responses": [
-          "2 + 2 = 4"
+          "4"
         ],
         "tokens": {},
         "eval_res": {
           "items": [
-            false
+            true
           ],
           "dtype": "Categorical"
         }
@@ -3127,39 +5047,261 @@
         "metavars": {
           "Expected": "4",
           "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-          "LLM_0": "PaLM2"
+          "LLM_0": "Gemini"
         },
-        "uid": "4b5abfc6-0ce9-466c-a2b2-b6b3dcee7661",
+        "uid": "14721e37-f7d7-4c42-b350-cca63fa887a6",
         "llm": {
+          "key": "0b3606a1-109d-448d-aa72-98f612750092",
+          "name": "Gemini",
+          "emoji": "♊",
+          "model": "gemini-pro",
           "base_model": "palm2-bison",
-          "emoji": "🦬",
-          "formData": {
-            "shortname": "PaLM2"
-          },
-          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-          "model": "chat-bison-001",
-          "name": "PaLM2",
+          "temp": 0.7,
           "settings": {
-            "max_output_tokens": 512,
-            "stop_sequences": [],
             "temperature": 0.5,
             "top_k": -1,
-            "top_p": -1
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
           },
-          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemini"
+          },
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
         "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
         "responses": [
-          "2+2=4"
+          "4"
         ],
         "tokens": {},
         "eval_res": {
           "items": [
-            false
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 2 + 2?"
+        },
+        "metavars": {
+          "Expected": "4",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "Falcon.7B"
+        },
+        "uid": "ea431926-edea-4006-83fb-67dae766ba0e",
+        "llm": {
+          "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
+          "settings": {
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
+            "top_k": -1,
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
+          },
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
+          "progress": {
+            "success": 80,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+        "responses": [
+          "2 + 2 = 4"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 2 + 2?"
+        },
+        "metavars": {
+          "Expected": "4",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "Falcon.7B"
+        },
+        "uid": "ea431926-edea-4006-83fb-67dae766ba0e",
+        "llm": {
+          "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
+          "settings": {
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
+            "top_k": -1,
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
+          },
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
+          "progress": {
+            "success": 80,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+        "responses": [
+          "2 + 2 = 4"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 2 + 2?"
+        },
+        "metavars": {
+          "Expected": "4",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "claude-3.5-haiku"
+        },
+        "uid": "653a2dbd-6d2c-4322-aa93-0dc04210f244",
+        "llm": {
+          "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+          "name": "claude-3.5-haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "claude-3.5-haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+        "responses": [
+          "4"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 2 + 2?"
+        },
+        "metavars": {
+          "Expected": "4",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "claude-3.5-haiku"
+        },
+        "uid": "653a2dbd-6d2c-4322-aa93-0dc04210f244",
+        "llm": {
+          "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+          "name": "claude-3.5-haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "claude-3.5-haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 + 2?",
+        "responses": [
+          "4"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
           ],
           "dtype": "Categorical"
         }
@@ -3190,7 +5332,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3232,7 +5374,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3277,7 +5419,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3322,7 +5464,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3345,39 +5487,39 @@
         "metavars": {
           "Expected": "3",
           "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-          "LLM_0": "PaLM2"
+          "LLM_0": "Gemini"
         },
-        "uid": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603",
+        "uid": "d73153fb-5451-41e7-80ad-558a1b591c97",
         "llm": {
+          "key": "0b3606a1-109d-448d-aa72-98f612750092",
+          "name": "Gemini",
+          "emoji": "♊",
+          "model": "gemini-pro",
           "base_model": "palm2-bison",
-          "emoji": "🦬",
-          "formData": {
-            "shortname": "PaLM2"
-          },
-          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-          "model": "chat-bison-001",
-          "name": "PaLM2",
+          "temp": 0.7,
           "settings": {
-            "max_output_tokens": 512,
-            "stop_sequences": [],
             "temperature": 0.5,
             "top_k": -1,
-            "top_p": -1
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
           },
-          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemini"
+          },
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
         "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
         "responses": [
-          "The square root of 9 is 3."
+          "3"
         ],
         "tokens": {},
         "eval_res": {
           "items": [
-            false
+            true
           ],
           "dtype": "Categorical"
         }
@@ -3389,28 +5531,77 @@
         "metavars": {
           "Expected": "3",
           "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-          "LLM_0": "PaLM2"
+          "LLM_0": "Gemini"
         },
-        "uid": "a659a9a9-51fb-4d2c-bb39-39ecbbf56603",
+        "uid": "d73153fb-5451-41e7-80ad-558a1b591c97",
         "llm": {
+          "key": "0b3606a1-109d-448d-aa72-98f612750092",
+          "name": "Gemini",
+          "emoji": "♊",
+          "model": "gemini-pro",
           "base_model": "palm2-bison",
-          "emoji": "🦬",
-          "formData": {
-            "shortname": "PaLM2"
-          },
-          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-          "model": "chat-bison-001",
-          "name": "PaLM2",
+          "temp": 0.7,
           "settings": {
-            "max_output_tokens": 512,
-            "stop_sequences": [],
             "temperature": 0.5,
             "top_k": -1,
-            "top_p": -1
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
           },
-          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemini"
+          },
           "progress": {
-            "success": 0,
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+        "responses": [
+          "3"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is the square root of 9?"
+        },
+        "metavars": {
+          "Expected": "3",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "Falcon.7B"
+        },
+        "uid": "fc0cae18-4b1f-4c97-813c-c04bcb0cc7e7",
+        "llm": {
+          "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
+          "settings": {
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
+            "top_k": -1,
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
+          },
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
+          "progress": {
+            "success": 80,
             "error": 0
           }
         },
@@ -3421,7 +5612,180 @@
         "tokens": {},
         "eval_res": {
           "items": [
-            false
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is the square root of 9?"
+        },
+        "metavars": {
+          "Expected": "3",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "Falcon.7B"
+        },
+        "uid": "fc0cae18-4b1f-4c97-813c-c04bcb0cc7e7",
+        "llm": {
+          "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
+          "settings": {
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
+            "top_k": -1,
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
+          },
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
+          "progress": {
+            "success": 80,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+        "responses": [
+          "The square root of 9 is 3."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is the square root of 9?"
+        },
+        "metavars": {
+          "Expected": "3",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "claude-3.5-haiku"
+        },
+        "uid": "409dbe3e-cc82-4037-a4f4-040aed417de6",
+        "llm": {
+          "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+          "name": "claude-3.5-haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "claude-3.5-haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+        "responses": [
+          "3"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is the square root of 9?"
+        },
+        "metavars": {
+          "Expected": "3",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "claude-3.5-haiku"
+        },
+        "uid": "409dbe3e-cc82-4037-a4f4-040aed417de6",
+        "llm": {
+          "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+          "name": "claude-3.5-haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "claude-3.5-haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is the square root of 9?",
+        "responses": [
+          "3"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
           ],
           "dtype": "Categorical"
         }
@@ -3452,7 +5816,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3494,7 +5858,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3539,7 +5903,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3584,7 +5948,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3607,34 +5971,78 @@
         "metavars": {
           "Expected": "1997",
           "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-          "LLM_0": "PaLM2"
+          "LLM_0": "Gemini"
         },
-        "uid": "33d5aa12-cfe2-4806-89fb-f66789e90ea4",
+        "uid": "b988dd5c-8cc1-4395-9d03-d549fee7b627",
         "llm": {
+          "key": "0b3606a1-109d-448d-aa72-98f612750092",
+          "name": "Gemini",
+          "emoji": "♊",
+          "model": "gemini-pro",
           "base_model": "palm2-bison",
-          "emoji": "🦬",
-          "formData": {
-            "shortname": "PaLM2"
-          },
-          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-          "model": "chat-bison-001",
-          "name": "PaLM2",
+          "temp": 0.7,
           "settings": {
-            "max_output_tokens": 512,
-            "stop_sequences": [],
             "temperature": 0.5,
             "top_k": -1,
-            "top_p": -1
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
           },
-          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemini"
+          },
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
         "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
         "responses": [
-          "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
+          "1997"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What year was the 50th anniversary of the invention of the transistor?"
+        },
+        "metavars": {
+          "Expected": "1997",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "Gemini"
+        },
+        "uid": "b988dd5c-8cc1-4395-9d03-d549fee7b627",
+        "llm": {
+          "key": "0b3606a1-109d-448d-aa72-98f612750092",
+          "name": "Gemini",
+          "emoji": "♊",
+          "model": "gemini-pro",
+          "base_model": "palm2-bison",
+          "temp": 0.7,
+          "settings": {
+            "temperature": 0.5,
+            "top_k": -1,
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
+          },
+          "formData": {
+            "shortname": "Gemini"
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+        "responses": [
+          "2001"
         ],
         "tokens": {},
         "eval_res": {
@@ -3651,34 +6059,212 @@
         "metavars": {
           "Expected": "1997",
           "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-          "LLM_0": "PaLM2"
+          "LLM_0": "Falcon.7B"
         },
-        "uid": "33d5aa12-cfe2-4806-89fb-f66789e90ea4",
+        "uid": "61974590-9a02-43b0-9adb-3669c4b2809b",
         "llm": {
-          "base_model": "palm2-bison",
-          "emoji": "🦬",
-          "formData": {
-            "shortname": "PaLM2"
-          },
-          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-          "model": "chat-bison-001",
-          "name": "PaLM2",
+          "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
           "settings": {
-            "max_output_tokens": 512,
-            "stop_sequences": [],
-            "temperature": 0.5,
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
             "top_k": -1,
-            "top_p": -1
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
           },
-          "temp": 0.7,
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
           "progress": {
-            "success": 0,
+            "success": 80,
             "error": 0
           }
         },
         "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
         "responses": [
-          "The transistor was invented in 1947, so the 50th anniversary of its invention was in 1997."
+          "The 50th anniversary of the invention of the transistor in 1962."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What year was the 50th anniversary of the invention of the transistor?"
+        },
+        "metavars": {
+          "Expected": "1997",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "Falcon.7B"
+        },
+        "uid": "61974590-9a02-43b0-9adb-3669c4b2809b",
+        "llm": {
+          "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
+          "settings": {
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
+            "top_k": -1,
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
+          },
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
+          "progress": {
+            "success": 80,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+        "responses": [
+          "The 50th anniversary of the invention of the transistor in 1962."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What year was the 50th anniversary of the invention of the transistor?"
+        },
+        "metavars": {
+          "Expected": "1997",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "claude-3.5-haiku"
+        },
+        "uid": "1e38094d-c615-4b1d-a2d7-87efec494a2f",
+        "llm": {
+          "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+          "name": "claude-3.5-haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "claude-3.5-haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+        "responses": [
+          "2008"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What year was the 50th anniversary of the invention of the transistor?"
+        },
+        "metavars": {
+          "Expected": "1997",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "claude-3.5-haiku"
+        },
+        "uid": "1e38094d-c615-4b1d-a2d7-87efec494a2f",
+        "llm": {
+          "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+          "name": "claude-3.5-haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "claude-3.5-haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What year was the 50th anniversary of the invention of the transistor?",
+        "responses": [
+          "2047"
         ],
         "tokens": {},
         "eval_res": {
@@ -3714,7 +6300,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3756,7 +6342,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3801,7 +6387,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3846,7 +6432,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -3869,34 +6455,127 @@
         "metavars": {
           "Expected": "125",
           "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-          "LLM_0": "PaLM2"
+          "LLM_0": "Gemini"
         },
-        "uid": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2",
+        "uid": "994b02fe-50cc-448c-937e-afa05e5c9130",
         "llm": {
+          "key": "0b3606a1-109d-448d-aa72-98f612750092",
+          "name": "Gemini",
+          "emoji": "♊",
+          "model": "gemini-pro",
           "base_model": "palm2-bison",
-          "emoji": "🦬",
-          "formData": {
-            "shortname": "PaLM2"
-          },
-          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-          "model": "chat-bison-001",
-          "name": "PaLM2",
+          "temp": 0.7,
           "settings": {
-            "max_output_tokens": 512,
-            "stop_sequences": [],
             "temperature": 0.5,
             "top_k": -1,
-            "top_p": -1
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
           },
-          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemini"
+          },
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
         "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
         "responses": [
-          "5 to the power of 3 is 125."
+          "125"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 5 to the power of 3?"
+        },
+        "metavars": {
+          "Expected": "125",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "Gemini"
+        },
+        "uid": "994b02fe-50cc-448c-937e-afa05e5c9130",
+        "llm": {
+          "key": "0b3606a1-109d-448d-aa72-98f612750092",
+          "name": "Gemini",
+          "emoji": "♊",
+          "model": "gemini-pro",
+          "base_model": "palm2-bison",
+          "temp": 0.7,
+          "settings": {
+            "temperature": 0.5,
+            "top_k": -1,
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
+          },
+          "formData": {
+            "shortname": "Gemini"
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+        "responses": [
+          "125"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 5 to the power of 3?"
+        },
+        "metavars": {
+          "Expected": "125",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "Falcon.7B"
+        },
+        "uid": "aaf7358a-1604-4a36-a33b-9872fe74549d",
+        "llm": {
+          "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
+          "settings": {
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
+            "top_k": -1,
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
+          },
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
+          "progress": {
+            "success": 80,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+        "responses": [
+          "5 to the power of 3 is 625."
         ],
         "tokens": {},
         "eval_res": {
@@ -3913,39 +6592,168 @@
         "metavars": {
           "Expected": "125",
           "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-          "LLM_0": "PaLM2"
+          "LLM_0": "Falcon.7B"
         },
-        "uid": "67c7ec88-40b3-4e6c-ab98-3b3462f225b2",
+        "uid": "aaf7358a-1604-4a36-a33b-9872fe74549d",
         "llm": {
-          "base_model": "palm2-bison",
-          "emoji": "🦬",
-          "formData": {
-            "shortname": "PaLM2"
-          },
-          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-          "model": "chat-bison-001",
-          "name": "PaLM2",
+          "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
           "settings": {
-            "max_output_tokens": 512,
-            "stop_sequences": [],
-            "temperature": 0.5,
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
             "top_k": -1,
-            "top_p": -1
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
           },
-          "temp": 0.7,
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
           "progress": {
-            "success": 0,
+            "success": 80,
             "error": 0
           }
         },
         "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
         "responses": [
-          "5 to the power of 3 is 125."
+          "5 to the power of 3 is 625."
         ],
         "tokens": {},
         "eval_res": {
           "items": [
             false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 5 to the power of 3?"
+        },
+        "metavars": {
+          "Expected": "125",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "claude-3.5-haiku"
+        },
+        "uid": "3e14fc18-ace2-47c6-bb6f-6ba1b3dacf79",
+        "llm": {
+          "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+          "name": "claude-3.5-haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "claude-3.5-haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+        "responses": [
+          "125"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 5 to the power of 3?"
+        },
+        "metavars": {
+          "Expected": "125",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "claude-3.5-haiku"
+        },
+        "uid": "3e14fc18-ace2-47c6-bb6f-6ba1b3dacf79",
+        "llm": {
+          "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+          "name": "claude-3.5-haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "claude-3.5-haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 5 to the power of 3?",
+        "responses": [
+          "125"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
           ],
           "dtype": "Categorical"
         }
@@ -3976,7 +6784,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -4018,7 +6826,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -4063,7 +6871,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -4108,7 +6916,7 @@
           },
           "temp": 1,
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
@@ -4131,34 +6939,78 @@
         "metavars": {
           "Expected": "18",
           "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-          "LLM_0": "PaLM2"
+          "LLM_0": "Gemini"
         },
-        "uid": "2387013d-aa6c-4e61-8960-ee27309823b6",
+        "uid": "7f746549-4e3f-4058-8498-80724188d53d",
         "llm": {
+          "key": "0b3606a1-109d-448d-aa72-98f612750092",
+          "name": "Gemini",
+          "emoji": "♊",
+          "model": "gemini-pro",
           "base_model": "palm2-bison",
-          "emoji": "🦬",
-          "formData": {
-            "shortname": "PaLM2"
-          },
-          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-          "model": "chat-bison-001",
-          "name": "PaLM2",
+          "temp": 0.7,
           "settings": {
-            "max_output_tokens": 512,
-            "stop_sequences": [],
             "temperature": 0.5,
             "top_k": -1,
-            "top_p": -1
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
           },
-          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemini"
+          },
           "progress": {
-            "success": 0,
+            "success": 100,
             "error": 0
           }
         },
         "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
         "responses": [
-          "2 multiplied by the cubic root of 729 is 27."
+          "18"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 2 multiplied by the cubic root of 729?"
+        },
+        "metavars": {
+          "Expected": "18",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "Gemini"
+        },
+        "uid": "7f746549-4e3f-4058-8498-80724188d53d",
+        "llm": {
+          "key": "0b3606a1-109d-448d-aa72-98f612750092",
+          "name": "Gemini",
+          "emoji": "♊",
+          "model": "gemini-pro",
+          "base_model": "palm2-bison",
+          "temp": 0.7,
+          "settings": {
+            "temperature": 0.5,
+            "top_k": -1,
+            "top_p": -1,
+            "max_output_tokens": 512,
+            "stop_sequences": []
+          },
+          "formData": {
+            "shortname": "Gemini"
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+        "responses": [
+          "36"
         ],
         "tokens": {},
         "eval_res": {
@@ -4175,39 +7027,217 @@
         "metavars": {
           "Expected": "18",
           "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
-          "LLM_0": "PaLM2"
+          "LLM_0": "Falcon.7B"
         },
-        "uid": "2387013d-aa6c-4e61-8960-ee27309823b6",
+        "uid": "2de3a046-04f0-4316-aaad-d89ec08a34fe",
         "llm": {
-          "base_model": "palm2-bison",
-          "emoji": "🦬",
-          "formData": {
-            "shortname": "PaLM2"
-          },
-          "key": "9b3f329c-9a8d-4bb9-bf72-12a7bd8ea27a",
-          "model": "chat-bison-001",
-          "name": "PaLM2",
+          "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
           "settings": {
-            "max_output_tokens": 512,
-            "stop_sequences": [],
-            "temperature": 0.5,
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
             "top_k": -1,
-            "top_p": -1
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
           },
-          "temp": 0.7,
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
           "progress": {
-            "success": 0,
+            "success": 80,
             "error": 0
           }
         },
         "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
         "responses": [
-          "2 multiplied by the cubic root of 729 is 27."
+          "The answer is 2 x (√729) = 2 x 27 = 810."
         ],
         "tokens": {},
         "eval_res": {
           "items": [
             false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 2 multiplied by the cubic root of 729?"
+        },
+        "metavars": {
+          "Expected": "18",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "Falcon.7B"
+        },
+        "uid": "2de3a046-04f0-4316-aaad-d89ec08a34fe",
+        "llm": {
+          "key": "cb5ba0a7-2833-4924-9d43-d86fe19a3175",
+          "name": "Falcon.7B",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
+          "settings": {
+            "custom_model": "",
+            "model_type": "text",
+            "temperature": 1,
+            "num_continuations": 0,
+            "top_k": -1,
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
+          },
+          "formData": {
+            "shortname": "Falcon.7B"
+          },
+          "progress": {
+            "success": 80,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+        "responses": [
+          "The answer is 2 x (√729) = 2 x 27 = 810."
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 2 multiplied by the cubic root of 729?"
+        },
+        "metavars": {
+          "Expected": "18",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "claude-3.5-haiku"
+        },
+        "uid": "e0240f4c-ab55-4026-a38a-3da7def0dbb7",
+        "llm": {
+          "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+          "name": "claude-3.5-haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "claude-3.5-haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+        "responses": [
+          "18"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "question": "What is 2 multiplied by the cubic root of 729?"
+        },
+        "metavars": {
+          "Expected": "18",
+          "__pt": "Answer the following math question as brief as possible, and only include the answer in your response: {question}",
+          "LLM_0": "claude-3.5-haiku"
+        },
+        "uid": "e0240f4c-ab55-4026-a38a-3da7def0dbb7",
+        "llm": {
+          "key": "9d809e37-0f03-4217-9e78-86c5284f7407",
+          "name": "claude-3.5-haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "claude-3.5-haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": "Answer the following math question as brief as possible, and only include the answer in your response: What is 2 multiplied by the cubic root of 729?",
+        "responses": [
+          "18"
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
           ],
           "dtype": "Categorical"
         }

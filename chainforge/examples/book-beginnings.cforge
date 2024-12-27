@@ -1,0 +1,3844 @@
+{
+  "flow": {
+    "nodes": [
+      {
+        "width": 312,
+        "height": 438,
+        "id": "prompt-1687991312103",
+        "type": "prompt",
+        "data": {
+          "prompt": "What is the opening sentence of {book} by {author}?",
+          "n": 1,
+          "llms": [
+            {
+              "key": "06fd174b-ae9a-45bd-a474-55ad36d9a7b3",
+              "name": "Falcon.7b",
+              "emoji": "🤗",
+              "model": "tiiuae/falcon-7b-instruct",
+              "base_model": "hf",
+              "temp": 1,
+              "settings": {
+                "custom_model": "",
+                "temperature": 1,
+                "num_continuations": 0,
+                "top_k": -1,
+                "top_p": -1,
+                "repetition_penalty": -1,
+                "max_new_tokens": 250,
+                "do_sample": true,
+                "use_cache": false
+              },
+              "formData": {
+                "shortname": "Falcon.7b",
+                "model": "tiiuae/falcon-7b-instruct",
+                "custom_model": "",
+                "temperature": 1,
+                "num_continuations": 0,
+                "top_k": -1,
+                "top_p": -1,
+                "repetition_penalty": -1,
+                "max_new_tokens": 250,
+                "do_sample": true,
+                "use_cache": false
+              }
+            },
+            {
+              "key": "12ec9c5d-f430-4af2-a631-94c86fd4a748",
+              "name": "ChatGPT",
+              "emoji": "🤖",
+              "model": "gpt-3.5-turbo",
+              "base_model": "gpt-3.5-turbo",
+              "temp": 1,
+              "settings": {
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 1,
+                "functions": [],
+                "function_call": "",
+                "top_p": 1,
+                "stop": [],
+                "presence_penalty": 0,
+                "frequency_penalty": 0
+              },
+              "formData": {
+                "shortname": "ChatGPT",
+                "model": "gpt-3.5-turbo",
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 1,
+                "functions": "",
+                "function_call": "",
+                "top_p": 1,
+                "stop": "",
+                "presence_penalty": 0,
+                "frequency_penalty": 0
+              }
+            },
+            {
+              "key": "0e7a4480-dfd6-4edf-8a89-e471aebf751c",
+              "name": "Claude-Haiku",
+              "emoji": "📚",
+              "model": "claude-3-5-haiku-latest",
+              "base_model": "claude-v1",
+              "temp": 0.5,
+              "settings": {
+                "system_msg": "",
+                "temperature": 1,
+                "tools": [],
+                "tool_choice": "",
+                "parallel_tool_calls": true,
+                "max_tokens_to_sample": 1024,
+                "custom_prompt_wrapper": "",
+                "stop_sequences": [
+                  "\n\nHuman:"
+                ],
+                "top_k": -1,
+                "top_p": -1
+              },
+              "formData": {
+                "shortname": "Claude-Haiku",
+                "model": "claude-3-5-haiku-latest",
+                "system_msg": "",
+                "temperature": 1,
+                "tools": "",
+                "tool_choice": "",
+                "parallel_tool_calls": true,
+                "max_tokens_to_sample": 1024,
+                "custom_prompt_wrapper": "",
+                "stop_sequences": "\"\n\nHuman:\"",
+                "top_k": -1,
+                "top_p": -1
+              }
+            }
+          ],
+          "fields": [
+            {
+              "text": "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.",
+              "prompt": "What is the opening sentence of Pride and Prejudice by Jane Austen?",
+              "fill_history": {
+                "book": "Pride and Prejudice",
+                "author": "Jane Austen"
+              },
+              "llm": {
+                "key": "06fd174b-ae9a-45bd-a474-55ad36d9a7b3",
+                "name": "Falcon.7b",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7b",
+                  "model": "tiiuae/falcon-7b-instruct",
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "299a7aad-1649-4602-b781-07d3b9eb0bf2",
+              "metavars": {
+                "Book Title": "Pride and Prejudice",
+                "Author": "Jane Austen",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Falcon.7b"
+              }
+            },
+            {
+              "text": "\"It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\"",
+              "prompt": "What is the opening sentence of Pride and Prejudice by Jane Austen?",
+              "fill_history": {
+                "book": "Pride and Prejudice",
+                "author": "Jane Austen"
+              },
+              "llm": {
+                "key": "12ec9c5d-f430-4af2-a631-94c86fd4a748",
+                "name": "ChatGPT",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "ChatGPT",
+                  "model": "gpt-3.5-turbo",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": "",
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "dc2c1cea-5c69-42cf-b176-62fa8fac3698",
+              "metavars": {
+                "Book Title": "Pride and Prejudice",
+                "Author": "Jane Austen",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "ChatGPT"
+              }
+            },
+            {
+              "text": "The opening sentence of Pride and Prejudice is: \"It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\"",
+              "prompt": "What is the opening sentence of Pride and Prejudice by Jane Austen?",
+              "fill_history": {
+                "book": "Pride and Prejudice",
+                "author": "Jane Austen"
+              },
+              "llm": {
+                "key": "0e7a4480-dfd6-4edf-8a89-e471aebf751c",
+                "name": "Claude-Haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude-Haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 88.88888888888889,
+                  "error": 0
+                }
+              },
+              "uid": "80871277-f82c-4140-8227-1c4d43b62db6",
+              "metavars": {
+                "Book Title": "Pride and Prejudice",
+                "Author": "Jane Austen",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Claude-Haiku"
+              }
+            },
+            {
+              "text": "The opening sentence of The Secret History by Donna Tartt is: 'The first time I saw her, she was standing in the doorway of the house, the sun behind her, and I thought she was the most beautiful thing I had ever seen.'",
+              "prompt": "What is the opening sentence of The Secret History by Donna Tartt?",
+              "fill_history": {
+                "book": "The Secret History",
+                "author": "Donna Tartt"
+              },
+              "llm": {
+                "key": "06fd174b-ae9a-45bd-a474-55ad36d9a7b3",
+                "name": "Falcon.7b",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7b",
+                  "model": "tiiuae/falcon-7b-instruct",
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "2d636ad5-ae37-4ed0-bb27-b6eb0f175adb",
+              "metavars": {
+                "Book Title": "The Secret History",
+                "Author": "Donna Tartt",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Falcon.7b"
+              }
+            },
+            {
+              "text": "\"The",
+              "prompt": "What is the opening sentence of The Secret History by Donna Tartt?",
+              "fill_history": {
+                "book": "The Secret History",
+                "author": "Donna Tartt"
+              },
+              "llm": {
+                "key": "12ec9c5d-f430-4af2-a631-94c86fd4a748",
+                "name": "ChatGPT",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "ChatGPT",
+                  "model": "gpt-3.5-turbo",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": "",
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "125a6853-4dad-4b2a-aab5-77c05a28804a",
+              "metavars": {
+                "Book Title": "The Secret History",
+                "Author": "Donna Tartt",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "ChatGPT"
+              }
+            },
+            {
+              "text": "The opening sentence of The Secret History by Donna Tartt is: \"The snow in the mountains was perfect the day I arrived.\"",
+              "prompt": "What is the opening sentence of The Secret History by Donna Tartt?",
+              "fill_history": {
+                "book": "The Secret History",
+                "author": "Donna Tartt"
+              },
+              "llm": {
+                "key": "0e7a4480-dfd6-4edf-8a89-e471aebf751c",
+                "name": "Claude-Haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude-Haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 88.88888888888889,
+                  "error": 0
+                }
+              },
+              "uid": "618316e4-d300-4285-95b7-28c89d2eb89a",
+              "metavars": {
+                "Book Title": "The Secret History",
+                "Author": "Donna Tartt",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Claude-Haiku"
+              }
+            },
+            {
+              "text": "The opening sentence of Beloved by Toni Morrison is: 'Beloved, I am writing to tell you I am thinking of you.'",
+              "prompt": "What is the opening sentence of Beloved by Toni Morrison?",
+              "fill_history": {
+                "book": "Beloved",
+                "author": "Toni Morrison"
+              },
+              "llm": {
+                "key": "06fd174b-ae9a-45bd-a474-55ad36d9a7b3",
+                "name": "Falcon.7b",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7b",
+                  "model": "tiiuae/falcon-7b-instruct",
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "18d3aa97-d438-4869-82b1-240df9ab9ce8",
+              "metavars": {
+                "Book Title": "Beloved",
+                "Author": "Toni Morrison",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Falcon.7b"
+              }
+            },
+            {
+              "text": "\"124 was spiteful.\"",
+              "prompt": "What is the opening sentence of Beloved by Toni Morrison?",
+              "fill_history": {
+                "book": "Beloved",
+                "author": "Toni Morrison"
+              },
+              "llm": {
+                "key": "12ec9c5d-f430-4af2-a631-94c86fd4a748",
+                "name": "ChatGPT",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "ChatGPT",
+                  "model": "gpt-3.5-turbo",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": "",
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "385b11e0-1a8f-4df5-a4d0-3d38a98f765d",
+              "metavars": {
+                "Book Title": "Beloved",
+                "Author": "Toni Morrison",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "ChatGPT"
+              }
+            },
+            {
+              "text": "The opening sentence of Toni Morrison's novel \"Beloved\" is: \"124 was spiteful.\"",
+              "prompt": "What is the opening sentence of Beloved by Toni Morrison?",
+              "fill_history": {
+                "book": "Beloved",
+                "author": "Toni Morrison"
+              },
+              "llm": {
+                "key": "0e7a4480-dfd6-4edf-8a89-e471aebf751c",
+                "name": "Claude-Haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude-Haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 88.88888888888889,
+                  "error": 0
+                }
+              },
+              "uid": "2757e1bd-1f0f-4b3b-a904-8ba2f12198ba",
+              "metavars": {
+                "Book Title": "Beloved",
+                "Author": "Toni Morrison",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Claude-Haiku"
+              }
+            },
+            {
+              "text": "The opening sentence of Mistborn by Brandon Sanderson is: 'The sun was setting, painting the sky with hues of red and gold, casting long shadows across the city of Luthadel.'",
+              "prompt": "What is the opening sentence of Mistborn by Brandon Sanderson?",
+              "fill_history": {
+                "book": "Mistborn",
+                "author": "Brandon Sanderson"
+              },
+              "llm": {
+                "key": "06fd174b-ae9a-45bd-a474-55ad36d9a7b3",
+                "name": "Falcon.7b",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7b",
+                  "model": "tiiuae/falcon-7b-instruct",
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "e70cc3ea-e217-4e45-9e41-6d1d54bfd5fd",
+              "metavars": {
+                "Book Title": "Mistborn",
+                "Author": "Brandon Sanderson",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Falcon.7b"
+              }
+            },
+            {
+              "text": "\"The mists come at night.\"",
+              "prompt": "What is the opening sentence of Mistborn by Brandon Sanderson?",
+              "fill_history": {
+                "book": "Mistborn",
+                "author": "Brandon Sanderson"
+              },
+              "llm": {
+                "key": "12ec9c5d-f430-4af2-a631-94c86fd4a748",
+                "name": "ChatGPT",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "ChatGPT",
+                  "model": "gpt-3.5-turbo",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": "",
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "3307c9d5-a40e-40ac-a915-21173abe45b7",
+              "metavars": {
+                "Book Title": "Mistborn",
+                "Author": "Brandon Sanderson",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "ChatGPT"
+              }
+            },
+            {
+              "text": "The opening sentence of Mistborn: The Final Empire is: \"Ash fell from the sky.\"",
+              "prompt": "What is the opening sentence of Mistborn by Brandon Sanderson?",
+              "fill_history": {
+                "book": "Mistborn",
+                "author": "Brandon Sanderson"
+              },
+              "llm": {
+                "key": "0e7a4480-dfd6-4edf-8a89-e471aebf751c",
+                "name": "Claude-Haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude-Haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 88.88888888888889,
+                  "error": 0
+                }
+              },
+              "uid": "6d0d803c-4409-45ee-8218-53a424f77b35",
+              "metavars": {
+                "Book Title": "Mistborn",
+                "Author": "Brandon Sanderson",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Claude-Haiku"
+              }
+            },
+            {
+              "text": "The world of the Poppy War is one of magic and war, where the fate of nations rests on the shoulders of a single girl.",
+              "prompt": "What is the opening sentence of The Poppy War by R.F. Kuang?",
+              "fill_history": {
+                "book": "The Poppy War",
+                "author": "R.F. Kuang"
+              },
+              "llm": {
+                "key": "06fd174b-ae9a-45bd-a474-55ad36d9a7b3",
+                "name": "Falcon.7b",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7b",
+                  "model": "tiiuae/falcon-7b-instruct",
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "f2c15188-ef4f-487c-8c70-a04408a3a8d8",
+              "metavars": {
+                "Book Title": "The Poppy War",
+                "Author": "R.F. Kuang",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Falcon.7b"
+              }
+            },
+            {
+              "text": "I'm sorry, but I can't provide verbatim excerpts from copyrighted texts. Would you like a brief summary or information about the book instead?",
+              "prompt": "What is the opening sentence of The Poppy War by R.F. Kuang?",
+              "fill_history": {
+                "book": "The Poppy War",
+                "author": "R.F. Kuang"
+              },
+              "llm": {
+                "key": "12ec9c5d-f430-4af2-a631-94c86fd4a748",
+                "name": "ChatGPT",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "ChatGPT",
+                  "model": "gpt-3.5-turbo",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": "",
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "703c4f48-958f-4e84-af5a-b00abf4a997a",
+              "metavars": {
+                "Book Title": "The Poppy War",
+                "Author": "R.F. Kuang",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "ChatGPT"
+              }
+            },
+            {
+              "text": "The opening sentence of \"The Poppy War\" by R.F. Kuang is: \"Take the exam.\" However, to avoid reproducing copyrighted material, I'll refrain from quoting further from the text.",
+              "prompt": "What is the opening sentence of The Poppy War by R.F. Kuang?",
+              "fill_history": {
+                "book": "The Poppy War",
+                "author": "R.F. Kuang"
+              },
+              "llm": {
+                "key": "0e7a4480-dfd6-4edf-8a89-e471aebf751c",
+                "name": "Claude-Haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude-Haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 88.88888888888889,
+                  "error": 0
+                }
+              },
+              "uid": "06131699-c8b6-4d7a-aae1-cc885cd4ac5b",
+              "metavars": {
+                "Book Title": "The Poppy War",
+                "Author": "R.F. Kuang",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Claude-Haiku"
+              }
+            },
+            {
+              "text": "The opening sentence of Twilight by Stephenie Meyer is 'It was a dark and stormy night.'",
+              "prompt": "What is the opening sentence of Twilight by Stephenie Meyer?",
+              "fill_history": {
+                "book": "Twilight",
+                "author": "Stephenie Meyer"
+              },
+              "llm": {
+                "key": "06fd174b-ae9a-45bd-a474-55ad36d9a7b3",
+                "name": "Falcon.7b",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7b",
+                  "model": "tiiuae/falcon-7b-instruct",
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "8912f56d-4fa8-4275-a1da-8d4cf38d8629",
+              "metavars": {
+                "Book Title": "Twilight",
+                "Author": "Stephenie Meyer",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Falcon.7b"
+              }
+            },
+            {
+              "text": "The opening sentence of \"Twilight\" by Stephenie Meyer is: \"I'd never given much thought to how I would die - though I'd had reason enough in the last few months - but even if I had, I would not have imagined it like this.\"",
+              "prompt": "What is the opening sentence of Twilight by Stephenie Meyer?",
+              "fill_history": {
+                "book": "Twilight",
+                "author": "Stephenie Meyer"
+              },
+              "llm": {
+                "key": "12ec9c5d-f430-4af2-a631-94c86fd4a748",
+                "name": "ChatGPT",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "ChatGPT",
+                  "model": "gpt-3.5-turbo",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": "",
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "5f2cf32a-22c4-49b2-8cea-f3f1b6fa030e",
+              "metavars": {
+                "Book Title": "Twilight",
+                "Author": "Stephenie Meyer",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "ChatGPT"
+              }
+            },
+            {
+              "text": "The opening sentence of Twilight by Stephenie Meyer is: \"My mother drove me to the airport with the windows rolled down.\"",
+              "prompt": "What is the opening sentence of Twilight by Stephenie Meyer?",
+              "fill_history": {
+                "book": "Twilight",
+                "author": "Stephenie Meyer"
+              },
+              "llm": {
+                "key": "0e7a4480-dfd6-4edf-8a89-e471aebf751c",
+                "name": "Claude-Haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude-Haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 88.88888888888889,
+                  "error": 0
+                }
+              },
+              "uid": "a6056955-ba1b-46b4-aea5-a9625212832d",
+              "metavars": {
+                "Book Title": "Twilight",
+                "Author": "Stephenie Meyer",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Claude-Haiku"
+              }
+            },
+            {
+              "text": "The opening sentence of Crime and Punishment by Dostoevsky is: 'It was a bright, sunny day in the middle of the summer, and the sun was shining through the window of the little room where Raskolnikov was sitting.'",
+              "prompt": "What is the opening sentence of Crime and Punishment by Dostoevsky?",
+              "fill_history": {
+                "book": "Crime and Punishment",
+                "author": "Dostoevsky"
+              },
+              "llm": {
+                "key": "06fd174b-ae9a-45bd-a474-55ad36d9a7b3",
+                "name": "Falcon.7b",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7b",
+                  "model": "tiiuae/falcon-7b-instruct",
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "3c07e62f-c5ba-4ed6-a95c-a313f051904e",
+              "metavars": {
+                "Book Title": "Crime and Punishment",
+                "Author": "Dostoevsky",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Falcon.7b"
+              }
+            },
+            {
+              "text": "The opening sentence of \"Crime and Punishment\" by Fyodor Dostoevsky is: \"On an exceptionally hot evening early in July, a young man came out of the garret in which he lodged in S. Place and walked slowly, as though in hesitation, towards K. bridge.\"",
+              "prompt": "What is the opening sentence of Crime and Punishment by Dostoevsky?",
+              "fill_history": {
+                "book": "Crime and Punishment",
+                "author": "Dostoevsky"
+              },
+              "llm": {
+                "key": "12ec9c5d-f430-4af2-a631-94c86fd4a748",
+                "name": "ChatGPT",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "ChatGPT",
+                  "model": "gpt-3.5-turbo",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": "",
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "2a6fa167-cfd6-4299-9f89-30125674fc44",
+              "metavars": {
+                "Book Title": "Crime and Punishment",
+                "Author": "Dostoevsky",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "ChatGPT"
+              }
+            },
+            {
+              "text": "The opening sentence of Fyodor Dostoevsky's \"Crime and Punishment\" is: \"On an exceptionally hot evening early in July a young man came out of the garret in which he lodged in S—— Lane and walked slowly, as though in hesitation, towards K—— Bridge.\"",
+              "prompt": "What is the opening sentence of Crime and Punishment by Dostoevsky?",
+              "fill_history": {
+                "book": "Crime and Punishment",
+                "author": "Dostoevsky"
+              },
+              "llm": {
+                "key": "0e7a4480-dfd6-4edf-8a89-e471aebf751c",
+                "name": "Claude-Haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude-Haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 88.88888888888889,
+                  "error": 0
+                }
+              },
+              "uid": "edf0d43d-7fc9-4b4b-855c-ec278b535164",
+              "metavars": {
+                "Book Title": "Crime and Punishment",
+                "Author": "Dostoevsky",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Claude-Haiku"
+              }
+            },
+            {
+              "text": "The opening sentence of A Wrinkle in Time by Madeleine L'Engle is: 'It was a dark and stormy night.'",
+              "prompt": "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?",
+              "fill_history": {
+                "book": "A Wrinkle in Time",
+                "author": "Madeleine L'Engle"
+              },
+              "llm": {
+                "key": "06fd174b-ae9a-45bd-a474-55ad36d9a7b3",
+                "name": "Falcon.7b",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7b",
+                  "model": "tiiuae/falcon-7b-instruct",
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "b60ef7a6-2fd8-450d-b746-10ce0ab9a164",
+              "metavars": {
+                "Book Title": "A Wrinkle in Time",
+                "Author": "Madeleine L'Engle",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Falcon.7b"
+              }
+            },
+            {
+              "text": "The opening sentence of \"A Wrinkle in Time\" by Madeleine L'Engle is: \"It was a dark and stormy night.\"",
+              "prompt": "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?",
+              "fill_history": {
+                "book": "A Wrinkle in Time",
+                "author": "Madeleine L'Engle"
+              },
+              "llm": {
+                "key": "12ec9c5d-f430-4af2-a631-94c86fd4a748",
+                "name": "ChatGPT",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "ChatGPT",
+                  "model": "gpt-3.5-turbo",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": "",
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "35579a76-4d04-436a-9a10-ce96ec0fcaad",
+              "metavars": {
+                "Book Title": "A Wrinkle in Time",
+                "Author": "Madeleine L'Engle",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "ChatGPT"
+              }
+            },
+            {
+              "text": "The opening sentence of A Wrinkle in Time is: \"It was a dark and stormy night.\"\n\nThis famous first line has become quite well-known in children's literature and sets the stage for the story of Meg Murry's extraordinary adventure.",
+              "prompt": "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?",
+              "fill_history": {
+                "book": "A Wrinkle in Time",
+                "author": "Madeleine L'Engle"
+              },
+              "llm": {
+                "key": "0e7a4480-dfd6-4edf-8a89-e471aebf751c",
+                "name": "Claude-Haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude-Haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 88.88888888888889,
+                  "error": 0
+                }
+              },
+              "uid": "1ae3203f-15c1-43d5-bb3f-84a199addd92",
+              "metavars": {
+                "Book Title": "A Wrinkle in Time",
+                "Author": "Madeleine L'Engle",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Claude-Haiku"
+              }
+            },
+            {
+              "text": "The opening sentence of The Stranger by Albert Camus is: 'I was walking on the beach when I saw a figure in the distance.'",
+              "prompt": "What is the opening sentence of The Stranger by Albert Camus?",
+              "fill_history": {
+                "book": "The Stranger",
+                "author": "Albert Camus"
+              },
+              "llm": {
+                "key": "06fd174b-ae9a-45bd-a474-55ad36d9a7b3",
+                "name": "Falcon.7b",
+                "emoji": "🤗",
+                "model": "tiiuae/falcon-7b-instruct",
+                "base_model": "hf",
+                "temp": 1,
+                "settings": {
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "formData": {
+                  "shortname": "Falcon.7b",
+                  "model": "tiiuae/falcon-7b-instruct",
+                  "custom_model": "",
+                  "temperature": 1,
+                  "num_continuations": 0,
+                  "top_k": -1,
+                  "top_p": -1,
+                  "repetition_penalty": -1,
+                  "max_new_tokens": 250,
+                  "do_sample": true,
+                  "use_cache": false
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "5d719ad4-78a3-44ae-a8a6-cfa152a4875b",
+              "metavars": {
+                "Book Title": "The Stranger",
+                "Author": "Albert Camus",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Falcon.7b"
+              }
+            },
+            {
+              "text": "The opening sentence of \"The Stranger\" by Albert Camus is: \"Maman died today.\"",
+              "prompt": "What is the opening sentence of The Stranger by Albert Camus?",
+              "fill_history": {
+                "book": "The Stranger",
+                "author": "Albert Camus"
+              },
+              "llm": {
+                "key": "12ec9c5d-f430-4af2-a631-94c86fd4a748",
+                "name": "ChatGPT",
+                "emoji": "🤖",
+                "model": "gpt-3.5-turbo",
+                "base_model": "gpt-3.5-turbo",
+                "temp": 1,
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": [],
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": [],
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "formData": {
+                  "shortname": "ChatGPT",
+                  "model": "gpt-3.5-turbo",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 1,
+                  "functions": "",
+                  "function_call": "",
+                  "top_p": 1,
+                  "stop": "",
+                  "presence_penalty": 0,
+                  "frequency_penalty": 0
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "49b5e0e3-d19f-4dd6-bbbd-6387b754d29f",
+              "metavars": {
+                "Book Title": "The Stranger",
+                "Author": "Albert Camus",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "ChatGPT"
+              }
+            },
+            {
+              "text": "The opening sentence of Albert Camus' novel \"The Stranger\" is: \"Mother died today.\" (In the original French: \"Aujourd'hui, maman est morte.\")",
+              "prompt": "What is the opening sentence of The Stranger by Albert Camus?",
+              "fill_history": {
+                "book": "The Stranger",
+                "author": "Albert Camus"
+              },
+              "llm": {
+                "key": "0e7a4480-dfd6-4edf-8a89-e471aebf751c",
+                "name": "Claude-Haiku",
+                "emoji": "📚",
+                "model": "claude-3-5-haiku-latest",
+                "base_model": "claude-v1",
+                "temp": 0.5,
+                "settings": {
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": [],
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": [
+                    "\n\nHuman:"
+                  ],
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "formData": {
+                  "shortname": "Claude-Haiku",
+                  "model": "claude-3-5-haiku-latest",
+                  "system_msg": "",
+                  "temperature": 1,
+                  "tools": "",
+                  "tool_choice": "",
+                  "parallel_tool_calls": true,
+                  "max_tokens_to_sample": 1024,
+                  "custom_prompt_wrapper": "",
+                  "stop_sequences": "\"\n\nHuman:\"",
+                  "top_k": -1,
+                  "top_p": -1
+                },
+                "progress": {
+                  "success": 88.88888888888889,
+                  "error": 0
+                }
+              },
+              "uid": "db8c4c06-d282-4482-9895-5076a92a63f9",
+              "metavars": {
+                "Book Title": "The Stranger",
+                "Author": "Albert Camus",
+                "__pt": "What is the opening sentence of {book} by {author}?",
+                "LLM_0": "Claude-Haiku"
+              }
+            }
+          ],
+          "refresh": false
+        },
+        "position": {
+          "x": 144,
+          "y": 128
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": 144,
+          "y": 128
+        },
+        "dragging": false
+      },
+      {
+        "width": 302,
+        "height": 319,
+        "id": "inspect-1687991312103",
+        "type": "inspect",
+        "data": {
+          "input": "prompt-1687991312103",
+          "refresh": false
+        },
+        "position": {
+          "x": 528,
+          "y": 192
+        },
+        "selected": true,
+        "positionAbsolute": {
+          "x": 528,
+          "y": 192
+        },
+        "dragging": false
+      },
+      {
+        "width": 423,
+        "height": 420,
+        "id": "table-1735328737110",
+        "type": "table",
+        "data": {
+          "rows": [
+            {
+              "__uid": "86e792e3-9eb0-4ee5-a592-d5913b111d7d",
+              "col-0": "Pride and Prejudice",
+              "col-1": "Jane Austen"
+            },
+            {
+              "__uid": "5449fc1f-0eef-44dc-b296-a1052293e765",
+              "col-0": "The Secret History",
+              "col-1": "Donna Tartt"
+            },
+            {
+              "__uid": "4e473ab1-7878-4dba-b02d-ac0864007840",
+              "col-0": "Beloved",
+              "col-1": "Toni Morrison"
+            },
+            {
+              "__uid": "9889f2d6-4f70-48d8-9d64-d346424c7499",
+              "col-0": "Mistborn",
+              "col-1": "Brandon Sanderson"
+            },
+            {
+              "__uid": "55cc52c7-4b40-4b79-939e-5076441e3107",
+              "col-0": "The Poppy War",
+              "col-1": "R.F. Kuang"
+            },
+            {
+              "__uid": "08872aef-5873-4c62-92b6-5e7be77ad954",
+              "col-0": "Twilight",
+              "col-1": "Stephenie Meyer"
+            },
+            {
+              "__uid": "d6c761cf-a65a-4019-ae21-3175a761f0a2",
+              "col-0": "Crime and Punishment",
+              "col-1": "Dostoevsky"
+            },
+            {
+              "__uid": "af88e315-69b6-4d95-a38a-adb37247f2fd",
+              "col-0": "A Wrinkle in Time",
+              "col-1": "Madeleine L'Engle"
+            },
+            {
+              "__uid": "9616dd9e-f902-4f2a-9326-4613370fd94c",
+              "col-0": "The Stranger",
+              "col-1": "Albert Camus"
+            }
+          ],
+          "columns": [
+            {
+              "header": "Book Title",
+              "key": "col-0"
+            },
+            {
+              "header": "Author",
+              "key": "col-1"
+            }
+          ],
+          "sel_rows": null
+        },
+        "position": {
+          "x": -368,
+          "y": 128
+        },
+        "selected": false,
+        "positionAbsolute": {
+          "x": -368,
+          "y": 128
+        },
+        "dragging": false
+      }
+    ],
+    "edges": [
+      {
+        "source": "prompt-1687991312103",
+        "sourceHandle": "prompt",
+        "target": "inspect-1687991312103",
+        "targetHandle": "input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-prompt-1687991312103prompt-inspect-1687991312103input"
+      },
+      {
+        "source": "prompt-1687991312103",
+        "sourceHandle": "prompt",
+        "target": "evalNode-1688076208304",
+        "targetHandle": "responseBatch",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-prompt-1687991312103prompt-evalNode-1688076208304responseBatch"
+      },
+      {
+        "source": "prompt-1687991312103",
+        "sourceHandle": "prompt",
+        "target": "promptNode-1688077033083",
+        "targetHandle": "context",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-prompt-1687991312103prompt-promptNode-1688077033083context"
+      },
+      {
+        "source": "textFieldsNode-1688305190489",
+        "sourceHandle": "output",
+        "target": "prompt-1687991312103",
+        "targetHandle": "book",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-textFieldsNode-1688305190489output-prompt-1687991312103book"
+      },
+      {
+        "source": "evalNode-1688076208304",
+        "sourceHandle": "output",
+        "target": "visNode-1688305530322",
+        "targetHandle": "input",
+        "interactionWidth": 100,
+        "markerEnd": {
+          "type": "arrow",
+          "width": "22px",
+          "height": "22px"
+        },
+        "id": "reactflow__edge-evalNode-1688076208304output-visNode-1688305530322input"
+      },
+      {
+        "source": "table-1735328737110",
+        "sourceHandle": "Book Title",
+        "target": "prompt-1687991312103",
+        "targetHandle": "book",
+        "interactionWidth": 40,
+        "markerEnd": {
+          "type": "arrow",
+          "width": 22,
+          "height": 22
+        },
+        "type": "default",
+        "id": "reactflow__edge-table-1735328737110Book Title-prompt-1687991312103book"
+      },
+      {
+        "source": "table-1735328737110",
+        "sourceHandle": "Author",
+        "target": "prompt-1687991312103",
+        "targetHandle": "author",
+        "interactionWidth": 40,
+        "markerEnd": {
+          "type": "arrow",
+          "width": 22,
+          "height": 22
+        },
+        "type": "default",
+        "id": "reactflow__edge-table-1735328737110Author-prompt-1687991312103author"
+      }
+    ],
+    "viewport": {
+      "x": 535,
+      "y": 91,
+      "zoom": 1
+    }
+  },
+  "cache": {
+    "prompt-1687991312103_1.json": {
+      "What is the opening sentence of Pride and Prejudice?": {
+        "prompt": "What is the opening sentence of Pride and Prejudice?",
+        "query": {
+          "temperature": 1,
+          "return_full_text": false,
+          "max_new_tokens": 250
+        },
+        "responses": [
+          "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife."
+        ],
+        "raw_response": [
+          {
+            "generated_text": "\nIt is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife."
+          }
+        ],
+        "llm": "Falcon.7b",
+        "info": {
+          "book": "Pride and Prejudice"
+        },
+        "metavars": {
+          "LLM_0": "Falcon.7b"
+        },
+        "uid": "c59dae73-b8ec-4ee5-94f0-dbc6714fc040"
+      },
+      "What is the opening sentence of Crime and Punishment?": {
+        "prompt": "What is the opening sentence of Crime and Punishment?",
+        "query": {
+          "temperature": 1,
+          "return_full_text": false,
+          "max_new_tokens": 250
+        },
+        "responses": [
+          "The opening sentence of Crime and Punishment is 'It was the best of times, it was the worst of times...'"
+        ],
+        "raw_response": [
+          {
+            "generated_text": "\nThe opening sentence of Crime and Punishment is 'It was the best of times, it was the worst of times...'"
+          }
+        ],
+        "llm": "Falcon.7b",
+        "info": {
+          "book": "Crime and Punishment"
+        },
+        "metavars": {
+          "LLM_0": "Falcon.7b"
+        },
+        "uid": "6d225c71-8d01-4e54-9a5f-c80f84148c02"
+      },
+      "What is the opening sentence of The Secret History?": {
+        "prompt": "What is the opening sentence of The Secret History?",
+        "query": {
+          "temperature": 1,
+          "return_full_text": false,
+          "max_new_tokens": 250
+        },
+        "responses": [
+          "The opening sentence of The Secret History is: 'The first time I saw her, she was standing in the middle of a circle of dead children.'"
+        ],
+        "raw_response": [
+          {
+            "generated_text": "\nThe opening sentence of The Secret History is: 'The first time I saw her, she was standing in the middle of a circle of dead children.'"
+          }
+        ],
+        "llm": "Falcon.7b",
+        "info": {
+          "book": "The Secret History"
+        },
+        "metavars": {
+          "LLM_0": "Falcon.7b"
+        },
+        "uid": "33373713-a0cf-474b-bc32-4d8c941ae23d"
+      },
+      "What is the opening sentence of Beloved?": {
+        "prompt": "What is the opening sentence of Beloved?",
+        "query": {
+          "temperature": 1,
+          "return_full_text": false,
+          "max_new_tokens": 250
+        },
+        "responses": [
+          "The opening sentence of Beloved is 'I am a bird in a cage.'"
+        ],
+        "raw_response": [
+          {
+            "generated_text": "\nThe opening sentence of Beloved is 'I am a bird in a cage.'"
+          }
+        ],
+        "llm": "Falcon.7b",
+        "info": {
+          "book": "Beloved"
+        },
+        "metavars": {
+          "LLM_0": "Falcon.7b"
+        },
+        "uid": "c4007e44-b10c-4d78-9c31-c74ffdb61f86"
+      },
+      "What is the opening sentence of Mistborn?": {
+        "prompt": "What is the opening sentence of Mistborn?",
+        "query": {
+          "temperature": 1,
+          "return_full_text": false,
+          "max_new_tokens": 250
+        },
+        "responses": [
+          "The opening sentence of Mistborn is 'The sun was setting, painting the sky with hues of red and gold.'"
+        ],
+        "raw_response": [
+          {
+            "generated_text": "\nThe opening sentence of Mistborn is 'The sun was setting, painting the sky with hues of red and gold.'"
+          }
+        ],
+        "llm": "Falcon.7b",
+        "info": {
+          "book": "Mistborn"
+        },
+        "metavars": {
+          "LLM_0": "Falcon.7b"
+        },
+        "uid": "12b5e4d4-df5e-4f7e-98dc-284a5531fdfb"
+      },
+      "What is the opening sentence of Pride and Prejudice by Jane Austen?": {
+        "prompt": "What is the opening sentence of Pride and Prejudice by Jane Austen?",
+        "query": {
+          "temperature": 1,
+          "return_full_text": false,
+          "max_new_tokens": 250
+        },
+        "responses": [
+          "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife."
+        ],
+        "raw_response": [
+          {
+            "generated_text": "\nIt is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife."
+          }
+        ],
+        "llm": "Falcon.7b",
+        "info": {
+          "book": "Pride and Prejudice by Jane Austen"
+        },
+        "metavars": {
+          "LLM_0": "Falcon.7b"
+        },
+        "uid": "299a7aad-1649-4602-b781-07d3b9eb0bf2"
+      },
+      "What is the opening sentence of Crime and Punishment by Dostoevsky?": {
+        "prompt": "What is the opening sentence of Crime and Punishment by Dostoevsky?",
+        "query": {
+          "temperature": 1,
+          "return_full_text": false,
+          "max_new_tokens": 250
+        },
+        "responses": [
+          "The opening sentence of Crime and Punishment by Dostoevsky is: 'It was a bright, sunny day in the middle of the summer, and the sun was shining through the window of the little room where Raskolnikov was sitting.'"
+        ],
+        "raw_response": [
+          {
+            "generated_text": "\nThe opening sentence of Crime and Punishment by Dostoevsky is: 'It was a bright, sunny day in the middle of the summer, and the sun was shining through the window of the little room where Raskolnikov was sitting.'"
+          }
+        ],
+        "llm": "Falcon.7b",
+        "info": {
+          "book": "Crime and Punishment by Dostoevsky"
+        },
+        "metavars": {
+          "LLM_0": "Falcon.7b"
+        },
+        "uid": "3c07e62f-c5ba-4ed6-a95c-a313f051904e"
+      },
+      "What is the opening sentence of The Secret History by Donna Tartt?": {
+        "prompt": "What is the opening sentence of The Secret History by Donna Tartt?",
+        "query": {
+          "temperature": 1,
+          "return_full_text": false,
+          "max_new_tokens": 250
+        },
+        "responses": [
+          "The opening sentence of The Secret History by Donna Tartt is: 'The first time I saw her, she was standing in the doorway of the house, the sun behind her, and I thought she was the most beautiful thing I had ever seen.'"
+        ],
+        "raw_response": [
+          {
+            "generated_text": "\nThe opening sentence of The Secret History by Donna Tartt is: 'The first time I saw her, she was standing in the doorway of the house, the sun behind her, and I thought she was the most beautiful thing I had ever seen.'"
+          }
+        ],
+        "llm": "Falcon.7b",
+        "info": {
+          "book": "The Secret History by Donna Tartt"
+        },
+        "metavars": {
+          "LLM_0": "Falcon.7b"
+        },
+        "uid": "2d636ad5-ae37-4ed0-bb27-b6eb0f175adb"
+      },
+      "What is the opening sentence of Beloved by Toni Morrison?": {
+        "prompt": "What is the opening sentence of Beloved by Toni Morrison?",
+        "query": {
+          "temperature": 1,
+          "return_full_text": false,
+          "max_new_tokens": 250
+        },
+        "responses": [
+          "The opening sentence of Beloved by Toni Morrison is: 'Beloved, I am writing to tell you I am thinking of you.'"
+        ],
+        "raw_response": [
+          {
+            "generated_text": "\nThe opening sentence of Beloved by Toni Morrison is: 'Beloved, I am writing to tell you I am thinking of you.'"
+          }
+        ],
+        "llm": "Falcon.7b",
+        "info": {
+          "book": "Beloved by Toni Morrison"
+        },
+        "metavars": {
+          "LLM_0": "Falcon.7b"
+        },
+        "uid": "18d3aa97-d438-4869-82b1-240df9ab9ce8"
+      },
+      "What is the opening sentence of Mistborn by Brandon Sanderson?": {
+        "prompt": "What is the opening sentence of Mistborn by Brandon Sanderson?",
+        "query": {
+          "temperature": 1,
+          "return_full_text": false,
+          "max_new_tokens": 250
+        },
+        "responses": [
+          "The opening sentence of Mistborn by Brandon Sanderson is: 'The sun was setting, painting the sky with hues of red and gold, casting long shadows across the city of Luthadel.'"
+        ],
+        "raw_response": [
+          {
+            "generated_text": "\nThe opening sentence of Mistborn by Brandon Sanderson is: 'The sun was setting, painting the sky with hues of red and gold, casting long shadows across the city of Luthadel.'"
+          }
+        ],
+        "llm": "Falcon.7b",
+        "info": {
+          "book": "Mistborn by Brandon Sanderson"
+        },
+        "metavars": {
+          "LLM_0": "Falcon.7b"
+        },
+        "uid": "e70cc3ea-e217-4e45-9e41-6d1d54bfd5fd"
+      },
+      "What is the opening sentence of The Poppy War by R.F.Kuang?": {
+        "prompt": "What is the opening sentence of The Poppy War by R.F.Kuang?",
+        "query": {
+          "temperature": 1,
+          "return_full_text": false,
+          "max_new_tokens": 250
+        },
+        "responses": [
+          "The world of the Poppy War is one of magic and war, where the fate of nations rests on the shoulders of a single girl."
+        ],
+        "raw_response": [
+          {
+            "generated_text": "\nThe world of the Poppy War is one of magic and war, where the fate of nations rests on the shoulders of a single girl."
+          }
+        ],
+        "llm": "Falcon.7b",
+        "info": {
+          "book": "The Poppy War by R.F.Kuang"
+        },
+        "metavars": {
+          "LLM_0": "Falcon.7b"
+        },
+        "uid": "6b657ae0-3a92-4ce9-98c4-813183b1021e"
+      },
+      "What is the opening sentence of Twilight by Stephenie Meyer?": [
+        {
+          "prompt": "What is the opening sentence of Twilight by Stephenie Meyer?",
+          "query": {
+            "temperature": 1,
+            "max_new_tokens": 250,
+            "return_full_text": false
+          },
+          "uid": "8912f56d-4fa8-4275-a1da-8d4cf38d8629",
+          "responses": [
+            "The opening sentence of Twilight by Stephenie Meyer is 'It was a dark and stormy night.'"
+          ],
+          "raw_response": [
+            {
+              "generated_text": "\nThe opening sentence of Twilight by Stephenie Meyer is 'It was a dark and stormy night.'"
+            }
+          ],
+          "llm": "Falcon.7b",
+          "vars": {
+            "book": "Twilight",
+            "author": "Stephenie Meyer"
+          },
+          "metavars": {
+            "Book Title": "Twilight",
+            "Author": "Stephenie Meyer",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          }
+        }
+      ],
+      "What is the opening sentence of The Poppy War by R.F. Kuang?": [
+        {
+          "prompt": "What is the opening sentence of The Poppy War by R.F. Kuang?",
+          "query": {
+            "temperature": 1,
+            "max_new_tokens": 250,
+            "return_full_text": false
+          },
+          "uid": "f2c15188-ef4f-487c-8c70-a04408a3a8d8",
+          "responses": [
+            "The world of the Poppy War is one of magic and war, where the fate of nations rests on the shoulders of a single girl."
+          ],
+          "raw_response": [
+            {
+              "generated_text": "\nThe world of the Poppy War is one of magic and war, where the fate of nations rests on the shoulders of a single girl."
+            }
+          ],
+          "llm": "Falcon.7b",
+          "vars": {
+            "book": "The Poppy War",
+            "author": "R.F. Kuang"
+          },
+          "metavars": {
+            "Book Title": "The Poppy War",
+            "Author": "R.F. Kuang",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          }
+        }
+      ],
+      "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?": [
+        {
+          "prompt": "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?",
+          "query": {
+            "temperature": 1,
+            "max_new_tokens": 250,
+            "return_full_text": false
+          },
+          "uid": "b60ef7a6-2fd8-450d-b746-10ce0ab9a164",
+          "responses": [
+            "The opening sentence of A Wrinkle in Time by Madeleine L'Engle is: 'It was a dark and stormy night.'"
+          ],
+          "raw_response": [
+            {
+              "generated_text": "\nThe opening sentence of A Wrinkle in Time by Madeleine L'Engle is: 'It was a dark and stormy night.'"
+            }
+          ],
+          "llm": "Falcon.7b",
+          "vars": {
+            "book": "A Wrinkle in Time",
+            "author": "Madeleine L'Engle"
+          },
+          "metavars": {
+            "Book Title": "A Wrinkle in Time",
+            "Author": "Madeleine L'Engle",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          }
+        }
+      ],
+      "What is the opening sentence of The Stranger by Albert Camus?": [
+        {
+          "prompt": "What is the opening sentence of The Stranger by Albert Camus?",
+          "query": {
+            "temperature": 1,
+            "max_new_tokens": 250,
+            "return_full_text": false
+          },
+          "uid": "5d719ad4-78a3-44ae-a8a6-cfa152a4875b",
+          "responses": [
+            "The opening sentence of The Stranger by Albert Camus is: 'I was walking on the beach when I saw a figure in the distance.'"
+          ],
+          "raw_response": [
+            {
+              "generated_text": "\nThe opening sentence of The Stranger by Albert Camus is: 'I was walking on the beach when I saw a figure in the distance.'"
+            }
+          ],
+          "llm": "Falcon.7b",
+          "vars": {
+            "book": "The Stranger",
+            "author": "Albert Camus"
+          },
+          "metavars": {
+            "Book Title": "The Stranger",
+            "Author": "Albert Camus",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          }
+        }
+      ]
+    },
+    "prompt-1687991312103_2.json": {
+      "What is the opening sentence of Beloved by Toni Morrison?": {
+        "prompt": "What is the opening sentence of Beloved by Toni Morrison?",
+        "query": {
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "temperature": 1,
+          "top_p": 1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "What is the opening sentence of Beloved by Toni Morrison?"
+            }
+          ]
+        },
+        "responses": [
+          "\"124 was spiteful.\""
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7XrfW9dyolVbol1CcegRyjPTvf0gF",
+          "object": "chat.completion",
+          "created": 1688305482,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "\"124 was spiteful.\""
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 29,
+            "completion_tokens": 6,
+            "total_tokens": 35
+          }
+        },
+        "llm": "ChatGPT",
+        "info": {
+          "book": "Beloved by Toni Morrison"
+        },
+        "metavars": {
+          "LLM_0": "ChatGPT"
+        },
+        "uid": "385b11e0-1a8f-4df5-a4d0-3d38a98f765d"
+      },
+      "What is the opening sentence of Mistborn by Brandon Sanderson?": {
+        "prompt": "What is the opening sentence of Mistborn by Brandon Sanderson?",
+        "query": {
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "temperature": 1,
+          "top_p": 1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "What is the opening sentence of Mistborn by Brandon Sanderson?"
+            }
+          ]
+        },
+        "responses": [
+          "\"The mists come at night.\""
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7XrfWMImafidgqDxLAX5GcRAwSsTC",
+          "object": "chat.completion",
+          "created": 1688305482,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "\"The mists come at night.\""
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 30,
+            "completion_tokens": 7,
+            "total_tokens": 37
+          }
+        },
+        "llm": "ChatGPT",
+        "info": {
+          "book": "Mistborn by Brandon Sanderson"
+        },
+        "metavars": {
+          "LLM_0": "ChatGPT"
+        },
+        "uid": "3307c9d5-a40e-40ac-a915-21173abe45b7"
+      },
+      "What is the opening sentence of Pride and Prejudice by Jane Austen?": {
+        "prompt": "What is the opening sentence of Pride and Prejudice by Jane Austen?",
+        "query": {
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "temperature": 1,
+          "top_p": 1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "What is the opening sentence of Pride and Prejudice by Jane Austen?"
+            }
+          ]
+        },
+        "responses": [
+          "\"It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\""
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7XrfWae55kYw1y1jS2Gj0MN846RJq",
+          "object": "chat.completion",
+          "created": 1688305482,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "\"It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\""
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 33,
+            "completion_tokens": 26,
+            "total_tokens": 59
+          }
+        },
+        "llm": "ChatGPT",
+        "info": {
+          "book": "Pride and Prejudice by Jane Austen"
+        },
+        "metavars": {
+          "LLM_0": "ChatGPT"
+        },
+        "uid": "dc2c1cea-5c69-42cf-b176-62fa8fac3698"
+      },
+      "What is the opening sentence of The Secret History by Donna Tartt?": {
+        "prompt": "What is the opening sentence of The Secret History by Donna Tartt?",
+        "query": {
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "temperature": 1,
+          "top_p": 1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "What is the opening sentence of The Secret History by Donna Tartt?"
+            }
+          ]
+        },
+        "responses": [
+          "\"The"
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7XrfWFcNzp3CsiRzvm2nqfWKsgJMd",
+          "object": "chat.completion",
+          "created": 1688305482,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "\"The"
+              },
+              "finish_reason": "content_filter"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 31,
+            "completion_tokens": 1,
+            "total_tokens": 32
+          }
+        },
+        "llm": "ChatGPT",
+        "info": {
+          "book": "The Secret History by Donna Tartt"
+        },
+        "metavars": {
+          "LLM_0": "ChatGPT"
+        },
+        "uid": "125a6853-4dad-4b2a-aab5-77c05a28804a"
+      },
+      "What is the opening sentence of Crime and Punishment by Dostoevsky?": {
+        "prompt": "What is the opening sentence of Crime and Punishment by Dostoevsky?",
+        "query": {
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "temperature": 1,
+          "top_p": 1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "What is the opening sentence of Crime and Punishment by Dostoevsky?"
+            }
+          ]
+        },
+        "responses": [
+          "The opening sentence of \"Crime and Punishment\" by Fyodor Dostoevsky is: \"On an exceptionally hot evening early in July, a young man came out of the garret in which he lodged in S. Place and walked slowly, as though in hesitation, towards K. bridge.\""
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7XrfWQjVJ8GqPtkRkXTN7F1RdbLfK",
+          "object": "chat.completion",
+          "created": 1688305482,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The opening sentence of \"Crime and Punishment\" by Fyodor Dostoevsky is: \"On an exceptionally hot evening early in July, a young man came out of the garret in which he lodged in S. Place and walked slowly, as though in hesitation, towards K. bridge.\""
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 34,
+            "completion_tokens": 62,
+            "total_tokens": 96
+          }
+        },
+        "llm": "ChatGPT",
+        "info": {
+          "book": "Crime and Punishment by Dostoevsky"
+        },
+        "metavars": {
+          "LLM_0": "ChatGPT"
+        },
+        "uid": "2a6fa167-cfd6-4299-9f89-30125674fc44"
+      },
+      "What is the opening sentence of The Poppy War by R.F.Kuang?": {
+        "prompt": "What is the opening sentence of The Poppy War by R.F.Kuang?",
+        "query": {
+          "model": "gpt-3.5-turbo",
+          "n": 1,
+          "temperature": 1,
+          "top_p": 1,
+          "presence_penalty": 0,
+          "frequency_penalty": 0,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user",
+              "content": "What is the opening sentence of The Poppy War by R.F.Kuang?"
+            }
+          ]
+        },
+        "responses": [
+          "\"The fishing village of Tikany was made of white stone, its streets narrow and ascending, paved with flat stones that clicked beneath Rin's sandals as she followed Altan up the path toward the burning pyres.\""
+        ],
+        "raw_response": {
+          "id": "chatcmpl-7XrhHkye6bZftKm88SIh1qzbTpY7x",
+          "object": "chat.completion",
+          "created": 1688305591,
+          "model": "gpt-3.5-turbo-0613",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "\"The fishing village of Tikany was made of white stone, its streets narrow and ascending, paved with flat stones that clicked beneath Rin's sandals as she followed Altan up the path toward the burning pyres.\""
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 33,
+            "completion_tokens": 42,
+            "total_tokens": 75
+          }
+        },
+        "llm": "ChatGPT",
+        "info": {
+          "book": "The Poppy War by R.F.Kuang"
+        },
+        "metavars": {
+          "LLM_0": "ChatGPT"
+        },
+        "uid": "28769b13-4e6e-4afa-bb68-7421c39e01ea"
+      },
+      "What is the opening sentence of The Poppy War by R.F. Kuang?": [
+        {
+          "prompt": "What is the opening sentence of The Poppy War by R.F. Kuang?",
+          "query": {
+            "model": "gpt-3.5-turbo",
+            "n": 1,
+            "temperature": 1,
+            "top_p": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "messages": [
+              {
+                "role": "system",
+                "content": "You are a helpful assistant."
+              },
+              {
+                "role": "user",
+                "content": "What is the opening sentence of The Poppy War by R.F. Kuang?"
+              }
+            ]
+          },
+          "uid": "703c4f48-958f-4e84-af5a-b00abf4a997a",
+          "responses": [
+            "I'm sorry, but I can't provide verbatim excerpts from copyrighted texts. Would you like a brief summary or information about the book instead?"
+          ],
+          "raw_response": {
+            "id": "chatcmpl-AjAc9wGd9MkcCHjgc9ZhGC1RujD5F",
+            "object": "chat.completion",
+            "created": 1735328925,
+            "model": "gpt-3.5-turbo-0125",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "I'm sorry, but I can't provide verbatim excerpts from copyrighted texts. Would you like a brief summary or information about the book instead?",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 34,
+              "completion_tokens": 30,
+              "total_tokens": 64,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "audio_tokens": 0
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0
+              }
+            },
+            "system_fingerprint": null
+          },
+          "llm": "ChatGPT",
+          "vars": {
+            "book": "The Poppy War",
+            "author": "R.F. Kuang"
+          },
+          "metavars": {
+            "Book Title": "The Poppy War",
+            "Author": "R.F. Kuang",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          }
+        }
+      ],
+      "What is the opening sentence of Twilight by Stephenie Meyer?": [
+        {
+          "prompt": "What is the opening sentence of Twilight by Stephenie Meyer?",
+          "query": {
+            "model": "gpt-3.5-turbo",
+            "n": 1,
+            "temperature": 1,
+            "top_p": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "messages": [
+              {
+                "role": "system",
+                "content": "You are a helpful assistant."
+              },
+              {
+                "role": "user",
+                "content": "What is the opening sentence of Twilight by Stephenie Meyer?"
+              }
+            ]
+          },
+          "uid": "5f2cf32a-22c4-49b2-8cea-f3f1b6fa030e",
+          "responses": [
+            "The opening sentence of \"Twilight\" by Stephenie Meyer is: \"I'd never given much thought to how I would die - though I'd had reason enough in the last few months - but even if I had, I would not have imagined it like this.\""
+          ],
+          "raw_response": {
+            "id": "chatcmpl-AjAc9DPL94DSL3Wmd7wZzJjMTWtau",
+            "object": "chat.completion",
+            "created": 1735328925,
+            "model": "gpt-3.5-turbo-0125",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "The opening sentence of \"Twilight\" by Stephenie Meyer is: \"I'd never given much thought to how I would die - though I'd had reason enough in the last few months - but even if I had, I would not have imagined it like this.\"",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 29,
+              "completion_tokens": 55,
+              "total_tokens": 84,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "audio_tokens": 0
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0
+              }
+            },
+            "system_fingerprint": null
+          },
+          "llm": "ChatGPT",
+          "vars": {
+            "book": "Twilight",
+            "author": "Stephenie Meyer"
+          },
+          "metavars": {
+            "Book Title": "Twilight",
+            "Author": "Stephenie Meyer",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          }
+        }
+      ],
+      "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?": [
+        {
+          "prompt": "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?",
+          "query": {
+            "model": "gpt-3.5-turbo",
+            "n": 1,
+            "temperature": 1,
+            "top_p": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "messages": [
+              {
+                "role": "system",
+                "content": "You are a helpful assistant."
+              },
+              {
+                "role": "user",
+                "content": "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?"
+              }
+            ]
+          },
+          "uid": "35579a76-4d04-436a-9a10-ce96ec0fcaad",
+          "responses": [
+            "The opening sentence of \"A Wrinkle in Time\" by Madeleine L'Engle is: \"It was a dark and stormy night.\""
+          ],
+          "raw_response": {
+            "id": "chatcmpl-AjAcwiNU6XxYURXKUeMrSOLLjMYDw",
+            "object": "chat.completion",
+            "created": 1735328974,
+            "model": "gpt-3.5-turbo-0125",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "The opening sentence of \"A Wrinkle in Time\" by Madeleine L'Engle is: \"It was a dark and stormy night.\"",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 36,
+              "completion_tokens": 31,
+              "total_tokens": 67,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "audio_tokens": 0
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0
+              }
+            },
+            "system_fingerprint": null
+          },
+          "llm": "ChatGPT",
+          "vars": {
+            "book": "A Wrinkle in Time",
+            "author": "Madeleine L'Engle"
+          },
+          "metavars": {
+            "Book Title": "A Wrinkle in Time",
+            "Author": "Madeleine L'Engle",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          }
+        }
+      ],
+      "What is the opening sentence of The Stranger by Albert Camus?": [
+        {
+          "prompt": "What is the opening sentence of The Stranger by Albert Camus?",
+          "query": {
+            "model": "gpt-3.5-turbo",
+            "n": 1,
+            "temperature": 1,
+            "top_p": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "messages": [
+              {
+                "role": "system",
+                "content": "You are a helpful assistant."
+              },
+              {
+                "role": "user",
+                "content": "What is the opening sentence of The Stranger by Albert Camus?"
+              }
+            ]
+          },
+          "uid": "49b5e0e3-d19f-4dd6-bbbd-6387b754d29f",
+          "responses": [
+            "The opening sentence of \"The Stranger\" by Albert Camus is: \"Maman died today.\""
+          ],
+          "raw_response": {
+            "id": "chatcmpl-AjAcwAwgHkNSWn06tfADApz2K8jGE",
+            "object": "chat.completion",
+            "created": 1735328974,
+            "model": "gpt-3.5-turbo-0125",
+            "choices": [
+              {
+                "index": 0,
+                "message": {
+                  "role": "assistant",
+                  "content": "The opening sentence of \"The Stranger\" by Albert Camus is: \"Maman died today.\"",
+                  "refusal": null
+                },
+                "logprobs": null,
+                "finish_reason": "stop"
+              }
+            ],
+            "usage": {
+              "prompt_tokens": 30,
+              "completion_tokens": 21,
+              "total_tokens": 51,
+              "prompt_tokens_details": {
+                "cached_tokens": 0,
+                "audio_tokens": 0
+              },
+              "completion_tokens_details": {
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0
+              }
+            },
+            "system_fingerprint": null
+          },
+          "llm": "ChatGPT",
+          "vars": {
+            "book": "The Stranger",
+            "author": "Albert Camus"
+          },
+          "metavars": {
+            "Book Title": "The Stranger",
+            "Author": "Albert Camus",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          }
+        }
+      ]
+    },
+    "prompt-1687991312103_3.json": {
+      "What is the opening sentence of Mistborn by Brandon Sanderson?": [
+        {
+          "prompt": "What is the opening sentence of Mistborn by Brandon Sanderson?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "What is the opening sentence of Mistborn by Brandon Sanderson?"
+              }
+            ]
+          },
+          "uid": "6d0d803c-4409-45ee-8218-53a424f77b35",
+          "responses": [
+            "The opening sentence of Mistborn: The Final Empire is: \"Ash fell from the sky.\""
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "The opening sentence of Mistborn: The Final Empire is: \"Ash fell from the sky.\"",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_014xXtEX7f1xVnS5zWoR9jRJ",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 23,
+                "output_tokens": 24
+              }
+            }
+          ],
+          "llm": "Claude-Haiku",
+          "vars": {
+            "book": "Mistborn",
+            "author": "Brandon Sanderson"
+          },
+          "metavars": {
+            "Book Title": "Mistborn",
+            "Author": "Brandon Sanderson",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          }
+        }
+      ],
+      "What is the opening sentence of Beloved by Toni Morrison?": [
+        {
+          "prompt": "What is the opening sentence of Beloved by Toni Morrison?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "What is the opening sentence of Beloved by Toni Morrison?"
+              }
+            ]
+          },
+          "uid": "2757e1bd-1f0f-4b3b-a904-8ba2f12198ba",
+          "responses": [
+            "The opening sentence of Toni Morrison's novel \"Beloved\" is: \"124 was spiteful.\""
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "The opening sentence of Toni Morrison's novel \"Beloved\" is: \"124 was spiteful.\"",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01BMA6taHEjAYmcLpEd6Q7f4",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 22,
+                "output_tokens": 27
+              }
+            }
+          ],
+          "llm": "Claude-Haiku",
+          "vars": {
+            "book": "Beloved",
+            "author": "Toni Morrison"
+          },
+          "metavars": {
+            "Book Title": "Beloved",
+            "Author": "Toni Morrison",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          }
+        }
+      ],
+      "What is the opening sentence of Pride and Prejudice by Jane Austen?": [
+        {
+          "prompt": "What is the opening sentence of Pride and Prejudice by Jane Austen?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "What is the opening sentence of Pride and Prejudice by Jane Austen?"
+              }
+            ]
+          },
+          "uid": "80871277-f82c-4140-8227-1c4d43b62db6",
+          "responses": [
+            "The opening sentence of Pride and Prejudice is: \"It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\""
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "The opening sentence of Pride and Prejudice is: \"It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\"",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01WRF38vLuNeTLaXKFEx6zvG",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 25,
+                "output_tokens": 42
+              }
+            }
+          ],
+          "llm": "Claude-Haiku",
+          "vars": {
+            "book": "Pride and Prejudice",
+            "author": "Jane Austen"
+          },
+          "metavars": {
+            "Book Title": "Pride and Prejudice",
+            "Author": "Jane Austen",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          }
+        }
+      ],
+      "What is the opening sentence of Twilight by Stephenie Meyer?": [
+        {
+          "prompt": "What is the opening sentence of Twilight by Stephenie Meyer?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "What is the opening sentence of Twilight by Stephenie Meyer?"
+              }
+            ]
+          },
+          "uid": "a6056955-ba1b-46b4-aea5-a9625212832d",
+          "responses": [
+            "The opening sentence of Twilight by Stephenie Meyer is: \"My mother drove me to the airport with the windows rolled down.\""
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "The opening sentence of Twilight by Stephenie Meyer is: \"My mother drove me to the airport with the windows rolled down.\"",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01EEXswy1gioDtUb8ow9y3dx",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 23,
+                "output_tokens": 31
+              }
+            }
+          ],
+          "llm": "Claude-Haiku",
+          "vars": {
+            "book": "Twilight",
+            "author": "Stephenie Meyer"
+          },
+          "metavars": {
+            "Book Title": "Twilight",
+            "Author": "Stephenie Meyer",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          }
+        }
+      ],
+      "What is the opening sentence of The Poppy War by R.F. Kuang?": [
+        {
+          "prompt": "What is the opening sentence of The Poppy War by R.F. Kuang?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "What is the opening sentence of The Poppy War by R.F. Kuang?"
+              }
+            ]
+          },
+          "uid": "06131699-c8b6-4d7a-aae1-cc885cd4ac5b",
+          "responses": [
+            "The opening sentence of \"The Poppy War\" by R.F. Kuang is: \"Take the exam.\" However, to avoid reproducing copyrighted material, I'll refrain from quoting further from the text."
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "The opening sentence of \"The Poppy War\" by R.F. Kuang is: \"Take the exam.\" However, to avoid reproducing copyrighted material, I'll refrain from quoting further from the text.",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01NdcUzLVJMQGVjgbPB3Dx78",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 28,
+                "output_tokens": 52
+              }
+            }
+          ],
+          "llm": "Claude-Haiku",
+          "vars": {
+            "book": "The Poppy War",
+            "author": "R.F. Kuang"
+          },
+          "metavars": {
+            "Book Title": "The Poppy War",
+            "Author": "R.F. Kuang",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          }
+        }
+      ],
+      "What is the opening sentence of The Secret History by Donna Tartt?": [
+        {
+          "prompt": "What is the opening sentence of The Secret History by Donna Tartt?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "What is the opening sentence of The Secret History by Donna Tartt?"
+              }
+            ]
+          },
+          "uid": "618316e4-d300-4285-95b7-28c89d2eb89a",
+          "responses": [
+            "The opening sentence of The Secret History by Donna Tartt is: \"The snow in the mountains was perfect the day I arrived.\""
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "The opening sentence of The Secret History by Donna Tartt is: \"The snow in the mountains was perfect the day I arrived.\"",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01MzEwY1vbsgj4njbuGPS6Jm",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 24,
+                "output_tokens": 31
+              }
+            }
+          ],
+          "llm": "Claude-Haiku",
+          "vars": {
+            "book": "The Secret History",
+            "author": "Donna Tartt"
+          },
+          "metavars": {
+            "Book Title": "The Secret History",
+            "Author": "Donna Tartt",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          }
+        }
+      ],
+      "What is the opening sentence of The Stranger by Albert Camus?": [
+        {
+          "prompt": "What is the opening sentence of The Stranger by Albert Camus?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "What is the opening sentence of The Stranger by Albert Camus?"
+              }
+            ]
+          },
+          "uid": "db8c4c06-d282-4482-9895-5076a92a63f9",
+          "responses": [
+            "The opening sentence of Albert Camus' novel \"The Stranger\" is: \"Mother died today.\" (In the original French: \"Aujourd'hui, maman est morte.\")"
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "The opening sentence of Albert Camus' novel \"The Stranger\" is: \"Mother died today.\" (In the original French: \"Aujourd'hui, maman est morte.\")",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01EiAT5nHYTxNNvtsEQmaWe1",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 23,
+                "output_tokens": 42
+              }
+            }
+          ],
+          "llm": "Claude-Haiku",
+          "vars": {
+            "book": "The Stranger",
+            "author": "Albert Camus"
+          },
+          "metavars": {
+            "Book Title": "The Stranger",
+            "Author": "Albert Camus",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          }
+        }
+      ],
+      "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?": [
+        {
+          "prompt": "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?"
+              }
+            ]
+          },
+          "uid": "1ae3203f-15c1-43d5-bb3f-84a199addd92",
+          "responses": [
+            "The opening sentence of A Wrinkle in Time is: \"It was a dark and stormy night.\"\n\nThis famous first line has become quite well-known in children's literature and sets the stage for the story of Meg Murry's extraordinary adventure."
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "The opening sentence of A Wrinkle in Time is: \"It was a dark and stormy night.\"\n\nThis famous first line has become quite well-known in children's literature and sets the stage for the story of Meg Murry's extraordinary adventure.",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_015DzKK6WAaxUe4xzLNSBGZJ",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 32,
+                "output_tokens": 58
+              }
+            }
+          ],
+          "llm": "Claude-Haiku",
+          "vars": {
+            "book": "A Wrinkle in Time",
+            "author": "Madeleine L'Engle"
+          },
+          "metavars": {
+            "Book Title": "A Wrinkle in Time",
+            "Author": "Madeleine L'Engle",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          }
+        }
+      ],
+      "What is the opening sentence of Crime and Punishment by Dostoevsky?": [
+        {
+          "prompt": "What is the opening sentence of Crime and Punishment by Dostoevsky?",
+          "query": {
+            "model": "claude-3-5-haiku-latest",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "temperature": 1,
+            "top_k": -1,
+            "top_p": -1,
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "role": "user",
+                "content": "What is the opening sentence of Crime and Punishment by Dostoevsky?"
+              }
+            ]
+          },
+          "uid": "edf0d43d-7fc9-4b4b-855c-ec278b535164",
+          "responses": [
+            "The opening sentence of Fyodor Dostoevsky's \"Crime and Punishment\" is: \"On an exceptionally hot evening early in July a young man came out of the garret in which he lodged in S—— Lane and walked slowly, as though in hesitation, towards K—— Bridge.\""
+          ],
+          "raw_response": [
+            {
+              "content": [
+                {
+                  "text": "The opening sentence of Fyodor Dostoevsky's \"Crime and Punishment\" is: \"On an exceptionally hot evening early in July a young man came out of the garret in which he lodged in S—— Lane and walked slowly, as though in hesitation, towards K—— Bridge.\"",
+                  "type": "text"
+                }
+              ],
+              "id": "msg_01FToQXWT2GFKqdxdmoGx3AN",
+              "model": "claude-3-5-haiku-20241022",
+              "role": "assistant",
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "input_tokens": 25,
+                "output_tokens": 70
+              }
+            }
+          ],
+          "llm": "Claude-Haiku",
+          "vars": {
+            "book": "Crime and Punishment",
+            "author": "Dostoevsky"
+          },
+          "metavars": {
+            "Book Title": "Crime and Punishment",
+            "Author": "Dostoevsky",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          }
+        }
+      ]
+    },
+    "prompt-1687991312103.json": {
+      "cache_files": {
+        "prompt-1687991312103_1.json": {
+          "key": "06fd174b-ae9a-45bd-a474-55ad36d9a7b3",
+          "name": "Falcon.7b",
+          "emoji": "🤗",
+          "model": "tiiuae/falcon-7b-instruct",
+          "base_model": "hf",
+          "temp": 1,
+          "settings": {
+            "custom_model": "",
+            "temperature": 1,
+            "num_continuations": 0,
+            "top_k": -1,
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
+          },
+          "formData": {
+            "shortname": "Falcon.7b",
+            "model": "tiiuae/falcon-7b-instruct",
+            "custom_model": "",
+            "temperature": 1,
+            "num_continuations": 0,
+            "top_k": -1,
+            "top_p": -1,
+            "repetition_penalty": -1,
+            "max_new_tokens": 250,
+            "do_sample": true,
+            "use_cache": false
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt-1687991312103_2.json": {
+          "key": "12ec9c5d-f430-4af2-a631-94c86fd4a748",
+          "name": "ChatGPT",
+          "emoji": "🤖",
+          "model": "gpt-3.5-turbo",
+          "base_model": "gpt-3.5-turbo",
+          "temp": 1,
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "functions": [],
+            "function_call": "",
+            "top_p": 1,
+            "stop": [],
+            "presence_penalty": 0,
+            "frequency_penalty": 0
+          },
+          "formData": {
+            "shortname": "ChatGPT",
+            "model": "gpt-3.5-turbo",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 1,
+            "functions": "",
+            "function_call": "",
+            "top_p": 1,
+            "stop": "",
+            "presence_penalty": 0,
+            "frequency_penalty": 0
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt-1687991312103_3.json": {
+          "key": "0e7a4480-dfd6-4edf-8a89-e471aebf751c",
+          "name": "Claude-Haiku",
+          "emoji": "📚",
+          "model": "claude-3-5-haiku-latest",
+          "base_model": "claude-v1",
+          "temp": 0.5,
+          "settings": {
+            "system_msg": "",
+            "temperature": 1,
+            "tools": [],
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": [
+              "\n\nHuman:"
+            ],
+            "top_k": -1,
+            "top_p": -1
+          },
+          "formData": {
+            "shortname": "Claude-Haiku",
+            "model": "claude-3-5-haiku-latest",
+            "system_msg": "",
+            "temperature": 1,
+            "tools": "",
+            "tool_choice": "",
+            "parallel_tool_calls": true,
+            "max_tokens_to_sample": 1024,
+            "custom_prompt_wrapper": "",
+            "stop_sequences": "\"\n\nHuman:\"",
+            "top_k": -1,
+            "top_p": -1
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        }
+      },
+      "responses_last_run": [
+        {
+          "vars": {
+            "book": "Pride and Prejudice",
+            "author": "Jane Austen"
+          },
+          "metavars": {
+            "Book Title": "Pride and Prejudice",
+            "Author": "Jane Austen",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          },
+          "llm": "Falcon.7b",
+          "prompt": "What is the opening sentence of Pride and Prejudice by Jane Austen?",
+          "responses": [
+            "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife."
+          ],
+          "uid": "299a7aad-1649-4602-b781-07d3b9eb0bf2"
+        },
+        {
+          "vars": {
+            "book": "Pride and Prejudice",
+            "author": "Jane Austen"
+          },
+          "metavars": {
+            "Book Title": "Pride and Prejudice",
+            "Author": "Jane Austen",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          },
+          "llm": "ChatGPT",
+          "prompt": "What is the opening sentence of Pride and Prejudice by Jane Austen?",
+          "responses": [
+            "\"It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\""
+          ],
+          "uid": "dc2c1cea-5c69-42cf-b176-62fa8fac3698"
+        },
+        {
+          "vars": {
+            "book": "Pride and Prejudice",
+            "author": "Jane Austen"
+          },
+          "metavars": {
+            "Book Title": "Pride and Prejudice",
+            "Author": "Jane Austen",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          },
+          "llm": "Claude-Haiku",
+          "prompt": "What is the opening sentence of Pride and Prejudice by Jane Austen?",
+          "responses": [
+            "The opening sentence of Pride and Prejudice is: \"It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\""
+          ],
+          "uid": "80871277-f82c-4140-8227-1c4d43b62db6"
+        },
+        {
+          "vars": {
+            "book": "The Secret History",
+            "author": "Donna Tartt"
+          },
+          "metavars": {
+            "Book Title": "The Secret History",
+            "Author": "Donna Tartt",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          },
+          "llm": "Falcon.7b",
+          "prompt": "What is the opening sentence of The Secret History by Donna Tartt?",
+          "responses": [
+            "The opening sentence of The Secret History by Donna Tartt is: 'The first time I saw her, she was standing in the doorway of the house, the sun behind her, and I thought she was the most beautiful thing I had ever seen.'"
+          ],
+          "uid": "2d636ad5-ae37-4ed0-bb27-b6eb0f175adb"
+        },
+        {
+          "vars": {
+            "book": "The Secret History",
+            "author": "Donna Tartt"
+          },
+          "metavars": {
+            "Book Title": "The Secret History",
+            "Author": "Donna Tartt",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          },
+          "llm": "ChatGPT",
+          "prompt": "What is the opening sentence of The Secret History by Donna Tartt?",
+          "responses": [
+            "\"The"
+          ],
+          "uid": "125a6853-4dad-4b2a-aab5-77c05a28804a"
+        },
+        {
+          "vars": {
+            "book": "The Secret History",
+            "author": "Donna Tartt"
+          },
+          "metavars": {
+            "Book Title": "The Secret History",
+            "Author": "Donna Tartt",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          },
+          "llm": "Claude-Haiku",
+          "prompt": "What is the opening sentence of The Secret History by Donna Tartt?",
+          "responses": [
+            "The opening sentence of The Secret History by Donna Tartt is: \"The snow in the mountains was perfect the day I arrived.\""
+          ],
+          "uid": "618316e4-d300-4285-95b7-28c89d2eb89a"
+        },
+        {
+          "vars": {
+            "book": "Beloved",
+            "author": "Toni Morrison"
+          },
+          "metavars": {
+            "Book Title": "Beloved",
+            "Author": "Toni Morrison",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          },
+          "llm": "Falcon.7b",
+          "prompt": "What is the opening sentence of Beloved by Toni Morrison?",
+          "responses": [
+            "The opening sentence of Beloved by Toni Morrison is: 'Beloved, I am writing to tell you I am thinking of you.'"
+          ],
+          "uid": "18d3aa97-d438-4869-82b1-240df9ab9ce8"
+        },
+        {
+          "vars": {
+            "book": "Beloved",
+            "author": "Toni Morrison"
+          },
+          "metavars": {
+            "Book Title": "Beloved",
+            "Author": "Toni Morrison",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          },
+          "llm": "ChatGPT",
+          "prompt": "What is the opening sentence of Beloved by Toni Morrison?",
+          "responses": [
+            "\"124 was spiteful.\""
+          ],
+          "uid": "385b11e0-1a8f-4df5-a4d0-3d38a98f765d"
+        },
+        {
+          "vars": {
+            "book": "Beloved",
+            "author": "Toni Morrison"
+          },
+          "metavars": {
+            "Book Title": "Beloved",
+            "Author": "Toni Morrison",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          },
+          "llm": "Claude-Haiku",
+          "prompt": "What is the opening sentence of Beloved by Toni Morrison?",
+          "responses": [
+            "The opening sentence of Toni Morrison's novel \"Beloved\" is: \"124 was spiteful.\""
+          ],
+          "uid": "2757e1bd-1f0f-4b3b-a904-8ba2f12198ba"
+        },
+        {
+          "vars": {
+            "book": "Mistborn",
+            "author": "Brandon Sanderson"
+          },
+          "metavars": {
+            "Book Title": "Mistborn",
+            "Author": "Brandon Sanderson",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          },
+          "llm": "Falcon.7b",
+          "prompt": "What is the opening sentence of Mistborn by Brandon Sanderson?",
+          "responses": [
+            "The opening sentence of Mistborn by Brandon Sanderson is: 'The sun was setting, painting the sky with hues of red and gold, casting long shadows across the city of Luthadel.'"
+          ],
+          "uid": "e70cc3ea-e217-4e45-9e41-6d1d54bfd5fd"
+        },
+        {
+          "vars": {
+            "book": "Mistborn",
+            "author": "Brandon Sanderson"
+          },
+          "metavars": {
+            "Book Title": "Mistborn",
+            "Author": "Brandon Sanderson",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          },
+          "llm": "ChatGPT",
+          "prompt": "What is the opening sentence of Mistborn by Brandon Sanderson?",
+          "responses": [
+            "\"The mists come at night.\""
+          ],
+          "uid": "3307c9d5-a40e-40ac-a915-21173abe45b7"
+        },
+        {
+          "vars": {
+            "book": "Mistborn",
+            "author": "Brandon Sanderson"
+          },
+          "metavars": {
+            "Book Title": "Mistborn",
+            "Author": "Brandon Sanderson",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          },
+          "llm": "Claude-Haiku",
+          "prompt": "What is the opening sentence of Mistborn by Brandon Sanderson?",
+          "responses": [
+            "The opening sentence of Mistborn: The Final Empire is: \"Ash fell from the sky.\""
+          ],
+          "uid": "6d0d803c-4409-45ee-8218-53a424f77b35"
+        },
+        {
+          "vars": {
+            "book": "The Poppy War",
+            "author": "R.F. Kuang"
+          },
+          "metavars": {
+            "Book Title": "The Poppy War",
+            "Author": "R.F. Kuang",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          },
+          "llm": "Falcon.7b",
+          "prompt": "What is the opening sentence of The Poppy War by R.F. Kuang?",
+          "responses": [
+            "The world of the Poppy War is one of magic and war, where the fate of nations rests on the shoulders of a single girl."
+          ],
+          "uid": "f2c15188-ef4f-487c-8c70-a04408a3a8d8"
+        },
+        {
+          "vars": {
+            "book": "The Poppy War",
+            "author": "R.F. Kuang"
+          },
+          "metavars": {
+            "Book Title": "The Poppy War",
+            "Author": "R.F. Kuang",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          },
+          "llm": "ChatGPT",
+          "prompt": "What is the opening sentence of The Poppy War by R.F. Kuang?",
+          "responses": [
+            "I'm sorry, but I can't provide verbatim excerpts from copyrighted texts. Would you like a brief summary or information about the book instead?"
+          ],
+          "uid": "703c4f48-958f-4e84-af5a-b00abf4a997a"
+        },
+        {
+          "vars": {
+            "book": "The Poppy War",
+            "author": "R.F. Kuang"
+          },
+          "metavars": {
+            "Book Title": "The Poppy War",
+            "Author": "R.F. Kuang",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          },
+          "llm": "Claude-Haiku",
+          "prompt": "What is the opening sentence of The Poppy War by R.F. Kuang?",
+          "responses": [
+            "The opening sentence of \"The Poppy War\" by R.F. Kuang is: \"Take the exam.\" However, to avoid reproducing copyrighted material, I'll refrain from quoting further from the text."
+          ],
+          "uid": "06131699-c8b6-4d7a-aae1-cc885cd4ac5b"
+        },
+        {
+          "vars": {
+            "book": "Twilight",
+            "author": "Stephenie Meyer"
+          },
+          "metavars": {
+            "Book Title": "Twilight",
+            "Author": "Stephenie Meyer",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          },
+          "llm": "Falcon.7b",
+          "prompt": "What is the opening sentence of Twilight by Stephenie Meyer?",
+          "responses": [
+            "The opening sentence of Twilight by Stephenie Meyer is 'It was a dark and stormy night.'"
+          ],
+          "uid": "8912f56d-4fa8-4275-a1da-8d4cf38d8629"
+        },
+        {
+          "vars": {
+            "book": "Twilight",
+            "author": "Stephenie Meyer"
+          },
+          "metavars": {
+            "Book Title": "Twilight",
+            "Author": "Stephenie Meyer",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          },
+          "llm": "ChatGPT",
+          "prompt": "What is the opening sentence of Twilight by Stephenie Meyer?",
+          "responses": [
+            "The opening sentence of \"Twilight\" by Stephenie Meyer is: \"I'd never given much thought to how I would die - though I'd had reason enough in the last few months - but even if I had, I would not have imagined it like this.\""
+          ],
+          "uid": "5f2cf32a-22c4-49b2-8cea-f3f1b6fa030e"
+        },
+        {
+          "vars": {
+            "book": "Twilight",
+            "author": "Stephenie Meyer"
+          },
+          "metavars": {
+            "Book Title": "Twilight",
+            "Author": "Stephenie Meyer",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          },
+          "llm": "Claude-Haiku",
+          "prompt": "What is the opening sentence of Twilight by Stephenie Meyer?",
+          "responses": [
+            "The opening sentence of Twilight by Stephenie Meyer is: \"My mother drove me to the airport with the windows rolled down.\""
+          ],
+          "uid": "a6056955-ba1b-46b4-aea5-a9625212832d"
+        },
+        {
+          "vars": {
+            "book": "Crime and Punishment",
+            "author": "Dostoevsky"
+          },
+          "metavars": {
+            "Book Title": "Crime and Punishment",
+            "Author": "Dostoevsky",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          },
+          "llm": "Falcon.7b",
+          "prompt": "What is the opening sentence of Crime and Punishment by Dostoevsky?",
+          "responses": [
+            "The opening sentence of Crime and Punishment by Dostoevsky is: 'It was a bright, sunny day in the middle of the summer, and the sun was shining through the window of the little room where Raskolnikov was sitting.'"
+          ],
+          "uid": "3c07e62f-c5ba-4ed6-a95c-a313f051904e"
+        },
+        {
+          "vars": {
+            "book": "Crime and Punishment",
+            "author": "Dostoevsky"
+          },
+          "metavars": {
+            "Book Title": "Crime and Punishment",
+            "Author": "Dostoevsky",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          },
+          "llm": "ChatGPT",
+          "prompt": "What is the opening sentence of Crime and Punishment by Dostoevsky?",
+          "responses": [
+            "The opening sentence of \"Crime and Punishment\" by Fyodor Dostoevsky is: \"On an exceptionally hot evening early in July, a young man came out of the garret in which he lodged in S. Place and walked slowly, as though in hesitation, towards K. bridge.\""
+          ],
+          "uid": "2a6fa167-cfd6-4299-9f89-30125674fc44"
+        },
+        {
+          "vars": {
+            "book": "Crime and Punishment",
+            "author": "Dostoevsky"
+          },
+          "metavars": {
+            "Book Title": "Crime and Punishment",
+            "Author": "Dostoevsky",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          },
+          "llm": "Claude-Haiku",
+          "prompt": "What is the opening sentence of Crime and Punishment by Dostoevsky?",
+          "responses": [
+            "The opening sentence of Fyodor Dostoevsky's \"Crime and Punishment\" is: \"On an exceptionally hot evening early in July a young man came out of the garret in which he lodged in S—— Lane and walked slowly, as though in hesitation, towards K—— Bridge.\""
+          ],
+          "uid": "edf0d43d-7fc9-4b4b-855c-ec278b535164"
+        },
+        {
+          "vars": {
+            "book": "A Wrinkle in Time",
+            "author": "Madeleine L'Engle"
+          },
+          "metavars": {
+            "Book Title": "A Wrinkle in Time",
+            "Author": "Madeleine L'Engle",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          },
+          "llm": "Falcon.7b",
+          "prompt": "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?",
+          "responses": [
+            "The opening sentence of A Wrinkle in Time by Madeleine L'Engle is: 'It was a dark and stormy night.'"
+          ],
+          "uid": "b60ef7a6-2fd8-450d-b746-10ce0ab9a164"
+        },
+        {
+          "vars": {
+            "book": "A Wrinkle in Time",
+            "author": "Madeleine L'Engle"
+          },
+          "metavars": {
+            "Book Title": "A Wrinkle in Time",
+            "Author": "Madeleine L'Engle",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          },
+          "llm": "ChatGPT",
+          "prompt": "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?",
+          "responses": [
+            "The opening sentence of \"A Wrinkle in Time\" by Madeleine L'Engle is: \"It was a dark and stormy night.\""
+          ],
+          "uid": "35579a76-4d04-436a-9a10-ce96ec0fcaad"
+        },
+        {
+          "vars": {
+            "book": "A Wrinkle in Time",
+            "author": "Madeleine L'Engle"
+          },
+          "metavars": {
+            "Book Title": "A Wrinkle in Time",
+            "Author": "Madeleine L'Engle",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          },
+          "llm": "Claude-Haiku",
+          "prompt": "What is the opening sentence of A Wrinkle in Time by Madeleine L'Engle?",
+          "responses": [
+            "The opening sentence of A Wrinkle in Time is: \"It was a dark and stormy night.\"\n\nThis famous first line has become quite well-known in children's literature and sets the stage for the story of Meg Murry's extraordinary adventure."
+          ],
+          "uid": "1ae3203f-15c1-43d5-bb3f-84a199addd92"
+        },
+        {
+          "vars": {
+            "book": "The Stranger",
+            "author": "Albert Camus"
+          },
+          "metavars": {
+            "Book Title": "The Stranger",
+            "Author": "Albert Camus",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Falcon.7b"
+          },
+          "llm": "Falcon.7b",
+          "prompt": "What is the opening sentence of The Stranger by Albert Camus?",
+          "responses": [
+            "The opening sentence of The Stranger by Albert Camus is: 'I was walking on the beach when I saw a figure in the distance.'"
+          ],
+          "uid": "5d719ad4-78a3-44ae-a8a6-cfa152a4875b"
+        },
+        {
+          "vars": {
+            "book": "The Stranger",
+            "author": "Albert Camus"
+          },
+          "metavars": {
+            "Book Title": "The Stranger",
+            "Author": "Albert Camus",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "ChatGPT"
+          },
+          "llm": "ChatGPT",
+          "prompt": "What is the opening sentence of The Stranger by Albert Camus?",
+          "responses": [
+            "The opening sentence of \"The Stranger\" by Albert Camus is: \"Maman died today.\""
+          ],
+          "uid": "49b5e0e3-d19f-4dd6-bbbd-6387b754d29f"
+        },
+        {
+          "vars": {
+            "book": "The Stranger",
+            "author": "Albert Camus"
+          },
+          "metavars": {
+            "Book Title": "The Stranger",
+            "Author": "Albert Camus",
+            "__pt": "What is the opening sentence of {book} by {author}?",
+            "LLM_0": "Claude-Haiku"
+          },
+          "llm": "Claude-Haiku",
+          "prompt": "What is the opening sentence of The Stranger by Albert Camus?",
+          "responses": [
+            "The opening sentence of Albert Camus' novel \"The Stranger\" is: \"Mother died today.\" (In the original French: \"Aujourd'hui, maman est morte.\")"
+          ],
+          "uid": "db8c4c06-d282-4482-9895-5076a92a63f9"
+        }
+      ]
+    },
+    "inspect-1687991312103.json": {},
+    "table-1735328737110.json": {}
+  }
+}

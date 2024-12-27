@@ -1,5 +1,14 @@
 import React, { forwardRef, useImperativeHandle } from "react";
-import { SimpleGrid, Card, Modal, Text, Button, Tabs, Group, Stack } from "@mantine/core";
+import {
+  SimpleGrid,
+  Card,
+  Modal,
+  Text,
+  Button,
+  Tabs,
+  Group,
+  Stack,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconChartDots3 } from "@tabler/icons-react";
 import { Dict } from "./backend/typing";
@@ -331,32 +340,37 @@ const ExampleFlowCard: React.FC<ExampleFlowCardProps> = ({
   onSelect,
 }) => {
   return (
-    <Card shadow="sm" radius="md" withBorder style={{ padding: "16px 10px 16px 10px"}}>
+    <Card
+      shadow="sm"
+      radius="md"
+      withBorder
+      style={{ padding: "16px 10px 16px 10px" }}
+    >
       <Stack justify="space-between" spacing="sm" h={160}>
-      <div>
-        <Text mb="xs" weight={500} lh={1.1} align="center">
-          {title}
-        </Text>
+        <div>
+          <Text mb="xs" weight={500} lh={1.1} align="center">
+            {title}
+          </Text>
 
-        <Text size="sm" color="dimmed" lh={1.1} align="center">
-          {description}
-        </Text>
-      </div>
+          <Text size="sm" color="dimmed" lh={1.1} align="center">
+            {description}
+          </Text>
+        </div>
 
-      <Button
-        onClick={() => {
-          if (onSelect) onSelect(filename);
-        }}
-        variant="light"
-        color="blue"
-        h={32}
-        mih={32}
-        fullWidth
-        size="sm"
-        radius="md"
-      >
-        {buttonText ?? "Try me"}
-      </Button>
+        <Button
+          onClick={() => {
+            if (onSelect) onSelect(filename);
+          }}
+          variant="light"
+          color="blue"
+          h={32}
+          mih={32}
+          fullWidth
+          size="sm"
+          radius="md"
+        >
+          {buttonText ?? "Try me"}
+        </Button>
       </Stack>
     </Card>
   );
@@ -420,14 +434,14 @@ const ExampleFlowsModal = forwardRef<
           <SimpleGrid cols={3} spacing="sm" verticalSpacing="sm">
             <ExampleFlowCard
               title="📑 Compare between prompt templates"
-              description="Compare between prompt templates using template chaining. Visualize the variability in response quality."
+              description="Compare between prompt templates using template chaining. Visualize response quality across models."
               filename="compare-prompts"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="📊 Compare prompt performance across models"
-              description="Compare performance of a prompt template across models. Visualize response quality."
-              filename="compare-models"
+              title="📊 Compare prompt across models"
+              description="A simple evaluation with a prompt template, some inputs, and three models to prompt. Visualizes variability in response length."
+              filename="basic-comparison"
               onSelect={onSelect}
             />
             <ExampleFlowCard
@@ -437,9 +451,9 @@ const ExampleFlowsModal = forwardRef<
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="🧪 Audit models for gender bias"
-              description="Checks for gender bias across LLMs on job description task."
-              filename="audit-gender-bias"
+              title="📗 Testing model knowledge of book beginnings"
+              description="Test whether different LLMs know the first sentences of famous books."
+              filename="book-beginnings"
               onSelect={onSelect}
             />
             <ExampleFlowCard
@@ -449,27 +463,27 @@ const ExampleFlowsModal = forwardRef<
               onSelect={onSelect}
             />
             <ExampleFlowCard
+              title="💬🙇 Estimate chat model sycophancy"
+              description="Estimate how sycophantic a chat model is: ask it for a well-known fact, then tell it it's wrong, and check whether it apologizes or changes its answer."
+              filename="chat-sycophancy"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🧪 Audit models for gender bias"
+              description="Asks an LLM to estimate the gender of a person, given a profession and salary."
+              filename="audit-bias"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
               title="🛑 Red-teaming of stereotypes about nationalities"
               description="Check for whether models refuse to generate stereotypes about people from different countries."
               filename="red-team-stereotypes"
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="📗 Testing model knowledge of book beginnings"
-              description="Test whether different LLMs know the first sentences of famous books."
-              filename="book-beginnings"
-              onSelect={onSelect}
-            />
-            <ExampleFlowCard
               title="🐦 Multi-evals of prompt to extract structured data from tweets"
               description="Extracts named entities from a dataset of tweets, and double-checks the output against multiple eval criteria."
-              filename="multi-eval-tweets"
-              onSelect={onSelect}
-            />
-            <ExampleFlowCard
-              title="💬🙇 Estimate chat model sycophancy"
-              description="Estimate how sycophantic a chat model is: ask it for the answer to a well-known question, then tell it it's wrong, and check whether it agrees with you."
-              filename="chat-sycophancy"
+              filename="tweet-multi-eval"
               onSelect={onSelect}
             />
             <ExampleFlowCard
@@ -485,21 +499,15 @@ const ExampleFlowsModal = forwardRef<
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="🇫🇷 Testing French language tutor prompts"
-              description="Real example of a haphazard flow used to prompt engineer an AI tutor to help practice French."
-              filename="french-tutor"
+              title="📑 Compare output format"
+              description="Check whether asking for a different format (YAML, XML, JSON, etc.) changes the content."
+              filename="comparing-formats"
               onSelect={onSelect}
             />
             <ExampleFlowCard
               title="🧑‍💻️ HumanEvals Python coding benchmark"
               description="Run the HumanEvals Python coding benchmark to evaluate LLMs on Python code completion, entirely in your browser. A classic!"
-              filename="coding-human-evals"
-              onSelect={onSelect}
-            />
-            <ExampleFlowCard
-              title="📏 Compare length of responses across LLMs"
-              description="A simple evaluation with a prompt template, some inputs, and three models to prompt. Visualizes variability in response length."
-              filename="basic-comparison"
+              filename="python-coding-eval"
               onSelect={onSelect}
             />
             <ExampleFlowCard
@@ -518,6 +526,12 @@ const ExampleFlowsModal = forwardRef<
               title="🦟 Test knowledge of mosquitos"
               description="Uses an LLM scorer to test whether LLMs know the difference between lifetimes of male and female mosquitos."
               filename="mosquito-knowledge"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🖼 Generate images of animals"
+              description="Shows images of a fox, sparrow, and a pig as a computer scientist and a gamer, using Dall-E2."
+              filename="animal-images"
               onSelect={onSelect}
             />
           </SimpleGrid>
