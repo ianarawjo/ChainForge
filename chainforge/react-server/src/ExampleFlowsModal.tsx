@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle } from "react";
-import { SimpleGrid, Card, Modal, Text, Button, Tabs, Group } from "@mantine/core";
+import { SimpleGrid, Card, Modal, Text, Button, Tabs, Group, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconChartDots3 } from "@tabler/icons-react";
 import { Dict } from "./backend/typing";
@@ -331,14 +331,17 @@ const ExampleFlowCard: React.FC<ExampleFlowCardProps> = ({
   onSelect,
 }) => {
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
-      <Text mb="xs" weight={500} lh={1.1} align="center">
-        {title}
-      </Text>
+    <Card shadow="sm" radius="md" withBorder style={{ padding: "16px 10px 16px 10px"}}>
+      <Stack justify="space-between" spacing="sm" h={160}>
+      <div>
+        <Text mb="xs" weight={500} lh={1.1} align="center">
+          {title}
+        </Text>
 
-      <Text size="sm" color="dimmed" lh={1.3} align="center">
-        {description}
-      </Text>
+        <Text size="sm" color="dimmed" lh={1.1} align="center">
+          {description}
+        </Text>
+      </div>
 
       <Button
         onClick={() => {
@@ -346,13 +349,15 @@ const ExampleFlowCard: React.FC<ExampleFlowCardProps> = ({
         }}
         variant="light"
         color="blue"
+        h={32}
+        mih={32}
         fullWidth
         size="sm"
-        mt="md"
         radius="md"
       >
         {buttonText ?? "Try me"}
       </Button>
+      </Stack>
     </Card>
   );
 };
@@ -505,7 +510,7 @@ const ExampleFlowsModal = forwardRef<
             />
             <ExampleFlowCard
               title="🔢 Ground truth evaluation for math problems"
-              description="Uses a tabular data node to evaluate LLM performance on basic math problems. Compares responses to expected answer and plots performance across LLMs."
+              description="Uses a Tabular Data Node to evaluate LLM performance on basic math problems. Compares responses to expected answer and plots performance."
               filename="basic-math"
               onSelect={onSelect}
             />
