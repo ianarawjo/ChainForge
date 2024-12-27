@@ -6,7 +6,6 @@ import {
   Text,
   Button,
   Tabs,
-  Group,
   Stack,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -451,7 +450,7 @@ const ExampleFlowsModal = forwardRef<
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="📗 Testing model knowledge of book beginnings"
+              title="📗 Testing knowledge of book beginnings"
               description="Test whether different LLMs know the first sentences of famous books."
               filename="book-beginnings"
               onSelect={onSelect}
