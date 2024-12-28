@@ -52,7 +52,7 @@ export interface PaLMChatContext {
 
 export interface GeminiChatMessage {
   role: string;
-  parts: string;
+  parts: [{ text: string }];
 }
 
 export interface GeminiChatContext {

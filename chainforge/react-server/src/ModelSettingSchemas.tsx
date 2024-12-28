@@ -606,7 +606,7 @@ const ClaudeSettings: ModelSettingsDict = {
 };
 
 const PaLM2Settings: ModelSettingsDict = {
-  fullName: "Google AI Models (Gemini & PaLM)",
+  fullName: "Google AI Models (Gemini)",
   schema: {
     type: "object",
     required: ["shortname"],
@@ -623,13 +623,32 @@ const PaLM2Settings: ModelSettingsDict = {
         title: "Model",
         description:
           "Select a PaLM model to query. For more details on the differences, see the Google PaLM API documentation.",
-        enum: ["gemini-pro", "text-bison-001", "chat-bison-001"],
-        default: "gemini-pro",
+        enum: [
+          "gemini-1.5-flash",
+          "gemini-1.5-flash-8b",
+          "gemini-1.5-pro",
+          "gemini-1.0-pro",
+          "gemini-pro",
+          "text-bison-001",
+          "chat-bison-001",
+        ],
+        default: "gemini-1.5-flash",
         shortname_map: {
           "text-bison-001": "PaLM2-text",
           "chat-bison-001": "PaLM2-chat",
-          "gemini-pro": "Gemini",
+          "gemini-pro": "Gemini 1.0",
+          "gemini-1.5-pro": "Gemini 1.5",
+          "gemini-1.0-pro": "Gemini 1.0",
+          "gemini-1.5-flash": "Gemini Flash",
+          "gemini-1.5-flash-8b": "Gemini Flash 8B",
         },
+      },
+      system_msg: {
+        type: "string",
+        title: "system_msg",
+        description:
+          "Enter your system message here, to be passed to the systemInstructions parameter.",
+        default: "",
       },
       temperature: {
         type: "number",
@@ -684,6 +703,9 @@ const PaLM2Settings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to gemini-pro.",
+    },
+    system_msg: {
+      "ui:widget": "textarea",
     },
     temperature: {
       "ui:help": "Defaults to 0.5.",

@@ -74,6 +74,11 @@ export enum NativeLLM {
   PaLM2_Text_Bison = "text-bison-001", // it's really models/text-bison-001, but that's confusing
   PaLM2_Chat_Bison = "chat-bison-001",
   GEMINI_PRO = "gemini-pro",
+  GEMINI_v2_flash = "gemini-2.0-flash-exp",
+  GEMINI_v1_5_flash = "gemini-1.5-flash",
+  GEMINI_v1_5_flash_8B = "gemini-1.5-flash-8b",
+  GEMINI_v1_5_pro = "gemini-1.5-pro",
+  GEMINI_v1_pro = "gemini-1.0-pro",
 
   // Aleph Alpha
   Aleph_Alpha_Luminous_Extended = "luminous-extended",
@@ -283,6 +288,7 @@ export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
 export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
   [LLMProvider.Anthropic]: 25, // Tier 1 pricing limit is 50 per minute, across all models; we halve this, to be safe.
   [LLMProvider.Together]: 30, // Paid tier limit is 60 per minute, across all models; we halve this, to be safe.
+  [LLMProvider.Google]: 1000, // RPM for Google Gemini models 1.5 is quite generous; at base it is 1000 RPM. If you are using the free version it's 15 RPM, but we can expect most CF users to be using paid (and anyway you can just re-run prompt node until satisfied).
 };
 
 // Max concurrent requests. Add to this to further constrain the rate limiter.

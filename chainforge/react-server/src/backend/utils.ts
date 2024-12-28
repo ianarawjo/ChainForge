@@ -700,26 +700,27 @@ export async function call_google_ai(
   params?: Dict,
   should_cancel?: () => boolean,
 ): Promise<[Dict, Dict]> {
-  switch (model) {
-    case NativeLLM.GEMINI_PRO:
-      return call_google_gemini(
-        prompt,
-        model,
-        n,
-        temperature,
-        params,
-        should_cancel,
-      );
-    default:
-      return call_google_palm(
-        prompt,
-        model,
-        n,
-        temperature,
-        params,
-        should_cancel,
-      );
-  }
+  if (
+    model === NativeLLM.PaLM2_Chat_Bison ||
+    model === NativeLLM.PaLM2_Text_Bison
+  )
+    return call_google_palm(
+      prompt,
+      model,
+      n,
+      temperature,
+      params,
+      should_cancel,
+    );
+  else
+    return call_google_gemini(
+      prompt,
+      model,
+      n,
+      temperature,
+      params,
+      should_cancel,
+    );
 }
 
 /**
@@ -861,18 +862,21 @@ export async function call_google_gemini(
       "Could not find an API key for Google Gemini models. Double-check that your API key is set in Settings or in your local environment.",
     );
 
-  // calling the correct model client
-  model = NativeLLM.GEMINI_PRO;
-
-  const genAI = new GoogleGenerativeAI(GOOGLE_PALM_API_KEY);
-  const gemini_model = genAI.getGenerativeModel({ model: model.toString() });
-
-  // removing chat for now. by default chat is supported
-
   // Required non-standard params
   const max_output_tokens = params?.max_output_tokens || 1000;
-  const chat_history = params?.chat_history;
+  const chat_history: ChatHistory = params?.chat_history;
+  const system_msg = params?.system_msg;
   delete params?.chat_history;
+  delete params?.system_msg;
+
+  const genAI = new GoogleGenerativeAI(GOOGLE_PALM_API_KEY);
+  const gemini_model = genAI.getGenerativeModel({
+    model: model.toString(),
+    systemInstruction:
+      typeof system_msg === "string" && chat_history === undefined
+        ? system_msg
+        : undefined,
+  });
 
   const query: Dict = {
     model: `models/${model}`,
@@ -924,10 +928,20 @@ export async function call_google_gemini(
     for (const chat_msg of chat_history) {
       if (chat_msg.role === "system") {
         // Carry the system message over as PaLM's chat 'context':
-        gemini_messages.push({ role: "model", parts: chat_msg.content });
+        gemini_messages.push({
+          role: "model",
+          parts: [{ text: chat_msg.content }],
+        });
       } else if (chat_msg.role === "user") {
-        gemini_messages.push({ role: "user", parts: chat_msg.content });
-      } else gemini_messages.push({ role: "model", parts: chat_msg.content });
+        gemini_messages.push({
+          role: "user",
+          parts: [{ text: chat_msg.content }],
+        });
+      } else
+        gemini_messages.push({
+          role: "model",
+          parts: [{ text: chat_msg.content }],
+        });
     }
     gemini_chat_context.history = gemini_messages;
   }
@@ -1362,7 +1376,7 @@ export async function call_bedrock(
     temperature,
   };
 
-  const fm = fromModelId(modelName as Models, {
+  const fm = fromModelId(modelName, {
     region: bedrockConfig.region,
     credentials: bedrockConfig.credentials,
     ...query,
@@ -1682,10 +1696,12 @@ function _extract_google_ai_responses(
   llm: LLM | string,
 ): Array<string> {
   switch (llm) {
-    case NativeLLM.GEMINI_PRO:
-      return _extract_gemini_responses(response as Array<Dict>);
-    default:
+    case NativeLLM.PaLM2_Chat_Bison:
       return _extract_palm_responses(response);
+    case NativeLLM.PaLM2_Text_Bison:
+      return _extract_palm_responses(response);
+    default:
+      return _extract_gemini_responses(response as Array<Dict>);
   }
 }
 
