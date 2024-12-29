@@ -21,11 +21,26 @@ import LLMResponseInspectorModal, {
 } from "./LLMResponseInspectorModal";
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
-import { genDebounceFunc, stripLLMDetailsFromResponses } from "./backend/utils";
+import {
+  extractSettingsVars,
+  genDebounceFunc,
+  stripLLMDetailsFromResponses,
+} from "./backend/utils";
 import { AlertModalContext } from "./AlertModal";
-import { Dict, LLMResponse, LLMSpec, QueryProgress } from "./backend/typing";
+import {
+  Dict,
+  LLMResponse,
+  LLMResponseData,
+  LLMSpec,
+  QueryProgress,
+} from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
-import { evalWithLLM, grabResponses } from "./backend/backend";
+import { evalWithLLM, generatePrompts, grabResponses } from "./backend/backend";
+import { UserForcedPrematureExit } from "./backend/errors";
+import CancelTracker from "./backend/canceler";
+import { PromptInfo, PromptListModal, PromptListPopover } from "./PromptNode";
+import { useDisclosure } from "@mantine/hooks";
+import { PromptTemplate } from "./backend/template";
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
 const PLACEHOLDER_PROMPT =
@@ -69,12 +84,15 @@ export interface LLMEvaluatorComponentRef {
   run: (
     input_node_ids: string[],
     onProgressChange?: (progress: QueryProgress) => void,
+    cancelId?: string | number,
   ) => Promise<LLMResponse[]>;
+  cancel: (cancelId: string | number, cancelProgress: () => void) => void;
   serialize: () => {
     prompt: string;
     format: string;
     grader?: LLMSpec;
   };
+  getPromptTemplate: () => string;
 }
 
 export interface LLMEvaluatorComponentProps {
@@ -149,20 +167,26 @@ export const LLMEvaluatorComponent = forwardRef<
     [setExpectedFormat, onFormatChange],
   );
 
+  const getPromptTemplate = () => {
+    const formatting_instr = OUTPUT_FORMAT_PROMPTS[expectedFormat] ?? "";
+    return (
+      "You are evaluating text that will be pasted below. " +
+      promptText +
+      " " +
+      formatting_instr +
+      "\n```\n{__input}\n```"
+    );
+  };
+
   // Runs the LLM evaluator over the inputs, returning the results in a Promise.
   // Errors are raised as a rejected Promise.
   const run = (
     input_node_ids: string[],
     onProgressChange?: (progress: QueryProgress) => void,
+    cancelId?: string | number,
   ) => {
     // Create prompt template to wrap user-specified scorer prompt and input data
-    const formatting_instr = OUTPUT_FORMAT_PROMPTS[expectedFormat] ?? "";
-    const template =
-      "You are evaluating text that will be pasted below. " +
-      promptText +
-      " " +
-      formatting_instr +
-      "\n```\n{input}\n```";
+    const template = getPromptTemplate();
     const llm_key = llmScorers[0].key ?? "";
 
     // Fetch info about the number of queries we'll need to make
@@ -176,12 +200,16 @@ export const LLMEvaluatorComponent = forwardRef<
         );
         return onProgressChange
           ? (progress_by_llm: Dict<QueryProgress>) =>
-              onProgressChange({
-                success:
-                  (100 * progress_by_llm[llm_key].success) / num_resps_required,
-                error:
-                  (100 * progress_by_llm[llm_key].error) / num_resps_required,
-              })
+              // Debounce the progress bars UI update to ensure we don't re-render too often:
+              debounce(() => {
+                onProgressChange({
+                  success:
+                    (100 * progress_by_llm[llm_key].success) /
+                    num_resps_required,
+                  error:
+                    (100 * progress_by_llm[llm_key].error) / num_resps_required,
+                });
+              }, 30)()
           : undefined;
       })
       .then((progress_listener) => {
@@ -193,9 +221,13 @@ export const LLMEvaluatorComponent = forwardRef<
           input_node_ids,
           apiKeys ?? {},
           progress_listener,
+          cancelId,
         );
       })
       .then(function (res) {
+        // eslint-disable-next-line
+        debounce(() => {}, 1)(); // erase any pending debounces
+
         // Check if there's an error; if so, bubble it up to user and exit:
         if (res.errors && res.errors.length > 0) throw new Error(res.errors[0]);
         else if (res.responses === undefined)
@@ -208,6 +240,12 @@ export const LLMEvaluatorComponent = forwardRef<
       });
   };
 
+  const cancel = (cancelId: string | number, cancelProgress: () => void) => {
+    CancelTracker.add(cancelId);
+    // eslint-disable-next-line
+    debounce(cancelProgress, 1)(); // erase any pending debounces
+  };
+
   // Export the current internal state as JSON
   const serialize = () => ({
     prompt: promptText,
@@ -218,7 +256,9 @@ export const LLMEvaluatorComponent = forwardRef<
   // Define functions accessible from the parent component
   useImperativeHandle(ref, () => ({
     run,
+    cancel,
     serialize,
+    getPromptTemplate,
   }));
 
   return (
@@ -289,10 +329,19 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
   const [status, setStatus] = useState<Status>(Status.NONE);
   const showAlert = useContext(AlertModalContext);
 
+  // Cancelation of pending queries
+  const [cancelId, setCancelId] = useState(Date.now());
+  const refreshCancelId = () => setCancelId(Date.now());
+
   const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
   // eslint-disable-next-line
   const [uninspectedResponses, setUninspectedResponses] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+
+  // For an info pop-up that shows all the prompts that will be sent off
+  // NOTE: This is the 'full' version of the PromptListPopover that activates on hover.
+  const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] =
+    useDisclosure(false);
 
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
@@ -306,6 +355,53 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
     undefined,
   );
 
+  // On hover over the 'info' button, to preview the prompts that will be sent out
+  const [promptPreviews, setPromptPreviews] = useState<PromptInfo[]>([]);
+  const handlePreviewHover = () => {
+    // Get the ids from the connected input nodes:
+    const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
+    if (input_node_ids.length === 0) {
+      console.warn("No inputs for evaluator node.");
+      return;
+    }
+
+    const promptText = llmEvaluatorRef?.current?.getPromptTemplate();
+    if (!promptText) return;
+
+    // Pull input data
+    try {
+      grabResponses(input_node_ids)
+        .then(function (resp_objs) {
+          const inputs = resp_objs
+            .map((obj: LLMResponse) =>
+              obj.responses.map((r: LLMResponseData) => ({
+                text: typeof r === "string" ? r : undefined,
+                image: typeof r === "object" && r.t === "img" ? r.d : undefined,
+                fill_history: obj.vars,
+                metavars: obj.metavars,
+              })),
+            )
+            .flat();
+          return generatePrompts(promptText, { __input: inputs });
+        })
+        .then(function (prompts) {
+          setPromptPreviews(
+            prompts.map(
+              (p: PromptTemplate) =>
+                new PromptInfo(
+                  p.toString(),
+                  extractSettingsVars(p.fill_history),
+                ),
+            ),
+          );
+        });
+    } catch (err) {
+      // soft fail
+      console.error(err);
+      setPromptPreviews([]);
+    }
+  };
+
   const handleRunClick = useCallback(() => {
     // Get the ids from the connected input nodes:
     const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
@@ -318,15 +414,23 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
     setProgress({ success: 2, error: 0 });
 
     const handleError = (err: Error | string) => {
-      setStatus(Status.ERROR);
       setProgress(undefined);
-      if (typeof err !== "string") console.error(err);
-      if (showAlert) showAlert(typeof err === "string" ? err : err?.message);
+      if (
+        err instanceof UserForcedPrematureExit ||
+        CancelTracker.has(cancelId)
+      ) {
+        // Handle a premature cancelation
+        console.log("Canceled.");
+        setStatus(Status.NONE);
+      } else {
+        setStatus(Status.ERROR);
+        if (showAlert) showAlert(typeof err === "string" ? err : err?.message);
+      }
     };
 
     // Run LLM evaluator
     llmEvaluatorRef?.current
-      ?.run(input_node_ids, setProgress)
+      ?.run(input_node_ids, setProgress, cancelId)
       .then(function (evald_resps) {
         // Ping any vis + inspect nodes attached to this node to refresh their contents:
         pingOutputNodes(id);
@@ -347,7 +451,14 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
     setStatus,
     showDrawer,
     showAlert,
+    cancelId,
   ]);
+
+  const handleStopClick = useCallback(() => {
+    llmEvaluatorRef?.current?.cancel(cancelId, () => setProgress(undefined));
+    refreshCancelId();
+    setStatus(Status.NONE);
+  }, [cancelId, refreshCancelId]);
 
   const showResponseInspector = useCallback(() => {
     if (inspectModal && inspectModal.current && lastResponses) {
@@ -384,12 +495,27 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
         nodeId={id}
         icon={<IconRobot size="16px" />}
         status={status}
+        isRunning={status === Status.LOADING}
         handleRunClick={handleRunClick}
+        handleStopClick={handleStopClick}
         runButtonTooltip="Run scorer over inputs"
+        customButtons={[
+          <PromptListPopover
+            key="prompt-previews"
+            promptInfos={promptPreviews}
+            onHover={handlePreviewHover}
+            onClick={openInfoModal}
+          />,
+        ]}
       />
       <LLMResponseInspectorModal
         ref={inspectModal}
         jsonResponses={lastResponses}
+      />
+      <PromptListModal
+        promptPreviews={promptPreviews}
+        infoModalOpened={infoModalOpened}
+        closeInfoModal={closeInfoModal}
       />
 
       <div className="llm-scorer-container">

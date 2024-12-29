@@ -1223,6 +1223,7 @@ export async function evalWithLLM(
   response_ids: string | string[],
   api_keys?: Dict,
   progress_listener?: (progress: { [key: symbol]: any }) => void,
+  cancel_id?: string | number,
 ): Promise<{ responses?: LLMResponse[]; errors: string[] }> {
   // Check format of response_ids
   if (!Array.isArray(response_ids)) response_ids = [response_ids];
@@ -1263,11 +1264,13 @@ export async function evalWithLLM(
       [llm],
       1,
       root_prompt,
-      { input: inputs },
+      { __input: inputs },
       undefined,
       undefined,
       undefined,
       progress_listener,
+      false,
+      cancel_id,
     );
 
     const err_vals: string[] = Object.values(errors).flat();
