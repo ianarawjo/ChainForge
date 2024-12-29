@@ -81,7 +81,7 @@ const bucketChatHistoryInfosByLLM = (chat_hist_infos: ChatHistoryInfo[]) => {
   return chats_by_llm;
 };
 
-class PromptInfo {
+export class PromptInfo {
   prompt: string;
   settings: Dict;
 
@@ -118,7 +118,7 @@ export interface PromptListPopoverProps {
   onClick: () => void;
 }
 
-const PromptListPopover: React.FC<PromptListPopoverProps> = ({
+export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
   promptInfos,
   onHover,
   onClick,
@@ -173,6 +173,39 @@ const PromptListPopover: React.FC<PromptListPopoverProps> = ({
         {displayPromptInfos(promptInfos, false)}
       </Popover.Dropdown>
     </Popover>
+  );
+};
+
+export interface PromptListModalProps {
+  promptPreviews: PromptInfo[];
+  infoModalOpened: boolean;
+  closeInfoModal: () => void;
+}
+
+export const PromptListModal: React.FC<PromptListModalProps> = ({
+  promptPreviews,
+  infoModalOpened,
+  closeInfoModal,
+}) => {
+  return (
+    <Modal
+      title={
+        "List of prompts that will be sent to LLMs (" +
+        promptPreviews.length +
+        " total)"
+      }
+      size="xl"
+      opened={infoModalOpened}
+      onClose={closeInfoModal}
+      styles={{
+        header: { backgroundColor: "#FFD700" },
+        root: { position: "relative", left: "-5%" },
+      }}
+    >
+      <Box m="lg" mt="xl">
+        {displayPromptInfos(promptPreviews, true)}
+      </Box>
+    </Modal>
   );
 };
 
@@ -1124,24 +1157,11 @@ Soft failing by replacing undefined with empty strings.`,
         ref={inspectModal}
         jsonResponses={jsonResponses ?? []}
       />
-      <Modal
-        title={
-          "List of prompts that will be sent to LLMs (" +
-          promptPreviews.length +
-          " total)"
-        }
-        size="xl"
-        opened={infoModalOpened}
-        onClose={closeInfoModal}
-        styles={{
-          header: { backgroundColor: "#FFD700" },
-          root: { position: "relative", left: "-5%" },
-        }}
-      >
-        <Box m="lg" mt="xl">
-          {displayPromptInfos(promptPreviews, true)}
-        </Box>
-      </Modal>
+      <PromptListModal
+        promptPreviews={promptPreviews}
+        infoModalOpened={infoModalOpened}
+        closeInfoModal={closeInfoModal}
+      />
 
       {node_type === "chat" ? (
         <div ref={setRef}>
