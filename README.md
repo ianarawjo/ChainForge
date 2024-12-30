@@ -156,17 +156,15 @@ We welcome open-source collaborators. If you want to report a bug or request a f
 
 # Cite Us
 
-If you use ChainForge for research purposes, or build upon the source code, we ask that you cite our [arXiv pre-print](https://arxiv.org/abs/2309.09128) in any related publications.
-The BibTeX you can use is:
+If you use ChainForge for research purposes, whether by building upon the source code or investigating LLM behavior using the tool, we ask that you cite our [CHI research paper](https://dl.acm.org/doi/full/10.1145/3613904.3642016) in any related publications. The BibTeX you can use is:
 
 ```bibtex
-@misc{arawjo2023chainforge,
-      title={ChainForge: A Visual Toolkit for Prompt Engineering and LLM Hypothesis Testing},
-      author={Ian Arawjo and Chelse Swoopes and Priyan Vaithilingam and Martin Wattenberg and Elena Glassman},
-      year={2023},
-      eprint={2309.09128},
-      archivePrefix={arXiv},
-      primaryClass={cs.HC}
+@inproceedings{arawjo2024chainforge,
+  title={ChainForge: A Visual Toolkit for Prompt Engineering and LLM Hypothesis Testing},
+  author={Arawjo, Ian and Swoopes, Chelse and Vaithilingam, Priyan and Wattenberg, Martin and Glassman, Elena L},
+  booktitle={Proceedings of the CHI Conference on Human Factors in Computing Systems},
+  pages={1--18},
+  year={2024}
 }
 ```
 
