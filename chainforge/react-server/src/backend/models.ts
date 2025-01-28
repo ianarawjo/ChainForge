@@ -80,6 +80,10 @@ export enum NativeLLM {
   GEMINI_v1_5_pro = "gemini-1.5-pro",
   GEMINI_v1_pro = "gemini-1.0-pro",
 
+  // DeepSeek
+  DeepSeek_Chat = "deepseek-chat",
+  DeepSeek_Reasoner = "deepseek-reasoner",
+
   // Aleph Alpha
   Aleph_Alpha_Luminous_Extended = "luminous-extended",
   Aleph_Alpha_Luminous_ExtendedControl = "luminous-extended-control",
@@ -151,6 +155,29 @@ export enum NativeLLM {
   Together_Meta_LLaMA2_Chat_7B = "together/meta-llama/Llama-2-7b-chat-hf",
   Together_Meta_LLaMA3_Chat_8B = "together/meta-llama/Llama-3-8b-chat-hf",
   Together_Meta_LLaMA3_Chat_70B = "together/meta-llama/Llama-3-70b-chat-hf",
+  Together_Meta_LLaMA3_3_70B = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+  Together_Meta_LLaMA3_1_8B = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+  Together_Meta_LLaMA3_1_70B = "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+  Together_Meta_LLaMA3_1_405B = "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+  Together_Meta_LLaMA3_8B = "meta-llama/Meta-Llama-3-8B-Instruct-Turbo",
+  Together_Meta_LLaMA3_70B = "meta-llama/Meta-Llama-3-70B-Instruct-Turbo",
+  Together_Meta_LLaMA3_2_3B = "meta-llama/Llama-3.2-3B-Instruct-Turbo",
+  Together_Meta_LLaMA3_8B_Lite = "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
+  Together_Meta_LLaMA3_70B_Lite = "meta-llama/Meta-Llama-3-70B-Instruct-Lite",
+  Together_Nvidia_LLaMA3_1_Nemotron_70B = "nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",
+  Together_Qwen_Qwen2_5_Coder_32B = "Qwen/Qwen2.5-Coder-32B-Instruct",
+  Together_Qwen_QwQ_32B_Preview = "Qwen/QwQ-32B-Preview",
+  Together_Microsoft_WizardLM_2_8x22B = "microsoft/WizardLM-2-8x22B",
+  Together_Google_Gemma2_27B = "google/gemma-2-27b-it",
+  Together_Google_Gemma2_9B = "google/gemma-2-9b-it",
+  Together_DeepSeek_3 = "deepseek-ai/DeepSeek-V3",
+  Together_DeepSeek_R1 = "deepseek-ai/DeepSeek-R1",
+  Together_mistralai_Mistral_7B_Instruct_v0_3 = "mistralai/Mistral-7B-Instruct-v0.3",
+  Together_Qwen_Qwen2_5_7B_Turbo = "Qwen/Qwen2.5-7B-Instruct-Turbo",
+  Together_Qwen_Qwen2_5_72B_Turbo = "Qwen/Qwen2.5-72B-Instruct-Turbo",
+  Together_Qwen_Qwen2_5_72B = "Qwen/Qwen2-72B-Instruct",
+  Together_Qwen_Qwen2_VL_72B = "Qwen/Qwen2-VL-72B-Instruct",
+  Together_Qwen_Qwen2_5_32B_Coder = "Qwen/Qwen2.5-Coder-32B-Instruct",
   Together_mistralai_Mistral_7B_Instruct = "together/mistralai/Mistral-7B-Instruct-v0.1",
   Together_mistralai_Mistral_7B_Instruct_v0_2 = "together/mistralai/Mistral-7B-Instruct-v0.2",
   Together_mistralai_Mixtral8x7B_Instruct_46_7B = "together/mistralai/Mixtral-8x7B-Instruct-v0.1",
@@ -212,6 +239,7 @@ export enum LLMProvider {
   Ollama = "ollama",
   Bedrock = "bedrock",
   Together = "together",
+  DeepSeek = "deepseek",
   Custom = "__custom",
 }
 
@@ -233,6 +261,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   else if (llm_name?.startsWith("Ollama")) return LLMProvider.Ollama;
   else if (llm_name?.startsWith("Bedrock")) return LLMProvider.Bedrock;
   else if (llm_name?.startsWith("Together")) return LLMProvider.Together;
+  else if (llm_name?.startsWith("DeepSeek")) return LLMProvider.DeepSeek;
   else if (llm.toString().startsWith("__custom/")) return LLMProvider.Custom;
 
   return undefined;
@@ -289,6 +318,7 @@ export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
   [LLMProvider.Anthropic]: 25, // Tier 1 pricing limit is 50 per minute, across all models; we halve this, to be safe.
   [LLMProvider.Together]: 30, // Paid tier limit is 60 per minute, across all models; we halve this, to be safe.
   [LLMProvider.Google]: 1000, // RPM for Google Gemini models 1.5 is quite generous; at base it is 1000 RPM. If you are using the free version it's 15 RPM, but we can expect most CF users to be using paid (and anyway you can just re-run prompt node until satisfied).
+  [LLMProvider.DeepSeek]: 1000, // DeepSeek does not constrain users atm but they might in the future. To be safe we are limiting it to 1000 queries per minute.
 };
 
 // Max concurrent requests. Add to this to further constrain the rate limiter.

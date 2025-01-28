@@ -401,6 +401,12 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 />
                 <br />
                 <TextInput
+                  label="DeepSeek API Key"
+                  placeholder="Paste your DeepSeek API key here"
+                  {...form.getInputProps("DeepSeek")}
+                />
+                <br />
+                <TextInput
                   label="Aleph Alpha API Key"
                   placeholder="Paste your Aleph Alpha API key here"
                   {...form.getInputProps("AlephAlpha")}
