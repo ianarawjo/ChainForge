@@ -344,10 +344,7 @@ const DeepSeekSettings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select a DeepSeek model to query. For more details on the differences, see the DeepSeek API documentation.",
-        enum: [
-          "deepseek-chat",
-          "deepseek-reasoner",
-        ],
+        enum: ["deepseek-chat", "deepseek-reasoner"],
         default: "deepseek-chat",
       },
       system_msg: {
@@ -2481,7 +2478,7 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "br.meta.llama2": BedrockLlama2ChatSettings,
   "br.meta.llama3": BedrockLlama3Settings,
   together: TogetherChatSettings,
-  "deepseek": DeepSeekSettings,
+  deepseek: DeepSeekSettings,
 };
 
 export function getSettingsSchemaForLLM(

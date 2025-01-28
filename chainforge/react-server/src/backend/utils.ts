@@ -156,6 +156,7 @@ let AWS_SECRET_ACCESS_KEY = get_environ("AWS_SECRET_ACCESS_KEY");
 let AWS_SESSION_TOKEN = get_environ("AWS_SESSION_TOKEN");
 let AWS_REGION = get_environ("AWS_REGION");
 let TOGETHER_API_KEY = get_environ("TOGETHER_API_KEY");
+let DEEPSEEK_API_KEY = get_environ("DEEPSEEK_API_KEY");
 
 /**
  * Sets the local API keys for the revelant LLM API(s).
@@ -188,6 +189,7 @@ export function set_api_keys(api_keys: Dict<string>): void {
     AWS_SESSION_TOKEN = api_keys.AWS_Session_Token;
   if (key_is_present("AWS_Region")) AWS_REGION = api_keys.AWS_Region;
   if (key_is_present("Together")) TOGETHER_API_KEY = api_keys.Together;
+  if (key_is_present("DeepSeek")) DEEPSEEK_API_KEY = api_keys.DeepSeek;
 }
 
 export function get_azure_openai_api_keys(): [
@@ -234,6 +236,8 @@ export async function call_chatgpt(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  BASE_URL?: string,
+  API_KEY?: string,
 ): Promise<[Dict, Dict]> {
   if (!OPENAI_API_KEY)
     throw new Error(
@@ -241,8 +245,8 @@ export async function call_chatgpt(
     );
 
   const configuration = new OpenAIConfig({
-    apiKey: OPENAI_API_KEY,
-    basePath: OPENAI_BASE_URL ?? undefined,
+    apiKey: API_KEY ?? OPENAI_API_KEY,
+    basePath: BASE_URL ?? OPENAI_BASE_URL ?? undefined,
   });
 
   // Since we are running client-side, we need to remove the user-agent header:
@@ -284,7 +288,8 @@ export async function call_chatgpt(
   if (params?.tools === undefined && params?.parallel_tool_calls !== undefined)
     delete params?.parallel_tool_calls;
 
-  console.log(`Querying OpenAI model '${model}' with prompt '${prompt}'...`);
+  if (!BASE_URL)
+    console.log(`Querying OpenAI model '${model}' with prompt '${prompt}'...`);
 
   // Determine the system message and whether there's chat history to continue:
   const chat_history: ChatHistory | undefined = params?.chat_history;
@@ -337,6 +342,36 @@ export async function call_chatgpt(
   }
 
   return [query, response];
+}
+
+/**
+ * Calls DeepSeek models via DeepSeek's API.
+ */
+export async function call_deepseek(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+): Promise<[Dict, Dict]> {
+  if (!DEEPSEEK_API_KEY)
+    throw new Error(
+      "Could not find a DeepSeek API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  console.log(`Querying DeepSeek model '${model}' with prompt '${prompt}'...`);
+
+  return await call_chatgpt(
+    prompt,
+    model,
+    n,
+    temperature,
+    params,
+    should_cancel,
+    "https://api.deepseek.com",
+    DEEPSEEK_API_KEY,
+  );
 }
 
 /**
@@ -1604,6 +1639,7 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.Custom) call_api = call_custom_provider;
   else if (llm_provider === LLMProvider.Bedrock) call_api = call_bedrock;
   else if (llm_provider === LLMProvider.Together) call_api = call_together;
+  else if (llm_provider === LLMProvider.DeepSeek) call_api = call_deepseek;
   if (call_api === undefined)
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
@@ -1822,6 +1858,8 @@ export function extract_responses(
     case LLMProvider.Bedrock:
       return response as Array<string>;
     case LLMProvider.Together:
+      return _extract_openai_responses(response as Dict[]);
+    case LLMProvider.DeepSeek:
       return _extract_openai_responses(response as Dict[]);
     default:
       if (
