@@ -326,6 +326,123 @@ const GPT4Settings: ModelSettingsDict = {
   postprocessors: ChatGPTSettings.postprocessors,
 };
 
+const DeepSeekSettings: ModelSettingsDict = {
+  fullName: "DeepSeek",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "Deep Seek",
+      },
+      model: {
+        type: "string",
+        title: "Model Version",
+        description:
+          "Select a DeepSeek model to query. For more details on the differences, see the DeepSeek API documentation.",
+        enum: [
+          "deepseek-chat",
+          "deepseek-reasoner",
+        ],
+        default: "deepseek-chat",
+      },
+      system_msg: {
+        type: "string",
+        title: "system_msg",
+        description:
+          "Many conversations begin with a system message to gently instruct the assistant. By default, ChainForge includes the suggested 'You are a helpful assistant.'",
+        default: "You are a helpful assistant.",
+        allow_empty_str: true,
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+        default: 1,
+        minimum: 0,
+        maximum: 2,
+        multipleOf: 0.01,
+      },
+      response_format: {
+        type: "string",
+        title: "response_format",
+        description:
+          "An object specifying the format that the model must output. Can be 'text' or 'json_object' or (late 2024) can be a JSON schema specifying structured outputs. In ChainForge, you should only specify text, json_object, or the verbatim JSON schema---do not add a JSON object with a 'type' parameter surrounding these values. JSON modes only works with newest GPT models. IMPORTANT: when using JSON mode, you must also instruct the model to produce JSON yourself via a system or user message.",
+        default: "text",
+      },
+      tools: {
+        type: "string",
+        title: "tools",
+        description:
+          "A list of JSON schema objects, each with 'name', 'description', and 'parameters' keys, which describe functions the model may generate JSON inputs for. For more info, see https://github.com/openai/openai-cookbook/blob/main/examples/How_to_call_functions_with_chat_models.ipynb",
+        default: "",
+      },
+      tool_choice: {
+        type: "string",
+        title: "tool_choice",
+        description:
+          "Controls how the model responds to function calls. 'none' means the model does not call a function, and responds to the end-user. 'auto' means the model can pick between an end-user or calling a function. 'required' means the model must call one or more tools. Specifying a particular function name forces the model to call only that function. Leave blank for default behavior.",
+        default: "",
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description:
+          "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.005,
+      },
+      stop: {
+        type: "string",
+        title: "stop sequences",
+        description:
+          'Up to 4 sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: "",
+      },
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The maximum number of tokens to generate in the chat completion. (The total length of input tokens and generated tokens is limited by the model's context length.)",
+      },
+      presence_penalty: {
+        type: "number",
+        title: "presence_penalty",
+        description:
+          "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
+        multipleOf: 0.005,
+      },
+      frequency_penalty: {
+        type: "number",
+        title: "frequency_penalty",
+        description:
+          "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
+        multipleOf: 0.005,
+      },
+    },
+  },
+  uiSchema: {
+    ...ChatGPTSettings.uiSchema,
+    model: {
+      "ui:help": "Defaults to deepseek-chat.",
+    },
+  },
+  postprocessors: ChatGPTSettings.postprocessors,
+};
+
 const DalleSettings: ModelSettingsDict = {
   fullName: "Dall-E Image Models (OpenAI)",
   schema: {
@@ -2364,6 +2481,7 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "br.meta.llama2": BedrockLlama2ChatSettings,
   "br.meta.llama3": BedrockLlama3Settings,
   together: TogetherChatSettings,
+  "deepseek": DeepSeekSettings,
 };
 
 export function getSettingsSchemaForLLM(
@@ -2383,6 +2501,7 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.Aleph_Alpha]: AlephAlphaLuminousSettings,
     [LLMProvider.Ollama]: OllamaSettings,
     [LLMProvider.Together]: TogetherChatSettings,
+    [LLMProvider.DeepSeek]: DeepSeekSettings,
   };
 
   if (llm_provider === LLMProvider.Custom) return ModelSettings[llm_name];

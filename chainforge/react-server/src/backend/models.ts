@@ -80,6 +80,10 @@ export enum NativeLLM {
   GEMINI_v1_5_pro = "gemini-1.5-pro",
   GEMINI_v1_pro = "gemini-1.0-pro",
 
+  // DeepSeek
+  DeepSeek_Chat = "deepseek-chat",
+  DeepSeek_Reasoner = "deepseek-reasoner",
+
   // Aleph Alpha
   Aleph_Alpha_Luminous_Extended = "luminous-extended",
   Aleph_Alpha_Luminous_ExtendedControl = "luminous-extended-control",
@@ -212,6 +216,7 @@ export enum LLMProvider {
   Ollama = "ollama",
   Bedrock = "bedrock",
   Together = "together",
+  DeepSeek = "deepseek",
   Custom = "__custom",
 }
 
@@ -233,6 +238,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   else if (llm_name?.startsWith("Ollama")) return LLMProvider.Ollama;
   else if (llm_name?.startsWith("Bedrock")) return LLMProvider.Bedrock;
   else if (llm_name?.startsWith("Together")) return LLMProvider.Together;
+  else if (llm_name?.startsWith("DeepSeek")) return LLMProvider.DeepSeek;
   else if (llm.toString().startsWith("__custom/")) return LLMProvider.Custom;
 
   return undefined;
@@ -289,6 +295,7 @@ export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
   [LLMProvider.Anthropic]: 25, // Tier 1 pricing limit is 50 per minute, across all models; we halve this, to be safe.
   [LLMProvider.Together]: 30, // Paid tier limit is 60 per minute, across all models; we halve this, to be safe.
   [LLMProvider.Google]: 1000, // RPM for Google Gemini models 1.5 is quite generous; at base it is 1000 RPM. If you are using the free version it's 15 RPM, but we can expect most CF users to be using paid (and anyway you can just re-run prompt node until satisfied).
+  [LLMProvider.DeepSeek]: 1000, // DeepSeek does not constrain users atm but they might in the future. To be safe we are limiting it to 1000 queries per minute. 
 };
 
 // Max concurrent requests. Add to this to further constrain the rate limiter.

@@ -194,6 +194,26 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     ],
   },
   {
+    group: "DeepSeek",
+    emoji: "🐋",
+    items: [
+      {
+        name: "DeepSeek Chat",
+        emoji: "🐋",
+        model: "deepseek-chat",
+        base_model: "deepseek",
+        temp: 1.0,
+      }, // The base_model designates what settings form will be used, and must be unique.
+      {
+        name: "DeepSeek Reasoner",
+        emoji: "🐳",
+        model: "deepseek-reasoner",
+        base_model: "deepseek",
+        temp: 1.0,
+      },
+    ],
+  },
+  {
     group: "HuggingFace",
     emoji: "🤗",
     items: [
