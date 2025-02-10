@@ -29,6 +29,7 @@ export enum NativeLLM {
   OpenAI_GPT4_32k = "gpt-4-32k",
   OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
   OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
+  OpenAI_Other = "Other (OpenAI)",
 
   // OpenAI Text Completions (deprecated)
   OpenAI_Davinci003 = "text-davinci-003",
@@ -69,6 +70,7 @@ export enum NativeLLM {
   Claude_v1_2 = "claude-v1.2",
   Claude_v1_3 = "claude-v1.3",
   Claude_v1_instant = "claude-instant-v1",
+  Claude_Other = "Other (Anthropic)",
 
   // Google models
   PaLM2_Text_Bison = "text-bison-001", // it's really models/text-bison-001, but that's confusing
@@ -79,10 +81,12 @@ export enum NativeLLM {
   GEMINI_v1_5_flash_8B = "gemini-1.5-flash-8b",
   GEMINI_v1_5_pro = "gemini-1.5-pro",
   GEMINI_v1_pro = "gemini-1.0-pro",
+  GEMINI_Other = "Other (Google)",
 
   // DeepSeek
   DeepSeek_Chat = "deepseek-chat",
   DeepSeek_Reasoner = "deepseek-reasoner",
+  DeepSeek_Other = "Other (DeepSeek)",
 
   // Aleph Alpha
   Aleph_Alpha_Luminous_Extended = "luminous-extended",
@@ -91,6 +95,7 @@ export enum NativeLLM {
   Aleph_Alpha_Luminous_Base = "luminous-base",
   Aleph_Alpha_Luminous_Supreme = "luminous-supreme",
   Aleph_Alpha_Luminous_SupremeControl = "luminous-supreme-control",
+  Aleph_Alpha_Other = "Other (AlephAlpha)",
 
   // HuggingFace Inference hosted models, suggested to users
   HF_MISTRAL_7B_INSTRUCT = "mistralai/Mistral-7B-Instruct-v0.1",
@@ -101,12 +106,10 @@ export enum NativeLLM {
   HF_DIALOGPT_LARGE = "microsoft/DialoGPT-large", // chat model
   HF_GPT2 = "gpt2",
   HF_BLOOM_560M = "bigscience/bloom-560m",
-  // HF_GPTJ_6B = "EleutherAI/gpt-j-6b",
-  // HF_LLAMA_7B = "decapoda-research/llama-7b-hf",
-
   // A special flag for a user-defined HuggingFace model endpoint.
   // The actual model name will be passed as a param to the LLM call function.
   HF_OTHER = "Other (HuggingFace)",
+
   Ollama = "ollama",
 
   Bedrock_Claude_2_1 = "anthropic.claude-v2:1",
@@ -129,6 +132,7 @@ export enum NativeLLM {
   Bedrock_Mistral_Mistral = "mistral.mistral-7b-instruct-v0:2",
   Bedrock_Mistral_Mistral_Large = "mistral.mistral-large-2402-v1:0",
   Bedrock_Mistral_Mixtral = "mistral.mixtral-8x7b-instruct-v0:1",
+  Bedrock_Other = "Other (Bedrock)",
 
   // Together.ai
   Together_ZeroOneAI_01ai_Yi_Chat_34B = "together/zero-one-ai/Yi-34B-Chat",
@@ -212,6 +216,7 @@ export enum NativeLLM {
   Together_Undi95_Toppy_M_7B = "together/Undi95/Toppy-M-7B",
   Together_WizardLM_WizardLM_v1_2_13B = "together/WizardLM/WizardLM-13B-V1.2",
   Together_upstage_Upstage_SOLAR_Instruct_v1_11B = "together/upstage/SOLAR-10.7B-Instruct-v1.0",
+  Together_Other = "together/Other (Together)",
 }
 
 export type LLM = string | NativeLLM;

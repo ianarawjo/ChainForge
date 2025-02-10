@@ -4,14 +4,17 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useEffect,
+  useMemo,
 } from "react";
-import { Button, Modal, Popover } from "@mantine/core";
+import { Button, Modal, Popover, Select } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import emojidata from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 // react-jsonschema-form
 import validator from "@rjsf/validator-ajv8";
 import Form from "@rjsf/core";
+import { WidgetProps } from "@rjsf/utils";
+import { v4 as uuid } from "uuid";
 import {
   ModelSettings,
   getDefaultModelFormData,
@@ -23,6 +26,63 @@ import {
   LLMSpec,
   ModelSettingsDict,
 } from "./backend/typing";
+
+// const string_exists = (s: any): boolean => {
+//   return s !== undefined && typeof s === "string" && s.trim().length > 0;
+// };
+
+// Custom UI widgets for react-jsonschema-form
+const DatalistWidget = (props: WidgetProps) => {
+  console.log("DatalistWidget props:", props, props.value);
+  const [data, setData] = useState(
+    (props.options.enumOptions?.map((option, index) => ({
+      value: option.value,
+      label: option.value,
+    })) ?? []).concat(props.options.enumOptions?.find((o) => o.value === props.value) ? [] : { value: props.value, label: props.value }),
+  );
+
+  return (
+    <Select
+      data={data}
+      defaultValue={props.value ?? ""}
+      onChange={(newVal) => props.onChange(newVal ?? "")}
+      size="sm"
+      placeholder="Select items"
+      nothingFound="Nothing found"
+      searchable
+      creatable
+      getCreateLabel={(query) => `+ Create ${query}`}
+      onCreate={(query) => {
+        const item = { value: query, label: query };
+        setData((current) => [...current, item]);
+        console.log(item);
+        return item;
+      }}
+    />
+  );
+
+  // This works but when the list gets long there's a rendering error on Chrome. 
+  // const listId = 'datalist-' + uuid();
+  // return (
+  //   <div>
+  //     <input
+  //       type="text"
+  //       list={listId}
+  //       value={props.value || ''}
+  //       onChange={(event) => props.onChange(event.target.value)}
+  //     />
+  //     <datalist id={listId}>
+  //       {props.options.enumOptions?.map((option, index) => (
+  //         <option key={index} value={option.value} />
+  //       ))}
+  //     </datalist>
+  //   </div>
+  // );
+};
+
+const widgets = {
+  datalist: DatalistWidget,
+};
 
 export interface ModelSettingsModalRef {
   trigger: () => void;
@@ -84,9 +144,16 @@ const ModelSettingsModal = forwardRef<
       setSchema(schema);
       setUISchema(settingsSpec.uiSchema);
       setBaseModelName(settingsSpec.fullName);
+
+      // If the user has already saved custom settings...
       if (model.formData) {
         setFormData(model.formData);
         setInitShortname(model.formData.shortname as string | undefined);
+
+        // If the "custom_model" field is set, use that as the initial model name, overriding "model".
+        // if (string_exists(model.formData.custom_model))
+        // setInitModelName(model.formData.custom_model as string);
+        // else
         setInitModelName(model.formData.model as string | undefined);
       } else {
         // Create settings from schema
@@ -154,7 +221,10 @@ const ModelSettingsModal = forwardRef<
       // In this case, we auto-change the shortname, to save user's time and nickname models appropriately.
       const modelname = state.formData.model as string | undefined;
       const shortname = state.formData.shortname as string | undefined;
-      if (shortname === initShortname && modelname !== initModelName) {
+      if (
+        shortname === initShortname &&
+        modelname !== initModelName
+      ) {
         // Only change the shortname if there is a distinct model name.
         // If not, let the shortname remain the same for this time, and just remember the model name.
         if (initModelName !== undefined) {
@@ -244,8 +314,9 @@ const ModelSettingsModal = forwardRef<
       <Form
         schema={schema}
         uiSchema={uiSchema}
+        widgets={widgets} // Custom UI widgets
         formData={formData}
-        // @ts-expect-error This is literally the example code from react-json-schema; no idea why it wouldn't typecheck correctly.
+        // // @ts-expect-error This is literally the example code from react-json-schema; no idea why it wouldn't typecheck correctly.
         validator={validator}
         // @ts-expect-error Expect format is LLMSpec.
         onChange={onFormDataChange}
