@@ -29,7 +29,6 @@ export enum NativeLLM {
   OpenAI_GPT4_32k = "gpt-4-32k",
   OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
   OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
-  OpenAI_Other = "Other (OpenAI)",
 
   // OpenAI Text Completions (deprecated)
   OpenAI_Davinci003 = "text-davinci-003",
@@ -70,7 +69,6 @@ export enum NativeLLM {
   Claude_v1_2 = "claude-v1.2",
   Claude_v1_3 = "claude-v1.3",
   Claude_v1_instant = "claude-instant-v1",
-  Claude_Other = "Other (Anthropic)",
 
   // Google models
   PaLM2_Text_Bison = "text-bison-001", // it's really models/text-bison-001, but that's confusing
@@ -81,12 +79,10 @@ export enum NativeLLM {
   GEMINI_v1_5_flash_8B = "gemini-1.5-flash-8b",
   GEMINI_v1_5_pro = "gemini-1.5-pro",
   GEMINI_v1_pro = "gemini-1.0-pro",
-  GEMINI_Other = "Other (Google)",
 
   // DeepSeek
   DeepSeek_Chat = "deepseek-chat",
   DeepSeek_Reasoner = "deepseek-reasoner",
-  DeepSeek_Other = "Other (DeepSeek)",
 
   // Aleph Alpha
   Aleph_Alpha_Luminous_Extended = "luminous-extended",
@@ -95,7 +91,6 @@ export enum NativeLLM {
   Aleph_Alpha_Luminous_Base = "luminous-base",
   Aleph_Alpha_Luminous_Supreme = "luminous-supreme",
   Aleph_Alpha_Luminous_SupremeControl = "luminous-supreme-control",
-  Aleph_Alpha_Other = "Other (AlephAlpha)",
 
   // HuggingFace Inference hosted models, suggested to users
   HF_MISTRAL_7B_INSTRUCT = "mistralai/Mistral-7B-Instruct-v0.1",
@@ -132,7 +127,6 @@ export enum NativeLLM {
   Bedrock_Mistral_Mistral = "mistral.mistral-7b-instruct-v0:2",
   Bedrock_Mistral_Mistral_Large = "mistral.mistral-large-2402-v1:0",
   Bedrock_Mistral_Mixtral = "mistral.mixtral-8x7b-instruct-v0:1",
-  Bedrock_Other = "Other (Bedrock)",
 
   // Together.ai
   Together_ZeroOneAI_01ai_Yi_Chat_34B = "together/zero-one-ai/Yi-34B-Chat",
@@ -216,7 +210,6 @@ export enum NativeLLM {
   Together_Undi95_Toppy_M_7B = "together/Undi95/Toppy-M-7B",
   Together_WizardLM_WizardLM_v1_2_13B = "together/WizardLM/WizardLM-13B-V1.2",
   Together_upstage_Upstage_SOLAR_Instruct_v1_11B = "together/upstage/SOLAR-10.7B-Instruct-v1.0",
-  Together_Other = "together/Other (Together)",
 }
 
 export type LLM = string | NativeLLM;
@@ -327,7 +320,7 @@ export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
 };
 
 // Max concurrent requests. Add to this to further constrain the rate limiter.
-export const MAX_CONCURRENT: { [key in LLM]?: number } = {};
+export const MAX_CONCURRENT: { [key in string | NativeLLM]?: number } = {};
 
 const DEFAULT_RATE_LIMIT = 100; // RPM for any models not listed above
 
@@ -353,14 +346,14 @@ export class RateLimiter {
   }
 
   /** Get the Bottleneck limiter for the given model. If it doesn't already exist, instantiates it dynamically. */
-  private getLimiter(model: LLM): Bottleneck {
+  private getLimiter(model: LLM, provider: LLMProvider): Bottleneck {
     // Find if there's an existing limiter for this model
     if (!(model in this.limiters)) {
       // If there isn't, make one:
       // Find the RPM. First search if the model is present in predefined rate limits; then search for pre-defined RLs by provider; then set to default.
       const rpm =
         RATE_LIMIT_BY_MODEL[model] ??
-        RATE_LIMIT_BY_PROVIDER[getProvider(model) ?? LLMProvider.Custom] ??
+        RATE_LIMIT_BY_PROVIDER[provider ?? LLMProvider.Custom] ??
         DEFAULT_RATE_LIMIT;
       this.limiters[model] = new Bottleneck({
         reservoir: rpm, // max requests per minute
@@ -381,12 +374,13 @@ export class RateLimiter {
    */
   public static throttle<T>(
     model: LLM,
+    provider: LLMProvider,
     func: () => PromiseLike<T>,
     should_cancel?: () => boolean,
   ): Promise<T> {
     // Rate limit per model, and abort if the API request takes 3 minutes or more.
     return this.getInstance()
-      .getLimiter(model)
+      .getLimiter(model, provider)
       .schedule({}, () => {
         if (should_cancel && should_cancel())
           throw new UserForcedPrematureExit();

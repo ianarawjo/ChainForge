@@ -82,16 +82,8 @@ const ChatGPTSettings: ModelSettingsDict = {
           "text-davinci-003",
           "text-davinci-002",
           "code-davinci-002",
-          "Other (OpenAI)",
         ],
         default: "gpt-3.5-turbo",
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       system_msg: {
         type: "string",
@@ -164,11 +156,11 @@ const ChatGPTSettings: ModelSettingsDict = {
           "If specified, the OpenAI API will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed.",
         allow_empty_str: true,
       },
-      max_tokens: {
+      max_completion_tokens: {
         type: "integer",
-        title: "max_tokens",
+        title: "max_completion_tokens",
         description:
-          "The maximum number of tokens to generate in the chat completion. (The total length of input tokens and generated tokens is limited by the model's context length.)",
+          "An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens.",
       },
       presence_penalty: {
         type: "number",
@@ -252,7 +244,7 @@ const ChatGPTSettings: ModelSettingsDict = {
       "ui:widget": "textarea",
       "ui:help": "Defaults to empty.",
     },
-    max_tokens: {
+    max_completion_tokens: {
       "ui:help": "Defaults to infinity.",
     },
     seed: {
@@ -353,15 +345,8 @@ const DeepSeekSettings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select a DeepSeek model to query. For more details on the differences, see the DeepSeek API documentation.",
-        enum: ["deepseek-chat", "deepseek-reasoner", "Other (DeepSeek)"],
+        enum: ["deepseek-chat", "deepseek-reasoner"],
         default: "deepseek-chat",
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       system_msg: {
         type: "string",
@@ -475,15 +460,8 @@ const DalleSettings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select an OpenAI image model to query. For more details on the differences, see the OpenAI API documentation.",
-        enum: ["dall-e-3", "dall-e-2", "Other (OpenAI)"],
+        enum: ["dall-e-3", "dall-e-2"],
         default: "dall-e-2",
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       size: {
         type: "string",
@@ -519,6 +497,7 @@ const DalleSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to dalle-2.",
+      "ui:widget": "datalist",
     },
     size: {
       "ui:help": "Defaults to 256x256.",
@@ -577,7 +556,6 @@ const ClaudeSettings: ModelSettingsDict = {
           "claude-instant-v1.1",
           "claude-instant-v1.1-100k",
           "claude-instant-v1.0",
-          "Other (Anthropic)",
         ],
         default: "claude-3-5-sonnet-latest",
         shortname_map: {
@@ -589,13 +567,6 @@ const ClaudeSettings: ModelSettingsDict = {
           "claude-3-haiku-20240307": "claude-3-haiku",
           "claude-3-5-haiku-latest": "claude-3.5-haiku",
         },
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       system_msg: {
         type: "string",
@@ -688,6 +659,7 @@ const ClaudeSettings: ModelSettingsDict = {
     model: {
       "ui:help":
         "Defaults to claude-2.1. Note that Anthropic models are subject to change. Model names prior to Claude 2, including 100k context window, are no longer listed on the Anthropic site, so they may or may not work.",
+      "ui:widget": "datalist",
     },
     system_msg: {
       "ui:widget": "textarea",
@@ -777,7 +749,6 @@ const PaLM2Settings: ModelSettingsDict = {
           "gemini-pro",
           "text-bison-001",
           "chat-bison-001",
-          "Other (Google)",
         ],
         default: "gemini-1.5-flash",
         shortname_map: {
@@ -789,13 +760,6 @@ const PaLM2Settings: ModelSettingsDict = {
           "gemini-1.5-flash": "Gemini Flash",
           "gemini-1.5-flash-8b": "Gemini Flash 8B",
         },
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       system_msg: {
         type: "string",
@@ -857,6 +821,7 @@ const PaLM2Settings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to gemini-pro.",
+      "ui:widget": "datalist",
     },
     system_msg: {
       "ui:widget": "textarea",
@@ -1007,6 +972,7 @@ const DalaiModelSettings: ModelSettingsDict = {
     model: {
       "ui:help":
         "NOTE: You must have installed the selected model and have Dalai be running and accessible on the local environment with which you are running the ChainForge server.",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 0.5.",
@@ -1132,13 +1098,6 @@ const HuggingFaceTextInferenceSettings: ModelSettingsDict = {
           "bigcode/starcoder": "starcoder",
         },
       },
-      custom_model: {
-        type: "string",
-        title: "Custom HF model endpoint",
-        description:
-          "(Only used if you select 'Other' above.) Enter the HuggingFace id of the text generation model you wish to query via the inference API. Alternatively, if you have hosted a model on HF Inference Endpoints, you can enter the full URL of the endpoint here.",
-        default: "",
-      },
       model_type: {
         type: "string",
         title: "Model Type (Text or Chat)",
@@ -1228,6 +1187,7 @@ const HuggingFaceTextInferenceSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to Falcon.7B.",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -1288,7 +1248,6 @@ const AlephAlphaLuminousSettings: ModelSettingsDict = {
           "luminous-base",
           "luminous-supreme",
           "luminous-supreme-control",
-          "Other (AlephAlpha)",
         ],
         default: "luminous-base",
         shortname_map: {
@@ -1299,13 +1258,6 @@ const AlephAlphaLuminousSettings: ModelSettingsDict = {
           "luminous-supreme": "luminous-supr",
           "luminous-supreme-control": "luminous-supr-ctrl",
         },
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       temperature: {
         type: "number",
@@ -1378,6 +1330,7 @@ const AlephAlphaLuminousSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to Luminous Base.",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 0.0.",
@@ -1653,20 +1606,12 @@ const BedrockClaudeSettings: ModelSettingsDict = {
           NativeLLM.Bedrock_Claude_Instant_1,
           NativeLLM.Bedrock_Claude_2,
           NativeLLM.Bedrock_Claude_2_1,
-          "Other (Bedrock)",
         ],
         default: NativeLLM.Bedrock_Claude_3_Haiku,
         shortname_map: {
           "anthropic.claude-3-sonnet-20240229-v1:0": "claude-3-sonnet",
           "anthropic.claude-3-haiku-20240307-v1:0": "claude-3-haiku",
         },
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       system_msg: {
         type: "string",
@@ -1738,6 +1683,7 @@ const BedrockClaudeSettings: ModelSettingsDict = {
     model: {
       "ui:help":
         "Defaults to claude-2. Note that Anthropic models in particular are subject to change. Model names prior to Claude 2, including 100k context window, are no longer listed on the Anthropic site, so they may or may not work.",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -1794,16 +1740,8 @@ const BedrockJurassic2Settings: ModelSettingsDict = {
         enum: [
           NativeLLM.Bedrock_Jurassic_Mid,
           NativeLLM.Bedrock_Jurassic_Ultra,
-          "Other (Bedrock)",
         ],
         default: NativeLLM.Bedrock_Jurassic_Ultra,
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       temperature: {
         type: "number",
@@ -1879,7 +1817,8 @@ const BedrockJurassic2Settings: ModelSettingsDict = {
       "ui:autofocus": true,
     },
     model: {
-      "ui:help": "Defaults to Jurassic 2 Ultra. ",
+      "ui:help": "Defaults to Jurassic 2 Ultra.",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -1926,16 +1865,8 @@ const BedrockTitanSettings: ModelSettingsDict = {
           NativeLLM.Bedrock_Titan_Large,
           NativeLLM.Bedrock_Titan_Light,
           NativeLLM.Bedrock_Titan_Express,
-          "Other (Bedrock)",
         ],
         default: NativeLLM.Bedrock_Titan_Large,
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       temperature: {
         type: "number",
@@ -1989,6 +1920,7 @@ const BedrockTitanSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to Titan Large",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -2028,16 +1960,8 @@ const BedrockCommandTextSettings: ModelSettingsDict = {
         enum: [
           NativeLLM.Bedrock_Command_Text,
           NativeLLM.Bedrock_Command_Text_Light,
-          "Other (Bedrock)",
         ],
         default: NativeLLM.Bedrock_Command_Text,
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       temperature: {
         type: "number",
@@ -2107,6 +2031,7 @@ const BedrockCommandTextSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to Command Text",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -2152,16 +2077,8 @@ const MistralSettings: ModelSettingsDict = {
         enum: [
           NativeLLM.Bedrock_Mistral_Mistral,
           NativeLLM.Bedrock_Mistral_Mistral_Large,
-          "Other (Bedrock)",
         ],
         default: NativeLLM.Bedrock_Mistral_Mistral,
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       temperature: {
         type: "number",
@@ -2224,6 +2141,7 @@ const MistralSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to Mistral",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -2293,16 +2211,8 @@ const BedrockLlama2ChatSettings: ModelSettingsDict = {
         enum: [
           NativeLLM.Bedrock_Meta_LLama2Chat_13b,
           NativeLLM.Bedrock_Meta_LLama2Chat_70b,
-          "Other (Bedrock)",
         ],
         default: NativeLLM.Bedrock_Meta_LLama2Chat_13b,
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' in the model list above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       temperature: {
         type: "number",
@@ -2350,6 +2260,7 @@ const BedrockLlama2ChatSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to LlamaChat 13B",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -2474,16 +2385,8 @@ export const TogetherChatSettings: ModelSettingsDict = {
           "Undi95/Toppy-M-7B",
           "WizardLM/WizardLM-13B-V1.2",
           "upstage/SOLAR-10.7B-Instruct-v1.0",
-          "Other (Together)",
         ],
         default: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-      },
-      custom_model: {
-        type: "string",
-        title: "Other model version",
-        description:
-          "(Only used if you select 'Other' above.) Enter the name of the model you wish to query, in case it is not in the list above.",
-        default: "",
       },
       temperature: {
         type: "number",
@@ -2530,7 +2433,8 @@ export const TogetherChatSettings: ModelSettingsDict = {
       "ui:autofocus": true,
     },
     model: {
-      "ui:help": "Defaults to LlamaChat 13B",
+      "ui:help": "Defaults to Llama-3.3-70B",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -2606,6 +2510,35 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "br.meta.llama3": BedrockLlama3Settings,
   together: TogetherChatSettings,
   deepseek: DeepSeekSettings,
+};
+
+// A lookup that converts the base_model names into LLMProviders. 
+// Used for backwards compatibility. 
+// TODO in future: Deprecate base_model and migrate fully to using LLMProvider type throughout.
+export function baseModelToProvider(base_model: string): LLMProvider {
+  const lookup: Record<string, LLMProvider> = {
+    "gpt-3.5-turbo": LLMProvider.OpenAI,
+    "gpt-4": LLMProvider.OpenAI,
+    "dall-e": LLMProvider.OpenAI,
+    "claude-v1": LLMProvider.Anthropic,
+    "palm2-bison": LLMProvider.Google,
+    dalai: LLMProvider.Dalai,
+    "azure-openai": LLMProvider.Azure_OpenAI,
+    hf: LLMProvider.HuggingFace,
+    "luminous-base": LLMProvider.Aleph_Alpha,
+    ollama: LLMProvider.Ollama,
+    "br.anthropic.claude": LLMProvider.Bedrock,
+    "br.ai21.j2": LLMProvider.Bedrock,
+    "br.amazon.titan": LLMProvider.Bedrock,
+    "br.cohere.command": LLMProvider.Bedrock,
+    "br.mistral.mistral": LLMProvider.Bedrock,
+    "br.mistral.mixtral": LLMProvider.Bedrock,
+    "br.meta.llama2": LLMProvider.Bedrock,
+    "br.meta.llama3": LLMProvider.Bedrock,
+    together: LLMProvider.Together,
+    deepseek: LLMProvider.DeepSeek,
+  };
+  return lookup[base_model] ?? LLMProvider.Custom;
 };
 
 export function getSettingsSchemaForLLM(

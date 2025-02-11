@@ -16,7 +16,7 @@ import {
   CustomLLMProviderSpec,
   LLMResponseData,
 } from "./typing";
-import { LLM, getEnumName } from "./models";
+import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
 import {
   APP_IS_RUNNING_LOCALLY,
   set_api_keys,
@@ -38,6 +38,7 @@ import {
 import { UserForcedPrematureExit } from "./errors";
 import CancelTracker from "./canceler";
 import { execPy } from "./pyodide/exec-py";
+import { baseModelToProvider } from "../ModelSettingSchemas";
 
 // """ =================
 //     SETUP AND GLOBALS
@@ -224,6 +225,12 @@ function extract_llm_nickname(llm_spec: Dict | string) {
 function extract_llm_name(llm_spec: Dict | string): string {
   if (typeof llm_spec === "string") return llm_spec;
   else return llm_spec.model;
+}
+
+function extract_llm_provider(llm_spec: Dict | string): LLMProvider {
+  if (typeof llm_spec === "string")
+    return getProvider(llm_spec) ?? LLMProvider.Custom;
+  else return baseModelToProvider(llm_spec.base_model);
 }
 
 function extract_llm_key(llm_spec: Dict | string): string {
@@ -803,6 +810,7 @@ export async function queryLLM(
   async function query(llm_spec: string | Dict): Promise<LLMPrompterResults> {
     // Get LLM model name and any params
     const llm_str = extract_llm_name(llm_spec);
+    const llm_provider = extract_llm_provider(llm_spec);
     const llm_nickname = extract_llm_nickname(llm_spec);
     const llm_params = extract_llm_params(llm_spec);
     const llm_key = extract_llm_key(llm_spec);
@@ -842,6 +850,7 @@ export async function queryLLM(
       for await (const response of prompter.gen_responses(
         _vars,
         llm_str as LLM,
+        llm_provider,
         num_generations,
         temperature,
         llm_params,
@@ -1218,7 +1227,7 @@ export async function executepy(
  */
 export async function evalWithLLM(
   id: string,
-  llm: string | LLMSpec,
+  llm: LLMSpec,
   root_prompt: string,
   response_ids: string | string[],
   api_keys?: Dict,

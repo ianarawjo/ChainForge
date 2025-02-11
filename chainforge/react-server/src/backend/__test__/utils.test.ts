@@ -9,7 +9,7 @@ import {
   extract_responses,
   merge_response_objs,
 } from "../utils";
-import { NativeLLM } from "../models";
+import { LLMProvider, NativeLLM } from "../models";
 import { expect, test } from "@jest/globals";
 import { RawLLMResponseObject } from "../typing";
 
@@ -68,7 +68,11 @@ test("openai chat completions", async () => {
   expect(query).toHaveProperty("temperature");
 
   // Extract responses, check their type
-  const resps = extract_responses(response, NativeLLM.OpenAI_ChatGPT);
+  const resps = extract_responses(
+    response,
+    NativeLLM.OpenAI_ChatGPT,
+    LLMProvider.OpenAI,
+  );
   expect(resps).toHaveLength(2);
   expect(typeof resps[0]).toBe("string");
 }, 20000);
@@ -86,7 +90,11 @@ test("openai text completions", async () => {
   expect(query).toHaveProperty("n");
 
   // Extract responses, check their type
-  const resps = extract_responses(response, NativeLLM.OpenAI_Davinci003);
+  const resps = extract_responses(
+    response,
+    NativeLLM.OpenAI_Davinci003,
+    LLMProvider.OpenAI,
+  );
   expect(resps).toHaveLength(2);
   expect(typeof resps[0]).toBe("string");
 }, 20000);
@@ -104,7 +112,11 @@ test("anthropic models", async () => {
   expect(query).toHaveProperty("max_tokens_to_sample");
 
   // Extract responses, check their type
-  const resps = extract_responses(response, NativeLLM.Claude_v1);
+  const resps = extract_responses(
+    response,
+    NativeLLM.Claude_v1,
+    LLMProvider.Anthropic,
+  );
   expect(resps).toHaveLength(1);
   expect(typeof resps[0]).toBe("string");
 }, 20000);
@@ -121,7 +133,11 @@ test("google palm2 models", async () => {
   expect(query).toHaveProperty("candidateCount");
 
   // Extract responses, check their type
-  let resps = extract_responses(response, NativeLLM.PaLM2_Chat_Bison);
+  let resps = extract_responses(
+    response,
+    NativeLLM.PaLM2_Chat_Bison,
+    LLMProvider.Google,
+  );
   expect(resps).toHaveLength(3);
   expect(typeof resps[0]).toBe("string");
   console.log(JSON.stringify(resps));
@@ -137,7 +153,11 @@ test("google palm2 models", async () => {
   expect(query).toHaveProperty("maxOutputTokens");
 
   // Extract responses, check their type
-  resps = extract_responses(response, NativeLLM.PaLM2_Chat_Bison);
+  resps = extract_responses(
+    response,
+    NativeLLM.PaLM2_Chat_Bison,
+    LLMProvider.Google,
+  );
   expect(resps).toHaveLength(3);
   expect(typeof resps[0]).toBe("string");
   console.log(JSON.stringify(resps));
@@ -153,7 +173,11 @@ test("aleph alpha model", async () => {
   expect(response).toHaveLength(3);
 
   // Extract responses, check their type
-  let resps = extract_responses(response, NativeLLM.Aleph_Alpha_Luminous_Base);
+  let resps = extract_responses(
+    response,
+    NativeLLM.Aleph_Alpha_Luminous_Base,
+    LLMProvider.Aleph_Alpha,
+  );
   expect(resps).toHaveLength(3);
   expect(typeof resps[0]).toBe("string");
   console.log(JSON.stringify(resps));
@@ -169,7 +193,11 @@ test("aleph alpha model", async () => {
   expect(response).toHaveLength(3);
 
   // Extract responses, check their type
-  resps = extract_responses(response, NativeLLM.Aleph_Alpha_Luminous_Base);
+  resps = extract_responses(
+    response,
+    NativeLLM.Aleph_Alpha_Luminous_Base,
+    LLMProvider.Aleph_Alpha,
+  );
   expect(resps).toHaveLength(3);
   expect(typeof resps[0]).toBe("string");
   console.log(JSON.stringify(resps));

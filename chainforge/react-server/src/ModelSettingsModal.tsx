@@ -35,10 +35,16 @@ import {
 const DatalistWidget = (props: WidgetProps) => {
   console.log("DatalistWidget props:", props, props.value);
   const [data, setData] = useState(
-    (props.options.enumOptions?.map((option, index) => ({
-      value: option.value,
-      label: option.value,
-    })) ?? []).concat(props.options.enumOptions?.find((o) => o.value === props.value) ? [] : { value: props.value, label: props.value }),
+    (
+      props.options.enumOptions?.map((option, index) => ({
+        value: option.value,
+        label: option.value,
+      })) ?? []
+    ).concat(
+      props.options.enumOptions?.find((o) => o.value === props.value)
+        ? []
+        : { value: props.value, label: props.value },
+    ),
   );
 
   return (
@@ -61,7 +67,7 @@ const DatalistWidget = (props: WidgetProps) => {
     />
   );
 
-  // This works but when the list gets long there's a rendering error on Chrome. 
+  // This works but when the list gets long there's a rendering error on Chrome.
   // const listId = 'datalist-' + uuid();
   // return (
   //   <div>
@@ -221,10 +227,7 @@ const ModelSettingsModal = forwardRef<
       // In this case, we auto-change the shortname, to save user's time and nickname models appropriately.
       const modelname = state.formData.model as string | undefined;
       const shortname = state.formData.shortname as string | undefined;
-      if (
-        shortname === initShortname &&
-        modelname !== initModelName
-      ) {
+      if (shortname === initShortname && modelname !== initModelName) {
         // Only change the shortname if there is a distinct model name.
         // If not, let the shortname remain the same for this time, and just remember the model name.
         if (initModelName !== undefined) {
