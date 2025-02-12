@@ -14,7 +14,6 @@ import Picker from "@emoji-mart/react";
 import validator from "@rjsf/validator-ajv8";
 import Form from "@rjsf/core";
 import { WidgetProps } from "@rjsf/utils";
-import { v4 as uuid } from "uuid";
 import {
   ModelSettings,
   getDefaultModelFormData,
@@ -27,13 +26,8 @@ import {
   ModelSettingsDict,
 } from "./backend/typing";
 
-// const string_exists = (s: any): boolean => {
-//   return s !== undefined && typeof s === "string" && s.trim().length > 0;
-// };
-
 // Custom UI widgets for react-jsonschema-form
 const DatalistWidget = (props: WidgetProps) => {
-  console.log("DatalistWidget props:", props, props.value);
   const [data, setData] = useState(
     (
       props.options.enumOptions?.map((option, index) => ({
@@ -66,24 +60,6 @@ const DatalistWidget = (props: WidgetProps) => {
       }}
     />
   );
-
-  // This works but when the list gets long there's a rendering error on Chrome.
-  // const listId = 'datalist-' + uuid();
-  // return (
-  //   <div>
-  //     <input
-  //       type="text"
-  //       list={listId}
-  //       value={props.value || ''}
-  //       onChange={(event) => props.onChange(event.target.value)}
-  //     />
-  //     <datalist id={listId}>
-  //       {props.options.enumOptions?.map((option, index) => (
-  //         <option key={index} value={option.value} />
-  //       ))}
-  //     </datalist>
-  //   </div>
-  // );
 };
 
 const widgets = {
