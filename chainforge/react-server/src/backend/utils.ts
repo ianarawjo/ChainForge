@@ -209,12 +209,16 @@ function construct_openai_chat_history(
   prompt: string,
   chat_history?: ChatHistory,
   system_msg?: string,
+  system_role_name?: string,
 ): ChatHistory {
+  const sys_role_name = system_role_name ?? "system";
   const prompt_msg: ChatMessage = { role: "user", content: prompt };
   const sys_msg: ChatMessage[] =
-    system_msg !== undefined ? [{ role: "system", content: system_msg }] : [];
+    system_msg !== undefined
+      ? [{ role: sys_role_name, content: system_msg }]
+      : [];
   if (chat_history !== undefined && chat_history.length > 0) {
-    if (chat_history[0].role === "system") {
+    if (chat_history[0].role === sys_role_name) {
       // In this case, the system_msg is ignored because the prior history already contains one.
       return chat_history.concat([prompt_msg]);
     } else {
@@ -293,12 +297,15 @@ export async function call_chatgpt(
 
   // Determine the system message and whether there's chat history to continue:
   const chat_history: ChatHistory | undefined = params?.chat_history;
-  const system_msg: string =
-    params?.system_msg !== undefined
-      ? params.system_msg
-      : "You are a helpful assistant.";
+  let system_msg: string | undefined =
+    params?.system_msg !== undefined ? params.system_msg : undefined;
   delete params?.system_msg;
   delete params?.chat_history;
+
+  // The o1 and later OpenAI models, for whatever reason, block the system message from being sent in the chat history.
+  // The official API states that "developer" works, but it doesn't for some models, so until OpenAI fixes this
+  // and fully supports system messages, we have to block them from being sent in the chat history.
+  if (model.startsWith("o")) system_msg = undefined;
 
   const query: Dict = {
     model: modelname,
@@ -1610,6 +1617,7 @@ async function call_custom_provider(
  */
 export async function call_llm(
   llm: LLM,
+  provider: LLMProvider,
   prompt: string,
   n: number,
   temperature: number,
@@ -1618,7 +1626,7 @@ export async function call_llm(
 ): Promise<[Dict, Dict]> {
   // Get the correct API call for the given LLM:
   let call_api: LLMAPICall | undefined;
-  const llm_provider: LLMProvider | undefined = getProvider(llm);
+  const llm_provider: LLMProvider | undefined = provider ?? getProvider(llm); // backwards compatibility if there's no explicit provider
 
   if (llm_provider === undefined)
     throw new Error(`Language model ${llm} is not supported.`);
@@ -1827,8 +1835,10 @@ function _extract_ollama_responses(
 export function extract_responses(
   response: Array<string | Dict> | Dict,
   llm: LLM | string,
+  provider: LLMProvider,
 ): Array<LLMResponseData> {
-  const llm_provider: LLMProvider | undefined = getProvider(llm as LLM);
+  const llm_provider: LLMProvider | undefined =
+    provider ?? getProvider(llm as LLM);
   const llm_name = llm.toString().toLowerCase();
   switch (llm_provider) {
     case LLMProvider.OpenAI:

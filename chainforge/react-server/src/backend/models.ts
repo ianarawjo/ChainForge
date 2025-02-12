@@ -101,12 +101,10 @@ export enum NativeLLM {
   HF_DIALOGPT_LARGE = "microsoft/DialoGPT-large", // chat model
   HF_GPT2 = "gpt2",
   HF_BLOOM_560M = "bigscience/bloom-560m",
-  // HF_GPTJ_6B = "EleutherAI/gpt-j-6b",
-  // HF_LLAMA_7B = "decapoda-research/llama-7b-hf",
-
   // A special flag for a user-defined HuggingFace model endpoint.
   // The actual model name will be passed as a param to the LLM call function.
   HF_OTHER = "Other (HuggingFace)",
+
   Ollama = "ollama",
 
   Bedrock_Claude_2_1 = "anthropic.claude-v2:1",
@@ -322,7 +320,7 @@ export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
 };
 
 // Max concurrent requests. Add to this to further constrain the rate limiter.
-export const MAX_CONCURRENT: { [key in LLM]?: number } = {};
+export const MAX_CONCURRENT: { [key in string | NativeLLM]?: number } = {};
 
 const DEFAULT_RATE_LIMIT = 100; // RPM for any models not listed above
 
@@ -348,14 +346,14 @@ export class RateLimiter {
   }
 
   /** Get the Bottleneck limiter for the given model. If it doesn't already exist, instantiates it dynamically. */
-  private getLimiter(model: LLM): Bottleneck {
+  private getLimiter(model: LLM, provider: LLMProvider): Bottleneck {
     // Find if there's an existing limiter for this model
     if (!(model in this.limiters)) {
       // If there isn't, make one:
       // Find the RPM. First search if the model is present in predefined rate limits; then search for pre-defined RLs by provider; then set to default.
       const rpm =
         RATE_LIMIT_BY_MODEL[model] ??
-        RATE_LIMIT_BY_PROVIDER[getProvider(model) ?? LLMProvider.Custom] ??
+        RATE_LIMIT_BY_PROVIDER[provider ?? LLMProvider.Custom] ??
         DEFAULT_RATE_LIMIT;
       this.limiters[model] = new Bottleneck({
         reservoir: rpm, // max requests per minute
@@ -376,12 +374,13 @@ export class RateLimiter {
    */
   public static throttle<T>(
     model: LLM,
+    provider: LLMProvider,
     func: () => PromiseLike<T>,
     should_cancel?: () => boolean,
   ): Promise<T> {
     // Rate limit per model, and abort if the API request takes 3 minutes or more.
     return this.getInstance()
-      .getLimiter(model)
+      .getLimiter(model, provider)
       .schedule({}, () => {
         if (should_cancel && should_cancel())
           throw new UserForcedPrematureExit();

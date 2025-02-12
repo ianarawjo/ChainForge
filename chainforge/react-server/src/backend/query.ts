@@ -1,6 +1,6 @@
 import { v4 as uuid } from "uuid";
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
-import { LLM, NativeLLM, RateLimiter } from "./models";
+import { LLM, LLMProvider, NativeLLM, RateLimiter } from "./models";
 import {
   Dict,
   LLMResponseError,
@@ -75,6 +75,7 @@ export class PromptPipeline {
   private async collect_LLM_response(
     result: _IntermediateLLMResponseType,
     llm: LLM,
+    provider: LLMProvider,
     cached_responses: Dict,
   ): Promise<RawLLMResponseObject | LLMResponseError> {
     const {
@@ -97,7 +98,7 @@ export class PromptPipeline {
     const metavars = prompt.metavars;
 
     // Extract and format the responses into `LLMResponseData`
-    const extracted_resps = extract_responses(response, llm);
+    const extracted_resps = extract_responses(response, llm, provider);
 
     // Detect any images and downrez them if the user has approved of automatic compression.
     // This saves a lot of performance and storage. We also need to disable storing the raw response here, to save space.
@@ -183,6 +184,7 @@ export class PromptPipeline {
 
    * @param vars The 'vars' dict to fill variables in the root prompt template. For instance, for 'Who is {person}?', vars might = { person: ['TJ', 'MJ', 'AD'] }.
    * @param llm The specific LLM model to call. See the LLM enum for supported models.
+   * @param provider The specific LLM provider to call. See the LLMProvider enum for supported providers.
    * @param n How many generations per prompt sent to the LLM.
    * @param temperature The temperature to use when querying the LLM.
    * @param llm_params Optional. The model-specific settings to pass into the LLM API call. Varies by LLM. 
@@ -195,6 +197,7 @@ export class PromptPipeline {
   async *gen_responses(
     vars: Dict,
     llm: LLM,
+    provider: LLMProvider,
     n = 1,
     temperature = 1.0,
     llm_params?: Dict,
@@ -305,6 +308,7 @@ export class PromptPipeline {
         tasks.push(
           this._prompt_llm(
             llm,
+            provider,
             prompt,
             n,
             temperature,
@@ -319,7 +323,9 @@ export class PromptPipeline {
             },
             chat_history,
             should_cancel,
-          ).then((result) => this.collect_LLM_response(result, llm, responses)),
+          ).then((result) =>
+            this.collect_LLM_response(result, llm, provider, responses),
+          ),
         );
       }
     }
@@ -358,6 +364,7 @@ export class PromptPipeline {
 
   async _prompt_llm(
     llm: LLM,
+    provider: LLMProvider,
     prompt: PromptTemplate,
     n = 1,
     temperature = 1.0,
@@ -393,9 +400,11 @@ export class PromptPipeline {
       //       It's not perfect, but it's simpler than throttling at the call-specific level.
       [query, response] = await RateLimiter.throttle(
         llm,
+        provider,
         () =>
           call_llm(
             llm,
+            provider,
             prompt.toString(),
             n,
             temperature,
