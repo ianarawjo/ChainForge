@@ -2512,8 +2512,8 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   deepseek: DeepSeekSettings,
 };
 
-// A lookup that converts the base_model names into LLMProviders. 
-// Used for backwards compatibility. 
+// A lookup that converts the base_model names into LLMProviders.
+// Used for backwards compatibility.
 // TODO in future: Deprecate base_model and migrate fully to using LLMProvider type throughout.
 export function baseModelToProvider(base_model: string): LLMProvider {
   const lookup: Record<string, LLMProvider> = {
@@ -2539,7 +2539,7 @@ export function baseModelToProvider(base_model: string): LLMProvider {
     deepseek: LLMProvider.DeepSeek,
   };
   return lookup[base_model] ?? LLMProvider.Custom;
-};
+}
 
 export function getSettingsSchemaForLLM(
   llm_name: string,
