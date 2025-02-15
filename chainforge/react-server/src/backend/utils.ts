@@ -26,9 +26,12 @@ import {
   EvaluationScore,
   LLMResponseData,
   isImageResponseData,
+  MultiModalContent,
+  ChatMessageMM,
+  ChatHistoryMM
 } from "./typing";
 import { v4 as uuid } from "uuid";
-import { StringTemplate } from "./template";
+import { StringTemplate, IMAGE_IDENTIFIER } from "./template";
 
 /* LLM API SDKs */
 import {
@@ -199,6 +202,28 @@ export function get_azure_openai_api_keys(): [
   return [AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT];
 }
 
+function construct_prompt(prompt : string): string | Array<MultiModalContent> {
+  // If the prompt does not contain 'IMAGE_IDENTIFIER' string pattern then return the prompt as is
+  if (!prompt.includes(IMAGE_IDENTIFIER)) return prompt;
+  else {
+    // If the prompt contains 'IMAGE_IDENTIFIER' string pattern 
+    // then extract everyline that contains 'IMAGE_IDENTIFIER' and remove those lines from it
+    // and return the formatted prompt
+    const lines = prompt.split("\n");
+    const image_lines = lines.filter((line) => line.includes(IMAGE_IDENTIFIER));
+    const new_prompt = lines.filter((line) => !line.includes(IMAGE_IDENTIFIER)).join("\n");
+    
+    // from the previously-extracted image lines, suppress the 'IMAGE_IDENTIFIER' at the beginning of each line
+    // and return the following dict: https://platform.openai.com/docs/guides/vision?lang=javascript#multiple-image-inputs
+    // [{type : 'image_url', 'image_url': { 'url': exctracted_string1} }, {type : 'image_url', 'image_url': { 'url': exctracted_string2} }, ...]
+    const image_urls = image_lines.map((line) => {
+      return { type: 'image_url', image_url: { url: line.replace(IMAGE_IDENTIFIER, '').trim() } };
+    });
+
+    return [...image_urls, {type: 'text', text: new_prompt}];
+  }
+}
+
 /**
  * Construct an OpenAI format chat history for sending off to an OpenAI API call.
  * @param prompt The next prompt (user message) to append.
@@ -207,11 +232,11 @@ export function get_azure_openai_api_keys(): [
  */
 function construct_openai_chat_history(
   prompt: string,
-  chat_history?: ChatHistory,
+  chat_history?: ChatHistoryMM,
   system_msg?: string,
-): ChatHistory {
-  const prompt_msg: ChatMessage = { role: "user", content: prompt };
-  const sys_msg: ChatMessage[] =
+): ChatHistoryMM {
+  const prompt_msg: ChatMessageMM = { role: "user", content: construct_prompt(prompt) };
+  const sys_msg: ChatMessageMM[] =
     system_msg !== undefined ? [{ role: "system", content: system_msg }] : [];
   if (chat_history !== undefined && chat_history.length > 0) {
     if (chat_history[0].role === "system") {
@@ -1343,7 +1368,7 @@ export async function call_ollama_provider(
 
 /** Convert OpenAI chat history to Bedrock format */
 function to_bedrock_chat_history(
-  chat_history: ChatHistory,
+  chat_history: ChatHistoryMM,
 ): BedrockChatMessage[] {
   const role_map: Dict<string> = {
     assistant: "ai",
@@ -1431,7 +1456,7 @@ export async function call_bedrock(
         modelName.startsWith("mistral") ||
         modelName.startsWith("meta")
       ) {
-        const chat_history: ChatHistory = construct_openai_chat_history(
+        const chat_history: ChatHistoryMM = construct_openai_chat_history(
           prompt,
           params?.chat_history,
           params?.system_msg,
@@ -2378,3 +2403,27 @@ export const compressBase64Image = (b64: string): Promise<string> => {
     )
     .then((compressedBlob) => blobToBase64(compressedBlob as Blob));
 };
+
+// Simple function to check if a file is an image file
+// This function throws an Error if file does not exist
+// TODO : Implement problem with import statSync
+// export function isImageFile(filePath: string): boolean {
+//   // Check if the file exists
+//   const stats = statSync.statfs(filePath);
+//   if (!stats.isFile()) {
+//     return false;
+//   }
+//   return true
+
+//   // // Check if the file has an image-like extension
+//   // const imageExtensions = [
+//   //   ".jpg",
+//   //   ".jpeg",
+//   //   ".png",
+//   //   ".gif",
+//   //   ".bmp",
+//   //   ".webp",
+//   //   ".svg",
+//   // ];
+//   // return imageExtensions.includes(extname(filePath).toLowerCase());
+// }

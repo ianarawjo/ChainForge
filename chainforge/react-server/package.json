@@ -33,7 +33,6 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "@types/jest": "^29.5.2",
-    "@types/node": "^20.3.2",
     "@types/react": "^18.2.14",
     "@types/react-dom": "^18.2.6",
     "@uiw/codemirror-theme-material": "^4.19.16",
@@ -132,7 +131,10 @@
   },
   "devDependencies": {
     "@craco/craco": "^7.1.0",
+    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/js": "^9.20.0",
     "@types/lodash": "^4.17.0",
+    "@types/node": "^22.13.4",
     "@types/papaparse": "^5.3.14",
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-edit-text": "^5.0.4",

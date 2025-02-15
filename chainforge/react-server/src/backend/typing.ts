@@ -31,12 +31,30 @@ export interface OpenAIFunctionCall {
 }
 
 /** OpenAI chat message format */
-export interface ChatMessage {
+export interface ImageContent {
+  url : string;
+  detail? : 'low' | 'high' | 'auto';
+}
+
+export interface MultiModalContent {
+  type: string; //"text" | "image_url";
+  text?: string;
+  image_url?: ImageContent;
+}
+
+export interface ChatMessageMM {
   role: string;
-  content: string;
+  content: string | Array<MultiModalContent>; 
   name?: string;
   function_call?: OpenAIFunctionCall;
 }
+export interface ChatMessage {
+  role: string;
+  content: string; 
+  name?: string;
+  function_call?: OpenAIFunctionCall;
+}
+export type ChatHistoryMM = ChatMessageMM[]; // FIXME : HAD TO DO THAT OTHERWISE BREAKS EVERYTHING
 export type ChatHistory = ChatMessage[];
 
 /** Google PaLM chat message format */

@@ -1,5 +1,7 @@
 import { isEqual } from "./setUtils";
 
+export const IMAGE_IDENTIFIER = '%IMAGE%'
+
 function len(o: object | string | Array<any>): number {
   // Acts akin to Python's builtin 'len' method
   if (Array.isArray(o)) {
@@ -243,6 +245,27 @@ export class PromptTemplate {
     return !new StringTemplate(this.template).has_vars();
   }
 
+  /**
+   * Given a string to be inserted in place of a template var {@image_str_var}, we interpret the string as follows:
+   *    1. if the value starts with 'http' OR 'data:image', we let the string like this as it is.
+        2. if the value represent a local file 
+          AND is in good format (https://platform.openai.com/docs/guides/vision#what-type-of-files-can-i-upload), 
+          we convert the file to base64 and replace the {@image_str_var} with the string 'data:image/jpeg;base64,<base64_string>'
+        3. we throw an ERROR
+   * @param image_str
+   */
+  interpret_img_modality(image_str: string): string {
+    if (image_str.startsWith("http") || image_str.startsWith("data:image")) {
+      return image_str;
+    }
+    // Check if the image string is a local file
+    // TODO: ADD BETTER CONDITION AND React can read file on client side https://stackoverflow.com/questions/45466848/fs-readfilesync-is-not-a-function-meteor-react
+    // if (image_str.startsWith("/")) {
+    //   return `data:image/jpeg;base64,${fs.readFileSync(image_str).toString("base64")}`;
+    // }
+    throw new Error(`Invalid image string: ${image_str}`);
+  }
+
   /** 
         Formats the template string with the given parameters, returning a new PromptTemplate.
         Can return a partial completion. 
@@ -290,6 +313,27 @@ export class PromptTemplate {
       params_wo_settings = JSON.parse(JSON.stringify(paramDict));
       Object.keys(paramDict).forEach((key) => {
         if (key?.charAt(0) === "=") params_wo_settings[key] = ""; // set settings params to empty
+      });
+    }
+
+    // For 'image modality' template vars of form {@image_str_var}, we use the same logic of storing param
+    // values as before -- the only difference is that, when it comes to the actual substitution of
+    // the string, we have three choices :
+    //    1. if the value starts with 'http' OR 'data:image', we let the string like this as it is.
+    //    2. if the value represent a local file
+    //          AND is in good format (https://platform.openai.com/docs/guides/vision#what-type-of-files-can-i-upload),
+    //          we convert the file to base64 and replace the {@image_str_var} with the string 'data:image/jpeg;base64,<base64_string>'
+    //   3. we throw an ERROR
+    
+    let params_wo_settings_w_img = paramDict;
+    // To improve performance, we first check if there's a image var present at all before deep cloning:
+    if (Object.keys(paramDict).some((key) => key?.charAt(0) === "@")) {
+      // A 'image modality' var is present; deep clone the param dict and replace it with the ADEQUAT string:
+      params_wo_settings_w_img = JSON.parse(JSON.stringify(paramDict));
+      Object.keys(paramDict).forEach((key) => {
+        if (key?.charAt(0) === "@")
+          params_wo_settings[key] =
+        IMAGE_IDENTIFIER + this.interpret_img_modality(params_wo_settings[key]);
       });
     }
 
