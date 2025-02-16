@@ -24,6 +24,9 @@ import {
   IconLayoutList,
   IconLetterCaseToggle,
   IconFilter,
+  IconGraph,
+  IconChartInfographic,
+  IconChartBar,
 } from "@tabler/icons-react";
 import * as XLSX from "xlsx";
 import useStore from "./store";
@@ -47,6 +50,7 @@ import {
   LLMResponseData,
   isImageResponseData,
 } from "./backend/typing";
+import { VisView } from "./VisNode";
 
 // Helper funcs
 const getLLMName = (resp_obj: LLMResponse) =>
@@ -820,6 +824,10 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       // Produce DIV elements grouped by selected vars
       const divs = groupByVars(responses, selected_vars, [], null);
       setResponseDivs(divs);
+    } else if (showEvalScoreOptions && viewFormat === "vis") {
+      // Plot view (only present if eval scores are present)
+      const visView = <VisView responses={responses} />;
+      setResponseDivs(visView);
     }
 
     setNumMatches(numResponsesDisplayed);
@@ -939,6 +947,17 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             />
             {wideFormat ? " Table View" : ""}
           </Tabs.Tab>
+          {showEvalScoreOptions ? (
+            <Tabs.Tab value="vis">
+              <IconChartBar
+                size="10pt"
+                style={{ marginBottom: wideFormat ? "0px" : "-4px" }}
+              />
+              {wideFormat ? " Vis View" : ""}
+            </Tabs.Tab>
+          ) : (
+            <></>
+          )}
         </Tabs.List>
 
         <Tabs.Panel value="hierarchy" pt="xs">
