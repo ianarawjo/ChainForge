@@ -31,26 +31,41 @@ export interface OpenAIFunctionCall {
 }
 
 /** OpenAI chat message format */
-export interface ImageContent {
-  url : string;
-  detail? : 'low' | 'high' | 'auto';
+export interface ImageContentAnthropic {
+  data: string; // SUPPORT ONLY B64 STRING
+  media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+  type: "base64";
 }
 
-export interface MultiModalContent {
-  type: string; //"text" | "image_url";
+export interface MultiModalContentAnthropic {
+  type: "text" | "image";
   text?: string;
-  image_url?: ImageContent;
+  source?: ImageContentAnthropic;
+}
+
+export interface ImageContentOpenAI {
+  url: string;
+  detail?: "low" | "high" | "auto";
+}
+
+export interface MultiModalContentOpenAI {
+  type: string; // "text" | "image_url";
+  text?: string;
+  image_url?: ImageContentOpenAI;
 }
 
 export interface ChatMessageMM {
   role: string;
-  content: string | Array<MultiModalContent>; 
+  content:
+    | string
+    | Array<MultiModalContentOpenAI>
+    | Array<MultiModalContentAnthropic>;
   name?: string;
   function_call?: OpenAIFunctionCall;
 }
 export interface ChatMessage {
   role: string;
-  content: string; 
+  content: string;
   name?: string;
   function_call?: OpenAIFunctionCall;
 }

@@ -1,6 +1,6 @@
 import { isEqual } from "./setUtils";
 
-export const IMAGE_IDENTIFIER = '%IMAGE%'
+export const IMAGE_IDENTIFIER = "%IMAGE%";
 
 function len(o: object | string | Array<any>): number {
   // Acts akin to Python's builtin 'len' method
@@ -324,7 +324,7 @@ export class PromptTemplate {
     //          AND is in good format (https://platform.openai.com/docs/guides/vision#what-type-of-files-can-i-upload),
     //          we convert the file to base64 and replace the {@image_str_var} with the string 'data:image/jpeg;base64,<base64_string>'
     //   3. we throw an ERROR
-    
+
     let params_wo_settings_w_img = paramDict;
     // To improve performance, we first check if there's a image var present at all before deep cloning:
     if (Object.keys(paramDict).some((key) => key?.charAt(0) === "@")) {
@@ -333,7 +333,8 @@ export class PromptTemplate {
       Object.keys(paramDict).forEach((key) => {
         if (key?.charAt(0) === "@")
           params_wo_settings[key] =
-        IMAGE_IDENTIFIER + this.interpret_img_modality(params_wo_settings[key]);
+            IMAGE_IDENTIFIER +
+            this.interpret_img_modality(params_wo_settings[key]);
       });
     }
 
