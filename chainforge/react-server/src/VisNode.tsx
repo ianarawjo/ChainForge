@@ -7,7 +7,7 @@ import React, {
   useImperativeHandle,
 } from "react";
 import { Handle, Position } from "reactflow";
-import { NativeSelect } from "@mantine/core";
+import { Button, Menu, NativeSelect } from "@mantine/core";
 import useStore, { colorPalettes } from "./store";
 import Plot from "react-plotly.js";
 import BaseNode from "./BaseNode";
@@ -25,10 +25,18 @@ import {
 import { Status } from "./StatusIndicatorComponent";
 import { grabResponses } from "./backend/backend";
 import { StringLookup } from "./backend/cache";
+import { IconChartBar, IconChartHistogram } from "@tabler/icons-react";
 
 /**
  *  UTIL FUNCTIONS FOR VIS PLOTS
  */
+
+const smallTextStyle: React.CSSProperties = {
+  fontSize: "10pt",
+  margin: "6pt 3pt 0 3pt",
+  fontWeight: "bold",
+  whiteSpace: "nowrap",
+};
 
 const splitAndAddBreaks = (s: string, chunkSize: number) => {
   // Split the input string into chunks of specified size
@@ -175,6 +183,21 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const [plotlySpec, setPlotlySpec] = useState<Dict[]>([]);
     const [plotlyLayout, setPlotlyLayout] = useState({});
 
+    // For some data types, there are multiple graph options available...
+    const graphOptions = [
+      { key: "bar", label: "Bar Chart", icon: <IconChartBar size={18} /> },
+      {
+        key: "box",
+        label: "Box & Whiskers",
+        icon: <IconChartHistogram size={18} />,
+      },
+    ];
+    const [graphType, setGraphType] = useState(graphOptions[0]);
+    const setForcedGraphType = (key: string) => {
+      return graphOptions.find((o) => o.key === key) ?? graphOptions[0];
+    };
+    const [disableGraphTypeOption, setDisableGraphTypeOption] = useState(false);
+
     const [placeholderText, setPlaceholderText] = useState(<></>);
 
     const [plotLegend, setPlotLegend] = useState<React.ReactNode>(null);
@@ -224,6 +247,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
     // Call this to reset the dropdowns and options for the user when the response format changes
     const resetControls = (resps: LLMResponse[]) => {
+      if (resps.length === 0) return;
+
       // Find all vars in responses
       let varnames: string[] | Set<string> = new Set<string>();
       let metavars: string[] | Set<string> = new Set<string>();
@@ -383,7 +408,12 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             ),
           true,
         );
-        if (is_all_bools) typeof_eval_res = "Boolean";
+        if (is_all_bools) {
+          typeof_eval_res = "Boolean";
+          setDisableGraphTypeOption(true);
+        }
+      } else {
+        setDisableGraphTypeOption(false);
       }
 
       // Check the max length of eval results, as if it's only 1 score per item (num of generations per prompt n=1),
@@ -513,6 +543,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           dtick: 10,
         };
 
+        setForcedGraphType("bar"); // bar chart
+
         if (metric_axes_labels.length > 0)
           layout.xaxis = {
             title: { font: { size: 12 }, text: metric_axes_labels[0] },
@@ -580,7 +612,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             typeof_eval_res === "Boolean" ||
             typeof_eval_res === "Categorical"
           ) {
-            // Plot a histogram for categorical data.
+            // Plot a histogram for categorical or boolean data.
             spec.push({
               type: "histogram",
               histfunc: "sum",
@@ -601,7 +633,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               ...layout.xaxis,
             };
           } else {
-            // Plot a boxplot for all other cases.
+            // Plot bar or boxplots for all other cases.
             // x_items = [x_items.reduce((val, acc) => val + acc, 0)];
             const d: Dict = {
               name: shortnames[name],
@@ -617,11 +649,24 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               d.type = "bar";
               d.textposition = "none"; // hide the text which appears within each bar
               d.y = new Array(x_items.length).fill(shortnames[name]);
+              setForcedGraphType("bar");
             } else {
               // If multiple eval results per response object (num generations per prompt n > 1),
-              // plot box-and-whiskers to illustrate the variability:
-              d.type = "box";
-              d.boxpoints = "all";
+              // let user decide:
+              if (graphType.key === "bar") {
+                d.type = "histogram";
+                d.histfunc = "sum";
+                d.y = new Array(x_items.length).fill(shortnames[name]);
+                d.textposition = "none"; // hide the text which appears within each bar
+                layout.xaxis = {
+                  title: { font: { size: 12 }, text: "Sum of scores" },
+                  ...layout.xaxis,
+                };
+              } else {
+                // Box-and-whiskers plot
+                d.type = "box";
+                d.boxpoints = "all";
+              }
             }
             spec.push(d);
           }
@@ -682,6 +727,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               title: { font: { size: 12 }, text: "Number of 'true' values" },
               ...layout.xaxis,
             };
+            setForcedGraphType("bar");
           } else {
             // Plot a boxplot or bar chart for other cases.
             const d = {
@@ -697,8 +743,15 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
             // If only one result, plot a bar chart:
             // if (max_num_results_per_prompt === 1) {
-            d.type = "bar";
-            d.textposition = "none"; // hide the text which appears within each bar
+            let xaxis_title = "score";
+            if (graphType.key === "bar") {
+              d.type = "bar";
+              d.textposition = "none"; // hide the text which appears within each bar
+              xaxis_title = "Sum of scores";
+            } else {
+              // Box-and-whiskers plot
+              d.type = "box";
+            }
             // } else {
             //   // If multiple eval results per response object (num generations per prompt n > 1),
             //   // plot box-and-whiskers to illustrate the variability:
@@ -707,7 +760,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
             spec.push(d);
             layout.xaxis = {
-              title: { font: { size: 12 }, text: "score" },
+              title: { font: { size: 12 }, text: xaxis_title },
               ...layout.axis,
             };
           }
@@ -948,6 +1001,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       responses,
       selectedLegendItems,
       plotDivRef,
+      graphType,
     ]);
 
     // Resizing the plot when div is resized:
@@ -988,16 +1042,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           }}
         >
           <div style={{ display: "inline-flex", maxWidth: "50%" }}>
-            <span
-              style={{
-                fontSize: "10pt",
-                margin: "6pt 3pt 0 3pt",
-                fontWeight: "bold",
-                whiteSpace: "nowrap",
-              }}
-            >
-              y-axis:
-            </span>
+            <span style={smallTextStyle}>y-axis:</span>
             <NativeSelect
               ref={multiSelectRef}
               onChange={handleMultiSelectValueChange}
@@ -1017,16 +1062,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               marginLeft: "10pt",
             }}
           >
-            <span
-              style={{
-                fontSize: "10pt",
-                margin: "6pt 3pt 0 0",
-                fontWeight: "bold",
-                whiteSpace: "nowrap",
-              }}
-            >
-              x-axis:
-            </span>
+            <span style={smallTextStyle}>x-axis:</span>
             <NativeSelect
               className="nodrag nowheel"
               data={["score"]}
@@ -1036,33 +1072,67 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               disabled
             />
           </div>
+          {availableLLMGroups && availableLLMGroups.length > 1 ? (
+            <div
+              style={{
+                display: "inline-flex",
+                justifyContent: "space-evenly",
+                maxWidth: "30%",
+                marginLeft: "10pt",
+              }}
+            >
+              <span style={smallTextStyle}>group by:</span>
+              <NativeSelect
+                className="nodrag nowheel"
+                onChange={handleChangeLLMGroup}
+                data={availableLLMGroups}
+                size="xs"
+                value={selectedLLMGroup}
+                miw="80px"
+                disabled={availableLLMGroups.length <= 1}
+              />
+            </div>
+          ) : (
+            <></>
+          )}
           <div
             style={{
               display: "inline-flex",
-              justifyContent: "space-evenly",
+              justifyContent: "end",
               maxWidth: "30%",
               marginLeft: "10pt",
             }}
           >
-            <span
-              style={{
-                fontSize: "10pt",
-                margin: "6pt 3pt 0 0",
-                fontWeight: "bold",
-                whiteSpace: "nowrap",
-              }}
+            <Menu
+              shadow="md"
+              width={200}
+              withArrow
+              disabled={disableGraphTypeOption}
             >
-              group by:
-            </span>
-            <NativeSelect
-              className="nodrag nowheel"
-              onChange={handleChangeLLMGroup}
-              data={availableLLMGroups}
-              size="xs"
-              value={selectedLLMGroup}
-              miw="80px"
-              disabled={availableLLMGroups.length <= 1}
-            />
+              <Menu.Target>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  color="gray"
+                  leftIcon={graphType.icon}
+                  disabled={disableGraphTypeOption}
+                >
+                  {graphType.label}
+                </Button>
+              </Menu.Target>
+
+              <Menu.Dropdown>
+                {graphOptions.map((option) => (
+                  <Menu.Item
+                    key={option.key}
+                    icon={option.icon}
+                    onClick={() => setGraphType(option)}
+                  >
+                    {option.label}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
           </div>
         </div>
         <hr />
@@ -1099,13 +1169,21 @@ export interface VisNodeProps {
 
 const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
   // The core plotting/graph view, as a separate component
-  const visViewRef = useRef<VisViewRef>(null);
+  const visViewRef = useRef<VisViewRef | null>(null);
 
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
   const [status, setStatus] = useState<Status>(Status.NONE);
   const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
   const [responses, setResponses] = useState<LLMResponse[]>([]);
+
+  // On load of vis view
+  // const setVisViewRef = useCallback((elem: VisViewRef) => {
+  //   if (elem && !visViewRef.current) {
+  //     visViewRef.current = elem;
+  //     elem.resetControls(responses);
+  //   }
+  // }, [responses]);
 
   const handleOnConnect = useCallback(() => {
     // Grab the input node ids
