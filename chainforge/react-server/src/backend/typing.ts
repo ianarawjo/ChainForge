@@ -30,7 +30,7 @@ export interface OpenAIFunctionCall {
   description?: string;
 }
 
-/** OpenAI chat message format */
+/** Anthropic chat message format */
 export interface ImageContentAnthropic {
   data: string; // SUPPORT ONLY B64 STRING
   media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
@@ -43,6 +43,7 @@ export interface MultiModalContentAnthropic {
   source?: ImageContentAnthropic;
 }
 
+/** OpenAI chat message format */
 export interface ImageContentOpenAI {
   url: string;
   detail?: "low" | "high" | "auto";
