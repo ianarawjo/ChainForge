@@ -7,7 +7,7 @@ import React, {
   MouseEventHandler,
 } from "react";
 import { Handle, Node, Position } from "reactflow";
-import { Textarea, Tooltip, Skeleton } from "@mantine/core";
+import { Textarea, Tooltip, Skeleton, ScrollArea } from "@mantine/core";
 import {
   IconTextPlus,
   IconEye,
@@ -73,6 +73,15 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   const [fieldVisibility, setFieldVisibility] = useState<Dict<boolean>>(
     data.fields_visibility || {},
   );
+
+  // For when textfields exceed the TextFields Node max height,
+  // when we add a new field, this gives us a way to scroll to the bottom. Better UX.
+  const viewport = useRef<HTMLDivElement>(null);
+  const scrollToBottom = () =>
+    viewport?.current?.scrollTo({
+      top: viewport.current.scrollHeight,
+      behavior: "smooth",
+    });
 
   // Whether the text fields should be in a loading state
   const [isLoading, setIsLoading] = useState(false);
@@ -162,6 +171,10 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     setTextfieldsValues(new_fields);
     setDataPropsForNode(id, { fields: new_fields });
     pingOutputNodes(id);
+
+    setTimeout(() => {
+      scrollToBottom();
+    }, 10);
 
     // Cycle suggestions when new field is created
     // aiSuggestionsManager.cycleSuggestions();
@@ -493,7 +506,11 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
         }
       />
       <Skeleton visible={isLoading}>
-        <div ref={setRef}>{textFields}</div>
+        <div ref={setRef} className="nodrag nowheel">
+          <ScrollArea.Autosize mah={580} type="hover" viewportRef={viewport}>
+            {textFields}
+          </ScrollArea.Autosize>
+        </div>
       </Skeleton>
       <Handle
         type="source"
