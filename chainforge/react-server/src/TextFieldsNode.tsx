@@ -7,7 +7,7 @@ import React, {
   MouseEventHandler,
 } from "react";
 import { Handle, Node, Position } from "reactflow";
-import { Textarea, Tooltip, Skeleton, ScrollArea, Group } from "@mantine/core";
+import { Textarea, Tooltip, Skeleton, ScrollArea } from "@mantine/core";
 import {
   IconTextPlus,
   IconEye,
