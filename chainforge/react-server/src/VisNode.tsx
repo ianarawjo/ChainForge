@@ -1392,7 +1392,15 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         status={status}
         icon={"📊"}
       />
-      <VisView ref={visViewRef} id={id} responses={responses} data={data} whenReplotting={(isReplotting) => setStatus(isReplotting ? Status.LOADING : Status.NONE)} />
+      <VisView
+        ref={visViewRef}
+        id={id}
+        responses={responses}
+        data={data}
+        whenReplotting={(isReplotting) =>
+          setStatus(isReplotting ? Status.LOADING : Status.NONE)
+        }
+      />
       <Handle
         type="target"
         position={Position.Left}

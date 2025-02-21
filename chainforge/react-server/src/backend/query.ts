@@ -134,6 +134,8 @@ export class PromptPipeline {
       llm,
       vars: mergeDicts(info, chat_history?.fill_history) ?? {},
       metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
+      fill_order:
+        prompt.fill_order.length > 0 ? prompt.fill_order.slice(-1)[0] : [],
     };
 
     // Carry over the chat history if present:
@@ -298,6 +300,10 @@ export class PromptPipeline {
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
             vars: mergeDicts(info, chat_history?.fill_history) ?? {},
             metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
+            fill_order:
+              prompt.fill_order.length > 0
+                ? prompt.fill_order.slice(-1)[0]
+                : [],
           };
           if (chat_history !== undefined)
             resp.chat_history = chat_history.messages;

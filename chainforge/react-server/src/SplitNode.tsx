@@ -276,6 +276,10 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
         const resp_objs = promptTemplates.map((p) => ({
           text: p.toString(),
           fill_history: dict_excluding_key(p.fill_history, "__input"),
+          fill_order:
+            p.fill_order.length > 0
+              ? p.fill_order.slice(-1)[0].filter((k) => k !== "__input")
+              : [],
           llm:
             "__LLM_key" in p.metavars
               ? llm_lookup[p.metavars.__LLM_key]

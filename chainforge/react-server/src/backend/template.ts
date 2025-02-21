@@ -201,8 +201,9 @@ export class PromptTemplate {
         print(partial_prompt)
     */
   template: string;
-  fill_history: Dict<StringOrHash>;
-  metavars: Dict<StringOrHash>;
+  fill_history: { [key: string]: any };
+  metavars: { [key: string]: any };
+  fill_order: StringOrHash[][];
 
   constructor(templateStr: string) {
     /** 
@@ -221,6 +222,7 @@ export class PromptTemplate {
     this.template = templateStr;
     this.fill_history = {};
     this.metavars = {};
+    this.fill_order = [];
   }
 
   /** Returns the value of this.template, with any escaped braces \{ and \} with the escape \ char removed. */
@@ -268,8 +270,9 @@ export class PromptTemplate {
     */
   fill(paramDict: Dict<PromptVarType>): PromptTemplate {
     // Check for special 'past fill history' format:
-    let past_fill_history: Dict<StringOrHash> = {};
-    let past_metavars: Dict<StringOrHash> = {};
+    let past_fill_history = {};
+    let past_metavars = {};
+    let past_fill_order: StringOrHash[] = [];
     const some_key = Object.keys(paramDict).pop();
     const some_val = some_key ? paramDict[some_key] : undefined;
     if (len(paramDict) > 0 && isDict(some_val)) {
@@ -285,6 +288,7 @@ export class PromptTemplate {
             ...(obj as TemplateVarInfo).metavars,
             ...past_metavars,
           };
+        if ("fill_order" in (obj as TemplateVarInfo)) past_fill_order = (obj as TemplateVarInfo).fill_order.slice();
       });
 
       past_fill_history = StringLookup.concretizeDict(past_fill_history);
@@ -355,6 +359,45 @@ export class PromptTemplate {
         );
       filled_pt.fill_history[key] = val;
     });
+
+    const last_fill_order =
+      this.fill_order.length > 0
+        ? this.fill_order[this.fill_order.length - 1]
+        : [];
+    const curr_fill_keys: Set<string> = new Set(
+      Object.keys(filled_pt.fill_history),
+    );
+    const last_fill_keys: Set<StringOrHash> = new Set(last_fill_order);
+    const new_keys: string[] = [];
+    for (const elem of curr_fill_keys) {
+      if (!last_fill_keys.has(elem)) new_keys.push(elem);
+    }
+    if (new_keys.length > 0) {
+      // This is rather subtle, but if we're filling in this parameter from prior fill history,
+      // then this parameter should appear *first* in the fill order:
+      // if (Object.keys(past_fill_history).length > 0) {
+      //   new_keys = Object.keys(paramDict).concat(new_keys.filter(k => !(k in paramDict)));
+      // }
+      if (
+        Object.keys(past_fill_history).length > 0 &&
+        past_fill_order.length > 0
+      )
+        filled_pt.fill_order = this.fill_order.concat([
+          last_fill_order.concat(
+            (Object.keys(paramDict) as StringOrHash[]).concat(past_fill_order),
+          ),
+        ]);
+      else
+        filled_pt.fill_order = this.fill_order.concat([
+          last_fill_order.concat(new_keys),
+        ]);
+      console.log(
+        past_fill_history,
+        paramDict,
+        filled_pt.fill_history,
+        filled_pt.fill_order,
+      );
+    }
 
     return filled_pt;
   }
