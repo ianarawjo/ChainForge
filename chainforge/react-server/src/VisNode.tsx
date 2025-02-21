@@ -260,7 +260,10 @@ export interface VisViewRef {
  * Inner component for code evaluators/processors, storing the body of the UI (outside of the header and footers).
  */
 export const VisView = forwardRef<VisViewRef, VisViewProps>(
-  function CodeEvaluatorComponent({ responses, id, data, whenReplotting }, ref) {
+  function CodeEvaluatorComponent(
+    { responses, id, data, whenReplotting },
+    ref,
+  ) {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const getColorForLLMAndSetIfNotFound = useStore(
       (state) => state.getColorForLLMAndSetIfNotFound,
@@ -1390,7 +1393,15 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         status={status}
         icon={"📊"}
       />
-      <VisView ref={visViewRef} id={id} responses={responses} data={data} whenReplotting={(isReplotting) => setStatus(isReplotting ? Status.LOADING : Status.NONE)} />
+      <VisView
+        ref={visViewRef}
+        id={id}
+        responses={responses}
+        data={data}
+        whenReplotting={(isReplotting) =>
+          setStatus(isReplotting ? Status.LOADING : Status.NONE)
+        }
+      />
       <Handle
         type="target"
         position={Position.Left}
