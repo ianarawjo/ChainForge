@@ -33,6 +33,7 @@ import {
   groupResponsesBy,
   batchResponsesByUID,
   cleanMetavarsFilterFunc,
+  llmResponseDataToString,
 } from "./backend/utils";
 import {
   ResponseBox,
@@ -47,10 +48,11 @@ import {
   LLMResponseData,
   isImageResponseData,
 } from "./backend/typing";
+import { StringLookup } from "./backend/cache";
 
 // Helper funcs
 const getLLMName = (resp_obj: LLMResponse) =>
-  typeof resp_obj?.llm === "string" ? resp_obj.llm : resp_obj?.llm?.name;
+  ((typeof resp_obj?.llm === "string" || typeof resp_obj?.llm === "number") ? StringLookup.get(resp_obj.llm) : StringLookup.get(resp_obj?.llm?.name)) ?? "(string lookup failed)";
 const escapeRegExp = (txt: string) =>
   txt.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
 
@@ -190,7 +192,7 @@ export const exportToExcel = (
         const row: Dict<string | number | boolean> = {
           LLM: llm,
           Prompt: prompt,
-          Response: typeof r === "string" ? r : r.d,
+          Response: llmResponseDataToString(r),
           "Response Batch Id": res_obj.uid ?? res_obj_idx,
         };
 
@@ -410,7 +412,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     if (searchValue.length > 0 && filterBySearchValue)
       responses = responses.filter((res_obj) =>
         res_obj.responses.some(
-          (r) => typeof r === "string" && search_regex.test(r),
+          (r) => (typeof r === "string" || typeof r === "number") && search_regex.test(StringLookup.get(r) ?? ""),
         ),
       );
 
@@ -468,7 +470,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         const respsFilterFunc = (responses: LLMResponseData[]) => {
           if (searchValue.length === 0) return responses;
           const filtered_resps = responses.filter(
-            (r) => typeof r === "string" && search_regex.test(r),
+            (r) => (typeof r === "string" || typeof r === "number") && search_regex.test(StringLookup.get(r) ?? ""),
           );
           numResponsesDisplayed += filtered_resps.length;
           if (filterBySearchValue) return filtered_resps;
@@ -531,7 +533,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         var_cols = found_vars
           .filter((v) => v !== tableColVar)
           .concat(found_llms.length > 1 ? ["LLM"] : []); // only add LLM column if num LLMs > 1
-        getColVal = (r) => r.vars[tableColVar];
+        getColVal = (r) => StringLookup.get(r.vars[tableColVar]) ?? "";
         colnames = var_cols;
         found_sel_var_vals = [];
       }
@@ -557,17 +559,17 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           responses.reduce((acc, res_obj) => {
             acc.add(
               tableColVar in res_obj.vars
-                ? res_obj.vars[tableColVar]
+                ? StringLookup.get(res_obj.vars[tableColVar]) ?? ""
                 : "(unspecified)",
             );
             return acc;
           }, new Set<string>()),
         );
-        colnames = colnames.concat(found_sel_var_vals);
+        colnames = colnames.concat(found_sel_var_vals.map(v => (StringLookup.get(v) ?? "(string lookup failed)")));
       }
 
       const getVar = (r: LLMResponse, v: string) =>
-        v === "LLM" ? getLLMName(r) : r.vars[v];
+        v === "LLM" ? getLLMName(r) : StringLookup.get(r.vars[v]) ?? "";
 
       // Then group responses by prompts. Each prompt will become a separate row of the table (will be treated as unique)
       const responses_by_prompt = groupResponsesBy(responses, (r) =>
@@ -637,18 +639,18 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               {var_cols_vals.map((c, i) => (
                 <td key={`v${i}`} className="inspect-table-var">
                   <ScrollArea.Autosize mt="sm" mah={500} maw={300}>
-                    {c}
+                    {StringLookup.get(c)}
                   </ScrollArea.Autosize>
                 </td>
               ))}
               {metavar_cols_vals.map((c, i) => (
                 <td key={`m${i}`} className="inspect-table-metavar">
-                  {c}
+                  {StringLookup.get(c)}
                 </td>
               ))}
               {sel_var_cols.map((c, i) => (
                 <td key={`c${i}`} className="inspect-table-llm-resp">
-                  {c}
+                  {StringLookup.get(c)}
                 </td>
               ))}
               {eval_cols_vals.map((c, i) => (
@@ -743,7 +745,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           group_name === "$LLM"
             ? groupResponsesBy(resps, getLLMName)
             : groupResponsesBy(resps, (r) =>
-                group_name in r.vars ? r.vars[group_name] : null,
+                group_name in r.vars ? StringLookup.get(r.vars[group_name]) : null,
               );
         const get_header =
           group_name === "$LLM"

@@ -140,26 +140,27 @@ export class PromptPipeline {
     if (chat_history !== undefined)
       resp_obj.chat_history = chat_history.messages;
 
+    // Hash strings present in the response object, to improve performance
+    StringLookup.internDict(resp_obj, true);
+
     // Merge the response obj with the past one, if necessary
     if (past_resp_obj)
       resp_obj = merge_response_objs(
         resp_obj,
         past_resp_obj,
       ) as RawLLMResponseObject;
-    
-    // Hash strings present in the response object, to improve performance
-    StringLookup.internDict(resp_obj, true);
 
     // Save the current state of cache'd responses to a JSON file
     // NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
-    if (!(resp_obj.prompt in cached_responses))
-      cached_responses[resp_obj.prompt] = [];
-    else if (!Array.isArray(cached_responses[resp_obj.prompt]))
-      cached_responses[resp_obj.prompt] = [cached_responses[resp_obj.prompt]];
+    const prompt_str = prompt.toString();
+    if (!(prompt_str in cached_responses))
+      cached_responses[prompt_str] = [];
+    else if (!Array.isArray(cached_responses[prompt_str]))
+      cached_responses[prompt_str] = [cached_responses[prompt_str]];
 
     if (past_resp_obj_cache_idx !== undefined && past_resp_obj_cache_idx > -1)
-      cached_responses[resp_obj.prompt][past_resp_obj_cache_idx] = resp_obj;
-    else cached_responses[resp_obj.prompt].push(resp_obj);
+      cached_responses[prompt_str][past_resp_obj_cache_idx] = resp_obj;
+    else cached_responses[prompt_str].push(resp_obj);
 
     this._cache_responses(cached_responses);
 
@@ -289,7 +290,7 @@ export class PromptPipeline {
         if (cached_resp && extracted_resps.length >= n) {
           // console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
           const resp: RawLLMResponseObject = {
-            prompt: prompt_str,
+            prompt: cached_resp.prompt,
             query: cached_resp.query,
             uid: cached_resp.uid ?? uuid(),
             responses: extracted_resps.slice(0, n),
@@ -301,9 +302,6 @@ export class PromptPipeline {
           };
           if (chat_history !== undefined)
             resp.chat_history = chat_history.messages;
-
-          // Hash any strings in the cache'd response object, if any
-          StringLookup.internDict(resp, true);
 
           yield resp;
           continue;

@@ -41,6 +41,7 @@ import CancelTracker from "./backend/canceler";
 import { PromptInfo, PromptListModal, PromptListPopover } from "./PromptNode";
 import { useDisclosure } from "@mantine/hooks";
 import { PromptTemplate } from "./backend/template";
+import { StringLookup } from "./backend/cache";
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
 const PLACEHOLDER_PROMPT =
@@ -72,7 +73,7 @@ const DEFAULT_LLM_ITEM = (() => {
   const item = [initLLMProviders.find((i) => i.base_model === "gpt-4")].map(
     (i) => ({
       key: uuid(),
-      settings: getDefaultModelSettings((i as LLMSpec).base_model),
+      settings: getDefaultModelSettings(StringLookup.get(i?.base_model) as string),
       ...i,
     }),
   )[0];
@@ -375,7 +376,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
           const inputs = resp_objs
             .map((obj: LLMResponse) =>
               obj.responses.map((r: LLMResponseData) => ({
-                text: typeof r === "string" ? r : undefined,
+                text: typeof r === "string" || typeof r === "number" ? r : undefined,
                 image: typeof r === "object" && r.t === "img" ? r.d : undefined,
                 fill_history: obj.vars,
                 metavars: obj.metavars,

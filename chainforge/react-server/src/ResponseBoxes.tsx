@@ -1,7 +1,7 @@
 import React, { Suspense, useMemo, lazy } from "react";
 import { Collapse, Flex, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { truncStr } from "./backend/utils";
+import { llmResponseDataToString, truncStr } from "./backend/utils";
 import {
   Dict,
   EvaluationScore,
@@ -133,7 +133,10 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
   const var_tags = useMemo(() => {
     if (vars === undefined) return [];
     return Object.entries(vars).map(([varname, val]) => {
-      const v = truncStr((StringLookup.get(val) ?? "").trim(), truncLenForVars ?? 18);
+      const v = truncStr(
+        (StringLookup.get(val) ?? "").trim(),
+        truncLenForVars ?? 18,
+      );
       return (
         <div key={varname} className="response-var-inline">
           <span className="response-var-name">{varname}&nbsp;=&nbsp;</span>
@@ -193,16 +196,18 @@ export const genResponseTextsDisplay = (
   const resp_str_to_eval_res: Dict<EvaluationScore> = {};
   if (eval_res_items)
     responses.forEach((r, idx) => {
-      resp_str_to_eval_res[(typeof r === "string" || typeof r === "number") ? (StringLookup.get(r) ?? "") : r.d] =
-        eval_res_items[idx];
+      resp_str_to_eval_res[
+        llmResponseDataToString(r)
+      ] = eval_res_items[idx];
     });
 
   const same_resp_text_counts = countResponsesBy(responses, (r) =>
-    (typeof r === "string" || typeof r === "number") ? (StringLookup.get(r) ?? "") : r.d,
+    llmResponseDataToString(r),
   );
   const resp_special_type_map: Dict<string> = {};
   responses.forEach((r) => {
-    const key = (typeof r === "string" || typeof r === "number") ? (StringLookup.get(r) ?? "") : r.d;
+    const key =
+      llmResponseDataToString(r);
     if (typeof r === "object") resp_special_type_map[key] = r.t;
   });
   const same_resp_keys = Object.keys(same_resp_text_counts).sort(

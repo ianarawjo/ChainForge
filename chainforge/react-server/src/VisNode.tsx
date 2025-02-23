@@ -225,8 +225,9 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
 
     const get_llm = (resp_obj: LLMResponse) => {
       if (selectedLLMGroup === "LLM")
-        return typeof resp_obj.llm === "string" || typeof resp_obj.llm === "number"
-          ? (StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)")
+        return typeof resp_obj.llm === "string" ||
+          typeof resp_obj.llm === "number"
+          ? StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)"
           : resp_obj.llm?.name;
       else return resp_obj.metavars[selectedLLMGroup] as string;
     };
@@ -347,7 +348,10 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
       else return v;
     };
 
-    const castData = (v: LLMResponseData) => (typeof v === "string" || typeof v === "number" ? (StringLookup.get(v) ?? "(unknown lookup error)") : v.d)
+    const castData = (v: LLMResponseData) =>
+      typeof v === "string" || typeof v === "number"
+        ? StringLookup.get(v) ?? "(unknown lookup error)"
+        : v.d;
 
     const get_items = (eval_res_obj?: EvaluationResults) => {
       if (eval_res_obj === undefined) return [];
@@ -482,9 +486,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
             if (resp_to_x(r) !== name) return;
             x_items = x_items.concat(get_items(r.eval_res));
             text_items = text_items.concat(
-              createHoverTexts(
-                r.responses.map(castData),
-              ),
+              createHoverTexts(r.responses.map(castData)),
             );
           });
         }
@@ -577,11 +579,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
             if (resp_to_x(r) !== name) return;
             x_items = x_items.concat(get_items(r.eval_res)).flat();
             text_items = text_items
-              .concat(
-                createHoverTexts(
-                  r.responses.map(castData),
-                ),
-              )
+              .concat(createHoverTexts(r.responses.map(castData)))
               .flat();
             y_items = y_items
               .concat(

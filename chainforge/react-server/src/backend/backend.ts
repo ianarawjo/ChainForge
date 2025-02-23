@@ -15,6 +15,7 @@ import {
   TemplateVarInfo,
   CustomLLMProviderSpec,
   LLMResponseData,
+  PromptVarType,
 } from "./typing";
 import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
 import {
@@ -26,8 +27,9 @@ import {
   areEqualVarsDicts,
   repairCachedResponses,
   deepcopy,
+  llmResponseDataToString,
 } from "./utils";
-import StorageCache from "./cache";
+import StorageCache, { StringLookup } from "./cache";
 import { PromptPipeline } from "./query";
 import {
   PromptPermutationGenerator,
@@ -501,7 +503,7 @@ async function run_over_responses(
  */
 export async function generatePrompts(
   root_prompt: string,
-  vars: Dict<(TemplateVarInfo | string)[]>,
+  vars: Dict<PromptVarType[]>,
 ): Promise<PromptTemplate[]> {
   const gen_prompts = new PromptPermutationGenerator(root_prompt);
   const all_prompt_permutations = Array.from(
@@ -600,7 +602,7 @@ export async function countQueries(
         found_cache = true;
 
         // Load the cache file
-        const cache_llm_responses = load_from_cache(cache_filename);
+        const cache_llm_responses: Dict<RawLLMResponseObject[] | RawLLMResponseObject> = load_from_cache(cache_filename);
 
         // Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
         _all_prompt_perms.forEach((prompt) => {
@@ -1254,17 +1256,20 @@ export async function evalWithLLM(
     const resp_objs = (load_cache_responses(fname) as LLMResponse[]).map((r) =>
       JSON.parse(JSON.stringify(r)),
     ) as LLMResponse[];
+
     if (resp_objs.length === 0) continue;
+
+    console.log(resp_objs);
 
     // We need to keep track of the index of each response in the response object.
     // We can generate var dicts with metadata to store the indices:
     const inputs = resp_objs
       .map((obj, __i) =>
         obj.responses.map((r: LLMResponseData, __j: number) => ({
-          text: typeof r === "string" ? escapeBraces(r) : undefined,
+          text: typeof r === "string" || typeof r === "number" ? escapeBraces(StringLookup.get(r) ?? "(string lookup failed)") : undefined,
           image: typeof r === "object" && r.t === "img" ? r.d : undefined,
           fill_history: obj.vars,
-          metavars: { ...obj.metavars, __i, __j },
+          metavars: { ...obj.metavars, __i: __i.toString(), __j: __j.toString() },
         })),
       )
       .flat();
@@ -1290,15 +1295,16 @@ export async function evalWithLLM(
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
     responses.forEach((r: LLMResponse) => {
-      const resp_obj = resp_objs[r.metavars.__i as number];
+      const __i = parseInt(StringLookup.get(r.metavars.__i) ?? ""), __j = parseInt(StringLookup.get(r.metavars.__j) ?? "");
+      const resp_obj = resp_objs[__i];
       if (resp_obj.eval_res !== undefined)
-        resp_obj.eval_res.items[r.metavars.__j as number] = r.responses[0];
+        resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
       else {
         resp_obj.eval_res = {
           items: [],
           dtype: "Categorical",
         };
-        resp_obj.eval_res.items[r.metavars.__j as number] = r.responses[0];
+        resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
       }
     });
 
@@ -1427,7 +1433,7 @@ export async function exportCache(ids: string[]): Promise<Dict<Dict>> {
   // Bundle up specific other state in StorageCache, which
   // includes things like human ratings for responses:
   const cache_state = StorageCache.getAllMatching((key) =>
-    key.startsWith("r."),
+    (key.startsWith("r.") || key === "__s"),
   );
   return { ...cache_files, ...cache_state };
 }
@@ -1452,6 +1458,9 @@ export async function importCache(files: {
     Object.entries(files).forEach(([filename, data]) => {
       StorageCache.store(filename, data);
     });
+
+    // Load StringLookup table from cache
+    StringLookup.restoreFrom(StorageCache.get("__s")); 
   } catch (err) {
     throw new Error("Error importing from cache:" + (err as Error).message);
   }

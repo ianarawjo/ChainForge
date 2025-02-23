@@ -13,6 +13,9 @@ export interface Dict<T = any> {
   [key: string]: T;
 }
 
+/** A string or a number representing the index to a hash table (`StringLookup`). */
+export type StringOrHash = string | number;
+
 // Function types
 export type Func<T = void> = (...args: any[]) => T;
 
@@ -156,8 +159,6 @@ export interface ModelSettingsDict {
 
 export type ResponseUID = string;
 
-export type StringOrHash = string | number;
-
 /** What kind of data can be each individual response from the model.
  * string is basic text; but could be images or more data types in the future.
  */
@@ -195,7 +196,7 @@ export interface RawLLMResponseObject extends BaseLLMResponseObject {
   // A snapshot of the exact query (payload) sent to the LLM's API
   query: Dict;
   // The raw JSON response from the LLM
-  // NOTE: This is now deprecated since it wastes precious storage space. 
+  // NOTE: This is now deprecated since it wastes precious storage space.
   // raw_response: Dict;
   // Extracted responses (1 or more) from raw_response
   responses: LLMResponseData[];
@@ -265,7 +266,7 @@ export type VarsContext = {
 
 export type PromptVarType = StringOrHash | TemplateVarInfo;
 export type PromptVarsDict = {
-  [key: string]: PromptVarType[];
+  [key: string]: PromptVarType[] | StringOrHash;
 };
 
 export type TabularDataRowType = Dict<StringOrHash>;
@@ -275,4 +276,3 @@ export type TabularDataColType = {
 };
 
 export type PythonInterpreter = "flask" | "pyodide";
-

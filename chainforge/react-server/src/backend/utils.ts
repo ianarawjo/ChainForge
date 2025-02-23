@@ -27,6 +27,7 @@ import {
   LLMResponseData,
   isImageResponseData,
   StringOrHash,
+  PromptVarsDict,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
@@ -1961,7 +1962,7 @@ export const transformDict = (
  *
  * Returns empty dict {} if no settings vars found.
  */
-export const extractSettingsVars = (vars?: Dict) => {
+export const extractSettingsVars = (vars?: PromptVarsDict) => {
   if (
     vars !== undefined &&
     Object.keys(vars).some((k) => k.charAt(0) === "=")
@@ -1978,8 +1979,8 @@ export const extractSettingsVars = (vars?: Dict) => {
  * Given two info vars dicts, detects whether any + all vars (keys) match values.
  */
 export const areEqualVarsDicts = (
-  A: Dict | undefined,
-  B: Dict | undefined,
+  A: PromptVarsDict | undefined,
+  B: PromptVarsDict | undefined,
 ): boolean => {
   if (A === undefined || B === undefined) {
     if (A === undefined && B === undefined) return true;
@@ -2060,12 +2061,15 @@ export const stripLLMDetailsFromResponses = (
 ): LLMResponse[] =>
   resps.map((r) => ({
     ...r,
-    llm: (typeof r?.llm === "string" || typeof r?.llm === "number" ? StringLookup.get(r?.llm) : r?.llm?.name) ?? "undefined",
+    llm:
+      (typeof r?.llm === "string" || typeof r?.llm === "number"
+        ? StringLookup.get(r?.llm)
+        : r?.llm?.name) ?? "undefined",
   }));
 
 // NOTE: The typing is purposefully general since we are trying to cast to an expected format.
 export const toStandardResponseFormat = (r: Dict | string) => {
-  if (typeof r === "string")
+  if (typeof r === "string" || typeof r === "number")
     return {
       vars: {},
       metavars: {},
@@ -2080,7 +2084,7 @@ export const toStandardResponseFormat = (r: Dict | string) => {
     uid: r?.uid ?? r?.batch_id ?? uuid(),
     llm: r?.llm ?? undefined,
     prompt: r?.prompt ?? "",
-    responses: [typeof r === "string" ? r : r?.text],
+    responses: [(typeof r === "string" || typeof r === "number") ? r : r?.text],
     tokens: r?.raw_response?.usage ?? {},
   };
   if (r?.eval_res !== undefined) resp_obj.eval_res = r.eval_res;
@@ -2136,7 +2140,8 @@ export const extractLLMLookup = (
             ? StringLookup.get(r.llm)
             : r.llm.key;
       if (
-        typeof r === "string" || typeof r === "number" ||
+        typeof r === "string" ||
+        typeof r === "number" ||
         !r.llm ||
         !llm_name ||
         llm_name in llm_lookup
@@ -2215,6 +2220,12 @@ export const batchResponsesByUID = (
     })
     .concat(unspecified_id_group);
 };
+
+export function llmResponseDataToString(data: LLMResponseData): string {
+  if (typeof data === "string") return data;
+  else if (typeof data === "number") return StringLookup.get(data) ?? "(string lookup failed)";
+  else return data.d;
+}
 
 /**
  * Naive method to sample N items at random from an array.

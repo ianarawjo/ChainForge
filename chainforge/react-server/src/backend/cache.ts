@@ -1,4 +1,4 @@
-import { Dict, JSONCompatible } from "./typing";
+import { Dict, JSONCompatible, StringOrHash } from "./typing";
 import LZString from "lz-string";
 
 /**
@@ -72,6 +72,8 @@ export default class StorageCache {
    */
   public static clear(key?: string): void {
     StorageCache.getInstance().clearCache(key);
+    if (key === undefined)
+      StringLookup.restoreFrom([]);
   }
 
   /**
@@ -132,7 +134,10 @@ export default class StorageCache {
     }
     try {
       const data = JSON.parse(LZString.decompressFromUTF16(compressed));
-      if (setStorageCacheData) StorageCache.getInstance().data = data;
+      if (setStorageCacheData) {
+        StorageCache.getInstance().data = data;
+        StringLookup.restoreFrom(data["__s"]);
+      }
       console.log("loaded", data);
       return data;
     } catch (error) {
@@ -142,12 +147,12 @@ export default class StorageCache {
   }
 }
 
-
 /** Global string intern table for efficient storage of repeated strings */
 export class StringLookup {
+  // eslint-disable-next-line no-use-before-define
+  private static instance: StringLookup;
   private stringToIndex: Map<string, number> = new Map();
   private indexToString: string[] = [];
-  private static instance: StringLookup;
 
   /** Gets the string intern lookup table. Initializes it if the singleton instance does not yet exist. */
   public static getInstance(): StringLookup {
@@ -169,38 +174,95 @@ export class StringLookup {
     s.indexToString.push(str);
     s.stringToIndex.set(str, index);
 
+    console.log("Interned", s.stringToIndex);
+
+    // Save to cache
+    StorageCache.store("__s", s.indexToString);
+
     return index;
   }
 
-  /** Retrieves the original string given an index */
-  public static get(index?: number | string): string | undefined {
-    if (typeof index === "string" || index === undefined) return index; 
+  // Overloaded signatures
+  // This tells TypeScript that a number or string will always produce a string or undefined,
+  // whereas any other type T will return the same type.
+  public static get(index: number | string | undefined): string | undefined;
+  public static get<T>(index: T): T;
+
+  /** 
+   * Retrieves the string in the lookup table, given its index. 
+   * - **Note**: This function soft fails: if index is not a number, returns index unchanged. 
+  */
+  public static get<T>(index: T | number): T | string {
+    if (typeof index !== "number") return index;
     const s = StringLookup.getInstance();
     return s.indexToString[index]; // O(1) lookup
   }
 
-  /** 
+  /**
    * Transforms a Dict by interning all strings encountered, up to 1 level of depth,
    * and returning the modified Dict with the strings as hash indexes instead.
+   * 
+   * NOTE: This ignores recursing into any key "llm" that has a dict component.
    */
-  public static internDict(d: Dict, inplace?: boolean): Dict {
-    const newDict = inplace ? d : {} as Dict;
+  public static internDict(d: Dict, inplace?: boolean, depth = 1, ignoreKey=["llm", "uid", "eval_res"]): Dict {
+    const newDict = inplace ? d : ({} as Dict);
     const entries = Object.entries(d);
 
     for (const [key, value] of entries) {
+      if (ignoreKey.includes(key)) { // Keep the ignored key the same
+        if (!inplace) newDict[key] = value;
+        continue;
+      }
       if (typeof value === "string") {
         newDict[key] = StringLookup.intern(value);
-      } else if (Array.isArray(value) && value.every(v => typeof v === "string")) {
-        newDict[key] = value.map(v => StringLookup.intern(v));
-      } else if (typeof value === "object" && value !== null) {
-        newDict[key] = StringLookup.internDict(value as Dict, inplace);
+      } else if (
+        Array.isArray(value) &&
+        value.every((v) => typeof v === "string")
+      ) {
+        newDict[key] = value.map((v) => StringLookup.intern(v));
+      } else if (depth > 0 && typeof value === "object" && value !== null) {
+        newDict[key] = StringLookup.internDict(
+          value as Dict,
+          inplace,
+          depth - 1,
+        );
       } else {
-        if (!inplace)
-          newDict[key] = value;
+        if (!inplace) newDict[key] = value;
       }
     }
-    
+
     return newDict as Map<string, unknown>;
+  }
+
+  /**
+   * Treats all numberic values in the dictionary as hashes, and maps them to strings.
+   * Leaves the rest of the dict unchanged. (Only operates at the top level.)
+   * @param d The dictionary to operate over
+   */
+  public static concretizeDict<T>(d: Dict<T | number>, inplace=false): Dict<T | string> {
+    const newDict = inplace ? d : ({} as Dict);
+    const entries = Object.entries(d);
+    for (const [key, value] of entries) {
+      if (typeof value === "number") newDict[key] = StringLookup.get(value);
+      else if (!inplace) newDict[key] = value;
+    }
+    return newDict;
+  }
+
+  public static restoreFrom(savedIndexToString?: string[]): void {
+    const s = StringLookup.getInstance();
+    s.stringToIndex = new Map<string, number>();
+    if (savedIndexToString === undefined || savedIndexToString.length === 0) {
+      // Reset
+      s.indexToString = [];
+      return;
+    }
+    
+    // Recreate from the index array
+    s.indexToString = savedIndexToString;
+    savedIndexToString.forEach((v, i) => {
+      s.stringToIndex.set(v, i);
+    });
   }
 
   /** Serializes interned strings and their mappings */
