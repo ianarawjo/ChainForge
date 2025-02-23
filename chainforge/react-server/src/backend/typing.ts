@@ -185,7 +185,7 @@ export interface BaseLLMResponseObject {
   /** Any associated metavariables. */
   metavars: Dict<StringOrHash>;
   /** The LLM to query (usually a dict of settings) */
-  llm: string | LLMSpec;
+  llm: StringOrHash | LLMSpec;
   /** Optional: The chat history to pass the LLM */
   chat_history?: ChatHistory;
 }
@@ -195,7 +195,8 @@ export interface RawLLMResponseObject extends BaseLLMResponseObject {
   // A snapshot of the exact query (payload) sent to the LLM's API
   query: Dict;
   // The raw JSON response from the LLM
-  raw_response: Dict;
+  // NOTE: This is now deprecated since it wastes precious storage space. 
+  // raw_response: Dict;
   // Extracted responses (1 or more) from raw_response
   responses: LLMResponseData[];
   // Token lengths (if given)
@@ -246,10 +247,10 @@ export interface TemplateVarInfo {
   image?: StringOrHash; // base-64 encoding
   fill_history?: Dict<StringOrHash>;
   metavars?: Dict<StringOrHash>;
-  associate_id?: string;
+  associate_id?: StringOrHash;
   prompt?: StringOrHash;
   uid?: ResponseUID;
-  llm?: string | LLMSpec;
+  llm?: StringOrHash | LLMSpec;
   chat_history?: ChatHistory;
 }
 

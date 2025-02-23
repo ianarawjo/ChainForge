@@ -260,6 +260,7 @@ function filterVarsByLLM(vars: PromptVarsDict, llm_key: string): Dict {
         typeof v === "number" ||
         v?.llm === undefined ||
         typeof v.llm === "string" ||
+        typeof v.llm === "number" ||
         v.llm.key === llm_key,
     );
   });

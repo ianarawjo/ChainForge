@@ -164,7 +164,7 @@ export class StringLookup {
       return s.stringToIndex.get(str)!; // Return existing index
     }
 
-    // Add new string
+    // Add new string to the table
     const index = s.indexToString.length;
     s.indexToString.push(str);
     s.stringToIndex.set(str, index);
@@ -177,6 +177,30 @@ export class StringLookup {
     if (typeof index === "string" || index === undefined) return index; 
     const s = StringLookup.getInstance();
     return s.indexToString[index]; // O(1) lookup
+  }
+
+  /** 
+   * Transforms a Dict by interning all strings encountered, up to 1 level of depth,
+   * and returning the modified Dict with the strings as hash indexes instead.
+   */
+  public static internDict(d: Dict, inplace?: boolean): Dict {
+    const newDict = inplace ? d : {} as Dict;
+    const entries = Object.entries(d);
+
+    for (const [key, value] of entries) {
+      if (typeof value === "string") {
+        newDict[key] = StringLookup.intern(value);
+      } else if (Array.isArray(value) && value.every(v => typeof v === "string")) {
+        newDict[key] = value.map(v => StringLookup.intern(v));
+      } else if (typeof value === "object" && value !== null) {
+        newDict[key] = StringLookup.internDict(value as Dict, inplace);
+      } else {
+        if (!inplace)
+          newDict[key] = value;
+      }
+    }
+    
+    return newDict as Map<string, unknown>;
   }
 
   /** Serializes interned strings and their mappings */

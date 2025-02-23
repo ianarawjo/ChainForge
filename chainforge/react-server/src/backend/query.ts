@@ -21,7 +21,7 @@ import {
   repairCachedResponses,
   compressBase64Image,
 } from "./utils";
-import StorageCache from "./cache";
+import StorageCache, { StringLookup } from "./cache";
 import { UserForcedPrematureExit } from "./errors";
 import { typecastSettingsDict } from "../ModelSettingSchemas";
 
@@ -131,7 +131,6 @@ export class PromptPipeline {
       query: query ?? {},
       uid: uuid(),
       responses: extracted_resps,
-      raw_response: contains_imgs ? {} : response ?? {}, // don't double-store images
       llm,
       vars: mergeDicts(info, chat_history?.fill_history) ?? {},
       metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
@@ -147,6 +146,9 @@ export class PromptPipeline {
         resp_obj,
         past_resp_obj,
       ) as RawLLMResponseObject;
+    
+    // Hash strings present in the response object, to improve performance
+    StringLookup.internDict(resp_obj, true);
 
     // Save the current state of cache'd responses to a JSON file
     // NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
@@ -291,7 +293,6 @@ export class PromptPipeline {
             query: cached_resp.query,
             uid: cached_resp.uid ?? uuid(),
             responses: extracted_resps.slice(0, n),
-            raw_response: cached_resp.raw_response,
             llm: cached_resp.llm || NativeLLM.OpenAI_ChatGPT,
             // We want to use the new info, since 'vars' could have changed even though
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
@@ -300,6 +301,10 @@ export class PromptPipeline {
           };
           if (chat_history !== undefined)
             resp.chat_history = chat_history.messages;
+
+          // Hash any strings in the cache'd response object, if any
+          StringLookup.internDict(resp, true);
+
           yield resp;
           continue;
         }

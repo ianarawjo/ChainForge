@@ -487,7 +487,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       (info: TemplateVarInfo) => {
         // Add to unique LLMs list, if necessary
         if (
-          typeof info?.llm !== "string" &&
+          (typeof info?.llm !== "string" && typeof info?.llm !== "number") &&
           info?.llm?.name !== undefined &&
           !llm_names.has(info.llm.name)
         ) {
@@ -508,7 +508,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
         // Append any present system message retroactively as the first message in the chat history:
         if (
-          typeof info?.llm !== "string" &&
+          (typeof info?.llm !== "string" && typeof info?.llm !== "number") &&
           typeof info?.llm?.settings?.system_msg === "string" &&
           updated_chat_hist[0].role !== "system"
         )
@@ -521,7 +521,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
           messages: updated_chat_hist,
           fill_history: info.fill_history ?? {},
           metavars: info.metavars ?? {},
-          llm: typeof info?.llm === "string" ? info.llm : info?.llm?.name,
+          llm: (typeof info?.llm === "string" || typeof info?.llm === "number") ? (StringLookup.get(info.llm) ?? "(LLM lookup failed)") : info?.llm?.name,
           uid: uuid(),
         };
       },
@@ -969,8 +969,8 @@ Soft failing by replacing undefined with empty strings.`,
 
                   // Add a meta var to keep track of which LLM produced this response
                   o.metavars[llm_metavar_key] =
-                    typeof resp_obj.llm === "string"
-                      ? resp_obj.llm
+                    (typeof resp_obj.llm === "string" || typeof resp_obj.llm === "number")
+                      ? (StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)")
                       : resp_obj.llm.name;
                   return o;
                 }),

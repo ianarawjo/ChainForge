@@ -225,8 +225,8 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
 
     const get_llm = (resp_obj: LLMResponse) => {
       if (selectedLLMGroup === "LLM")
-        return typeof resp_obj.llm === "string"
-          ? resp_obj.llm
+        return typeof resp_obj.llm === "string" || typeof resp_obj.llm === "number"
+          ? (StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)")
           : resp_obj.llm?.name;
       else return resp_obj.metavars[selectedLLMGroup] as string;
     };

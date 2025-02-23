@@ -48,7 +48,7 @@ import {
   fromModelId,
   ChatMessage as BedrockChatMessage,
 } from "@mirai73/bedrock-fm";
-import StorageCache from "./cache";
+import StorageCache, { StringLookup } from "./cache";
 import Compressor from "compressorjs";
 import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
 
@@ -1904,13 +1904,8 @@ export function merge_response_objs(
   else if (!resp_obj_A && resp_obj_B) return resp_obj_B;
   resp_obj_A = resp_obj_A as RawLLMResponseObject; // required by typescript
   resp_obj_B = resp_obj_B as RawLLMResponseObject;
-  let raw_resp_A = resp_obj_A.raw_response;
-  let raw_resp_B = resp_obj_B.raw_response;
-  if (!Array.isArray(raw_resp_A)) raw_resp_A = [raw_resp_A];
-  if (!Array.isArray(raw_resp_B)) raw_resp_B = [raw_resp_B];
   const res: RawLLMResponseObject = {
     responses: resp_obj_A.responses.concat(resp_obj_B.responses),
-    raw_response: raw_resp_A.concat(raw_resp_B),
     prompt: resp_obj_B.prompt,
     query: resp_obj_B.query,
     llm: resp_obj_B.llm,
@@ -2065,7 +2060,7 @@ export const stripLLMDetailsFromResponses = (
 ): LLMResponse[] =>
   resps.map((r) => ({
     ...r,
-    llm: typeof r?.llm === "string" ? r?.llm : r?.llm?.name ?? "undefined",
+    llm: (typeof r?.llm === "string" || typeof r?.llm === "number" ? StringLookup.get(r?.llm) : r?.llm?.name) ?? "undefined",
   }));
 
 // NOTE: The typing is purposefully general since we are trying to cast to an expected format.
@@ -2114,6 +2109,7 @@ export const tagMetadataWithLLM = (input_data: LLMResponsesByVarDict) => {
         typeof r === "number" ||
         !r?.llm ||
         typeof r.llm === "string" ||
+        typeof r.llm === "number" ||
         !r.llm.key
       )
         return r;
@@ -2130,14 +2126,14 @@ export const extractLLMLookup = (
     (StringOrHash | TemplateVarInfo | BaseLLMResponseObject | LLMResponse)[]
   >,
 ) => {
-  const llm_lookup: Dict<string | LLMSpec> = {};
+  const llm_lookup: Dict<StringOrHash | LLMSpec> = {};
   Object.values(input_data).forEach((resp_objs) => {
     resp_objs.forEach((r) => {
       const llm_name =
         typeof r === "string" || typeof r === "number"
           ? undefined
-          : !r.llm || typeof r.llm === "string" 
-            ? r.llm
+          : !r.llm || typeof r.llm === "string" || typeof r.llm === "number"
+            ? StringLookup.get(r.llm)
             : r.llm.key;
       if (
         typeof r === "string" || typeof r === "number" ||

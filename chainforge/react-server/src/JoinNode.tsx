@@ -78,8 +78,8 @@ const displayJoinedTexts = (
   return textInfos.map((info, idx) => {
     const llm_name =
       typeof info !== "string"
-        ? typeof info.llm === "string"
-          ? info.llm
+        ? typeof info.llm === "string" || typeof info.llm === "number"
+          ? StringLookup.get(info.llm)
           : info.llm?.name
         : "";
     const ps = (
@@ -326,7 +326,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
           let joined_texts: (TemplateVarInfo | string)[] = [];
           const [groupedRespsByLLM, nonLLMRespGroup] = groupResponsesBy(
             resp_objs,
-            (r) => (typeof r.llm === "string" ? r.llm : r.llm?.key),
+            (r) => (typeof r.llm === "string" || typeof r.llm === "number" ? StringLookup.get(r.llm) : r.llm?.key),
           );
           // eslint-disable-next-line
           Object.entries(groupedRespsByLLM).forEach(([llm_key, resp_objs]) => {

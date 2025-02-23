@@ -28,7 +28,7 @@ import {
 } from "./backend/utils";
 
 import { fromMarkdown } from "mdast-util-from-markdown";
-import StorageCache from "./backend/cache";
+import StorageCache, { StringLookup } from "./backend/cache";
 import { ResponseBox } from "./ResponseBoxes";
 import { Root, RootContent } from "mdast";
 import { Dict, TemplateVarInfo } from "./backend/typing";
@@ -289,7 +289,7 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
           .map((resp_obj: TemplateVarInfo | string) => {
             if (typeof resp_obj === "string")
               return splitText(resp_obj, formatting, true);
-            const texts = splitText(resp_obj?.text ?? "", formatting, true);
+            const texts = splitText(StringLookup.get(resp_obj?.text) ?? "", formatting, true);
             if (texts !== undefined && texts.length >= 1)
               return texts.map(
                 (t: string) =>
