@@ -141,3 +141,55 @@ export default class StorageCache {
     }
   }
 }
+
+
+/** Global string intern table for efficient storage of repeated strings */
+export class StringLookup {
+  private stringToIndex: Map<string, number> = new Map();
+  private indexToString: string[] = [];
+  private static instance: StringLookup;
+
+  /** Gets the string intern lookup table. Initializes it if the singleton instance does not yet exist. */
+  public static getInstance(): StringLookup {
+    if (!StringLookup.instance) {
+      StringLookup.instance = new StringLookup();
+    }
+    return StringLookup.instance;
+  }
+
+  /** Adds a string to the table and returns its index */
+  public static intern(str: string): number {
+    const s = StringLookup.getInstance();
+    if (s.stringToIndex.has(str)) {
+      return s.stringToIndex.get(str)!; // Return existing index
+    }
+
+    // Add new string
+    const index = s.indexToString.length;
+    s.indexToString.push(str);
+    s.stringToIndex.set(str, index);
+
+    return index;
+  }
+
+  /** Retrieves the original string given an index */
+  public static get(index?: number | string): string | undefined {
+    if (typeof index === "string" || index === undefined) return index; 
+    const s = StringLookup.getInstance();
+    return s.indexToString[index]; // O(1) lookup
+  }
+
+  /** Serializes interned strings and their mappings */
+  public static toJSON() {
+    const s = StringLookup.getInstance();
+    return s.indexToString;
+  }
+
+  /** Restores from JSON */
+  static fromJSON(data: { dictionary: string[] }) {
+    const table = new StringLookup();
+    table.indexToString = data.dictionary;
+    table.stringToIndex = new Map(data.dictionary.map((str, i) => [str, i]));
+    StringLookup.instance = table;
+  }
+}

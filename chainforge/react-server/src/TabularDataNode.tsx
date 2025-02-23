@@ -26,6 +26,7 @@ import { Dict, TabularDataRowType, TabularDataColType } from "./backend/typing";
 import { Position } from "reactflow";
 import { AIGenReplaceTablePopover } from "./AiPopover";
 import { parseTableData } from "./backend/tableUtils";
+import { StringLookup } from "./backend/cache";
 
 const defaultRows: TabularDataRowType[] = [
   {
@@ -469,7 +470,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [rowValues, setRowValues] = useState<string[]>(
-    tableData.map((row) => row.value || ""),
+    tableData.map((row) => StringLookup.get(row.value) ?? ""),
   );
 
   // Function to add new columns to the right of the existing columns (with optional row values)

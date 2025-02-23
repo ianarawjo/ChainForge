@@ -62,6 +62,7 @@ import {
   grabResponses,
   queryLLM,
 } from "./backend/backend";
+import { StringLookup } from "./backend/cache";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -497,8 +498,8 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         // Create revised chat_history on the TemplateVarInfo object,
         // with the prompt and text of the pulled data as the 2nd-to-last, and last, messages:
         const last_messages = [
-          { role: "user", content: info.prompt ?? "" },
-          { role: "assistant", content: info.text ?? "" },
+          { role: "user", content: StringLookup.get(info.prompt) ?? "" },
+          { role: "assistant", content: StringLookup.get(info.text) ?? "" },
         ];
         let updated_chat_hist =
           info.chat_history !== undefined

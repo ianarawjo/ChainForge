@@ -7,7 +7,9 @@ import {
   EvaluationScore,
   LLMResponse,
   LLMResponseData,
+  StringOrHash,
 } from "./backend/typing";
+import { StringLookup } from "./backend/cache";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -113,7 +115,7 @@ export const ResponseGroup: React.FC<ResponseGroupProps> = ({
  */
 interface ResponseBoxProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
-  vars?: Dict<string>;
+  vars?: Dict<StringOrHash>;
   truncLenForVars?: number;
   llmName?: string;
   boxColor?: string;
@@ -131,7 +133,7 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
   const var_tags = useMemo(() => {
     if (vars === undefined) return [];
     return Object.entries(vars).map(([varname, val]) => {
-      const v = truncStr(val.trim(), truncLenForVars ?? 18);
+      const v = truncStr((StringLookup.get(val) ?? "").trim(), truncLenForVars ?? 18);
       return (
         <div key={varname} className="response-var-inline">
           <span className="response-var-name">{varname}&nbsp;=&nbsp;</span>
@@ -191,16 +193,16 @@ export const genResponseTextsDisplay = (
   const resp_str_to_eval_res: Dict<EvaluationScore> = {};
   if (eval_res_items)
     responses.forEach((r, idx) => {
-      resp_str_to_eval_res[typeof r === "string" ? r : r.d] =
+      resp_str_to_eval_res[(typeof r === "string" || typeof r === "number") ? (StringLookup.get(r) ?? "") : r.d] =
         eval_res_items[idx];
     });
 
   const same_resp_text_counts = countResponsesBy(responses, (r) =>
-    typeof r === "string" ? r : r.d,
+    (typeof r === "string" || typeof r === "number") ? (StringLookup.get(r) ?? "") : r.d,
   );
   const resp_special_type_map: Dict<string> = {};
   responses.forEach((r) => {
-    const key = typeof r === "string" ? r : r.d;
+    const key = (typeof r === "string" || typeof r === "number") ? (StringLookup.get(r) ?? "") : r.d;
     if (typeof r === "object") resp_special_type_map[key] = r.t;
   });
   const same_resp_keys = Object.keys(same_resp_text_counts).sort(

@@ -257,6 +257,7 @@ function filterVarsByLLM(vars: PromptVarsDict, llm_key: string): Dict {
     _vars[key] = vs.filter(
       (v) =>
         typeof v === "string" ||
+        typeof v === "number" ||
         v?.llm === undefined ||
         typeof v.llm === "string" ||
         v.llm.key === llm_key,
@@ -1288,15 +1289,15 @@ export async function evalWithLLM(
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
     responses.forEach((r: LLMResponse) => {
-      const resp_obj = resp_objs[r.metavars.__i];
+      const resp_obj = resp_objs[r.metavars.__i as number];
       if (resp_obj.eval_res !== undefined)
-        resp_obj.eval_res.items[r.metavars.__j] = r.responses[0];
+        resp_obj.eval_res.items[r.metavars.__j as number] = r.responses[0];
       else {
         resp_obj.eval_res = {
           items: [],
           dtype: "Categorical",
         };
-        resp_obj.eval_res.items[r.metavars.__j] = r.responses[0];
+        resp_obj.eval_res.items[r.metavars.__j as number] = r.responses[0];
       }
     });
 

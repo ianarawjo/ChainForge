@@ -68,8 +68,8 @@ export interface HuggingFaceChatHistory {
 // Chat history with 'carried' variable metadata
 export interface ChatHistoryInfo {
   messages: ChatHistory;
-  fill_history: Dict;
-  metavars?: Dict;
+  fill_history: Dict<StringOrHash>;
+  metavars?: Dict<StringOrHash>;
   llm?: string;
 }
 
@@ -156,6 +156,8 @@ export interface ModelSettingsDict {
 
 export type ResponseUID = string;
 
+export type StringOrHash = string | number;
+
 /** What kind of data can be each individual response from the model.
  * string is basic text; but could be images or more data types in the future.
  */
@@ -164,7 +166,7 @@ export type LLMResponseData =
       t: "img"; // type
       d: string; // payload
     }
-  | string;
+  | StringOrHash;
 
 export function isImageResponseData(
   r: LLMResponseData,
@@ -177,11 +179,11 @@ export interface BaseLLMResponseObject {
   /** A unique ID to refer to this response */
   uid: ResponseUID;
   /** The concrete prompt that led to this response. */
-  prompt: string;
+  prompt: StringOrHash;
   /** The variables fed into the prompt. */
-  vars: Dict;
+  vars: Dict<StringOrHash>;
   /** Any associated metavariables. */
-  metavars: Dict;
+  metavars: Dict<StringOrHash>;
   /** The LLM to query (usually a dict of settings) */
   llm: string | LLMSpec;
   /** Optional: The chat history to pass the LLM */
@@ -240,19 +242,19 @@ export type EvaluatedResponsesResults = {
 /** The outputs of prompt nodes, text fields or other data passed internally in the front-end and to the PromptTemplate backend.
  * Used to populate prompt templates and carry variables/metavariables along the chain. */
 export interface TemplateVarInfo {
-  text?: string;
-  image?: string; // base-64 encoding
-  fill_history?: Dict<string>;
-  metavars?: Dict<string>;
+  text?: StringOrHash;
+  image?: StringOrHash; // base-64 encoding
+  fill_history?: Dict<StringOrHash>;
+  metavars?: Dict<StringOrHash>;
   associate_id?: string;
-  prompt?: string;
+  prompt?: StringOrHash;
   uid?: ResponseUID;
   llm?: string | LLMSpec;
   chat_history?: ChatHistory;
 }
 
 export type LLMResponsesByVarDict = Dict<
-  (BaseLLMResponseObject | LLMResponse | TemplateVarInfo | string)[]
+  (BaseLLMResponseObject | LLMResponse | TemplateVarInfo | StringOrHash)[]
 >;
 
 export type VarsContext = {
@@ -260,15 +262,16 @@ export type VarsContext = {
   metavars: string[];
 };
 
-export type PromptVarType = string | TemplateVarInfo;
+export type PromptVarType = StringOrHash | TemplateVarInfo;
 export type PromptVarsDict = {
   [key: string]: PromptVarType[];
 };
 
-export type TabularDataRowType = Dict<string>;
+export type TabularDataRowType = Dict<StringOrHash>;
 export type TabularDataColType = {
   key: string;
   header: string;
 };
 
 export type PythonInterpreter = "flask" | "pyodide";
+

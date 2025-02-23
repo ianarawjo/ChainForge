@@ -13,9 +13,11 @@ import {
   EvaluationScore,
   JSONCompatible,
   LLMResponse,
+  LLMResponseData,
 } from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
 import { grabResponses } from "./backend/backend";
+import { StringLookup } from "./backend/cache";
 
 // Helper funcs
 const splitAndAddBreaks = (s: string, chunkSize: number) => {
@@ -332,7 +334,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         ? resp_obj.metavars[varname.slice("__meta_".length)]
         : resp_obj.vars[varname];
       if (v === undefined && empty_str_if_undefined) return "";
-      return v;
+      return StringLookup.get(v) ?? "";
     };
 
     const get_var_and_trim = (
@@ -344,6 +346,8 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
       if (v !== undefined) return v.trim();
       else return v;
     };
+
+    const castData = (v: LLMResponseData) => (typeof v === "string" || typeof v === "number" ? (StringLookup.get(v) ?? "(unknown lookup error)") : v.d)
 
     const get_items = (eval_res_obj?: EvaluationResults) => {
       if (eval_res_obj === undefined) return [];
@@ -479,7 +483,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
             x_items = x_items.concat(get_items(r.eval_res));
             text_items = text_items.concat(
               createHoverTexts(
-                r.responses.map((v) => (typeof v === "string" ? v : v.d)),
+                r.responses.map(castData),
               ),
             );
           });
@@ -575,7 +579,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
             text_items = text_items
               .concat(
                 createHoverTexts(
-                  r.responses.map((v) => (typeof v === "string" ? v : v.d)),
+                  r.responses.map(castData),
                 ),
               )
               .flat();

@@ -26,6 +26,7 @@ import {
   EvaluationScore,
   LLMResponseData,
   isImageResponseData,
+  StringOrHash,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
@@ -2110,6 +2111,7 @@ export const tagMetadataWithLLM = (input_data: LLMResponsesByVarDict) => {
       if (
         !r ||
         typeof r === "string" ||
+        typeof r === "number" ||
         !r?.llm ||
         typeof r.llm === "string" ||
         !r.llm.key
@@ -2125,20 +2127,20 @@ export const tagMetadataWithLLM = (input_data: LLMResponsesByVarDict) => {
 
 export const extractLLMLookup = (
   input_data: Dict<
-    (string | TemplateVarInfo | BaseLLMResponseObject | LLMResponse)[]
+    (StringOrHash | TemplateVarInfo | BaseLLMResponseObject | LLMResponse)[]
   >,
 ) => {
   const llm_lookup: Dict<string | LLMSpec> = {};
   Object.values(input_data).forEach((resp_objs) => {
     resp_objs.forEach((r) => {
       const llm_name =
-        typeof r === "string"
+        typeof r === "string" || typeof r === "number"
           ? undefined
-          : !r.llm || typeof r.llm === "string"
+          : !r.llm || typeof r.llm === "string" 
             ? r.llm
             : r.llm.key;
       if (
-        typeof r === "string" ||
+        typeof r === "string" || typeof r === "number" ||
         !r.llm ||
         !llm_name ||
         llm_name in llm_lookup
