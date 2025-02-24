@@ -20,22 +20,28 @@ const FAILURE_EVAL_SCORES = new Set(["false", "no"]);
 export const getEvalResultStr = (
   eval_item: EvaluationScore,
   hide_prefix: boolean,
-) => {
+  onlyString?: boolean,
+): JSX.Element | string => {
   if (Array.isArray(eval_item)) {
     return (hide_prefix ? "" : "scores: ") + eval_item.join(", ");
   } else if (typeof eval_item === "object") {
-    const strs = Object.keys(eval_item).map((key, j) => {
-      let val = eval_item[key];
-      if (typeof val === "number" && val.toString().indexOf(".") > -1)
-        val = val.toFixed(4); // truncate floats to 4 decimal places
-      return (
-        <div key={`${key}-${j}`}>
-          <span>{key}: </span>
-          <span>{getEvalResultStr(val, true)}</span>
-        </div>
-      );
-    });
-    return <Stack spacing={0}>{strs}</Stack>;
+    const strs: (JSX.Element | string)[] = Object.keys(eval_item).map(
+      (key, j) => {
+        let val = eval_item[key];
+        if (typeof val === "number" && val.toString().indexOf(".") > -1)
+          val = val.toFixed(4); // truncate floats to 4 decimal places
+        if (onlyString) return `${key}: ${getEvalResultStr(val, true, true)}`;
+        else
+          return (
+            <div key={`${key}-${j}`}>
+              <span>{key}: </span>
+              <span>{getEvalResultStr(val, true)}</span>
+            </div>
+          );
+      },
+    );
+    if (onlyString) return strs.join("\n");
+    else return <Stack spacing={0}>{strs}</Stack>;
   } else {
     const eval_str = eval_item.toString().trim().toLowerCase();
     const color = SUCCESS_EVAL_SCORES.has(eval_str)
@@ -43,12 +49,14 @@ export const getEvalResultStr = (
       : FAILURE_EVAL_SCORES.has(eval_str)
         ? "red"
         : "black";
-    return (
-      <>
-        {!hide_prefix && <span style={{ color: "gray" }}>{"score: "}</span>}
-        <span style={{ color }}>{eval_str}</span>
-      </>
-    );
+    if (onlyString) return `score: ${eval_str}`;
+    else
+      return (
+        <>
+          {!hide_prefix && <span style={{ color: "gray" }}>{"score: "}</span>}
+          <span style={{ color }}>{eval_str}</span>
+        </>
+      );
   }
 };
 

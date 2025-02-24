@@ -24,7 +24,6 @@ import {
   Stack,
   ScrollArea,
   LoadingOverlay,
-  Skeleton,
 } from "@mantine/core";
 import { useToggle } from "@mantine/hooks";
 import {
@@ -33,6 +32,16 @@ import {
   IconLetterCaseToggle,
   IconFilter,
 } from "@tabler/icons-react";
+import {
+  MantineReactTable,
+  useMantineReactTable,
+  type MRT_ColumnDef,
+  type MRT_Cell,
+  type MRT_ColumnFiltersState,
+  type MRT_SortingState,
+  type MRT_Virtualizer,
+  MRT_Row,
+} from "mantine-react-table";
 import * as XLSX from "xlsx";
 import useStore from "./store";
 import {
@@ -309,6 +318,18 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     [jsonResponses],
   );
 
+  // Table view data
+  const [tableColumns, setTableColumns] = useState<MRT_ColumnDef<any>[]>([]);
+  const [tableRows, setTableRows] = useState<any[]>([]);
+  const table = useMantineReactTable({
+    columns: tableColumns,
+    data: tableRows,
+    enableColumnResizing: true,
+    columnResizeMode: "onEnd",
+    enableStickyHeader: true,
+    initialState: { density: "md", pagination: { pageSize: 30, pageIndex: 0 } },
+  });
+
   // The var name to use for columns in the table view
   const [tableColVar, setTableColVar] = useState("$LLM");
   const [userSelectedTableCol, setUserSelectedTableCol] = useState(false);
@@ -560,6 +581,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         });
       };
 
+      /* TABLE VIEW */
       // Generate a view of the responses based on the view format set by the user
       if (viewFormat === "table") {
         // Generate a table, with default columns for: input vars, LLMs queried
@@ -641,98 +663,217 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               const val = resp_objs[0].metavars[v];
               return val !== undefined ? val : "(unspecified)";
             });
-            let eval_cols_vals: React.ReactNode[] = [];
+            let eval_cols_vals: string[] = [];
             if (eval_res_cols && eval_res_cols.length > 0) {
               // We can assume that there's only one response object, since to
               // if eval_res_cols is set, there must be only one LLM.
               eval_cols_vals = eval_res_cols.map((metric_name, metric_idx) => {
                 const items = resp_objs[0].eval_res?.items;
                 if (!items) return "(no result)";
-                return items.map((item) => {
-                  if (item === undefined) return "(undefined)";
-                  if (
-                    typeof item !== "object" &&
-                    metric_idx === 0 &&
-                    metric_name === "Score"
-                  )
-                    return getEvalResultStr(item, true);
-                  else if (typeof item === "object" && metric_name in item)
-                    return getEvalResultStr(item[metric_name], true);
-                  else return "(unspecified)";
-                }); // treat n>1 resps per prompt as multi-line results in the column
+                return items
+                  .map((item) => {
+                    if (item === undefined) return "(undefined)";
+                    if (
+                      typeof item !== "object" &&
+                      metric_idx === 0 &&
+                      metric_name === "Score"
+                    )
+                      return getEvalResultStr(item, true, true) as string;
+                    else if (typeof item === "object" && metric_name in item)
+                      return getEvalResultStr(
+                        item[metric_name],
+                        true,
+                        true,
+                      ) as string;
+                    else return "(unspecified)";
+                  })
+                  .join("\n"); // treat n>1 resps per prompt as multi-line results in the column
               });
             }
+
             const resp_objs_by_col_var = groupResponsesBy(
               resp_objs,
               getColVal,
             )[0];
+
             const sel_var_cols = found_sel_var_vals.map((val, idx) => {
               if (val in resp_objs_by_col_var) {
                 const rs = resp_objs_by_col_var[val];
                 // Return response divs as response box here:
-                return (
-                  <div key={idx}>
-                    {generateResponseBoxes(
-                      rs,
-                      var_cols,
-                      100,
-                      eval_res_cols !== undefined,
-                    )}
-                  </div>
-                );
+                return rs;
+                // return llmResponseDataToString(rs[0].responses[0]); // TODO: Fix
+                // return (
+                //   <div key={idx}>
+                //     {generateResponseBoxes(
+                //       rs,
+                //       var_cols,
+                //       100,
+                //       eval_res_cols !== undefined,
+                //     )}
+                //   </div>
+                // );
               } else {
-                return <i key={idx}>{empty_cell_text}</i>;
+                return empty_cell_text;
+                // return <i key={idx}>{empty_cell_text}</i>;
               }
             });
 
-            return (
-              <tr key={`r${idx}`} style={{ borderBottom: "2px solid #fff" }}>
-                {var_cols_vals.map((c, i) => (
-                  <td key={`v${i}`} className="inspect-table-var">
-                    <ScrollArea.Autosize mt="sm" mah={500} maw={300}>
-                      {StringLookup.get(c)}
-                    </ScrollArea.Autosize>
-                  </td>
-                ))}
-                {metavar_cols_vals.map((c, i) => (
-                  <td key={`m${i}`} className="inspect-table-metavar">
-                    {StringLookup.get(c)}
-                  </td>
-                ))}
-                {sel_var_cols.map((c, i) => (
-                  <td key={`c${i}`} className="inspect-table-llm-resp">
-                    {StringLookup.get(c)}
-                  </td>
-                ))}
-                {eval_cols_vals.map((c, i) => (
-                  <td key={`e${i}`} className="inspect-table-score-col">
-                    <Stack spacing={0}>{c}</Stack>
-                  </td>
-                ))}
-              </tr>
-            );
+            const row: Dict<
+              string | undefined | LLMResponse[] | LLMResponseData[]
+            > = {};
+            let vals_arr_start_idx = 0;
+            var_cols_vals.forEach((v, i) => {
+              row[`c${i}`] = StringLookup.get(v);
+            });
+            vals_arr_start_idx += var_cols_vals.length;
+            metavar_cols_vals.forEach((v, i) => {
+              row[`c${i + vals_arr_start_idx}`] = StringLookup.get(v);
+            });
+            vals_arr_start_idx += metavar_cols_vals.length;
+            sel_var_cols.forEach((v, i) => {
+              const isStr = typeof v === "string" || typeof v === "number";
+              row[`c${i + vals_arr_start_idx}`] = isStr
+                ? StringLookup.get(v)
+                : v;
+            });
+            vals_arr_start_idx += sel_var_cols.length;
+            eval_cols_vals.forEach((v, i) => {
+              row[`c${i + vals_arr_start_idx}`] = StringLookup.get(v);
+            });
+
+            return row;
+
+            // return (
+            //   <tr key={`r${idx}`} style={{ borderBottom: "2px solid #fff" }}>
+            //     {var_cols_vals.map((c, i) => (
+            //       <td key={`v${i}`} className="inspect-table-var">
+            //         <ScrollArea.Autosize mt="sm" mah={500} maw={300}>
+            //           {StringLookup.get(c)}
+            //         </ScrollArea.Autosize>
+            //       </td>
+            //     ))}
+            //     {metavar_cols_vals.map((c, i) => (
+            //       <td key={`m${i}`} className="inspect-table-metavar">
+            //         {StringLookup.get(c)}
+            //       </td>
+            //     ))}
+            //     {sel_var_cols.map((c, i) => (
+            //       <td key={`c${i}`} className="inspect-table-llm-resp">
+            //         {StringLookup.get(c)}
+            //       </td>
+            //     ))}
+            //     {eval_cols_vals.map((c, i) => (
+            //       <td key={`e${i}`} className="inspect-table-score-col">
+            //         <Stack spacing={0}>{c}</Stack>
+            //       </td>
+            //     ))}
+            //   </tr>
+            // );
           },
         );
 
-        setResponseDivs([
-          <Table
-            key="table"
-            fontSize={wideFormat ? "sm" : "xs"}
-            horizontalSpacing="xs"
-            verticalSpacing={0}
-            striped
-            withColumnBorders={true}
-          >
-            <thead>
-              <tr>
-                {colnames.map((c) => (
-                  <th key={c}>{c}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody style={{ verticalAlign: "top" }}>{rows}</tbody>
-          </Table>,
-        ]);
+        // Smart estimates of col width sizes required
+        const colAvgNumChars: Dict<number> = {};
+        const colHasLLMResponses: Set<string> = new Set<string>();
+        const numRows = rows.length;
+        rows.forEach((row) => {
+          Object.entries(row).forEach(([cname, val]) => {
+            if (val === undefined || cname[0] === "o") return;
+            if (!(cname in colAvgNumChars)) colAvgNumChars[cname] = 0;
+            const hasLLMResps = !(typeof val === "string");
+            if (hasLLMResps && !colHasLLMResponses.has(cname))
+              colHasLLMResponses.add(cname);
+            // Count the number of chars in the total text that will be displaced in this cell,
+            // and add it to the count:
+
+            const numChars = hasLLMResps
+              ? val
+                  .map((r) =>
+                    (r as LLMResponse).responses
+                      .map(llmResponseDataToString)
+                      .join(""),
+                  )
+                  .join("").length
+              : val.length;
+            colAvgNumChars[cname] += (numChars * 1.0) / numRows; // we apply the averaging here for speed
+          });
+        });
+
+        const columns = colnames.map((c, i) => ({
+          accessorKey: `c${i}`,
+          accessorFn: (row) => {
+            // Get the text for this row. Used when filtering or sorting.
+            const val = row[`c${i}`];
+            if (typeof val === "string" || val === undefined) return val;
+            else
+              return (val as LLMResponse[])
+                .flatMap((r) => r.responses)
+                .map(llmResponseDataToString)
+                .join("");
+          },
+          header: c,
+          // minSize: Math.min(Math.max(70, Math.ceil(colAvgNumChars[`c${i}`] ?? 50)), 300),
+          size: Math.min(
+            Math.max(70, Math.ceil(colAvgNumChars[`c${i}`] ?? 50)),
+            300,
+          ),
+          Cell: ({ cell, row }: { cell: MRT_Cell; row: any }) => {
+            const val = row.original[`c${i}`];
+            if (typeof val === "string") return val;
+            else
+              return (
+                <Stack spacing={0} lh={1.2}>
+                  {generateResponseBoxes(
+                    val as LLMResponse[],
+                    var_cols.concat([tableColVar]),
+                    100,
+                    eval_res_cols !== undefined,
+                  )}
+                </Stack>
+              );
+            // return <div style={{backgroundColor: "red"}}>{cell.getValue() as string}</div>;
+          },
+          Header: ({ column }) => (
+            <div style={{ lineHeight: 1.0, overflowY: "auto", maxHeight: 100 }}>
+              {column.columnDef.header}
+            </div>
+          ),
+          mantineTableBodyCellProps: (() => {
+            if (colHasLLMResponses.has(`c${i}`))
+              return {
+                style: { padding: "4px 2px 0px 2px", verticalAlign: "top" }, // Adjusts overall padding & spacing
+              };
+            else
+              return {
+                style: { lineHeight: 1.2 },
+              };
+          })(),
+        })) as MRT_ColumnDef<any>[];
+
+        setTableRows(rows);
+        setTableColumns(columns);
+
+        // setResponseDivs([
+        //   <Table
+        //     key="table"
+        //     fontSize={wideFormat ? "sm" : "xs"}
+        //     horizontalSpacing="xs"
+        //     verticalSpacing={0}
+        //     striped
+        //     withColumnBorders={true}
+        //   >
+        //     <thead>
+        //       <tr>
+        //         {colnames.map((c) => (
+        //           <th key={c}>{c}</th>
+        //         ))}
+        //       </tr>
+        //     </thead>
+        //     <tbody style={{ verticalAlign: "top" }}>{rows}</tbody>
+        //   </Table>,
+        // ]);
+
+        /* HIERARCHY VIEW */
       } else if (viewFormat === "hierarchy") {
         // Now we need to perform groupings by each var in the selected vars list,
         // nesting the groupings (preferrably with custom divs) and sorting within
@@ -981,7 +1122,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   );
 
   return (
-    <div style={{ height: "100%" }}>
+    <div style={{ height: "100%", margin: "0", padding: "0" }}>
       <Tabs
         value={viewFormat}
         onTabChange={(val) => {
@@ -1063,7 +1204,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       <div className="nowheel nodrag">
         {/* To get the overlay to operate just inside the div, use style={{position: "relative"}}. However it won't show the spinner in the right place. */}
         <LoadingOverlay visible={showLoadingSpinner} overlayOpacity={0.5} />
-        {responseDivs}
+        {viewFormat === "table" ? (
+          <MantineReactTable table={table} />
+        ) : (
+          responseDivs
+        )}
       </div>
     </div>
   );
