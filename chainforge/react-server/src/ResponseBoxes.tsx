@@ -17,31 +17,50 @@ const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
 /* HELPER FUNCTIONS */
 const SUCCESS_EVAL_SCORES = new Set(["true", "yes"]);
 const FAILURE_EVAL_SCORES = new Set(["false", "no"]);
+/**
+ * Returns an array of JSX elements, and the searchable text underpinning them,
+ * that represents a concrete version of the Evaluation Scores passed in.
+ * @param eval_item The evaluation result to visualize.
+ * @param hide_prefix Whether to hide 'score: ' or '{key}: ' prefixes when printing.
+ * @param onlyString Whether to only return string values.
+ * @returns An array [JSX.Element, string] where the latter is a string representation of the eval score, to enable search
+ */
 export const getEvalResultStr = (
   eval_item: EvaluationScore,
   hide_prefix: boolean,
   onlyString?: boolean,
-): JSX.Element | string => {
+): [JSX.Element | string, string] => {
   if (Array.isArray(eval_item)) {
-    return (hide_prefix ? "" : "scores: ") + eval_item.join(", ");
+    const items_str = (hide_prefix ? "" : "scores: ") + eval_item.join(", ");
+    return [items_str, items_str];
   } else if (typeof eval_item === "object") {
-    const strs: (JSX.Element | string)[] = Object.keys(eval_item).map(
+    const strs: [JSX.Element | string, string][] = Object.keys(eval_item).map(
       (key, j) => {
         let val = eval_item[key];
         if (typeof val === "number" && val.toString().indexOf(".") > -1)
           val = val.toFixed(4); // truncate floats to 4 decimal places
-        if (onlyString) return `${key}: ${getEvalResultStr(val, true, true)}`;
+        const [recurs_res, recurs_str] = getEvalResultStr(val, true);
+        if (onlyString) return [`${key}: ${recurs_str}`, recurs_str];
         else
-          return (
+          return [
             <div key={`${key}-${j}`}>
               <span>{key}: </span>
-              <span>{getEvalResultStr(val, true)}</span>
-            </div>
-          );
+              <span>{recurs_res}</span>
+            </div>,
+            recurs_str,
+          ];
       },
     );
-    if (onlyString) return strs.join("\n");
-    else return <Stack spacing={0}>{strs}</Stack>;
+    const joined_strs = strs.map((s) => s[1]).join("\n");
+    if (onlyString) {
+      return [joined_strs, joined_strs];
+    } else
+      return [
+        <Stack key={1} spacing={0}>
+          {strs}
+        </Stack>,
+        joined_strs,
+      ];
   } else {
     const eval_str = eval_item.toString().trim().toLowerCase();
     const color = SUCCESS_EVAL_SCORES.has(eval_str)
@@ -49,14 +68,15 @@ export const getEvalResultStr = (
       : FAILURE_EVAL_SCORES.has(eval_str)
         ? "red"
         : "black";
-    if (onlyString) return `score: ${eval_str}`;
+    if (onlyString) return [eval_str, eval_str];
     else
-      return (
+      return [
         <>
           {!hide_prefix && <span style={{ color: "gray" }}>{"score: "}</span>}
           <span style={{ color }}>{eval_str}</span>
-        </>
-      );
+        </>,
+        eval_str,
+      ];
   }
 };
 
@@ -271,7 +291,7 @@ export const genResponseTextsDisplay = (
         )}
         {eval_res_items ? (
           <p className="small-response-metrics">
-            {getEvalResultStr(resp_str_to_eval_res[r], true)}
+            {getEvalResultStr(resp_str_to_eval_res[r], true)[0]}
           </p>
         ) : (
           <></>

@@ -24,6 +24,7 @@ import {
   Stack,
   ScrollArea,
   LoadingOverlay,
+  Button,
 } from "@mantine/core";
 import { useToggle } from "@mantine/hooks";
 import {
@@ -41,6 +42,9 @@ import {
   type MRT_SortingState,
   type MRT_Virtualizer,
   MRT_Row,
+  MRT_ShowHideColumnsButton,
+  MRT_ToggleFiltersButton,
+  MRT_ToggleDensePaddingButton,
 } from "mantine-react-table";
 import * as XLSX from "xlsx";
 import useStore from "./store";
@@ -201,7 +205,7 @@ export const exportToExcel = (
   const data = jsonResponses
     .map((res_obj, res_obj_idx) => {
       const llm = getLLMName(res_obj);
-      const prompt = res_obj.prompt;
+      const prompt = StringLookup.get(res_obj.prompt) ?? "";
       const vars = res_obj.vars;
       const metavars = res_obj.metavars ?? {};
       const ratings = {
@@ -219,7 +223,7 @@ export const exportToExcel = (
 
         // Add columns for vars
         Object.entries(vars).forEach(([varname, val]) => {
-          row[`Var: ${varname}`] = val;
+          row[`Var: ${varname}`] = StringLookup.get(val) ?? "";
         });
 
         // Add column(s) for human ratings, if present
@@ -253,7 +257,7 @@ export const exportToExcel = (
         // Add columns for metavars, if present
         Object.entries(metavars).forEach(([varname, val]) => {
           if (!cleanMetavarsFilterFunc(varname)) return; // skip llm group metavars
-          row[`Metavar: ${varname}`] = val;
+          row[`Metavar: ${varname}`] = StringLookup.get(val) ?? "";
         });
 
         return row;
@@ -281,7 +285,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
   // The type of view to use to display responses. Can be either hierarchy or table.
-  const [viewFormat, setViewFormat] = useState("hierarchy");
+  const [viewFormat, setViewFormat] = useState(
+    wideFormat ? "table" : "hierarchy",
+  );
 
   // The MultiSelect so people can dynamically set what vars they care about
   const [multiSelectVars, setMultiSelectVars] = useState<
@@ -328,6 +334,30 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     columnResizeMode: "onEnd",
     enableStickyHeader: true,
     initialState: { density: "md", pagination: { pageSize: 30, pageIndex: 0 } },
+    renderToolbarInternalActions: ({ table }) => (
+      <>
+        {/* built-in buttons (must pass in table prop for them to work!) */}
+        <MRT_ToggleFiltersButton table={table} />
+        <MRT_ShowHideColumnsButton table={table} />
+        <MRT_ToggleDensePaddingButton table={table} />
+      </>
+    ),
+    renderTopToolbarCustomActions: () => (
+      <Flex gap={sz} align="end" mb="sm" w="80%">
+        <NativeSelect
+          value={tableColVar}
+          onChange={(event) => {
+            setTableColVar(event.currentTarget.value);
+            setUserSelectedTableCol(true);
+          }}
+          data={multiSelectVars}
+          label="Select main column variable:"
+          size={sz}
+          w={wideFormat ? "50%" : "100%"}
+        />
+        {searchBar}
+      </Flex>
+    ),
   });
 
   // The var name to use for columns in the table view
@@ -663,31 +693,25 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               const val = resp_objs[0].metavars[v];
               return val !== undefined ? val : "(unspecified)";
             });
-            let eval_cols_vals: string[] = [];
+            let eval_cols_vals: [string | JSX.Element, string][][] = [];
             if (eval_res_cols && eval_res_cols.length > 0) {
               // We can assume that there's only one response object, since to
               // if eval_res_cols is set, there must be only one LLM.
               eval_cols_vals = eval_res_cols.map((metric_name, metric_idx) => {
                 const items = resp_objs[0].eval_res?.items;
-                if (!items) return "(no result)";
-                return items
-                  .map((item) => {
-                    if (item === undefined) return "(undefined)";
-                    if (
-                      typeof item !== "object" &&
-                      metric_idx === 0 &&
-                      metric_name === "Score"
-                    )
-                      return getEvalResultStr(item, true, true) as string;
-                    else if (typeof item === "object" && metric_name in item)
-                      return getEvalResultStr(
-                        item[metric_name],
-                        true,
-                        true,
-                      ) as string;
-                    else return "(unspecified)";
-                  })
-                  .join("\n"); // treat n>1 resps per prompt as multi-line results in the column
+                if (!items) return [["(no result)", "(no result)"]];
+                return items.map((item) => {
+                  if (item === undefined) return ["(undefined)", "(undefined)"];
+                  if (
+                    typeof item !== "object" &&
+                    metric_idx === 0 &&
+                    metric_name === "Score"
+                  )
+                    return getEvalResultStr(item, true);
+                  else if (typeof item === "object" && metric_name in item)
+                    return getEvalResultStr(item[metric_name], true);
+                  else return ["(unspecified)", "(unspecified)"];
+                }); // treat n>1 resps per prompt as multi-line results in the column
               });
             }
 
@@ -719,7 +743,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             });
 
             const row: Dict<
-              string | undefined | LLMResponse[] | LLMResponseData[]
+              | string
+              | undefined
+              | LLMResponse[]
+              | LLMResponseData[]
+              | { type: "eval"; data: (string | JSX.Element)[][] }
             > = {};
             let vals_arr_start_idx = 0;
             var_cols_vals.forEach((v, i) => {
@@ -738,7 +766,10 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             });
             vals_arr_start_idx += sel_var_cols.length;
             eval_cols_vals.forEach((v, i) => {
-              row[`c${i + vals_arr_start_idx}`] = StringLookup.get(v);
+              row[`c${i + vals_arr_start_idx}`] = {
+                type: "eval",
+                data: v,
+              };
             });
 
             return row;
@@ -780,12 +811,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           Object.entries(row).forEach(([cname, val]) => {
             if (val === undefined || cname[0] === "o") return;
             if (!(cname in colAvgNumChars)) colAvgNumChars[cname] = 0;
-            const hasLLMResps = !(typeof val === "string");
+            const hasLLMResps =
+              !(typeof val === "string") && Array.isArray(val);
             if (hasLLMResps && !colHasLLMResponses.has(cname))
               colHasLLMResponses.add(cname);
             // Count the number of chars in the total text that will be displaced in this cell,
             // and add it to the count:
-
             const numChars = hasLLMResps
               ? val
                   .map((r) =>
@@ -794,7 +825,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                       .join(""),
                   )
                   .join("").length
-              : val.length;
+              : typeof val === "string"
+                ? val.length
+                : (val.data as (string | JSX.Element)[][])
+                    .map((e) => e[1])
+                    .join("").length;
             colAvgNumChars[cname] += (numChars * 1.0) / numRows; // we apply the averaging here for speed
           });
         });
@@ -805,7 +840,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             // Get the text for this row. Used when filtering or sorting.
             const val = row[`c${i}`];
             if (typeof val === "string" || val === undefined) return val;
-            else
+            else if ("type" in val && val.type === "eval") {
+              return (val.data as (string | JSX.Element)[][])
+                .map((e) => e[1])
+                .join("\n");
+            } else
               return (val as LLMResponse[])
                 .flatMap((r) => r.responses)
                 .map(llmResponseDataToString)
@@ -820,7 +859,15 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           Cell: ({ cell, row }: { cell: MRT_Cell; row: any }) => {
             const val = row.original[`c${i}`];
             if (typeof val === "string") return val;
-            else
+            else if ("type" in val && val.type === "eval") {
+              return (
+                <Stack spacing={0}>
+                  {(val.data as [string | JSX.Element, string][]).map(
+                    (e) => e[0],
+                  )}
+                </Stack>
+              );
+            } else
               return (
                 <Stack spacing={0} lh={1.2}>
                   {generateResponseBoxes(
@@ -839,13 +886,14 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             </div>
           ),
           mantineTableBodyCellProps: (() => {
+            const fz = wideFormat ? {} : { fontSize: 12 }; // text font size when in drawer should be smaller
             if (colHasLLMResponses.has(`c${i}`))
               return {
                 style: { padding: "4px 2px 0px 2px", verticalAlign: "top" }, // Adjusts overall padding & spacing
               };
             else
               return {
-                style: { lineHeight: 1.2 },
+                style: { lineHeight: 1.2, ...fz },
               };
           })(),
         })) as MRT_ColumnDef<any>[];
@@ -1069,7 +1117,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           }
           autoComplete="off"
           size={sz}
-          placeholder={"Search keywords"}
+          placeholder={"Search responses"}
           w="100%"
           value={searchValue}
           onChange={handleSearchValueChange}
@@ -1176,28 +1224,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           </Flex>
         </Tabs.Panel>
         <Tabs.Panel value="table" pt="xs">
-          <Flex gap={sz} align="end" mb="sm">
-            <NativeSelect
-              value={tableColVar}
-              onChange={(event) => {
-                setTableColVar(event.currentTarget.value);
-                setUserSelectedTableCol(true);
-              }}
-              data={multiSelectVars}
-              label="Select main column variable:"
-              size={sz}
-              w={wideFormat ? "50%" : "100%"}
-            />
-            {searchBar}
-            <Checkbox
-              checked={onlyShowScores}
-              label="Only show scores"
-              onChange={(e) => setOnlyShowScores(e.currentTarget.checked)}
-              mb="md"
-              size={sz}
-              display={showEvalScoreOptions ? "inherit" : "none"}
-            />
-          </Flex>
+          <></>
         </Tabs.Panel>
       </Tabs>
 

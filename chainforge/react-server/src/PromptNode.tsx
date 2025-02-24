@@ -990,7 +990,6 @@ Soft failing by replacing undefined with empty strings.`,
                       ? StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)"
                       : resp_obj.llm.name;
 
-                  console.log(o);
                   return o;
                 }),
               )
