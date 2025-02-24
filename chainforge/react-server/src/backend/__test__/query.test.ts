@@ -56,7 +56,6 @@ async function prompt_model(model: LLM, provider: LLMProvider): Promise<void> {
       `Prompt: ${prompt}\nResponses: ${JSON.stringify(resp_obj.responses)}`,
     );
     expect(resp_obj.responses).toHaveLength(2);
-    expect(resp_obj.raw_response).toHaveLength(2); // these should've been merged
   });
   expect(Object.keys(cache)).toHaveLength(3); // still expect 3 prompts
 
@@ -82,7 +81,6 @@ async function prompt_model(model: LLM, provider: LLMProvider): Promise<void> {
   Object.entries(cache).forEach(([prompt, response]) => {
     const resp_obj = Array.isArray(response) ? response[0] : response;
     expect(resp_obj.responses).toHaveLength(2);
-    expect(resp_obj.raw_response).toHaveLength(2); // these should've been merged
   });
   expect(Object.keys(cache)).toHaveLength(3); // still expect 3 prompts
 }

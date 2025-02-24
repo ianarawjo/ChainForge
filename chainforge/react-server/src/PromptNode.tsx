@@ -52,6 +52,7 @@ import {
   QueryProgress,
   LLMResponse,
   TemplateVarInfo,
+  StringOrHash,
 } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
@@ -62,6 +63,7 @@ import {
   grabResponses,
   queryLLM,
 } from "./backend/backend";
+import { StringLookup } from "./backend/cache";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -487,6 +489,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         // Add to unique LLMs list, if necessary
         if (
           typeof info?.llm !== "string" &&
+          typeof info?.llm !== "number" &&
           info?.llm?.name !== undefined &&
           !llm_names.has(info.llm.name)
         ) {
@@ -497,8 +500,8 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         // Create revised chat_history on the TemplateVarInfo object,
         // with the prompt and text of the pulled data as the 2nd-to-last, and last, messages:
         const last_messages = [
-          { role: "user", content: info.prompt ?? "" },
-          { role: "assistant", content: info.text ?? "" },
+          { role: "user", content: StringLookup.get(info.prompt) ?? "" },
+          { role: "assistant", content: StringLookup.get(info.text) ?? "" },
         ];
         let updated_chat_hist =
           info.chat_history !== undefined
@@ -508,6 +511,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         // Append any present system message retroactively as the first message in the chat history:
         if (
           typeof info?.llm !== "string" &&
+          typeof info?.llm !== "number" &&
           typeof info?.llm?.settings?.system_msg === "string" &&
           updated_chat_hist[0].role !== "system"
         )
@@ -520,7 +524,10 @@ const PromptNode: React.FC<PromptNodeProps> = ({
           messages: updated_chat_hist,
           fill_history: info.fill_history ?? {},
           metavars: info.metavars ?? {},
-          llm: typeof info?.llm === "string" ? info.llm : info?.llm?.name,
+          llm:
+            typeof info?.llm === "string" || typeof info?.llm === "number"
+              ? StringLookup.get(info.llm) ?? "(LLM lookup failed)"
+              : StringLookup.get(info?.llm?.name),
           uid: uuid(),
         };
       },
@@ -534,7 +541,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const fetchResponseCounts = (
     prompt: string,
     vars: Dict,
-    llms: (string | Dict)[],
+    llms: (StringOrHash | LLMSpec)[],
     chat_histories?:
       | (ChatHistoryInfo | undefined)[]
       | Dict<(ChatHistoryInfo | undefined)[]>,
@@ -945,7 +952,12 @@ Soft failing by replacing undefined with empty strings.`,
                 resp_obj.responses.map((r) => {
                   // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
                   const o: TemplateVarInfo = {
-                    text: typeof r === "string" ? escapeBraces(r) : undefined,
+                    text:
+                      typeof r === "number"
+                        ? escapeBraces(StringLookup.get(r)!)
+                        : typeof r === "string"
+                          ? escapeBraces(r)
+                          : undefined,
                     image:
                       typeof r === "object" && r.t === "img" ? r.d : undefined,
                     prompt: resp_obj.prompt,
@@ -955,6 +967,11 @@ Soft failing by replacing undefined with empty strings.`,
                     ),
                     uid: resp_obj.uid,
                   };
+
+                  o.text =
+                    o.text !== undefined
+                      ? StringLookup.intern(o.text as string)
+                      : undefined;
 
                   // Carry over any metavars
                   o.metavars = resp_obj.metavars ?? {};
@@ -968,9 +985,11 @@ Soft failing by replacing undefined with empty strings.`,
 
                   // Add a meta var to keep track of which LLM produced this response
                   o.metavars[llm_metavar_key] =
-                    typeof resp_obj.llm === "string"
-                      ? resp_obj.llm
+                    typeof resp_obj.llm === "string" ||
+                    typeof resp_obj.llm === "number"
+                      ? StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)"
                       : resp_obj.llm.name;
+
                   return o;
                 }),
               )

@@ -9,7 +9,7 @@ import {
 } from "./template";
 import { ChatHistoryInfo, Dict, TabularDataColType } from "./typing";
 import { fromMarkdown } from "mdast-util-from-markdown";
-import { sampleRandomElements } from "./utils";
+import { llmResponseDataToString, sampleRandomElements } from "./utils";
 
 export class AIError extends Error {
   constructor(message: string) {
@@ -314,7 +314,7 @@ export async function autofill(
   if (result.errors && Object.keys(result.errors).length > 0)
     throw new Error(Object.values(result.errors)[0].toString());
 
-  const output = result.responses[0].responses[0] as string;
+  const output = llmResponseDataToString(result.responses[0].responses[0]);
 
   console.log("LLM said: ", output);
 
@@ -381,7 +381,7 @@ export async function autofillTable(
       throw new Error(Object.values(result.errors)[0].toString());
 
     // Extract the output from the LLM response
-    const output = result.responses[0].responses[0] as string;
+    const output = llmResponseDataToString(result.responses[0].responses[0]);
     console.log("LLM said: ", output);
     const newRows = decodeTable(output).rows;
 
@@ -451,7 +451,7 @@ ${prompt}: ?`;
     throw new AIError(Object.values(result.errors)[0].toString());
   }
 
-  const output = result.responses[0].responses[0] as string;
+  const output = llmResponseDataToString(result.responses[0].responses[0]);
   return output.trim();
 }
 
@@ -484,7 +484,10 @@ export async function generateColumn(
       apiKeys,
       true,
     );
-    colName = (result.responses[0].responses[0] as string).replace("_", " ");
+    colName = llmResponseDataToString(result.responses[0].responses[0]).replace(
+      "_",
+      " ",
+    );
   }
 
   // Remove any leading/trailing whitespace from the column name as well as any double quotes
@@ -573,9 +576,10 @@ export async function generateAndReplace(
   if (result.errors && Object.keys(result.errors).length > 0)
     throw new Error(Object.values(result.errors)[0].toString());
 
-  console.log("LLM said: ", result.responses[0].responses[0]);
+  const resp = llmResponseDataToString(result.responses[0].responses[0]);
+  console.log("LLM said: ", resp);
 
-  const new_items = decode(result.responses[0].responses[0] as string);
+  const new_items = decode(resp);
   return new_items.slice(0, n);
 }
 
@@ -633,7 +637,7 @@ export async function generateAndReplaceTable(
     console.log("LLM said: ", result.responses[0].responses[0]);
 
     const { cols: new_cols, rows: new_rows } = decodeTable(
-      result.responses[0].responses[0] as string,
+      llmResponseDataToString(result.responses[0].responses[0]),
     );
 
     // Return the generated table with "n" number of rows

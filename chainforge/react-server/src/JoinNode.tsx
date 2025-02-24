@@ -27,7 +27,7 @@ import {
   getVarsAndMetavars,
   cleanMetavarsFilterFunc,
 } from "./backend/utils";
-import StorageCache from "./backend/cache";
+import StorageCache, { StringLookup } from "./backend/cache";
 import { ResponseBox } from "./ResponseBoxes";
 import {
   Dict,
@@ -78,9 +78,9 @@ const displayJoinedTexts = (
   return textInfos.map((info, idx) => {
     const llm_name =
       typeof info !== "string"
-        ? typeof info.llm === "string"
-          ? info.llm
-          : info.llm?.name
+        ? typeof info.llm === "string" || typeof info.llm === "number"
+          ? StringLookup.get(info.llm)
+          : StringLookup.get(info.llm?.name)
         : "";
     const ps = (
       <pre className="small-response">
@@ -267,7 +267,12 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
         if (groupByVar !== "A") vars[varname] = var_val;
         return {
           text: joinTexts(
-            resp_objs.map((r) => (typeof r === "string" ? r : r.text ?? "")),
+            resp_objs.map(
+              (r) =>
+                (typeof r === "string" || typeof r === "number"
+                  ? StringLookup.get(r)
+                  : StringLookup.get(r.text)) ?? "",
+            ),
             formatting,
           ),
           fill_history: isMetavar ? {} : vars,
@@ -284,7 +289,12 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
           countNumLLMs(unspecGroup) > 1 ? undefined : unspecGroup[0].llm;
         joined_texts.push({
           text: joinTexts(
-            unspecGroup.map((u) => (typeof u === "string" ? u : u.text ?? "")),
+            unspecGroup.map(
+              (u) =>
+                (typeof u === "string" || typeof u === "number"
+                  ? StringLookup.get(u)
+                  : StringLookup.get(u.text)) ?? "",
+            ),
             formatting,
           ),
           fill_history: {},
@@ -326,7 +336,10 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
           let joined_texts: (TemplateVarInfo | string)[] = [];
           const [groupedRespsByLLM, nonLLMRespGroup] = groupResponsesBy(
             resp_objs,
-            (r) => (typeof r.llm === "string" ? r.llm : r.llm?.key),
+            (r) =>
+              typeof r.llm === "string" || typeof r.llm === "number"
+                ? StringLookup.get(r.llm)
+                : r.llm?.key,
           );
           // eslint-disable-next-line
           Object.entries(groupedRespsByLLM).forEach(([llm_key, resp_objs]) => {
@@ -337,7 +350,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
           if (nonLLMRespGroup.length > 0)
             joined_texts.push(
               joinTexts(
-                nonLLMRespGroup.map((t) => t.text ?? ""),
+                nonLLMRespGroup.map((t) => StringLookup.get(t.text) ?? ""),
                 formatting,
               ),
             );
@@ -353,7 +366,12 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
             setDataPropsForNode(id, { fields: joined_texts });
           } else {
             let joined_texts: string | TemplateVarInfo = joinTexts(
-              resp_objs.map((r) => (typeof r === "string" ? r : r.text ?? "")),
+              resp_objs.map(
+                (r) =>
+                  (typeof r === "string" || typeof r === "number"
+                    ? StringLookup.get(r)
+                    : StringLookup.get(r.text)) ?? "",
+              ),
               formatting,
             );
 
