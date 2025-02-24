@@ -957,7 +957,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     <div style={{ height: "100%" }}>
       <Tabs
         value={viewFormat}
-        onTabChange={(val) => setViewFormat(val ?? "hierarchy")}
+        onTabChange={(val) => {
+          setViewFormat(val ?? "hierarchy");
+        }}
         styles={{ tabLabel: { fontSize: wideFormat ? "12pt" : "9pt" } }}
       >
         <Tabs.List>
