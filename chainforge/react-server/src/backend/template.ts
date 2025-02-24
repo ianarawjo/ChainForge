@@ -1,6 +1,12 @@
 import { StringLookup } from "./cache";
 import { isEqual } from "./setUtils";
-import { Dict, PromptVarsDict, PromptVarType, StringOrHash, TemplateVarInfo } from "./typing";
+import {
+  Dict,
+  PromptVarsDict,
+  PromptVarType,
+  StringOrHash,
+  TemplateVarInfo,
+} from "./typing";
 
 function len(o: object | string | Array<any>): number {
   // Acts akin to Python's builtin 'len' method
@@ -236,7 +242,8 @@ export class PromptTemplate {
   has_unfilled_settings_var(varname: string): boolean {
     return Object.entries(this.fill_history).some(
       ([key, val]) =>
-        key.startsWith("=") && new StringTemplate(StringLookup.get(val) ?? "").has_vars([varname]),
+        key.startsWith("=") &&
+        new StringTemplate(StringLookup.get(val) ?? "").has_vars([varname]),
     );
   }
 
@@ -259,7 +266,7 @@ export class PromptTemplate {
                 "PL": "Python"
             });
     */
-  fill(paramDict: Dict<PromptVarType>): PromptTemplate {    
+  fill(paramDict: Dict<PromptVarType>): PromptTemplate {
     // Check for special 'past fill history' format:
     let past_fill_history: Dict<StringOrHash> = {};
     let past_metavars: Dict<StringOrHash> = {};
@@ -269,9 +276,15 @@ export class PromptTemplate {
       // Transfer over the fill history and metavars
       Object.values(paramDict).forEach((obj) => {
         if ("fill_history" in (obj as TemplateVarInfo))
-          past_fill_history = { ...(obj as TemplateVarInfo).fill_history, ...past_fill_history };
+          past_fill_history = {
+            ...(obj as TemplateVarInfo).fill_history,
+            ...past_fill_history,
+          };
         if ("metavars" in (obj as TemplateVarInfo))
-          past_metavars = { ...(obj as TemplateVarInfo).metavars, ...past_metavars };
+          past_metavars = {
+            ...(obj as TemplateVarInfo).metavars,
+            ...past_metavars,
+          };
       });
 
       past_fill_history = StringLookup.concretizeDict(past_fill_history);
@@ -286,7 +299,9 @@ export class PromptTemplate {
     }
 
     // Concretize the params
-    paramDict = StringLookup.concretizeDict(paramDict) as Dict<string | TemplateVarInfo>;
+    paramDict = StringLookup.concretizeDict(paramDict) as Dict<
+      string | TemplateVarInfo
+    >;
 
     // For 'settings' template vars of form {=system_msg}, we use the same logic of storing param
     // values as before -- the only difference is that, when it comes to the actual substitution of
@@ -313,9 +328,9 @@ export class PromptTemplate {
     // Perform the fill inside any and all 'settings' template vars
     Object.entries(filled_pt.fill_history).forEach(([key, val]) => {
       if (!key.startsWith("=")) return;
-      filled_pt.fill_history[key] = new StringTemplate(StringLookup.get(val) ?? "").safe_substitute(
-        params_wo_settings,
-      );
+      filled_pt.fill_history[key] = new StringTemplate(
+        StringLookup.get(val) ?? "",
+      ).safe_substitute(params_wo_settings);
     });
 
     // Append any past history passed as vars:
@@ -440,9 +455,16 @@ export class PromptPermutationGenerator {
                 template.has_unfilled_settings_var(other_param)) &&
               Array.isArray(paramDict[other_param])
             ) {
-              for (let i = 0; i < (paramDict[other_param] as PromptVarType[]).length; i++) {
+              for (
+                let i = 0;
+                i < (paramDict[other_param] as PromptVarType[]).length;
+                i++
+              ) {
                 const ov = (paramDict[other_param] as PromptVarType[])[i];
-                if (isDict(ov) && (ov as TemplateVarInfo).associate_id === v_associate_id) {
+                if (
+                  isDict(ov) &&
+                  (ov as TemplateVarInfo).associate_id === v_associate_id
+                ) {
                   // This is a match. We should add the val to our param_fill_dict:
                   param_fill_dict[other_param] = ov;
                   break;
@@ -478,7 +500,9 @@ export class PromptPermutationGenerator {
   }
 
   // Generator class method to yield permutations of a root prompt template
-  *generate(paramDict: PromptVarsDict): Generator<PromptTemplate, boolean, undefined> {
+  *generate(
+    paramDict: PromptVarsDict,
+  ): Generator<PromptTemplate, boolean, undefined> {
     const template =
       typeof this.template === "string"
         ? new PromptTemplate(this.template)

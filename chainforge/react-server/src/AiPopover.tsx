@@ -299,8 +299,9 @@ export function AIGenReplaceTablePopover({
   // Check if there are any non-empty rows
   const nonEmptyRows = useMemo(
     () =>
-      values.filter((row) => Object.values(row).some((val) => StringLookup.get(val)?.trim()))
-        .length,
+      values.filter((row) =>
+        Object.values(row).some((val) => StringLookup.get(val)?.trim()),
+      ).length,
     [values],
   );
 
@@ -369,7 +370,9 @@ export function AIGenReplaceTablePopover({
       const tableRows = values
         .slice(0, -1) // Remove the last empty row
         .map((row) =>
-          tableColumns.map((col) => StringLookup.get(row[col])?.trim() || "").join(" | "),
+          tableColumns
+            .map((col) => StringLookup.get(row[col])?.trim() || "")
+            .join(" | "),
         );
 
       const tableInput = {
@@ -419,7 +422,9 @@ export function AIGenReplaceTablePopover({
       const tableRows = values
         .slice(0, emptyLastRow ? -1 : values.length)
         .map((row) =>
-          tableColumns.map((col) => StringLookup.get(row[col.key])?.trim() || "").join(" | "),
+          tableColumns
+            .map((col) => StringLookup.get(row[col.key])?.trim() || "")
+            .join(" | "),
         );
 
       const tableInput = {

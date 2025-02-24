@@ -12,12 +12,10 @@ import {
   EvaluationScore,
   LLMSpec,
   EvaluatedResponsesResults,
-  TemplateVarInfo,
   CustomLLMProviderSpec,
   LLMResponseData,
   PromptVarType,
   StringOrHash,
-  EvaluationResults,
 } from "./typing";
 import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
 import {
@@ -223,11 +221,15 @@ function gen_unique_cache_filename(
 function extract_llm_nickname(llm_spec: StringOrHash | LLMSpec): string {
   if (typeof llm_spec === "object" && llm_spec.name !== undefined)
     return llm_spec.name;
-  else return StringLookup.get(llm_spec as StringOrHash) ?? "(string lookup failed)";
+  else
+    return (
+      StringLookup.get(llm_spec as StringOrHash) ?? "(string lookup failed)"
+    );
 }
 
 function extract_llm_name(llm_spec: StringOrHash | LLMSpec): string {
-  if (typeof llm_spec === "string" || typeof llm_spec === "number") return StringLookup.get(llm_spec) ?? "(string lookup failed)";
+  if (typeof llm_spec === "string" || typeof llm_spec === "number")
+    return StringLookup.get(llm_spec) ?? "(string lookup failed)";
   else return llm_spec.model;
 }
 
@@ -238,7 +240,8 @@ function extract_llm_provider(llm_spec: StringOrHash | LLMSpec): LLMProvider {
 }
 
 function extract_llm_key(llm_spec: StringOrHash | LLMSpec): string {
-  if (typeof llm_spec === "string" || typeof llm_spec === "number") return StringLookup.get(llm_spec) ?? "(string lookup failed)";
+  if (typeof llm_spec === "string" || typeof llm_spec === "number")
+    return StringLookup.get(llm_spec) ?? "(string lookup failed)";
   else if (llm_spec.key !== undefined) return llm_spec.key;
   else
     throw new Error(
@@ -465,7 +468,8 @@ async function run_over_responses(
           // Store items with summary of mean, median, etc
           resp_obj.eval_res = {
             items: processed,
-            dtype: (getEnumName(MetricType, eval_res_type) ?? "Unknown") as keyof typeof MetricType,
+            dtype: (getEnumName(MetricType, eval_res_type) ??
+              "Unknown") as keyof typeof MetricType,
           };
         } else if (
           [MetricType.Unknown, MetricType.Empty].includes(eval_res_type)
@@ -477,7 +481,8 @@ async function run_over_responses(
           // Categorical, KeyValue, etc, we just store the items:
           resp_obj.eval_res = {
             items: processed,
-            dtype: (getEnumName(MetricType, eval_res_type) ?? "Unknown") as keyof typeof MetricType,
+            dtype: (getEnumName(MetricType, eval_res_type) ??
+              "Unknown") as keyof typeof MetricType,
           };
         }
       }
@@ -601,7 +606,9 @@ export async function countQueries(
         found_cache = true;
 
         // Load the cache file
-        const cache_llm_responses: Dict<RawLLMResponseObject[] | RawLLMResponseObject> = load_from_cache(cache_filename);
+        const cache_llm_responses: Dict<
+          RawLLMResponseObject[] | RawLLMResponseObject
+        > = load_from_cache(cache_filename);
 
         // Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
         _all_prompt_perms.forEach((prompt) => {
@@ -810,7 +817,9 @@ export async function queryLLM(
   const responses: { [key: string]: Array<RawLLMResponseObject> } = {};
   const all_errors: Dict<string[]> = {};
   const num_generations = n ?? 1;
-  async function query(llm_spec: StringOrHash | LLMSpec): Promise<LLMPrompterResults> {
+  async function query(
+    llm_spec: StringOrHash | LLMSpec,
+  ): Promise<LLMPrompterResults> {
     // Get LLM model name and any params
     const llm_str = extract_llm_name(llm_spec);
     const llm_provider = extract_llm_provider(llm_spec);
@@ -1265,10 +1274,17 @@ export async function evalWithLLM(
     const inputs = resp_objs
       .map((obj, __i) =>
         obj.responses.map((r: LLMResponseData, __j: number) => ({
-          text: typeof r === "string" || typeof r === "number" ? escapeBraces(StringLookup.get(r) ?? "(string lookup failed)") : undefined,
+          text:
+            typeof r === "string" || typeof r === "number"
+              ? escapeBraces(StringLookup.get(r) ?? "(string lookup failed)")
+              : undefined,
           image: typeof r === "object" && r.t === "img" ? r.d : undefined,
           fill_history: obj.vars,
-          metavars: { ...obj.metavars, __i: __i.toString(), __j: __j.toString() },
+          metavars: {
+            ...obj.metavars,
+            __i: __i.toString(),
+            __j: __j.toString(),
+          },
         })),
       )
       .flat();
@@ -1294,7 +1310,8 @@ export async function evalWithLLM(
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
     responses.forEach((r: LLMResponse) => {
-      const __i = parseInt(StringLookup.get(r.metavars.__i) ?? ""), __j = parseInt(StringLookup.get(r.metavars.__j) ?? "");
+      const __i = parseInt(StringLookup.get(r.metavars.__i) ?? "");
+      const __j = parseInt(StringLookup.get(r.metavars.__j) ?? "");
       const resp_obj = resp_objs[__i];
       if (resp_obj.eval_res !== undefined)
         resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
@@ -1431,8 +1448,8 @@ export async function exportCache(ids: string[]): Promise<Dict<Dict>> {
   }
   // Bundle up specific other state in StorageCache, which
   // includes things like human ratings for responses:
-  const cache_state = StorageCache.getAllMatching((key) =>
-    (key.startsWith("r.") || key === "__s"),
+  const cache_state = StorageCache.getAllMatching(
+    (key) => key.startsWith("r.") || key === "__s",
   );
   return { ...cache_files, ...cache_state };
 }
@@ -1459,7 +1476,7 @@ export async function importCache(files: {
     });
 
     // Load StringLookup table from cache
-    StringLookup.restoreFrom(StorageCache.get("__s")); 
+    StringLookup.restoreFrom(StorageCache.get("__s"));
   } catch (err) {
     throw new Error("Error importing from cache:" + (err as Error).message);
   }

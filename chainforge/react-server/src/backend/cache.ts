@@ -1,4 +1,4 @@
-import { Dict, JSONCompatible, StringOrHash } from "./typing";
+import { Dict, JSONCompatible } from "./typing";
 import LZString from "lz-string";
 
 /**
@@ -72,8 +72,7 @@ export default class StorageCache {
    */
   public static clear(key?: string): void {
     StorageCache.getInstance().clearCache(key);
-    if (key === undefined)
-      StringLookup.restoreFrom([]);
+    if (key === undefined) StringLookup.restoreFrom([]);
   }
 
   /**
@@ -136,7 +135,7 @@ export default class StorageCache {
       const data = JSON.parse(LZString.decompressFromUTF16(compressed));
       if (setStorageCacheData) {
         StorageCache.getInstance().data = data;
-        StringLookup.restoreFrom(data["__s"]);
+        StringLookup.restoreFrom(data.__s);
       }
       console.log("loaded", data);
       return data;
@@ -188,10 +187,10 @@ export class StringLookup {
   public static get(index: number | string | undefined): string | undefined;
   public static get<T>(index: T): T;
 
-  /** 
-   * Retrieves the string in the lookup table, given its index. 
-   * - **Note**: This function soft fails: if index is not a number, returns index unchanged. 
-  */
+  /**
+   * Retrieves the string in the lookup table, given its index.
+   * - **Note**: This function soft fails: if index is not a number, returns index unchanged.
+   */
   public static get<T>(index: T | number): T | string {
     if (typeof index !== "number") return index;
     const s = StringLookup.getInstance();
@@ -201,15 +200,21 @@ export class StringLookup {
   /**
    * Transforms a Dict by interning all strings encountered, up to 1 level of depth,
    * and returning the modified Dict with the strings as hash indexes instead.
-   * 
+   *
    * NOTE: This ignores recursing into any key "llm" that has a dict component.
    */
-  public static internDict(d: Dict, inplace?: boolean, depth = 1, ignoreKey=["llm", "uid", "eval_res"]): Dict {
+  public static internDict(
+    d: Dict,
+    inplace?: boolean,
+    depth = 1,
+    ignoreKey = ["llm", "uid", "eval_res"],
+  ): Dict {
     const newDict = inplace ? d : ({} as Dict);
     const entries = Object.entries(d);
 
     for (const [key, value] of entries) {
-      if (ignoreKey.includes(key)) { // Keep the ignored key the same
+      if (ignoreKey.includes(key)) {
+        // Keep the ignored key the same
         if (!inplace) newDict[key] = value;
         continue;
       }
@@ -239,18 +244,36 @@ export class StringLookup {
    * Leaves the rest of the dict unchanged. (Only operates 1 level deep.)
    * @param d The dictionary to operate over
    */
-  public static concretizeDict<T>(d: Dict<T | number>, inplace=false, depth = 1, ignoreKey=["llm", "uid", "eval_res"]): Dict<T | string> {
+  public static concretizeDict<T>(
+    d: Dict<T | number>,
+    inplace = false,
+    depth = 1,
+    ignoreKey = ["llm", "uid", "eval_res"],
+  ): Dict<T | string> {
     const newDict = inplace ? d : ({} as Dict);
     const entries = Object.entries(d);
     for (const [key, value] of entries) {
       const ignore = ignoreKey.includes(key);
-      if (!ignore && typeof value === "number") newDict[key] = StringLookup.get(value);
-      else if (!ignore && Array.isArray(value) && value.every(v => typeof v === "number"))
-        newDict[key] = value.map(v => StringLookup.get(v));
-      else if (!ignore && depth > 0 && typeof value === "object" && value !== null) {
-        newDict[key] = StringLookup.concretizeDict(value as Dict<unknown>, false, 0);
-      }
-      else if (!inplace) newDict[key] = value;
+      if (!ignore && typeof value === "number")
+        newDict[key] = StringLookup.get(value);
+      else if (
+        !ignore &&
+        Array.isArray(value) &&
+        value.every((v) => typeof v === "number")
+      )
+        newDict[key] = value.map((v) => StringLookup.get(v));
+      else if (
+        !ignore &&
+        depth > 0 &&
+        typeof value === "object" &&
+        value !== null
+      ) {
+        newDict[key] = StringLookup.concretizeDict(
+          value as Dict<unknown>,
+          false,
+          0,
+        );
+      } else if (!inplace) newDict[key] = value;
     }
     return newDict;
   }
@@ -263,7 +286,7 @@ export class StringLookup {
       s.indexToString = [];
       return;
     }
-    
+
     // Recreate from the index array
     s.indexToString = savedIndexToString;
     savedIndexToString.forEach((v, i) => {

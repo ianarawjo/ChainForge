@@ -153,8 +153,7 @@ export class PromptPipeline {
     // Save the current state of cache'd responses to a JSON file
     // NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
     const prompt_str = prompt.toString();
-    if (!(prompt_str in cached_responses))
-      cached_responses[prompt_str] = [];
+    if (!(prompt_str in cached_responses)) cached_responses[prompt_str] = [];
     else if (!Array.isArray(cached_responses[prompt_str]))
       cached_responses[prompt_str] = [cached_responses[prompt_str]];
 

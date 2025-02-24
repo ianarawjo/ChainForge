@@ -4,7 +4,13 @@
  * Separated from ReactFlow node UI so that it can
  * be deployed in multiple locations.
  */
-import React, { useState, useEffect, useRef, useMemo, useTransition } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useTransition,
+} from "react";
 import {
   MultiSelect,
   Table,
@@ -56,7 +62,9 @@ import { StringLookup } from "./backend/cache";
 
 // Helper funcs
 const getLLMName = (resp_obj: LLMResponse) =>
-  ((typeof resp_obj?.llm === "string" || typeof resp_obj?.llm === "number") ? StringLookup.get(resp_obj.llm) : StringLookup.get(resp_obj?.llm?.name)) ?? "(string lookup failed)";
+  (typeof resp_obj?.llm === "string" || typeof resp_obj?.llm === "number"
+    ? StringLookup.get(resp_obj.llm)
+    : StringLookup.get(resp_obj?.llm?.name)) ?? "(string lookup failed)";
 const escapeRegExp = (txt: string) =>
   txt.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
 
@@ -314,7 +322,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     (state) => state.getColorForLLMAndSetIfNotFound,
   );
 
-    // Debounce helpers
+  // Debounce helpers
   const debounceTimeoutRef: DebounceRef = useRef(null);
   const debounce = genDebounceFunc(debounceTimeoutRef);
 
@@ -323,11 +331,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
 
   // Show loading spinner not every update, but only after a certain time has passed during loading.
   const [showLoadingSpinner, setShowLoadingSpinner] = useState(false);
-  const [showLoadingSpinnerTimeout, setShowLoadingSpinnerTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [showLoadingSpinnerTimeout, setShowLoadingSpinnerTimeout] =
+    useState<NodeJS.Timeout | null>(null);
   useEffect(() => {
     if (isPending && !showLoadingSpinner) {
-      if (showLoadingSpinnerTimeout)
-        clearTimeout(showLoadingSpinnerTimeout);
+      if (showLoadingSpinnerTimeout) clearTimeout(showLoadingSpinnerTimeout);
       const timeout = setTimeout(() => setShowLoadingSpinner(true), 500); // Delay by 500ms
       setShowLoadingSpinnerTimeout(timeout);
     } else {
@@ -362,7 +370,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         (found_llms as Set<string>).add(getLLMName(res_obj));
       });
       found_vars = Array.from(found_vars);
-      found_metavars = Array.from(found_metavars).filter(cleanMetavarsFilterFunc);
+      found_metavars = Array.from(found_metavars).filter(
+        cleanMetavarsFilterFunc,
+      );
       found_llms = Array.from(found_llms);
 
       // Whether there's some evaluation scores in the responses
@@ -423,7 +433,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         // If the multi select vars changed and no longer includes the user's selected value,
         // erase every value that went away, then early exit because useEffect is going to immediately recall this function:
         setMultiSelectValue(
-          multiSelectValue.filter((name) => msvars.some((o) => o.value === name)),
+          multiSelectValue.filter((name) =>
+            msvars.some((o) => o.value === name),
+          ),
         );
         return; // useEffect will replot with the new values
       }
@@ -432,7 +444,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       let responses = batchedResponses;
       let numResponsesDisplayed = 0;
       const selected_vars = multiSelectValue;
-      const empty_cell_text = searchValue.length > 0 ? "(no match)" : "(no data)";
+      const empty_cell_text =
+        searchValue.length > 0 ? "(no match)" : "(no data)";
       const search_regex = new RegExp(
         escapeRegExp(searchValue),
         caseSensitive ? "" : "i",
@@ -442,7 +455,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       if (searchValue.length > 0 && filterBySearchValue)
         responses = responses.filter((res_obj) =>
           res_obj.responses.some(
-            (r) => (typeof r === "string" || typeof r === "number") && search_regex.test(StringLookup.get(r) ?? ""),
+            (r) =>
+              (typeof r === "string" || typeof r === "number") &&
+              search_regex.test(StringLookup.get(r) ?? ""),
           ),
         );
 
@@ -500,7 +515,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           const respsFilterFunc = (responses: LLMResponseData[]) => {
             if (searchValue.length === 0) return responses;
             const filtered_resps = responses.filter(
-              (r) => (typeof r === "string" || typeof r === "number") && search_regex.test(StringLookup.get(r) ?? ""),
+              (r) =>
+                (typeof r === "string" || typeof r === "number") &&
+                search_regex.test(StringLookup.get(r) ?? ""),
             );
             numResponsesDisplayed += filtered_resps.length;
             if (filterBySearchValue) return filtered_resps;
@@ -595,7 +612,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               return acc;
             }, new Set<string>()),
           );
-          colnames = colnames.concat(found_sel_var_vals.map(v => (StringLookup.get(v) ?? "(string lookup failed)")));
+          colnames = colnames.concat(
+            found_sel_var_vals.map(
+              (v) => StringLookup.get(v) ?? "(string lookup failed)",
+            ),
+          );
         }
 
         const getVar = (r: LLMResponse, v: string) =>
@@ -732,7 +753,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             let fixed_width = 100;
             const side_by_side_resps = wideFormat;
             if (side_by_side_resps && eatenvars.length > 0) {
-              const num_llms = Array.from(new Set(resps.map(getLLMName))).length;
+              const num_llms = Array.from(
+                new Set(resps.map(getLLMName)),
+              ).length;
               fixed_width = Math.max(20, Math.trunc(100 / num_llms)) - 1; // 20% width is lowest we will go (5 LLM response boxes max)
             }
             const resp_boxes = generateResponseBoxes(
@@ -775,14 +798,18 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             group_name === "$LLM"
               ? groupResponsesBy(resps, getLLMName)
               : groupResponsesBy(resps, (r) =>
-                  group_name in r.vars ? StringLookup.get(r.vars[group_name]) : null,
+                  group_name in r.vars
+                    ? StringLookup.get(r.vars[group_name])
+                    : null,
                 );
           const get_header =
             group_name === "$LLM"
               ? (key: string, val?: string) => (
                   <div
                     key={val}
-                    style={{ backgroundColor: val ? color_for_llm(val) : "#eee" }}
+                    style={{
+                      backgroundColor: val ? color_for_llm(val) : "#eee",
+                    }}
                     className="response-llm-header"
                   >
                     {val}

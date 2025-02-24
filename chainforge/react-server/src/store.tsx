@@ -22,7 +22,6 @@ import {
   LLMGroup,
   LLMSpec,
   PromptVarType,
-  PromptVarsDict,
   TemplateVarInfo,
   TabularDataColType,
   TabularDataRowType,
@@ -625,7 +624,9 @@ const useStore = create<StoreHandles>((set, get) => ({
                   (key) =>
                     key === "__uid" ||
                     !row[key] ||
-                    ((typeof row[key] === "string" || typeof row[key] === "number") && StringLookup.get(row[key])?.trim() === ""),
+                    ((typeof row[key] === "string" ||
+                      typeof row[key] === "number") &&
+                      StringLookup.get(row[key])?.trim() === ""),
                 )
               )
                 return undefined;
@@ -633,14 +634,20 @@ const useStore = create<StoreHandles>((set, get) => ({
               const row_excluding_col: Dict<string> = {};
               row_keys.forEach((key) => {
                 if (key !== src_col.key && key !== "__uid")
-                  row_excluding_col[col_header_lookup[key]] =
-                    (StringLookup.get(row[key]) ?? "(string lookup failed)").toString();
+                  row_excluding_col[col_header_lookup[key]] = (
+                    StringLookup.get(row[key]) ?? "(string lookup failed)"
+                  ).toString();
               });
               return {
                 // We escape any braces in the source text before they're passed downstream.
                 // This is a special property of tabular data nodes: we don't want their text to be treated as prompt templates.
                 text: escapeBraces(
-                  src_col.key in row ? (StringLookup.get(row[src_col.key]) ?? "(string lookup failed)").toString() : "",
+                  src_col.key in row
+                    ? (
+                        StringLookup.get(row[src_col.key]) ??
+                        "(string lookup failed)"
+                      ).toString()
+                    : "",
                 ),
                 metavars: row_excluding_col,
                 associate_id: row.__uid, // this is used by the backend to 'carry' certain values together

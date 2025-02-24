@@ -952,7 +952,12 @@ Soft failing by replacing undefined with empty strings.`,
                 resp_obj.responses.map((r) => {
                   // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
                   const o: TemplateVarInfo = {
-                    text: typeof r === "number" ? escapeBraces(StringLookup.get(r)!) : ((typeof r === "string") ? escapeBraces(r) : undefined),
+                    text:
+                      typeof r === "number"
+                        ? escapeBraces(StringLookup.get(r)!)
+                        : typeof r === "string"
+                          ? escapeBraces(r)
+                          : undefined,
                     image:
                       typeof r === "object" && r.t === "img" ? r.d : undefined,
                     prompt: resp_obj.prompt,
@@ -963,7 +968,10 @@ Soft failing by replacing undefined with empty strings.`,
                     uid: resp_obj.uid,
                   };
 
-                  o.text = o.text !== undefined ? StringLookup.intern(o.text as string) : undefined;
+                  o.text =
+                    o.text !== undefined
+                      ? StringLookup.intern(o.text as string)
+                      : undefined;
 
                   // Carry over any metavars
                   o.metavars = resp_obj.metavars ?? {};
@@ -981,7 +989,7 @@ Soft failing by replacing undefined with empty strings.`,
                     typeof resp_obj.llm === "number"
                       ? StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)"
                       : resp_obj.llm.name;
-                  
+
                   console.log(o);
                   return o;
                 }),

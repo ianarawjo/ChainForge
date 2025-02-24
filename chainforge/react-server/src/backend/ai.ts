@@ -484,7 +484,10 @@ export async function generateColumn(
       apiKeys,
       true,
     );
-    colName = (llmResponseDataToString(result.responses[0].responses[0])).replace("_", " ");
+    colName = llmResponseDataToString(result.responses[0].responses[0]).replace(
+      "_",
+      " ",
+    );
   }
 
   // Remove any leading/trailing whitespace from the column name as well as any double quotes

@@ -196,9 +196,7 @@ export const genResponseTextsDisplay = (
   const resp_str_to_eval_res: Dict<EvaluationScore> = {};
   if (eval_res_items)
     responses.forEach((r, idx) => {
-      resp_str_to_eval_res[
-        llmResponseDataToString(r)
-      ] = eval_res_items[idx];
+      resp_str_to_eval_res[llmResponseDataToString(r)] = eval_res_items[idx];
     });
 
   const same_resp_text_counts = countResponsesBy(responses, (r) =>
@@ -206,8 +204,7 @@ export const genResponseTextsDisplay = (
   );
   const resp_special_type_map: Dict<string> = {};
   responses.forEach((r) => {
-    const key =
-      llmResponseDataToString(r);
+    const key = llmResponseDataToString(r);
     if (typeof r === "object") resp_special_type_map[key] = r.t;
   });
   const same_resp_keys = Object.keys(same_resp_text_counts).sort(

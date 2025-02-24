@@ -51,7 +51,7 @@ import {
 } from "@mirai73/bedrock-fm";
 import StorageCache, { StringLookup } from "./cache";
 import Compressor from "compressorjs";
-import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
+// import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
@@ -2084,7 +2084,7 @@ export const toStandardResponseFormat = (r: Dict | string) => {
     uid: r?.uid ?? r?.batch_id ?? uuid(),
     llm: r?.llm ?? undefined,
     prompt: r?.prompt ?? "",
-    responses: [(typeof r === "string" || typeof r === "number") ? r : r?.text],
+    responses: [typeof r === "string" || typeof r === "number" ? r : r?.text],
     tokens: r?.raw_response?.usage ?? {},
   };
   if (r?.eval_res !== undefined) resp_obj.eval_res = r.eval_res;
@@ -2223,7 +2223,8 @@ export const batchResponsesByUID = (
 
 export function llmResponseDataToString(data: LLMResponseData): string {
   if (typeof data === "string") return data;
-  else if (typeof data === "number") return StringLookup.get(data) ?? "(string lookup failed)";
+  else if (typeof data === "number")
+    return StringLookup.get(data) ?? "(string lookup failed)";
   else return data.d;
 }
 

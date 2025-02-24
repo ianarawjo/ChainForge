@@ -22,7 +22,10 @@ test("count queries required", async () => {
   };
 
   // Double-check the queries required (not loading from cache)
-  const test_count_queries = async (llms: Array<StringOrHash | LLMSpec>, n: number) => {
+  const test_count_queries = async (
+    llms: Array<StringOrHash | LLMSpec>,
+    n: number,
+  ) => {
     const { counts, total_num_responses } = await countQueries(
       prompt,
       vars,

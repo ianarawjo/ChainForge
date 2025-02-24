@@ -130,7 +130,9 @@ const displaySplitTexts = (
     } else {
       const llm_color =
         typeof info.llm === "object" && "name" in info.llm
-          ? color_for_llm(StringLookup.get(info.llm?.name) ?? "(string lookup failed)")
+          ? color_for_llm(
+              StringLookup.get(info.llm?.name) ?? "(string lookup failed)",
+            )
           : "#ddd";
       const llm_name =
         typeof info.llm === "object" && "name" in info.llm
