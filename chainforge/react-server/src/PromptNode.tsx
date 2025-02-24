@@ -52,6 +52,7 @@ import {
   QueryProgress,
   LLMResponse,
   TemplateVarInfo,
+  StringOrHash,
 } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
@@ -540,7 +541,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const fetchResponseCounts = (
     prompt: string,
     vars: Dict,
-    llms: (string | Dict)[],
+    llms: (StringOrHash | LLMSpec)[],
     chat_histories?:
       | (ChatHistoryInfo | undefined)[]
       | Dict<(ChatHistoryInfo | undefined)[]>,

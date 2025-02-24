@@ -10,7 +10,7 @@ import {
   ResponseInfo,
   grabResponses,
 } from "../backend";
-import { LLMResponse, Dict } from "../typing";
+import { LLMResponse, Dict, StringOrHash, LLMSpec } from "../typing";
 import StorageCache from "../cache";
 
 test("count queries required", async () => {
@@ -22,7 +22,7 @@ test("count queries required", async () => {
   };
 
   // Double-check the queries required (not loading from cache)
-  const test_count_queries = async (llms: Array<string | Dict>, n: number) => {
+  const test_count_queries = async (llms: Array<StringOrHash | LLMSpec>, n: number) => {
     const { counts, total_num_responses } = await countQueries(
       prompt,
       vars,

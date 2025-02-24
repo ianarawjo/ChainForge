@@ -16,6 +16,8 @@ import {
   CustomLLMProviderSpec,
   LLMResponseData,
   PromptVarType,
+  StringOrHash,
+  EvaluationResults,
 } from "./typing";
 import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
 import {
@@ -218,25 +220,25 @@ function gen_unique_cache_filename(
   return `${cache_id}_${idx}.json`;
 }
 
-function extract_llm_nickname(llm_spec: Dict | string) {
+function extract_llm_nickname(llm_spec: StringOrHash | LLMSpec): string {
   if (typeof llm_spec === "object" && llm_spec.name !== undefined)
     return llm_spec.name;
-  else return llm_spec;
+  else return StringLookup.get(llm_spec as StringOrHash) ?? "(string lookup failed)";
 }
 
-function extract_llm_name(llm_spec: Dict | string): string {
-  if (typeof llm_spec === "string") return llm_spec;
+function extract_llm_name(llm_spec: StringOrHash | LLMSpec): string {
+  if (typeof llm_spec === "string" || typeof llm_spec === "number") return StringLookup.get(llm_spec) ?? "(string lookup failed)";
   else return llm_spec.model;
 }
 
-function extract_llm_provider(llm_spec: Dict | string): LLMProvider {
-  if (typeof llm_spec === "string")
-    return getProvider(llm_spec) ?? LLMProvider.Custom;
+function extract_llm_provider(llm_spec: StringOrHash | LLMSpec): LLMProvider {
+  if (typeof llm_spec === "string" || typeof llm_spec === "number")
+    return getProvider(StringLookup.get(llm_spec) ?? "") ?? LLMProvider.Custom;
   else return baseModelToProvider(llm_spec.base_model);
 }
 
-function extract_llm_key(llm_spec: Dict | string): string {
-  if (typeof llm_spec === "string") return llm_spec;
+function extract_llm_key(llm_spec: StringOrHash | LLMSpec): string {
+  if (typeof llm_spec === "string" || typeof llm_spec === "number") return StringLookup.get(llm_spec) ?? "(string lookup failed)";
   else if (llm_spec.key !== undefined) return llm_spec.key;
   else
     throw new Error(
@@ -246,7 +248,7 @@ function extract_llm_key(llm_spec: Dict | string): string {
     );
 }
 
-function extract_llm_params(llm_spec: Dict | string): Dict {
+function extract_llm_params(llm_spec: StringOrHash | LLMSpec): Dict {
   if (typeof llm_spec === "object" && llm_spec.settings !== undefined)
     return llm_spec.settings;
   else return {};
@@ -305,8 +307,8 @@ function isLooselyEqual(value1: any, value2: any): boolean {
  * determines whether the response query used the same parameters.
  */
 function matching_settings(
-  cache_llm_spec: Dict | string,
-  llm_spec: Dict | string,
+  cache_llm_spec: StringOrHash | LLMSpec,
+  llm_spec: StringOrHash | LLMSpec,
 ): boolean {
   if (extract_llm_name(cache_llm_spec) !== extract_llm_name(llm_spec))
     return false;
@@ -409,10 +411,7 @@ async function run_over_responses(
   const evald_resps: Promise<LLMResponse>[] = responses.map(
     async (_resp_obj: LLMResponse) => {
       // Deep clone the response object
-      const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
-
-      // Clean up any escaped braces
-      resp_obj.responses = resp_obj.responses.map(cleanEscapedBraces);
+      const resp_obj: LLMResponse = JSON.parse(JSON.stringify(_resp_obj));
 
       // Whether the processor function is async or not
       const async_processor =
@@ -421,12 +420,12 @@ async function run_over_responses(
       // Map the processor func over every individual response text in each response object
       const res = resp_obj.responses;
       const llm_name = extract_llm_nickname(resp_obj.llm);
-      let processed = res.map((r: string) => {
+      let processed = res.map((r: LLMResponseData) => {
         const r_info = new ResponseInfo(
-          r,
-          resp_obj.prompt,
-          resp_obj.vars,
-          resp_obj.metavars || {},
+          cleanEscapedBraces(llmResponseDataToString(r)),
+          StringLookup.get(resp_obj.prompt) ?? "",
+          StringLookup.concretizeDict(resp_obj.vars),
+          StringLookup.concretizeDict(resp_obj.metavars) || {},
           llm_name,
         );
 
@@ -466,7 +465,7 @@ async function run_over_responses(
           // Store items with summary of mean, median, etc
           resp_obj.eval_res = {
             items: processed,
-            dtype: getEnumName(MetricType, eval_res_type),
+            dtype: (getEnumName(MetricType, eval_res_type) ?? "Unknown") as keyof typeof MetricType,
           };
         } else if (
           [MetricType.Unknown, MetricType.Empty].includes(eval_res_type)
@@ -478,7 +477,7 @@ async function run_over_responses(
           // Categorical, KeyValue, etc, we just store the items:
           resp_obj.eval_res = {
             items: processed,
-            dtype: getEnumName(MetricType, eval_res_type),
+            dtype: (getEnumName(MetricType, eval_res_type) ?? "Unknown") as keyof typeof MetricType,
           };
         }
       }
@@ -528,7 +527,7 @@ export async function generatePrompts(
 export async function countQueries(
   prompt: string,
   vars: PromptVarsDict,
-  llms: Array<Dict | string>,
+  llms: Array<StringOrHash | LLMSpec>,
   n: number,
   chat_histories?:
     | (ChatHistoryInfo | undefined)[]
@@ -777,7 +776,7 @@ export async function queryLLM(
     // Create a new cache JSON object
     cache = { cache_files: {}, responses_last_run: [] };
     const prev_filenames: Array<string> = [];
-    llms.forEach((llm_spec: string | Dict) => {
+    llms.forEach((llm_spec) => {
       const fname = gen_unique_cache_filename(id, prev_filenames);
       llm_to_cache_filename[extract_llm_key(llm_spec)] = fname;
       cache.cache_files[fname] = llm_spec;
@@ -811,7 +810,7 @@ export async function queryLLM(
   const responses: { [key: string]: Array<RawLLMResponseObject> } = {};
   const all_errors: Dict<string[]> = {};
   const num_generations = n ?? 1;
-  async function query(llm_spec: string | Dict): Promise<LLMPrompterResults> {
+  async function query(llm_spec: StringOrHash | LLMSpec): Promise<LLMPrompterResults> {
     // Get LLM model name and any params
     const llm_str = extract_llm_name(llm_spec);
     const llm_provider = extract_llm_provider(llm_spec);

@@ -236,14 +236,20 @@ export class StringLookup {
 
   /**
    * Treats all numberic values in the dictionary as hashes, and maps them to strings.
-   * Leaves the rest of the dict unchanged. (Only operates at the top level.)
+   * Leaves the rest of the dict unchanged. (Only operates 1 level deep.)
    * @param d The dictionary to operate over
    */
-  public static concretizeDict<T>(d: Dict<T | number>, inplace=false): Dict<T | string> {
+  public static concretizeDict<T>(d: Dict<T | number>, inplace=false, depth = 1, ignoreKey=["llm", "uid", "eval_res"]): Dict<T | string> {
     const newDict = inplace ? d : ({} as Dict);
     const entries = Object.entries(d);
     for (const [key, value] of entries) {
-      if (typeof value === "number") newDict[key] = StringLookup.get(value);
+      const ignore = ignoreKey.includes(key);
+      if (!ignore && typeof value === "number") newDict[key] = StringLookup.get(value);
+      else if (!ignore && Array.isArray(value) && value.every(v => typeof v === "number"))
+        newDict[key] = value.map(v => StringLookup.get(v));
+      else if (!ignore && depth > 0 && typeof value === "object" && value !== null) {
+        newDict[key] = StringLookup.concretizeDict(value as Dict<unknown>, false, 0);
+      }
       else if (!inplace) newDict[key] = value;
     }
     return newDict;
