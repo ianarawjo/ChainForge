@@ -173,8 +173,6 @@ export class StringLookup {
     s.indexToString.push(str);
     s.stringToIndex.set(str, index);
 
-    console.log("Interned", s.stringToIndex);
-
     // Save to cache
     StorageCache.store("__s", s.indexToString);
 

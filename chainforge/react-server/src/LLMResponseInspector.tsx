@@ -493,7 +493,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
 
       // Regroup responses by batch ID
       let responses = batchedResponses;
-      let numResponsesDisplayed = 0;
+      // let numResponsesDisplayed = 0;
       const selected_vars = multiSelectValue;
       const empty_cell_text =
         searchValue.length > 0 ? "(no match)" : "(no data)";
@@ -570,7 +570,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                 (typeof r === "string" || typeof r === "number") &&
                 search_regex.test(StringLookup.get(r) ?? ""),
             );
-            numResponsesDisplayed += filtered_resps.length;
+            // numResponsesDisplayed += filtered_resps.length;
             if (filterBySearchValue) return filtered_resps;
             else return responses;
           };
@@ -1070,7 +1070,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         setResponseDivs(divs);
       }
 
-      setNumMatches(numResponsesDisplayed);
+      // setNumMatches(numResponsesDisplayed);
     });
   };
 
@@ -1112,8 +1112,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         <TextInput
           id="search_bar"
           label={
-            "Find" +
-            (searchValue.length > 0 ? ` (${numMatches}/${numResponses})` : "")
+            "Find"
+            // + (searchValue.length > 0 ? ` (${numMatches}/${numResponses})` : "")
           }
           autoComplete="off"
           size={sz}
