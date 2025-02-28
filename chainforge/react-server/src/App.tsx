@@ -70,7 +70,7 @@ import "lazysizes/plugins/attrchange/ls.attrchange";
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from "zustand/shallow";
 import useStore, { StoreHandles } from "./store";
-import StorageCache from "./backend/cache";
+import StorageCache, { StringLookup } from "./backend/cache";
 import { APP_IS_RUNNING_LOCALLY, browserTabIsActive } from "./backend/utils";
 import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
 import {
@@ -431,6 +431,8 @@ const App = () => {
 
     setNodes(starting_nodes);
     setEdges([]);
+
+    StorageCache.clear();
     if (rfInstance) rfInstance.setViewport({ x: 200, y: 80, zoom: 1 });
   }, [setNodes, setEdges, resetLLMColors, rfInstance]);
 
@@ -481,7 +483,7 @@ const App = () => {
       false,
     ) as Dict;
     if (saved_flow) {
-      StorageCache.loadFromLocalStorage("chainforge-state");
+      StorageCache.loadFromLocalStorage("chainforge-state", true);
       importGlobalStateFromCache();
       loadFlow(saved_flow, rf_inst);
     }
@@ -530,6 +532,7 @@ const App = () => {
       if (!flowJSON.cache) {
         // Support for loading old flows w/o cache data:
         loadFlow(flowJSON, rf);
+        StringLookup.restoreFrom([]); // manually clear the string lookup table
         return;
       }
 

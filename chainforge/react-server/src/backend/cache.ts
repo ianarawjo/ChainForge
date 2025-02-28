@@ -118,11 +118,12 @@ export default class StorageCache {
    * Performs lz-string decompression from UTF16 encoding.
    *
    * @param localStorageKey The key that will be used in localStorage (default='chainforge')
+   * @param replaceStorageCacheWithLoadedData Whether the data in the StorageCache should be saved with the loaded data. Erases all current memory. Only set this to true if you are replacing the ChainForge flow state entirely.
    * @returns Loaded data if succeeded, undefined if failure (e.g., key not found).
    */
   public static loadFromLocalStorage(
     localStorageKey = "chainforge",
-    setStorageCacheData = true,
+    replaceStorageCacheWithLoadedData = false,
   ): JSONCompatible | undefined {
     const compressed = localStorage.getItem(localStorageKey);
     if (!compressed) {
@@ -133,8 +134,10 @@ export default class StorageCache {
     }
     try {
       const data = JSON.parse(LZString.decompressFromUTF16(compressed));
-      if (setStorageCacheData) {
+      if (replaceStorageCacheWithLoadedData) {
+        // Replaces the current cache data with the loaded data
         StorageCache.getInstance().data = data;
+        // Restores the current StringLookup table with the contents of the loaded data, if the __s key is present.
         StringLookup.restoreFrom(data.__s);
       }
       console.log("loaded", data);
@@ -281,6 +284,13 @@ export class StringLookup {
     s.stringToIndex = new Map<string, number>();
     if (savedIndexToString === undefined || savedIndexToString.length === 0) {
       // Reset
+      s.indexToString = [];
+      return;
+    } else if (!Array.isArray(savedIndexToString)) {
+      // Reset, but warn user
+      console.error(
+        "String lookup table could not be loaded: data.__s is not an array.",
+      );
       s.indexToString = [];
       return;
     }

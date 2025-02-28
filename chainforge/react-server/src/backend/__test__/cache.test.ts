@@ -22,7 +22,7 @@ test("saving and loading cache data from localStorage", () => {
   expect(d).toBeUndefined();
 
   // Load cache from localStorage
-  StorageCache.loadFromLocalStorage("test");
+  StorageCache.loadFromLocalStorage("test", false);
 
   // Verify stored data:
   d = StorageCache.get("hello");

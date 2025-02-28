@@ -271,7 +271,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
       // Load image compression settings from cache (if possible)
       const cachedImgCompr = (
-        StorageCache.loadFromLocalStorage("imageCompression") as Dict
+        StorageCache.loadFromLocalStorage("imageCompression", false) as Dict
       )?.value as boolean | undefined;
       if (typeof cachedImgCompr === "boolean") {
         setImageCompression(cachedImgCompr);
