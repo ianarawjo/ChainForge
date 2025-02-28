@@ -21,7 +21,7 @@ import {
   repairCachedResponses,
   compressBase64Image,
 } from "./utils";
-import StorageCache from "./cache";
+import StorageCache, { StringLookup } from "./cache";
 import { UserForcedPrematureExit } from "./errors";
 import { typecastSettingsDict } from "../ModelSettingSchemas";
 
@@ -131,7 +131,6 @@ export class PromptPipeline {
       query: query ?? {},
       uid: uuid(),
       responses: extracted_resps,
-      raw_response: contains_imgs ? {} : response ?? {}, // don't double-store images
       llm,
       vars: mergeDicts(info, chat_history?.fill_history) ?? {},
       metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
@@ -140,6 +139,9 @@ export class PromptPipeline {
     // Carry over the chat history if present:
     if (chat_history !== undefined)
       resp_obj.chat_history = chat_history.messages;
+
+    // Hash strings present in the response object, to improve performance
+    StringLookup.internDict(resp_obj, true);
 
     // Merge the response obj with the past one, if necessary
     if (past_resp_obj)
@@ -150,14 +152,14 @@ export class PromptPipeline {
 
     // Save the current state of cache'd responses to a JSON file
     // NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
-    if (!(resp_obj.prompt in cached_responses))
-      cached_responses[resp_obj.prompt] = [];
-    else if (!Array.isArray(cached_responses[resp_obj.prompt]))
-      cached_responses[resp_obj.prompt] = [cached_responses[resp_obj.prompt]];
+    const prompt_str = prompt.toString();
+    if (!(prompt_str in cached_responses)) cached_responses[prompt_str] = [];
+    else if (!Array.isArray(cached_responses[prompt_str]))
+      cached_responses[prompt_str] = [cached_responses[prompt_str]];
 
     if (past_resp_obj_cache_idx !== undefined && past_resp_obj_cache_idx > -1)
-      cached_responses[resp_obj.prompt][past_resp_obj_cache_idx] = resp_obj;
-    else cached_responses[resp_obj.prompt].push(resp_obj);
+      cached_responses[prompt_str][past_resp_obj_cache_idx] = resp_obj;
+    else cached_responses[prompt_str].push(resp_obj);
 
     this._cache_responses(cached_responses);
 
@@ -287,11 +289,10 @@ export class PromptPipeline {
         if (cached_resp && extracted_resps.length >= n) {
           // console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
           const resp: RawLLMResponseObject = {
-            prompt: prompt_str,
+            prompt: cached_resp.prompt,
             query: cached_resp.query,
             uid: cached_resp.uid ?? uuid(),
             responses: extracted_resps.slice(0, n),
-            raw_response: cached_resp.raw_response,
             llm: cached_resp.llm || NativeLLM.OpenAI_ChatGPT,
             // We want to use the new info, since 'vars' could have changed even though
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
@@ -300,6 +301,7 @@ export class PromptPipeline {
           };
           if (chat_history !== undefined)
             resp.chat_history = chat_history.messages;
+
           yield resp;
           continue;
         }

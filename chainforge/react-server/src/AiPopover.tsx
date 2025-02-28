@@ -42,6 +42,7 @@ import {
   VarsContext,
 } from "./backend/typing";
 import { v4 as uuidv4 } from "uuid";
+import { StringLookup } from "./backend/cache";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -298,8 +299,9 @@ export function AIGenReplaceTablePopover({
   // Check if there are any non-empty rows
   const nonEmptyRows = useMemo(
     () =>
-      values.filter((row) => Object.values(row).some((val) => val?.trim()))
-        .length,
+      values.filter((row) =>
+        Object.values(row).some((val) => StringLookup.get(val)?.trim()),
+      ).length,
     [values],
   );
 
@@ -368,7 +370,9 @@ export function AIGenReplaceTablePopover({
       const tableRows = values
         .slice(0, -1) // Remove the last empty row
         .map((row) =>
-          tableColumns.map((col) => row[col]?.trim() || "").join(" | "),
+          tableColumns
+            .map((col) => StringLookup.get(row[col])?.trim() || "")
+            .join(" | "),
         );
 
       const tableInput = {
@@ -418,7 +422,9 @@ export function AIGenReplaceTablePopover({
       const tableRows = values
         .slice(0, emptyLastRow ? -1 : values.length)
         .map((row) =>
-          tableColumns.map((col) => row[col.key]?.trim() || "").join(" | "),
+          tableColumns
+            .map((col) => StringLookup.get(row[col.key])?.trim() || "")
+            .join(" | "),
         );
 
       const tableInput = {

@@ -17,7 +17,6 @@ test("merge response objects", () => {
   // Merging two response objects
   const A: RawLLMResponseObject = {
     responses: ["x", "y", "z"],
-    raw_response: ["x", "y", "z"],
     prompt: "this is a test",
     query: {},
     llm: NativeLLM.OpenAI_ChatGPT,
@@ -27,7 +26,6 @@ test("merge response objects", () => {
   };
   const B: RawLLMResponseObject = {
     responses: ["a", "b", "c"],
-    raw_response: { B: "B" },
     prompt: "this is a test 2",
     query: {},
     llm: NativeLLM.OpenAI_ChatGPT,
@@ -40,7 +38,6 @@ test("merge response objects", () => {
   expect(JSON.stringify(C.responses)).toBe(
     JSON.stringify(["x", "y", "z", "a", "b", "c"]),
   );
-  expect(C.raw_response).toHaveLength(4);
   expect(Object.keys(C.vars)).toHaveLength(2);
   expect(Object.keys(C.vars)).toContain("varB1");
   expect(Object.keys(C.metavars)).toHaveLength(1);
