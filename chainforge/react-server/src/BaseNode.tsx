@@ -58,11 +58,10 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   // Remove the node, after user confirmation dialog
   const handleRemoveNode = useCallback(() => {
     // Open the 'are you sure' modal:
-    if (deleteConfirmModal && deleteConfirmModal.current)
-      deleteConfirmModal.current.trigger();
+    deleteConfirmModal?.current?.trigger();
   }, [deleteConfirmModal]);
 
-  const handleOpenContextMenu = (e: Dict) => {
+  const handleOpenContextMenu = useCallback((e: Dict) => {
     // Ignore all right-clicked elements that aren't children of the parent,
     // and that aren't divs (for instance, textfields should still have normal right-click)
     if (e.target?.localName !== "div") return;
@@ -91,23 +90,22 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
       },
     });
     setContextMenuOpened(true);
-  };
+  }, []);
 
-  // A BaseNode is just a div with "cfnode" as a class, and optional other className(s) for the specific node.
-  // It adds a context menu to all nodes upon right-click of the node itself (the div), to duplicate or delete the node.
-  return (
-    <div
-      className={classes}
-      onPointerDown={() => setContextMenuOpened(false)}
-      onContextMenu={handleOpenContextMenu}
-      style={style}
-    >
+  const areYouSureModal = useMemo(
+    () => (
       <AreYouSureModal
         ref={deleteConfirmModal}
         title="Delete node"
         message="Are you sure you want to delete this node? This action is irreversible."
         onConfirm={() => removeNode(nodeId)}
       />
+    ),
+    [removeNode, nodeId, deleteConfirmModal],
+  );
+
+  const contextMenu = useMemo(
+    () => (
       <Menu
         opened={contextMenuOpened}
         withinPortal={true}
@@ -132,6 +130,29 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
+    ),
+    [
+      handleDuplicateNode,
+      handleRemoveNode,
+      contextMenuExts,
+      children,
+      contextMenuStyle,
+      contextMenuOpened,
+      setContextMenuOpened,
+    ],
+  );
+
+  // A BaseNode is just a div with "cfnode" as a class, and optional other className(s) for the specific node.
+  // It adds a context menu to all nodes upon right-click of the node itself (the div), to duplicate or delete the node.
+  return (
+    <div
+      className={classes}
+      onPointerDown={() => setContextMenuOpened(false)}
+      onContextMenu={handleOpenContextMenu}
+      style={style}
+    >
+      {areYouSureModal}
+      {contextMenu}
     </div>
   );
 };

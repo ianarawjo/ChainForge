@@ -4,6 +4,7 @@ import React, {
   useRef,
   useEffect,
   useContext,
+  useMemo,
 } from "react";
 import ReactFlow, { Controls, Background, ReactFlowInstance } from "reactflow";
 import {
@@ -196,6 +197,15 @@ const getSharedFlowURLParam = () => {
   return undefined;
 };
 
+const getWindowSize = () => ({
+  width: window.innerWidth,
+  height: window.innerHeight,
+});
+const getWindowCenter = () => {
+  const { width, height } = getWindowSize();
+  return { centerX: width / 2.0, centerY: height / 2.0 };
+};
+
 const MenuTooltip = ({
   label,
   children,
@@ -277,71 +287,35 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Helper
-  const getWindowSize = () => ({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  });
-  const getWindowCenter = () => {
-    const { width, height } = getWindowSize();
-    return { centerX: width / 2.0, centerY: height / 2.0 };
-  };
-  const getViewportCenter = () => {
+  const getViewportCenter = useCallback(() => {
     const { centerX, centerY } = getWindowCenter();
     if (rfInstance === null) return { x: centerX, y: centerY };
     // Support Zoom
     const { x, y, zoom } = rfInstance.getViewport();
     return { x: -(x / zoom) + centerX / zoom, y: -(y / zoom) + centerY / zoom };
-  };
+  }, [rfInstance]);
 
-  const addNode = (
-    id: string,
-    type?: string,
-    data?: Dict,
-    offsetX?: number,
-    offsetY?: number,
-  ) => {
-    const { x, y } = getViewportCenter();
-    addNodeToStore({
-      id: `${id}-` + Date.now(),
-      type: type ?? id,
-      data: data ?? {},
-      position: {
-        x: x - 200 + (offsetX || 0),
-        y: y - 100 + (offsetY || 0),
-      },
-    });
-  };
-
-  const addTextFieldsNode = () => addNode("textFieldsNode", "textfields");
-  const addPromptNode = () => addNode("promptNode", "prompt", { prompt: "" });
-  const addChatTurnNode = () => addNode("chatTurn", "chat", { prompt: "" });
-  const addSimpleEvalNode = () => addNode("simpleEval", "simpleval");
-  const addEvalNode = (progLang: string) => {
-    let code = "";
-    if (progLang === "python")
-      code = "def evaluate(response):\n  return len(response.text)";
-    else if (progLang === "javascript")
-      code = "function evaluate(response) {\n  return response.text.length;\n}";
-    addNode("evalNode", "evaluator", { language: progLang, code });
-  };
-  const addVisNode = () => addNode("visNode", "vis", {});
-  const addInspectNode = () => addNode("inspectNode", "inspect");
-  const addScriptNode = () => addNode("scriptNode", "script");
-  const addItemsNode = () => addNode("csvNode", "csv");
-  const addTabularDataNode = () => addNode("table");
-  const addCommentNode = () => addNode("comment");
-  const addLLMEvalNode = () => addNode("llmeval");
-  const addMultiEvalNode = () => addNode("multieval");
-  const addJoinNode = () => addNode("join");
-  const addSplitNode = () => addNode("split");
-  const addProcessorNode = (progLang: string) => {
-    let code = "";
-    if (progLang === "python")
-      code = "def process(response):\n  return response.text;";
-    else if (progLang === "javascript")
-      code = "function process(response) {\n  return response.text;\n}";
-    addNode("process", "processor", { language: progLang, code });
-  };
+  const addNode = useCallback(
+    (
+      id: string,
+      type?: string,
+      data?: Dict,
+      offsetX?: number,
+      offsetY?: number,
+    ) => {
+      const { x, y } = getViewportCenter();
+      addNodeToStore({
+        id: `${id}-` + Date.now(),
+        type: type ?? id,
+        data: data ?? {},
+        position: {
+          x: x - 200 + (offsetX || 0),
+          y: y - 100 + (offsetY || 0),
+        },
+      });
+    },
+    [addNodeToStore],
+  );
 
   const onClickExamples = () => {
     if (examplesModal && examplesModal.current) examplesModal.current.trigger();
@@ -350,13 +324,16 @@ const App = () => {
     if (settingsModal && settingsModal.current) settingsModal.current.trigger();
   };
 
-  const handleError = (err: Error | string) => {
-    const msg = typeof err === "string" ? err : err.message;
-    setIsLoading(false);
-    setWaitingForShare(false);
-    if (showAlert) showAlert(msg);
-    console.error(msg);
-  };
+  const handleError = useCallback(
+    (err: Error | string) => {
+      const msg = typeof err === "string" ? err : err.message;
+      setIsLoading(false);
+      setWaitingForShare(false);
+      if (showAlert) showAlert(msg);
+      console.error(msg);
+    },
+    [showAlert],
+  );
 
   /**
    * SAVING / LOADING, IMPORT / EXPORT (from JSON)
@@ -405,6 +382,42 @@ const App = () => {
     [rfInstance],
   );
 
+  // Initialize auto-saving
+  const initAutosaving = useCallback(
+    (rf_inst: ReactFlowInstance) => {
+      if (autosavingInterval !== undefined) return; // autosaving interval already set
+      console.log("Init autosaving");
+
+      // Autosave the flow to localStorage every minute:
+      const interv = setInterval(() => {
+        // Check the visibility of the browser tab --if it's not visible, don't autosave
+        if (!browserTabIsActive()) return;
+
+        // Start a timer, in case the saving takes a long time
+        const startTime = Date.now();
+
+        // Save the flow to localStorage
+        saveFlow(rf_inst);
+
+        // Check how long the save took
+        const duration = Date.now() - startTime;
+        if (duration > 1500) {
+          // If the operation took longer than 1.5 seconds, that's not good.
+          // Although this function is called async inside setInterval,
+          // calls to localStorage block the UI in JavaScript, freezing the screen.
+          // We smart-disable autosaving here when we detect it's starting the freeze the UI:
+          console.warn(
+            "Autosaving disabled. The time required to save to localStorage exceeds 1 second. This can happen when there's a lot of data in your flow. Make sure to export frequently to save your work.",
+          );
+          clearInterval(interv);
+          setAutosavingInterval(undefined);
+        }
+      }, 60000); // 60000 milliseconds = 1 minute
+      setAutosavingInterval(interv);
+    },
+    [autosavingInterval, saveFlow],
+  );
+
   // Triggered when user confirms 'New Flow' button
   const resetFlow = useCallback(() => {
     resetLLMColors();
@@ -436,58 +449,64 @@ const App = () => {
     if (rfInstance) rfInstance.setViewport({ x: 200, y: 80, zoom: 1 });
   }, [setNodes, setEdges, resetLLMColors, rfInstance]);
 
-  const loadFlow = async (flow?: Dict, rf_inst?: ReactFlowInstance | null) => {
-    if (flow === undefined) return;
-    if (rf_inst) {
-      if (flow.viewport)
-        rf_inst.setViewport({
-          x: flow.viewport.x || 0,
-          y: flow.viewport.y || 0,
-          zoom: flow.viewport.zoom || 1,
-        });
-      else rf_inst.setViewport({ x: 0, y: 0, zoom: 1 });
-    }
-    resetLLMColors();
+  const loadFlow = useCallback(
+    async (flow?: Dict, rf_inst?: ReactFlowInstance | null) => {
+      if (flow === undefined) return;
+      if (rf_inst) {
+        if (flow.viewport)
+          rf_inst.setViewport({
+            x: flow.viewport.x || 0,
+            y: flow.viewport.y || 0,
+            zoom: flow.viewport.zoom || 1,
+          });
+        else rf_inst.setViewport({ x: 0, y: 0, zoom: 1 });
+      }
+      resetLLMColors();
 
-    // First, clear the ReactFlow state entirely
-    // NOTE: We need to do this so it forgets any node/edge ids, which might have cross-over in the loaded flow.
-    setNodes([]);
-    setEdges([]);
+      // First, clear the ReactFlow state entirely
+      // NOTE: We need to do this so it forgets any node/edge ids, which might have cross-over in the loaded flow.
+      setNodes([]);
+      setEdges([]);
 
-    // After a delay, load in the new state.
-    setTimeout(() => {
-      setNodes(flow.nodes || []);
-      setEdges(flow.edges || []);
+      // After a delay, load in the new state.
+      setTimeout(() => {
+        setNodes(flow.nodes || []);
+        setEdges(flow.edges || []);
 
-      // Save flow that user loaded to autosave cache, in case they refresh the browser
-      StorageCache.saveToLocalStorage("chainforge-flow", flow);
+        // Save flow that user loaded to autosave cache, in case they refresh the browser
+        StorageCache.saveToLocalStorage("chainforge-flow", flow);
 
-      // Cancel loading spinner
-      setIsLoading(false);
-    }, 10);
+        // Cancel loading spinner
+        setIsLoading(false);
+      }, 10);
 
-    // Start auto-saving, if it's not already enabled
-    if (rf_inst) initAutosaving(rf_inst);
-  };
+      // Start auto-saving, if it's not already enabled
+      if (rf_inst) initAutosaving(rf_inst);
+    },
+    [resetLLMColors, setNodes, setEdges, initAutosaving],
+  );
 
   const importGlobalStateFromCache = useCallback(() => {
     importState(StorageCache.getAllMatching((key) => key.startsWith("r.")));
   }, [importState]);
 
-  const autosavedFlowExists = () => {
+  const autosavedFlowExists = useCallback(() => {
     return window.localStorage.getItem("chainforge-flow") !== null;
-  };
-  const loadFlowFromAutosave = async (rf_inst: ReactFlowInstance) => {
-    const saved_flow = StorageCache.loadFromLocalStorage(
-      "chainforge-flow",
-      false,
-    ) as Dict;
-    if (saved_flow) {
-      StorageCache.loadFromLocalStorage("chainforge-state", true);
-      importGlobalStateFromCache();
-      loadFlow(saved_flow, rf_inst);
-    }
-  };
+  }, []);
+  const loadFlowFromAutosave = useCallback(
+    async (rf_inst: ReactFlowInstance) => {
+      const saved_flow = StorageCache.loadFromLocalStorage(
+        "chainforge-flow",
+        false,
+      ) as Dict;
+      if (saved_flow) {
+        StorageCache.loadFromLocalStorage("chainforge-state", true);
+        importGlobalStateFromCache();
+        loadFlow(saved_flow, rf_inst);
+      }
+    },
+    [importGlobalStateFromCache, loadFlow],
+  );
 
   // Export / Import (from JSON)
   const exportFlow = useCallback(() => {
@@ -754,107 +773,83 @@ const App = () => {
     waitingForShare,
   ]);
 
-  // Initialize auto-saving
-  const initAutosaving = (rf_inst: ReactFlowInstance) => {
-    if (autosavingInterval !== undefined) return; // autosaving interval already set
-    console.log("Init autosaving");
-
-    // Autosave the flow to localStorage every minute:
-    const interv = setInterval(() => {
-      // Check the visibility of the browser tab --if it's not visible, don't autosave
-      if (!browserTabIsActive()) return;
-
-      // Start a timer, in case the saving takes a long time
-      const startTime = Date.now();
-
-      // Save the flow to localStorage
-      saveFlow(rf_inst);
-
-      // Check how long the save took
-      const duration = Date.now() - startTime;
-      if (duration > 1500) {
-        // If the operation took longer than 1.5 seconds, that's not good.
-        // Although this function is called async inside setInterval,
-        // calls to localStorage block the UI in JavaScript, freezing the screen.
-        // We smart-disable autosaving here when we detect it's starting the freeze the UI:
-        console.warn(
-          "Autosaving disabled. The time required to save to localStorage exceeds 1 second. This can happen when there's a lot of data in your flow. Make sure to export frequently to save your work.",
-        );
-        clearInterval(interv);
-        setAutosavingInterval(undefined);
-      }
-    }, 60000); // 60000 milliseconds = 1 minute
-    setAutosavingInterval(interv);
-  };
-
   // Run once upon ReactFlow initialization
-  const onInit = (rf_inst: ReactFlowInstance) => {
-    setRfInstance(rf_inst);
+  const onInit = useCallback(
+    (rf_inst: ReactFlowInstance) => {
+      setRfInstance(rf_inst);
 
-    if (IS_RUNNING_LOCALLY) {
-      // If we're running locally, try to fetch API keys from Python os.environ variables in the locally running Flask backend:
-      fetchEnvironAPIKeys()
-        .then((api_keys) => {
-          setAPIKeys(api_keys);
-        })
-        .catch((err) => {
-          // Soft fail
-          console.warn(
-            "Warning: Could not fetch API key environment variables from Flask server. Error:",
-            err.message,
-          );
-        });
-    } else {
-      // Check if there's a shared flow UID in the URL as a GET param
-      // If so, we need to look it up in the database and attempt to load it:
-      const shared_flow_uid = getSharedFlowURLParam();
-      if (shared_flow_uid !== undefined) {
-        try {
-          // The format passed a basic smell test;
-          // now let's query the server for a flow with that UID:
-          fetch("/db/get_sharedflow.php", {
-            method: "POST",
-            body: shared_flow_uid,
+      if (IS_RUNNING_LOCALLY) {
+        // If we're running locally, try to fetch API keys from Python os.environ variables in the locally running Flask backend:
+        fetchEnvironAPIKeys()
+          .then((api_keys) => {
+            setAPIKeys(api_keys);
           })
-            .then((r) => r.text())
-            .then((response) => {
-              if (!response || response.startsWith("Error")) {
-                // Error encountered during the query; alert the user
-                // with the error message:
-                throw new Error(response || "Unknown error");
-              }
-
-              // Attempt to parse the response as a compressed flow + import it:
-              const cforge_json = JSON.parse(
-                LZString.decompressFromUTF16(response),
-              );
-              importFlowFromJSON(cforge_json, rf_inst);
+          .catch((err) => {
+            // Soft fail
+            console.warn(
+              "Warning: Could not fetch API key environment variables from Flask server. Error:",
+              err.message,
+            );
+          });
+      } else {
+        // Check if there's a shared flow UID in the URL as a GET param
+        // If so, we need to look it up in the database and attempt to load it:
+        const shared_flow_uid = getSharedFlowURLParam();
+        if (shared_flow_uid !== undefined) {
+          try {
+            // The format passed a basic smell test;
+            // now let's query the server for a flow with that UID:
+            fetch("/db/get_sharedflow.php", {
+              method: "POST",
+              body: shared_flow_uid,
             })
-            .catch(handleError);
-        } catch (err) {
-          // Soft fail
-          setIsLoading(false);
-          console.error(err);
+              .then((r) => r.text())
+              .then((response) => {
+                if (!response || response.startsWith("Error")) {
+                  // Error encountered during the query; alert the user
+                  // with the error message:
+                  throw new Error(response || "Unknown error");
+                }
+
+                // Attempt to parse the response as a compressed flow + import it:
+                const cforge_json = JSON.parse(
+                  LZString.decompressFromUTF16(response),
+                );
+                importFlowFromJSON(cforge_json, rf_inst);
+              })
+              .catch(handleError);
+          } catch (err) {
+            // Soft fail
+            setIsLoading(false);
+            console.error(err);
+          }
+
+          // Since we tried to load from the shared flow ID, don't try to load from autosave
+          return;
         }
-
-        // Since we tried to load from the shared flow ID, don't try to load from autosave
-        return;
       }
-    }
 
-    // Attempt to load an autosaved flow, if one exists:
-    if (autosavedFlowExists()) loadFlowFromAutosave(rf_inst);
-    else {
-      // Load an interesting default starting flow for new users
-      importFlowFromJSON(EXAMPLEFLOW_1, rf_inst);
+      // Attempt to load an autosaved flow, if one exists:
+      if (autosavedFlowExists()) loadFlowFromAutosave(rf_inst);
+      else {
+        // Load an interesting default starting flow for new users
+        importFlowFromJSON(EXAMPLEFLOW_1, rf_inst);
 
-      // Open a welcome pop-up
-      // openWelcomeModal();
-    }
+        // Open a welcome pop-up
+        // openWelcomeModal();
+      }
 
-    // Turn off loading wheel
-    setIsLoading(false);
-  };
+      // Turn off loading wheel
+      setIsLoading(false);
+    },
+    [
+      setAPIKeys,
+      handleError,
+      importFlowFromJSON,
+      autosavedFlowExists,
+      loadFlowFromAutosave,
+    ],
+  );
 
   useEffect(() => {
     // Cleanup the autosaving interval upon component unmount:
@@ -862,6 +857,273 @@ const App = () => {
       clearInterval(autosavingInterval); // Clear the interval when the component is unmounted
     };
   }, []);
+
+  const reactFlowUI = useMemo(() => {
+    return (
+      <div
+        id="cf-root-container"
+        style={{ display: "flex", height: "100vh" }}
+        onPointerDown={hideContextMenu}
+      >
+        <div style={{ height: "100%", backgroundColor: "#eee", flexGrow: "1" }}>
+          <ReactFlow
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodes={nodes}
+            edges={edges}
+            // @ts-expect-error Node types won't perfectly fit unless we explicitly extend from RF's types; ignoring this for now.
+            nodeTypes={nodeTypes}
+            // @ts-expect-error Edge types won't perfectly fit unless we explicitly extend from RF's types; ignoring this for now.
+            edgeTypes={edgeTypes}
+            zoomOnPinch={false}
+            zoomOnScroll={false}
+            panOnScroll={true}
+            disableKeyboardA11y={true}
+            deleteKeyCode={[]}
+            // connectionLineComponent={AnimatedConnectionLine}
+            // connectionLineStyle={connectionLineStyle}
+            snapToGrid={true}
+            snapGrid={snapGrid}
+            onInit={onInit}
+            onError={() => {
+              // Suppress ReactFlow warnings spamming the console.
+              // console.log(err);
+            }}
+          >
+            <Background color="#999" gap={16} />
+            <Controls showZoom={true} />
+          </ReactFlow>
+        </div>
+      </div>
+    );
+  }, [
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    nodes,
+    edges,
+    onInit,
+    hideContextMenu,
+  ]);
+
+  const addNodeMenu = useMemo(
+    () => (
+      <Menu
+        transitionProps={{ transition: "pop-top-left" }}
+        position="top-start"
+        width={220}
+        closeOnClickOutside={true}
+        closeOnEscape
+        styles={{ item: { maxHeight: "28px" } }}
+      >
+        <Menu.Target>
+          <Button size="sm" variant="gradient" compact mr="sm">
+            Add Node +
+          </Button>
+        </Menu.Target>
+
+        <Menu.Dropdown>
+          <Menu.Label>Input Data</Menu.Label>
+          <MenuTooltip label="Specify input text to prompt or chat nodes. You can also declare variables in brackets {} to chain TextFields together.">
+            <Menu.Item
+              onClick={() => addNode("textFieldsNode", "textfields")}
+              icon={<IconTextPlus size="16px" />}
+            >
+              {" "}
+              TextFields Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <MenuTooltip label="Specify inputs as a comma-separated list of items. Good for specifying lots of short text values. An alternative to TextFields node.">
+            <Menu.Item
+              onClick={() => addNode("csvNode", "csv")}
+              icon={<IconForms size="16px" />}
+            >
+              {" "}
+              Items Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <MenuTooltip label="Import or create a spreadhseet of data to use as input to prompt or chat nodes. Import accepts xlsx, csv, and jsonl.">
+            <Menu.Item onClick={() => addNode("table")} icon={"🗂️"}>
+              {" "}
+              Tabular Data Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <Menu.Divider />
+          <Menu.Label>Prompters</Menu.Label>
+          <MenuTooltip label="Prompt one or multiple LLMs. Specify prompt variables in brackets {}.">
+            <Menu.Item
+              onClick={() => addNode("promptNode", "prompt", { prompt: "" })}
+              icon={"💬"}
+            >
+              {" "}
+              Prompt Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <MenuTooltip label="Start or continue a conversation with chat models. Attach Prompt Node output as past context to continue chatting past the first turn.">
+            <Menu.Item
+              onClick={() => addNode("chatTurn", "chat", { prompt: "" })}
+              icon={"🗣"}
+            >
+              {" "}
+              Chat Turn Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <Menu.Divider />
+          <Menu.Label>Evaluators</Menu.Label>
+          <MenuTooltip label="Evaluate responses with a simple check (no coding required).">
+            <Menu.Item
+              onClick={() => addNode("simpleEval", "simpleval")}
+              icon={<IconRuler2 size="16px" />}
+            >
+              {" "}
+              Simple Evaluator{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <MenuTooltip label="Evaluate responses by writing JavaScript code.">
+            <Menu.Item
+              onClick={() =>
+                addNode("evalNode", "evaluator", {
+                  language: "javascript",
+                  code: "function evaluate(response) {\n  return response.text.length;\n}",
+                })
+              }
+              icon={<IconTerminal size="16px" />}
+            >
+              {" "}
+              JavaScript Evaluator{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <MenuTooltip label="Evaluate responses by writing Python code.">
+            <Menu.Item
+              onClick={() =>
+                addNode("evalNode", "evaluator", {
+                  language: "python",
+                  code: "def evaluate(response):\n  return len(response.text)",
+                })
+              }
+              icon={<IconTerminal size="16px" />}
+            >
+              {" "}
+              Python Evaluator{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <MenuTooltip label="Evaluate responses with an LLM like GPT-4.">
+            <Menu.Item
+              onClick={() => addNode("llmeval")}
+              icon={<IconRobot size="16px" />}
+            >
+              {" "}
+              LLM Scorer{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <MenuTooltip label="Evaluate responses across multiple criteria (multiple code and/or LLM evaluators).">
+            <Menu.Item
+              onClick={() => addNode("multieval")}
+              icon={<IconAbacus size="16px" />}
+            >
+              {" "}
+              Multi-Evaluator{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <Menu.Divider />
+          <Menu.Label>Visualizers</Menu.Label>
+          <MenuTooltip label="Plot evaluation results. (Attach an evaluator or scorer node as input.)">
+            <Menu.Item
+              onClick={() => addNode("visNode", "vis", {})}
+              icon={"📊"}
+            >
+              {" "}
+              Vis Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <MenuTooltip label="Used to inspect responses from prompter or evaluation nodes, without opening up the pop-up view.">
+            <Menu.Item
+              onClick={() => addNode("inspectNode", "inspect")}
+              icon={"🔍"}
+            >
+              {" "}
+              Inspect Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <Menu.Divider />
+          <Menu.Label>Processors</Menu.Label>
+          <MenuTooltip label="Transform responses by mapping a JavaScript function over them.">
+            <Menu.Item
+              onClick={() =>
+                addNode("process", "processor", {
+                  language: "javascript",
+                  code: "function process(response) {\n  return response.text;\n}",
+                })
+              }
+              icon={<IconTerminal size="14pt" />}
+            >
+              {" "}
+              JavaScript Processor{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          {IS_RUNNING_LOCALLY ? (
+            <MenuTooltip label="Transform responses by mapping a Python function over them.">
+              <Menu.Item
+                onClick={() =>
+                  addNode("process", "processor", {
+                    language: "python",
+                    code: "def process(response):\n  return response.text;",
+                  })
+                }
+                icon={<IconTerminal size="14pt" />}
+              >
+                {" "}
+                Python Processor{" "}
+              </Menu.Item>
+            </MenuTooltip>
+          ) : (
+            <></>
+          )}
+          <MenuTooltip label="Concatenate responses or input data together before passing into later nodes, within or across variables and LLMs.">
+            <Menu.Item
+              onClick={() => addNode("join")}
+              icon={<IconArrowMerge size="14pt" />}
+            >
+              {" "}
+              Join Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <MenuTooltip label="Split responses or input data by some format. For instance, you can split a markdown list into separate items.">
+            <Menu.Item
+              onClick={() => addNode("split")}
+              icon={<IconArrowsSplit size="14pt" />}
+            >
+              {" "}
+              Split Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <Menu.Divider />
+          <Menu.Label>Misc</Menu.Label>
+          <MenuTooltip label="Make a comment about your flow.">
+            <Menu.Item onClick={() => addNode("comment")} icon={"✏️"}>
+              {" "}
+              Comment Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          {IS_RUNNING_LOCALLY ? (
+            <MenuTooltip label="Specify directories to load as local packages, so they can be imported in your Python evaluator nodes (add to sys path).">
+              <Menu.Item
+                onClick={() => addNode("scriptNode", "script")}
+                icon={<IconSettingsAutomation size="16px" />}
+              >
+                {" "}
+                Global Python Scripts{" "}
+              </Menu.Item>
+            </MenuTooltip>
+          ) : (
+            <></>
+          )}
+        </Menu.Dropdown>
+      </Menu>
+    ),
+    [addNode],
+  );
 
   if (!IS_ACCEPTED_BROWSER) {
     return (
@@ -925,228 +1187,13 @@ const App = () => {
         </Box>
       </Modal> */}
 
-        <div
-          id="cf-root-container"
-          style={{ display: "flex", height: "100vh" }}
-          onPointerDown={hideContextMenu}
-        >
-          <div
-            style={{ height: "100%", backgroundColor: "#eee", flexGrow: "1" }}
-          >
-            <ReactFlow
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              nodes={nodes}
-              edges={edges}
-              // @ts-expect-error Node types won't perfectly fit unless we explicitly extend from RF's types; ignoring this for now.
-              nodeTypes={nodeTypes}
-              // @ts-expect-error Edge types won't perfectly fit unless we explicitly extend from RF's types; ignoring this for now.
-              edgeTypes={edgeTypes}
-              zoomOnPinch={false}
-              zoomOnScroll={false}
-              panOnScroll={true}
-              disableKeyboardA11y={true}
-              deleteKeyCode={[]}
-              // connectionLineComponent={AnimatedConnectionLine}
-              // connectionLineStyle={connectionLineStyle}
-              snapToGrid={true}
-              snapGrid={snapGrid}
-              onInit={onInit}
-              onError={() => {
-                // Suppress ReactFlow warnings spamming the console.
-                // console.log(err);
-              }}
-            >
-              <Background color="#999" gap={16} />
-              <Controls showZoom={true} />
-            </ReactFlow>
-          </div>
-        </div>
+        {reactFlowUI}
 
         <div
           id="custom-controls"
           style={{ position: "fixed", left: "10px", top: "10px", zIndex: 8 }}
         >
-          <Menu
-            transitionProps={{ transition: "pop-top-left" }}
-            position="top-start"
-            width={220}
-            closeOnClickOutside={true}
-            closeOnEscape
-            styles={{ item: { maxHeight: "28px" } }}
-          >
-            <Menu.Target>
-              <Button size="sm" variant="gradient" compact mr="sm">
-                Add Node +
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>Input Data</Menu.Label>
-              <MenuTooltip label="Specify input text to prompt or chat nodes. You can also declare variables in brackets {} to chain TextFields together.">
-                <Menu.Item
-                  onClick={addTextFieldsNode}
-                  icon={<IconTextPlus size="16px" />}
-                >
-                  {" "}
-                  TextFields Node{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <MenuTooltip label="Specify inputs as a comma-separated list of items. Good for specifying lots of short text values. An alternative to TextFields node.">
-                <Menu.Item
-                  onClick={addItemsNode}
-                  icon={<IconForms size="16px" />}
-                >
-                  {" "}
-                  Items Node{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <MenuTooltip label="Import or create a spreadhseet of data to use as input to prompt or chat nodes. Import accepts xlsx, csv, and jsonl.">
-                <Menu.Item onClick={addTabularDataNode} icon={"🗂️"}>
-                  {" "}
-                  Tabular Data Node{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <Menu.Divider />
-              <Menu.Label>Prompters</Menu.Label>
-              <MenuTooltip label="Prompt one or multiple LLMs. Specify prompt variables in brackets {}.">
-                <Menu.Item onClick={addPromptNode} icon={"💬"}>
-                  {" "}
-                  Prompt Node{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <MenuTooltip label="Start or continue a conversation with chat models. Attach Prompt Node output as past context to continue chatting past the first turn.">
-                <Menu.Item onClick={addChatTurnNode} icon={"🗣"}>
-                  {" "}
-                  Chat Turn Node{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <Menu.Divider />
-              <Menu.Label>Evaluators</Menu.Label>
-              <MenuTooltip label="Evaluate responses with a simple check (no coding required).">
-                <Menu.Item
-                  onClick={addSimpleEvalNode}
-                  icon={<IconRuler2 size="16px" />}
-                >
-                  {" "}
-                  Simple Evaluator{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <MenuTooltip label="Evaluate responses by writing JavaScript code.">
-                <Menu.Item
-                  onClick={() => addEvalNode("javascript")}
-                  icon={<IconTerminal size="16px" />}
-                >
-                  {" "}
-                  JavaScript Evaluator{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <MenuTooltip label="Evaluate responses by writing Python code.">
-                <Menu.Item
-                  onClick={() => addEvalNode("python")}
-                  icon={<IconTerminal size="16px" />}
-                >
-                  {" "}
-                  Python Evaluator{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <MenuTooltip label="Evaluate responses with an LLM like GPT-4.">
-                <Menu.Item
-                  onClick={addLLMEvalNode}
-                  icon={<IconRobot size="16px" />}
-                >
-                  {" "}
-                  LLM Scorer{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <MenuTooltip label="Evaluate responses across multiple criteria (multiple code and/or LLM evaluators).">
-                <Menu.Item
-                  onClick={addMultiEvalNode}
-                  icon={<IconAbacus size="16px" />}
-                >
-                  {" "}
-                  Multi-Evaluator{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <Menu.Divider />
-              <Menu.Label>Visualizers</Menu.Label>
-              <MenuTooltip label="Plot evaluation results. (Attach an evaluator or scorer node as input.)">
-                <Menu.Item onClick={addVisNode} icon={"📊"}>
-                  {" "}
-                  Vis Node{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <MenuTooltip label="Used to inspect responses from prompter or evaluation nodes, without opening up the pop-up view.">
-                <Menu.Item onClick={addInspectNode} icon={"🔍"}>
-                  {" "}
-                  Inspect Node{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <Menu.Divider />
-              <Menu.Label>Processors</Menu.Label>
-              <MenuTooltip label="Transform responses by mapping a JavaScript function over them.">
-                <Menu.Item
-                  onClick={() => addProcessorNode("javascript")}
-                  icon={<IconTerminal size="14pt" />}
-                >
-                  {" "}
-                  JavaScript Processor{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              {IS_RUNNING_LOCALLY ? (
-                <MenuTooltip label="Transform responses by mapping a Python function over them.">
-                  <Menu.Item
-                    onClick={() => addProcessorNode("python")}
-                    icon={<IconTerminal size="14pt" />}
-                  >
-                    {" "}
-                    Python Processor{" "}
-                  </Menu.Item>
-                </MenuTooltip>
-              ) : (
-                <></>
-              )}
-              <MenuTooltip label="Concatenate responses or input data together before passing into later nodes, within or across variables and LLMs.">
-                <Menu.Item
-                  onClick={addJoinNode}
-                  icon={<IconArrowMerge size="14pt" />}
-                >
-                  {" "}
-                  Join Node{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <MenuTooltip label="Split responses or input data by some format. For instance, you can split a markdown list into separate items.">
-                <Menu.Item
-                  onClick={addSplitNode}
-                  icon={<IconArrowsSplit size="14pt" />}
-                >
-                  {" "}
-                  Split Node{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              <Menu.Divider />
-              <Menu.Label>Misc</Menu.Label>
-              <MenuTooltip label="Make a comment about your flow.">
-                <Menu.Item onClick={addCommentNode} icon={"✏️"}>
-                  {" "}
-                  Comment Node{" "}
-                </Menu.Item>
-              </MenuTooltip>
-              {IS_RUNNING_LOCALLY ? (
-                <MenuTooltip label="Specify directories to load as local packages, so they can be imported in your Python evaluator nodes (add to sys path).">
-                  <Menu.Item
-                    onClick={addScriptNode}
-                    icon={<IconSettingsAutomation size="16px" />}
-                  >
-                    {" "}
-                    Global Python Scripts{" "}
-                  </Menu.Item>
-                </MenuTooltip>
-              ) : (
-                <></>
-              )}
-            </Menu.Dropdown>
-          </Menu>
+          {addNodeMenu}
           <Button
             onClick={exportFlow}
             size="sm"

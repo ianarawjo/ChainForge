@@ -36,6 +36,7 @@ export const getEvalResultStr = (
   } else if (typeof eval_item === "object") {
     const strs: [JSX.Element | string, string][] = Object.keys(eval_item).map(
       (key, j) => {
+        const innerKey = `${key}-${j}`;
         let val = eval_item[key];
         if (typeof val === "number" && val.toString().indexOf(".") > -1)
           val = val.toFixed(4); // truncate floats to 4 decimal places
@@ -43,9 +44,9 @@ export const getEvalResultStr = (
         if (onlyString) return [`${key}: ${recurs_str}`, recurs_str];
         else
           return [
-            <div key={`${key}-${j}`}>
-              <span>{key}: </span>
-              <span>{recurs_res}</span>
+            <div key={innerKey}>
+              <span key={0}>{key}: </span>
+              <span key={1}>{recurs_res}</span>
             </div>,
             recurs_str,
           ];
@@ -57,7 +58,9 @@ export const getEvalResultStr = (
     } else
       return [
         <Stack key={1} spacing={0}>
-          {strs}
+          {strs.map((s, i) => (
+            <span key={i}>s</span>
+          ))}
         </Stack>,
         joined_strs,
       ];
