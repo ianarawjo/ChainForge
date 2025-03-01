@@ -272,6 +272,7 @@ export const genResponseTextsDisplay = (
               uid={res_obj.uid}
               innerIdxs={origIdxs}
               wideFormat={wideFormat}
+              responseData={r}
             />
           </Suspense>
           {llmName !== undefined &&

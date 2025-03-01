@@ -5,11 +5,17 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { Button, Flex, Popover, Stack, Textarea } from "@mantine/core";
-import { IconMessage2, IconThumbDown, IconThumbUp } from "@tabler/icons-react";
+import { Button, Flex, Popover, Stack, Textarea, Tooltip } from "@mantine/core";
+import {
+  IconCopy,
+  IconMessage2,
+  IconThumbDown,
+  IconThumbUp,
+} from "@tabler/icons-react";
 import StorageCache from "./backend/cache";
 import useStore from "./store";
 import { deepcopy } from "./backend/utils";
+import { LLMResponseData } from "./backend/typing";
 
 type RatingDict = Record<number, boolean | string | undefined>;
 
@@ -63,14 +69,14 @@ export interface ResponseRatingToolbarProps {
   uid: string;
   wideFormat?: boolean;
   innerIdxs: number[];
-  onUpdateResponses?: () => void;
+  responseData?: string;
 }
 
 const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
   uid,
   wideFormat,
   innerIdxs,
-  onUpdateResponses,
+  responseData,
 }) => {
   // The cache keys storing the ratings for this response object
   const gradeKey = getRatingKeyForResponse(uid, "grade");
@@ -108,6 +114,9 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
   const [noteText, setNoteText] = useState("");
   const [notePopoverOpened, setNotePopoverOpened] = useState(false);
 
+  // Text state
+  const [copied, setCopied] = useState(false);
+
   // Override the text in the internal textarea whenever upstream annotation changes.
   useEffect(() => {
     setNoteText(note !== undefined ? note.toString() : "");
@@ -133,7 +142,6 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
       new_grades[idx] = grade;
     });
     setRating(uid, "grade", new_grades);
-    if (onUpdateResponses) onUpdateResponses();
   };
 
   const onAnnotate = (label?: string) => {
@@ -145,7 +153,6 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
       new_notes[idx] = label;
     });
     setRating(uid, "note", new_notes);
-    if (onUpdateResponses) onUpdateResponses();
   };
 
   const handleSaveAnnotation = useCallback(() => {
@@ -175,6 +182,33 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
       >
         <IconThumbDown size={size} />
       </ToolbarButton>
+      <Tooltip
+        label={copied ? "Copied!" : "Copy"}
+        withArrow
+        arrowPosition="center"
+      >
+        <ToolbarButton
+          selected={copied}
+          onClick={() => {
+            if (responseData) {
+              navigator.clipboard
+                .writeText(responseData)
+                .then(() => {
+                  console.log("Text copied to clipboard");
+                  setCopied(() => true);
+                  setTimeout(() => {
+                    setCopied(() => false);
+                  }, 1000);
+                })
+                .catch((err) => {
+                  console.error("Failed to copy text: ", err);
+                });
+            }
+          }}
+        >
+          <IconCopy size={size} />
+        </ToolbarButton>
+      </Tooltip>
       <Popover
         opened={notePopoverOpened}
         onChange={setNotePopoverOpened}
