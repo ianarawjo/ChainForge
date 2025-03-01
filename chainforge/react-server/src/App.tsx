@@ -5,6 +5,9 @@ import React, {
   useEffect,
   useContext,
   useMemo,
+  useTransition,
+  KeyboardEventHandler,
+  KeyboardEvent,
 } from "react";
 import ReactFlow, { Controls, Background, ReactFlowInstance } from "reactflow";
 import {
@@ -16,6 +19,8 @@ import {
   List,
   Loader,
   Tooltip,
+  ActionIcon,
+  Flex,
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useContextMenu } from "mantine-contextmenu";
@@ -31,6 +36,7 @@ import {
   IconArrowsSplit,
   IconForms,
   IconAbacus,
+  IconDeviceFloppy,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -256,6 +262,10 @@ const App = () => {
   const clipboard = useClipboard({ timeout: 1500 });
   const [waitingForShare, setWaitingForShare] = useState(false);
 
+  // Offload intensive computation to redraw and avoid blocking UI
+  const [isSaving, startSaveTransition] = useTransition();
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
   // For modal popup to set global settings like API keys
   const settingsModal = useRef<GlobalSettingsModalRef>(null);
 
@@ -364,22 +374,42 @@ const App = () => {
   // Save the current flow to localStorage for later recall. Useful to getting
   // back progress upon leaving the site / browser crash / system restart.
   const saveFlow = useCallback(
-    (rf_inst: ReactFlowInstance) => {
+    (rf_inst?: ReactFlowInstance) => {
       const rf = rf_inst ?? rfInstance;
       if (!rf) return;
 
-      // NOTE: This currently only saves the front-end state. Cache files
-      // are not pulled or overwritten upon loading from localStorage.
-      const flow = rf.toObject();
-      StorageCache.saveToLocalStorage("chainforge-flow", flow);
+      setShowSaveSuccess(false);
 
-      // Attempt to save the current state of the back-end state,
-      // the StorageCache. (This does LZ compression to save space.)
-      StorageCache.saveToLocalStorage("chainforge-state");
+      startSaveTransition(() => {
+        // NOTE: This currently only saves the front-end state. Cache files
+        // are not pulled or overwritten upon loading from localStorage.
+        const flow = rf.toObject();
+        StorageCache.saveToLocalStorage("chainforge-flow", flow);
 
-      console.log("Flow saved!");
+        // Attempt to save the current state of the back-end state,
+        // the StorageCache. (This does LZ compression to save space.)
+        StorageCache.saveToLocalStorage("chainforge-state");
+
+        console.log("Flow saved!");
+        setShowSaveSuccess(true);
+        setTimeout(() => {
+          setShowSaveSuccess(false);
+        }, 1000);
+      });
     },
     [rfInstance],
+  );
+
+  // Keyboard save handler
+  const handleCtrlSave = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+        event.preventDefault();
+        // User has pressed Ctrl+S. Save the current state:
+        saveFlow();
+      }
+    },
+    [saveFlow],
   );
 
   // Initialize auto-saving
@@ -1125,6 +1155,12 @@ const App = () => {
     [addNode],
   );
 
+  const saveMessage = useMemo(() => {
+    if (isSaving) return "Saving...";
+    else if (showSaveSuccess) return "Success!";
+    else return "Save to local cache";
+  }, [isSaving, showSaveSuccess]);
+
   if (!IS_ACCEPTED_BROWSER) {
     return (
       <Box maw={600} mx="auto" mt="40px">
@@ -1167,7 +1203,7 @@ const App = () => {
     );
   } else
     return (
-      <div>
+      <div onKeyDown={handleCtrlSave}>
         <GlobalSettingsModal ref={settingsModal} />
         <LoadingOverlay visible={isLoading} overlayBlur={1} />
         <ExampleFlowsModal
@@ -1193,26 +1229,41 @@ const App = () => {
           id="custom-controls"
           style={{ position: "fixed", left: "10px", top: "10px", zIndex: 8 }}
         >
-          {addNodeMenu}
-          <Button
-            onClick={exportFlow}
-            size="sm"
-            variant="outline"
-            bg="#eee"
-            compact
-            mr="xs"
-          >
-            Export
-          </Button>
-          <Button
-            onClick={importFlowFromFile}
-            size="sm"
-            variant="outline"
-            bg="#eee"
-            compact
-          >
-            Import
-          </Button>
+          <Flex>
+            {addNodeMenu}
+            <Button
+              onClick={exportFlow}
+              size="sm"
+              variant="outline"
+              bg="#eee"
+              compact
+              mr="xs"
+            >
+              Export
+            </Button>
+            <Button
+              onClick={importFlowFromFile}
+              size="sm"
+              variant="outline"
+              bg="#eee"
+              compact
+            >
+              Import
+            </Button>
+            <ActionIcon
+              variant="outline"
+              color="blue"
+              ml="sm"
+              size="1.625rem"
+              onClick={() => saveFlow()}
+              loading={isSaving}
+              disabled={isLoading || isSaving}
+            >
+              <Tooltip label={saveMessage} withArrow>
+                <IconDeviceFloppy fill="#dde" />
+              </Tooltip>
+            </ActionIcon>
+          </Flex>
         </div>
         <div
           style={{ position: "fixed", right: "10px", top: "10px", zIndex: 8 }}
