@@ -10,6 +10,7 @@ import React, {
   useRef,
   useMemo,
   useTransition,
+  Suspense,
 } from "react";
 import {
   MultiSelect,
@@ -22,9 +23,7 @@ import {
   Tooltip,
   TextInput,
   Stack,
-  ScrollArea,
   LoadingOverlay,
-  Button,
 } from "@mantine/core";
 import { useToggle } from "@mantine/hooks";
 import {
@@ -38,10 +37,6 @@ import {
   useMantineReactTable,
   type MRT_ColumnDef,
   type MRT_Cell,
-  type MRT_ColumnFiltersState,
-  type MRT_SortingState,
-  type MRT_Virtualizer,
-  MRT_Row,
   MRT_ShowHideColumnsButton,
   MRT_ToggleFiltersButton,
   MRT_ToggleDensePaddingButton,
@@ -273,16 +268,26 @@ export const exportToExcel = (
 
 export interface LLMResponseInspectorProps {
   jsonResponses: LLMResponse[];
+  isOpen: boolean;
   wideFormat?: boolean;
 }
 
 const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   jsonResponses,
+  isOpen,
   wideFormat,
 }) => {
   // Responses
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
+
+  // Debounce isOpen changes, to avoid blocking the UI
+  const [isOpenDelayed, setIsOpenDelayed] = useState(false);
+  useEffect(() => {
+    setTimeout(() => {
+      setIsOpenDelayed(isOpen);
+    }, 300);
+  }, [isOpen]);
 
   // The type of view to use to display responses. Can be either hierarchy or table.
   const [viewFormat, setViewFormat] = useState(
@@ -773,33 +778,6 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             });
 
             return row;
-
-            // return (
-            //   <tr key={`r${idx}`} style={{ borderBottom: "2px solid #fff" }}>
-            //     {var_cols_vals.map((c, i) => (
-            //       <td key={`v${i}`} className="inspect-table-var">
-            //         <ScrollArea.Autosize mt="sm" mah={500} maw={300}>
-            //           {StringLookup.get(c)}
-            //         </ScrollArea.Autosize>
-            //       </td>
-            //     ))}
-            //     {metavar_cols_vals.map((c, i) => (
-            //       <td key={`m${i}`} className="inspect-table-metavar">
-            //         {StringLookup.get(c)}
-            //       </td>
-            //     ))}
-            //     {sel_var_cols.map((c, i) => (
-            //       <td key={`c${i}`} className="inspect-table-llm-resp">
-            //         {StringLookup.get(c)}
-            //       </td>
-            //     ))}
-            //     {eval_cols_vals.map((c, i) => (
-            //       <td key={`e${i}`} className="inspect-table-score-col">
-            //         <Stack spacing={0}>{c}</Stack>
-            //       </td>
-            //     ))}
-            //   </tr>
-            // );
           },
         );
 
@@ -863,7 +841,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               return (
                 <Stack spacing={0}>
                   {(val.data as [string | JSX.Element, string][]).map(
-                    (e) => e[0],
+                    (e, i) => (
+                      <div key={i}>{e[0]}</div>
+                    ),
                   )}
                 </Stack>
               );
@@ -878,10 +858,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                   )}
                 </Stack>
               );
-            // return <div style={{backgroundColor: "red"}}>{cell.getValue() as string}</div>;
           },
           Header: ({ column }) => (
-            <div style={{ lineHeight: 1.0, overflowY: "auto", maxHeight: 100 }}>
+            <div
+              key={column.columnDef.id}
+              style={{ lineHeight: 1.0, overflowY: "auto", maxHeight: 100 }}
+            >
               {column.columnDef.header}
             </div>
           ),
@@ -1228,13 +1210,20 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         </Tabs.Panel>
       </Tabs>
 
-      <div className="nowheel nodrag">
+      <div className="nowheel nodrag" style={{ height: "800px" }}>
         {/* To get the overlay to operate just inside the div, use style={{position: "relative"}}. However it won't show the spinner in the right place. */}
-        <LoadingOverlay visible={showLoadingSpinner} overlayOpacity={0.5} />
-        {viewFormat === "table" ? (
-          <MantineReactTable table={table} />
+        <LoadingOverlay
+          visible={showLoadingSpinner || (isOpen && !isOpenDelayed)}
+          overlayOpacity={0.5}
+        />
+        {isOpenDelayed ? (
+          viewFormat === "table" ? (
+            <MantineReactTable table={table} />
+          ) : (
+            responseDivs
+          )
         ) : (
-          responseDivs
+          <></>
         )}
       </div>
     </div>

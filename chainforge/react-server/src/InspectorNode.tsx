@@ -94,6 +94,7 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
       >
         <LLMResponseInspector
           jsonResponses={jsonResponses ?? []}
+          isOpen={true}
           wideFormat={false}
         />
       </div>

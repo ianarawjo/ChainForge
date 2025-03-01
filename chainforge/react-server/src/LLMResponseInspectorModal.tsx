@@ -80,6 +80,7 @@ const LLMResponseInspectorModal = forwardRef<
         <Suspense fallback={<LoadingOverlay visible={true} />}>
           <LLMResponseInspector
             jsonResponses={props.jsonResponses}
+            isOpen={opened}
             wideFormat={true}
           />
         </Suspense>

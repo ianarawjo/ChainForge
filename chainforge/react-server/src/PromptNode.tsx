@@ -411,24 +411,29 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     [setTemplateVars, templateVars, pullInputData, id],
   );
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = event.target.value;
+  const handleInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = event.target.value;
+      const updateStatus =
+        promptTextOnLastRun !== null &&
+        status !== Status.WARNING &&
+        value !== promptTextOnLastRun;
 
-    // Store prompt text
-    setPromptText(value);
-    data.prompt = value;
+      // Store prompt text
+      data.prompt = value;
 
-    // Update status icon, if need be:
-    if (
-      promptTextOnLastRun !== null &&
-      status !== Status.WARNING &&
-      value !== promptTextOnLastRun
-    )
-      setStatus(Status.WARNING);
+      // Debounce the global state change to happen only after 500ms, as it forces a costly rerender:
+      debounce((_value, _updateStatus) => {
+        setPromptText(_value);
+        refreshTemplateHooks(_value);
+        if (_updateStatus) setStatus(Status.WARNING);
+      }, 300)(value, updateStatus);
 
-    // Debounce refreshing the template hooks so we don't annoy the user
-    debounce((_value) => refreshTemplateHooks(_value), 500)(value);
-  };
+      // Debounce refreshing the template hooks so we don't annoy the user
+      // debounce((_value) => refreshTemplateHooks(_value), 500)(value);
+    },
+    [promptTextOnLastRun, status, refreshTemplateHooks, debounceTimeoutRef],
+  );
 
   // On initialization
   useEffect(() => {
@@ -467,7 +472,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
   // Chat nodes only. Pulls input data attached to the 'past conversations' handle.
   // Returns a tuple (past_chat_llms, __past_chats), where both are undefined if nothing is connected.
-  const pullInputChats = () => {
+  const pullInputChats = useCallback(() => {
     const pulled_data = pullInputData(["__past_chats"], id);
     if (!("__past_chats" in pulled_data)) return [undefined, undefined];
 
@@ -535,36 +540,46 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
     // Returns [list of LLM specs, list of ChatHistoryInfo]
     return [past_chat_llms, past_chats];
-  };
+  }, [id, pullInputData]);
 
   // Ask the backend how many responses it needs to collect, given the input data:
-  const fetchResponseCounts = (
-    prompt: string,
-    vars: Dict,
-    llms: (StringOrHash | LLMSpec)[],
-    chat_histories?:
-      | (ChatHistoryInfo | undefined)[]
-      | Dict<(ChatHistoryInfo | undefined)[]>,
-  ) => {
-    return countQueries(
-      prompt,
-      vars,
-      llms,
+  const fetchResponseCounts = useCallback(
+    (
+      prompt: string,
+      vars: Dict,
+      llms: (StringOrHash | LLMSpec)[],
+      chat_histories?:
+        | (ChatHistoryInfo | undefined)[]
+        | Dict<(ChatHistoryInfo | undefined)[]>,
+    ) => {
+      return countQueries(
+        prompt,
+        vars,
+        llms,
+        numGenerations,
+        chat_histories,
+        id,
+        node_type !== "chat" ? showContToggle && contWithPriorLLMs : undefined,
+      ).then(function (results) {
+        return [results.counts, results.total_num_responses] as [
+          Dict<Dict<number>>,
+          Dict<number>,
+        ];
+      });
+    },
+    [
+      countQueries,
       numGenerations,
-      chat_histories,
+      showContToggle,
+      contWithPriorLLMs,
       id,
-      node_type !== "chat" ? showContToggle && contWithPriorLLMs : undefined,
-    ).then(function (results) {
-      return [results.counts, results.total_num_responses] as [
-        Dict<Dict<number>>,
-        Dict<number>,
-      ];
-    });
-  };
+      node_type,
+    ],
+  );
 
   // On hover over the 'info' button, to preview the prompts that will be sent out
   const [promptPreviews, setPromptPreviews] = useState<PromptInfo[]>([]);
-  const handlePreviewHover = () => {
+  const handlePreviewHover = useCallback(() => {
     // Pull input data and prompt
     try {
       const pulled_vars = pullInputData(templateVars, id);
@@ -585,10 +600,18 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       console.error(err);
       setPromptPreviews([]);
     }
-  };
+  }, [
+    pullInputData,
+    templateVars,
+    id,
+    updateShowContToggle,
+    generatePrompts,
+    promptText,
+    pullInputChats,
+  ]);
 
   // On hover over the 'Run' button, request how many responses are required and update the tooltip. Soft fails.
-  const handleRunHover = () => {
+  const handleRunHover = useCallback(() => {
     // Check if the PromptNode is not already waiting for a response...
     if (status === "loading") {
       setRunTooltip("Fetching responses...");
@@ -719,9 +742,17 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         console.error(err); // soft fail
         setRunTooltip("Could not reach backend server.");
       });
-  };
+  }, [
+    status,
+    llmItemsCurrState,
+    pullInputChats,
+    contWithPriorLLMs,
+    pullInputData,
+    fetchResponseCounts,
+    promptText,
+  ]);
 
-  const handleRunClick = () => {
+  const handleRunClick = useCallback(() => {
     // Go through all template hooks (if any) and check they're connected:
     const is_fully_connected = templateVars.every((varname) => {
       // Check that some edge has, as its target, this node and its template hook:
@@ -1058,7 +1089,31 @@ Soft failing by replacing undefined with empty strings.`,
       .then(open_progress_listener)
       .then(query_llms)
       .catch(rejected);
-  };
+  }, [
+    templateVars,
+    triggerAlert,
+    pullInputChats,
+    pullInputData,
+    updateShowContToggle,
+    llmItemsCurrState,
+    contWithPriorLLMs,
+    showAlert,
+    fetchResponseCounts,
+    numGenerations,
+    promptText,
+    apiKeys,
+    showContToggle,
+    cancelId,
+    refreshCancelId,
+    node_type,
+    id,
+    setDataPropsForNode,
+    llmListContainer,
+    responsesWillChange,
+    showDrawer,
+    pingOutputNodes,
+    debounceTimeoutRef,
+  ]);
 
   const handleStopClick = useCallback(() => {
     CancelTracker.add(cancelId);
@@ -1076,7 +1131,7 @@ Soft failing by replacing undefined with empty strings.`,
     setStatus(Status.NONE);
     setContChatToggleDisabled(false);
     llmListContainer?.current?.resetLLMItemsProgress();
-  }, [cancelId, refreshCancelId]);
+  }, [cancelId, refreshCancelId, debounceTimeoutRef]);
 
   const handleNumGenChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
