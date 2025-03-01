@@ -411,24 +411,29 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     [setTemplateVars, templateVars, pullInputData, id],
   );
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = event.target.value;
+  const handleInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = event.target.value;
+      const updateStatus =
+        promptTextOnLastRun !== null &&
+        status !== Status.WARNING &&
+        value !== promptTextOnLastRun;
 
-    // Store prompt text
-    setPromptText(value);
-    data.prompt = value;
+      // Store prompt text
+      data.prompt = value;
 
-    // Update status icon, if need be:
-    if (
-      promptTextOnLastRun !== null &&
-      status !== Status.WARNING &&
-      value !== promptTextOnLastRun
-    )
-      setStatus(Status.WARNING);
+      // Debounce the global state change to happen only after 500ms, as it forces a costly rerender:
+      debounce((_value, _updateStatus) => {
+        setPromptText(_value);
+        refreshTemplateHooks(_value);
+        if (_updateStatus) setStatus(Status.WARNING);
+      }, 300)(value, updateStatus);
 
-    // Debounce refreshing the template hooks so we don't annoy the user
-    debounce((_value) => refreshTemplateHooks(_value), 500)(value);
-  };
+      // Debounce refreshing the template hooks so we don't annoy the user
+      // debounce((_value) => refreshTemplateHooks(_value), 500)(value);
+    },
+    [promptTextOnLastRun, status, refreshTemplateHooks],
+  );
 
   // On initialization
   useEffect(() => {
@@ -467,7 +472,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
   // Chat nodes only. Pulls input data attached to the 'past conversations' handle.
   // Returns a tuple (past_chat_llms, __past_chats), where both are undefined if nothing is connected.
-  const pullInputChats = () => {
+  const pullInputChats = useCallback(() => {
     const pulled_data = pullInputData(["__past_chats"], id);
     if (!("__past_chats" in pulled_data)) return [undefined, undefined];
 
@@ -535,7 +540,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
     // Returns [list of LLM specs, list of ChatHistoryInfo]
     return [past_chat_llms, past_chats];
-  };
+  }, [id, pullInputData]);
 
   // Ask the backend how many responses it needs to collect, given the input data:
   const fetchResponseCounts = (
