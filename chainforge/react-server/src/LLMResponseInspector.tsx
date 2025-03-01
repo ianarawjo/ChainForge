@@ -281,6 +281,14 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
+  // Debounce isOpen changes, to avoid blocking the UI
+  const [isOpenDelayed, setIsOpenDelayed] = useState(false);
+  useEffect(() => {
+    setTimeout(() => {
+      setIsOpenDelayed(isOpen);
+    }, 300);
+  }, [isOpen]);
+
   // The type of view to use to display responses. Can be either hierarchy or table.
   const [viewFormat, setViewFormat] = useState(
     wideFormat ? "table" : "hierarchy",
@@ -1202,21 +1210,22 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         </Tabs.Panel>
       </Tabs>
 
-      {isOpen ? (
-        <Suspense fallback={<></>}>
-          <div className="nowheel nodrag">
-            {/* To get the overlay to operate just inside the div, use style={{position: "relative"}}. However it won't show the spinner in the right place. */}
-            <LoadingOverlay visible={showLoadingSpinner} overlayOpacity={0.5} />
-            {viewFormat === "table" ? (
-              <MantineReactTable table={table} />
-            ) : (
-              responseDivs
-            )}
-          </div>
-        </Suspense>
-      ) : (
-        <></>
-      )}
+      <div className="nowheel nodrag" style={{ height: "800px" }}>
+        {/* To get the overlay to operate just inside the div, use style={{position: "relative"}}. However it won't show the spinner in the right place. */}
+        <LoadingOverlay
+          visible={showLoadingSpinner || (isOpen && !isOpenDelayed)}
+          overlayOpacity={0.5}
+        />
+        {isOpenDelayed ? (
+          viewFormat === "table" ? (
+            <MantineReactTable table={table} />
+          ) : (
+            responseDivs
+          )
+        ) : (
+          <></>
+        )}
+      </div>
     </div>
   );
 };

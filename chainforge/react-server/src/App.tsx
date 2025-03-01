@@ -314,7 +314,7 @@ const App = () => {
         },
       });
     },
-    [addNodeToStore],
+    [addNodeToStore, getViewportCenter],
   );
 
   const onClickExamples = () => {
