@@ -425,6 +425,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       // Debounce the global state change to happen only after 500ms, as it forces a costly rerender:
       debounce((_value, _updateStatus) => {
         setPromptText(_value);
+        setDataPropsForNode(id, { prompt: _value });
         refreshTemplateHooks(_value);
         if (_updateStatus) setStatus(Status.WARNING);
       }, 300)(value, updateStatus);
@@ -432,7 +433,13 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       // Debounce refreshing the template hooks so we don't annoy the user
       // debounce((_value) => refreshTemplateHooks(_value), 500)(value);
     },
-    [promptTextOnLastRun, status, refreshTemplateHooks, debounceTimeoutRef],
+    [
+      promptTextOnLastRun,
+      status,
+      refreshTemplateHooks,
+      setDataPropsForNode,
+      debounceTimeoutRef,
+    ],
   );
 
   // On initialization
