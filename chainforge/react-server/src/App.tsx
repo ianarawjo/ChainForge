@@ -1212,6 +1212,27 @@ const App = () => {
     else return "Save to local cache";
   }, [isSaving, showSaveSuccess]);
 
+  const flowSidebar = useMemo(() => {
+    if (!IS_RUNNING_LOCALLY) return undefined;
+    return (
+      <FlowSidebar
+        currentFlow={flowFileName}
+        onLoadFlow={(flowData, name) => {
+          if (name !== undefined) setFlowFileName(name);
+          if (flowData !== undefined) {
+            try {
+              importFlowFromJSON(flowData);
+            } catch (error) {
+              console.error(error);
+              setIsLoading(false);
+              if (showAlert) showAlert(error as Error);
+            }
+          }
+        }}
+      />
+    );
+  }, [flowFileName, importFlowFromJSON, showAlert]);
+
   if (!IS_ACCEPTED_BROWSER) {
     return (
       <Box maw={600} mx="auto" mt="40px">
@@ -1267,22 +1288,7 @@ const App = () => {
           message={confirmationDialogProps.message}
           onConfirm={confirmationDialogProps.onConfirm}
         />
-        <FlowSidebar
-          currentFlow={flowFileName}
-          onLoadFlow={(flowData, name) => {
-            if (name !== undefined) setFlowFileName(name);
-
-            if (flowData !== undefined) {
-              try {
-                importFlowFromJSON(flowData);
-              } catch (error) {
-                console.error(error);
-                setIsLoading(false);
-                if (showAlert) showAlert(error as Error);
-              }
-            }
-          }}
-        />
+        {flowSidebar}
 
         {/* <Modal title={'Welcome to ChainForge'} size='400px' opened={welcomeModalOpened} onClose={closeWelcomeModal} yOffset={'6vh'} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
         <Box m='lg' mt='xl'>
@@ -1294,7 +1300,12 @@ const App = () => {
 
         <div
           id="custom-controls"
-          style={{ position: "fixed", left: "44px", top: "10px", zIndex: 8 }}
+          style={{
+            position: "fixed",
+            left: IS_RUNNING_LOCALLY ? "44px" : "10px",
+            top: "10px",
+            zIndex: 8,
+          }}
         >
           <Flex>
             {addNodeMenu}

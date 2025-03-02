@@ -10,11 +10,9 @@ import React, {
   useRef,
   useMemo,
   useTransition,
-  Suspense,
 } from "react";
 import {
   MultiSelect,
-  Table,
   NativeSelect,
   Checkbox,
   Flex,
@@ -307,7 +305,6 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     true,
     false,
   ]);
-  const [numMatches, setNumMatches] = useState(-1);
 
   // Count number of response texts wehenever jsonResponses changes
   const numResponses = useMemo(() => {
@@ -1051,8 +1048,6 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         const divs = groupByVars(responses, selected_vars, [], null);
         setResponseDivs(divs);
       }
-
-      // setNumMatches(numResponsesDisplayed);
     });
   };
 
@@ -1093,10 +1088,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       <Flex gap="6px" align="end" w="100%">
         <TextInput
           id="search_bar"
-          label={
-            "Find"
-            // + (searchValue.length > 0 ? ` (${numMatches}/${numResponses})` : "")
-          }
+          label={"Find"}
           autoComplete="off"
           size={sz}
           placeholder={"Search responses"}
@@ -1144,7 +1136,6 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       searchValue,
       filterBySearchValue,
       numResponses,
-      numMatches,
       sz,
       toggleCaseSensitivity,
       toggleFilterBySearchValue,
