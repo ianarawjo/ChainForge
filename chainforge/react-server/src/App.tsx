@@ -5,6 +5,9 @@ import React, {
   useEffect,
   useContext,
   useMemo,
+  useTransition,
+  KeyboardEventHandler,
+  KeyboardEvent,
 } from "react";
 import ReactFlow, { Controls, Background, ReactFlowInstance } from "reactflow";
 import {
@@ -16,6 +19,8 @@ import {
   List,
   Loader,
   Tooltip,
+  ActionIcon,
+  Flex,
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useContextMenu } from "mantine-contextmenu";
@@ -31,6 +36,7 @@ import {
   IconArrowsSplit,
   IconForms,
   IconAbacus,
+  IconDeviceFloppy,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -75,11 +81,13 @@ import StorageCache, { StringLookup } from "./backend/cache";
 import { APP_IS_RUNNING_LOCALLY, browserTabIsActive } from "./backend/utils";
 import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
 import {
+  ensureUniqueFlowFilename,
   exportCache,
   fetchEnvironAPIKeys,
   fetchExampleFlow,
   fetchOpenAIEval,
   importCache,
+  saveFlowToLocalFilesystem,
 } from "./backend/backend";
 
 // Device / Browser detection
@@ -91,6 +99,7 @@ import {
   isChromium,
 } from "react-device-detect";
 import MultiEvalNode from "./MultiEvalNode";
+import FlowSidebar from "./FlowSidebar";
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -252,9 +261,20 @@ const App = () => {
     NodeJS.Timeout | undefined
   >(undefined);
 
+  // The 'name' of the current flow, to use when saving/loading
+  const [flowFileName, setFlowFileName] = useState(`flow-${Date.now()}`);
+  const safeSetFlowFileName = useCallback(async (newName: string) => {
+    const uniqueName = await ensureUniqueFlowFilename(newName);
+    setFlowFileName(uniqueName);
+  }, []);
+
   // For 'share' button
   const clipboard = useClipboard({ timeout: 1500 });
   const [waitingForShare, setWaitingForShare] = useState(false);
+
+  // Offload intensive computation to redraw and avoid blocking UI
+  const [isSaving, startSaveTransition] = useTransition();
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
   // For modal popup to set global settings like API keys
   const settingsModal = useRef<GlobalSettingsModalRef>(null);
@@ -361,25 +381,96 @@ const App = () => {
     URL.revokeObjectURL(downloadLink.href);
   };
 
+  // Export flow to JSON
+  const exportFlow = useCallback(
+    (
+      flowData?: unknown,
+      saveToLocalFilesystem?: string,
+      hideErrorAlert?: boolean,
+    ) => {
+      if (!rfInstance && !flowData) return;
+
+      // We first get the data of the flow, if we haven't already
+      const flow = flowData ?? rfInstance?.toObject();
+
+      // Then we grab all the relevant cache files from the backend
+      const all_node_ids = nodes.map((n) => n.id);
+      return exportCache(all_node_ids)
+        .then(function (cacheData) {
+          // Now we append the cache file data to the flow
+          const flow_and_cache = {
+            flow,
+            cache: cacheData,
+          };
+
+          // Save!
+          const flowFile = `${saveToLocalFilesystem ?? flowFileName}.cforge`;
+          if (saveToLocalFilesystem !== undefined)
+            return saveFlowToLocalFilesystem(flow_and_cache, flowFile);
+          // @ts-expect-error The exported RF instance is JSON compatible but TypeScript won't read it as such.
+          else downloadJSON(flow_and_cache, flowFile);
+        })
+        .catch((err) => {
+          if (hideErrorAlert) console.error(err);
+          else handleError(err);
+        });
+    },
+    [rfInstance, nodes, flowFileName, handleError],
+  );
+
   // Save the current flow to localStorage for later recall. Useful to getting
   // back progress upon leaving the site / browser crash / system restart.
   const saveFlow = useCallback(
-    (rf_inst: ReactFlowInstance) => {
+    (
+      rf_inst?: ReactFlowInstance,
+      fileName?: string,
+      hideErrorAlert?: boolean,
+    ) => {
       const rf = rf_inst ?? rfInstance;
       if (!rf) return;
 
-      // NOTE: This currently only saves the front-end state. Cache files
-      // are not pulled or overwritten upon loading from localStorage.
-      const flow = rf.toObject();
-      StorageCache.saveToLocalStorage("chainforge-flow", flow);
+      setShowSaveSuccess(false);
 
-      // Attempt to save the current state of the back-end state,
-      // the StorageCache. (This does LZ compression to save space.)
-      StorageCache.saveToLocalStorage("chainforge-state");
+      startSaveTransition(() => {
+        // NOTE: This currently only saves the front-end state. Cache files
+        // are not pulled or overwritten upon loading from localStorage.
+        const flow = rf.toObject();
+        StorageCache.saveToLocalStorage("chainforge-flow", flow);
 
-      console.log("Flow saved!");
+        // Attempt to save the current state of the back-end state,
+        // the StorageCache. (This does LZ compression to save space.)
+        StorageCache.saveToLocalStorage("chainforge-state");
+
+        const onFlowSaved = () => {
+          console.log("Flow saved!");
+          setShowSaveSuccess(true);
+          setTimeout(() => {
+            setShowSaveSuccess(false);
+          }, 1000);
+        };
+
+        // If running locally, aattempt to save a copy of the flow to the lcoal filesystem,
+        // so it shows up in the list of saved flows.
+        if (IS_RUNNING_LOCALLY)
+          exportFlow(flow, fileName ?? flowFileName, hideErrorAlert)?.then(
+            onFlowSaved,
+          );
+        else onFlowSaved();
+      });
     },
-    [rfInstance],
+    [rfInstance, exportFlow, flowFileName],
+  );
+
+  // Keyboard save handler
+  const handleCtrlSave = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+        event.preventDefault();
+        // User has pressed Ctrl+S. Save the current state:
+        saveFlow();
+      }
+    },
+    [saveFlow],
   );
 
   // Initialize auto-saving
@@ -396,8 +487,8 @@ const App = () => {
         // Start a timer, in case the saving takes a long time
         const startTime = Date.now();
 
-        // Save the flow to localStorage
-        saveFlow(rf_inst);
+        // Save the flow to localStorage, and (if running locally) a copy to the filesystem
+        saveFlow(rf_inst, "__autosave", true); // surpress error alerts when autosaving
 
         // Check how long the save took
         const duration = Date.now() - startTime;
@@ -446,6 +537,9 @@ const App = () => {
     setEdges([]);
 
     StorageCache.clear();
+
+    // New flow filename
+    setFlowFileName(`flow-${Date.now()}`);
     if (rfInstance) rfInstance.setViewport({ x: 200, y: 80, zoom: 1 });
   }, [setNodes, setEdges, resetLLMColors, rfInstance]);
 
@@ -508,30 +602,6 @@ const App = () => {
     [importGlobalStateFromCache, loadFlow],
   );
 
-  // Export / Import (from JSON)
-  const exportFlow = useCallback(() => {
-    if (!rfInstance) return;
-
-    // We first get the data of the flow
-    const flow = rfInstance.toObject();
-
-    // Then we grab all the relevant cache files from the backend
-    const all_node_ids = nodes.map((n) => n.id);
-    exportCache(all_node_ids)
-      .then(function (cacheData) {
-        // Now we append the cache file data to the flow
-        const flow_and_cache = {
-          flow,
-          cache: cacheData,
-        };
-
-        // Save!
-        // @ts-expect-error The exported RF instance is JSON compatible but TypeScript won't read it as such.
-        downloadJSON(flow_and_cache, `flow-${Date.now()}.cforge`);
-      })
-      .catch(handleError);
-  }, [rfInstance, nodes, handleError]);
-
   // Import data to the cache stored on the local filesystem (in backend)
   const handleImportCache = useCallback(
     (cache_data: Dict<Dict>) =>
@@ -547,40 +617,44 @@ const App = () => {
 
       setIsLoading(true);
 
-      // Detect if there's no cache data
-      if (!flowJSON.cache) {
-        // Support for loading old flows w/o cache data:
-        loadFlow(flowJSON, rf);
-        StringLookup.restoreFrom([]); // manually clear the string lookup table
-        return;
-      }
+      // Delay briefly, to ensure there's time for
+      // the isLoading spinner to appear:
+      setTimeout(() => {
+        // Detect if there's no cache data
+        if (!flowJSON.cache) {
+          // Support for loading old flows w/o cache data:
+          loadFlow(flowJSON, rf);
+          StringLookup.restoreFrom([]); // manually clear the string lookup table
+          return;
+        }
 
-      // Then we need to extract the JSON of the flow vs the cache data
-      const flow = flowJSON.flow;
-      const cache = flowJSON.cache;
+        // Then we need to extract the JSON of the flow vs the cache data
+        const flow = flowJSON.flow;
+        const cache = flowJSON.cache;
 
-      // We need to send the cache data to the backend first,
-      // before we can load the flow itself...
-      handleImportCache(cache)
-        .then(() => {
-          // We load the ReactFlow instance last
-          loadFlow(flow, rf);
-        })
-        .catch((err) => {
-          // On an error, still try to load the flow itself:
-          handleError(
-            "Error encountered when importing cache data:" +
-              err.message +
-              "\n\nTrying to load flow regardless...",
-          );
-          loadFlow(flow, rf);
-        });
+        // We need to send the cache data to the backend first,
+        // before we can load the flow itself...
+        handleImportCache(cache)
+          .then(() => {
+            // We load the ReactFlow instance last
+            loadFlow(flow, rf);
+          })
+          .catch((err) => {
+            // On an error, still try to load the flow itself:
+            handleError(
+              "Error encountered when importing cache data:" +
+                err.message +
+                "\n\nTrying to load flow regardless...",
+            );
+            loadFlow(flow, rf);
+          });
+      }, 100);
     },
-    [rfInstance],
+    [rfInstance, handleImportCache, loadFlow],
   );
 
   // Import a ChainForge flow from a file
-  const importFlowFromFile = async () => {
+  const importFlowFromFile = useCallback(async () => {
     // Create an input element with type "file" and accept only JSON files
     const input = document.createElement("input");
     input.type = "file";
@@ -601,6 +675,7 @@ const App = () => {
         }
 
         const file = files[0];
+        const fileName = file.name?.replace(".cforge", "");
         const reader = new window.FileReader();
 
         // Handle file load event
@@ -616,6 +691,9 @@ const App = () => {
 
             // Import it to React Flow and import cache data on the backend
             importFlowFromJSON(flow_and_cache);
+
+            // Set the name to the filename, for consistent saving
+            safeSetFlowFileName(fileName);
           } catch (error) {
             handleError(error as Error);
           }
@@ -628,7 +706,7 @@ const App = () => {
 
     // Trigger the file selector
     input.click();
-  };
+  }, [importFlowFromJSON, handleError, safeSetFlowFileName]);
 
   // Downloads the selected OpenAI eval file (preconverted to a .cforge flow)
   const importFlowFromOpenAIEval = (evalname: string) => {
@@ -645,6 +723,7 @@ const App = () => {
     // Detect a special category of the example flow, and use the right loader for it:
     if (example_category === "openai-eval") {
       importFlowFromOpenAIEval(name);
+      setFlowFileName(`flow-${Date.now()}`);
       return;
     }
 
@@ -653,6 +732,7 @@ const App = () => {
       .then(function (flowJSON) {
         // We have the data, import it:
         importFlowFromJSON(flowJSON);
+        setFlowFileName(`flow-${Date.now()}`);
       })
       .catch(handleError);
   };
@@ -1125,6 +1205,34 @@ const App = () => {
     [addNode],
   );
 
+  const saveMessage = useMemo(() => {
+    if (isSaving) return "Saving...";
+    else if (showSaveSuccess) return "Success!";
+    else if (IS_RUNNING_LOCALLY) return "Save to local disk";
+    else return "Save to local cache";
+  }, [isSaving, showSaveSuccess]);
+
+  const flowSidebar = useMemo(() => {
+    if (!IS_RUNNING_LOCALLY) return undefined;
+    return (
+      <FlowSidebar
+        currentFlow={flowFileName}
+        onLoadFlow={(flowData, name) => {
+          if (name !== undefined) setFlowFileName(name);
+          if (flowData !== undefined) {
+            try {
+              importFlowFromJSON(flowData);
+            } catch (error) {
+              console.error(error);
+              setIsLoading(false);
+              if (showAlert) showAlert(error as Error);
+            }
+          }
+        }}
+      />
+    );
+  }, [flowFileName, importFlowFromJSON, showAlert]);
+
   if (!IS_ACCEPTED_BROWSER) {
     return (
       <Box maw={600} mx="auto" mt="40px">
@@ -1167,7 +1275,7 @@ const App = () => {
     );
   } else
     return (
-      <div>
+      <div onKeyDown={handleCtrlSave}>
         <GlobalSettingsModal ref={settingsModal} />
         <LoadingOverlay visible={isLoading} overlayBlur={1} />
         <ExampleFlowsModal
@@ -1180,6 +1288,7 @@ const App = () => {
           message={confirmationDialogProps.message}
           onConfirm={confirmationDialogProps.onConfirm}
         />
+        {flowSidebar}
 
         {/* <Modal title={'Welcome to ChainForge'} size='400px' opened={welcomeModalOpened} onClose={closeWelcomeModal} yOffset={'6vh'} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
         <Box m='lg' mt='xl'>
@@ -1191,28 +1300,48 @@ const App = () => {
 
         <div
           id="custom-controls"
-          style={{ position: "fixed", left: "10px", top: "10px", zIndex: 8 }}
+          style={{
+            position: "fixed",
+            left: IS_RUNNING_LOCALLY ? "44px" : "10px",
+            top: "10px",
+            zIndex: 8,
+          }}
         >
-          {addNodeMenu}
-          <Button
-            onClick={exportFlow}
-            size="sm"
-            variant="outline"
-            bg="#eee"
-            compact
-            mr="xs"
-          >
-            Export
-          </Button>
-          <Button
-            onClick={importFlowFromFile}
-            size="sm"
-            variant="outline"
-            bg="#eee"
-            compact
-          >
-            Import
-          </Button>
+          <Flex>
+            {addNodeMenu}
+            <Button
+              onClick={() => exportFlow()}
+              size="sm"
+              variant="outline"
+              bg="#eee"
+              compact
+              mr="xs"
+            >
+              Export
+            </Button>
+            <Button
+              onClick={importFlowFromFile}
+              size="sm"
+              variant="outline"
+              bg="#eee"
+              compact
+            >
+              Import
+            </Button>
+            <ActionIcon
+              variant="outline"
+              color="blue"
+              ml="sm"
+              size="1.625rem"
+              onClick={() => saveFlow()}
+              loading={isSaving}
+              disabled={isLoading || isSaving}
+            >
+              <Tooltip label={saveMessage} withArrow>
+                <IconDeviceFloppy fill="#dde" />
+              </Tooltip>
+            </ActionIcon>
+          </Flex>
         </div>
         <div
           style={{ position: "fixed", right: "10px", top: "10px", zIndex: 8 }}

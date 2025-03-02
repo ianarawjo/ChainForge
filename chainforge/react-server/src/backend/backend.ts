@@ -1,4 +1,5 @@
 import MarkdownIt from "markdown-it";
+import axios from "axios";
 import { v4 as uuid } from "uuid";
 import {
   Dict,
@@ -695,6 +696,40 @@ export async function fetchEnvironAPIKeys(): Promise<Dict<string>> {
     },
     body: "",
   }).then((res) => res.json());
+}
+
+export async function saveFlowToLocalFilesystem(
+  flowJSON: Dict,
+  filename: string,
+): Promise<void> {
+  try {
+    await axios.put(`${FLASK_BASE_URL}api/flows/${filename}`, {
+      flow: flowJSON,
+    });
+  } catch (error) {
+    throw new Error(
+      `Error saving flow with name ${filename}: ${(error as Error).toString()}`,
+    );
+  }
+}
+
+export async function ensureUniqueFlowFilename(
+  filename: string,
+): Promise<string> {
+  try {
+    const response = await axios.put(
+      `${FLASK_BASE_URL}api/getUniqueFlowFilename`,
+      {
+        name: filename,
+      },
+    );
+    return response.data as string;
+  } catch (error) {
+    console.error(
+      `Error contact Flask to ensure unique filename for imported flow. Defaulting to passed filename (warning: risk this overrides an existing flow.) Error: ${(error as Error).toString()}`,
+    );
+    return filename;
+  }
 }
 
 /**
