@@ -81,6 +81,7 @@ import StorageCache, { StringLookup } from "./backend/cache";
 import { APP_IS_RUNNING_LOCALLY, browserTabIsActive } from "./backend/utils";
 import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
 import {
+  ensureUniqueFlowFilename,
   exportCache,
   fetchEnvironAPIKeys,
   fetchExampleFlow,
@@ -262,6 +263,10 @@ const App = () => {
 
   // The 'name' of the current flow, to use when saving/loading
   const [flowFileName, setFlowFileName] = useState(`flow-${Date.now()}`);
+  const safeSetFlowFileName = useCallback(async (newName: string) => {
+    const uniqueName = await ensureUniqueFlowFilename(newName);
+    setFlowFileName(uniqueName);
+  }, []);
 
   // For 'share' button
   const clipboard = useClipboard({ timeout: 1500 });
@@ -599,40 +604,44 @@ const App = () => {
 
       setIsLoading(true);
 
-      // Detect if there's no cache data
-      if (!flowJSON.cache) {
-        // Support for loading old flows w/o cache data:
-        loadFlow(flowJSON, rf);
-        StringLookup.restoreFrom([]); // manually clear the string lookup table
-        return;
-      }
+      // Delay briefly, to ensure there's time for
+      // the isLoading spinner to appear:
+      setTimeout(() => {
+        // Detect if there's no cache data
+        if (!flowJSON.cache) {
+          // Support for loading old flows w/o cache data:
+          loadFlow(flowJSON, rf);
+          StringLookup.restoreFrom([]); // manually clear the string lookup table
+          return;
+        }
 
-      // Then we need to extract the JSON of the flow vs the cache data
-      const flow = flowJSON.flow;
-      const cache = flowJSON.cache;
+        // Then we need to extract the JSON of the flow vs the cache data
+        const flow = flowJSON.flow;
+        const cache = flowJSON.cache;
 
-      // We need to send the cache data to the backend first,
-      // before we can load the flow itself...
-      handleImportCache(cache)
-        .then(() => {
-          // We load the ReactFlow instance last
-          loadFlow(flow, rf);
-        })
-        .catch((err) => {
-          // On an error, still try to load the flow itself:
-          handleError(
-            "Error encountered when importing cache data:" +
-              err.message +
-              "\n\nTrying to load flow regardless...",
-          );
-          loadFlow(flow, rf);
-        });
+        // We need to send the cache data to the backend first,
+        // before we can load the flow itself...
+        handleImportCache(cache)
+          .then(() => {
+            // We load the ReactFlow instance last
+            loadFlow(flow, rf);
+          })
+          .catch((err) => {
+            // On an error, still try to load the flow itself:
+            handleError(
+              "Error encountered when importing cache data:" +
+                err.message +
+                "\n\nTrying to load flow regardless...",
+            );
+            loadFlow(flow, rf);
+          });
+      }, 100);
     },
-    [rfInstance],
+    [rfInstance, handleImportCache, loadFlow],
   );
 
   // Import a ChainForge flow from a file
-  const importFlowFromFile = async () => {
+  const importFlowFromFile = useCallback(async () => {
     // Create an input element with type "file" and accept only JSON files
     const input = document.createElement("input");
     input.type = "file";
@@ -653,6 +662,7 @@ const App = () => {
         }
 
         const file = files[0];
+        const fileName = file.name?.replace(".cforge", "");
         const reader = new window.FileReader();
 
         // Handle file load event
@@ -668,6 +678,9 @@ const App = () => {
 
             // Import it to React Flow and import cache data on the backend
             importFlowFromJSON(flow_and_cache);
+
+            // Set the name to the filename, for consistent saving
+            safeSetFlowFileName(fileName);
           } catch (error) {
             handleError(error as Error);
           }
@@ -680,7 +693,7 @@ const App = () => {
 
     // Trigger the file selector
     input.click();
-  };
+  }, [importFlowFromJSON, handleError, safeSetFlowFileName]);
 
   // Downloads the selected OpenAI eval file (preconverted to a .cforge flow)
   const importFlowFromOpenAIEval = (evalname: string) => {
@@ -1182,6 +1195,7 @@ const App = () => {
   const saveMessage = useMemo(() => {
     if (isSaving) return "Saving...";
     else if (showSaveSuccess) return "Success!";
+    else if (IS_RUNNING_LOCALLY) return "Save to local disk";
     else return "Save to local cache";
   }, [isSaving, showSaveSuccess]);
 

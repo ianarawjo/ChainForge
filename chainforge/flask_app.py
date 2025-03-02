@@ -796,12 +796,37 @@ def save_or_rename_flow(filename):
         
         if not new_name.endswith('.cforge'):
             new_name += '.cforge'
-            
+
         try:
+            # Check for name clashes (if a flow already exists with the new name)
+            if os.path.isfile(os.path.join(FLOWS_DIR, new_name)):
+                raise Exception("A flow with that name already exists.")
             os.rename(os.path.join(FLOWS_DIR, filename), os.path.join(FLOWS_DIR, new_name))
             return jsonify({"message": f"Flow renamed from {filename} to {new_name}"})
         except Exception as error:
             return jsonify({"error": str(error)}), 404
+
+@app.route('/api/getUniqueFlowFilename', methods=['PUT'])
+def get_unique_flow_name():
+    """Return a non-name-clashing filename to store in the local disk."""
+    data = request.json
+    filename = data.get("name")
+    
+    try:
+        base, ext = os.path.splitext(filename)
+        if ext is None or len(ext) == 0: 
+            ext = ".cforge"
+        unique_filename = base + ext
+        i = 1
+
+        # Find the first non-clashing filename of the form <filename>(i).cforge where i=1,2,3 etc
+        while os.path.isfile(os.path.join(FLOWS_DIR, unique_filename)):
+            unique_filename = f"{base}({i}){ext}"
+            i += 1
+        
+        return jsonify(unique_filename.replace(".cforge", ""))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
 
 def run_server(host="", port=8000, cmd_args=None):
     global HOSTNAME, PORT

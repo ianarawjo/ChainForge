@@ -713,6 +713,25 @@ export async function saveFlowToLocalFilesystem(
   }
 }
 
+export async function ensureUniqueFlowFilename(
+  filename: string,
+): Promise<string> {
+  try {
+    const response = await axios.put(
+      `${FLASK_BASE_URL}api/getUniqueFlowFilename`,
+      {
+        name: filename,
+      },
+    );
+    return response.data as string;
+  } catch (error) {
+    console.error(
+      `Error contact Flask to ensure unique filename for imported flow. Defaulting to passed filename (warning: risk this overrides an existing flow.) Error: ${(error as Error).toString()}`,
+    );
+    return filename;
+  }
+}
+
 /**
  * Queries LLM(s) with root prompt template `prompt` and prompt input variables `vars`, `n` times per prompt.
  * Soft-fails if API calls fail, and collects the errors in `errors` property of the return object.
