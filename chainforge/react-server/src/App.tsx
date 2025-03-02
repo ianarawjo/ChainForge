@@ -383,7 +383,11 @@ const App = () => {
 
   // Export flow to JSON
   const exportFlow = useCallback(
-    (flowData?: unknown, saveToLocalFilesystem?: string) => {
+    (
+      flowData?: unknown,
+      saveToLocalFilesystem?: string,
+      hideErrorAlert?: boolean,
+    ) => {
       if (!rfInstance && !flowData) return;
 
       // We first get the data of the flow, if we haven't already
@@ -406,7 +410,10 @@ const App = () => {
           // @ts-expect-error The exported RF instance is JSON compatible but TypeScript won't read it as such.
           else downloadJSON(flow_and_cache, flowFile);
         })
-        .catch(handleError);
+        .catch((err) => {
+          if (hideErrorAlert) console.error(err);
+          else handleError(err);
+        });
     },
     [rfInstance, nodes, flowFileName, handleError],
   );
@@ -414,7 +421,11 @@ const App = () => {
   // Save the current flow to localStorage for later recall. Useful to getting
   // back progress upon leaving the site / browser crash / system restart.
   const saveFlow = useCallback(
-    (rf_inst?: ReactFlowInstance, fileName?: string) => {
+    (
+      rf_inst?: ReactFlowInstance,
+      fileName?: string,
+      hideErrorAlert?: boolean,
+    ) => {
       const rf = rf_inst ?? rfInstance;
       if (!rf) return;
 
@@ -441,7 +452,9 @@ const App = () => {
         // If running locally, aattempt to save a copy of the flow to the lcoal filesystem,
         // so it shows up in the list of saved flows.
         if (IS_RUNNING_LOCALLY)
-          exportFlow(flow, fileName ?? flowFileName)?.then(onFlowSaved);
+          exportFlow(flow, fileName ?? flowFileName, hideErrorAlert)?.then(
+            onFlowSaved,
+          );
         else onFlowSaved();
       });
     },
@@ -475,7 +488,7 @@ const App = () => {
         const startTime = Date.now();
 
         // Save the flow to localStorage, and (if running locally) a copy to the filesystem
-        saveFlow(rf_inst, "__autosave");
+        saveFlow(rf_inst, "__autosave", true); // surpress error alerts when autosaving
 
         // Check how long the save took
         const duration = Date.now() - startTime;
