@@ -21,6 +21,7 @@ setup(
         "flask[async]",
         "flask_cors",
         "requests",
+        "platformdirs",
         "urllib3==1.26.6",
         "openai",
         "anthropic",

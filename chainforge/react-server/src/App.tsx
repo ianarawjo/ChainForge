@@ -86,6 +86,7 @@ import {
   fetchExampleFlow,
   fetchOpenAIEval,
   importCache,
+  saveFlowToLocalFilesystem,
 } from "./backend/backend";
 
 // Device / Browser detection
@@ -97,6 +98,7 @@ import {
   isChromium,
 } from "react-device-detect";
 import MultiEvalNode from "./MultiEvalNode";
+import FlowSidebar from "./FlowSidebar";
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -258,6 +260,9 @@ const App = () => {
     NodeJS.Timeout | undefined
   >(undefined);
 
+  // The 'name' of the current flow, to use when saving/loading
+  const [flowFileName, setFlowFileName] = useState(`flow-${Date.now()}`);
+
   // For 'share' button
   const clipboard = useClipboard({ timeout: 1500 });
   const [waitingForShare, setWaitingForShare] = useState(false);
@@ -371,6 +376,36 @@ const App = () => {
     URL.revokeObjectURL(downloadLink.href);
   };
 
+  // Export flow to JSON
+  const exportFlow = useCallback(
+    (flowData?: unknown, saveToLocalFilesystem?: boolean) => {
+      if (!rfInstance && !flowData) return;
+
+      // We first get the data of the flow, if we haven't already
+      const flow = flowData ?? rfInstance?.toObject();
+
+      // Then we grab all the relevant cache files from the backend
+      const all_node_ids = nodes.map((n) => n.id);
+      return exportCache(all_node_ids)
+        .then(function (cacheData) {
+          // Now we append the cache file data to the flow
+          const flow_and_cache = {
+            flow,
+            cache: cacheData,
+          };
+
+          // Save!
+          const flowFile = `${flowFileName}.cforge`;
+          if (saveToLocalFilesystem)
+            return saveFlowToLocalFilesystem(flow_and_cache, flowFile);
+          // @ts-expect-error The exported RF instance is JSON compatible but TypeScript won't read it as such.
+          else downloadJSON(flow_and_cache, flowFile);
+        })
+        .catch(handleError);
+    },
+    [rfInstance, nodes, flowFileName, handleError],
+  );
+
   // Save the current flow to localStorage for later recall. Useful to getting
   // back progress upon leaving the site / browser crash / system restart.
   const saveFlow = useCallback(
@@ -390,14 +425,21 @@ const App = () => {
         // the StorageCache. (This does LZ compression to save space.)
         StorageCache.saveToLocalStorage("chainforge-state");
 
-        console.log("Flow saved!");
-        setShowSaveSuccess(true);
-        setTimeout(() => {
-          setShowSaveSuccess(false);
-        }, 1000);
+        const onFlowSaved = () => {
+          console.log("Flow saved!");
+          setShowSaveSuccess(true);
+          setTimeout(() => {
+            setShowSaveSuccess(false);
+          }, 1000);
+        };
+
+        // If running locally, aattempt to save a copy of the flow to the lcoal filesystem,
+        // so it shows up in the list of saved flows.
+        if (IS_RUNNING_LOCALLY) exportFlow(flow, true)?.then(onFlowSaved);
+        else onFlowSaved();
       });
     },
-    [rfInstance],
+    [rfInstance, exportFlow],
   );
 
   // Keyboard save handler
@@ -537,30 +579,6 @@ const App = () => {
     },
     [importGlobalStateFromCache, loadFlow],
   );
-
-  // Export / Import (from JSON)
-  const exportFlow = useCallback(() => {
-    if (!rfInstance) return;
-
-    // We first get the data of the flow
-    const flow = rfInstance.toObject();
-
-    // Then we grab all the relevant cache files from the backend
-    const all_node_ids = nodes.map((n) => n.id);
-    exportCache(all_node_ids)
-      .then(function (cacheData) {
-        // Now we append the cache file data to the flow
-        const flow_and_cache = {
-          flow,
-          cache: cacheData,
-        };
-
-        // Save!
-        // @ts-expect-error The exported RF instance is JSON compatible but TypeScript won't read it as such.
-        downloadJSON(flow_and_cache, `flow-${Date.now()}.cforge`);
-      })
-      .catch(handleError);
-  }, [rfInstance, nodes, handleError]);
 
   // Import data to the cache stored on the local filesystem (in backend)
   const handleImportCache = useCallback(
@@ -1216,6 +1234,19 @@ const App = () => {
           message={confirmationDialogProps.message}
           onConfirm={confirmationDialogProps.onConfirm}
         />
+        <FlowSidebar
+          onLoadFlow={(flowData, name) => {
+            setFlowFileName(name);
+
+            try {
+              importFlowFromJSON(flowData);
+            } catch (error) {
+              console.error(error);
+              setIsLoading(false);
+              if (showAlert) showAlert(error as Error);
+            }
+          }}
+        />
 
         {/* <Modal title={'Welcome to ChainForge'} size='400px' opened={welcomeModalOpened} onClose={closeWelcomeModal} yOffset={'6vh'} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
         <Box m='lg' mt='xl'>
@@ -1227,12 +1258,12 @@ const App = () => {
 
         <div
           id="custom-controls"
-          style={{ position: "fixed", left: "10px", top: "10px", zIndex: 8 }}
+          style={{ position: "fixed", left: "44px", top: "10px", zIndex: 8 }}
         >
           <Flex>
             {addNodeMenu}
             <Button
-              onClick={exportFlow}
+              onClick={() => exportFlow()}
               size="sm"
               variant="outline"
               bg="#eee"

@@ -1,4 +1,5 @@
 import MarkdownIt from "markdown-it";
+import axios from "axios";
 import { v4 as uuid } from "uuid";
 import {
   Dict,
@@ -695,6 +696,21 @@ export async function fetchEnvironAPIKeys(): Promise<Dict<string>> {
     },
     body: "",
   }).then((res) => res.json());
+}
+
+export async function saveFlowToLocalFilesystem(
+  flowJSON: Dict,
+  filename: string,
+): Promise<void> {
+  try {
+    await axios.put(`${FLASK_BASE_URL}api/flows/${filename}`, {
+      flow: flowJSON,
+    });
+  } catch (error) {
+    throw new Error(
+      `Error saving flow with name ${filename}: ${(error as Error).toString()}`,
+    );
+  }
 }
 
 /**

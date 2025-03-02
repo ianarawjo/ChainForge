@@ -8,6 +8,7 @@ from flask_cors import CORS
 from chainforge.providers.dalai import call_dalai
 from chainforge.providers import ProviderRegistry
 import requests as py_requests
+from platformdirs import user_data_dir
 
 """ =================
     SETUP AND GLOBALS
@@ -26,6 +27,7 @@ app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
 # The cache and examples files base directories
+FLOWS_DIR = user_data_dir("chainforge")  # platform-agnostic local storage that persists outside the package install location
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
 
@@ -721,6 +723,77 @@ async def callCustomProvider():
     # Return the response
     return jsonify({'response': response})
 
+""" 
+    LOCALLY SAVED FLOWS
+"""
+@app.route('/api/flows', methods=['GET'])
+def get_flows():
+    """Return a list of all saved flows. If the directory does not exist, try to create it."""
+    os.makedirs(FLOWS_DIR, exist_ok=True)  # Creates the directory if it doesn't exist
+    flows = [f for f in os.listdir(FLOWS_DIR) if f.endswith('.cforge')]
+    return jsonify(flows)
+
+@app.route('/api/flows/<filename>', methods=['GET'])
+def get_flow(filename):
+    """Return the content of a specific flow"""
+    if not filename.endswith('.cforge'):
+        filename += '.cforge'
+    try:
+        with open(os.path.join(FLOWS_DIR, filename), 'r') as f:
+            return jsonify(json.load(f))
+    except FileNotFoundError:
+        return jsonify({"error": "Flow not found"}), 404
+
+@app.route('/api/flows/<filename>', methods=['DELETE'])
+def delete_flow(filename):
+    """Delete a flow"""
+    try:
+        os.remove(os.path.join(FLOWS_DIR, filename))
+        return jsonify({"message": f"Flow {filename} deleted successfully"})
+    except FileNotFoundError:
+        return jsonify({"error": "Flow not found"}), 404
+
+@app.route('/api/flows/<filename>', methods=['PUT'])
+def save_or_rename_flow(filename):
+    """Save or rename a flow"""
+    data = request.json
+
+    if not filename.endswith('.cforge'):
+        filename += '.cforge'
+
+    if data.get('flow'):
+        # Save flow (overwriting any existing flow file with the same name)
+        flow_data = data.get('flow')
+        
+        try:
+            filepath = os.path.join(FLOWS_DIR, filename)
+            with open(filepath, 'w') as f:
+                json.dump(flow_data, f)
+            return jsonify({"message": f"Flow '{filename}' saved!"})
+        except FileNotFoundError:
+            return jsonify({"error": f"Could not save flow '{filename}' to local filesystem. See terminal for more details."}), 404
+
+    elif data.get('newName'):
+        # Rename flow
+        new_name = data.get('newName')
+        
+        if not new_name.endswith('.cforge'):
+            new_name += '.cforge'
+            
+        try:
+            old_path = os.path.join(FLOWS_DIR, filename)
+            new_path = os.path.join(FLOWS_DIR, new_name)
+            
+            with open(old_path, 'r') as f:
+                flow_data = json.load(f)
+                
+            with open(new_path, 'w') as f:
+                json.dump(flow_data, f)
+                
+            os.remove(old_path)
+            return jsonify({"message": f"Flow renamed from {filename} to {new_name}"})
+        except FileNotFoundError:
+            return jsonify({"error": "Flow not found"}), 404
 
 def run_server(host="", port=8000, cmd_args=None):
     global HOSTNAME, PORT
