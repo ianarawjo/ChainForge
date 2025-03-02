@@ -378,7 +378,7 @@ const App = () => {
 
   // Export flow to JSON
   const exportFlow = useCallback(
-    (flowData?: unknown, saveToLocalFilesystem?: boolean) => {
+    (flowData?: unknown, saveToLocalFilesystem?: string) => {
       if (!rfInstance && !flowData) return;
 
       // We first get the data of the flow, if we haven't already
@@ -395,8 +395,8 @@ const App = () => {
           };
 
           // Save!
-          const flowFile = `${flowFileName}.cforge`;
-          if (saveToLocalFilesystem)
+          const flowFile = `${saveToLocalFilesystem ?? flowFileName}.cforge`;
+          if (saveToLocalFilesystem !== undefined)
             return saveFlowToLocalFilesystem(flow_and_cache, flowFile);
           // @ts-expect-error The exported RF instance is JSON compatible but TypeScript won't read it as such.
           else downloadJSON(flow_and_cache, flowFile);
@@ -409,7 +409,7 @@ const App = () => {
   // Save the current flow to localStorage for later recall. Useful to getting
   // back progress upon leaving the site / browser crash / system restart.
   const saveFlow = useCallback(
-    (rf_inst?: ReactFlowInstance) => {
+    (rf_inst?: ReactFlowInstance, fileName?: string) => {
       const rf = rf_inst ?? rfInstance;
       if (!rf) return;
 
@@ -435,11 +435,12 @@ const App = () => {
 
         // If running locally, aattempt to save a copy of the flow to the lcoal filesystem,
         // so it shows up in the list of saved flows.
-        if (IS_RUNNING_LOCALLY) exportFlow(flow, true)?.then(onFlowSaved);
+        if (IS_RUNNING_LOCALLY)
+          exportFlow(flow, fileName ?? flowFileName)?.then(onFlowSaved);
         else onFlowSaved();
       });
     },
-    [rfInstance, exportFlow],
+    [rfInstance, exportFlow, flowFileName],
   );
 
   // Keyboard save handler
@@ -468,8 +469,8 @@ const App = () => {
         // Start a timer, in case the saving takes a long time
         const startTime = Date.now();
 
-        // Save the flow to localStorage
-        saveFlow(rf_inst);
+        // Save the flow to localStorage, and (if running locally) a copy to the filesystem
+        saveFlow(rf_inst, "__autosave");
 
         // Check how long the save took
         const duration = Date.now() - startTime;
@@ -518,6 +519,9 @@ const App = () => {
     setEdges([]);
 
     StorageCache.clear();
+
+    // New flow filename
+    setFlowFileName(`flow-${Date.now()}`);
     if (rfInstance) rfInstance.setViewport({ x: 200, y: 80, zoom: 1 });
   }, [setNodes, setEdges, resetLLMColors, rfInstance]);
 
@@ -693,6 +697,7 @@ const App = () => {
     // Detect a special category of the example flow, and use the right loader for it:
     if (example_category === "openai-eval") {
       importFlowFromOpenAIEval(name);
+      setFlowFileName(`flow-${Date.now()}`);
       return;
     }
 
@@ -701,6 +706,7 @@ const App = () => {
       .then(function (flowJSON) {
         // We have the data, import it:
         importFlowFromJSON(flowJSON);
+        setFlowFileName(`flow-${Date.now()}`);
       })
       .catch(handleError);
   };
@@ -1235,15 +1241,18 @@ const App = () => {
           onConfirm={confirmationDialogProps.onConfirm}
         />
         <FlowSidebar
+          currentFlow={flowFileName}
           onLoadFlow={(flowData, name) => {
-            setFlowFileName(name);
+            if (name !== undefined) setFlowFileName(name);
 
-            try {
-              importFlowFromJSON(flowData);
-            } catch (error) {
-              console.error(error);
-              setIsLoading(false);
-              if (showAlert) showAlert(error as Error);
+            if (flowData !== undefined) {
+              try {
+                importFlowFromJSON(flowData);
+              } catch (error) {
+                console.error(error);
+                setIsLoading(false);
+                if (showAlert) showAlert(error as Error);
+              }
             }
           }}
         />

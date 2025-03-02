@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List
 from statistics import mean, median, stdev
+from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from chainforge.providers.dalai import call_dalai
@@ -730,8 +731,22 @@ async def callCustomProvider():
 def get_flows():
     """Return a list of all saved flows. If the directory does not exist, try to create it."""
     os.makedirs(FLOWS_DIR, exist_ok=True)  # Creates the directory if it doesn't exist
-    flows = [f for f in os.listdir(FLOWS_DIR) if f.endswith('.cforge')]
-    return jsonify(flows)
+    flows = [
+        {
+            "name": f,
+            "last_modified": datetime.fromtimestamp(os.path.getmtime(os.path.join(FLOWS_DIR, f))).isoformat()
+        }
+        for f in os.listdir(FLOWS_DIR) 
+        if f.endswith('.cforge') and f != "__autosave.cforge"  # ignore the special autosave file
+    ]
+
+    # Sort the flow files by last modified date in descending order (most recent first)
+    flows.sort(key=lambda x: x["last_modified"], reverse=True)
+
+    return jsonify({
+        "flow_dir": FLOWS_DIR,
+        "flows": flows
+    })
 
 @app.route('/api/flows/<filename>', methods=['GET'])
 def get_flow(filename):
@@ -747,6 +762,8 @@ def get_flow(filename):
 @app.route('/api/flows/<filename>', methods=['DELETE'])
 def delete_flow(filename):
     """Delete a flow"""
+    if not filename.endswith('.cforge'):
+        filename += '.cforge'
     try:
         os.remove(os.path.join(FLOWS_DIR, filename))
         return jsonify({"message": f"Flow {filename} deleted successfully"})
@@ -781,19 +798,10 @@ def save_or_rename_flow(filename):
             new_name += '.cforge'
             
         try:
-            old_path = os.path.join(FLOWS_DIR, filename)
-            new_path = os.path.join(FLOWS_DIR, new_name)
-            
-            with open(old_path, 'r') as f:
-                flow_data = json.load(f)
-                
-            with open(new_path, 'w') as f:
-                json.dump(flow_data, f)
-                
-            os.remove(old_path)
+            os.rename(os.path.join(FLOWS_DIR, filename), os.path.join(FLOWS_DIR, new_name))
             return jsonify({"message": f"Flow renamed from {filename} to {new_name}"})
-        except FileNotFoundError:
-            return jsonify({"error": "Flow not found"}), 404
+        except Exception as error:
+            return jsonify({"error": str(error)}), 404
 
 def run_server(host="", port=8000, cmd_args=None):
     global HOSTNAME, PORT

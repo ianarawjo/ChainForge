@@ -12,32 +12,39 @@ import { Dict } from "./backend/typing";
 import {
   ActionIcon,
   Box,
-  Button,
   Drawer,
   Group,
   Stack,
   TextInput,
   Text,
   Flex,
-  Header,
-  Title,
   Divider,
+  ScrollArea,
 } from "@mantine/core";
 import { FLASK_BASE_URL } from "./backend/utils";
 
-interface FlowSidebarProps {
-  onLoadFlow: (flowFile: Dict<any>, flowName: string) => void;
+interface FlowFile {
+  name: string;
+  last_modified: string;
 }
 
-const FlowSidebar: React.FC<FlowSidebarProps> = ({ onLoadFlow }) => {
+interface FlowSidebarProps {
+  /** The name of flow that's currently loaded in the front-end, if defined. */
+  currentFlow?: string;
+  onLoadFlow: (flowFile?: Dict<any>, flowName?: string) => void;
+}
+
+const FlowSidebar: React.FC<FlowSidebarProps> = ({
+  onLoadFlow,
+  currentFlow,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [savedFlows, setSavedFlows] = useState<string[]>([]);
-  // const [editingFlow, setEditingFlow] = useState(null);
+  const [savedFlows, setSavedFlows] = useState<FlowFile[]>([]);
   const [editName, setEditName] = useState<string | null>(null);
   const [newEditName, setNewEditName] = useState<string>("newName");
 
-  // // Pop-up to edit name of a flow
-  // const editTextRef = useState<RenameValueModalRef | null>(null);
+  // The name of the local directory where flows are stored
+  const [flowDir, setFlowDir] = useState<string | undefined>(undefined);
 
   // For displaying alerts
   const showAlert = useContext(AlertModalContext);
@@ -46,10 +53,13 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({ onLoadFlow }) => {
   const fetchSavedFlowList = async () => {
     try {
       const response = await axios.get(`${FLASK_BASE_URL}api/flows`);
+      const flows = response.data.flows as FlowFile[];
+      setFlowDir(response.data.flow_dir);
       setSavedFlows(
-        response.data.map((filename: string) =>
-          filename.replace(".cforge", ""),
-        ),
+        flows.map((item) => ({
+          name: item.name.replace(".cforge", ""),
+          last_modified: new Date(item.last_modified).toLocaleString(),
+        })),
       );
     } catch (error) {
       console.error("Error fetching saved flows:", error);
@@ -118,15 +128,28 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({ onLoadFlow }) => {
   ) => {
     event?.stopPropagation(); // Prevent triggering the parent click
     if (newFilename && newFilename !== oldFilename) {
-      try {
-        await axios.put(`${FLASK_BASE_URL}api/flows/${oldFilename}`, {
+      await axios
+        .put(`${FLASK_BASE_URL}api/flows/${oldFilename}`, {
           newName: newFilename,
+        })
+        .then(() => {
+          onLoadFlow(undefined, newFilename); // Tell the parent that the filename has changed. This won't replace the flow.
+          fetchSavedFlowList(); // Refresh the list
+        })
+        .catch((error) => {
+          let msg: string;
+          if (error.response) {
+            msg = `404 Error: ${error.response.status === 404 ? error.response.data?.error ?? "Not Found" : error.response.data}`;
+          } else if (error.request) {
+            // Request was made but no response was received
+            msg = "No response received from server.";
+          } else {
+            // Something else happened in setting up the request
+            msg = `Unknown Error: ${error.message}`;
+          }
+          console.error(msg);
+          if (showAlert) showAlert(msg);
         });
-        fetchSavedFlowList(); // Refresh the list
-      } catch (error) {
-        console.error(`Error renaming flow ${oldFilename}:`, error);
-        if (showAlert) showAlert(error as Error);
-      }
     }
 
     // No longer editing
@@ -166,27 +189,21 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({ onLoadFlow }) => {
       <Drawer
         opened={isOpen}
         onClose={() => setIsOpen(false)}
+        title="Saved Flows"
         position="left"
         size="250px" // Adjust sidebar width
         padding="md"
-        withCloseButton={false} // Hide default close button
+        withCloseButton={true}
+        scrollAreaComponent={ScrollArea.Autosize}
       >
-        <Stack spacing="4px" mt="0px">
-          <Flex justify="space-between">
-            <Title order={4} align="center" color="#333">
-              Saved Flows
-            </Title>
-            <ActionIcon onClick={() => setIsOpen(false)}>
-              <IconX />
-            </ActionIcon>
-          </Flex>
-          <Divider />
+        <Divider />
+        <Stack spacing="4px" mt="0px" mb="120px">
           {savedFlows.length === 0 ? (
             <Text color="dimmed">No saved flows found</Text>
           ) : (
             savedFlows.map((flow) => (
               <Box
-                key={flow}
+                key={flow.name}
                 p="6px"
                 sx={(theme) => ({
                   borderRadius: theme.radius.sm,
@@ -199,10 +216,10 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({ onLoadFlow }) => {
                   },
                 })}
                 onClick={() => {
-                  if (editName !== flow) handleLoadFlow(flow);
+                  if (editName !== flow.name) handleLoadFlow(flow.name);
                 }}
               >
-                {editName === flow ? (
+                {editName === flow.name ? (
                   <Group spacing="xs">
                     <TextInput
                       value={newEditName}
@@ -221,32 +238,72 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({ onLoadFlow }) => {
                     </ActionIcon>
                   </Group>
                 ) : (
-                  <Flex
-                    justify="space-between"
-                    align="center"
-                    gap="0px"
-                    h="auto"
-                  >
-                    <Text size="sm">{flow}</Text>
-                    <ActionIcon
-                      color="blue"
-                      onClick={(e) => handleEditClick(flow, e)}
+                  <>
+                    <Flex
+                      justify="space-between"
+                      align="center"
+                      gap="0px"
+                      h="auto"
                     >
-                      <IconEdit size={18} />
-                    </ActionIcon>
-                    <ActionIcon
-                      color="red"
-                      onClick={(e) => handleDeleteFlow(flow, e)}
-                    >
-                      <IconTrash size={18} />
-                    </ActionIcon>
-                  </Flex>
+                      {currentFlow === flow.name ? (
+                        <Box
+                          ml="-15px"
+                          mr="5px"
+                          bg="green"
+                          w="10px"
+                          h="10px"
+                          style={{ borderRadius: "50%" }}
+                        ></Box>
+                      ) : (
+                        <></>
+                      )}
+                      <Text size="sm" mr="auto">
+                        {flow.name}
+                      </Text>
+                      <Flex gap="0px">
+                        <ActionIcon
+                          color="blue"
+                          onClick={(e) => handleEditClick(flow.name, e)}
+                        >
+                          <IconEdit size={18} />
+                        </ActionIcon>
+                        <ActionIcon
+                          color="red"
+                          onClick={(e) => handleDeleteFlow(flow.name, e)}
+                        >
+                          <IconTrash size={18} />
+                        </ActionIcon>
+                      </Flex>
+                    </Flex>
+                    <Text size="xs" color="gray">
+                      {flow.last_modified}
+                    </Text>
+                  </>
                 )}
                 <Divider />
               </Box>
             ))
           )}
         </Stack>
+
+        {/* Sticky footer */}
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            background: "white",
+            padding: "10px",
+            borderTop: "1px solid #ddd",
+          }}
+        >
+          {flowDir ? (
+            <Text size="xs" color="gray">
+              Local flows are saved at: {flowDir}
+            </Text>
+          ) : (
+            <></>
+          )}
+        </div>
       </Drawer>
     </div>
   );
