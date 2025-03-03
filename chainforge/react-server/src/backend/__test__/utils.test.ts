@@ -9,7 +9,7 @@ import {
   extract_responses,
   merge_response_objs,
 } from "../utils";
-import { NativeLLM } from "../models";
+import { LLMProvider, NativeLLM } from "../models";
 import { expect, test } from "@jest/globals";
 import { RawLLMResponseObject } from "../typing";
 
@@ -17,7 +17,6 @@ test("merge response objects", () => {
   // Merging two response objects
   const A: RawLLMResponseObject = {
     responses: ["x", "y", "z"],
-    raw_response: ["x", "y", "z"],
     prompt: "this is a test",
     query: {},
     llm: NativeLLM.OpenAI_ChatGPT,
@@ -27,7 +26,6 @@ test("merge response objects", () => {
   };
   const B: RawLLMResponseObject = {
     responses: ["a", "b", "c"],
-    raw_response: { B: "B" },
     prompt: "this is a test 2",
     query: {},
     llm: NativeLLM.OpenAI_ChatGPT,
@@ -40,7 +38,6 @@ test("merge response objects", () => {
   expect(JSON.stringify(C.responses)).toBe(
     JSON.stringify(["x", "y", "z", "a", "b", "c"]),
   );
-  expect(C.raw_response).toHaveLength(4);
   expect(Object.keys(C.vars)).toHaveLength(2);
   expect(Object.keys(C.vars)).toContain("varB1");
   expect(Object.keys(C.metavars)).toHaveLength(1);
@@ -68,7 +65,11 @@ test("openai chat completions", async () => {
   expect(query).toHaveProperty("temperature");
 
   // Extract responses, check their type
-  const resps = extract_responses(response, NativeLLM.OpenAI_ChatGPT);
+  const resps = extract_responses(
+    response,
+    NativeLLM.OpenAI_ChatGPT,
+    LLMProvider.OpenAI,
+  );
   expect(resps).toHaveLength(2);
   expect(typeof resps[0]).toBe("string");
 }, 20000);
@@ -86,7 +87,11 @@ test("openai text completions", async () => {
   expect(query).toHaveProperty("n");
 
   // Extract responses, check their type
-  const resps = extract_responses(response, NativeLLM.OpenAI_Davinci003);
+  const resps = extract_responses(
+    response,
+    NativeLLM.OpenAI_Davinci003,
+    LLMProvider.OpenAI,
+  );
   expect(resps).toHaveLength(2);
   expect(typeof resps[0]).toBe("string");
 }, 20000);
@@ -104,7 +109,11 @@ test("anthropic models", async () => {
   expect(query).toHaveProperty("max_tokens_to_sample");
 
   // Extract responses, check their type
-  const resps = extract_responses(response, NativeLLM.Claude_v1);
+  const resps = extract_responses(
+    response,
+    NativeLLM.Claude_v1,
+    LLMProvider.Anthropic,
+  );
   expect(resps).toHaveLength(1);
   expect(typeof resps[0]).toBe("string");
 }, 20000);
@@ -121,7 +130,11 @@ test("google palm2 models", async () => {
   expect(query).toHaveProperty("candidateCount");
 
   // Extract responses, check their type
-  let resps = extract_responses(response, NativeLLM.PaLM2_Chat_Bison);
+  let resps = extract_responses(
+    response,
+    NativeLLM.PaLM2_Chat_Bison,
+    LLMProvider.Google,
+  );
   expect(resps).toHaveLength(3);
   expect(typeof resps[0]).toBe("string");
   console.log(JSON.stringify(resps));
@@ -137,7 +150,11 @@ test("google palm2 models", async () => {
   expect(query).toHaveProperty("maxOutputTokens");
 
   // Extract responses, check their type
-  resps = extract_responses(response, NativeLLM.PaLM2_Chat_Bison);
+  resps = extract_responses(
+    response,
+    NativeLLM.PaLM2_Chat_Bison,
+    LLMProvider.Google,
+  );
   expect(resps).toHaveLength(3);
   expect(typeof resps[0]).toBe("string");
   console.log(JSON.stringify(resps));
@@ -153,7 +170,11 @@ test("aleph alpha model", async () => {
   expect(response).toHaveLength(3);
 
   // Extract responses, check their type
-  let resps = extract_responses(response, NativeLLM.Aleph_Alpha_Luminous_Base);
+  let resps = extract_responses(
+    response,
+    NativeLLM.Aleph_Alpha_Luminous_Base,
+    LLMProvider.Aleph_Alpha,
+  );
   expect(resps).toHaveLength(3);
   expect(typeof resps[0]).toBe("string");
   console.log(JSON.stringify(resps));
@@ -169,7 +190,11 @@ test("aleph alpha model", async () => {
   expect(response).toHaveLength(3);
 
   // Extract responses, check their type
-  resps = extract_responses(response, NativeLLM.Aleph_Alpha_Luminous_Base);
+  resps = extract_responses(
+    response,
+    NativeLLM.Aleph_Alpha_Luminous_Base,
+    LLMProvider.Aleph_Alpha,
+  );
   expect(resps).toHaveLength(3);
   expect(typeof resps[0]).toBe("string");
   console.log(JSON.stringify(resps));

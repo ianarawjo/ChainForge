@@ -2,11 +2,11 @@
  * @jest-environment node
  */
 import { PromptPipeline } from "../query";
-import { LLM, NativeLLM } from "../models";
+import { LLM, LLMProvider, NativeLLM } from "../models";
 import { expect, test } from "@jest/globals";
 import { LLMResponseError, RawLLMResponseObject } from "../typing";
 
-async function prompt_model(model: LLM): Promise<void> {
+async function prompt_model(model: LLM, provider: LLMProvider): Promise<void> {
   const pipeline = new PromptPipeline(
     "What is the oldest {thing} in the world? Keep your answer brief.",
     model.toString(),
@@ -15,6 +15,7 @@ async function prompt_model(model: LLM): Promise<void> {
   for await (const response of pipeline.gen_responses(
     { thing: ["bar", "tree", "book"] },
     model,
+    provider,
     1,
     1.0,
   )) {
@@ -35,6 +36,7 @@ async function prompt_model(model: LLM): Promise<void> {
   for await (const response of pipeline.gen_responses(
     { thing: ["bar", "tree", "book"] },
     model,
+    provider,
     2,
     1.0,
   )) {
@@ -54,7 +56,6 @@ async function prompt_model(model: LLM): Promise<void> {
       `Prompt: ${prompt}\nResponses: ${JSON.stringify(resp_obj.responses)}`,
     );
     expect(resp_obj.responses).toHaveLength(2);
-    expect(resp_obj.raw_response).toHaveLength(2); // these should've been merged
   });
   expect(Object.keys(cache)).toHaveLength(3); // still expect 3 prompts
 
@@ -63,6 +64,7 @@ async function prompt_model(model: LLM): Promise<void> {
   for await (const response of pipeline.gen_responses(
     { thing: ["bar", "tree", "book"] },
     model,
+    provider,
     2,
     1.0,
   )) {
@@ -79,20 +81,19 @@ async function prompt_model(model: LLM): Promise<void> {
   Object.entries(cache).forEach(([prompt, response]) => {
     const resp_obj = Array.isArray(response) ? response[0] : response;
     expect(resp_obj.responses).toHaveLength(2);
-    expect(resp_obj.raw_response).toHaveLength(2); // these should've been merged
   });
   expect(Object.keys(cache)).toHaveLength(3); // still expect 3 prompts
 }
 
 test("basic prompt pipeline with chatgpt", async () => {
   // Setup a simple pipeline with a prompt template, 1 variable and 3 input values
-  await prompt_model(NativeLLM.OpenAI_ChatGPT);
+  await prompt_model(NativeLLM.OpenAI_ChatGPT, LLMProvider.OpenAI);
 }, 20000);
 
 test("basic prompt pipeline with anthropic", async () => {
-  await prompt_model(NativeLLM.Claude_v1);
+  await prompt_model(NativeLLM.Claude_v1, LLMProvider.Anthropic);
 }, 40000);
 
 test("basic prompt pipeline with google palm2", async () => {
-  await prompt_model(NativeLLM.PaLM2_Chat_Bison);
+  await prompt_model(NativeLLM.PaLM2_Chat_Bison, LLMProvider.Google);
 }, 40000);

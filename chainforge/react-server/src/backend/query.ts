@@ -1,6 +1,6 @@
 import { v4 as uuid } from "uuid";
 import { PromptTemplate, PromptPermutationGenerator } from "./template";
-import { LLM, NativeLLM, RateLimiter } from "./models";
+import { LLM, LLMProvider, NativeLLM, RateLimiter } from "./models";
 import {
   Dict,
   LLMResponseError,
@@ -21,7 +21,7 @@ import {
   repairCachedResponses,
   compressBase64Image,
 } from "./utils";
-import StorageCache from "./cache";
+import StorageCache, { StringLookup } from "./cache";
 import { UserForcedPrematureExit } from "./errors";
 import { typecastSettingsDict } from "../ModelSettingSchemas";
 
@@ -75,6 +75,7 @@ export class PromptPipeline {
   private async collect_LLM_response(
     result: _IntermediateLLMResponseType,
     llm: LLM,
+    provider: LLMProvider,
     cached_responses: Dict,
   ): Promise<RawLLMResponseObject | LLMResponseError> {
     const {
@@ -97,7 +98,7 @@ export class PromptPipeline {
     const metavars = prompt.metavars;
 
     // Extract and format the responses into `LLMResponseData`
-    const extracted_resps = extract_responses(response, llm);
+    const extracted_resps = extract_responses(response, llm, provider);
 
     // Detect any images and downrez them if the user has approved of automatic compression.
     // This saves a lot of performance and storage. We also need to disable storing the raw response here, to save space.
@@ -130,7 +131,6 @@ export class PromptPipeline {
       query: query ?? {},
       uid: uuid(),
       responses: extracted_resps,
-      raw_response: contains_imgs ? {} : response ?? {}, // don't double-store images
       llm,
       vars: mergeDicts(info, chat_history?.fill_history) ?? {},
       metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
@@ -139,6 +139,9 @@ export class PromptPipeline {
     // Carry over the chat history if present:
     if (chat_history !== undefined)
       resp_obj.chat_history = chat_history.messages;
+
+    // Hash strings present in the response object, to improve performance
+    StringLookup.internDict(resp_obj, true);
 
     // Merge the response obj with the past one, if necessary
     if (past_resp_obj)
@@ -149,14 +152,14 @@ export class PromptPipeline {
 
     // Save the current state of cache'd responses to a JSON file
     // NOTE: We do this to save money --in case something breaks between calls, can ensure we got the data!
-    if (!(resp_obj.prompt in cached_responses))
-      cached_responses[resp_obj.prompt] = [];
-    else if (!Array.isArray(cached_responses[resp_obj.prompt]))
-      cached_responses[resp_obj.prompt] = [cached_responses[resp_obj.prompt]];
+    const prompt_str = prompt.toString();
+    if (!(prompt_str in cached_responses)) cached_responses[prompt_str] = [];
+    else if (!Array.isArray(cached_responses[prompt_str]))
+      cached_responses[prompt_str] = [cached_responses[prompt_str]];
 
     if (past_resp_obj_cache_idx !== undefined && past_resp_obj_cache_idx > -1)
-      cached_responses[resp_obj.prompt][past_resp_obj_cache_idx] = resp_obj;
-    else cached_responses[resp_obj.prompt].push(resp_obj);
+      cached_responses[prompt_str][past_resp_obj_cache_idx] = resp_obj;
+    else cached_responses[prompt_str].push(resp_obj);
 
     this._cache_responses(cached_responses);
 
@@ -183,6 +186,7 @@ export class PromptPipeline {
 
    * @param vars The 'vars' dict to fill variables in the root prompt template. For instance, for 'Who is {person}?', vars might = { person: ['TJ', 'MJ', 'AD'] }.
    * @param llm The specific LLM model to call. See the LLM enum for supported models.
+   * @param provider The specific LLM provider to call. See the LLMProvider enum for supported providers.
    * @param n How many generations per prompt sent to the LLM.
    * @param temperature The temperature to use when querying the LLM.
    * @param llm_params Optional. The model-specific settings to pass into the LLM API call. Varies by LLM. 
@@ -195,6 +199,7 @@ export class PromptPipeline {
   async *gen_responses(
     vars: Dict,
     llm: LLM,
+    provider: LLMProvider,
     n = 1,
     temperature = 1.0,
     llm_params?: Dict,
@@ -284,11 +289,10 @@ export class PromptPipeline {
         if (cached_resp && extracted_resps.length >= n) {
           // console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
           const resp: RawLLMResponseObject = {
-            prompt: prompt_str,
+            prompt: cached_resp.prompt,
             query: cached_resp.query,
             uid: cached_resp.uid ?? uuid(),
             responses: extracted_resps.slice(0, n),
-            raw_response: cached_resp.raw_response,
             llm: cached_resp.llm || NativeLLM.OpenAI_ChatGPT,
             // We want to use the new info, since 'vars' could have changed even though
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
@@ -297,6 +301,7 @@ export class PromptPipeline {
           };
           if (chat_history !== undefined)
             resp.chat_history = chat_history.messages;
+
           yield resp;
           continue;
         }
@@ -305,6 +310,7 @@ export class PromptPipeline {
         tasks.push(
           this._prompt_llm(
             llm,
+            provider,
             prompt,
             n,
             temperature,
@@ -319,7 +325,9 @@ export class PromptPipeline {
             },
             chat_history,
             should_cancel,
-          ).then((result) => this.collect_LLM_response(result, llm, responses)),
+          ).then((result) =>
+            this.collect_LLM_response(result, llm, provider, responses),
+          ),
         );
       }
     }
@@ -358,6 +366,7 @@ export class PromptPipeline {
 
   async _prompt_llm(
     llm: LLM,
+    provider: LLMProvider,
     prompt: PromptTemplate,
     n = 1,
     temperature = 1.0,
@@ -393,9 +402,11 @@ export class PromptPipeline {
       //       It's not perfect, but it's simpler than throttling at the call-specific level.
       [query, response] = await RateLimiter.throttle(
         llm,
+        provider,
         () =>
           call_llm(
             llm,
+            provider,
             prompt.toString(),
             n,
             temperature,

@@ -52,6 +52,7 @@ import {
   QueryProgress,
   LLMResponse,
   TemplateVarInfo,
+  StringOrHash,
 } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
@@ -62,6 +63,7 @@ import {
   grabResponses,
   queryLLM,
 } from "./backend/backend";
+import { StringLookup } from "./backend/cache";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -409,24 +411,36 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     [setTemplateVars, templateVars, pullInputData, id],
   );
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = event.target.value;
+  const handleInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = event.target.value;
+      const updateStatus =
+        promptTextOnLastRun !== null &&
+        status !== Status.WARNING &&
+        value !== promptTextOnLastRun;
 
-    // Store prompt text
-    setPromptText(value);
-    data.prompt = value;
+      // Store prompt text
+      data.prompt = value;
 
-    // Update status icon, if need be:
-    if (
-      promptTextOnLastRun !== null &&
-      status !== Status.WARNING &&
-      value !== promptTextOnLastRun
-    )
-      setStatus(Status.WARNING);
+      // Debounce the global state change to happen only after 500ms, as it forces a costly rerender:
+      debounce((_value, _updateStatus) => {
+        setPromptText(_value);
+        setDataPropsForNode(id, { prompt: _value });
+        refreshTemplateHooks(_value);
+        if (_updateStatus) setStatus(Status.WARNING);
+      }, 300)(value, updateStatus);
 
-    // Debounce refreshing the template hooks so we don't annoy the user
-    debounce((_value) => refreshTemplateHooks(_value), 500)(value);
-  };
+      // Debounce refreshing the template hooks so we don't annoy the user
+      // debounce((_value) => refreshTemplateHooks(_value), 500)(value);
+    },
+    [
+      promptTextOnLastRun,
+      status,
+      refreshTemplateHooks,
+      setDataPropsForNode,
+      debounceTimeoutRef,
+    ],
+  );
 
   // On initialization
   useEffect(() => {
@@ -465,7 +479,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
   // Chat nodes only. Pulls input data attached to the 'past conversations' handle.
   // Returns a tuple (past_chat_llms, __past_chats), where both are undefined if nothing is connected.
-  const pullInputChats = () => {
+  const pullInputChats = useCallback(() => {
     const pulled_data = pullInputData(["__past_chats"], id);
     if (!("__past_chats" in pulled_data)) return [undefined, undefined];
 
@@ -487,6 +501,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         // Add to unique LLMs list, if necessary
         if (
           typeof info?.llm !== "string" &&
+          typeof info?.llm !== "number" &&
           info?.llm?.name !== undefined &&
           !llm_names.has(info.llm.name)
         ) {
@@ -497,8 +512,8 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         // Create revised chat_history on the TemplateVarInfo object,
         // with the prompt and text of the pulled data as the 2nd-to-last, and last, messages:
         const last_messages = [
-          { role: "user", content: info.prompt ?? "" },
-          { role: "assistant", content: info.text ?? "" },
+          { role: "user", content: StringLookup.get(info.prompt) ?? "" },
+          { role: "assistant", content: StringLookup.get(info.text) ?? "" },
         ];
         let updated_chat_hist =
           info.chat_history !== undefined
@@ -508,6 +523,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         // Append any present system message retroactively as the first message in the chat history:
         if (
           typeof info?.llm !== "string" &&
+          typeof info?.llm !== "number" &&
           typeof info?.llm?.settings?.system_msg === "string" &&
           updated_chat_hist[0].role !== "system"
         )
@@ -520,7 +536,10 @@ const PromptNode: React.FC<PromptNodeProps> = ({
           messages: updated_chat_hist,
           fill_history: info.fill_history ?? {},
           metavars: info.metavars ?? {},
-          llm: typeof info?.llm === "string" ? info.llm : info?.llm?.name,
+          llm:
+            typeof info?.llm === "string" || typeof info?.llm === "number"
+              ? StringLookup.get(info.llm) ?? "(LLM lookup failed)"
+              : StringLookup.get(info?.llm?.name),
           uid: uuid(),
         };
       },
@@ -528,36 +547,46 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
     // Returns [list of LLM specs, list of ChatHistoryInfo]
     return [past_chat_llms, past_chats];
-  };
+  }, [id, pullInputData]);
 
   // Ask the backend how many responses it needs to collect, given the input data:
-  const fetchResponseCounts = (
-    prompt: string,
-    vars: Dict,
-    llms: (string | Dict)[],
-    chat_histories?:
-      | (ChatHistoryInfo | undefined)[]
-      | Dict<(ChatHistoryInfo | undefined)[]>,
-  ) => {
-    return countQueries(
-      prompt,
-      vars,
-      llms,
+  const fetchResponseCounts = useCallback(
+    (
+      prompt: string,
+      vars: Dict,
+      llms: (StringOrHash | LLMSpec)[],
+      chat_histories?:
+        | (ChatHistoryInfo | undefined)[]
+        | Dict<(ChatHistoryInfo | undefined)[]>,
+    ) => {
+      return countQueries(
+        prompt,
+        vars,
+        llms,
+        numGenerations,
+        chat_histories,
+        id,
+        node_type !== "chat" ? showContToggle && contWithPriorLLMs : undefined,
+      ).then(function (results) {
+        return [results.counts, results.total_num_responses] as [
+          Dict<Dict<number>>,
+          Dict<number>,
+        ];
+      });
+    },
+    [
+      countQueries,
       numGenerations,
-      chat_histories,
+      showContToggle,
+      contWithPriorLLMs,
       id,
-      node_type !== "chat" ? showContToggle && contWithPriorLLMs : undefined,
-    ).then(function (results) {
-      return [results.counts, results.total_num_responses] as [
-        Dict<Dict<number>>,
-        Dict<number>,
-      ];
-    });
-  };
+      node_type,
+    ],
+  );
 
   // On hover over the 'info' button, to preview the prompts that will be sent out
   const [promptPreviews, setPromptPreviews] = useState<PromptInfo[]>([]);
-  const handlePreviewHover = () => {
+  const handlePreviewHover = useCallback(() => {
     // Pull input data and prompt
     try {
       const pulled_vars = pullInputData(templateVars, id);
@@ -578,10 +607,18 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       console.error(err);
       setPromptPreviews([]);
     }
-  };
+  }, [
+    pullInputData,
+    templateVars,
+    id,
+    updateShowContToggle,
+    generatePrompts,
+    promptText,
+    pullInputChats,
+  ]);
 
   // On hover over the 'Run' button, request how many responses are required and update the tooltip. Soft fails.
-  const handleRunHover = () => {
+  const handleRunHover = useCallback(() => {
     // Check if the PromptNode is not already waiting for a response...
     if (status === "loading") {
       setRunTooltip("Fetching responses...");
@@ -712,9 +749,17 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         console.error(err); // soft fail
         setRunTooltip("Could not reach backend server.");
       });
-  };
+  }, [
+    status,
+    llmItemsCurrState,
+    pullInputChats,
+    contWithPriorLLMs,
+    pullInputData,
+    fetchResponseCounts,
+    promptText,
+  ]);
 
-  const handleRunClick = () => {
+  const handleRunClick = useCallback(() => {
     // Go through all template hooks (if any) and check they're connected:
     const is_fully_connected = templateVars.every((varname) => {
       // Check that some edge has, as its target, this node and its template hook:
@@ -945,7 +990,12 @@ Soft failing by replacing undefined with empty strings.`,
                 resp_obj.responses.map((r) => {
                   // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
                   const o: TemplateVarInfo = {
-                    text: typeof r === "string" ? escapeBraces(r) : undefined,
+                    text:
+                      typeof r === "number"
+                        ? escapeBraces(StringLookup.get(r)!)
+                        : typeof r === "string"
+                          ? escapeBraces(r)
+                          : undefined,
                     image:
                       typeof r === "object" && r.t === "img" ? r.d : undefined,
                     prompt: resp_obj.prompt,
@@ -955,6 +1005,11 @@ Soft failing by replacing undefined with empty strings.`,
                     ),
                     uid: resp_obj.uid,
                   };
+
+                  o.text =
+                    o.text !== undefined
+                      ? StringLookup.intern(o.text as string)
+                      : undefined;
 
                   // Carry over any metavars
                   o.metavars = resp_obj.metavars ?? {};
@@ -968,9 +1023,11 @@ Soft failing by replacing undefined with empty strings.`,
 
                   // Add a meta var to keep track of which LLM produced this response
                   o.metavars[llm_metavar_key] =
-                    typeof resp_obj.llm === "string"
-                      ? resp_obj.llm
+                    typeof resp_obj.llm === "string" ||
+                    typeof resp_obj.llm === "number"
+                      ? StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)"
                       : resp_obj.llm.name;
+
                   return o;
                 }),
               )
@@ -1039,7 +1096,31 @@ Soft failing by replacing undefined with empty strings.`,
       .then(open_progress_listener)
       .then(query_llms)
       .catch(rejected);
-  };
+  }, [
+    templateVars,
+    triggerAlert,
+    pullInputChats,
+    pullInputData,
+    updateShowContToggle,
+    llmItemsCurrState,
+    contWithPriorLLMs,
+    showAlert,
+    fetchResponseCounts,
+    numGenerations,
+    promptText,
+    apiKeys,
+    showContToggle,
+    cancelId,
+    refreshCancelId,
+    node_type,
+    id,
+    setDataPropsForNode,
+    llmListContainer,
+    responsesWillChange,
+    showDrawer,
+    pingOutputNodes,
+    debounceTimeoutRef,
+  ]);
 
   const handleStopClick = useCallback(() => {
     CancelTracker.add(cancelId);
@@ -1057,7 +1138,7 @@ Soft failing by replacing undefined with empty strings.`,
     setStatus(Status.NONE);
     setContChatToggleDisabled(false);
     llmListContainer?.current?.resetLLMItemsProgress();
-  }, [cancelId, refreshCancelId]);
+  }, [cancelId, refreshCancelId, debounceTimeoutRef]);
 
   const handleNumGenChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {

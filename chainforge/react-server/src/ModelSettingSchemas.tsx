@@ -156,11 +156,11 @@ const ChatGPTSettings: ModelSettingsDict = {
           "If specified, the OpenAI API will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed.",
         allow_empty_str: true,
       },
-      max_tokens: {
+      max_completion_tokens: {
         type: "integer",
-        title: "max_tokens",
+        title: "max_completion_tokens",
         description:
-          "The maximum number of tokens to generate in the chat completion. (The total length of input tokens and generated tokens is limited by the model's context length.)",
+          "An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens.",
       },
       presence_penalty: {
         type: "number",
@@ -198,6 +198,7 @@ const ChatGPTSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to gpt-3.5-turbo.",
+      "ui:widget": "datalist",
     },
     system_msg: {
       "ui:widget": "textarea",
@@ -243,7 +244,7 @@ const ChatGPTSettings: ModelSettingsDict = {
       "ui:widget": "textarea",
       "ui:help": "Defaults to empty.",
     },
-    max_tokens: {
+    max_completion_tokens: {
       "ui:help": "Defaults to infinity.",
     },
     seed: {
@@ -435,6 +436,7 @@ const DeepSeekSettings: ModelSettingsDict = {
     ...ChatGPTSettings.uiSchema,
     model: {
       "ui:help": "Defaults to deepseek-chat.",
+      "ui:widget": "datalist",
     },
   },
   postprocessors: ChatGPTSettings.postprocessors,
@@ -495,6 +497,7 @@ const DalleSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to dalle-2.",
+      "ui:widget": "datalist",
     },
     size: {
       "ui:help": "Defaults to 256x256.",
@@ -656,6 +659,7 @@ const ClaudeSettings: ModelSettingsDict = {
     model: {
       "ui:help":
         "Defaults to claude-2.1. Note that Anthropic models are subject to change. Model names prior to Claude 2, including 100k context window, are no longer listed on the Anthropic site, so they may or may not work.",
+      "ui:widget": "datalist",
     },
     system_msg: {
       "ui:widget": "textarea",
@@ -817,6 +821,7 @@ const PaLM2Settings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to gemini-pro.",
+      "ui:widget": "datalist",
     },
     system_msg: {
       "ui:widget": "textarea",
@@ -967,6 +972,7 @@ const DalaiModelSettings: ModelSettingsDict = {
     model: {
       "ui:help":
         "NOTE: You must have installed the selected model and have Dalai be running and accessible on the local environment with which you are running the ChainForge server.",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 0.5.",
@@ -1092,13 +1098,6 @@ const HuggingFaceTextInferenceSettings: ModelSettingsDict = {
           "bigcode/starcoder": "starcoder",
         },
       },
-      custom_model: {
-        type: "string",
-        title: "Custom HF model endpoint",
-        description:
-          "(Only used if you select 'Other' above.) Enter the HuggingFace id of the text generation model you wish to query via the inference API. Alternatively, if you have hosted a model on HF Inference Endpoints, you can enter the full URL of the endpoint here.",
-        default: "",
-      },
       model_type: {
         type: "string",
         title: "Model Type (Text or Chat)",
@@ -1188,6 +1187,7 @@ const HuggingFaceTextInferenceSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to Falcon.7B.",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -1330,6 +1330,7 @@ const AlephAlphaLuminousSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to Luminous Base.",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 0.0.",
@@ -1682,6 +1683,7 @@ const BedrockClaudeSettings: ModelSettingsDict = {
     model: {
       "ui:help":
         "Defaults to claude-2. Note that Anthropic models in particular are subject to change. Model names prior to Claude 2, including 100k context window, are no longer listed on the Anthropic site, so they may or may not work.",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -1815,7 +1817,8 @@ const BedrockJurassic2Settings: ModelSettingsDict = {
       "ui:autofocus": true,
     },
     model: {
-      "ui:help": "Defaults to Jurassic 2 Ultra. ",
+      "ui:help": "Defaults to Jurassic 2 Ultra.",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -1917,6 +1920,7 @@ const BedrockTitanSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to Titan Large",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -2027,6 +2031,7 @@ const BedrockCommandTextSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to Command Text",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -2136,6 +2141,7 @@ const MistralSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to Mistral",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -2254,6 +2260,7 @@ const BedrockLlama2ChatSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help": "Defaults to LlamaChat 13B",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -2426,7 +2433,8 @@ export const TogetherChatSettings: ModelSettingsDict = {
       "ui:autofocus": true,
     },
     model: {
-      "ui:help": "Defaults to LlamaChat 13B",
+      "ui:help": "Defaults to Llama-3.3-70B",
+      "ui:widget": "datalist",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
@@ -2503,6 +2511,35 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   together: TogetherChatSettings,
   deepseek: DeepSeekSettings,
 };
+
+// A lookup that converts the base_model names into LLMProviders.
+// Used for backwards compatibility.
+// TODO in future: Deprecate base_model and migrate fully to using LLMProvider type throughout.
+export function baseModelToProvider(base_model: string): LLMProvider {
+  const lookup: Record<string, LLMProvider> = {
+    "gpt-3.5-turbo": LLMProvider.OpenAI,
+    "gpt-4": LLMProvider.OpenAI,
+    "dall-e": LLMProvider.OpenAI,
+    "claude-v1": LLMProvider.Anthropic,
+    "palm2-bison": LLMProvider.Google,
+    dalai: LLMProvider.Dalai,
+    "azure-openai": LLMProvider.Azure_OpenAI,
+    hf: LLMProvider.HuggingFace,
+    "luminous-base": LLMProvider.Aleph_Alpha,
+    ollama: LLMProvider.Ollama,
+    "br.anthropic.claude": LLMProvider.Bedrock,
+    "br.ai21.j2": LLMProvider.Bedrock,
+    "br.amazon.titan": LLMProvider.Bedrock,
+    "br.cohere.command": LLMProvider.Bedrock,
+    "br.mistral.mistral": LLMProvider.Bedrock,
+    "br.mistral.mixtral": LLMProvider.Bedrock,
+    "br.meta.llama2": LLMProvider.Bedrock,
+    "br.meta.llama3": LLMProvider.Bedrock,
+    together: LLMProvider.Together,
+    deepseek: LLMProvider.DeepSeek,
+  };
+  return lookup[base_model] ?? LLMProvider.Custom;
+}
 
 export function getSettingsSchemaForLLM(
   llm_name: string,

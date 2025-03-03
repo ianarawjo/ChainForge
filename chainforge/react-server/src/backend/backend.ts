@@ -1,4 +1,5 @@
 import MarkdownIt from "markdown-it";
+import axios from "axios";
 import { v4 as uuid } from "uuid";
 import {
   Dict,
@@ -12,11 +13,12 @@ import {
   EvaluationScore,
   LLMSpec,
   EvaluatedResponsesResults,
-  TemplateVarInfo,
   CustomLLMProviderSpec,
   LLMResponseData,
+  PromptVarType,
+  StringOrHash,
 } from "./typing";
-import { LLM, getEnumName } from "./models";
+import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
 import {
   APP_IS_RUNNING_LOCALLY,
   set_api_keys,
@@ -26,8 +28,9 @@ import {
   areEqualVarsDicts,
   repairCachedResponses,
   deepcopy,
+  llmResponseDataToString,
 } from "./utils";
-import StorageCache from "./cache";
+import StorageCache, { StringLookup } from "./cache";
 import { PromptPipeline } from "./query";
 import {
   PromptPermutationGenerator,
@@ -38,6 +41,7 @@ import {
 import { UserForcedPrematureExit } from "./errors";
 import CancelTracker from "./canceler";
 import { execPy } from "./pyodide/exec-py";
+import { baseModelToProvider } from "../ModelSettingSchemas";
 
 // """ =================
 //     SETUP AND GLOBALS
@@ -215,19 +219,30 @@ function gen_unique_cache_filename(
   return `${cache_id}_${idx}.json`;
 }
 
-function extract_llm_nickname(llm_spec: Dict | string) {
+function extract_llm_nickname(llm_spec: StringOrHash | LLMSpec): string {
   if (typeof llm_spec === "object" && llm_spec.name !== undefined)
     return llm_spec.name;
-  else return llm_spec;
+  else
+    return (
+      StringLookup.get(llm_spec as StringOrHash) ?? "(string lookup failed)"
+    );
 }
 
-function extract_llm_name(llm_spec: Dict | string): string {
-  if (typeof llm_spec === "string") return llm_spec;
+function extract_llm_name(llm_spec: StringOrHash | LLMSpec): string {
+  if (typeof llm_spec === "string" || typeof llm_spec === "number")
+    return StringLookup.get(llm_spec) ?? "(string lookup failed)";
   else return llm_spec.model;
 }
 
-function extract_llm_key(llm_spec: Dict | string): string {
-  if (typeof llm_spec === "string") return llm_spec;
+function extract_llm_provider(llm_spec: StringOrHash | LLMSpec): LLMProvider {
+  if (typeof llm_spec === "string" || typeof llm_spec === "number")
+    return getProvider(StringLookup.get(llm_spec) ?? "") ?? LLMProvider.Custom;
+  else return baseModelToProvider(llm_spec.base_model);
+}
+
+function extract_llm_key(llm_spec: StringOrHash | LLMSpec): string {
+  if (typeof llm_spec === "string" || typeof llm_spec === "number")
+    return StringLookup.get(llm_spec) ?? "(string lookup failed)";
   else if (llm_spec.key !== undefined) return llm_spec.key;
   else
     throw new Error(
@@ -237,7 +252,7 @@ function extract_llm_key(llm_spec: Dict | string): string {
     );
 }
 
-function extract_llm_params(llm_spec: Dict | string): Dict {
+function extract_llm_params(llm_spec: StringOrHash | LLMSpec): Dict {
   if (typeof llm_spec === "object" && llm_spec.settings !== undefined)
     return llm_spec.settings;
   else return {};
@@ -250,8 +265,10 @@ function filterVarsByLLM(vars: PromptVarsDict, llm_key: string): Dict {
     _vars[key] = vs.filter(
       (v) =>
         typeof v === "string" ||
+        typeof v === "number" ||
         v?.llm === undefined ||
         typeof v.llm === "string" ||
+        typeof v.llm === "number" ||
         v.llm.key === llm_key,
     );
   });
@@ -294,8 +311,8 @@ function isLooselyEqual(value1: any, value2: any): boolean {
  * determines whether the response query used the same parameters.
  */
 function matching_settings(
-  cache_llm_spec: Dict | string,
-  llm_spec: Dict | string,
+  cache_llm_spec: StringOrHash | LLMSpec,
+  llm_spec: StringOrHash | LLMSpec,
 ): boolean {
   if (extract_llm_name(cache_llm_spec) !== extract_llm_name(llm_spec))
     return false;
@@ -398,10 +415,7 @@ async function run_over_responses(
   const evald_resps: Promise<LLMResponse>[] = responses.map(
     async (_resp_obj: LLMResponse) => {
       // Deep clone the response object
-      const resp_obj = JSON.parse(JSON.stringify(_resp_obj));
-
-      // Clean up any escaped braces
-      resp_obj.responses = resp_obj.responses.map(cleanEscapedBraces);
+      const resp_obj: LLMResponse = JSON.parse(JSON.stringify(_resp_obj));
 
       // Whether the processor function is async or not
       const async_processor =
@@ -410,12 +424,12 @@ async function run_over_responses(
       // Map the processor func over every individual response text in each response object
       const res = resp_obj.responses;
       const llm_name = extract_llm_nickname(resp_obj.llm);
-      let processed = res.map((r: string) => {
+      let processed = res.map((r: LLMResponseData) => {
         const r_info = new ResponseInfo(
-          r,
-          resp_obj.prompt,
-          resp_obj.vars,
-          resp_obj.metavars || {},
+          cleanEscapedBraces(llmResponseDataToString(r)),
+          StringLookup.get(resp_obj.prompt) ?? "",
+          StringLookup.concretizeDict(resp_obj.vars),
+          StringLookup.concretizeDict(resp_obj.metavars) || {},
           llm_name,
         );
 
@@ -455,7 +469,8 @@ async function run_over_responses(
           // Store items with summary of mean, median, etc
           resp_obj.eval_res = {
             items: processed,
-            dtype: getEnumName(MetricType, eval_res_type),
+            dtype: (getEnumName(MetricType, eval_res_type) ??
+              "Unknown") as keyof typeof MetricType,
           };
         } else if (
           [MetricType.Unknown, MetricType.Empty].includes(eval_res_type)
@@ -467,7 +482,8 @@ async function run_over_responses(
           // Categorical, KeyValue, etc, we just store the items:
           resp_obj.eval_res = {
             items: processed,
-            dtype: getEnumName(MetricType, eval_res_type),
+            dtype: (getEnumName(MetricType, eval_res_type) ??
+              "Unknown") as keyof typeof MetricType,
           };
         }
       }
@@ -492,7 +508,7 @@ async function run_over_responses(
  */
 export async function generatePrompts(
   root_prompt: string,
-  vars: Dict<(TemplateVarInfo | string)[]>,
+  vars: Dict<PromptVarType[]>,
 ): Promise<PromptTemplate[]> {
   const gen_prompts = new PromptPermutationGenerator(root_prompt);
   const all_prompt_permutations = Array.from(
@@ -517,7 +533,7 @@ export async function generatePrompts(
 export async function countQueries(
   prompt: string,
   vars: PromptVarsDict,
-  llms: Array<Dict | string>,
+  llms: Array<StringOrHash | LLMSpec>,
   n: number,
   chat_histories?:
     | (ChatHistoryInfo | undefined)[]
@@ -591,7 +607,9 @@ export async function countQueries(
         found_cache = true;
 
         // Load the cache file
-        const cache_llm_responses = load_from_cache(cache_filename);
+        const cache_llm_responses: Dict<
+          RawLLMResponseObject[] | RawLLMResponseObject
+        > = load_from_cache(cache_filename);
 
         // Iterate through all prompt permutations and check if how many responses there are in the cache with that prompt
         _all_prompt_perms.forEach((prompt) => {
@@ -680,6 +698,40 @@ export async function fetchEnvironAPIKeys(): Promise<Dict<string>> {
   }).then((res) => res.json());
 }
 
+export async function saveFlowToLocalFilesystem(
+  flowJSON: Dict,
+  filename: string,
+): Promise<void> {
+  try {
+    await axios.put(`${FLASK_BASE_URL}api/flows/${filename}`, {
+      flow: flowJSON,
+    });
+  } catch (error) {
+    throw new Error(
+      `Error saving flow with name ${filename}: ${(error as Error).toString()}`,
+    );
+  }
+}
+
+export async function ensureUniqueFlowFilename(
+  filename: string,
+): Promise<string> {
+  try {
+    const response = await axios.put(
+      `${FLASK_BASE_URL}api/getUniqueFlowFilename`,
+      {
+        name: filename,
+      },
+    );
+    return response.data as string;
+  } catch (error) {
+    console.error(
+      `Error contact Flask to ensure unique filename for imported flow. Defaulting to passed filename (warning: risk this overrides an existing flow.) Error: ${(error as Error).toString()}`,
+    );
+    return filename;
+  }
+}
+
 /**
  * Queries LLM(s) with root prompt template `prompt` and prompt input variables `vars`, `n` times per prompt.
  * Soft-fails if API calls fail, and collects the errors in `errors` property of the return object.
@@ -766,7 +818,7 @@ export async function queryLLM(
     // Create a new cache JSON object
     cache = { cache_files: {}, responses_last_run: [] };
     const prev_filenames: Array<string> = [];
-    llms.forEach((llm_spec: string | Dict) => {
+    llms.forEach((llm_spec) => {
       const fname = gen_unique_cache_filename(id, prev_filenames);
       llm_to_cache_filename[extract_llm_key(llm_spec)] = fname;
       cache.cache_files[fname] = llm_spec;
@@ -800,9 +852,12 @@ export async function queryLLM(
   const responses: { [key: string]: Array<RawLLMResponseObject> } = {};
   const all_errors: Dict<string[]> = {};
   const num_generations = n ?? 1;
-  async function query(llm_spec: string | Dict): Promise<LLMPrompterResults> {
+  async function query(
+    llm_spec: StringOrHash | LLMSpec,
+  ): Promise<LLMPrompterResults> {
     // Get LLM model name and any params
     const llm_str = extract_llm_name(llm_spec);
+    const llm_provider = extract_llm_provider(llm_spec);
     const llm_nickname = extract_llm_nickname(llm_spec);
     const llm_params = extract_llm_params(llm_spec);
     const llm_key = extract_llm_key(llm_spec);
@@ -842,6 +897,7 @@ export async function queryLLM(
       for await (const response of prompter.gen_responses(
         _vars,
         llm_str as LLM,
+        llm_provider,
         num_generations,
         temperature,
         llm_params,
@@ -1218,7 +1274,7 @@ export async function executepy(
  */
 export async function evalWithLLM(
   id: string,
-  llm: string | LLMSpec,
+  llm: LLMSpec,
   root_prompt: string,
   response_ids: string | string[],
   api_keys?: Dict,
@@ -1243,17 +1299,27 @@ export async function evalWithLLM(
     const resp_objs = (load_cache_responses(fname) as LLMResponse[]).map((r) =>
       JSON.parse(JSON.stringify(r)),
     ) as LLMResponse[];
+
     if (resp_objs.length === 0) continue;
+
+    console.log(resp_objs);
 
     // We need to keep track of the index of each response in the response object.
     // We can generate var dicts with metadata to store the indices:
     const inputs = resp_objs
       .map((obj, __i) =>
         obj.responses.map((r: LLMResponseData, __j: number) => ({
-          text: typeof r === "string" ? escapeBraces(r) : undefined,
+          text:
+            typeof r === "string" || typeof r === "number"
+              ? escapeBraces(StringLookup.get(r) ?? "(string lookup failed)")
+              : undefined,
           image: typeof r === "object" && r.t === "img" ? r.d : undefined,
           fill_history: obj.vars,
-          metavars: { ...obj.metavars, __i, __j },
+          metavars: {
+            ...obj.metavars,
+            __i: __i.toString(),
+            __j: __j.toString(),
+          },
         })),
       )
       .flat();
@@ -1279,15 +1345,17 @@ export async function evalWithLLM(
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
     responses.forEach((r: LLMResponse) => {
-      const resp_obj = resp_objs[r.metavars.__i];
+      const __i = parseInt(StringLookup.get(r.metavars.__i) ?? "");
+      const __j = parseInt(StringLookup.get(r.metavars.__j) ?? "");
+      const resp_obj = resp_objs[__i];
       if (resp_obj.eval_res !== undefined)
-        resp_obj.eval_res.items[r.metavars.__j] = r.responses[0];
+        resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
       else {
         resp_obj.eval_res = {
           items: [],
           dtype: "Categorical",
         };
-        resp_obj.eval_res.items[r.metavars.__j] = r.responses[0];
+        resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
       }
     });
 
@@ -1415,8 +1483,8 @@ export async function exportCache(ids: string[]): Promise<Dict<Dict>> {
   }
   // Bundle up specific other state in StorageCache, which
   // includes things like human ratings for responses:
-  const cache_state = StorageCache.getAllMatching((key) =>
-    key.startsWith("r."),
+  const cache_state = StorageCache.getAllMatching(
+    (key) => key.startsWith("r.") || key === "__s",
   );
   return { ...cache_files, ...cache_state };
 }
@@ -1441,6 +1509,9 @@ export async function importCache(files: {
     Object.entries(files).forEach(([filename, data]) => {
       StorageCache.store(filename, data);
     });
+
+    // Load StringLookup table from cache
+    StringLookup.restoreFrom(StorageCache.get("__s"));
   } catch (err) {
     throw new Error("Error importing from cache:" + (err as Error).message);
   }

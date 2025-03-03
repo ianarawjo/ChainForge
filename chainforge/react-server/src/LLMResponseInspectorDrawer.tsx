@@ -22,6 +22,7 @@ export default function LLMResponseInspectorDrawer({
       >
         <LLMResponseInspector
           jsonResponses={jsonResponses}
+          isOpen={showDrawer}
           wideFormat={false}
         />
       </div>

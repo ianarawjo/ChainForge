@@ -1,13 +1,15 @@
 import React, { Suspense, useMemo, lazy } from "react";
 import { Collapse, Flex, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { truncStr } from "./backend/utils";
+import { llmResponseDataToString, truncStr } from "./backend/utils";
 import {
   Dict,
   EvaluationScore,
   LLMResponse,
   LLMResponseData,
+  StringOrHash,
 } from "./backend/typing";
+import { StringLookup } from "./backend/cache";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -15,25 +17,53 @@ const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
 /* HELPER FUNCTIONS */
 const SUCCESS_EVAL_SCORES = new Set(["true", "yes"]);
 const FAILURE_EVAL_SCORES = new Set(["false", "no"]);
+/**
+ * Returns an array of JSX elements, and the searchable text underpinning them,
+ * that represents a concrete version of the Evaluation Scores passed in.
+ * @param eval_item The evaluation result to visualize.
+ * @param hide_prefix Whether to hide 'score: ' or '{key}: ' prefixes when printing.
+ * @param onlyString Whether to only return string values.
+ * @returns An array [JSX.Element, string] where the latter is a string representation of the eval score, to enable search
+ */
 export const getEvalResultStr = (
   eval_item: EvaluationScore,
   hide_prefix: boolean,
-) => {
+  onlyString?: boolean,
+): [JSX.Element | string, string] => {
   if (Array.isArray(eval_item)) {
-    return (hide_prefix ? "" : "scores: ") + eval_item.join(", ");
+    const items_str = (hide_prefix ? "" : "scores: ") + eval_item.join(", ");
+    return [items_str, items_str];
   } else if (typeof eval_item === "object") {
-    const strs = Object.keys(eval_item).map((key, j) => {
-      let val = eval_item[key];
-      if (typeof val === "number" && val.toString().indexOf(".") > -1)
-        val = val.toFixed(4); // truncate floats to 4 decimal places
-      return (
-        <div key={`${key}-${j}`}>
-          <span>{key}: </span>
-          <span>{getEvalResultStr(val, true)}</span>
-        </div>
-      );
-    });
-    return <Stack spacing={0}>{strs}</Stack>;
+    const strs: [JSX.Element | string, string][] = Object.keys(eval_item).map(
+      (key, j) => {
+        const innerKey = `${key}-${j}`;
+        let val = eval_item[key];
+        if (typeof val === "number" && val.toString().indexOf(".") > -1)
+          val = val.toFixed(4); // truncate floats to 4 decimal places
+        const [recurs_res, recurs_str] = getEvalResultStr(val, true);
+        if (onlyString) return [`${key}: ${recurs_str}`, recurs_str];
+        else
+          return [
+            <div key={innerKey}>
+              <span key={0}>{key}: </span>
+              <span key={1}>{recurs_res}</span>
+            </div>,
+            recurs_str,
+          ];
+      },
+    );
+    const joined_strs = strs.map((s) => s[1]).join("\n");
+    if (onlyString) {
+      return [joined_strs, joined_strs];
+    } else
+      return [
+        <Stack key={1} spacing={0}>
+          {strs.map((s, i) => (
+            <span key={i}>s</span>
+          ))}
+        </Stack>,
+        joined_strs,
+      ];
   } else {
     const eval_str = eval_item.toString().trim().toLowerCase();
     const color = SUCCESS_EVAL_SCORES.has(eval_str)
@@ -41,12 +71,15 @@ export const getEvalResultStr = (
       : FAILURE_EVAL_SCORES.has(eval_str)
         ? "red"
         : "black";
-    return (
-      <>
-        {!hide_prefix && <span style={{ color: "gray" }}>{"score: "}</span>}
-        <span style={{ color }}>{eval_str}</span>
-      </>
-    );
+    if (onlyString) return [eval_str, eval_str];
+    else
+      return [
+        <>
+          {!hide_prefix && <span style={{ color: "gray" }}>{"score: "}</span>}
+          <span style={{ color }}>{eval_str}</span>
+        </>,
+        eval_str,
+      ];
   }
 };
 
@@ -113,7 +146,7 @@ export const ResponseGroup: React.FC<ResponseGroupProps> = ({
  */
 interface ResponseBoxProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
-  vars?: Dict<string>;
+  vars?: Dict<StringOrHash>;
   truncLenForVars?: number;
   llmName?: string;
   boxColor?: string;
@@ -131,7 +164,10 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
   const var_tags = useMemo(() => {
     if (vars === undefined) return [];
     return Object.entries(vars).map(([varname, val]) => {
-      const v = truncStr(val.trim(), truncLenForVars ?? 18);
+      const v = truncStr(
+        (StringLookup.get(val) ?? "").trim(),
+        truncLenForVars ?? 18,
+      );
       return (
         <div key={varname} className="response-var-inline">
           <span className="response-var-name">{varname}&nbsp;=&nbsp;</span>
@@ -191,16 +227,15 @@ export const genResponseTextsDisplay = (
   const resp_str_to_eval_res: Dict<EvaluationScore> = {};
   if (eval_res_items)
     responses.forEach((r, idx) => {
-      resp_str_to_eval_res[typeof r === "string" ? r : r.d] =
-        eval_res_items[idx];
+      resp_str_to_eval_res[llmResponseDataToString(r)] = eval_res_items[idx];
     });
 
   const same_resp_text_counts = countResponsesBy(responses, (r) =>
-    typeof r === "string" ? r : r.d,
+    llmResponseDataToString(r),
   );
   const resp_special_type_map: Dict<string> = {};
   responses.forEach((r) => {
-    const key = typeof r === "string" ? r : r.d;
+    const key = llmResponseDataToString(r);
     if (typeof r === "object") resp_special_type_map[key] = r.t;
   });
   const same_resp_keys = Object.keys(same_resp_text_counts).sort(
@@ -240,6 +275,7 @@ export const genResponseTextsDisplay = (
               uid={res_obj.uid}
               innerIdxs={origIdxs}
               wideFormat={wideFormat}
+              responseData={r}
             />
           </Suspense>
           {llmName !== undefined &&
@@ -259,7 +295,7 @@ export const genResponseTextsDisplay = (
         )}
         {eval_res_items ? (
           <p className="small-response-metrics">
-            {getEvalResultStr(resp_str_to_eval_res[r], true)}
+            {getEvalResultStr(resp_str_to_eval_res[r], true)[0]}
           </p>
         ) : (
           <></>

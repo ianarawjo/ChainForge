@@ -3,11 +3,13 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List
 from statistics import mean, median, stdev
+from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from chainforge.providers.dalai import call_dalai
 from chainforge.providers import ProviderRegistry
 import requests as py_requests
+from platformdirs import user_data_dir
 
 """ =================
     SETUP AND GLOBALS
@@ -26,6 +28,7 @@ app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
 # The cache and examples files base directories
+FLOWS_DIR = user_data_dir("chainforge")  # platform-agnostic local storage that persists outside the package install location
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
 
@@ -509,7 +512,7 @@ def makeFetchCall():
         ret.headers.add('Access-Control-Allow-Origin', '*')
         return ret
     else:
-        err_msg = "API request to Anthropic failed"
+        err_msg = "API request failed"
         ret = response.json()
         if "error" in ret and "message" in ret["error"]:
             err_msg += ": " + ret["error"]["message"]
@@ -721,6 +724,109 @@ async def callCustomProvider():
     # Return the response
     return jsonify({'response': response})
 
+""" 
+    LOCALLY SAVED FLOWS
+"""
+@app.route('/api/flows', methods=['GET'])
+def get_flows():
+    """Return a list of all saved flows. If the directory does not exist, try to create it."""
+    os.makedirs(FLOWS_DIR, exist_ok=True)  # Creates the directory if it doesn't exist
+    flows = [
+        {
+            "name": f,
+            "last_modified": datetime.fromtimestamp(os.path.getmtime(os.path.join(FLOWS_DIR, f))).isoformat()
+        }
+        for f in os.listdir(FLOWS_DIR) 
+        if f.endswith('.cforge') and f != "__autosave.cforge"  # ignore the special autosave file
+    ]
+
+    # Sort the flow files by last modified date in descending order (most recent first)
+    flows.sort(key=lambda x: x["last_modified"], reverse=True)
+
+    return jsonify({
+        "flow_dir": FLOWS_DIR,
+        "flows": flows
+    })
+
+@app.route('/api/flows/<filename>', methods=['GET'])
+def get_flow(filename):
+    """Return the content of a specific flow"""
+    if not filename.endswith('.cforge'):
+        filename += '.cforge'
+    try:
+        with open(os.path.join(FLOWS_DIR, filename), 'r') as f:
+            return jsonify(json.load(f))
+    except FileNotFoundError:
+        return jsonify({"error": "Flow not found"}), 404
+
+@app.route('/api/flows/<filename>', methods=['DELETE'])
+def delete_flow(filename):
+    """Delete a flow"""
+    if not filename.endswith('.cforge'):
+        filename += '.cforge'
+    try:
+        os.remove(os.path.join(FLOWS_DIR, filename))
+        return jsonify({"message": f"Flow {filename} deleted successfully"})
+    except FileNotFoundError:
+        return jsonify({"error": "Flow not found"}), 404
+
+@app.route('/api/flows/<filename>', methods=['PUT'])
+def save_or_rename_flow(filename):
+    """Save or rename a flow"""
+    data = request.json
+
+    if not filename.endswith('.cforge'):
+        filename += '.cforge'
+
+    if data.get('flow'):
+        # Save flow (overwriting any existing flow file with the same name)
+        flow_data = data.get('flow')
+        
+        try:
+            filepath = os.path.join(FLOWS_DIR, filename)
+            with open(filepath, 'w') as f:
+                json.dump(flow_data, f)
+            return jsonify({"message": f"Flow '{filename}' saved!"})
+        except FileNotFoundError:
+            return jsonify({"error": f"Could not save flow '{filename}' to local filesystem. See terminal for more details."}), 404
+
+    elif data.get('newName'):
+        # Rename flow
+        new_name = data.get('newName')
+        
+        if not new_name.endswith('.cforge'):
+            new_name += '.cforge'
+
+        try:
+            # Check for name clashes (if a flow already exists with the new name)
+            if os.path.isfile(os.path.join(FLOWS_DIR, new_name)):
+                raise Exception("A flow with that name already exists.")
+            os.rename(os.path.join(FLOWS_DIR, filename), os.path.join(FLOWS_DIR, new_name))
+            return jsonify({"message": f"Flow renamed from {filename} to {new_name}"})
+        except Exception as error:
+            return jsonify({"error": str(error)}), 404
+
+@app.route('/api/getUniqueFlowFilename', methods=['PUT'])
+def get_unique_flow_name():
+    """Return a non-name-clashing filename to store in the local disk."""
+    data = request.json
+    filename = data.get("name")
+    
+    try:
+        base, ext = os.path.splitext(filename)
+        if ext is None or len(ext) == 0: 
+            ext = ".cforge"
+        unique_filename = base + ext
+        i = 1
+
+        # Find the first non-clashing filename of the form <filename>(i).cforge where i=1,2,3 etc
+        while os.path.isfile(os.path.join(FLOWS_DIR, unique_filename)):
+            unique_filename = f"{base}({i}){ext}"
+            i += 1
+        
+        return jsonify(unique_filename.replace(".cforge", ""))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
 
 def run_server(host="", port=8000, cmd_args=None):
     global HOSTNAME, PORT

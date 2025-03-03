@@ -28,7 +28,7 @@ import {
 } from "./backend/utils";
 
 import { fromMarkdown } from "mdast-util-from-markdown";
-import StorageCache from "./backend/cache";
+import StorageCache, { StringLookup } from "./backend/cache";
 import { ResponseBox } from "./ResponseBoxes";
 import { Root, RootContent } from "mdast";
 import { Dict, TemplateVarInfo } from "./backend/typing";
@@ -130,11 +130,13 @@ const displaySplitTexts = (
     } else {
       const llm_color =
         typeof info.llm === "object" && "name" in info.llm
-          ? color_for_llm(info.llm?.name)
+          ? color_for_llm(
+              StringLookup.get(info.llm?.name) ?? "(string lookup failed)",
+            )
           : "#ddd";
       const llm_name =
         typeof info.llm === "object" && "name" in info.llm
-          ? info.llm?.name
+          ? StringLookup.get(info.llm?.name)
           : "";
       return (
         <ResponseBox
@@ -289,7 +291,11 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
           .map((resp_obj: TemplateVarInfo | string) => {
             if (typeof resp_obj === "string")
               return splitText(resp_obj, formatting, true);
-            const texts = splitText(resp_obj?.text ?? "", formatting, true);
+            const texts = splitText(
+              StringLookup.get(resp_obj?.text) ?? "",
+              formatting,
+              true,
+            );
             if (texts !== undefined && texts.length >= 1)
               return texts.map(
                 (t: string) =>
