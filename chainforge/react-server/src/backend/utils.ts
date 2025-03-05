@@ -33,6 +33,9 @@ import { v4 as uuid } from "uuid";
 import { StringTemplate, IMAGE_IDENTIFIER } from "./template";
 
 /* LLM API SDKs */
+import axios from "axios";
+import { Buffer } from "buffer";
+
 import {
   Configuration as OpenAIConfig,
   OpenAIApi,
@@ -201,25 +204,64 @@ export function get_azure_openai_api_keys(): [
   return [AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT];
 }
 
-function construct_prompt(prompt : string): string | Array<MultiModalContent> {
+function construct_prompt(
+  prompt: string,
+  variant: "openai" | "anthropic" | "azure" | "ollama" | "bedrock" | "together",
+): string | Array<MultiModalContentOpenAI> | Array<MultiModalContentAnthropic> {
   // If the prompt does not contain 'IMAGE_IDENTIFIER' string pattern then return the prompt as is
   if (!prompt.includes(IMAGE_IDENTIFIER)) return prompt;
   else {
-    // If the prompt contains 'IMAGE_IDENTIFIER' string pattern 
+    // If the prompt contains 'IMAGE_IDENTIFIER' string pattern
     // then extract everyline that contains 'IMAGE_IDENTIFIER' and remove those lines from it
     // and return the formatted prompt
     const lines = prompt.split("\n");
     const image_lines = lines.filter((line) => line.includes(IMAGE_IDENTIFIER));
-    const new_prompt = lines.filter((line) => !line.includes(IMAGE_IDENTIFIER)).join("\n");
-    
-    // from the previously-extracted image lines, suppress the 'IMAGE_IDENTIFIER' at the beginning of each line
-    // and return the following dict: https://platform.openai.com/docs/guides/vision?lang=javascript#multiple-image-inputs
-    // [{type : 'image_url', 'image_url': { 'url': exctracted_string1} }, {type : 'image_url', 'image_url': { 'url': exctracted_string2} }, ...]
-    const image_urls = image_lines.map((line) => {
-      return { type: 'image_url', image_url: { url: line.replace(IMAGE_IDENTIFIER, '').trim() } };
-    });
+    const new_prompt = lines
+      .filter((line) => !line.includes(IMAGE_IDENTIFIER))
+      .join("\n");
 
-    return [...image_urls, {type: 'text', text: new_prompt}];
+    // from the previously-extracted image lines, suppress the 'IMAGE_IDENTIFIER' at the beginning of each line
+    // and depending on the variant, return the adequat formatted prompt :
+    //  if variant == 'openai', return Array<MultiModalContentOpenAI>
+    //  if variant == 'anthropic', return Array<MultiModalContentAnthropic>
+
+    const image_dicts = [];
+    for (const image_line of image_lines) {
+      const image_url = image_line.replace(IMAGE_IDENTIFIER, "").trim();
+      if (variant === "openai") {
+        image_dicts.push({ type: "image_url", image_url: { url: image_url } });
+      } else if (variant === "anthropic") {
+        let b64_string;
+        let extension_image = image_url.split(".").pop();
+
+        if (image_url.startsWith("http")) {
+          b64_string = axios
+            .get(image_url, { responseType: "arraybuffer" })
+            .then((response) => Buffer.from(response.data).toString("base64"))
+            .catch((error) => {
+              console.error("Error fetching image:", error);
+              return "";
+            });
+        } else if (image_url.startsWith("data:image")) {
+          b64_string = image_url.split(",")[1];
+          extension_image = image_url.split(";")[0].split("/")[1];
+        } else {
+          const reader = new window.FileReader();
+          // reader.readAsText(image_url as Blob);
+        }
+
+        image_dicts.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: extension_image,
+            data: b64_string,
+          },
+        });
+      }
+    }
+
+    return [...image_dicts, { type: "text", text: new_prompt }];
   }
 }
 
@@ -231,6 +273,7 @@ function construct_prompt(prompt : string): string | Array<MultiModalContent> {
  */
 function construct_openai_chat_history(
   prompt: string,
+  variant: "openai" | "anthropic" | "azure" | "ollama" | "bedrock" | "together",
   chat_history?: ChatHistoryMM,
   system_msg?: string,
   system_role_name?: string,
@@ -352,6 +395,7 @@ export async function call_chatgpt(
     // Carry over chat history, if present:
     query.messages = construct_openai_chat_history(
       prompt,
+      "openai",
       chat_history,
       system_msg,
     );
@@ -556,7 +600,12 @@ export async function call_azure_openai(
     arg2 = [prompt];
   } else {
     openai_call = client.getChatCompletions.bind(client);
-    arg2 = construct_openai_chat_history(prompt, chat_history, system_msg);
+    arg2 = construct_openai_chat_history(
+      prompt,
+      "azure",
+      chat_history,
+      system_msg,
+    );
   }
 
   let response: Dict = {};
@@ -691,6 +740,7 @@ export async function call_anthropic(
     query.max_tokens = max_tokens_to_sample; // this goes by a different name than text completions
     query.messages = construct_openai_chat_history(
       prompt,
+      "anthropic",
       chat_history,
       undefined,
     );
@@ -1314,6 +1364,7 @@ export async function call_ollama_provider(
     // Construct chat history and pass to query payload
     query.messages = construct_openai_chat_history(
       prompt,
+      "ollama",
       chat_history,
       system_msg,
     );
@@ -1464,6 +1515,7 @@ export async function call_bedrock(
       ) {
         const chat_history: ChatHistoryMM = construct_openai_chat_history(
           prompt,
+          "bedrock",
           params?.chat_history,
           params?.system_msg,
         );
@@ -1563,6 +1615,7 @@ export async function call_together(
   // Carry over chat history, if present:
   query.messages = construct_openai_chat_history(
     prompt,
+    "together",
     chat_history,
     system_msg,
   );
@@ -2443,4 +2496,42 @@ export const compressBase64Image = (b64: string): Promise<string> => {
 //   //   ".svg",
 //   // ];
 //   // return imageExtensions.includes(extname(filePath).toLowerCase());
+// }
+
+// async function getBase64AndType(imageUrl: string): Promise<{ base64: string, type: string } | null> {
+//   let buffer: Buffer;
+
+//   if (imageUrl.startsWith('http')) {
+//       // Fetch the remote image
+//       const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+//       buffer = Buffer.from(response.data, 'binary');
+//   } else {
+//       // Read the local file
+//       buffer = fs.readFileSync(path.resolve(imageUrl));
+//   }
+
+//   // Get image type based on file signature (magic number)
+//   const type = getImageType(buffer);
+//   if (!type) return null;
+
+//   // Convert to base64
+//   const base64 = buffer.toString('base64');
+//   return { base64, type };
+// }
+
+// function getImageType(buffer: Buffer): string | null {
+//     const signatures: { [key: string]: number[] } = {
+//         jpeg: [0xFF, 0xD8, 0xFF],
+//         png: [0x89, 0x50, 0x4E, 0x47],
+//         gif: [0x47, 0x49, 0x46, 0x38],
+//         webp: [0x52, 0x49, 0x46, 0x46],
+//     };
+
+//     for (const [type, sig] of Object.entries(signatures)) {
+//         if (buffer.slice(0, sig.length).equals(Buffer.from(sig))) {
+//             return type;
+//         }
+//     }
+
+//     return null;
 // }
