@@ -1,0 +1,260 @@
+import React, { forwardRef, useEffect, useImperativeHandle, useState, useCallback, useContext } from "react";
+import { Modal, TextInput, Button, Box, Group, useMantineTheme, Flex, Center, Text, rem, Divider, Card } from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { useDisclosure } from "@mantine/hooks";
+import { Dropzone, FileWithPath } from "@mantine/dropzone";
+import {
+  IconUpload,
+  IconBrandPython,
+  IconX,
+  IconImageInPicture,
+} from "@tabler/icons-react";
+
+import { AlertModalContext } from "./AlertModal";
+
+
+// TODO: Change this for image upload
+// Read a file as text and pass the text to a cb (callback) function
+const read_file = (
+  file: FileWithPath,
+  cb: (contents: string | ArrayBuffer | null, file: FileWithPath) => void,
+) => {
+  const reader = new window.FileReader();
+  reader.onload = function (event) {
+    const fileContent = event.target?.result;
+    cb(fileContent ?? null, file);
+  };
+  reader.onerror = function (event) {
+    console.error("Error reading file:", event);
+  };
+  reader.readAsText(file);
+};
+
+// TODO: To improve & Move this function to utils
+// given a string, validate if it is a valid image URL
+function validate_file_upload(v: string): boolean {
+  console.log("Validating URL:", v);
+  // TODO: implement this function , check it is an URL or a valid image file
+  // check it is an existing URL and points to a image file
+  return true;
+}
+
+// ====================================== File Dropzone Modal ======================================
+
+interface ImageFileDropzoneProps {
+  onError: (err: string | Error) => void;
+  onDrop: (file: FileWithPath) => void; // TODO:make this function accept a content string for cache mechanism
+}
+
+/** A Dropzone to load an image file.
+ * If successful, the image file preview is loaded into the UI.
+ * */
+const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({ onError, onDrop }) => {
+  const theme = useMantineTheme();
+  const [isLoading, setIsLoading] = useState(false);
+
+  return (
+    <Dropzone
+      loading={isLoading}
+      onDrop={(files) => {
+        if (files.length === 1) {
+          setIsLoading(true);
+          read_file(files[0], (content: string | ArrayBuffer | null, file: FileWithPath) => {
+            if (typeof content !== "string") {
+              console.error("File unreadable: Contents are not text.");
+              return;
+            }
+            // TODO: Log the content of file in cache
+            // Read the file into text and then send it to backend
+            onDrop(file)
+            console.log("TODO: Check File is an image !!!! File content:");
+            setIsLoading(false);
+            console.log(content);
+
+          });
+        } else {
+          console.error(
+            "Too many files dropped. Only drop one file at a time.",
+          );
+        }
+      }}
+      onReject={(files) => console.log("rejected files", files)}
+      maxSize={50 * 1024 ** 2}
+    >
+      <Flex style={{ minHeight: rem(80), pointerEvents: "none" }}>
+        <Center>
+          <Dropzone.Accept>
+            <IconUpload
+              size="4.2rem"
+              stroke={1.5}
+              color={
+                theme.colors[theme.primaryColor][
+                  theme.colorScheme === "dark" ? 4 : 6
+                ]
+              }
+            />
+          </Dropzone.Accept>
+          <Dropzone.Reject>
+            <IconX
+              size="4.2rem"
+              stroke={1.5}
+              color={theme.colors.red[theme.colorScheme === "dark" ? 4 : 6]}
+            />
+          </Dropzone.Reject>
+          <Dropzone.Idle>
+            <IconImageInPicture size="4.2rem" stroke={1.5} />
+          </Dropzone.Idle>
+
+          <Box ml="md">
+            <Text size="md" lh={1.2} inline>
+              Drag an Image file here
+            </Text>
+            <Text size="sm" color="dimmed" inline mt={7}>
+              Supported Image file: png, ..jpeg/jpg, ...
+            </Text>
+          </Box>
+        </Center>
+      </Flex>
+    </Dropzone>
+  );
+};
+
+// ====================================== UploadFile Modal ======================================
+export interface UploadFileModalProps {
+  title: string;
+  label: string;
+  onSubmit?: (val: string) => void;
+}
+
+export interface UploadFileModalRef {
+  trigger: (msg?: string) => void;
+}
+
+/** Modal that lets user upload a single file, usin a TextInput field OR a dropdown field. */
+const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
+  function UploadFileModal({ title, label, onSubmit }, ref) {
+    const [opened, { open, close }] = useDisclosure(false);
+
+    const [fileLoaded, setFileLoaded] = useState('');
+
+    const handleRemoveFileLoaded = useCallback(
+      (name: string) => {
+        setFileLoaded('');
+        form.setValues({ value: '' })
+      },
+      [setFileLoaded],
+    );
+
+    const showAlert = useContext(AlertModalContext);
+    const handleError = useCallback(
+      (err: string | Error) => {
+        const msg = typeof err === "string" ? err : err.message;
+        if (showAlert) showAlert(msg);
+      },
+      [showAlert],
+    );
+
+    const form = useForm({
+      initialValues: {
+        value: "",
+      },
+      validate: {
+        value: (v) =>
+          validate_file_upload(v) ? null : `Not an URL or local imgage file: ${v}`,
+      },
+    });
+
+    useEffect(() => {
+      form.setValues({ value: "" });
+    }, []);
+
+    // This gives the parent access to triggering the modal alert
+    const trigger = () => {
+      open();
+    };
+    useImperativeHandle(ref, () => ({
+      trigger,
+    }));
+
+    return (
+      <Modal opened={opened} onClose={close} title={title}>
+        <Box maw={300} mx="auto">
+          <form
+            onSubmit={form.onSubmit((values) => {
+              if (onSubmit) onSubmit(values.value);
+              close();
+            })}
+          >
+            <Divider
+              my="xs"
+              label="Provide Image URL OR choose Local Image File"
+              labelPosition="center"
+            />
+            <TextInput
+              label={label}
+              autoFocus={false}
+              {...form.getInputProps("value")}
+            />
+            <Divider
+              my="xs"
+              label=""
+              labelPosition="center"
+            />
+
+            {fileLoaded.length > 0 ? (
+              <Card
+                key={fileLoaded}
+                shadow="sm"
+                radius="sm"
+                pt="0px"
+                pb="4px"
+                mb="md"
+                withBorder
+              >
+                <Group position="apart">
+                  <Group position="left" mt="md" mb="xs">
+                    {/* <Text w="10px">{p.emoji}</Text> */}
+                    <Text weight={500}>{fileLoaded}</Text>
+                    {/* {p.settings_schema ? (
+                      <Badge color="blue" variant="light">
+                        has settings
+                      </Badge>
+                    ) : (
+                      <></>
+                    )} */}
+                  </Group>
+                  <Button
+                    onClick={() => handleRemoveFileLoaded(fileLoaded)}
+                    color="red"
+                    p="0px"
+                    mt="4px"
+                    variant="subtle"
+                  >
+                    <IconX />
+                  </Button>
+                </Group>
+              </Card>
+            ): (
+              <ImageFileDropzone
+                onError={handleError}
+                onDrop={(file: FileWithPath) => {
+                    console.log("File dropped:", file);
+                    setFileLoaded(file.path ? file.path : '');
+                    form.setValues({ value: file.path })
+                  }
+                }
+              />
+            )}
+
+            <Group position="right" mt="md">
+              <Button type="submit">Submit</Button>
+            </Group>
+          </form>
+        </Box>
+
+      </Modal>
+    );
+  },
+);
+
+export default UploadFileModal;

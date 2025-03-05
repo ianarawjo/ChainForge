@@ -13,9 +13,11 @@ import {
   IconEye,
   IconEyeOff,
   IconTransform,
+  IconUpload,
 } from "@tabler/icons-react";
 import useStore from "./store";
 import NodeLabel from "./NodeLabelComponent";
+import UploadFileModal, { UploadFileModalRef } from "./UploadFileModal";
 import TemplateHooks, {
   extractBracketedSubstrings,
 } from "./TemplateHooksComponent";
@@ -41,6 +43,7 @@ const union = (setA: Set<any>, setB: Set<any>) => {
 
 const delButtonId = "del-";
 const visibleButtonId = "eye-";
+const uploadButtonId = "upload-";
 
 interface TextFieldsNodeData {
   vars?: string[];
@@ -367,6 +370,31 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     }
   }
 
+  // Upload File button mechanisms
+  const uploadFileModal = useRef<UploadFileModalRef>(null);
+  const [uploadFileInitialVal, setUploadFileInitialVal] = useState<string>("");
+  
+  // Disable/hide a text field temporarily
+  const openUploadFileModal = useCallback(
+    (field_id : string) => {
+    setUploadFileInitialVal(field_id);
+    if (uploadFileModal && uploadFileModal.current)
+      uploadFileModal.current.trigger();
+  }, [uploadFileModal]);
+
+  const handleUploadFile = useCallback((new_text: string) => {
+    if (typeof uploadFileInitialVal !== "string") {
+      console.error("Initial column value was not set.");
+      return;
+    }
+    const new_fields = { ...textfieldsValues };
+    new_fields[uploadFileInitialVal] = new_text;
+    setTextfieldsValues(new_fields);
+    setDataPropsForNode(id, { fields: new_fields });
+    pingOutputNodes(id);
+    console.log(new_text);
+  }, [textfieldsValues, pingOutputNodes, setDataPropsForNode, id, uploadFileInitialVal]);
+
   // Cache the rendering of the text fields.
   const textFields = useMemo(
     () =>
@@ -437,6 +465,23 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
             ) : (
               <></>
             )}
+
+            <Tooltip
+              label="Upload Text/Image File "
+              position="right"
+              withArrow
+              arrowSize={10}
+              withinPortal
+            >
+              <button
+                id={uploadButtonId + i}
+                className="remove-text-field-btn nodrag"
+                onClick={() => openUploadFileModal(i)}
+                style={{ flex: 1 }}
+              >
+                <IconUpload size="14pt" pointerEvents="none" />
+              </button>
+            </Tooltip>
           </div>
         );
       }),
@@ -505,6 +550,14 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
             : []
         }
       />
+
+      <UploadFileModal
+        ref={uploadFileModal}
+        title="Upload Text/Image File "
+        label="Provide a remote URL pointing to an image"
+        onSubmit={handleUploadFile}
+      />
+      
       <Skeleton visible={isLoading}>
         <div ref={setRef} className="nodrag nowheel">
           <ScrollArea.Autosize mah={580} type="hover" viewportRef={viewport}>
