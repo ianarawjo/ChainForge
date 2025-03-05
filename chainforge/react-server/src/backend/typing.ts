@@ -33,47 +33,59 @@ export interface OpenAIFunctionCall {
   description?: string;
 }
 
-/** Anthropic chat message format */
-export interface ImageContentAnthropic {
-  data: string; // SUPPORT ONLY B64 STRING
-  media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-  type: "base64";
-}
+// =================== Multimodal Chat Types ===================
 
-export interface MultiModalContentAnthropic {
-  type: "text" | "image";
-  text?: string;
-  source?: ImageContentAnthropic;
-}
+/** ------ Anthropic chat message format */
 
-/** OpenAI chat message format */
-export interface ImageContentOpenAI {
-  url: string;
+export type ImageTypeAnthropic =
+  | "image/jpeg"
+  | "image/png"
+  | "image/gif"
+  | "image/webp";
+
+export type ImageContentAnthropic =
+  | { type: "base64"; media_type: ImageTypeAnthropic; data: string } // data: base64 encoded image
+  | { type: "url"; url: string }; // url: image url
+
+export type MultiModalContentAnthropic =
+  | { type: "text"; text?: string; source?: never }
+  | { type: "image"; source?: ImageContentAnthropic; text?: never };
+
+/** ------ OpenAI chat message format */
+
+export type ImageContentOpenAI = {
+  url: string; // base64 encoded image OR image http-url
   detail?: "low" | "high" | "auto";
-}
+};
 
-export interface MultiModalContentOpenAI {
-  type: string; // "text" | "image_url";
-  text?: string;
-  image_url?: ImageContentOpenAI;
-}
+export type MultiModalContentOpenAI =
+  | { type: "text"; text?: string; image_url?: never }
+  | { type: "image_url"; image_url?: ImageContentOpenAI; text?: never };
 
-export interface ChatMessageMM {
-  role: string;
-  content:
-    | string
-    | Array<MultiModalContentOpenAI>
-    | Array<MultiModalContentAnthropic>;
-  name?: string;
-  function_call?: OpenAIFunctionCall;
-}
+/** ------ Gemini chat message format */
+
+export type ImageContentGemini = {
+  mimeType:
+    | "image/png"
+    | "image/jpeg"
+    | "image/webp"
+    | "image/heic"
+    | "image/heif";
+  data: string; // base64 encoded image OR image http-url
+};
+
+export type MultiModalContentGemini =
+  | { text: string }
+  | { inlineData: ImageContentGemini };
+
+// ===================
+
 export interface ChatMessage {
   role: string;
   content: string;
   name?: string;
   function_call?: OpenAIFunctionCall;
 }
-export type ChatHistoryMM = ChatMessageMM[]; // FIXME : HAD TO DO THAT OTHERWISE BREAKS EVERYTHING
 export type ChatHistory = ChatMessage[];
 
 /** Google PaLM chat message format */
