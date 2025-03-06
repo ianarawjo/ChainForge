@@ -7,7 +7,7 @@ import React, {
   MouseEventHandler,
 } from "react";
 import { Handle, Node, Position } from "reactflow";
-import { Textarea, Tooltip, Skeleton, ScrollArea } from "@mantine/core";
+import { Textarea, Tooltip, Skeleton, ScrollArea, Image, AspectRatio } from "@mantine/core";
 import {
   IconTextPlus,
   IconEye,
@@ -22,7 +22,7 @@ import TemplateHooks, {
   extractBracketedSubstrings,
 } from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
-import { DebounceRef, genDebounceFunc, setsAreEqual } from "./backend/utils";
+import { DebounceRef, genDebounceFunc, setsAreEqual, get_image_infos } from "./backend/utils";
 import { Func, Dict } from "./backend/typing";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import AISuggestionsManager from "./backend/aiSuggestionsManager";
@@ -45,12 +45,22 @@ const delButtonId = "del-";
 const visibleButtonId = "eye-";
 const uploadButtonId = "upload-";
 
+// export interface Field_Content {
+//   is_image: boolean;
+//   content: string;
+// }
+
+// const create_text_field = (content: string): Field_Content => {
+//   return { is_image: false, content };
+// }
+
 interface TextFieldsNodeData {
   vars?: string[];
   title?: string;
   text?: string;
   fields?: Dict<string>;
   fields_visibility?: Dict<boolean>;
+  fields_is_image?: Dict<boolean>;
   refresh?: boolean;
 }
 
@@ -76,6 +86,10 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   const [fieldVisibility, setFieldVisibility] = useState<Dict<boolean>>(
     data.fields_visibility || {},
   );
+  const [fieldIsImage, setFieldIsImage] = useState<Dict<boolean>>(
+    data.fields_is_image || {},
+  );
+
 
   // For when textfields exceed the TextFields Node max height,
   // when we add a new field, this gives us a way to scroll to the bottom. Better UX.
@@ -130,17 +144,20 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
       // Update the data for this text field's id.
       const new_fields = { ...textfieldsValues };
       const new_vis = { ...fieldVisibility };
+      const new_imgs = { ...fieldIsImage };
       const item_id = (event.target as HTMLButtonElement).id.substring(
         delButtonId.length,
       );
       delete new_fields[item_id];
       delete new_vis[item_id];
+      delete new_imgs[item_id];
       // if the new_data is empty, initialize it with one empty field
       if (Object.keys(new_fields).length === 0) {
         new_fields[getUID(textfieldsValues)] = "";
       }
       setTextfieldsValues(new_fields);
       setFieldVisibility(new_vis);
+      setFieldIsImage(new_imgs);
       setDataPropsForNode(id, {
         fields: new_fields,
         fields_visibility: new_vis,
@@ -376,11 +393,13 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   
   // Disable/hide a text field temporarily
   const openUploadFileModal = useCallback(
-    (field_id : string) => {
-    setUploadFileInitialVal(field_id);
-    if (uploadFileModal && uploadFileModal.current)
-      uploadFileModal.current.trigger();
-  }, [uploadFileModal]);
+      (field_id : string) => {
+      setUploadFileInitialVal(field_id);
+      if (uploadFileModal && uploadFileModal.current)
+        uploadFileModal.current.trigger();
+    }, 
+    [uploadFileModal]
+  );
 
   const handleUploadFile = useCallback((new_text: string) => {
     if (typeof uploadFileInitialVal !== "string") {
@@ -389,10 +408,13 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     }
     const new_fields = { ...textfieldsValues };
     new_fields[uploadFileInitialVal] = new_text;
+    
+    const imgs = { ...fieldIsImage };
+    imgs[uploadFileInitialVal] = true; // toggles it
+    setFieldIsImage(imgs);
     setTextfieldsValues(new_fields);
-    setDataPropsForNode(id, { fields: new_fields });
+    setDataPropsForNode(id, { fields_is_image: imgs });
     pingOutputNodes(id);
-    console.log(new_text);
   }, [textfieldsValues, pingOutputNodes, setDataPropsForNode, id, uploadFileInitialVal]);
 
   // Cache the rendering of the text fields.
@@ -420,68 +442,88 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
                 handleTextAreaKeyDown(event, placeholder, i)
               }
             />
-            {Object.keys(textfieldsValues).length > 1 ? (
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <Tooltip
-                  label="remove field"
-                  position="right"
-                  withArrow
-                  arrowSize={10}
-                  withinPortal
-                >
-                  <button
-                    id={delButtonId + i}
-                    className="remove-text-field-btn nodrag"
-                    onClick={handleDelete}
-                    style={{ flex: 1 }}
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {Object.keys(textfieldsValues).length > 1 ? (
+                <>
+                  <Tooltip
+                    label="remove field"
+                    position="right"
+                    withArrow
+                    arrowSize={10}
+                    withinPortal
                   >
-                    X
-                  </button>
-                </Tooltip>
-                <Tooltip
-                  label={
-                    (fieldVisibility[i] === false ? "enable" : "disable") +
-                    " field"
-                  }
-                  position="right"
-                  withArrow
-                  arrowSize={10}
-                  withinPortal
-                >
-                  <button
-                    id={visibleButtonId + i}
-                    className="remove-text-field-btn nodrag"
-                    onClick={() => handleDisableField(i)}
-                    style={{ flex: 1 }}
+                    <button
+                      id={delButtonId + i}
+                      className="remove-text-field-btn nodrag"
+                      onClick={handleDelete}
+                      style={{ flex: 1 }}
+                    >
+                      X
+                    </button>
+                  </Tooltip>
+                  <Tooltip
+                    label={
+                      (fieldVisibility[i] === false ? "enable" : "disable") +
+                      " field"
+                    }
+                    position="right"
+                    withArrow
+                    arrowSize={10}
+                    withinPortal
                   >
-                    {fieldVisibility[i] === false ? (
-                      <IconEyeOff size="14pt" pointerEvents="none" />
-                    ) : (
-                      <IconEye size="14pt" pointerEvents="none" />
-                    )}
-                  </button>
-                </Tooltip>
-              </div>
-            ) : (
-              <></>
-            )}
+                    <button
+                      id={visibleButtonId + i}
+                      className="remove-text-field-btn nodrag"
+                      onClick={() => handleDisableField(i)}
+                      style={{ flex: 1 }}
+                    >
+                      {fieldVisibility[i] === false ? (
+                        <IconEyeOff size="14pt" pointerEvents="none" />
+                      ) : (
+                        <IconEye size="14pt" pointerEvents="none" />
+                      )}
+                    </button>
+                  </Tooltip>
+                  </>
+              ) : (
+                <></>
+              )}
 
-            <Tooltip
-              label="Upload Text/Image File "
-              position="right"
-              withArrow
-              arrowSize={10}
-              withinPortal
-            >
-              <button
-                id={uploadButtonId + i}
-                className="remove-text-field-btn nodrag"
-                onClick={() => openUploadFileModal(i)}
-                style={{ flex: 1 }}
+              <Tooltip
+                label="Upload Text/Image File "
+                position="right"
+                withArrow
+                arrowSize={10}
+                withinPortal
               >
-                <IconUpload size="14pt" pointerEvents="none" />
-              </button>
-            </Tooltip>
+                <button
+                  id={uploadButtonId + i}
+                  className="remove-text-field-btn nodrag"
+                  onClick={() => openUploadFileModal(i)}
+                  style={{ flex: 1 }}
+                >
+                  <IconUpload size="14pt" pointerEvents="none" />
+                </button>
+              </Tooltip>
+            </div>
+              {fieldIsImage[i] ? (
+                <Tooltip
+                multiline={true}
+                label={JSON.stringify(get_image_infos(textfieldsValues[i]))}
+                >
+                  <div style={{ width: 50, marginLeft: 'auto', marginRight: 'auto' }}>
+                    <Image
+                      src={
+                        textfieldsValues[i].startsWith("http") ? 
+                        textfieldsValues[i] : '' // TODO : handle local file case  
+                      }
+                      radius={'lg'}
+                    />
+                  </div>
+                </Tooltip>
+                  ) : (
+                <></>
+              )}
           </div>
         );
       }),

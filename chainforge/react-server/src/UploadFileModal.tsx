@@ -1,8 +1,8 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useState, useCallback, useContext } from "react";
-import { Modal, TextInput, Button, Box, Group, useMantineTheme, Flex, Center, Text, rem, Divider, Card } from "@mantine/core";
+import { Modal, TextInput, Button, Box, Group, useMantineTheme, Flex, Center, Text, rem, Divider, Card, Image, SimpleGrid } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
-import { Dropzone, FileWithPath } from "@mantine/dropzone";
+import { Dropzone, FileWithPath, IMAGE_MIME_TYPE } from "@mantine/dropzone";
 import {
   IconUpload,
   IconBrandPython,
@@ -12,6 +12,8 @@ import {
 
 import { AlertModalContext } from "./AlertModal";
 
+
+const MAX_SIZE=50
 
 // TODO: Change this for image upload
 // Read a file as text and pass the text to a cb (callback) function
@@ -56,6 +58,7 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({ onError, onDrop }
   return (
     <Dropzone
       loading={isLoading}
+      accept={IMAGE_MIME_TYPE}
       onDrop={(files) => {
         if (files.length === 1) {
           setIsLoading(true);
@@ -69,7 +72,6 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({ onError, onDrop }
             onDrop(file)
             console.log("TODO: Check File is an image !!!! File content:");
             setIsLoading(false);
-            console.log(content);
 
           });
         } else {
@@ -79,7 +81,7 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({ onError, onDrop }
         }
       }}
       onReject={(files) => console.log("rejected files", files)}
-      maxSize={50 * 1024 ** 2}
+      maxSize={MAX_SIZE * 1024 ** 2}
     >
       <Flex style={{ minHeight: rem(80), pointerEvents: "none" }}>
         <Center>
@@ -107,10 +109,10 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({ onError, onDrop }
 
           <Box ml="md">
             <Text size="md" lh={1.2} inline>
-              Drag an Image file here
+              Drag image here or click to select file
             </Text>
             <Text size="sm" color="dimmed" inline mt={7}>
-              Supported Image file: png, ..jpeg/jpg, ...
+              {`Attach only one file at a time, each file should not exceed ${MAX_SIZE} MB`}
             </Text>
           </Box>
         </Center>
@@ -135,11 +137,16 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
   function UploadFileModal({ title, label, onSubmit }, ref) {
     const [opened, { open, close }] = useDisclosure(false);
 
-    const [fileLoaded, setFileLoaded] = useState('');
+    const [fileLoaded, setFileLoaded] = useState<FileWithPath[]>([]);
+
+    const previews = fileLoaded.map((file, index) => {
+      const imageUrl = URL.createObjectURL(file);
+      return <Image key={index} src={imageUrl} onLoad={() => URL.revokeObjectURL(imageUrl)} />;
+    });
 
     const handleRemoveFileLoaded = useCallback(
       (name: string) => {
-        setFileLoaded('');
+        setFileLoaded([]);
         form.setValues({ value: '' })
       },
       [setFileLoaded],
@@ -178,7 +185,7 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
 
     return (
       <Modal opened={opened} onClose={close} title={title}>
-        <Box maw={300} mx="auto">
+        <Box maw={500} mx="auto">
           <form
             onSubmit={form.onSubmit((values) => {
               if (onSubmit) onSubmit(values.value);
@@ -201,9 +208,9 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
               labelPosition="center"
             />
 
-            {fileLoaded.length > 0 ? (
+            {fileLoaded.length > 0 ? fileLoaded.map((p) => (
               <Card
-                key={fileLoaded}
+                key='1'
                 shadow="sm"
                 radius="sm"
                 pt="0px"
@@ -213,18 +220,11 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
               >
                 <Group position="apart">
                   <Group position="left" mt="md" mb="xs">
-                    {/* <Text w="10px">{p.emoji}</Text> */}
-                    <Text weight={500}>{fileLoaded}</Text>
-                    {/* {p.settings_schema ? (
-                      <Badge color="blue" variant="light">
-                        has settings
-                      </Badge>
-                    ) : (
-                      <></>
-                    )} */}
+                    <Text w="10px">{p.type.split('/')[1]}</Text>
+                    <Text weight={500}>{p.name}</Text>
                   </Group>
                   <Button
-                    onClick={() => handleRemoveFileLoaded(fileLoaded)}
+                    onClick={() => handleRemoveFileLoaded(p.name)}
                     color="red"
                     p="0px"
                     mt="4px"
@@ -234,17 +234,22 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
                   </Button>
                 </Group>
               </Card>
-            ): (
+              
+            )): (
               <ImageFileDropzone
                 onError={handleError}
                 onDrop={(file: FileWithPath) => {
-                    console.log("File dropped:", file);
-                    setFileLoaded(file.path ? file.path : '');
+                    setFileLoaded([file]);
+                    console.log("File Loaded:", file);
                     form.setValues({ value: file.path })
                   }
                 }
               />
             )}
+
+            <SimpleGrid cols={1} mt={previews.length > 0 ? 'xl' : 0}>
+              {previews}
+            </SimpleGrid>
 
             <Group position="right" mt="md">
               <Button type="submit">Submit</Button>
