@@ -65,18 +65,23 @@ export type MultiModalContentOpenAI =
 /** ------ Gemini chat message format */
 
 export type ImageContentGemini = {
-  mimeType:
-    | "image/png"
-    | "image/jpeg"
-    | "image/webp"
-    | "image/heic"
-    | "image/heif";
+  mimeType: string
+    // | "image/png"
+    // | "image/jpeg"
+    // | "image/webp"
+    // | "image/heic"
+    // | "image/heif";
   data: string; // base64 encoded image OR image http-url
 };
 
 export type MultiModalContentGemini =
   | { text: string }
   | { inlineData: ImageContentGemini };
+
+export type MultiModalContent =
+  | Array<MultiModalContentAnthropic>
+  | Array<MultiModalContentOpenAI>
+  | Array<MultiModalContentGemini>;
 
 // ===================
 
