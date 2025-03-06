@@ -553,9 +553,11 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         setExecutor(ex);
 
         setExecProgress(0);
-        ex.start((progress) => {
-          setExecProgress(progress?.success ?? 0);
-        });
+
+        // ex.start((progress) => {
+        //   setExecProgress(progress?.success ?? 0);
+        // });
+
       } else if (executor) {
         // Update criteria in executor
         executor.addCriteria(criteria);
