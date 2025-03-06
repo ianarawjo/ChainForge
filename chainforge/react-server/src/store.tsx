@@ -10,7 +10,7 @@ import {
   MarkerType,
   Connection,
 } from "reactflow";
-import { escapeBraces } from "./backend/template";
+import { escapeBraces, IMAGE_IDENTIFIER } from "./backend/template";
 import {
   deepcopy,
   transformDict,
@@ -674,10 +674,21 @@ const useStore = create<StoreHandles>((set, get) => ({
                 src_node.data.fields,
                 // eslint-disable-next-line
                 (fid) => src_node.data.fields_visibility[fid] !== false,
+                undefined,
+                src_node.data.fields_is_image ? 
+                  ((fid, val) => src_node.data.fields_is_image[fid] ? IMAGE_IDENTIFIER + val : val) 
+                  : undefined
               ),
             );
           // return all field values
-          else return Object.values(src_node.data.fields);
+          else return Object.values(transformDict(
+            src_node.data.fields,
+            undefined,
+            undefined,
+            src_node.data.fields_is_image ? 
+                  ((fid, val) => src_node.data.fields_is_image[fid] ? IMAGE_IDENTIFIER + val : val) 
+                  : undefined
+          ));
         }
       }
       // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:
