@@ -1,5 +1,27 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useState, useCallback, useContext } from "react";
-import { Modal, TextInput, Button, Box, Group, useMantineTheme, Flex, Center, Text, rem, Divider, Card, Image, SimpleGrid } from "@mantine/core";
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useState,
+  useCallback,
+  useContext,
+} from "react";
+import {
+  Modal,
+  TextInput,
+  Button,
+  Box,
+  Group,
+  useMantineTheme,
+  Flex,
+  Center,
+  Text,
+  rem,
+  Divider,
+  Card,
+  Image,
+  SimpleGrid,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { Dropzone, FileWithPath, IMAGE_MIME_TYPE } from "@mantine/dropzone";
@@ -12,8 +34,7 @@ import {
 
 import { AlertModalContext } from "./AlertModal";
 
-
-const MAX_SIZE=50
+const MAX_SIZE = 50;
 
 // TODO: Change this for image upload
 // Read a file as text and pass the text to a cb (callback) function
@@ -51,7 +72,10 @@ interface ImageFileDropzoneProps {
 /** A Dropzone to load an image file.
  * If successful, the image file preview is loaded into the UI.
  * */
-const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({ onError, onDrop }) => {
+const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
+  onError,
+  onDrop,
+}) => {
   const theme = useMantineTheme();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -62,18 +86,20 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({ onError, onDrop }
       onDrop={(files) => {
         if (files.length === 1) {
           setIsLoading(true);
-          read_file(files[0], (content: string | ArrayBuffer | null, file: FileWithPath) => {
-            if (typeof content !== "string") {
-              console.error("File unreadable: Contents are not text.");
-              return;
-            }
-            // TODO: Log the content of file in cache
-            // Read the file into text and then send it to backend
-            onDrop(file)
-            console.log("TODO: Check File is an image !!!! File content:");
-            setIsLoading(false);
-
-          });
+          read_file(
+            files[0],
+            (content: string | ArrayBuffer | null, file: FileWithPath) => {
+              if (typeof content !== "string") {
+                console.error("File unreadable: Contents are not text.");
+                return;
+              }
+              // TODO: Log the content of file in cache
+              // Read the file into text and then send it to backend
+              onDrop(file);
+              console.log("TODO: Check File is an image !!!! File content:");
+              setIsLoading(false);
+            },
+          );
         } else {
           console.error(
             "Too many files dropped. Only drop one file at a time.",
@@ -141,13 +167,19 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
 
     const previews = fileLoaded.map((file, index) => {
       const imageUrl = URL.createObjectURL(file);
-      return <Image key={index} src={imageUrl} onLoad={() => URL.revokeObjectURL(imageUrl)} />;
+      return (
+        <Image
+          key={index}
+          src={imageUrl}
+          onLoad={() => URL.revokeObjectURL(imageUrl)}
+        />
+      );
     });
 
     const handleRemoveFileLoaded = useCallback(
       (name: string) => {
         setFileLoaded([]);
-        form.setValues({ value: '' })
+        form.setValues({ value: "" });
       },
       [setFileLoaded],
     );
@@ -167,7 +199,9 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
       },
       validate: {
         value: (v) =>
-          validate_file_upload(v) ? null : `Not an URL or local imgage file: ${v}`,
+          validate_file_upload(v)
+            ? null
+            : `Not an URL or local imgage file: ${v}`,
       },
     });
 
@@ -202,52 +236,48 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
               autoFocus={false}
               {...form.getInputProps("value")}
             />
-            <Divider
-              my="xs"
-              label=""
-              labelPosition="center"
-            />
+            <Divider my="xs" label="" labelPosition="center" />
 
-            {fileLoaded.length > 0 ? fileLoaded.map((p) => (
-              <Card
-                key='1'
-                shadow="sm"
-                radius="sm"
-                pt="0px"
-                pb="4px"
-                mb="md"
-                withBorder
-              >
-                <Group position="apart">
-                  <Group position="left" mt="md" mb="xs">
-                    <Text w="10px">{p.type.split('/')[1]}</Text>
-                    <Text weight={500}>{p.name}</Text>
+            {fileLoaded.length > 0 ? (
+              fileLoaded.map((p) => (
+                <Card
+                  key="1"
+                  shadow="sm"
+                  radius="sm"
+                  pt="0px"
+                  pb="4px"
+                  mb="md"
+                  withBorder
+                >
+                  <Group position="apart">
+                    <Group position="left" mt="md" mb="xs">
+                      <Text w="10px">{p.type.split("/")[1]}</Text>
+                      <Text weight={500}>{p.name}</Text>
+                    </Group>
+                    <Button
+                      onClick={() => handleRemoveFileLoaded(p.name)}
+                      color="red"
+                      p="0px"
+                      mt="4px"
+                      variant="subtle"
+                    >
+                      <IconX />
+                    </Button>
                   </Group>
-                  <Button
-                    onClick={() => handleRemoveFileLoaded(p.name)}
-                    color="red"
-                    p="0px"
-                    mt="4px"
-                    variant="subtle"
-                  >
-                    <IconX />
-                  </Button>
-                </Group>
-              </Card>
-              
-            )): (
+                </Card>
+              ))
+            ) : (
               <ImageFileDropzone
                 onError={handleError}
                 onDrop={(file: FileWithPath) => {
-                    setFileLoaded([file]);
-                    console.log("File Loaded:", file);
-                    form.setValues({ value: file.path })
-                  }
-                }
+                  setFileLoaded([file]);
+                  console.log("File Loaded:", file);
+                  form.setValues({ value: file.path });
+                }}
               />
             )}
 
-            <SimpleGrid cols={1} mt={previews.length > 0 ? 'xl' : 0}>
+            <SimpleGrid cols={1} mt={previews.length > 0 ? "xl" : 0}>
               {previews}
             </SimpleGrid>
 
@@ -256,7 +286,6 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
             </Group>
           </form>
         </Box>
-
       </Modal>
     );
   },

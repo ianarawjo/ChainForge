@@ -210,88 +210,105 @@ export function get_azure_openai_api_keys(): [
 }
 
 function construct_text_payload(
-  text : string , 
-  variant : 'openai' | 'gemini' | 'anthropic'
-) : Dict {
+  text: string,
+  variant: "openai" | "gemini" | "anthropic",
+): Dict {
   switch (variant) {
-    case 'openai':
-      return { type : 'text', text: text };
-    case 'gemini':
-      return { text : text };
-    case 'anthropic':
-      return { type : 'text', text: text };
+    case "openai":
+      return { type: "text", text: text };
+    case "gemini":
+      return { text: text };
+    case "anthropic":
+      return { type: "text", text: text };
     default:
       throw new Error(`Unknown variant: ${variant}`);
   }
 }
 
 function construct_image_payload(
-  image_url : string , 
-  variant : 'openai' | 'gemini' | 'anthropic'
-) : MultiModalContentAnthropic | MultiModalContentOpenAI | MultiModalContentGemini {
-  if (image_url.startsWith('http')) {
+  image_url: string,
+  variant: "openai" | "gemini" | "anthropic",
+):
+  | MultiModalContentAnthropic
+  | MultiModalContentOpenAI
+  | MultiModalContentGemini {
+  if (image_url.startsWith("http")) {
     switch (variant) {
-      case 'openai':
-        return { type : 'image_url', image_url: { url: image_url, detail : 'auto' } };
-      case 'gemini':
-        return { inlineData : { data : image_url, mimeType : 'image/'+image_url.split('.')[-1] } };
-      case 'anthropic':
-        return { type : 'image', source: { type: 'url', url: image_url } };
+      case "openai":
+        return {
+          type: "image_url",
+          image_url: { url: image_url, detail: "auto" },
+        };
+      case "gemini":
+        return {
+          inlineData: {
+            data: image_url,
+            mimeType: "image/" + image_url.split(".")[-1],
+          },
+        };
+      case "anthropic":
+        return { type: "image", source: { type: "url", url: image_url } };
       default:
         throw new Error(`Unknown variant: ${variant}`);
     }
   } else {
     // if image_url is a absolute path to a file, encode it as base64
-    if (!image_url.startsWith('data:image/jpeg;base64,')){
-      console.log('TO IMPLEMENT : Encoding image as base64');
-      throw new Error('TO IMPLEMENT : Encoding image as base64');
+    if (!image_url.startsWith("data:image/jpeg;base64,")) {
+      console.log("TO IMPLEMENT : Encoding image as base64");
+      throw new Error("TO IMPLEMENT : Encoding image as base64");
     }
 
     switch (variant) {
-      case 'openai':
-        return { type : 'image_url', image_url: { url: image_url, detail : 'auto' } };
-      case 'gemini':
-        return { inlineData : { data : image_url, mimeType : 'image/jpeg' } };
-      case 'anthropic':
-        return { type : 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image_url } };
+      case "openai":
+        return {
+          type: "image_url",
+          image_url: { url: image_url, detail: "auto" },
+        };
+      case "gemini":
+        return { inlineData: { data: image_url, mimeType: "image/jpeg" } };
+      case "anthropic":
+        return {
+          type: "image",
+          source: { type: "base64", media_type: "image/jpeg", data: image_url },
+        };
       default:
         throw new Error(`Unknown variant: ${variant}`);
     }
   }
-
 }
 
 function resolve_image_in_user_messages(
-  messages : ChatHistory,
-  variant : 'openai' | 'gemini' | 'anthropic'
+  messages: ChatHistory,
+  variant: "openai" | "gemini" | "anthropic",
 ): Array<any> {
-  let res = [];
+  const res = [];
   for (const message of messages) {
-    if (message.role != 'user'){
-      res.push(message)
-      continue
+    if (message.role !== "user") {
+      res.push(message);
+      continue;
     }
 
-    const prompt = message.content
+    const prompt = message.content;
     if (prompt.includes(IMAGE_IDENTIFIER)) {
-
       // TODO: Add a step to merge consecutive text elements, when splitting by '\n'
-      let new_content  = prompt.split('\n').filter((line) => line.trim().length > 0).map((line) => {
-        if (line.includes(IMAGE_IDENTIFIER)) {
-          const image_url = line.replace(IMAGE_IDENTIFIER, "").trim();
-          return construct_image_payload(image_url, variant);
-        } else {
-          return construct_text_payload(line, variant)
-        }
-      });
-      res.push({ role: 'user', content: new_content });
+      const new_content = prompt
+        .split("\n")
+        .filter((line) => line.trim().length > 0)
+        .map((line) => {
+          if (line.includes(IMAGE_IDENTIFIER)) {
+            const image_url = line.replace(IMAGE_IDENTIFIER, "").trim();
+            return construct_image_payload(image_url, variant);
+          } else {
+            return construct_text_payload(line, variant);
+          }
+        });
+      res.push({ role: "user", content: new_content });
     } else {
-      res.push(message)
+      res.push(message);
     }
   }
-  return res
+  return res;
 }
-
 
 /**
  * Construct an OpenAI format chat history for sending off to an OpenAI API call.
@@ -427,7 +444,7 @@ export async function call_chatgpt(
     );
   }
 
-  query.messages = resolve_image_in_user_messages(query.messages, 'openai');
+  query.messages = resolve_image_in_user_messages(query.messages, "openai");
 
   // Try to call OpenAI
   let response: Dict = {};
@@ -774,7 +791,7 @@ export async function call_anthropic(
     query.prompt = wrapped_prompt;
   }
 
-  query.messages = resolve_image_in_user_messages(query.messages, 'anthropic');
+  query.messages = resolve_image_in_user_messages(query.messages, "anthropic");
 
   console.log(
     `Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`,
@@ -990,7 +1007,7 @@ export async function call_google_palm(
 }
 
 export async function call_google_gemini(
-  prompt: string ,
+  prompt: string,
   model: LLM,
   n = 1,
   temperature = 0.7,
@@ -2502,7 +2519,6 @@ export const compressBase64Image = (b64: string): Promise<string> => {
     .then((compressedBlob) => blobToBase64(compressedBlob as Blob));
 };
 
-
 // This function takes a string as argument that represents either :
 //  - a local path
 //  - a URL
@@ -2546,4 +2562,4 @@ export const get_image_infos = (image: string): Dict<string> => {
   }
 
   return infos;
-}
+};
