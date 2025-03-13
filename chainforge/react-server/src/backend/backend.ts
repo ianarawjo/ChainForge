@@ -29,6 +29,8 @@ import {
   repairCachedResponses,
   deepcopy,
   llmResponseDataToString,
+  extendArray,
+  extendArrayDict,
 } from "./utils";
 import StorageCache, { StringLookup } from "./cache";
 import { PromptPipeline } from "./query";
@@ -520,7 +522,7 @@ export async function generatePrompts(
 /**
  * Calculates how many queries we need to make, given the passed prompt and vars.
  *
- * @param prompt the prompt template, with any {{}} vars
+ * @param prompt the prompt template, with any {} vars; or alternatively, an array of such templates
  * @param vars a dict of the template variables to fill the prompt template with, by name.
  *             For each var value, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
  * @param llms the list of LLMs you will query
@@ -531,7 +533,7 @@ export async function generatePrompts(
  *          If there was an error, returns a dict with a single key, 'error'.
  */
 export async function countQueries(
-  prompt: string,
+  prompt: string | string[],
   vars: PromptVarsDict,
   llms: Array<StringOrHash | LLMSpec>,
   n: number,
@@ -545,19 +547,27 @@ export async function countQueries(
   vars = deepcopy(vars);
   llms = deepcopy(llms);
 
-  let all_prompt_permutations: PromptTemplate[] | Dict<PromptTemplate[]>;
+  const prompt_templates = typeof prompt === "string" ? [prompt] : prompt;
+  const all_prompt_permutations: PromptTemplate[] | Dict<PromptTemplate[]> =
+    cont_only_w_prior_llms && Array.isArray(llms) ? {} : [];
 
-  const gen_prompts = new PromptPermutationGenerator(prompt);
-  if (cont_only_w_prior_llms && Array.isArray(llms)) {
-    all_prompt_permutations = {};
-    llms.forEach((llm_spec) => {
-      const llm_key = extract_llm_key(llm_spec);
-      (all_prompt_permutations as Dict<PromptTemplate[]>)[llm_key] = Array.from(
-        gen_prompts.generate(filterVarsByLLM(vars, llm_key)),
+  for (const pt of prompt_templates) {
+    const gen_prompts = new PromptPermutationGenerator(pt);
+    if (cont_only_w_prior_llms && Array.isArray(llms)) {
+      llms.forEach((llm_spec) => {
+        const llm_key = extract_llm_key(llm_spec);
+        extendArrayDict(
+          all_prompt_permutations as Dict<PromptTemplate[]>,
+          llm_key,
+          Array.from(gen_prompts.generate(filterVarsByLLM(vars, llm_key))),
+        );
+      });
+    } else {
+      extendArray(
+        all_prompt_permutations as PromptTemplate[],
+        Array.from(gen_prompts.generate(vars)),
       );
-    });
-  } else {
-    all_prompt_permutations = Array.from(gen_prompts.generate(vars));
+    }
   }
 
   let cache_file_lookup: Dict = {};
@@ -739,7 +749,7 @@ export async function ensureUniqueFlowFilename(
  * @param id a unique ID to refer to this information. Used when cache'ing responses. 
  * @param llm a string, list of strings, or list of LLM spec dicts specifying the LLM(s) to query.
  * @param n the amount of generations for each prompt. All LLMs will be queried the same number of times 'n' per each prompt.
- * @param prompt the prompt template, with any {{}} vars
+ * @param prompt the prompt template, with any {} vars
  * @param vars a dict of the template variables to fill the prompt template with, by name. 
                For each var, can be single values or a list; in the latter, all permutations are passed. (Pass empty dict if no vars.)
  * @param chat_histories Either an array of `ChatHistory` (to use across all LLMs), or a dict indexed by LLM nicknames of `ChatHistory` arrays to use per LLM. 

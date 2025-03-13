@@ -18,9 +18,20 @@ import {
   Modal,
   Box,
   Tooltip,
+  Group,
+  Flex,
+  Button,
+  ActionIcon,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconEraser, IconList } from "@tabler/icons-react";
+import {
+  IconArrowLeft,
+  IconArrowRight,
+  IconEraser,
+  IconList,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
@@ -41,6 +52,7 @@ import {
   extractSettingsVars,
   truncStr,
   genDebounceFunc,
+  ensureUniqueName,
 } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import CancelTracker from "./backend/canceler";
@@ -64,6 +76,7 @@ import {
   queryLLM,
 } from "./backend/backend";
 import { StringLookup } from "./backend/cache";
+import { union } from "./backend/setUtils";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -221,6 +234,7 @@ export interface PromptNodeProps {
     contChat: boolean;
     refresh: boolean;
     refreshLLMList: boolean;
+    idxPromptVariantShown?: number;
   };
   id: string;
   type: string;
@@ -257,10 +271,15 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     null,
   );
   const [templateVars, setTemplateVars] = useState<string[]>(data.vars ?? []);
-  const [promptText, setPromptText] = useState<string>(data.prompt ?? "");
-  const [promptTextOnLastRun, setPromptTextOnLastRun] = useState<string | null>(
-    null,
+  const [promptText, setPromptText] = useState<string | string[]>(
+    data.prompt ?? "",
   );
+  const [idxPromptVariantShown, setIdxPromptVariantShown] = useState<number>(
+    data.idxPromptVariantShown ?? 0,
+  );
+  const [promptTextOnLastRun, setPromptTextOnLastRun] = useState<
+    string | string[] | null
+  >(null);
   const [status, setStatus] = useState(Status.NONE);
   const [numGenerations, setNumGenerations] = useState<number>(data.n ?? 1);
   const [numGenerationsLastRun, setNumGenerationsLastRun] = useState<number>(
@@ -391,10 +410,17 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   }, [templateVars, id, pullInputData, updateShowContToggle]);
 
   const refreshTemplateHooks = useCallback(
-    (text: string) => {
-      // Update template var fields + handles
-      const found_template_vars = new Set(extractBracketedSubstrings(text)); // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
+    (text: string | string[]) => {
+      const texts = typeof text === "string" ? [text] : text;
 
+      // Get all template vars in the prompt(s)
+      let found_template_vars = new Set<string>();
+      for (const t of texts) {
+        const substrs = extractBracketedSubstrings(t); // gets all strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
+        found_template_vars = union(found_template_vars, new Set(substrs));
+      }
+
+      // Update template var fields + handles
       if (!setsAreEqual(found_template_vars, new Set(templateVars))) {
         if (node_type !== "chat") {
           try {
@@ -413,27 +439,29 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
   const handleInputChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const value = event.target.value;
+      const value = event.target.value as string;
       const updateStatus =
         promptTextOnLastRun !== null &&
         status !== Status.WARNING &&
         value !== promptTextOnLastRun;
 
-      // Store prompt text
-      data.prompt = value;
-
       // Debounce the global state change to happen only after 500ms, as it forces a costly rerender:
-      debounce((_value, _updateStatus) => {
-        setPromptText(_value);
-        setDataPropsForNode(id, { prompt: _value });
-        refreshTemplateHooks(_value);
+      debounce((_value: string, _updateStatus, _idxPromptVariantShown) => {
+        setPromptText((prompts) => {
+          if (typeof prompts === "string") prompts = _value;
+          else prompts[_idxPromptVariantShown] = _value;
+          setDataPropsForNode(id, { prompt: prompts });
+          refreshTemplateHooks(prompts);
+          return prompts;
+        });
         if (_updateStatus) setStatus(Status.WARNING);
-      }, 300)(value, updateStatus);
+      }, 300)(value, updateStatus, idxPromptVariantShown);
 
       // Debounce refreshing the template hooks so we don't annoy the user
       // debounce((_value) => refreshTemplateHooks(_value), 500)(value);
     },
     [
+      idxPromptVariantShown,
       promptTextOnLastRun,
       status,
       refreshTemplateHooks,
@@ -552,7 +580,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   // Ask the backend how many responses it needs to collect, given the input data:
   const fetchResponseCounts = useCallback(
     (
-      prompt: string,
+      prompt: string | string[],
       vars: Dict,
       llms: (StringOrHash | LLMSpec)[],
       chat_histories?:
@@ -592,14 +620,24 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       const pulled_vars = pullInputData(templateVars, id);
       updateShowContToggle(pulled_vars);
 
-      generatePrompts(promptText, pulled_vars).then((prompts) => {
-        setPromptPreviews(
-          prompts.map(
-            (p: PromptTemplate) =>
-              new PromptInfo(p.toString(), extractSettingsVars(p.fill_history)),
-          ),
-        );
-      });
+      const prompts =
+        typeof promptText === "string" ? [promptText] : promptText;
+
+      Promise.all(prompts.map((p) => generatePrompts(p, pulled_vars))).then(
+        (results) => {
+          // Handle all the results here
+          const all_concrete_prompts = results.flatMap((ps) =>
+            ps.map(
+              (p: PromptTemplate) =>
+                new PromptInfo(
+                  p.toString(),
+                  extractSettingsVars(p.fill_history),
+                ),
+            ),
+          );
+          setPromptPreviews(all_concrete_prompts);
+        },
+      );
 
       pullInputChats();
     } catch (err) {
@@ -827,9 +865,18 @@ Soft failing by replacing undefined with empty strings.`,
 
     // Pull the data to fill in template input variables, if any
     let pulled_data: Dict<(string | TemplateVarInfo)[]> = {};
+    let var_for_prompt_templates: string | undefined;
     try {
       // Try to pull inputs
       pulled_data = pullInputData(templateVars, id);
+
+      // Add a special new variable for the root prompt template(s)
+      var_for_prompt_templates = ensureUniqueName(
+        "prompt",
+        Object.keys(pulled_data),
+      );
+      if (typeof promptText !== "string")
+        pulled_data[var_for_prompt_templates] = promptText; // this will be filled in when calling queryLLMs
     } catch (err) {
       if (showAlert) showAlert((err as Error)?.message ?? err);
       console.error(err);
@@ -873,7 +920,9 @@ Soft failing by replacing undefined with empty strings.`,
     // Fetch info about the number of queries we'll need to make
     const fetch_resp_count = () =>
       fetchResponseCounts(
-        prompt_template,
+        typeof prompt_template === "string"
+          ? prompt_template
+          : `{${var_for_prompt_templates}}`, // Use special root prompt if there's multiple prompt variants
         pulled_data,
         _llmItemsCurrState,
         pulled_chats as ChatHistoryInfo[],
@@ -951,9 +1000,11 @@ Soft failing by replacing undefined with empty strings.`,
     const query_llms = () => {
       return queryLLM(
         id,
-        _llmItemsCurrState, // deep clone it first
+        _llmItemsCurrState,
         numGenerations,
-        prompt_template,
+        typeof prompt_template === "string"
+          ? prompt_template
+          : `{${var_for_prompt_templates}}`, // Use special root prompt if there's multiple prompt variants
         pulled_data,
         chat_hist_by_llm,
         apiKeys || {},
@@ -1015,7 +1066,7 @@ Soft failing by replacing undefined with empty strings.`,
                   o.metavars = resp_obj.metavars ?? {};
 
                   // Add a metavar for the prompt *template* in this PromptNode
-                  o.metavars.__pt = prompt_template;
+                  // o.metavars.__pt = prompt_template;
 
                   // Carry over any chat history
                   if (resp_obj.chat_history)
@@ -1156,6 +1207,48 @@ Soft failing by replacing undefined with empty strings.`,
     [numGenerationsLastRun, status],
   );
 
+  const handleAddPromptVariant = useCallback(() => {
+    // Pushes a new prompt variant, updating the prompts list and duplicating the current shown prompt
+    const prompts = typeof promptText === "string" ? [promptText] : promptText;
+    const curIdx = Math.max(
+      0,
+      Math.min(prompts.length - 1, idxPromptVariantShown),
+    ); // clamp
+    const curShownPrompt = prompts[curIdx];
+    setPromptText(prompts.concat([curShownPrompt]));
+    setIdxPromptVariantShown(prompts.length);
+  }, [promptText, idxPromptVariantShown]);
+
+  const gotoPromptVariant = useCallback(
+    (shift: number) => {
+      const prompts =
+        typeof promptText === "string" ? [promptText] : promptText;
+      const newIdx = Math.max(
+        0,
+        Math.min(prompts.length - 1, idxPromptVariantShown + shift),
+      ); // clamp
+      setIdxPromptVariantShown(newIdx);
+    },
+    [promptText, idxPromptVariantShown],
+  );
+
+  const handleRemovePromptVariant = useCallback(() => {
+    setPromptText((prompts) => {
+      if (typeof prompts === "string") return prompts; // cannot remove the last one
+      prompts.splice(idxPromptVariantShown, 1); // remove the indexed variant
+      setIdxPromptVariantShown(Math.max(0, idxPromptVariantShown - 1)); // goto the previous variant, if possible
+      return prompts;
+    });
+  }, [idxPromptVariantShown]);
+
+  // Whenever idx of prompt variant changes, we need to refresh the Textarea:
+  useEffect(() => {
+    if (textAreaRef.current && Array.isArray(promptText)) {
+      // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
+      textAreaRef.current.value = promptText[idxPromptVariantShown];
+    }
+  }, [idxPromptVariantShown]);
+
   const hideStatusIndicator = () => {
     if (status !== Status.NONE) setStatus(Status.NONE);
   };
@@ -1254,7 +1347,12 @@ Soft failing by replacing undefined with empty strings.`,
                 key={0}
                 className="prompt-field-fixed nodrag nowheel"
                 minRows={4}
-                defaultValue={data.prompt}
+                defaultValue={
+                  typeof data.prompt === "string"
+                    ? data.prompt
+                    : data.prompt &&
+                      data.prompt[data.idxPromptVariantShown ?? 0]
+                }
                 onChange={handleInputChange}
                 miw={230}
                 styles={{
@@ -1277,10 +1375,68 @@ Soft failing by replacing undefined with empty strings.`,
           className="prompt-field-fixed nodrag nowheel"
           minRows={4}
           maxRows={12}
-          defaultValue={data.prompt}
+          defaultValue={
+            typeof data.prompt === "string"
+              ? data.prompt
+              : data.prompt && data.prompt[data.idxPromptVariantShown ?? 0]
+          }
           onChange={handleInputChange}
+          // value={typeof promptText === "string" ? promptText : promptText[idxPromptVariantShown]}
         />
       )}
+
+      <Flex justify="right" pos="absolute" right={10}>
+        {typeof promptText === "string" || promptText.length === 1 ? (
+          <Button
+            size="xs"
+            variant="subtle"
+            color="gray"
+            mt={3}
+            mr={3}
+            p={0}
+            fw="normal"
+            h="1.0rem"
+            onClick={handleAddPromptVariant}
+          >
+            + add variant
+          </Button>
+        ) : (
+          <>
+            <ActionIcon
+              size="xs"
+              c="black"
+              onClick={() => gotoPromptVariant(-1)}
+            >
+              <IconArrowLeft size={19} />
+            </ActionIcon>
+
+            <Text size="xs">
+              Variant {idxPromptVariantShown + 1} of{" "}
+              {typeof promptText === "string" ? 1 : promptText.length}
+            </Text>
+
+            <ActionIcon
+              size="xs"
+              c="black"
+              onClick={() => gotoPromptVariant(1)}
+            >
+              <IconArrowRight size={19} />
+            </ActionIcon>
+
+            <Tooltip label="Add prompt variant" position="right" withArrow>
+              <ActionIcon size="xs" c="black" onClick={handleAddPromptVariant}>
+                <IconPlus size={19} />
+              </ActionIcon>
+            </Tooltip>
+
+            <Tooltip label="Remove this variant" position="right" withArrow>
+              <ActionIcon size="xs" c="red" onClick={handleRemovePromptVariant}>
+                <IconTrash size={19} />
+              </ActionIcon>
+            </Tooltip>
+          </>
+        )}
+      </Flex>
 
       <Handle
         type="source"
@@ -1289,13 +1445,17 @@ Soft failing by replacing undefined with empty strings.`,
         className="grouped-handle"
         style={{ top: "50%" }}
       />
-      <TemplateHooks
-        vars={templateVars}
-        nodeId={id}
-        startY={hooksY}
-        position={Position.Left}
-        ignoreHandles={["__past_chats"]}
-      />
+
+      <Box mih={14}>
+        <TemplateHooks
+          vars={templateVars}
+          nodeId={id}
+          startY={hooksY}
+          position={Position.Left}
+          ignoreHandles={["__past_chats"]}
+        />
+      </Box>
+
       <hr />
       <div>
         <div style={{ marginBottom: "10px", padding: "4px" }}>

@@ -2398,3 +2398,52 @@ export const compressBase64Image = (b64: string): Promise<string> => {
     )
     .then((compressedBlob) => blobToBase64(compressedBlob as Blob));
 };
+
+/**
+ * Extends array `a` with the values of `b`.
+ * @param a The array to extend (in-place).
+ * @param b The array to add to the end of `a`.
+ * @returns `a`, extended.
+ */
+export const extendArray = <T>(a: Array<T>, b: Array<T>): Array<T> => {
+  for (const i in b) {
+    a.push(b[i]);
+  }
+  return a;
+};
+
+/**
+ * Extends the array `key` in a dict with `values`, creating a new array if the key is missing.
+ * @param dict The dictionary to extend (in-place).
+ * @param key The key of the dictionary.
+ * @param values The new array to append to the end of the dict value for `key`.
+ */
+export const extendArrayDict = <K extends string | number | symbol, V>(
+  dict: Record<K, V[]>,
+  key: K,
+  values: V[],
+): void => {
+  if (!dict[key]) {
+    dict[key] = [];
+  }
+  extendArray(dict[key], values);
+};
+
+/** Ensure that a name is 'unique'; if not, return an amended version with a count tacked on (e.g. "GPT-4 (2)") */
+export const ensureUniqueName = (_name: string, _prev_names: string[]) => {
+  // Strip whitespace around names
+  const prev_names = _prev_names.map((n) => n.trim());
+  const name = _name.trim();
+
+  // Check if name is unique
+  if (!prev_names.includes(name)) return name;
+
+  // Name isn't unique; find a unique one:
+  let i = 2;
+  let new_name = `${name} (${i})`;
+  while (prev_names.includes(new_name)) {
+    i += 1;
+    new_name = `${name} (${i})`;
+  }
+  return new_name;
+};
