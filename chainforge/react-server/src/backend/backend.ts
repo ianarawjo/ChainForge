@@ -711,10 +711,12 @@ export async function fetchEnvironAPIKeys(): Promise<Dict<string>> {
 export async function saveFlowToLocalFilesystem(
   flowJSON: Dict,
   filename: string,
+  alsoAutosave: boolean,
 ): Promise<void> {
   try {
     await axios.put(`${FLASK_BASE_URL}api/flows/${filename}`, {
       flow: flowJSON,
+      alsoAutosave: alsoAutosave,
     });
   } catch (error) {
     throw new Error(

@@ -759,6 +759,17 @@ def get_flow(filename):
     except FileNotFoundError:
         return jsonify({"error": "Flow not found"}), 404
 
+@app.route('/api/flowExists/<filename>', methods=['GET'])
+def get_flow_exists(filename):
+    """Return the content of a specific flow"""
+    if not filename.endswith('.cforge'):
+        filename += '.cforge'
+    try:
+        is_file = os.path.isfile(os.path.join(FLOWS_DIR, filename))
+        return jsonify({"exists": is_file})
+    except FileNotFoundError:
+        return jsonify({"error": "Flow not found"}), 404
+
 @app.route('/api/flows/<filename>', methods=['DELETE'])
 def delete_flow(filename):
     """Delete a flow"""
@@ -781,11 +792,18 @@ def save_or_rename_flow(filename):
     if data.get('flow'):
         # Save flow (overwriting any existing flow file with the same name)
         flow_data = data.get('flow')
+        also_autosave = data.get('alsoAutosave')
         
         try:
             filepath = os.path.join(FLOWS_DIR, filename)
             with open(filepath, 'w') as f:
                 json.dump(flow_data, f)
+
+            # If we should also autosave, then attempt to override the autosave cache file:
+            if also_autosave:
+                autosave_filepath = os.path.join(FLOWS_DIR, '__autosave.cforge')
+                shutil.copy2(filepath, autosave_filepath)  # copy the file to __autosave
+
             return jsonify({"message": f"Flow '{filename}' saved!"})
         except FileNotFoundError:
             return jsonify({"error": f"Could not save flow '{filename}' to local filesystem. See terminal for more details."}), 404

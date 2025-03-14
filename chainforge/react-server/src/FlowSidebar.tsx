@@ -24,7 +24,6 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { FLASK_BASE_URL } from "./backend/utils";
-import { ensureUniqueFlowFilename } from "./backend/backend";
 
 interface FlowFile {
   name: string;

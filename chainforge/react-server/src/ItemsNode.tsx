@@ -55,7 +55,7 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
   const flags = useStore((state) => state.flags);
 
   const [contentDiv, setContentDiv] = useState<React.ReactNode | null>(null);
-  const [isEditing, setIsEditing] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [csvInput, setCsvInput] = useState<React.ReactNode | null>(null);
   const [countText, setCountText] = useState<React.ReactNode | null>(null);
 

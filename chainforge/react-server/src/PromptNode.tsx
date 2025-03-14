@@ -98,6 +98,14 @@ const bucketChatHistoryInfosByLLM = (chat_hist_infos: ChatHistoryInfo[]) => {
   });
   return chats_by_llm;
 };
+const getRootPromptFor = (
+  promptTexts: string | string[],
+  varNameForRootTemplate: string,
+) => {
+  if (typeof promptTexts === "string") return promptTexts;
+  else if (promptTexts.length === 1) return promptTexts[0];
+  else return `{${varNameForRootTemplate}}`;
+};
 
 export class PromptInfo {
   prompt: string;
@@ -929,7 +937,7 @@ Soft failing by replacing undefined with empty strings.`,
 
     // Pull the data to fill in template input variables, if any
     let pulled_data: Dict<(string | TemplateVarInfo)[]> = {};
-    let var_for_prompt_templates: string | undefined;
+    let var_for_prompt_templates: string;
     try {
       // Try to pull inputs
       pulled_data = pullInputData(templateVars, id);
@@ -939,7 +947,7 @@ Soft failing by replacing undefined with empty strings.`,
         "prompt",
         Object.keys(pulled_data),
       );
-      if (typeof promptText !== "string")
+      if (typeof promptText !== "string" && promptText.length > 1)
         pulled_data[var_for_prompt_templates] = promptText; // this will be filled in when calling queryLLMs
     } catch (err) {
       if (showAlert) showAlert((err as Error)?.message ?? err);
@@ -1066,9 +1074,7 @@ Soft failing by replacing undefined with empty strings.`,
         id,
         _llmItemsCurrState,
         numGenerations,
-        typeof prompt_template === "string"
-          ? prompt_template
-          : `{${var_for_prompt_templates}}`, // Use special root prompt if there's multiple prompt variants
+        getRootPromptFor(prompt_template, var_for_prompt_templates), // Use special root prompt if there's multiple prompt variants
         pulled_data,
         chat_hist_by_llm,
         apiKeys || {},
@@ -1277,6 +1283,16 @@ Soft failing by replacing undefined with empty strings.`,
 
   // Dynamically update the textareas and position of the template hooks
   const textAreaRef = useRef<HTMLTextAreaElement | HTMLDivElement | null>(null);
+  const resizeTextarea = () => {
+    const textarea = textAreaRef.current;
+
+    if (textarea) {
+      textarea.style.height = "auto"; // Reset height to shrink if needed
+      const newHeight = Math.min(textarea.scrollHeight, 600);
+      textarea.style.height = `${newHeight}px`;
+    }
+  };
+
   const [hooksY, setHooksY] = useState(138);
   const setRef = useCallback(
     (elem: HTMLDivElement | HTMLTextAreaElement | null) => {
@@ -1325,6 +1341,7 @@ Soft failing by replacing undefined with empty strings.`,
         Math.min(prompts.length - 1, idxPromptVariantShown + shift),
       ); // clamp
       setIdxPromptVariantShown(newIdx);
+      resizeTextarea();
     },
     [promptText, idxPromptVariantShown],
   );
@@ -1340,6 +1357,7 @@ Soft failing by replacing undefined with empty strings.`,
         // We have to force an update here since idxPromptVariantShown might've not changed
         // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
         textAreaRef.current.value = prompts[newIdx];
+        resizeTextarea();
       }
 
       return [...prompts];
@@ -1351,6 +1369,7 @@ Soft failing by replacing undefined with empty strings.`,
     if (textAreaRef.current && Array.isArray(promptText)) {
       // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
       textAreaRef.current.value = promptText[idxPromptVariantShown];
+      resizeTextarea();
     }
   }, [idxPromptVariantShown]);
 
@@ -1399,7 +1418,7 @@ Soft failing by replacing undefined with empty strings.`,
             <ActionIcon
               size="xs"
               c="black"
-              mr={2}
+              mr={3}
               onClick={() => gotoPromptVariant(1)}
             >
               <IconArrowRight size={19} />
@@ -1540,9 +1559,9 @@ Soft failing by replacing undefined with empty strings.`,
       ) : (
         <Textarea
           ref={setRef}
-          autosize
+          // autosize
           className="prompt-field-fixed nodrag nowheel"
-          minRows={4}
+          minRows={5}
           maxRows={12}
           defaultValue={
             typeof data.prompt === "string"

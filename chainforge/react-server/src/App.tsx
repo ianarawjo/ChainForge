@@ -63,6 +63,7 @@ import {
   getDefaultModelSettings,
 } from "./ModelSettingSchemas";
 import { v4 as uuid } from "uuid";
+import axios from "axios";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
 
@@ -78,7 +79,11 @@ import "lazysizes/plugins/attrchange/ls.attrchange";
 import { shallow } from "zustand/shallow";
 import useStore, { StoreHandles } from "./store";
 import StorageCache, { StringLookup } from "./backend/cache";
-import { APP_IS_RUNNING_LOCALLY, browserTabIsActive } from "./backend/utils";
+import {
+  APP_IS_RUNNING_LOCALLY,
+  browserTabIsActive,
+  FLASK_BASE_URL,
+} from "./backend/utils";
 import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
 import {
   ensureUniqueFlowFilename,
@@ -112,6 +117,14 @@ const IS_ACCEPTED_BROWSER =
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
+
+const SAVE_FLOW_FILENAME_TO_BROWSER_CACHE = (name: string) => {
+  console.log("Saving flow filename", name);
+  // Save the current filename of the user's working flow
+  StorageCache.saveToLocalStorage("chainforge-cur-file", {
+    flowFileName: name,
+  });
+};
 
 const selector = (state: StoreHandles) => ({
   nodes: state.nodes,
@@ -266,6 +279,11 @@ const App = () => {
   const safeSetFlowFileName = useCallback(async (newName: string) => {
     const uniqueName = await ensureUniqueFlowFilename(newName);
     setFlowFileName(uniqueName);
+    SAVE_FLOW_FILENAME_TO_BROWSER_CACHE(uniqueName);
+  }, []);
+  const setFlowFileNameAndCache = useCallback((newName: string) => {
+    setFlowFileName(newName);
+    SAVE_FLOW_FILENAME_TO_BROWSER_CACHE(newName);
   }, []);
 
   // For 'share' button
@@ -387,6 +405,7 @@ const App = () => {
       flowData?: unknown,
       saveToLocalFilesystem?: string,
       hideErrorAlert?: boolean,
+      onError?: () => void,
     ) => {
       if (!rfInstance && !flowData) return;
 
@@ -406,11 +425,16 @@ const App = () => {
           // Save!
           const flowFile = `${saveToLocalFilesystem ?? flowFileName}.cforge`;
           if (saveToLocalFilesystem !== undefined)
-            return saveFlowToLocalFilesystem(flow_and_cache, flowFile);
+            return saveFlowToLocalFilesystem(
+              flow_and_cache,
+              flowFile,
+              saveToLocalFilesystem !== "__autosave",
+            );
           // @ts-expect-error The exported RF instance is JSON compatible but TypeScript won't read it as such.
           else downloadJSON(flow_and_cache, flowFile);
         })
         .catch((err) => {
+          if (onError) onError();
           if (hideErrorAlert) console.error(err);
           else handleError(err);
         });
@@ -432,14 +456,18 @@ const App = () => {
       setShowSaveSuccess(false);
 
       startSaveTransition(() => {
-        // NOTE: This currently only saves the front-end state. Cache files
-        // are not pulled or overwritten upon loading from localStorage.
+        // Get current flow state
         const flow = rf.toObject();
-        StorageCache.saveToLocalStorage("chainforge-flow", flow);
 
-        // Attempt to save the current state of the back-end state,
-        // the StorageCache. (This does LZ compression to save space.)
-        StorageCache.saveToLocalStorage("chainforge-state");
+        const saveToLocalStorage = () => {
+          // This line only saves the front-end state. Cache files
+          // are not pulled or overwritten upon loading from localStorage.
+          StorageCache.saveToLocalStorage("chainforge-flow", flow);
+
+          // Attempt to save the current back-end state,
+          // in the StorageCache. (This does LZ compression to save space.)
+          StorageCache.saveToLocalStorage("chainforge-state");
+        };
 
         const onFlowSaved = () => {
           console.log("Flow saved!");
@@ -452,10 +480,18 @@ const App = () => {
         // If running locally, aattempt to save a copy of the flow to the lcoal filesystem,
         // so it shows up in the list of saved flows.
         if (IS_RUNNING_LOCALLY)
-          exportFlow(flow, fileName ?? flowFileName, hideErrorAlert)?.then(
-            onFlowSaved,
-          );
-        else onFlowSaved();
+          // SAVE TO LOCAL FILESYSTEM (only), and if that fails, try to save to localStorage
+          exportFlow(
+            flow,
+            fileName ?? flowFileName,
+            hideErrorAlert,
+            saveToLocalStorage,
+          )?.then(onFlowSaved);
+        else {
+          // SAVE TO BROWSER LOCALSTORAGE
+          saveToLocalStorage();
+          onFlowSaved();
+        }
       });
     },
     [rfInstance, exportFlow, flowFileName],
@@ -475,8 +511,13 @@ const App = () => {
 
   // Initialize auto-saving
   const initAutosaving = useCallback(
-    (rf_inst: ReactFlowInstance) => {
-      if (autosavingInterval !== undefined) return; // autosaving interval already set
+    (rf_inst: ReactFlowInstance, reinit?: boolean) => {
+      if (autosavingInterval !== undefined) {
+        // Autosaving interval already set
+        if (reinit)
+          clearInterval(autosavingInterval); // reinitialize interval, clearing the current one
+        else return; // do nothing
+      }
       console.log("Init autosaving");
 
       // Autosave the flow to localStorage every minute:
@@ -539,7 +580,9 @@ const App = () => {
     StorageCache.clear();
 
     // New flow filename
-    setFlowFileName(`flow-${Date.now()}`);
+    const new_filename = `flow-${Date.now()}`;
+    setFlowFileNameAndCache(new_filename);
+
     if (rfInstance) rfInstance.setViewport({ x: 200, y: 80, zoom: 1 });
   }, [setNodes, setEdges, resetLLMColors, rfInstance]);
 
@@ -575,7 +618,7 @@ const App = () => {
       }, 10);
 
       // Start auto-saving, if it's not already enabled
-      if (rf_inst) initAutosaving(rf_inst);
+      if (rf_inst) initAutosaving(rf_inst, true);
     },
     [resetLLMColors, setNodes, setEdges, initAutosaving],
   );
@@ -584,23 +627,28 @@ const App = () => {
     importState(StorageCache.getAllMatching((key) => key.startsWith("r.")));
   }, [importState]);
 
-  const autosavedFlowExists = useCallback(() => {
-    return window.localStorage.getItem("chainforge-flow") !== null;
-  }, []);
-  const loadFlowFromAutosave = useCallback(
-    async (rf_inst: ReactFlowInstance) => {
-      const saved_flow = StorageCache.loadFromLocalStorage(
-        "chainforge-flow",
-        false,
-      ) as Dict;
-      if (saved_flow) {
-        StorageCache.loadFromLocalStorage("chainforge-state", true);
-        importGlobalStateFromCache();
-        loadFlow(saved_flow, rf_inst);
+  // Find the autosaved flow, if it exists, returning
+  // whether it exists and the location ("browser" or "filesystem") that it exists at.
+  const autosavedFlowExists = useCallback(async () => {
+    if (IS_RUNNING_LOCALLY) {
+      // If running locally, we try to fetch a flow autosaved on the user's local machine first:
+      try {
+        const response = await axios.get(
+          `${FLASK_BASE_URL}api/flowExists/__autosave`,
+        );
+        const autosave_file_exists = response.data.exists as boolean;
+        if (autosave_file_exists)
+          return { exists: autosave_file_exists, location: "filesystem" };
+      } catch (error) {
+        // Soft fail, continuing onwards to checking localStorage instead
       }
-    },
-    [importGlobalStateFromCache, loadFlow],
-  );
+    }
+
+    return {
+      exists: window.localStorage.getItem("chainforge-flow") !== null,
+      location: "browser",
+    };
+  }, []);
 
   // Import data to the cache stored on the local filesystem (in backend)
   const handleImportCache = useCallback(
@@ -715,6 +763,38 @@ const App = () => {
     fetchOpenAIEval(evalname).then(importFlowFromJSON).catch(handleError);
   };
 
+  const loadFlowFromAutosave = useCallback(
+    async (rf_inst: ReactFlowInstance, fromFilesystem?: boolean) => {
+      if (fromFilesystem) {
+        // From local filesystem
+        // Fetch the flow
+        const response = await axios.get(
+          `${FLASK_BASE_URL}api/flows/__autosave`,
+        );
+
+        // Attempt to load flow into the UI
+        try {
+          importFlowFromJSON(response.data, rf_inst);
+          console.log("Loaded flow from autosave on local machine.");
+        } catch (error) {
+          handleError(error as Error);
+        }
+      } else {
+        // From browser localStorage
+        const saved_flow = StorageCache.loadFromLocalStorage(
+          "chainforge-flow",
+          false,
+        ) as Dict;
+        if (saved_flow) {
+          StorageCache.loadFromLocalStorage("chainforge-state", true);
+          importGlobalStateFromCache();
+          loadFlow(saved_flow, rf_inst);
+        }
+      }
+    },
+    [importGlobalStateFromCache, loadFlow, importFlowFromJSON, handleError],
+  );
+
   // Load flow from examples modal
   const onSelectExampleFlow = (name: string, example_category?: string) => {
     // Trigger the 'loading' modal
@@ -723,7 +803,7 @@ const App = () => {
     // Detect a special category of the example flow, and use the right loader for it:
     if (example_category === "openai-eval") {
       importFlowFromOpenAIEval(name);
-      setFlowFileName(`flow-${Date.now()}`);
+      setFlowFileNameAndCache(`flow-${Date.now()}`);
       return;
     }
 
@@ -732,7 +812,7 @@ const App = () => {
       .then(function (flowJSON) {
         // We have the data, import it:
         importFlowFromJSON(flowJSON);
-        setFlowFileName(`flow-${Date.now()}`);
+        setFlowFileNameAndCache(`flow-${Date.now()}`);
       })
       .catch(handleError);
   };
@@ -871,6 +951,20 @@ const App = () => {
               err.message,
             );
           });
+
+        // We also need to fetch the current flowFileName
+        // Attempt to get the last working filename on component mount
+        const last_working_flow_filename = StorageCache.loadFromLocalStorage(
+          "chainforge-cur-file",
+        );
+        if (
+          last_working_flow_filename &&
+          typeof last_working_flow_filename === "object" &&
+          "flowFileName" in last_working_flow_filename
+        ) {
+          // Use last working flow name
+          setFlowFileName(last_working_flow_filename.flowFileName as string);
+        }
       } else {
         // Check if there's a shared flow UID in the URL as a GET param
         // If so, we need to look it up in the database and attempt to load it:
@@ -910,14 +1004,19 @@ const App = () => {
       }
 
       // Attempt to load an autosaved flow, if one exists:
-      if (autosavedFlowExists()) loadFlowFromAutosave(rf_inst);
-      else {
-        // Load an interesting default starting flow for new users
-        importFlowFromJSON(EXAMPLEFLOW_1, rf_inst);
+      autosavedFlowExists().then(({ exists, location }) => {
+        if (!exists) {
+          // Load an interesting default starting flow for new users
+          importFlowFromJSON(EXAMPLEFLOW_1, rf_inst);
 
-        // Open a welcome pop-up
-        // openWelcomeModal();
-      }
+          // Open a welcome pop-up
+          // openWelcomeModal();
+        } else if (location === "browser") {
+          loadFlowFromAutosave(rf_inst, false);
+        } else if (location === "filesystem") {
+          loadFlowFromAutosave(rf_inst, true);
+        }
+      });
 
       // Turn off loading wheel
       setIsLoading(false);
@@ -1218,7 +1317,9 @@ const App = () => {
       <FlowSidebar
         currentFlow={flowFileName}
         onLoadFlow={(flowData, name) => {
-          if (name !== undefined) setFlowFileName(name);
+          if (name !== undefined) {
+            setFlowFileNameAndCache(name);
+          }
           if (flowData !== undefined) {
             try {
               importFlowFromJSON(flowData);
@@ -1231,7 +1332,7 @@ const App = () => {
         }}
       />
     );
-  }, [flowFileName, importFlowFromJSON, showAlert]);
+  }, [flowFileName, importFlowFromJSON, showAlert, setFlowFileNameAndCache]);
 
   if (!IS_ACCEPTED_BROWSER) {
     return (
