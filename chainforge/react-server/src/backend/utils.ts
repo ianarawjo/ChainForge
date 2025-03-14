@@ -1967,10 +1967,12 @@ export const extractSettingsVars = (vars?: PromptVarsDict) => {
     vars !== undefined &&
     Object.keys(vars).some((k) => k.charAt(0) === "=")
   ) {
-    return transformDict(
-      deepcopy(vars),
-      (k) => k.charAt(0) === "=",
-      (k) => k.substring(1),
+    return StringLookup.concretizeDict(
+      transformDict(
+        deepcopy(vars),
+        (k) => k.charAt(0) === "=",
+        (k) => k.substring(1),
+      ),
     );
   } else return {};
 };

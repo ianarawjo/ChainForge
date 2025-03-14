@@ -22,6 +22,8 @@ import {
   Flex,
   Button,
   ActionIcon,
+  Divider,
+  Title,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -77,6 +79,7 @@ import {
 } from "./backend/backend";
 import { StringLookup } from "./backend/cache";
 import { union } from "./backend/setUtils";
+import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -98,19 +101,33 @@ const bucketChatHistoryInfosByLLM = (chat_hist_infos: ChatHistoryInfo[]) => {
 
 export class PromptInfo {
   prompt: string;
-  settings: Dict;
+  settings?: Dict;
+  label?: string;
 
-  constructor(prompt: string, settings: Dict) {
+  constructor(prompt: string, settings?: Dict, label?: string) {
     this.prompt = prompt;
     this.settings = settings;
+    this.label = label;
   }
 }
 
-const displayPromptInfos = (promptInfos: PromptInfo[], wideFormat: boolean) =>
+const displayPromptInfos = (
+  promptInfos: PromptInfo[],
+  wideFormat: boolean,
+  bgColor?: string,
+) =>
   promptInfos.map((info, idx) => (
     <div key={idx}>
-      <div className="prompt-preview">{info.prompt}</div>
-      {info.settings ? (
+      <div className="prompt-preview" style={{ backgroundColor: bgColor }}>
+        {info.label && (
+          <Text c="black" size="xs" fw="bold" mb={0}>
+            {info.label}
+            <hr />
+          </Text>
+        )}
+        {info.prompt}
+      </div>
+      {info.settings &&
         Object.entries(info.settings).map(([key, val]) => {
           return (
             <div key={key} className="settings-var-inline response-var-inline">
@@ -120,10 +137,7 @@ const displayPromptInfos = (promptInfos: PromptInfo[], wideFormat: boolean) =>
               </span>
             </div>
           );
-        })
-      ) : (
-        <></>
-      )}
+        })}
     </div>
   ));
 
@@ -131,12 +145,14 @@ export interface PromptListPopoverProps {
   promptInfos: PromptInfo[];
   onHover: () => void;
   onClick: () => void;
+  promptTemplates?: string[] | string;
 }
 
 export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
   promptInfos,
   onHover,
   onClick,
+  promptTemplates,
 }) => {
   const [opened, { close, open }] = useDisclosure(false);
 
@@ -185,6 +201,29 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
             Preview of generated prompts ({promptInfos.length} total)
           </Text>
         </Center>
+        {Array.isArray(promptTemplates) && promptTemplates.length > 1 && (
+          <Box>
+            <Divider
+              my="xs"
+              label="Prompt variants"
+              fw="bold"
+              labelPosition="center"
+            />
+            {displayPromptInfos(
+              promptTemplates.map(
+                (t, i) => new PromptInfo(t, undefined, `Variant ${i + 1}`),
+              ),
+              false,
+              "#ddf1f8",
+            )}
+            <Divider
+              my="xs"
+              label="Concrete prompts"
+              fw="bold"
+              labelPosition="center"
+            />
+          </Box>
+        )}
         {displayPromptInfos(promptInfos, false)}
       </Popover.Dropdown>
     </Popover>
@@ -195,12 +234,14 @@ export interface PromptListModalProps {
   promptPreviews: PromptInfo[];
   infoModalOpened: boolean;
   closeInfoModal: () => void;
+  promptTemplates?: string[] | string;
 }
 
 export const PromptListModal: React.FC<PromptListModalProps> = ({
   promptPreviews,
   infoModalOpened,
   closeInfoModal,
+  promptTemplates,
 }) => {
   return (
     <Modal
@@ -218,6 +259,29 @@ export const PromptListModal: React.FC<PromptListModalProps> = ({
       }}
     >
       <Box m="lg" mt="xl">
+        {Array.isArray(promptTemplates) && promptTemplates.length > 1 && (
+          <Box>
+            <Divider
+              my="xs"
+              label="Prompt variants"
+              fw="bold"
+              labelPosition="center"
+            />
+            {displayPromptInfos(
+              promptTemplates.map(
+                (t, i) => new PromptInfo(t, undefined, `Variant ${i + 1}`),
+              ),
+              true,
+              "#ddf1f8",
+            )}
+            <Divider
+              my="xs"
+              label="Concrete prompts (filled in)"
+              fw="bold"
+              labelPosition="center"
+            />
+          </Box>
+        )}
         {displayPromptInfos(promptPreviews, true)}
       </Box>
     </Modal>
@@ -1207,48 +1271,6 @@ Soft failing by replacing undefined with empty strings.`,
     [numGenerationsLastRun, status],
   );
 
-  const handleAddPromptVariant = useCallback(() => {
-    // Pushes a new prompt variant, updating the prompts list and duplicating the current shown prompt
-    const prompts = typeof promptText === "string" ? [promptText] : promptText;
-    const curIdx = Math.max(
-      0,
-      Math.min(prompts.length - 1, idxPromptVariantShown),
-    ); // clamp
-    const curShownPrompt = prompts[curIdx];
-    setPromptText(prompts.concat([curShownPrompt]));
-    setIdxPromptVariantShown(prompts.length);
-  }, [promptText, idxPromptVariantShown]);
-
-  const gotoPromptVariant = useCallback(
-    (shift: number) => {
-      const prompts =
-        typeof promptText === "string" ? [promptText] : promptText;
-      const newIdx = Math.max(
-        0,
-        Math.min(prompts.length - 1, idxPromptVariantShown + shift),
-      ); // clamp
-      setIdxPromptVariantShown(newIdx);
-    },
-    [promptText, idxPromptVariantShown],
-  );
-
-  const handleRemovePromptVariant = useCallback(() => {
-    setPromptText((prompts) => {
-      if (typeof prompts === "string") return prompts; // cannot remove the last one
-      prompts.splice(idxPromptVariantShown, 1); // remove the indexed variant
-      setIdxPromptVariantShown(Math.max(0, idxPromptVariantShown - 1)); // goto the previous variant, if possible
-      return prompts;
-    });
-  }, [idxPromptVariantShown]);
-
-  // Whenever idx of prompt variant changes, we need to refresh the Textarea:
-  useEffect(() => {
-    if (textAreaRef.current && Array.isArray(promptText)) {
-      // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
-      textAreaRef.current.value = promptText[idxPromptVariantShown];
-    }
-  }, [idxPromptVariantShown]);
-
   const hideStatusIndicator = () => {
     if (status !== Status.NONE) setStatus(Status.NONE);
   };
@@ -1280,6 +1302,144 @@ Soft failing by replacing undefined with empty strings.`,
     },
     [textAreaRef],
   );
+
+  const deleteVariantConfirmModal = useRef<AreYouSureModalRef>(null);
+  const handleAddPromptVariant = useCallback(() => {
+    // Pushes a new prompt variant, updating the prompts list and duplicating the current shown prompt
+    const prompts = typeof promptText === "string" ? [promptText] : promptText;
+    const curIdx = Math.max(
+      0,
+      Math.min(prompts.length - 1, idxPromptVariantShown),
+    ); // clamp
+    const curShownPrompt = prompts[curIdx];
+    setPromptText(prompts.concat([curShownPrompt]));
+    setIdxPromptVariantShown(prompts.length);
+  }, [promptText, idxPromptVariantShown]);
+
+  const gotoPromptVariant = useCallback(
+    (shift: number) => {
+      const prompts =
+        typeof promptText === "string" ? [promptText] : promptText;
+      const newIdx = Math.max(
+        0,
+        Math.min(prompts.length - 1, idxPromptVariantShown + shift),
+      ); // clamp
+      setIdxPromptVariantShown(newIdx);
+    },
+    [promptText, idxPromptVariantShown],
+  );
+
+  const handleRemovePromptVariant = useCallback(() => {
+    setPromptText((prompts) => {
+      if (typeof prompts === "string" || prompts.length === 1) return prompts; // cannot remove the last one
+      prompts.splice(idxPromptVariantShown, 1); // remove the indexed variant
+      const newIdx = Math.max(0, idxPromptVariantShown - 1);
+      setIdxPromptVariantShown(newIdx); // goto the previous variant, if possible
+
+      if (textAreaRef.current) {
+        // We have to force an update here since idxPromptVariantShown might've not changed
+        // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
+        textAreaRef.current.value = prompts[newIdx];
+      }
+
+      return [...prompts];
+    });
+  }, [idxPromptVariantShown, textAreaRef]);
+
+  // Whenever idx of prompt variant changes, we need to refresh the Textarea:
+  useEffect(() => {
+    if (textAreaRef.current && Array.isArray(promptText)) {
+      // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
+      textAreaRef.current.value = promptText[idxPromptVariantShown];
+    }
+  }, [idxPromptVariantShown]);
+
+  const promptVariantControls = useMemo(() => {
+    return (
+      <Flex justify="right" pos="absolute" right={10}>
+        {typeof promptText === "string" || promptText.length === 1 ? (
+          <Tooltip
+            label="Add prompt variant. This duplicates the current prompt, allowing you to tweak it to test variations. (You can also accomplish the same thing by template chaining.)"
+            multiline
+            position="right"
+            withArrow
+            arrowSize={8}
+            w={220}
+            withinPortal
+          >
+            <Button
+              size="xs"
+              variant="subtle"
+              color="gray"
+              mt={3}
+              mr={3}
+              p={0}
+              fw="normal"
+              h="1.0rem"
+              onClick={handleAddPromptVariant}
+            >
+              + add variant
+            </Button>
+          </Tooltip>
+        ) : (
+          <>
+            <ActionIcon
+              size="xs"
+              c="black"
+              onClick={() => gotoPromptVariant(-1)}
+            >
+              <IconArrowLeft size={19} />
+            </ActionIcon>
+
+            <Text size="xs">
+              Variant {idxPromptVariantShown + 1} of{" "}
+              {typeof promptText === "string" ? 1 : promptText.length}
+            </Text>
+
+            <ActionIcon
+              size="xs"
+              c="black"
+              mr={2}
+              onClick={() => gotoPromptVariant(1)}
+            >
+              <IconArrowRight size={19} />
+            </ActionIcon>
+
+            <Tooltip
+              label="Add prompt variant"
+              position="right"
+              withArrow
+              withinPortal
+            >
+              <ActionIcon
+                size="xs"
+                c="black"
+                mr={2}
+                onClick={handleAddPromptVariant}
+              >
+                <IconPlus size={19} />
+              </ActionIcon>
+            </Tooltip>
+
+            <Tooltip
+              label="Remove this variant"
+              position="right"
+              withArrow
+              withinPortal
+            >
+              <ActionIcon
+                size="xs"
+                c="black"
+                onClick={() => deleteVariantConfirmModal?.current?.trigger()}
+              >
+                <IconTrash size={19} />
+              </ActionIcon>
+            </Tooltip>
+          </>
+        )}
+      </Flex>
+    );
+  }, [idxPromptVariantShown, promptText, deleteVariantConfirmModal]);
 
   // Add custom context menu options on right-click.
   // 1. Convert TextFields to Items Node, for convenience.
@@ -1322,6 +1482,7 @@ Soft failing by replacing undefined with empty strings.`,
           <PromptListPopover
             key="prompt-previews"
             promptInfos={promptPreviews}
+            promptTemplates={promptText}
             onHover={handlePreviewHover}
             onClick={openInfoModal}
           />,
@@ -1333,8 +1494,16 @@ Soft failing by replacing undefined with empty strings.`,
       />
       <PromptListModal
         promptPreviews={promptPreviews}
+        promptTemplates={promptText}
         infoModalOpened={infoModalOpened}
         closeInfoModal={closeInfoModal}
+      />
+      <AreYouSureModal
+        ref={deleteVariantConfirmModal}
+        title="Delete prompt variant"
+        message="Are you sure you want to delete this prompt variant? This action is irreversible."
+        color="red"
+        onConfirm={handleRemovePromptVariant}
       />
 
       {node_type === "chat" ? (
@@ -1385,58 +1554,7 @@ Soft failing by replacing undefined with empty strings.`,
         />
       )}
 
-      <Flex justify="right" pos="absolute" right={10}>
-        {typeof promptText === "string" || promptText.length === 1 ? (
-          <Button
-            size="xs"
-            variant="subtle"
-            color="gray"
-            mt={3}
-            mr={3}
-            p={0}
-            fw="normal"
-            h="1.0rem"
-            onClick={handleAddPromptVariant}
-          >
-            + add variant
-          </Button>
-        ) : (
-          <>
-            <ActionIcon
-              size="xs"
-              c="black"
-              onClick={() => gotoPromptVariant(-1)}
-            >
-              <IconArrowLeft size={19} />
-            </ActionIcon>
-
-            <Text size="xs">
-              Variant {idxPromptVariantShown + 1} of{" "}
-              {typeof promptText === "string" ? 1 : promptText.length}
-            </Text>
-
-            <ActionIcon
-              size="xs"
-              c="black"
-              onClick={() => gotoPromptVariant(1)}
-            >
-              <IconArrowRight size={19} />
-            </ActionIcon>
-
-            <Tooltip label="Add prompt variant" position="right" withArrow>
-              <ActionIcon size="xs" c="black" onClick={handleAddPromptVariant}>
-                <IconPlus size={19} />
-              </ActionIcon>
-            </Tooltip>
-
-            <Tooltip label="Remove this variant" position="right" withArrow>
-              <ActionIcon size="xs" c="red" onClick={handleRemovePromptVariant}>
-                <IconTrash size={19} />
-              </ActionIcon>
-            </Tooltip>
-          </>
-        )}
-      </Flex>
+      {promptVariantControls}
 
       <Handle
         type="source"

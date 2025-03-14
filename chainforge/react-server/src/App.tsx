@@ -1334,6 +1334,7 @@ const App = () => {
               ml="sm"
               size="1.625rem"
               onClick={() => saveFlow()}
+              bg="#eee"
               loading={isSaving}
               disabled={isLoading || isSaving}
             >

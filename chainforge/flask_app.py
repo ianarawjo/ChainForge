@@ -1,4 +1,4 @@
-import json, os, sys, asyncio, time
+import json, os, sys, asyncio, time, shutil
 from dataclasses import dataclass
 from enum import Enum
 from typing import List
@@ -772,7 +772,7 @@ def delete_flow(filename):
 
 @app.route('/api/flows/<filename>', methods=['PUT'])
 def save_or_rename_flow(filename):
-    """Save or rename a flow"""
+    """Save, rename, or duplicate a flow"""
     data = request.json
 
     if not filename.endswith('.cforge'):
@@ -805,6 +805,36 @@ def save_or_rename_flow(filename):
             return jsonify({"message": f"Flow renamed from {filename} to {new_name}"})
         except Exception as error:
             return jsonify({"error": str(error)}), 404
+    
+    elif data.get('duplicate'):
+        # Duplicate flow
+        try:
+            # Check for name clashes (if a flow already exists with the new name)
+            copy_name = _get_unique_flow_name(filename, "Copy of ") 
+            # Copy the file to the new (safe) path, and copy metadata too:
+            shutil.copy2(os.path.join(FLOWS_DIR, filename), os.path.join(FLOWS_DIR, f"{copy_name}.cforge"))
+            # Return the new filename
+            return jsonify({"copyName": copy_name})
+        except Exception as error:
+            return jsonify({"error": str(error)}), 404
+
+def _get_unique_flow_name(filename: str, prefix: str = None) -> str: 
+    base, ext = os.path.splitext(filename)
+    if ext is None or len(ext) == 0: 
+        ext = ".cforge"
+    unique_filename = base + ext
+    if prefix is not None:
+        unique_filename = prefix + unique_filename
+    i = 1
+
+    # Find the first non-clashing filename of the form <filename>(i).cforge where i=1,2,3 etc
+    while os.path.isfile(os.path.join(FLOWS_DIR, unique_filename)):
+        unique_filename = f"{base}({i}){ext}"
+        if prefix is not None:
+            unique_filename = prefix + unique_filename
+        i += 1
+    
+    return unique_filename.replace(".cforge", "")
 
 @app.route('/api/getUniqueFlowFilename', methods=['PUT'])
 def get_unique_flow_name():
@@ -813,18 +843,8 @@ def get_unique_flow_name():
     filename = data.get("name")
     
     try:
-        base, ext = os.path.splitext(filename)
-        if ext is None or len(ext) == 0: 
-            ext = ".cforge"
-        unique_filename = base + ext
-        i = 1
-
-        # Find the first non-clashing filename of the form <filename>(i).cforge where i=1,2,3 etc
-        while os.path.isfile(os.path.join(FLOWS_DIR, unique_filename)):
-            unique_filename = f"{base}({i}){ext}"
-            i += 1
-        
-        return jsonify(unique_filename.replace(".cforge", ""))
+        new_name = _get_unique_flow_name(filename)
+        return jsonify(new_name)
     except Exception as e:
         return jsonify({"error": str(e)}), 404
 

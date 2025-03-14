@@ -5,6 +5,7 @@ import {
   IconMenu2,
   IconX,
   IconCheck,
+  IconCopy,
 } from "@tabler/icons-react";
 import axios from "axios";
 import { AlertModalContext } from "./AlertModal";
@@ -20,8 +21,10 @@ import {
   Flex,
   Divider,
   ScrollArea,
+  Tooltip,
 } from "@mantine/core";
 import { FLASK_BASE_URL } from "./backend/utils";
+import { ensureUniqueFlowFilename } from "./backend/backend";
 
 interface FlowFile {
   name: string;
@@ -112,6 +115,26 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
     setNewEditName(flowFile);
   };
 
+  // 'Duplicate' the flow
+  const handleDuplicateFlow = async (
+    flowFile: string,
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+  ) => {
+    event.stopPropagation(); // Prevent triggering the parent click
+    await axios
+      .put(`${FLASK_BASE_URL}api/flows/${flowFile}`, {
+        duplicate: true,
+      })
+      .then((resp) => {
+        onLoadFlow(undefined, resp.data.copyName as string); // Tell the parent that the filename has changed. This won't replace the flow.
+        fetchSavedFlowList(); // Refresh the list
+      })
+      .catch((err) => {
+        console.error(err);
+        if (showAlert) showAlert(err);
+      });
+  };
+
   // Cancel editing
   const handleCancelEdit = (
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
@@ -191,7 +214,7 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
         onClose={() => setIsOpen(false)}
         title="Saved Flows"
         position="left"
-        size="250px" // Adjust sidebar width
+        size="350px" // Adjust sidebar width
         padding="md"
         withCloseButton={true}
         scrollAreaComponent={ScrollArea.Autosize}
@@ -261,18 +284,45 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
                         {flow.name}
                       </Text>
                       <Flex gap="0px">
-                        <ActionIcon
-                          color="blue"
-                          onClick={(e) => handleEditClick(flow.name, e)}
+                        <Tooltip
+                          label="Edit name"
+                          withArrow
+                          arrowPosition="center"
+                          withinPortal
                         >
-                          <IconEdit size={18} />
-                        </ActionIcon>
-                        <ActionIcon
-                          color="red"
-                          onClick={(e) => handleDeleteFlow(flow.name, e)}
+                          <ActionIcon
+                            color="blue"
+                            onClick={(e) => handleEditClick(flow.name, e)}
+                          >
+                            <IconEdit size={18} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip
+                          label="Duplicate this flow"
+                          withArrow
+                          arrowPosition="center"
+                          withinPortal
                         >
-                          <IconTrash size={18} />
-                        </ActionIcon>
+                          <ActionIcon
+                            color="blue"
+                            onClick={(e) => handleDuplicateFlow(flow.name, e)}
+                          >
+                            <IconCopy size={18} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Tooltip
+                          label="Delete this flow"
+                          withArrow
+                          arrowPosition="center"
+                          withinPortal
+                        >
+                          <ActionIcon
+                            color="red"
+                            onClick={(e) => handleDeleteFlow(flow.name, e)}
+                          >
+                            <IconTrash size={18} />
+                          </ActionIcon>
+                        </Tooltip>
                       </Flex>
                     </Flex>
                     <Text size="xs" color="gray">
