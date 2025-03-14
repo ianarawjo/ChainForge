@@ -6,7 +6,6 @@ import React, {
   useContext,
   useMemo,
   useTransition,
-  KeyboardEventHandler,
   KeyboardEvent,
 } from "react";
 import ReactFlow, { Controls, Background, ReactFlowInstance } from "reactflow";

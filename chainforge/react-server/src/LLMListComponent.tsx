@@ -23,10 +23,7 @@ import { StrictModeDroppable } from "./StrictModeDroppable";
 import ModelSettingsModal, {
   ModelSettingsModalRef,
 } from "./ModelSettingsModal";
-import {
-  getDefaultModelFormData,
-  getDefaultModelSettings,
-} from "./ModelSettingSchemas";
+import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
 import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { useContextMenu } from "mantine-contextmenu";
