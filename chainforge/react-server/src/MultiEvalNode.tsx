@@ -60,7 +60,7 @@ import { Dict, LLMResponse, QueryProgress } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import { EvalGenReport } from "./backend/evalgen/typing";
-import { EvalGenModalRef } from "./EvalGenModal";
+import EvalGenModal, { EvalGenModalRef } from "./EvalGenModal";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
@@ -619,7 +619,9 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         ref={inspectModal}
         jsonResponses={lastResponses}
       />
-      {/* <PickCriteriaModal ref={pickCriteriaModalRef} /> */}
+
+      <EvalGenModal ref={evalGenModalRef} />
+
       <iframe style={{ display: "none" }} id={`${id}-iframe`}></iframe>
 
       {/* {evaluatorComponents} */}
