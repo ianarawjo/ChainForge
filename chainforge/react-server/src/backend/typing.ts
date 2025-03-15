@@ -276,3 +276,5 @@ export type TabularDataColType = {
 };
 
 export type PythonInterpreter = "flask" | "pyodide";
+
+export type RatingDict = Record<number, boolean | string | undefined>;

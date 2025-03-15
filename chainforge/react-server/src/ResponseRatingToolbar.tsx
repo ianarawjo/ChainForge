@@ -15,8 +15,7 @@ import {
 import StorageCache from "./backend/cache";
 import useStore from "./store";
 import { deepcopy } from "./backend/utils";
-
-type RatingDict = Record<number, boolean | string | undefined>;
+import { RatingDict } from "./backend/typing";
 
 export const getRatingKeyForResponse = (uid: string, label_name: string) =>
   `r.${uid}.${label_name}`;
