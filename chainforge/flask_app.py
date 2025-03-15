@@ -866,10 +866,12 @@ def get_unique_flow_name():
     except Exception as e:
         return jsonify({"error": str(e)}), 404
 
-def run_server(host="", port=8000, cmd_args=None):
-    global HOSTNAME, PORT
+def run_server(host="", port=8000, flows_dir=None):
+    global HOSTNAME, PORT, FLOWS_DIR
     HOSTNAME = host
-    PORT = port    
+    PORT = port
+    if flows_dir:
+        FLOWS_DIR = flows_dir
     app.run(host=host, port=port)
 
 if __name__ == '__main__':
