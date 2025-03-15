@@ -20,6 +20,7 @@ import {
   Button,
   Alert,
   Tooltip,
+  Flex,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -31,6 +32,7 @@ import {
   IconPlus,
   IconRobot,
   IconSearch,
+  IconSparkles,
   IconTerminal,
   IconTrash,
 } from "@tabler/icons-react";
@@ -57,6 +59,8 @@ import { GatheringResponsesRingProgress } from "./LLMItemButtonGroup";
 import { Dict, LLMResponse, QueryProgress } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
+import { EvalGenReport } from "./backend/evalgen/typing";
+import { EvalGenModalRef } from "./EvalGenModal";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 

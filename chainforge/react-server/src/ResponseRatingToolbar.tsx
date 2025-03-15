@@ -30,6 +30,10 @@ const collapse_ratings = (rating_dict: RatingDict, idxs: number[]) => {
   return undefined;
 };
 
+export const extractUIDFromRatingKey = (key: string) => {
+  return key.substring(2, key.lastIndexOf("."));
+};
+
 export const getLabelForResponse = (uid: string, label_name: string) => {
   return StorageCache.get(getRatingKeyForResponse(uid, label_name));
 };
