@@ -240,12 +240,10 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
   const [opened, { toggle }] = useDisclosure(initiallyOpen ?? false);
   const [title, setTitle] = useState(criterion.shortname ?? "New Criteria");
 
-  return (
-    <Card withBorder mb={4} radius="md" style={{ cursor: "default" }}>
-      <Card.Section withBorder pl="8px">
+  return (<Stack spacing={0} ml={8}>
         <Flex align="center">
           <Group spacing="0px">
-            {/* The arrow chevron user can click to collapse/expand */}
+            {/* The arrow chevron user can click to collapse/expand
             <Button
               color="gray"
               p={0}
@@ -259,7 +257,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
               ) : (
                 <IconChevronRight size="14pt" />
               )}
-            </Button>
+            </Button> */}
 
             {/* Thumbs up/down buttons */}
             <ThumbUpDownButtons
@@ -267,7 +265,6 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
               onChangeGrade={onChangeGrade}
               getGradeCount={getGradeCount}
             />
-            <Contributor getStateValue={getStateValue} />
 
             {/* Title of the criteria */}
             <TextInput
@@ -279,7 +276,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
               }}
               placeholder="Criteria name"
               variant="unstyled"
-              size="sm"
+              size="md"
               ml="xs"
               className="nodrag nowheel"
               styles={{
@@ -328,59 +325,19 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
               </Text>
             </Tooltip>
 
-            {/* Favorite star toggle */}
-            <Tooltip
-              label={
-                criterion.priority <= 0
-                  ? "Make this a deal-breaker"
-                  : "It's a deal-breaker"
-              }
-              withinPortal
-              withArrow
-            >
-              <Button
-                color={criterion.priority <= 0 ? "gray" : "red"}
-                m={0}
-                p={0}
-                variant="subtle"
-                onClick={() => {
-                  criterion.priority = criterion.priority <= 0 ? 1 : 0;
-                  if (onChange) onChange(criterion);
-                }}
-              >
-                {/* <IconStarFilled size="14pt" /> */}
-                <IconFlagFilled size="14pt" />
-              </Button>
-            </Tooltip>
+            {/* <Contributor getStateValue={getStateValue} /> */}
 
             {/* Delete button (and any other criterion-specific changes in the future) */}
-            <Menu withinPortal position="right-start" shadow="sm">
-              <Menu.Target>
-                <ActionIcon variant="subtle" color="gray">
-                  <IconDots style={{ width: rem(16), height: rem(16) }} />
-                </ActionIcon>
-              </Menu.Target>
-
-              <Menu.Dropdown>
-                <Menu.Item
-                  icon={<IconTrash size="14px" />}
-                  color="red"
-                  onClick={onDelete}
-                >
-                  Delete
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
+            <ActionIcon variant="subtle" color="red" onClick={onDelete}>
+              <IconTrash style={{ width: rem(16), height: rem(16) }} />
+            </ActionIcon>
           </Group>
         </Flex>
-      </Card.Section>
 
-      {/* Description of the criteria */}
-      <Card.Section p="0px">
-        <Collapse in={opened}>
           <Textarea
             value={criterion.criteria}
-            placeholder="Describe here."
+            placeholder="Describe here. You must describe what the criteria means before EvalGen can implement it."
+            ml={38}
             onChange={(e) => {
               criterion.criteria = e.target.value;
               if (onChange) onChange(criterion);
@@ -403,9 +360,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
             mb="xs"
             c="dimmed"
           />
-        </Collapse>
-      </Card.Section>
-    </Card>
+          </Stack>
   );
 };
 
@@ -911,7 +866,7 @@ If you determine the feedback corresponds to a new criteria, your response shoul
 
     return (
       <Modal
-        size="90%"
+        size="95%"
         keepMounted
         opened={opened}
         onClose={close}
@@ -957,11 +912,14 @@ If you determine the feedback corresponds to a new criteria, your response shoul
               </Stack>
             </Grid.Col>
             <Grid.Col span={4} bg="#eee" pt="16px" h="100%">
+              <Center>
+                <Title order={3} ml={8} mt="sm" mb="md">Rubric</Title>
+              </Center>
+              
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  height: "100%",
                 }}
               >
                 <div style={{ flex: 2, overflowY: "auto" }}>
@@ -1009,24 +967,12 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                   ) : (
                     <></>
                   )}
-                  {/* <Center> */}
+                  
                   <div className="criteriaButtons">
-                    {/* <button
-                    onClick={() => {
-                      handleAddCriteria({
-                        shortname: "New Criteria",
-                        criteria: "",
-                        eval_method: "code",
-                        priority: 0,
-                        uid: uuid(),
-                      });
-                    }}
-                  >
-                    +
-                  </button> */}
                     <Button
                       leftIcon={<IconPencil size={14} />}
-                      variant="filled"
+                      variant="subtle"
+                      color="gray"
                       // gradient={{ from: "blue", to: "green", deg: 90 }}
                       onClick={() => {
                         handleAddCriteria({
@@ -1038,13 +984,12 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                         });
                       }}
                     >
-                      New Criteria
+                      Add a new criteria
                     </Button>
-                    {/* </Center>
-                <Center> */}
                     <Button
                       leftIcon={<IconSparkles size={14} />}
-                      variant="filled"
+                      variant="subtle"
+                      color="gray"
                       // gradient={{ from: "blue", to: "green", deg: 90 }}
                       onClick={() => {
                         generateCriteria(responses);
@@ -1052,7 +997,6 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                     >
                       Suggest Criteria
                     </Button>
-                    {/* </Center> */}
                   </div>
                 </div>
 

@@ -194,6 +194,10 @@ export function set_api_keys(api_keys: Dict<string>): void {
   if (key_is_present("DeepSeek")) DEEPSEEK_API_KEY = api_keys.DeepSeek;
 }
 
+export function get_openai_api_key(): string | undefined {
+  return OPENAI_API_KEY;
+}
+
 export function get_azure_openai_api_keys(): [
   string | undefined,
   string | undefined,
