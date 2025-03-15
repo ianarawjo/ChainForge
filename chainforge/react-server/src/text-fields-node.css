@@ -240,6 +240,40 @@ button.remove-edge-btn:active {
 .eval-inspect-response-footer button {
   cursor: zoom-in;
 }
+
+.eval-score {
+  /* background-color: #eee; */
+  /* padding: 8px; */
+}
+
+.eval-vote-icon {
+  color: #999;
+}
+
+.eval-vote-icon:hover {
+  color: #333;
+}
+
+.eval-vote-icons {
+  display: none;
+  position: absolute;
+  /* opacity: 0.3; */
+  margin-left: 6px;
+  margin-top: -6px;
+}
+
+.eval-vote-chosen {
+  display: inline-flex;
+  position: absolute;
+  margin-left: 6px;
+  margin-top: -6px;
+}
+
+.eval-score:hover .eval-vote-icons {
+  display: inline-flex;
+  /* opacity: 1.0; */
+}
+
 /* .blink-inspect-response-footer {
     animation: blink-footer 0.7s ease-in 1;
   }

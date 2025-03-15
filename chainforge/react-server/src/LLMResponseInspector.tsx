@@ -52,6 +52,7 @@ import {
   genDebounceFunc,
 } from "./backend/utils";
 import {
+  EvalResultDisplay,
   ResponseBox,
   ResponseGroup,
   genResponseTextsDisplay,
@@ -839,7 +840,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                 <Stack spacing={0}>
                   {(val.data as [string | JSX.Element, string][]).map(
                     (e, i) => (
-                      <div key={i}>{e[0]}</div>
+                      <EvalResultDisplay evalResultDivOrStr={e[0]} key={i} />
                     ),
                   )}
                 </Stack>

@@ -1,5 +1,5 @@
-import React, { Suspense, useMemo, lazy } from "react";
-import { Collapse, Flex, Stack } from "@mantine/core";
+import React, { Suspense, useMemo, lazy, useState } from "react";
+import { ActionIcon, Collapse, Flex, Stack, Tooltip } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { llmResponseDataToString, truncStr } from "./backend/utils";
 import {
@@ -10,6 +10,7 @@ import {
   StringOrHash,
 } from "./backend/typing";
 import { StringLookup } from "./backend/cache";
+import { IconCheck, IconChecks, IconX } from "@tabler/icons-react";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -81,6 +82,69 @@ export const getEvalResultStr = (
         eval_str,
       ];
   }
+};
+
+export const EvalResultDisplay = ({
+  evalResultDivOrStr,
+}: {
+  evalResultDivOrStr: JSX.Element | string;
+}) => {
+  const [grade, setGrade] = useState<boolean | null>(null);
+
+  return (
+    <div className="eval-score">
+      {evalResultDivOrStr}
+      {grade === null && (
+        <Flex className="eval-vote-icons">
+          <ActionIcon variant="transparent" onClick={() => setGrade(true)}>
+            <IconCheck className="eval-vote-icon" size={20} />
+          </ActionIcon>
+          <ActionIcon variant="transparent" onClick={() => setGrade(false)}>
+            <IconX className="eval-vote-icon" size={20} />
+          </ActionIcon>
+        </Flex>
+      )}
+      {grade !== null && (
+        <Flex className="eval-vote-chosen">
+          {grade === true && (
+            <Tooltip
+              label="Human-verified eval score"
+              withArrow
+              arrowSize={8}
+              withinPortal
+            >
+              <ActionIcon variant="transparent" onClick={() => setGrade(null)}>
+                <IconChecks
+                  color="#666"
+                  stroke={2}
+                  className="eval-vote-icon"
+                  size={20}
+                />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {grade === false && (
+            <Tooltip
+              label="Human marked this eval score as incorrect"
+              multiline
+              withArrow
+              arrowSize={8}
+              withinPortal
+            >
+              <ActionIcon variant="transparent" onClick={() => setGrade(null)}>
+                <IconX
+                  color="red"
+                  stroke={4}
+                  className="eval-vote-icon"
+                  size={20}
+                />
+              </ActionIcon>
+            </Tooltip>
+          )}
+        </Flex>
+      )}
+    </div>
+  );
 };
 
 const countResponsesBy = (
@@ -295,7 +359,11 @@ export const genResponseTextsDisplay = (
         )}
         {eval_res_items ? (
           <p className="small-response-metrics">
-            {getEvalResultStr(resp_str_to_eval_res[r], true)[0]}
+            <EvalResultDisplay
+              evalResultDivOrStr={
+                getEvalResultStr(resp_str_to_eval_res[r], true)[0]
+              }
+            />
           </p>
         ) : (
           <></>
