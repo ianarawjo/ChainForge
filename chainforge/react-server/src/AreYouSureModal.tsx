@@ -5,6 +5,7 @@ import { useDisclosure } from "@mantine/hooks";
 export interface AreYouSureModalProps {
   title: string;
   message: string;
+  color?: string;
   onConfirm?: () => void;
 }
 
@@ -14,7 +15,7 @@ export interface AreYouSureModalRef {
 
 /** Modal that lets user rename a single value, using a TextInput field. */
 const AreYouSureModal = forwardRef<AreYouSureModalRef, AreYouSureModalProps>(
-  function AreYouSureModal({ title, message, onConfirm }, ref) {
+  function AreYouSureModal({ title, message, color, onConfirm }, ref) {
     const [opened, { open, close }] = useDisclosure(false);
     const description = message || "Are you sure?";
 
@@ -37,7 +38,7 @@ const AreYouSureModal = forwardRef<AreYouSureModalRef, AreYouSureModalProps>(
         onClose={close}
         title={title}
         styles={{
-          header: { backgroundColor: "orange", color: "white" },
+          header: { backgroundColor: color ?? "orange", color: "white" },
           root: { position: "relative", left: "-5%" },
         }}
       >
@@ -54,7 +55,7 @@ const AreYouSureModal = forwardRef<AreYouSureModalRef, AreYouSureModalProps>(
         >
           <Button
             variant="light"
-            color="orange"
+            color={color ?? "orange"}
             type="submit"
             w="40%"
             onClick={close}

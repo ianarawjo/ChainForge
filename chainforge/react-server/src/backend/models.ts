@@ -313,6 +313,8 @@ export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
 };
 
 export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
+  [LLMProvider.OpenAI]: 1000, // Tier 3 pricing limit is 5000 per minute, across most models, we use 1000 to be safe.
+  [LLMProvider.Azure_OpenAI]: 1000, // Tier 3 pricing limit is 5000 per minute, across most models, we use 1000 to be safe.
   [LLMProvider.Anthropic]: 25, // Tier 1 pricing limit is 50 per minute, across all models; we halve this, to be safe.
   [LLMProvider.Together]: 30, // Paid tier limit is 60 per minute, across all models; we halve this, to be safe.
   [LLMProvider.Google]: 1000, // RPM for Google Gemini models 1.5 is quite generous; at base it is 1000 RPM. If you are using the free version it's 15 RPM, but we can expect most CF users to be using paid (and anyway you can just re-run prompt node until satisfied).

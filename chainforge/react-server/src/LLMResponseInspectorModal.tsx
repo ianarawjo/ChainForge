@@ -71,7 +71,10 @@ const LLMResponseInspectorModal = forwardRef<
           </button>
         </div>
       }
-      styles={{ title: { justifyContent: "space-between", width: "100%" } }}
+      styles={{
+        title: { justifyContent: "space-between", width: "100%" },
+        header: { paddingBottom: "0px" },
+      }}
     >
       <div
         className="inspect-modal-response-container"
