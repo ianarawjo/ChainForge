@@ -15,12 +15,12 @@ import {
 import StorageCache from "./backend/cache";
 import useStore from "./store";
 import { deepcopy } from "./backend/utils";
-import { LLMResponseData } from "./backend/typing";
 
 type RatingDict = Record<number, boolean | string | undefined>;
 
-const getRatingKeyForResponse = (uid: string, label_name: string) =>
+export const getRatingKeyForResponse = (uid: string, label_name: string) =>
   `r.${uid}.${label_name}`;
+
 const collapse_ratings = (rating_dict: RatingDict, idxs: number[]) => {
   if (rating_dict === undefined) return undefined;
   for (let j = 0; j < idxs.length; j++) {
@@ -33,6 +33,7 @@ const collapse_ratings = (rating_dict: RatingDict, idxs: number[]) => {
 export const getLabelForResponse = (uid: string, label_name: string) => {
   return StorageCache.get(getRatingKeyForResponse(uid, label_name));
 };
+
 export const setLabelForResponse = (
   uid: string,
   label_name: string,

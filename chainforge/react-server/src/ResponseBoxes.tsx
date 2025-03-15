@@ -1,7 +1,14 @@
-import React, { Suspense, useMemo, lazy, useState } from "react";
+import React, {
+  Suspense,
+  useMemo,
+  lazy,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
 import { ActionIcon, Collapse, Flex, Stack, Tooltip } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { llmResponseDataToString, truncStr } from "./backend/utils";
+import { deepcopy, llmResponseDataToString, truncStr } from "./backend/utils";
 import {
   Dict,
   EvaluationScore,
@@ -9,8 +16,10 @@ import {
   LLMResponseData,
   StringOrHash,
 } from "./backend/typing";
-import { StringLookup } from "./backend/cache";
+import StorageCache, { StringLookup } from "./backend/cache";
 import { IconCheck, IconChecks, IconX } from "@tabler/icons-react";
+import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
+import useStore from "./store";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -84,36 +93,101 @@ export const getEvalResultStr = (
   }
 };
 
+interface EvalResultAssessment {
+  correct: boolean | null;
+  // The original eval score that the user gave feedback on.
+  // If the underlying score changes, i.e. on subsequent runs after changing the evaluator,
+  // we need to be able to invalidate the user's assessment (or flip it automatically, in the case of boolean values).
+  orig_score?: EvaluationScore;
+  feedback?: string | null;
+}
+
 export const EvalResultDisplay = ({
+  uid, // the response uid
+  evalResIdx, // the index of the eval result in the array
+  evalRes, // the score of the eval result
   evalResultDivOrStr,
 }: {
+  uid: string;
+  evalResIdx: number;
+  evalRes?: EvaluationScore;
   evalResultDivOrStr: JSX.Element | string;
 }) => {
-  const [grade, setGrade] = useState<boolean | null>(null);
+  // The cache key storing the ratings for this user score
+  const evalResultAssessmentKey = useMemo(
+    () => getRatingKeyForResponse(uid, "metaeval") + `.${evalResIdx}`,
+    [uid, evalResIdx],
+  );
+
+  // The current rating states, reading from the global store.
+  // :: This ensures refreshes will occur only on this component, only when the rating
+  // :: for this component changes.
+  // const state = useStore((store) => store.state);
+  const setState = useStore((store) => store.setState);
+  const userRating = useStore<EvalResultAssessment | undefined>(
+    (store) => store.state[evalResultAssessmentKey],
+  );
+  const setRating = useCallback(
+    (correct: boolean | null, feedback?: string | null) => {
+      const safe_payload = deepcopy({
+        correct,
+        orig_score: evalRes,
+        feedback,
+      } as EvalResultAssessment);
+      setState(evalResultAssessmentKey, safe_payload);
+      StorageCache.store(evalResultAssessmentKey, safe_payload);
+    },
+    [evalResultAssessmentKey, setState, evalRes],
+  );
+
+  // The internal user assessment of this eval result
+  const rating = useMemo(() => userRating?.correct, [userRating]);
+
+  // Upon load, detect if the eval result has changed, if the user had previously assessed it.
+  // If so, either a) invalidate the user's rating or b) if it's a boolean, flip it.
+  useEffect(() => {
+    // If the original eval score wasn't saved, or the user has no rating, continue
+    if (userRating?.orig_score == null || userRating.correct == null) return;
+    const orig_eval_score = userRating.orig_score;
+    if (orig_eval_score !== evalRes) {
+      // The eval score has changed since the user last rated it!
+      if (
+        typeof evalRes === "boolean" &&
+        typeof orig_eval_score === "boolean"
+      ) {
+        // If the eval type was boolean, we can safely flip the user's rating:
+        setRating(!userRating.correct, userRating?.feedback);
+      } else {
+        // We don't know what to do if the score fundamentally changes type or is categorical.
+        // Simply invalidate the user's assessment:
+        setRating(null, null);
+      }
+    }
+  }, [userRating, evalRes]);
 
   return (
     <div className="eval-score">
       {evalResultDivOrStr}
-      {grade === null && (
+      {rating == null && (
         <Flex className="eval-vote-icons">
-          <ActionIcon variant="transparent" onClick={() => setGrade(true)}>
+          <ActionIcon variant="transparent" onClick={() => setRating(true)}>
             <IconCheck className="eval-vote-icon" size={20} />
           </ActionIcon>
-          <ActionIcon variant="transparent" onClick={() => setGrade(false)}>
+          <ActionIcon variant="transparent" onClick={() => setRating(false)}>
             <IconX className="eval-vote-icon" size={20} />
           </ActionIcon>
         </Flex>
       )}
-      {grade !== null && (
+      {rating != null && (
         <Flex className="eval-vote-chosen">
-          {grade === true && (
+          {rating === true && (
             <Tooltip
               label="Human-verified eval score"
               withArrow
               arrowSize={8}
               withinPortal
             >
-              <ActionIcon variant="transparent" onClick={() => setGrade(null)}>
+              <ActionIcon variant="transparent" onClick={() => setRating(null)}>
                 <IconChecks
                   color="#666"
                   stroke={2}
@@ -123,7 +197,7 @@ export const EvalResultDisplay = ({
               </ActionIcon>
             </Tooltip>
           )}
-          {grade === false && (
+          {rating === false && (
             <Tooltip
               label="Human marked this eval score as incorrect"
               multiline
@@ -131,7 +205,7 @@ export const EvalResultDisplay = ({
               arrowSize={8}
               withinPortal
             >
-              <ActionIcon variant="transparent" onClick={() => setGrade(null)}>
+              <ActionIcon variant="transparent" onClick={() => setRating(null)}>
                 <IconX
                   color="red"
                   stroke={4}
@@ -288,10 +362,13 @@ export const genResponseTextsDisplay = (
 
   // Collapse responses with the same texts.
   // We need to keep track of the original evaluation result per response str:
-  const resp_str_to_eval_res: Dict<EvaluationScore> = {};
+  const resp_str_to_eval_res: Dict<[EvaluationScore, number]> = {};
   if (eval_res_items)
     responses.forEach((r, idx) => {
-      resp_str_to_eval_res[llmResponseDataToString(r)] = eval_res_items[idx];
+      resp_str_to_eval_res[llmResponseDataToString(r)] = [
+        eval_res_items[idx],
+        idx,
+      ];
     });
 
   const same_resp_text_counts = countResponsesBy(responses, (r) =>
@@ -360,8 +437,11 @@ export const genResponseTextsDisplay = (
         {eval_res_items ? (
           <p className="small-response-metrics">
             <EvalResultDisplay
+              uid={res_obj.uid}
+              evalRes={resp_str_to_eval_res[r][0]}
+              evalResIdx={resp_str_to_eval_res[r][1]}
               evalResultDivOrStr={
-                getEvalResultStr(resp_str_to_eval_res[r], true)[0]
+                getEvalResultStr(resp_str_to_eval_res[r][0], true)[0]
               }
             />
           </p>
