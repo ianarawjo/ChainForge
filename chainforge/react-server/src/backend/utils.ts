@@ -51,6 +51,7 @@ import {
 } from "@mirai73/bedrock-fm";
 import StorageCache, { StringLookup } from "./cache";
 import Compressor from "compressorjs";
+import { Annotations } from "plotly.js";
 // import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
@@ -2452,4 +2453,38 @@ export const ensureUniqueName = (_name: string, _prev_names: string[]) => {
     new_name = `${name} (${i})`;
   }
   return new_name;
+};
+
+export const accuracyToColor = (acc: number) => {
+  if (acc > 0.9) return "green";
+  else if (acc > 0.7) return "yellow";
+  else if (acc > 0.5) return "orange";
+  else return "red";
+};
+
+export const cmatrixTextAnnotations = (
+  x: string[],
+  y: string[],
+  z: number[][],
+) => {
+  const annotations = [];
+  const midVal = Math.max(...z.flat());
+  for (let i = 0; i < y.length; i++) {
+    for (let j = 0; j < x.length; j++) {
+      annotations.push({
+        xref: "x1",
+        yref: "y1",
+        x: x[j],
+        y: y[i],
+        text: z[i][j].toString(),
+        font: {
+          // family: "monospace",
+          // size: 12,
+          color: z[i][j] < midVal ? "white" : "black",
+        },
+        showarrow: false,
+      });
+    }
+  }
+  return annotations as Partial<Annotations>[];
 };

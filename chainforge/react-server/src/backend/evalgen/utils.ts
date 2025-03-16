@@ -11,7 +11,7 @@ import {
 } from "./typing";
 import { Dict, LLMResponse } from "../typing";
 import { executejs, executepy, simpleQueryLLM } from "../backend";
-import { getVarsAndMetavars, retryAsyncFunc } from "../utils";
+import { getVarsAndMetavars, llmResponseDataToString, retryAsyncFunc } from "../utils";
 import { v4 as uuid } from "uuid";
 import { OpenAIStreamer } from "./oai_utils";
 import {
@@ -75,11 +75,11 @@ export async function generateLLMEvaluationCriteria(
       throw new Error(Object.values(result.errors as Dict)[0].toString());
 
     // Get output (text from LLM response)
-    const output = result.responses[0].responses[0];
+    const output = llmResponseDataToString(result.responses[0].responses[0]);
     // console.log("LLM said: ", output); // for debuggging
 
     // Attempt to extract JSON blocks (strings) from input
-    const json_blocks = extractJSONBlocks(output.toString());
+    const json_blocks = extractJSONBlocks(output);
     if (json_blocks === undefined || json_blocks.length === 0)
       throw new Error(
         "EvalGen: Could not parse LLM response into evaluation critera: No JSON detected in output.",
@@ -151,7 +151,7 @@ export async function executeLLMEval(
     systemMessage, // system_msg
   );
   // Get the output
-  const output = result.responses[0].responses[0].toString();
+  const output = llmResponseDataToString(result.responses[0].responses[0]);
 
   // Parse the response to determine the boolean value to return
   if (output.toLowerCase().includes("yes")) {
