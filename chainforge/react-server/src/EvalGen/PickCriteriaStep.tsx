@@ -1,36 +1,29 @@
 import React, { useMemo, useState } from "react";
+import { EvalCriteria, EvalFunctionReport } from "../backend/evalgen/typing";
 import {
-  Modal,
+  Accordion,
   Button,
-  Group,
-  Stepper,
-  Title,
-  Text,
   Card,
-  Stack,
-  Anchor,
-  List,
-  Flex,
-  TextInput,
-  ScrollArea,
-  SimpleGrid,
-  Tooltip,
-  Skeleton,
+  Checkbox,
   Code,
   Divider,
-  Checkbox,
-  Textarea,
+  Flex,
+  Group,
   Popover,
   RingProgress,
+  ScrollArea,
+  SimpleGrid,
+  Skeleton,
+  Stack,
   Switch,
-  Accordion,
+  Text,
+  Textarea,
+  TextInput,
+  Title,
+  Tooltip,
   useMantineTheme,
 } from "@mantine/core";
-import {
-  EvalCriteria,
-  EvalFunctionReport,
-  EvalGenReport,
-} from "./backend/evalgen/typing";
+import { useDisclosure } from "@mantine/hooks";
 import {
   IconCode,
   IconRepeat,
@@ -38,171 +31,20 @@ import {
   IconSparkles,
   IconTrash,
 } from "@tabler/icons-react";
-import { generateLLMEvaluationCriteria } from "./backend/evalgen/utils";
-import useStore from "./store";
+import useStore from "../store";
+import { accuracyToColor, cmatrixTextAnnotations } from "../backend/utils";
+import { generateLLMEvaluationCriteria } from "../backend/evalgen/utils";
 import { v4 as uuid } from "uuid";
 import Plot from "react-plotly.js";
-import { useDisclosure } from "@mantine/hooks";
-import { accuracyToColor, cmatrixTextAnnotations } from "./backend/utils";
-import { LLMResponse } from "./backend/typing";
-import { escapeBraces } from "./backend/template";
-import { StringLookup } from "./backend/cache";
 
-/*
-    PROPS FOR STEPPER SCREEN COMPONENTS
- */
-interface WelcomeStepProps {
-  onNext: () => void;
-}
-
-interface FeedbackStepProps {
-  onNext: () => void;
-  onPrevious: () => void;
-  // setFeedbackData: (feedback: FeedbackItem[]) => void;
-}
-
-interface CriteriaStepProps {
+interface PickCriteriaStepProps {
   onNext: () => void;
   onPrevious: () => void;
   criteria: EvalCriteria[];
   setCriteria: React.Dispatch<React.SetStateAction<EvalCriteria[]>>;
   genCriteriaFromContext: () => Promise<EvalCriteria[] | undefined>;
-  // feedbackData: FeedbackItem[];
-  // setCriteriaData: (criteria: EvalCriteria[]) => void;
+  setOnNextCallback: React.Dispatch<React.SetStateAction<() => unknown>>;
 }
-
-interface GradingStepProps {
-  onNext: () => void;
-  onPrevious: () => void;
-  // criteriaData: EvalCriteria[];
-  // setGradingData: (grades: GradeData) => void;
-}
-
-interface ResultsStepProps {
-  onPrevious: () => void;
-  onComplete: () => void;
-  // criteriaData: Criterion[];
-  // gradingData: GradeData;
-}
-
-// Main wizard component props
-interface EvalGenWizardProps {
-  opened: boolean;
-  onClose: () => void;
-  onComplete: (result: EvalGenReport) => void;
-  responses: LLMResponse[] | undefined;
-}
-
-/*
-    STEPPER SCREEN COMPONENTS
- */
-const WelcomeStep: React.FC<WelcomeStepProps> = ({ onNext }) => (
-  <Stack spacing="md" m="lg" p="lg" mb={120}>
-    <Title order={2}>Welcome to the EvalGen Wizard</Title>
-    <Text>
-      This wizard will guide you through creating automated evaluators for LLM
-      responses that are aligned with your preferences. You`&apos;ll look at
-      data, define what you care about, apply those criteria to grade data, and
-      refine your criteria as you see more outputs. EvalGen then generates
-      automated evaluators that implement each criteria, chooses implementations
-      most aligned with your grades, and reports how aligned they are.
-    </Text>
-    <Text>
-      EvalGen is backed up by our{" "}
-      <Anchor
-        href="https://dl.acm.org/doi/abs/10.1145/3654777.3676450"
-        target="_blank"
-      >
-        empirical research at UIST 2024
-      </Anchor>
-      , and is inspired by similar inductive processes in grounded theory and
-      heuristic evaluation. Currently, Evalgen:
-    </Text>
-    <List>
-      <List.Item>
-        Only generates <b>assertions (pass/fail tests)</b>. Numeric and
-        categorical evaluators are not included.
-      </List.Item>
-      <List.Item>
-        Asks for grades on a <b>per-criteria</b> basis on the main grading
-        screen. This is the chief difference from our paper.
-      </List.Item>
-      <List.Item>
-        Requires access to the GenAI features of ChainForge. Set up the Provider
-        you wish to use for this in your Global Settings view. The Provider must
-        be powerful enough to generate code. (By default, it is OpenAI.)
-      </List.Item>
-      <List.Item>
-        Should be run on the outputs of <b>already-run</b> Prompt Nodes (LLM
-        responses).
-      </List.Item>
-      <List.Item>
-        EvalGen will send off many requests during usage. 🔔{" "}
-        <b>By using Evalgen, you take full responsibility for credit usage.</b>
-      </List.Item>
-    </List>
-    <Text>Currently, EvalGen does NOT:</Text>
-    <List>
-      <List.Item>
-        Work on imported spreadsheets of data (although if you are interested in
-        this, raise a Pull Request).
-      </List.Item>
-      <List.Item>
-        Generate code that uses third-party libraries. For safety, LLM-generated
-        Python code is run sandboxed in the browser with pyodide. (If your eval
-        criteria implementation must use a third-party library, we suggest you
-        use ChainForge’s genAI features on the specific eval node, outside this
-        wizard.)
-      </List.Item>
-    </List>
-    <Text>We have captured the following about your context:</Text>
-    <ul>
-      <li>…</li>
-      <li>[x] Use this info when helping me think of evaluation criteria</li>
-    </ul>
-    <Text>
-      After EvalGen finishes, the chosen evaluators appear in the MultiEval
-      node. You can export evaluator details by right-clicking the node and
-      selecting Copy Eval Specs.
-    </Text>
-    <Text>
-      EvalGen is in Beta. To improve it, provide feedback on our Github Issues
-      or Discussion pages, or raise a Pull Request with the changes.
-    </Text>
-    <Button onClick={onNext} fullWidth mt="xl">
-      Get Started
-    </Button>
-  </Stack>
-);
-
-const FeedbackStep: React.FC<FeedbackStepProps> = ({ onNext, onPrevious }) => {
-  // State for thumbs up/down feedback and written comments
-  const [feedback, setFeedback] = useState([]);
-
-  const handleSubmit = () => {
-    // setFeedbackData(feedback);
-    onNext();
-  };
-
-  return (
-    <Stack spacing="lg">
-      <Title order={3}>Provide Feedback on Some Model Outputs</Title>
-
-      {/* TODO: Implement thumbs up/down feedback UI with written comments */}
-      <Text>
-        TODO: Display LLM responses with thumbs up/down controls and comment
-        field
-      </Text>
-
-      <Group position="apart" mt="xl">
-        <Button variant="default" onClick={onPrevious}>
-          Back
-        </Button>
-        <Button onClick={handleSubmit}>Continue</Button>
-      </Group>
-    </Stack>
-  );
-};
 
 interface CriteriaCardProps {
   title: string;
@@ -527,10 +369,10 @@ const CriteriaCard: React.FC<CriteriaCardProps> = function CriteriaCard({
   );
 };
 
-const CriteriaStep: React.FC<CriteriaStepProps> = ({
+const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
   onNext,
   onPrevious,
-  criteria, 
+  criteria,
   setCriteria,
   genCriteriaFromContext,
 }) => {
@@ -619,8 +461,8 @@ Your response should contain a short title for the criteria ("shortname"), a des
         </Text>
 
         <Text size="sm" pl="sm" mb="lg" style={{ fontStyle: "italic" }}>
-          Note: Due to rate limits and/or cost, think carefully before selecting more than 5
-          criteria to be evaluated by LLMs.
+          Note: Due to rate limits and/or cost, think carefully before selecting
+          more than 5 criteria to be evaluated by LLMs.
         </Text>
 
         <Flex align="center" gap="lg">
@@ -720,240 +562,4 @@ Your response should contain a short title for the criteria ("shortname"), a des
   );
 };
 
-const GradingStep: React.FC<GradingStepProps> = ({ onNext, onPrevious }) => {
-  // State for per-criteria grades
-  const [grades, setGrades] = useState({});
-
-  // TODO: Set up grading UI for each criteria
-
-  const handleSubmit = () => {
-    // setGradingData(grades);
-    onNext();
-  };
-
-  return (
-    <Stack spacing="lg">
-      <Title order={3}>Grade LLM Responses By Criteria</Title>
-      <Text>Please evaluate each response according to your criteria:</Text>
-
-      {/* TODO: Implement grading UI per criteria */}
-      <Text>TODO: Display grading interface for each criteria</Text>
-
-      <Group position="apart" mt="xl">
-        <Button variant="default" onClick={onPrevious}>
-          Back
-        </Button>
-        <Button onClick={handleSubmit}>I&apos;m tired, process results</Button>
-      </Group>
-    </Stack>
-  );
-};
-
-const ResultsStep: React.FC<ResultsStepProps> = ({
-  onPrevious,
-  onComplete,
-}) => {
-  // TODO: Calculate alignment scores based on criteria and grading data
-  const alignmentScores = {};
-
-  return (
-    <Stack spacing="lg">
-      <Title order={3}>Evaluation Results</Title>
-      <Text>
-        Here&apos;s how well each evaluation criteria aligns with your grades:
-      </Text>
-
-      {/* TODO: Display alignment scores */}
-      <Text>TODO: Show alignment scores for each criteria</Text>
-
-      <Group position="apart" mt="xl">
-        <Button variant="default" onClick={onPrevious}>
-          Back
-        </Button>
-        <Button onClick={onComplete} color="green">
-          Done
-        </Button>
-      </Group>
-    </Stack>
-  );
-};
-
-const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
-  opened,
-  onClose,
-  onComplete,
-  responses,
-}) => {
-  const [active, setActive] = useState(0);
-
-  // Criteria across the steps
-  const [criteria, setCriteria] = useState<EvalCriteria[]>([]);
-
-  // Global state
-  const apiKeys = useStore((state) => state.apiKeys);
-
-  const handleNext = () => {
-    setActive((current) => current + 1);
-  };
-
-  const handlePrevious = () => {
-    setActive((current) => current - 1);
-  };
-
-  const handleComplete = () => {
-    // Return final data to the caller
-    onComplete({
-      criteria: criteria,
-      failureCoverage: 0,
-      falseFailureRate: 0,
-      // grades: gradingData,
-      // alignmentScores: {} // TODO: Include actual alignment scores
-    });
-    onClose();
-  };
-
-  const getLikelyPromptTemplateAsContext = (resps: LLMResponse[]) => {
-    // Attempt to infer the prompt template used to generate the responses:
-    const prompts = new Set<string>();
-    for (const resp_obj of resps) {
-      const pt = resp_obj?.metavars?.__pt;
-      if (pt !== undefined) {
-        prompts.add(StringLookup.get(pt) as string);
-      }
-    }
-
-    if (prompts.size === 0) return null;
-
-    // Pick a prompt template at random to serve as context....
-    return escapeBraces(prompts.values().next().value ?? "");
-  };
-
-  async function genCriteriaFromContext(responses: LLMResponse[]) {
-    // Get the context from the input responses
-    const inputPromptTemplate = getLikelyPromptTemplateAsContext(responses);
-
-    if (inputPromptTemplate === null) {
-      console.error("No context found. Cannot proceed.");
-      return;
-    }
-
-    // Attempt to generate criteria using an LLM
-    return await generateLLMEvaluationCriteria(inputPromptTemplate, apiKeys);
-  }
-
-  return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title="EvalGen Wizard"
-      size="90%"
-      padding="md"
-      // keepMounted
-      // closeOnClickOutside={true}
-      style={{ position: "relative", left: "-5%" }}
-      styles={{
-        inner: {
-          padding: "5%", // This creates space around the modal (10% total)
-        },
-        content: {
-          height: "100%", // Fill the available space
-          maxHeight: "90vh", // Limit to 90% of viewport height
-          display: "flex",
-          flexDirection: "column",
-        },
-        body: {
-          flex: 1, // This makes the body expand to fill available space
-          overflow: "auto", // Add scrolling if content is too tall
-        },
-      }}
-    >
-      {active === 0 && <WelcomeStep onNext={handleNext} />}
-
-      {active === 1 && (
-        <FeedbackStep
-          onNext={handleNext}
-          onPrevious={handlePrevious}
-          // setFeedbackData={setFeedbackData}
-        />
-      )}
-
-      {active === 2 && (
-        <CriteriaStep
-          onNext={handleNext}
-          onPrevious={handlePrevious}
-          criteria={criteria}
-          setCriteria={setCriteria}
-          genCriteriaFromContext={() => genCriteriaFromContext(responses ?? [])}
-          // feedbackData={feedbackData}
-          // setCriteriaData={setCriteriaData}
-        />
-      )}
-
-      {active === 3 && (
-        <GradingStep
-          onNext={handleNext}
-          onPrevious={handlePrevious}
-          // criteriaData={criteriaData}
-          // setGradingData={setGradingData}
-        />
-      )}
-
-      {active === 4 && (
-        <ResultsStep
-          onPrevious={handlePrevious}
-          onComplete={handleComplete}
-          // criteriaData={criteriaData}
-          // gradingData={gradingData}
-        />
-      )}
-
-      {/* Sticky footer - button and steppers */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 106,
-          padding: "10px",
-          width: "95%",
-        }}
-      >
-        <Flex justify="space-between">
-          <Button variant="default">&lt; Back</Button>
-          <Button>Next &gt;</Button>
-        </Flex>
-      </div>
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          background: "white",
-          padding: "10px",
-          borderTop: "1px solid #ddd",
-          width: "95%",
-        }}
-      >
-        <Stepper active={active} mb="xl">
-          <Stepper.Step label="Welcome" description="Get started">
-            {/* Step content is rendered below */}
-          </Stepper.Step>
-          <Stepper.Step label="Feedback" description="Rate some responses">
-            {/* Step content is rendered below */}
-          </Stepper.Step>
-          <Stepper.Step label="Criteria" description="Define eval criteria">
-            {/* Step content is rendered below */}
-          </Stepper.Step>
-          <Stepper.Step
-            label="Grading and Generation"
-            description="Grade by criteria, while we generate implementations"
-          >
-            {/* Step content is rendered below */}
-          </Stepper.Step>
-          <Stepper.Step label="Results" description="View alignment">
-            {/* Step content is rendered below */}
-          </Stepper.Step>
-        </Stepper>
-      </div>
-    </Modal>
-  );
-};
-
-export default EvalGenWizard;
+export default PickCriteriaStep;

@@ -60,8 +60,7 @@ import { Dict, LLMResponse, QueryProgress } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import { EvalGenReport } from "./backend/evalgen/typing";
-import EvalGenModal, { EvalGenModalRef } from "./EvalGenModal";
-import EvalGenWizard from "./EvalGen2Modal";
+import EvalGenWizard from "./EvalGen/EvalGenWizard";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
@@ -635,6 +634,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         opened={evalGenOpened}
         onClose={() => setEvalGenOpened(false)}
         onComplete={handleEvalGenComplete}
+        responses={[]}
       />
       {/* <EvalGenModal ref={evalGenModalRef} /> */}
 
