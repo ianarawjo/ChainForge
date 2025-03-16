@@ -61,6 +61,7 @@ import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import { EvalGenReport } from "./backend/evalgen/typing";
 import EvalGenModal, { EvalGenModalRef } from "./EvalGenModal";
+import EvalGenWizard from "./EvalGen2Modal";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
@@ -312,11 +313,11 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
     );
   };
 
-  const evalGenModalRef = useRef<EvalGenModalRef>(null);
-  const openEvalGen = () => {
-    const resps = handlePullInputs();
-    evalGenModalRef.current?.trigger(resps, onFinalReportsReady);
-  };
+  // const evalGenModalRef = useRef<EvalGenModalRef>(null);
+  // const openEvalGen = () => {
+  //   const resps = handlePullInputs();
+  //   evalGenModalRef.current?.trigger(resps, onFinalReportsReady);
+  // };
 
   const onFinalReportsReady = (reports: EvalGenReport) => {
     // Placeholder for process the final reports returned from EvalGenModel
@@ -600,6 +601,16 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
     }
   }, [data]);
 
+  // EvalGen Wizard
+  const [evalGenOpened, setEvalGenOpened] = useState(false);
+  const openEvalGen = useCallback(() => {
+    setEvalGenOpened(true);
+  }, []);
+  const handleEvalGenComplete = (evaluationData: EvalGenReport) => {
+    console.log("Evaluation wizard completed with data:", evaluationData);
+    // Do something with the evaluation implementations
+  };
+
   return (
     <BaseNode
       classNames="evaluator-node"
@@ -620,7 +631,12 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         jsonResponses={lastResponses}
       />
 
-      <EvalGenModal ref={evalGenModalRef} />
+      <EvalGenWizard
+        opened={evalGenOpened}
+        onClose={() => setEvalGenOpened(false)}
+        onComplete={handleEvalGenComplete}
+      />
+      {/* <EvalGenModal ref={evalGenModalRef} /> */}
 
       <iframe style={{ display: "none" }} id={`${id}-iframe`}></iframe>
 

@@ -240,10 +240,11 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
   const [opened, { toggle }] = useDisclosure(initiallyOpen ?? false);
   const [title, setTitle] = useState(criterion.shortname ?? "New Criteria");
 
-  return (<Stack spacing={0} ml={8}>
-        <Flex align="center">
-          <Group spacing="0px">
-            {/* The arrow chevron user can click to collapse/expand
+  return (
+    <Stack spacing={0} ml={8}>
+      <Flex align="center">
+        <Group spacing="0px">
+          {/* The arrow chevron user can click to collapse/expand
             <Button
               color="gray"
               p={0}
@@ -259,108 +260,108 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
               )}
             </Button> */}
 
-            {/* Thumbs up/down buttons */}
-            <ThumbUpDownButtons
-              grade={grade}
-              onChangeGrade={onChangeGrade}
-              getGradeCount={getGradeCount}
-            />
+          {/* Thumbs up/down buttons */}
+          <ThumbUpDownButtons
+            grade={grade}
+            onChangeGrade={onChangeGrade}
+            getGradeCount={getGradeCount}
+          />
 
-            {/* Title of the criteria */}
-            <TextInput
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={(e) => {
-                criterion.shortname = e.target.value;
-                if (onChange) onChange(criterion);
-              }}
-              placeholder="Criteria name"
-              variant="unstyled"
-              size="md"
-              ml="xs"
-              className="nodrag nowheel"
-              styles={{
-                input: {
-                  padding: "0px",
-                  height: "14pt",
-                  minHeight: "0pt",
-                  fontWeight: 500,
-                },
-              }}
-            />
-          </Group>
-
-          <Group spacing="4px" ml="auto">
-            {/* Whether this criteria should be implemented with code (function) or an LLM evaluator */}
-            <Tooltip
-              label={
-                criterion.eval_method === "code"
-                  ? "Change to an LLM evaluator"
-                  : "Change to a code evaluator"
-              }
-              withinPortal
-              withArrow
-            >
-              <Text
-                color="#999"
-                size="sm"
-                mr="6px"
-                onClick={() => {
-                  criterion.eval_method =
-                    criterion.eval_method === "code" ? "expert" : "code";
-                  if (onChange) onChange(criterion);
-                }}
-              >
-                {criterion.eval_method === "code" ? (
-                  <Flex style={{ userSelect: "none" }}>
-                    <IconTerminal2 size="14pt" />
-                    &nbsp;Python
-                  </Flex>
-                ) : (
-                  <Flex style={{ userSelect: "none" }}>
-                    <IconRobot size="14pt" />
-                    &nbsp;LLM
-                  </Flex>
-                )}
-              </Text>
-            </Tooltip>
-
-            {/* <Contributor getStateValue={getStateValue} /> */}
-
-            {/* Delete button (and any other criterion-specific changes in the future) */}
-            <ActionIcon variant="subtle" color="red" onClick={onDelete}>
-              <IconTrash style={{ width: rem(16), height: rem(16) }} />
-            </ActionIcon>
-          </Group>
-        </Flex>
-
-          <Textarea
-            value={criterion.criteria}
-            placeholder="Describe here. You must describe what the criteria means before EvalGen can implement it."
-            ml={38}
-            onChange={(e) => {
-              criterion.criteria = e.target.value;
+          {/* Title of the criteria */}
+          <TextInput
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={(e) => {
+              criterion.shortname = e.target.value;
               if (onChange) onChange(criterion);
             }}
-            onClickCapture={(e) => e.stopPropagation()}
+            placeholder="Criteria name"
+            variant="unstyled"
+            size="md"
+            ml="xs"
+            className="nodrag nowheel"
             styles={{
               input: {
-                border: "none",
-                borderWidth: "0px",
-                margin: "0px",
-                color: "#444",
-                background: "transparent",
-                lineHeight: 1.1,
+                padding: "0px",
+                height: "14pt",
+                minHeight: "0pt",
+                fontWeight: 500,
               },
             }}
-            autosize
-            minRows={2}
-            maxRows={5}
-            fz="sm"
-            mb="xs"
-            c="dimmed"
           />
-          </Stack>
+        </Group>
+
+        <Group spacing="4px" ml="auto">
+          {/* Whether this criteria should be implemented with code (function) or an LLM evaluator */}
+          <Tooltip
+            label={
+              criterion.eval_method === "code"
+                ? "Change to an LLM evaluator"
+                : "Change to a code evaluator"
+            }
+            withinPortal
+            withArrow
+          >
+            <Text
+              color="#999"
+              size="sm"
+              mr="6px"
+              onClick={() => {
+                criterion.eval_method =
+                  criterion.eval_method === "code" ? "expert" : "code";
+                if (onChange) onChange(criterion);
+              }}
+            >
+              {criterion.eval_method === "code" ? (
+                <Flex style={{ userSelect: "none" }}>
+                  <IconTerminal2 size="14pt" />
+                  &nbsp;Python
+                </Flex>
+              ) : (
+                <Flex style={{ userSelect: "none" }}>
+                  <IconRobot size="14pt" />
+                  &nbsp;LLM
+                </Flex>
+              )}
+            </Text>
+          </Tooltip>
+
+          {/* <Contributor getStateValue={getStateValue} /> */}
+
+          {/* Delete button (and any other criterion-specific changes in the future) */}
+          <ActionIcon variant="subtle" color="red" onClick={onDelete}>
+            <IconTrash style={{ width: rem(16), height: rem(16) }} />
+          </ActionIcon>
+        </Group>
+      </Flex>
+
+      <Textarea
+        value={criterion.criteria}
+        placeholder="Describe here. You must describe what the criteria means before EvalGen can implement it."
+        ml={38}
+        onChange={(e) => {
+          criterion.criteria = e.target.value;
+          if (onChange) onChange(criterion);
+        }}
+        onClickCapture={(e) => e.stopPropagation()}
+        styles={{
+          input: {
+            border: "none",
+            borderWidth: "0px",
+            margin: "0px",
+            color: "#444",
+            background: "transparent",
+            lineHeight: 1.1,
+          },
+        }}
+        autosize
+        minRows={2}
+        maxRows={5}
+        fz="sm"
+        mb="xs"
+        c="dimmed"
+      />
+    </Stack>
   );
 };
 
@@ -913,9 +914,11 @@ If you determine the feedback corresponds to a new criteria, your response shoul
             </Grid.Col>
             <Grid.Col span={4} bg="#eee" pt="16px" h="100%">
               <Center>
-                <Title order={3} ml={8} mt="sm" mb="md">Rubric</Title>
+                <Title order={3} ml={8} mt="sm" mb="md">
+                  Rubric
+                </Title>
               </Center>
-              
+
               <div
                 style={{
                   display: "flex",
@@ -967,7 +970,7 @@ If you determine the feedback corresponds to a new criteria, your response shoul
                   ) : (
                     <></>
                   )}
-                  
+
                   <div className="criteriaButtons">
                     <Button
                       leftIcon={<IconPencil size={14} />}
