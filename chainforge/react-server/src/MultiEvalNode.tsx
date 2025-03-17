@@ -252,6 +252,8 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
   const [showDrawer, setShowDrawer] = useState(false);
 
+  const [pulledInputs, setPulledInputs] = useState<LLMResponse[]>([]);
+
   // Debounce helpers
   const debounceTimeoutRef = useRef(null);
   const debounce = genDebounceFunc(debounceTimeoutRef);
@@ -321,7 +323,6 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   const onFinalReportsReady = (reports: EvalGenReport) => {
     // Placeholder for process the final reports returned from EvalGenModel
     console.log("!!!!!!!!!!!!!!!!!!!!!!!!!! final reports", reports);
-    // let kkk = 1;
     for (const crit of reports.criteria) {
       // setTimeout(() => {
       // console.log("crit", crit);
@@ -603,6 +604,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   // EvalGen Wizard
   const [evalGenOpened, setEvalGenOpened] = useState(false);
   const openEvalGen = useCallback(() => {
+    setPulledInputs(handlePullInputs());
     setEvalGenOpened(true);
   }, []);
   const handleEvalGenComplete = (evaluationData: EvalGenReport) => {
@@ -634,7 +636,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         opened={evalGenOpened}
         onClose={() => setEvalGenOpened(false)}
         onComplete={handleEvalGenComplete}
-        responses={[]}
+        responses={pulledInputs}
       />
       {/* <EvalGenModal ref={evalGenModalRef} /> */}
 

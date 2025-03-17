@@ -1,12 +1,17 @@
 import React, { ReactNode, useMemo } from "react";
 import { LLMResponse } from "../backend/typing";
-import { cleanMetavarsFilterFunc, transformDict } from "../backend/utils";
+import {
+  cleanMetavarsFilterFunc,
+  llmResponseDataToString,
+  transformDict,
+} from "../backend/utils";
 import { Box, Button, Center, Flex, Stack, Text, Tooltip } from "@mantine/core";
 import {
   IconChevronLeft,
   IconChevronRight,
   IconSparkles,
 } from "@tabler/icons-react";
+import { StringLookup } from "../backend/cache";
 
 const HeaderText = ({ children }: { children: ReactNode }) => {
   return (
@@ -20,32 +25,22 @@ export interface GradingViewProps {
   shownResponse: LLMResponse | undefined;
   shownResponseIdx: number;
   responseCount: number;
-  numGPT4Calls: number;
-  numGPT35Calls: number;
-  logs: { date: Date; message: string }[];
   gotoPrevResponse: () => void;
   gotoNextResponse: () => void;
-  estimateGPTCalls: () => string;
-  gotoNextScreen: (screenName: string) => void;
 }
 
 const GradingView: React.FC<GradingViewProps> = ({
   shownResponse,
   shownResponseIdx,
   responseCount,
-  numGPT4Calls,
-  numGPT35Calls,
-  logs,
   gotoPrevResponse,
   gotoNextResponse,
-  estimateGPTCalls,
-  gotoNextScreen,
 }) => {
   // Calculate inner values only when shownResponse changes
   const responseText = useMemo(
     () =>
       shownResponse && shownResponse.responses?.length > 0
-        ? shownResponse.responses[0].toString()
+        ? llmResponseDataToString(shownResponse.responses[0])
         : "",
     [shownResponse],
   );
@@ -54,12 +49,14 @@ const GradingView: React.FC<GradingViewProps> = ({
   const varsDivs = useMemo(() => {
     const combined_vars_metavars = shownResponse
       ? {
-          ...shownResponse.vars,
-          ...transformDict(shownResponse.metavars, cleanMetavarsFilterFunc),
+          ...StringLookup.concretizeDict(shownResponse.vars),
+          ...transformDict(
+            StringLookup.concretizeDict(shownResponse.metavars),
+            cleanMetavarsFilterFunc,
+          ),
         }
       : {};
 
-    // console.log("**************shownResponse", shownResponse);
     return Object.entries(combined_vars_metavars).map(([varname, val]) => (
       <div key={varname} className="grade-resp-var-container">
         <span className="response-var-name">{varname}&nbsp;=&nbsp;</span>
@@ -109,7 +106,7 @@ const GradingView: React.FC<GradingViewProps> = ({
           </div>
 
           {/* Go forward to the next response */}
-          <Tooltip label={estimateGPTCalls()} withArrow>
+          <Tooltip label="To next response" withArrow>
             <Button variant="white" color="dark" onClick={gotoNextResponse}>
               <IconChevronRight />
             </Button>
@@ -156,62 +153,7 @@ const GradingView: React.FC<GradingViewProps> = ({
             </div>
           </div>
         </Flex>
-        <Flex direction="column">
-          <Flex justify="space-between" align="center">
-            <Text size="lg" weight={500} mb="sm">
-              LLM Activity
-            </Text>
-            {/* GPT Call Tally */}
-            <Text size="sm" color="dark" style={{ fontStyle: "italic" }}>
-              Executed {numGPT4Calls} GPT-4o calls and {numGPT35Calls}{" "}
-              GPT-3.5-Turbo-16k calls.
-            </Text>
-          </Flex>
-          <div
-            style={{
-              backgroundColor: "#f0f0f0",
-              color: "#333",
-              fontFamily: "monospace",
-              padding: "12px",
-              width: "calc(100% - 30px)",
-              height: "200px",
-              overflowY: "auto",
-              borderRadius: "8px",
-              border: "1px solid #ddd",
-              marginRight: "20px", // Space on the right
-            }}
-            ref={(el) => {
-              if (el) {
-                el.scrollTop = el.scrollHeight;
-              }
-            }}
-          >
-            {logs.map((log, index) => (
-              <div key={index}>
-                <span style={{ color: "#4A90E2" }}>
-                  {log.date.toLocaleString()} -{" "}
-                </span>
-                <span>{log.message}</span>
-              </div>
-            ))}
-          </div>
-        </Flex>
       </Box>
-      <div>
-        <Center>
-          <Button
-            leftIcon={<IconSparkles size={14} />}
-            variant="gradient"
-            gradient={{ from: "blue", to: "green", deg: 45 }}
-            onClick={() => {
-              // console.log("(3) gotoNextScreen", gotoNextScreen);
-              gotoNextScreen("report");
-            }}
-          >
-            I&apos;m done. Access EvalGen Report!
-          </Button>
-        </Center>
-      </div>
     </Stack>
   );
 };

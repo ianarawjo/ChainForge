@@ -162,10 +162,17 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
         }}
       >
         <Flex justify="space-between">
-          <Button variant="default" onClick={handlePrevious}>
+          <Button
+            variant="default"
+            onClick={handlePrevious}
+            disabled={active === 0}
+          >
             &lt; Back
           </Button>
-          <Button onClick={handleNext}>Next &gt;</Button>
+
+          <Button onClick={handleNext} disabled={active === 4}>
+            Next &gt;
+          </Button>
         </Flex>
       </div>
       <div

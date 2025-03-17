@@ -64,11 +64,11 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
         wizard.)
       </List.Item>
     </List>
-    <Text>We have captured the following about your context:</Text>
+    {/* <Text>We have captured the following about your context:</Text>
     <ul>
       <li>…</li>
       <li>[x] Use this info when helping me think of evaluation criteria</li>
-    </ul>
+    </ul> */}
     <Text>
       After EvalGen finishes, the chosen evaluators appear in the MultiEval
       node. You can export evaluator details by right-clicking the node and

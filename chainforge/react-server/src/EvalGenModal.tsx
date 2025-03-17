@@ -390,7 +390,6 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       [],
     );
     const [shownResponseIdx, setShownResponseIdx] = useState(0);
-    // const [shownResponseUniqueIdx, setShownResponseUniqueIdx] = useState(0);
 
     const [annotation, setAnnotation] = useState<string | undefined>(undefined);
     const [holisticGrade, setHolisticGrade] = useState<
@@ -594,14 +593,6 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       trigger,
     }));
 
-    // Add a criterion
-    const handleAddCriteria = (newCrit: EvalCriteria) => {
-      setCriteria((cs) => {
-        if (!newCrit.uid) newCrit.uid = uuid();
-        return [...cs, newCrit];
-      });
-    };
-
     const getLikelyPromptTemplateAsContext = (resps) => {
       // Attempt to infer the prompt template used to generate the responses:
       const prompts = new Set();
@@ -629,6 +620,14 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
       // Attempt to generate criteria using an LLM
       return await generateLLMEvaluationCriteria(inputPromptTemplate, apiKeys);
     }
+
+    // Add a criterion
+    const handleAddCriteria = (newCrit: EvalCriteria) => {
+      setCriteria((cs) => {
+        if (!newCrit.uid) newCrit.uid = uuid();
+        return [...cs, newCrit];
+      });
+    };
 
     // Modify an existing criterion
     const handleChangeCriteria = (newCrit: EvalCriteria, uid: string) => {
