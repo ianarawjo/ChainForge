@@ -45,7 +45,10 @@ const GradingView: React.FC<GradingViewProps> = ({
     [shownResponse],
   );
 
-  const prompt = useMemo(() => shownResponse?.prompt ?? "", [shownResponse]);
+  const prompt = useMemo(
+    () => StringLookup.get(shownResponse?.prompt) ?? "",
+    [shownResponse],
+  );
   const varsDivs = useMemo(() => {
     const combined_vars_metavars = shownResponse
       ? {
@@ -66,7 +69,7 @@ const GradingView: React.FC<GradingViewProps> = ({
   }, [shownResponse]);
 
   return (
-    <Stack justify="space-between" mih={500}>
+    <Stack justify="space-between">
       <Box>
         {/* Top header */}
         <Flex justify="center">

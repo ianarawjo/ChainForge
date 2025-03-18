@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { EvalCriteria, EvalGenReport } from "../backend/evalgen/typing";
 import { LLMResponse } from "../backend/typing";
 import useStore from "../store";
@@ -11,6 +11,7 @@ import FeedbackStep from "./FeedbackStep";
 import PickCriteriaStep from "./PickCriteriaStep";
 import ReportCardStep from "./ReportCardStep";
 import GradingResponsesStep from "./GradeResponsesStep";
+import { batchResponsesByUID } from "../backend/utils";
 
 // Main wizard component props
 interface EvalGenWizardProps {
@@ -26,7 +27,14 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
   onComplete,
   responses, // The LLM responses to operate over
 }) => {
+  // The active screen (stage) of EvalGen
   const [active, setActive] = useState(0);
+
+  // Regroup input responses by batch UID, whenever jsonResponses changes
+  const batchedResponses = useMemo(
+    () => (responses ? batchResponsesByUID(responses) : []),
+    [responses],
+  );
 
   // Criteria the user defines across the stages
   const [criteria, setCriteria] = useState<EvalCriteria[]>([]);
@@ -73,7 +81,8 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
 
   async function genCriteriaFromContext(responses: LLMResponse[]) {
     // Get the context from the input responses
-    const inputPromptTemplate = getLikelyPromptTemplateAsContext(responses);
+    const inputPromptTemplate =
+      getLikelyPromptTemplateAsContext(batchedResponses);
 
     if (inputPromptTemplate === null) {
       console.error("No context found. Cannot proceed.");
@@ -116,7 +125,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
         <FeedbackStep
           onNext={handleNext}
           onPrevious={handlePrevious}
-          responses={responses}
+          responses={batchedResponses}
           setOnNextCallback={setOnNextCallback}
         />
       )}
@@ -127,7 +136,9 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
           onPrevious={handlePrevious}
           criteria={criteria}
           setCriteria={setCriteria}
-          genCriteriaFromContext={() => genCriteriaFromContext(responses ?? [])}
+          genCriteriaFromContext={() =>
+            genCriteriaFromContext(batchedResponses)
+          }
           setOnNextCallback={setOnNextCallback}
         />
       )}
@@ -136,7 +147,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
         <GradingResponsesStep
           onNext={handleNext}
           onPrevious={handlePrevious}
-          responses={responses}
+          responses={batchedResponses}
           criteria={criteria}
           setCriteria={setCriteria}
           setOnNextCallback={setOnNextCallback}
