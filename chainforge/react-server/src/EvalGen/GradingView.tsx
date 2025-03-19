@@ -110,7 +110,12 @@ const GradingView: React.FC<GradingViewProps> = ({
 
           {/* Go forward to the next response */}
           <Tooltip label="To next response" withArrow>
-            <Button variant="white" color="dark" bg="transparent" onClick={gotoNextResponse}>
+            <Button
+              variant="white"
+              color="dark"
+              bg="transparent"
+              onClick={gotoNextResponse}
+            >
               <IconChevronRight />
             </Button>
           </Tooltip>

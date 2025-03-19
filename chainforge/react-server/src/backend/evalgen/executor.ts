@@ -11,7 +11,13 @@ import {
   EvalFunctionSetReport,
   EvalCriteriaUID,
 } from "./typing";
-import { LLMResponse, ResponseUID, QueryProgress, Dict, LLMSpec } from "../typing";
+import {
+  LLMResponse,
+  ResponseUID,
+  QueryProgress,
+  Dict,
+  LLMSpec,
+} from "../typing";
 import { EventEmitter } from "events";
 
 /**
@@ -66,7 +72,8 @@ export default class EvaluationFunctionExecutor {
   private scores: Map<ResponseUID, number>;
   // Cache function results for each example
   private resultsCache: Map<EvalFunction, Map<ResponseUID, EvalFunctionResult>>;
-  private llms: { small: string | LLMSpec, large: string | LLMSpec };
+  private llms: { small: string | LLMSpec; large: string | LLMSpec };
+  private apiKeys: Dict;
   private grades: Map<ResponseUID, boolean>; // Grades for all examples
   private perCriteriaGrades: Dict<Dict<boolean | undefined>>; // Grades per criteria
   private annotations: Dict<string>; // Annotations for each response
@@ -78,7 +85,11 @@ export default class EvaluationFunctionExecutor {
   private backgroundTaskPromise: Promise<void> | null = null; // To keep track of the background task for generating and executing evaluation functions
   private criteriaQueue: EvalCriteria[] = []; // Queue for new criteria to be processed
   private processing = false; // To keep track of whether we are currently processing a criteria
-  private updateNumLLMCalls: (numStrongModelCalls: number, numWeakModelCalls: number) => void;
+  private updateNumLLMCalls: (
+    numStrongModelCalls: number,
+    numWeakModelCalls: number,
+  ) => void;
+
   private logFunction: (logMessage: string) => void;
 
   /**
@@ -90,11 +101,15 @@ export default class EvaluationFunctionExecutor {
    * @param existingGrades Optional. A dict in format {uid: grade}, containing existing grades.
    */
   constructor(
-    genAIModels: { small: string | LLMSpec, large: string | LLMSpec },
+    genAIModels: { small: string | LLMSpec; large: string | LLMSpec },
+    apiKeys: Dict,
     promptTemplate: string,
     examples: LLMResponse[],
     evalCriteria: EvalCriteria[] = [],
-    updateNumLLMCalls: (numStrongModelCalls: number, numWeakModelCalls: number) => void,
+    updateNumLLMCalls: (
+      numStrongModelCalls: number,
+      numWeakModelCalls: number,
+    ) => void,
     addLog: (log: string) => void,
     existingGrades?: Record<ResponseUID, boolean>,
     existingPerCriteriaGrades?: Dict<Dict<boolean | undefined>>,
@@ -111,6 +126,7 @@ export default class EvaluationFunctionExecutor {
     this.evalCriteria = evalCriteria;
     this.promptTemplate = promptTemplate;
     this.llms = genAIModels;
+    this.apiKeys = apiKeys;
 
     // Set scores and grades to default values of 0
     this.scores = new Map<ResponseUID, number>();
@@ -262,10 +278,12 @@ export default class EvaluationFunctionExecutor {
 
     await generateFunctionsForCriteria(
       criteria,
+      this.llms.large,
       this.promptTemplate,
       this.examples[Math.floor(Math.random() * this.examples.length)],
       emitter,
       badExample,
+      this.apiKeys,
     );
     // Update LLM call count by 1
     this.updateNumLLMCalls(1, 0);
@@ -382,9 +400,12 @@ export default class EvaluationFunctionExecutor {
       console.log(criteria);
       generateFunctionsForCriteria(
         criteria,
+        this.llms.large,
         this.promptTemplate,
         this.examples[Math.floor(Math.random() * this.examples.length)],
         emitter, // Pass the EventEmitter instance
+        undefined,
+        this.apiKeys,
       ).then(() => {
         emitter.emit("criteriaProcessed");
         // Update LLM call count by 1
@@ -435,20 +456,23 @@ export default class EvaluationFunctionExecutor {
   }
 
   /**
-   * Adds another evaluation criteria and triggers the generation and execution of evaluation functions for the new criteria.
+   * Updates the set of evaluation criteria and triggers the generation and execution of evaluation functions for any new criteria.
    * This method allows the client to add new evaluation criteria after the executor has been initialized.
    * The new criteria will be processed in parallel with the existing criteria.
    * The method returns immediately, allowing the client to continue with other tasks.
    *
-   * @param criteria The new evaluation criteria to be added.
+   * @param criteria The new state of the evaluation criteria list.
    */
-  public addCriteria(criteriaList: EvalCriteria[]): void {
+  public updateCriteria(criteriaList: EvalCriteria[]): void {
     // See if there are criteria to remove
-    this.evalCriteria = this.evalCriteria.filter((c) => (!criteriaList.includes(c)));
+    this.evalCriteria = this.evalCriteria.filter(
+      (c) => !criteriaList.includes(c),
+    );
 
     // See if there are new criteria to add
     for (const criteria of criteriaList) {
-      if (this.evalCriteria.includes(criteria)) {  // criteria already included
+      if (this.evalCriteria.includes(criteria)) {
+        // criteria already included
         continue;
       }
 
@@ -768,7 +792,11 @@ export default class EvaluationFunctionExecutor {
           evalFunction.evalCriteria.eval_method === "code"
             ? execPyFunc
             : executeLLMEval;
-        const result = await funcToExecute(evalFunction, this.llms.small, example);
+        const result = await funcToExecute(
+          evalFunction,
+          this.llms.small,
+          example,
+        );
 
         // Put result in cache
         if (!this.resultsCache.has(evalFunction)) {
@@ -1006,7 +1034,11 @@ export default class EvaluationFunctionExecutor {
           evalFunction.evalCriteria.eval_method === "code"
             ? execPyFunc
             : executeLLMEval;
-        const result = await funcToExecute(evalFunction, this.llms.small, example);
+        const result = await funcToExecute(
+          evalFunction,
+          this.llms.small,
+          example,
+        );
 
         // Put result in cache
         if (!this.resultsCache.has(evalFunction)) {

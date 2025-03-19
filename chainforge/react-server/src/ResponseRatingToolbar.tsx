@@ -123,7 +123,7 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
 
   // Override the text in the internal textarea whenever upstream annotation changes.
   useEffect(() => {
-    setNoteText(note !== undefined ? note.toString() : "");
+    setNoteText(note != null ? note.toString() : "");
   }, [note]);
 
   // The label for the pop-up comment box.

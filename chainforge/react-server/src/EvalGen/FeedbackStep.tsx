@@ -43,7 +43,6 @@ const FeedbackStep: React.FC<FeedbackStepProps> = ({
     if (!shownResponse) return null;
     const key = getRatingKeyForResponse(shownResponse?.uid, "grade");
     const g = storeState[key];
-    console.log(shownResponse?.uid);
     if (g) return g[0];
     else return null;
   }, [shownResponse, storeState]);
@@ -51,7 +50,6 @@ const FeedbackStep: React.FC<FeedbackStepProps> = ({
     if (!shownResponse) return "";
     const key = getRatingKeyForResponse(shownResponse?.uid, "note");
     const a = storeState[key];
-    console.log(shownResponse?.uid);
     if (a) return a[0]?.toString();
     else return "";
   }, [shownResponse, storeState]);

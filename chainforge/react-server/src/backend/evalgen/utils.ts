@@ -17,19 +17,22 @@ import {
   retryAsyncFunc,
 } from "../utils";
 import { v4 as uuid } from "uuid";
-import { OpenAIStreamer } from "./oai_utils";
+import { EvalGenAssertionEmitter } from "./oai_utils";
 import {
   buildContextPromptForVarsMetavars,
   buildGenEvalCodePrompt,
 } from "../../AiPopover";
 
 /**
- * Extracts substrings within "```json" and "```" ticks. Excludes the ticks from return.
+ * Extracts substrings within "```" and "```" ticks. Excludes the ticks from return.
  * @param mdText
  * @returns
  */
-function extractJSONBlocks(mdText: string): string[] | undefined {
-  const regex = /```json(.*?)```/gs;
+export function extractMdBlocks(
+  mdText: string,
+  blockName: string,
+): string[] | undefined {
+  const regex = new RegExp(`\`\`\`${blockName}(.*?)\`\`\``, "gs");
   const matches = mdText.match(regex);
   if (matches)
     return matches.map((s) => s.replace("```json", "").replace("```", ""));
@@ -84,7 +87,7 @@ export async function generateLLMEvaluationCriteria(
     // console.log("LLM said: ", output); // for debuggging
 
     // Attempt to extract JSON blocks (strings) from input
-    const json_blocks = extractJSONBlocks(output);
+    const json_blocks = extractMdBlocks(output, "json");
     if (json_blocks === undefined || json_blocks.length === 0)
       throw new Error(
         "EvalGen: Could not parse LLM response into evaluation critera: No JSON detected in output.",
@@ -138,7 +141,7 @@ export async function executeLLMEval(
     "Evaluate the text below according to this criteria: " +
     evalFunction.code +
     ' Only return "yes" or "no", nothing else.\n\n```\n' +
-    example.responses[0] +
+    llmResponseDataToString(example.responses[0]) +
     "\n```";
 
   // Query an LLM as an evaluator
@@ -286,10 +289,12 @@ export async function execPyFunc(
 
 export async function generateFunctionsForCriteria(
   criteria: EvalCriteria,
+  llm: string | LLMSpec,
   promptTemplate: string,
   example: LLMResponse,
   emitter: EventEmitter,
   badExample?: LLMResponse,
+  apiKeys?: Dict,
 ): Promise<void> {
   const functionGenPrompt = buildFunctionGenPrompt(
     criteria,
@@ -300,7 +305,7 @@ export async function generateFunctionsForCriteria(
   console.log("Function generation prompt:", functionGenPrompt);
 
   try {
-    const streamer = new OpenAIStreamer();
+    const streamer = new EvalGenAssertionEmitter(apiKeys);
 
     streamer.on("function", (functionDefinition: string) => {
       processAndEmitFunction(criteria, functionDefinition, emitter);
@@ -308,7 +313,7 @@ export async function generateFunctionsForCriteria(
 
     const modelType =
       criteria.eval_method === "expert" ? "llm_eval" : "python_fn";
-    await streamer.generate(functionGenPrompt, "gpt-4o", modelType);
+    await streamer.generate(functionGenPrompt, llm, modelType);
   } catch (error) {
     console.error("Error generating function for criteria:", error);
     throw new Error(
@@ -328,7 +333,7 @@ function buildFunctionGenPrompt(
     badExampleSection = `
     Here is an example response that DOES NOT meet the criteria:
     \`\`\`
-    ${badExample.responses[0]}
+    ${llmResponseDataToString(badExample.responses[0])}
     \`\`\`
     `;
   }
@@ -343,7 +348,7 @@ function buildFunctionGenPrompt(
     ${badExampleSection}
     Create 3 implementations of the criterion.
     ${buildGenEvalCodePrompt("python", buildContextPromptForVarsMetavars(getVarsAndMetavars([example])), criteria.criteria, true)}
-    Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function. Each function should return only True or False.`;
+    Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function in separate "\`\`\`python" blocks. Each function should return only True or False.`;
 
     return prompt;
   }

@@ -499,7 +499,7 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         // });
       } else if (executor) {
         // Update criteria in executor
-        executor.addCriteria(criteria);
+        executor.updateCriteria(criteria);
       }
 
       updateCriteriaForDisplay();

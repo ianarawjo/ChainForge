@@ -33,7 +33,10 @@ import {
 } from "@tabler/icons-react";
 import useStore from "../store";
 import { accuracyToColor, cmatrixTextAnnotations } from "../backend/utils";
-import { generateLLMEvaluationCriteria, getPromptForGenEvalCriteriaFromDesc } from "../backend/evalgen/utils";
+import {
+  generateLLMEvaluationCriteria,
+  getPromptForGenEvalCriteriaFromDesc,
+} from "../backend/evalgen/utils";
 import { v4 as uuid } from "uuid";
 import Plot from "react-plotly.js";
 
@@ -44,6 +47,7 @@ interface PickCriteriaStepProps {
   setCriteria: React.Dispatch<React.SetStateAction<EvalCriteria[]>>;
   genCriteriaFromContext: () => Promise<EvalCriteria[] | undefined>;
   setOnNextCallback: React.Dispatch<React.SetStateAction<() => unknown>>;
+  genAIModelNames: { large: string; small: string };
 }
 
 interface CriteriaCardProps {
@@ -375,6 +379,7 @@ const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
   criteria,
   setCriteria,
   genCriteriaFromContext,
+  genAIModelNames,
 }) => {
   // State for criteria cards
   const [addCriteriaValue, setAddCriteriaValue] = useState("");
@@ -401,6 +406,7 @@ const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
     // Make async LLM call to expand criteria
     generateLLMEvaluationCriteria(
       "",
+      genAIModelNames.large,
       apiKeys,
       getPromptForGenEvalCriteriaFromDesc(addCriteriaValue), // prompt
       null, // system_msg
@@ -423,7 +429,7 @@ const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
         setIsLoadingCriteria((num) => num - 1);
       });
   };
-  
+
   const updateCriteria = (
     newValue: string,
     critIdx: number,
