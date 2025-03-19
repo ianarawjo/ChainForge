@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { EvalCriteria } from "../backend/evalgen/typing";
-import { LLMResponse } from "../backend/typing";
+import { Dict, LLMResponse, RatingDict } from "../backend/typing";
 import {
   ActionIcon,
   Button,
@@ -9,8 +9,10 @@ import {
   Flex,
   Grid,
   Group,
+  Popover,
   Radio,
   rem,
+  ScrollArea,
   Skeleton,
   Stack,
   Text,
@@ -30,8 +32,9 @@ import {
   IconThumbUp,
   IconTrash,
 } from "@tabler/icons-react";
-import { generateLLMEvaluationCriteria } from "../backend/evalgen/utils";
+import { generateLLMEvaluationCriteria, getPromptForGenEvalCriteriaFromDesc } from "../backend/evalgen/utils";
 import useStore from "../store";
+import EvaluationFunctionExecutor from "../backend/evalgen/executor";
 
 const ThumbUpDownButtons = ({
   grade,
@@ -42,6 +45,10 @@ const ThumbUpDownButtons = ({
   onChangeGrade: (newGrade: boolean | undefined) => void;
   getGradeCount: (grade: boolean | undefined) => number;
 }) => {
+
+  const true_count = getGradeCount(true);
+  const false_count = getGradeCount(false);
+
   return (
     <>
       {/* Thumbs up/down buttons */}
@@ -56,8 +63,8 @@ const ThumbUpDownButtons = ({
         }}
       >
         <div className="gradeContainer">
-          <IconThumbUp size="14pt" fill={grade === true ? "#aea" : "white"} />
-          <div className="gradeUpCount">{getGradeCount(true)}</div>
+          <IconThumbUp size="20pt" fill={grade === true ? "#aea" : "white"} />
+          {true_count > 0 && <div className="gradeUpCount">{true_count}</div>}
         </div>
       </Button>
       <Button
@@ -72,10 +79,10 @@ const ThumbUpDownButtons = ({
       >
         <div className="gradeContainer">
           <IconThumbDown
-            size="14pt"
+            size="20pt"
             fill={grade === false ? "pink" : "white"}
           />
-          <div className="gradeDownCount">{getGradeCount(false)}</div>
+          {false_count > 0 && <div className="gradeDownCount">{false_count}</div>}
         </div>
       </Button>
     </>
@@ -188,6 +195,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
       <Textarea
         value={criterion.criteria}
         placeholder="Describe here. You must describe what the criteria means before EvalGen can implement it."
+        size="xs"
         ml={38}
         onChange={(e) => {
           criterion.criteria = e.target.value;
@@ -202,6 +210,8 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
             color: "#444",
             background: "transparent",
             lineHeight: 1.1,
+            paddingTop: "4px !important",
+            paddingBottom: "4px !important",
           },
         }}
         autosize
@@ -218,18 +228,30 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
 interface GradingResponsesStepProps {
   onNext: () => void;
   onPrevious: () => void;
+  executor: EvaluationFunctionExecutor | null;
+  logs: { date: Date; message: string }[];
+  genAIModelNames: { strong: string; weak: string };
+  numCallsMade: { strong: number; weak: number };
   responses: LLMResponse[];
   criteria: EvalCriteria[];
   setCriteria: React.Dispatch<React.SetStateAction<EvalCriteria[]>>;
+  grades: Dict<Dict<boolean | undefined>>;  // per-criteria grades
+  setPerCriteriaGrade: (responseUID: string, criteriaUID: string, newGrade: boolean | undefined) => void;
   setOnNextCallback: React.Dispatch<React.SetStateAction<() => unknown>>;
 }
 
 const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
   onNext,
   onPrevious,
+  executor,
+  logs,
+  genAIModelNames,
+  numCallsMade,
   responses,
   criteria,
   setCriteria,
+  grades,
+  setPerCriteriaGrade,
   setOnNextCallback,
 }) => {
   const apiKeys = useStore((state) => state.apiKeys);
@@ -240,6 +262,22 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
     [],
   );
   const [shownResponseIdx, setShownResponseIdx] = useState(0);
+
+  const [newCriteriaDesc, setNewCriteriaDesc] = useState("");
+
+  const getStateValue = (stateId: number) => {
+    return Math.floor(Math.random() * 30 + 6);
+  };
+  const getGradeCount = (
+    criteriaUID: string,
+    grade: boolean | undefined,
+  ) => {
+    let count = 0;
+    for (const respUid in grades) {
+      count += grade === grades[respUid][criteriaUID] ? 1 : 0;
+    }
+    return count;
+  };
 
   useEffect(() => {
     if (!responses || responses.length === 0) return;
@@ -348,8 +386,36 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
         }
         // Remove a loading Skeleton
         setIsLoadingCriteria((num) => num - 1);
+        // setNumGPT4Calls((num) => num + 1);
+      })
+      .catch((err) => {
+        console.error(err);
+        setIsLoadingCriteria((num) => num - 1);
+      });
+  };
 
-        setNumGPT4Calls((num) => num + 1);
+  const addCriteria = (desc: string) => {
+    // Add a loading Skeleton
+    setIsLoadingCriteria((num) => num + 1);
+    // Make async LLM call to expand criteria
+    generateLLMEvaluationCriteria(
+      "",
+      apiKeys,
+      getPromptForGenEvalCriteriaFromDesc(desc), // prompt
+      null, // system_msg
+    )
+      .then((evalCrits) => {
+        // Take only the first suggested by the model, if any
+        setCriteria((crit) =>
+          crit.concat([
+            {
+              ...evalCrits[0],
+              uid: uuid(),
+            },
+          ]),
+        );
+        // Remove a loading Skeleton
+        setIsLoadingCriteria((num) => num - 1);
       })
       .catch((err) => {
         console.error(err);
@@ -358,7 +424,7 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
   };
 
   return (
-    <Grid h={window?.innerHeight * 0.8}>
+    <Grid h="100%">
       <Grid.Col span={8}>
         <Stack justify="space-between">
           {/* View showing the response the user is currently grading */}
@@ -369,6 +435,47 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
             gotoNextResponse={nextResponse}
             gotoPrevResponse={prevResponse}
           />
+
+          <Flex direction="column">
+              <Flex justify="space-between" align="center">
+                <Text size="lg" weight={500} mb="sm">
+                  LLM Activity
+                </Text>
+                {/* GPT Call Tally */}
+                <Text size="sm" color="dark" style={{ fontStyle: "italic" }}>
+                  Executed {numCallsMade.strong} {genAIModelNames.strong} calls and {numCallsMade.weak}{" "}
+                  {genAIModelNames.weak} calls.
+                </Text>
+              </Flex>
+              <div
+                style={{
+                  backgroundColor: "#f0f0f0",
+                  color: "#333",
+                  fontFamily: "monospace",
+                  padding: "12px",
+                  width: "calc(100% - 30px)",
+                  height: "200px",
+                  overflowY: "auto",
+                  borderRadius: "8px",
+                  border: "1px solid #ddd",
+                  marginRight: "20px", // Space on the right
+                }}
+                ref={(el) => {
+                  if (el) {
+                    el.scrollTop = el.scrollHeight;
+                  }
+                }}
+              >
+                {logs.map((log, index) => (
+                  <div key={index}>
+                    <span style={{ color: "#4A90E2" }}>
+                      {log.date.toLocaleString()} -{" "}
+                    </span>
+                    <span>{log.message}</span>
+                  </div>
+                ))}
+              </div>
+            </Flex>
 
           {/* Progress bar */}
           {/* <Flex justify="left" align="center" gap="md">
@@ -381,28 +488,30 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
                   </Flex> */}
         </Stack>
       </Grid.Col>
-      <Grid.Col span={4} bg="#eee" pt="16px" h="100%">
+      <Grid.Col span={4} bg="#eee" pt="16px" h="100%" style={{ boxShadow: "-10px 0px 20px #aaa" }}>
         <Center>
           <Title order={3} ml={8} mt="sm" mb="md">
-            Rubric
+            Per-criteria grading
           </Title>
         </Center>
 
+        <ScrollArea h="75%" offsetScrollbars style={{ border: "1px solid #ccc" }}>
         <div
           style={{
             display: "flex",
             flexDirection: "column",
+            marginBottom: "40px"
           }}
         >
           <div style={{ flex: 2, overflowY: "auto" }}>
-            {criteriaForDisplay.map((e) => (
+            {criteria.map((e) => (
               <CriteriaCard
                 criterion={e}
                 key={e.uid}
                 onChange={(newCrit) => handleChangeCriteria(newCrit, e.uid)}
                 onDelete={() => handleDeleteCriteria(e.uid)}
                 grade={
-                  shownResponse ? grades[shownResponse.uid][e.uid] : undefined
+                  (shownResponse && grades[shownResponse.uid]) ? grades[shownResponse.uid][e.uid] : undefined
                 }
                 getGradeCount={(grade) => {
                   return shownResponse
@@ -431,25 +540,38 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
             ) : (
               <></>
             )}
+          </div>
 
-            <div className="criteriaButtons">
+          <div className="criteriaButtons">
+            {/* <Popover withArrow>
+              <Popover.Target>
               <Button
                 leftIcon={<IconPencil size={14} />}
                 variant="subtle"
                 color="gray"
                 // gradient={{ from: "blue", to: "green", deg: 90 }}
-                onClick={() => {
-                  handleAddCriteria({
-                    shortname: "New Criteria",
-                    criteria: "",
-                    eval_method: "code",
-                    priority: 0,
-                    uid: uuid(),
-                  });
-                }}
+                // onClick={() => {
+                //   handleAddCriteria({
+                //     shortname: "New Criteria",
+                //     criteria: "",
+                //     eval_method: "code",
+                //     priority: 0,
+                //     uid: uuid(),
+                //   });
+                // }}
               >
                 Add a new criteria
               </Button>
+              </Popover.Target>
+              <Popover.Dropdown>
+                <Flex justify="space-around" align="center" gap="md">
+                  <Textarea label="Describe the critera:">Hello</Textarea>
+                  <Button>Submit</Button>
+                </Flex>
+                
+              </Popover.Dropdown>
+            </Popover> */}
+              
               {/* <Button
                 leftIcon={<IconSparkles size={14} />}
                 variant="subtle"
@@ -462,20 +584,22 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
                 Suggest Criteria
               </Button> */}
             </div>
-          </div>
+          
 
-          <Stack spacing="0px" pl="xs" pr="lg" style={{ flex: 1 }}>
+
+
+          {/* <Stack spacing="0px" pl="xs" pr="lg" style={{ flex: 1 }}>
             <Divider mt="lg" />
             <Title mb="0px" order={4}>
-              Suggest New Criteria Based on the Feedback
+              Suggest New Criteria
             </Title>
             <Textarea
               value={annotation}
               onChange={(e) => setAnnotation(e.target.value)}
               description="How good is this response? Explain anything not captured under your existing criteria. Your feedback will be used to generate new criteria."
               mb="sm"
-            />
-            <Radio.Group
+            /> */}
+            {/* <Radio.Group
               name="favoriteFramework"
               label="Rate the response holistically:"
               value={holisticGrade}
@@ -510,9 +634,26 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
                   + Submit Feedback
                 </Button>
               </Group>
-            </Radio.Group>
-          </Stack>
+            </Radio.Group> */}
+          {/* </Stack> */}
         </div>
+
+        <Textarea value={newCriteriaDesc} onChange={(e) => setNewCriteriaDesc(e.currentTarget.value)} label="Add new criteria:" placeholder="Describe the criteria to add." ml="md" mr="md"></Textarea>
+        <Group position="right" mr="md" mt="sm">
+        <Button
+          color="green"
+          variant="filled"
+          disabled={newCriteriaDesc?.trim().length === 0 || isLoadingCriteria > 0}
+          onClick={() => {
+            addCriteria(newCriteriaDesc);
+            setNewCriteriaDesc("");
+          }}
+        >
+          + Add criteria
+        </Button>
+        </Group>
+
+        </ScrollArea>
       </Grid.Col>
     </Grid>
   );

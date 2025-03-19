@@ -9,7 +9,7 @@ import {
   EvalFunctionResult,
   validEvalCriteriaFormat,
 } from "./typing";
-import { Dict, LLMResponse } from "../typing";
+import { Dict, LLMResponse, LLMSpec } from "../typing";
 import { executejs, executepy, simpleQueryLLM } from "../backend";
 import {
   getVarsAndMetavars,
@@ -48,6 +48,7 @@ function extractJSONBlocks(mdText: string): string[] | undefined {
  */
 export async function generateLLMEvaluationCriteria(
   prompt: string,
+  llm: string | LLMSpec,
   apiKeys?: Dict,
   promptTemplate?: string, // overrides prompt template used
   systemMsg?: string | null, // overrides default system message, if present. Use null to specify empty.
@@ -65,7 +66,7 @@ export async function generateLLMEvaluationCriteria(
   async function _query() {
     const result = await simpleQueryLLM(
       detailedPrompt, // prompt
-      "gpt-4o", // llm
+      typeof llm === "string" ? llm : [llm], // llm
       // spec, // llm
       systemMsg !== undefined
         ? systemMsg === null
@@ -114,11 +115,23 @@ export async function generateLLMEvaluationCriteria(
   return retryAsyncFunc(_query, 3);
 }
 
+export function getPromptForGenEvalCriteriaFromDesc(desc: string) {
+  return `I've described a criteria I want to use to evaluate text. I want you to take the criteria and output a JSON object in the format below. 
+
+CRITERIA: 
+\`\`\`
+${desc}
+\`\`\`
+
+Your response should contain a short title for the criteria ("shortname"), a description of the criteria in 2 sentences ("criteria"), and whether it should be evaluated with "code", or by an "expert" if the criteria is difficult to evaluate ("eval_method"). Your answer should be JSON within a \`\`\`json \`\`\` marker, with the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should expand upon the user's input, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case. Only output JSON, nothing else.`;
+}
+
 export async function executeLLMEval(
   evalFunction: EvalFunction,
+  llm: string | LLMSpec,
   example: LLMResponse,
-  positiveExample: LLMResponse,
-  negativeExample: LLMResponse,
+  positiveExample?: LLMResponse,
+  negativeExample?: LLMResponse,
 ): Promise<EvalFunctionResult> {
   // Construct call to an LLM to evaluate the example
   const evalPrompt =
@@ -128,30 +141,25 @@ export async function executeLLMEval(
     example.responses[0] +
     "\n```";
 
-  // Sleep a random number of seconds between 1 and 30
-  // const sleep = (ms: number) =>
-  //   new Promise((resolve) => setTimeout(resolve, ms));
-  // await sleep(Math.floor(Math.random() * 30) * 1000);
-
   // Query an LLM as an evaluator
   let systemMessage = "You are an expert evaluator.";
   if (
     positiveExample &&
-    positiveExample.responses[0] &&
+    positiveExample.responses.length > 0 &&
     negativeExample &&
-    negativeExample.responses[0]
+    negativeExample.responses.length > 0
   ) {
     systemMessage +=
-      " Please consider the following good example: " +
-      positiveExample.responses[0] +
-      " and bad example: " +
-      negativeExample.responses[0] +
-      " when making your evaluation.";
+      " Please consider the following GOOD example: \n" +
+      llmResponseDataToString(positiveExample.responses[0]) +
+      "\nand BAD example: \n" +
+      llmResponseDataToString(negativeExample.responses[0]) +
+      "\nwhen making your evaluation.";
   }
 
   const result = await simpleQueryLLM(
     evalPrompt, // prompt
-    "gpt-3.5-turbo-16k", // llm
+    typeof llm === "string" ? llm : [llm], // llm
     systemMessage, // system_msg
   );
   // Get the output
@@ -223,9 +231,10 @@ export async function execJSFunc(
  */
 export async function execPyFunc(
   evalFunction: EvalFunction,
+  llm: string | LLMSpec, // not used, but provided for consistency with the other exec func signature
   example: LLMResponse,
-  positiveExample: LLMResponse,
-  negativeExample: LLMResponse,
+  positiveExample?: LLMResponse,
+  negativeExample?: LLMResponse,
 ): Promise<EvalFunctionResult> {
   try {
     // We need to replace the function name with "evaluate", which is what is expected by backend:

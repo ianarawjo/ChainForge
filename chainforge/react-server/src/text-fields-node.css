@@ -1321,20 +1321,21 @@ th .content-editable-div {
 
 .gradeContainer {
   position: relative;
-  width: 20px;
+  overflow: visible;
+  /* width: 20px; */
 }
 
 .gradeUpCount {
   position: absolute;
-  left: 12px;
-  top: -5px;
+  right: 0px;
+  top: -3px;
   font-size: x-small;
 }
 
 .gradeDownCount {
   position: absolute;
-  left: 13px;
-  top: 13px;
+  right: 0px;
+  bottom: 0px;
   font-size: x-small;
 }
 

@@ -33,7 +33,7 @@ import {
 } from "@tabler/icons-react";
 import useStore from "../store";
 import { accuracyToColor, cmatrixTextAnnotations } from "../backend/utils";
-import { generateLLMEvaluationCriteria } from "../backend/evalgen/utils";
+import { generateLLMEvaluationCriteria, getPromptForGenEvalCriteriaFromDesc } from "../backend/evalgen/utils";
 import { v4 as uuid } from "uuid";
 import Plot from "react-plotly.js";
 
@@ -402,14 +402,7 @@ const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
     generateLLMEvaluationCriteria(
       "",
       apiKeys,
-      `I've described a criteria I want to use to evaluate text. I want you to take the criteria and output a JSON object in the format below. 
-
-CRITERIA: 
-\`\`\`
-${addCriteriaValue}
-\`\`\`
-
-Your response should contain a short title for the criteria ("shortname"), a description of the criteria in 2 sentences ("criteria"), and whether it should be evaluated with "code", or by an "expert" if the criteria is difficult to evaluate ("eval_method"). Your answer should be JSON within a \`\`\`json \`\`\` marker, with the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should expand upon the user's input, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case. Only output JSON, nothing else.`, // prompt
+      getPromptForGenEvalCriteriaFromDesc(addCriteriaValue), // prompt
       null, // system_msg
     )
       .then((evalCrits) => {
@@ -430,6 +423,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
         setIsLoadingCriteria((num) => num - 1);
       });
   };
+  
   const updateCriteria = (
     newValue: string,
     critIdx: number,
@@ -449,7 +443,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
   };
 
   return (
-    <Stack spacing="lg">
+    <Stack spacing="lg" p="xl">
       <Title order={3}>Define Evaluation Criteria</Title>
 
       <div>
@@ -467,10 +461,10 @@ Your response should contain a short title for the criteria ("shortname"), a des
 
         <Flex align="center" gap="lg">
           <TextInput
-            label="Type a new criteria to add, then press Enter:"
+            label="Describe a new criterion to add, then press Enter:"
             value={addCriteriaValue}
             onChange={(evt) => setAddCriteriaValue(evt.currentTarget.value)}
-            placeholder="the response is valid JSON"
+            placeholder="e.g., the response is valid JSON"
             mb="lg"
             pl="sm"
             pr="sm"
@@ -485,6 +479,16 @@ Your response should contain a short title for the criteria ("shortname"), a des
           />
           <Button
             variant="filled"
+            disabled={addCriteriaValue?.trim().length === 0}
+            onClick={() => {
+              addCriteria();
+              setAddCriteriaValue("");
+            }}
+          >
+            Generate
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => {
               if (isLoadingCriteria > 0) return;
               setIsLoadingCriteria(3);
@@ -540,7 +544,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
         </ScrollArea>
       </div>
 
-      <Group position="apart" mt="xl">
+      {/* <Group position="apart" mt="xl">
         <Button variant="default" onClick={onPrevious}>
           Back
         </Button>
@@ -557,7 +561,7 @@ Your response should contain a short title for the criteria ("shortname"), a des
             Ready to Grade!
           </Button>
         </Tooltip>
-      </Group>
+      </Group> */}
     </Stack>
   );
 };

@@ -428,21 +428,6 @@ const EvalGenModal = forwardRef<EvalGenModalRef, NonNullable<unknown>>(
         count += grade === grades[respUid][criteriaUID] ? 1 : 0;
       }
       return count;
-
-      // if (grades[responseUID]) {
-      //   let count = 0;
-      //   for (const critUid in grades[responseUID]) {
-      //     count += grades[responseUID][critUid] ? 1 : 0;
-      //   }
-      //   // return grade === grades[responseUID][criteriaUID] ? 1 : 0; // this needs to be changed after the grading feature is fully implemented on server side.
-      //   return count;
-      //   // return 10;
-      // }
-
-      // if (grades[responseUID]) {
-      //   return grade === grades[responseUID][criteriaUID] ? 1 : 0; // this needs to be changed after the grading feature is fully implemented on server side.
-      // }
-      // return 0;
     };
 
     // The EvalGen object responsible for generating, implementing, and filtering candidate implementations

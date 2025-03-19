@@ -1,9 +1,9 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { EvalCriteria, EvalGenReport } from "../backend/evalgen/typing";
-import { LLMResponse } from "../backend/typing";
+import { Dict, LLMResponse, RatingDict } from "../backend/typing";
 import useStore from "../store";
 import { escapeBraces } from "../backend/template";
-import { StringLookup } from "../backend/cache";
+import StorageCache, { StringLookup } from "../backend/cache";
 import { generateLLMEvaluationCriteria } from "../backend/evalgen/utils";
 import { Button, Flex, Modal, Stepper } from "@mantine/core";
 import WelcomeStep from "./WelcomeStep";
@@ -11,7 +11,10 @@ import FeedbackStep from "./FeedbackStep";
 import PickCriteriaStep from "./PickCriteriaStep";
 import ReportCardStep from "./ReportCardStep";
 import GradingResponsesStep from "./GradeResponsesStep";
-import { batchResponsesByUID } from "../backend/utils";
+import { batchResponsesByUID, deepcopy, sampleRandomElements } from "../backend/utils";
+import { getRatingKeyForResponse } from "../ResponseRatingToolbar";
+import EvaluationFunctionExecutor from "../backend/evalgen/executor";
+import { getAIFeaturesModels } from "../backend/ai";
 
 // Main wizard component props
 interface EvalGenWizardProps {
@@ -30,18 +33,129 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
   // The active screen (stage) of EvalGen
   const [active, setActive] = useState(0);
 
+  // From global state
+  const apiKeys = useStore((state) => state.apiKeys);
+  const genAIFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
+  const genAIModelNames = useMemo(() => {
+    const models = getAIFeaturesModels(genAIFeaturesProvider);
+    return {
+      strong: models.large,
+      weak: models.small,
+    }
+  }, [genAIFeaturesProvider]);
+
   // Regroup input responses by batch UID, whenever jsonResponses changes
   const batchedResponses = useMemo(
     () => (responses ? batchResponsesByUID(responses) : []),
     [responses],
   );
 
+  // For updating the global human ratings state
+  const setState = useStore((store) => store.setState);
+  const updateGlobalRating = useCallback(
+    (uid: string, label: string, payload: RatingDict) => {
+      const key = getRatingKeyForResponse(uid, label);
+      const safe_payload = deepcopy(payload);
+      setState(key, safe_payload);
+      StorageCache.store(key, safe_payload);
+    },
+    [setState],
+  );
+
   // Criteria the user defines across the stages
   const [criteria, setCriteria] = useState<EvalCriteria[]>([]);
   const [onNextCallback, setOnNextCallback] = useState(() => () => {});
 
-  // Global state
-  const apiKeys = useStore((state) => state.apiKeys);
+  // Per-criteria grades (indexed by uid of response, then uid of criteria)
+  const [perCriteriaGrades, setPerCriteriaGrades] = useState<Dict<Dict<boolean | undefined>>>({});
+  const [annotation, setAnnotation] = useState<string | undefined>(undefined);
+  const setPerCriteriaGrade = (
+    responseUID: string,
+    criteriaUID: string,
+    newGrade: boolean | undefined,
+  ) => {
+    setPerCriteriaGrades((grades) => {
+      if (!grades[responseUID]) grades[responseUID] = {};
+      grades[responseUID][criteriaUID] = newGrade;
+      updateGlobalRating(responseUID, "perCriteriaGrades", grades[responseUID]);
+      return { ...grades };
+    });
+  };
+  const numResponsesGraded = useMemo(() => {
+    let count = 0;
+    for (const uid in perCriteriaGrades) {
+      const gs = perCriteriaGrades[uid];
+      if (Object.values(gs).some(v => (v !== undefined && v !== null)))
+        count += 1; 
+    }
+    return count; 
+  }, [perCriteriaGrades]);
+  const minNumToGrade = useMemo(() => {
+    return Math.min(10, Math.ceil(batchedResponses.length * 0.5))
+  }, [batchedResponses]);
+  const minNumToGradeToStartExecutor = useMemo(() => {
+    return Math.min(5, Math.ceil(batchedResponses.length * 0.25))
+  }, [batchedResponses]);
+
+  // The EvalGen object responsible for generating, implementing, and filtering candidate implementations
+  // :: Used on screen 4 (when `active` === 3).
+  const [executor, setExecutor] = useState<EvaluationFunctionExecutor | null>(
+    null,
+  );
+
+  // Logs and state from the EvalGen backend
+  const [logs, setLogs] = useState<{ date: Date; message: string }[]>([]);
+  const [numCallsMade, setNumCallsMade] = useState({ strong: 0, weak: 0 });
+
+  // The samples to pass the executor / grading responses features. This will be bounded
+  // by maxNumSamplesForExecutor, instead of the whole dataset.
+  const samplesForExecutor = useMemo(() => {
+    // The max number of samples (responses) to pass the executor. This controls how many requests will
+    // need to be sent off and how many evaluation function executions are performed.
+    // TODO: Give the user some control over this.
+    const maxNumSamplesForExecutor = 16;
+
+    // Sample from the full set of responses, if needed:
+    if (batchedResponses.length > maxNumSamplesForExecutor)
+      return sampleRandomElements(responses, maxNumSamplesForExecutor);
+    else return batchedResponses.slice();
+  }, [batchedResponses]);
+
+  // Update executor whenever resps, grades, or criteria change
+  useEffect(() => {
+    if (criteria.length === 0 || numResponsesGraded < minNumToGradeToStartExecutor) return; 
+    if (!executor) {
+      const addLog = (message: string) => {
+        setLogs((prevLogs) => [...prevLogs, { date: new Date(), message }]);
+      };
+
+      const ex = new EvaluationFunctionExecutor(
+        getLikelyPromptTemplateAsContext(samplesForExecutor) ?? "",
+        samplesForExecutor,
+        criteria,
+        (strong, weak) => {
+          // Callback to update GPT call counts
+          setNumCallsMade((n_calls) => {
+            n_calls.strong += strong;
+            n_calls.weak += weak;
+            return {...n_calls};
+          });
+        },
+        addLog,
+        undefined,  // don't pass any holistic grades at this stage
+        perCriteriaGrades,
+      );
+      setExecutor(ex);
+
+      // ex.start((progress) => {
+      //   setExecProgress(progress?.success ?? 0);
+      // });
+    } else if (executor) {
+      // Update criteria in executor
+      executor.addCriteria(criteria);
+    }
+
+  }, [criteria, samplesForExecutor, numResponsesGraded, minNumToGradeToStartExecutor]);
 
   const handleNext = useCallback(() => {
     setActive((current) => Math.min(4, current + 1));
@@ -97,7 +211,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
     <Modal
       opened={opened}
       onClose={onClose}
-      title="EvalGen Wizard"
+      // title="EvalGen Wizard"
       size="90%"
       padding="md"
       // keepMounted
@@ -106,6 +220,11 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
       styles={{
         inner: {
           padding: "5%", // This creates space around the modal (10% total)
+        },
+        header: {
+          padding: "0px",
+          backgroundColor: "transparent",
+          // borderBottom: "1px solid black",
         },
         content: {
           height: "100%", // Fill the available space
@@ -147,9 +266,13 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
         <GradingResponsesStep
           onNext={handleNext}
           onPrevious={handlePrevious}
-          responses={batchedResponses}
+          executor={executor}
+          logs={logs}
+          responses={samplesForExecutor}  // This is deliberately not the entire list of responses, for now. 
           criteria={criteria}
           setCriteria={setCriteria}
+          grades={perCriteriaGrades}
+          setPerCriteriaGrade={setPerCriteriaGrade}
           setOnNextCallback={setOnNextCallback}
         />
       )}
@@ -181,8 +304,12 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
             &lt; Back
           </Button>
 
-          <Button onClick={handleNext} disabled={active === 4}>
-            Next &gt;
+          <Button 
+            color={active === 3 ? "green" : "blue"}
+            onClick={handleNext} 
+            disabled={active === 4 || (active === 3 && numResponsesGraded < minNumToGrade)}
+          >
+            {active === 3 ? (numResponsesGraded >= minNumToGrade ? "I think I'm done" : `Grade at least ${minNumToGrade - numResponsesGraded} more`) : "Next >"}
           </Button>
         </Flex>
       </div>

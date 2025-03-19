@@ -11,7 +11,7 @@ import {
   EvalFunctionSetReport,
   EvalCriteriaUID,
 } from "./typing";
-import { LLMResponse, ResponseUID, QueryProgress, Dict } from "../typing";
+import { LLMResponse, ResponseUID, QueryProgress, Dict, LLMSpec } from "../typing";
 import { EventEmitter } from "events";
 
 /**
@@ -66,6 +66,7 @@ export default class EvaluationFunctionExecutor {
   private scores: Map<ResponseUID, number>;
   // Cache function results for each example
   private resultsCache: Map<EvalFunction, Map<ResponseUID, EvalFunctionResult>>;
+  private llms: { small: string | LLMSpec, large: string | LLMSpec };
   private grades: Map<ResponseUID, boolean>; // Grades for all examples
   private perCriteriaGrades: Dict<Dict<boolean | undefined>>; // Grades per criteria
   private annotations: Dict<string>; // Annotations for each response
@@ -77,22 +78,23 @@ export default class EvaluationFunctionExecutor {
   private backgroundTaskPromise: Promise<void> | null = null; // To keep track of the background task for generating and executing evaluation functions
   private criteriaQueue: EvalCriteria[] = []; // Queue for new criteria to be processed
   private processing = false; // To keep track of whether we are currently processing a criteria
-  private updateGPTCalls: (numGPT4Calls: number, numGPT35Calls: number) => void;
+  private updateNumLLMCalls: (numStrongModelCalls: number, numWeakModelCalls: number) => void;
   private logFunction: (logMessage: string) => void;
 
   /**
    * Initializes a new instance of the EvaluationFunctionExecutor class.
    *
    * @param evalCriteria The criteria used to generate evaluation functions. Provided/confirmed by the developer.
-   * @param promptTemplate The prompt demplate for the developer's LLM chain. This is useful for GPT-4 to generate correct evaluation functions.
+   * @param promptTemplate The prompt template for the developer's LLM chain. This is useful for the LLM to generate correct evaluation functions.
    * @param examples A set of variable-prompt-response triples that we want the developer to grade (and use for filtering incorrect evaluation functions).
    * @param existingGrades Optional. A dict in format {uid: grade}, containing existing grades.
    */
   constructor(
+    genAIModels: { small: string | LLMSpec, large: string | LLMSpec },
     promptTemplate: string,
     examples: LLMResponse[],
     evalCriteria: EvalCriteria[] = [],
-    updateGPTCalls: (numGPT4Calls: number, numGPT35Calls: number) => void,
+    updateNumLLMCalls: (numStrongModelCalls: number, numWeakModelCalls: number) => void,
     addLog: (log: string) => void,
     existingGrades?: Record<ResponseUID, boolean>,
     existingPerCriteriaGrades?: Dict<Dict<boolean | undefined>>,
@@ -108,6 +110,7 @@ export default class EvaluationFunctionExecutor {
     this.examples = examples;
     this.evalCriteria = evalCriteria;
     this.promptTemplate = promptTemplate;
+    this.llms = genAIModels;
 
     // Set scores and grades to default values of 0
     this.scores = new Map<ResponseUID, number>();
@@ -141,7 +144,7 @@ export default class EvaluationFunctionExecutor {
     this.criteriaQueue = [];
     this.processing = false;
 
-    this.updateGPTCalls = updateGPTCalls;
+    this.updateNumLLMCalls = updateNumLLMCalls;
     this.logFunction = addLog;
   }
 
@@ -216,14 +219,15 @@ export default class EvaluationFunctionExecutor {
 
           const result = await funcToExecute(
             evalFunction,
+            this.llms.small,
             example,
             randomPositiveExample,
             randomNegativeExample,
           );
 
-          // Update GPT-3.5 call count by 1 if the eval method is expert
+          // Update weak model call count by 1 if the eval method is expert
           if (evalFunction.evalCriteria.eval_method === "expert") {
-            this.updateGPTCalls(0, 1);
+            this.updateNumLLMCalls(0, 1);
           }
 
           if (onProgress) {
@@ -263,8 +267,8 @@ export default class EvaluationFunctionExecutor {
       emitter,
       badExample,
     );
-    // Update GPT-4o call count by 1
-    this.updateGPTCalls(1, 0);
+    // Update LLM call count by 1
+    this.updateNumLLMCalls(1, 0);
 
     console.log(`Generated functions for criteria: ${criteria.shortname}`);
     console.log(
@@ -335,14 +339,15 @@ export default class EvaluationFunctionExecutor {
           // Run the function on the example and if there's an error, increment skipped
           const result = await funcToExecute(
             evalFunction,
+            this.llms.small,
             example,
             randomPositiveExample,
             randomNegativeExample,
           );
 
-          // Update GPT-3.5 call count by 1 if the eval method is expert
+          // Update weak model call count by 1 if the eval method is expert
           if (evalFunction.evalCriteria.eval_method === "expert") {
-            this.updateGPTCalls(0, 1);
+            this.updateNumLLMCalls(0, 1);
           }
 
           funcsExecuted++;
@@ -382,8 +387,8 @@ export default class EvaluationFunctionExecutor {
         emitter, // Pass the EventEmitter instance
       ).then(() => {
         emitter.emit("criteriaProcessed");
-        // Update GPT-4o call count by 1
-        this.updateGPTCalls(1, 0);
+        // Update LLM call count by 1
+        this.updateNumLLMCalls(1, 0);
       });
     });
 
@@ -438,9 +443,12 @@ export default class EvaluationFunctionExecutor {
    * @param criteria The new evaluation criteria to be added.
    */
   public addCriteria(criteriaList: EvalCriteria[]): void {
+    // See if there are criteria to remove
+    this.evalCriteria = this.evalCriteria.filter((c) => (!criteriaList.includes(c)));
+
     // See if there are new criteria to add
     for (const criteria of criteriaList) {
-      if (this.evalCriteria.includes(criteria)) {
+      if (this.evalCriteria.includes(criteria)) {  // criteria already included
         continue;
       }
 
@@ -451,14 +459,6 @@ export default class EvaluationFunctionExecutor {
       // Start the generation and execution of functions for the new criteria
       if (!this.processing) {
         this.processNextCriteria();
-      }
-    }
-
-    // See if there are criteria to remove
-    for (const criteria of this.evalCriteria) {
-      if (!criteriaList.includes(criteria)) {
-        console.log(`Removing criteria: ${criteria.shortname}`);
-        this.evalCriteria = this.evalCriteria.filter((c) => c !== criteria);
       }
     }
   }
@@ -591,7 +591,7 @@ export default class EvaluationFunctionExecutor {
       this.grades.set(exampleId, boolHolistic);
     }
 
-    if (perCriteriaGrades !== null) {
+    if (perCriteriaGrades) {
       this.perCriteriaGrades[exampleId] = perCriteriaGrades;
 
       // If holisticGrade was null, set it based on the perCriteriaGrades---if all criteria in the perCriteriaGrades are true, set the holisticGrade to true, else false
@@ -603,7 +603,7 @@ export default class EvaluationFunctionExecutor {
       }
     }
 
-    if (annotation !== null) {
+    if (annotation) {
       this.annotations[exampleId] = annotation;
     }
 
@@ -661,13 +661,6 @@ export default class EvaluationFunctionExecutor {
     // Set scores to 0 for each example id
     for (const example of examples) {
       this.scores.set(example.uid, 0);
-    }
-
-    // Set grades if examples contain them
-    for (const example of examples) {
-      if (example.metavars.grade !== undefined) {
-        this.grades.set(example.uid, example.metavars.grade);
-      }
     }
   }
 
@@ -775,7 +768,7 @@ export default class EvaluationFunctionExecutor {
           evalFunction.evalCriteria.eval_method === "code"
             ? execPyFunc
             : executeLLMEval;
-        const result = await funcToExecute(evalFunction, example);
+        const result = await funcToExecute(evalFunction, this.llms.small, example);
 
         // Put result in cache
         if (!this.resultsCache.has(evalFunction)) {
@@ -1013,7 +1006,7 @@ export default class EvaluationFunctionExecutor {
           evalFunction.evalCriteria.eval_method === "code"
             ? execPyFunc
             : executeLLMEval;
-        const result = await funcToExecute(evalFunction, example);
+        const result = await funcToExecute(evalFunction, this.llms.small, example);
 
         // Put result in cache
         if (!this.resultsCache.has(evalFunction)) {
