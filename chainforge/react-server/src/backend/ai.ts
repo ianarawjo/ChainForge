@@ -25,8 +25,8 @@ export type Row = string;
 const AIFeaturesLLMs = [
   {
     provider: "OpenAI",
-    small: { value: "gpt-4o", label: "OpenAI GPT4o" },
-    large: { value: "gpt-4", label: "OpenAI GPT4" },
+    small: { value: "gpt-4o-mini", label: "OpenAI GPT4o-mini" },
+    large: { value: "gpt-4o", label: "OpenAI GPT4o" },
   },
   {
     provider: "Bedrock",
