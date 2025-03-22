@@ -34,7 +34,10 @@ import {
 import { queryLLM } from "./backend/backend";
 import { splitText } from "./SplitNode";
 import { escapeBraces } from "./backend/template";
-import { cleanMetavarsFilterFunc } from "./backend/utils";
+import {
+  cleanMetavarsFilterFunc,
+  llmResponseDataToString,
+} from "./backend/utils";
 import {
   Dict,
   TabularDataColType,
@@ -904,7 +907,9 @@ export function AIGenCodeEvaluatorPopover({
           throw new Error(Object.values(result.errors)[0].toString());
 
         // Extract the first response
-        const response = result.responses[0].responses[0] as string;
+        const response = llmResponseDataToString(
+          result.responses[0].responses[0],
+        );
         console.log("LLM said: ", response);
 
         // Try to extract out a single code block from the response
@@ -980,7 +985,9 @@ ${currentEvalCode}
         }
 
         // Extract the first response
-        const response = result.responses[0].responses[0] as string;
+        const response = llmResponseDataToString(
+          result.responses[0].responses[0],
+        );
         console.log("LLM said: ", response);
 
         // Try to extract out a single code block from the response
