@@ -20,7 +20,7 @@ export class EvalGenAssertionEmitter extends EventEmitter {
     llm: string | LLMSpec,
     contentType: ContentType,
   ): Promise<void> {
-    const emit_prompt = ((p: string) => this.emit("function", p)).bind(this);
+    const emit_prompt = (p: string) => this.emit("function", p);
 
     const result = await simpleQueryLLM(
       prompt, // prompt

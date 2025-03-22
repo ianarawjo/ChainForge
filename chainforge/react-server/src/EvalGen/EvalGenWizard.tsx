@@ -86,9 +86,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
       updateGlobalRating(responseUID, "perCriteriaGrades", grades[responseUID]);
 
       // If the EvalGen executor is running, update the per-criteria grade for this sample:
-      executor?.setGradeForExample(
-        responseUID,
-        grades[responseUID]);
+      executor?.setGradeForExample(responseUID, grades[responseUID]);
 
       return { ...grades };
     });
