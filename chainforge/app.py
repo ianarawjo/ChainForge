@@ -25,6 +25,10 @@ def main():
     serve_parser.add_argument('--host', 
                               help="The host to run the server on. Defaults to 'localhost'.", 
                               type=str, default="localhost", nargs='?')
+    serve_parser.add_argument('--dir',
+                              help="Set a custom directory to use for saving flows and autosaving. By default, ChainForge uses the user data location suggested by the `platformdirs` module. Should be the full path.",
+                              type=str,
+                              default=None)
 
     args = parser.parse_args()
 
@@ -34,10 +38,13 @@ def main():
         exit(0)
     
     port = args.port if args.port else 8000
-    host = args.host if args.host else "localhost" 
+    host = args.host if args.host else "localhost"
+
+    if args.dir:
+        print(f"Using directory for storing flows: {args.dir}")
 
     print(f"Serving Flask server on {host} on port {port}...")
-    run_server(host=host, port=port, cmd_args=args)
+    run_server(host=host, port=port, flows_dir=args.dir)
 
 if __name__ == "__main__":
     main()
