@@ -177,6 +177,13 @@ export interface JoinNodeProps {
     input: JSONCompatible;
     title: string;
     refresh: boolean;
+    groupByVars: {
+      label: string;
+      value: string;
+    }[];
+    groupByVar: string;
+    groupByLLM: string;
+    formatting: JoinFormat;
   };
   id: string;
 }
@@ -200,12 +207,24 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
   );
 
   const [inputHasLLMs, setInputHasLLMs] = useState(false);
+  const [groupByVars, setGroupByVars] = useState(
+    data.groupByVars ?? [DEFAULT_GROUPBY_VAR_ALL],
+  );
+  const [groupByVar, setGroupByVar] = useState(data.groupByVar ?? "A");
+  const [groupByLLM, setGroupByLLM] = useState(data.groupByLLM ?? "within");
+  const [formatting, setFormatting] = useState(
+    data.formatting ?? formattingOptions[0].value,
+  );
 
-  const [groupByVars, setGroupByVars] = useState([DEFAULT_GROUPBY_VAR_ALL]);
-  const [groupByVar, setGroupByVar] = useState("A");
-
-  const [groupByLLM, setGroupByLLM] = useState("within");
-  const [formatting, setFormatting] = useState(formattingOptions[0].value);
+  // Set and save a value to a state variable and also save it to the node's data
+  const handleSetAndSave = <T,>(
+    value: T,
+    setter: React.Dispatch<React.SetStateAction<T>>,
+    propName: string,
+  ) => {
+    setter(value);
+    setDataPropsForNode(id, { [propName]: value as any });
+  };
 
   const handleOnConnect = useCallback(() => {
     let input_data: LLMResponsesByVarDict = pullInputData(["__input"], id);
@@ -221,7 +240,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
     const llm_lookup = extractLLMLookup(input_data);
 
     // Refresh the dropdown list with available vars/metavars:
-    setGroupByVars(
+    handleSetAndSave(
       [DEFAULT_GROUPBY_VAR_ALL]
         .concat(
           vars.map((varname) => ({
@@ -235,6 +254,8 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
             value: `M${varname}`,
           })),
         ),
+      setGroupByVars,
+      "groupByVars",
     );
 
     // Check whether more than one LLM is present in the inputs:
@@ -460,7 +481,9 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
           Join
         </Text>
         <NativeSelect
-          onChange={(e) => setGroupByVar(e.target.value)}
+          onChange={(e) =>
+            handleSetAndSave(e.target.value, setGroupByVar, "groupByVar")
+          }
           className="nodrag nowheel"
           data={groupByVars}
           size="xs"
@@ -479,7 +502,9 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
           }}
         >
           <NativeSelect
-            onChange={(e) => setGroupByLLM(e.target.value)}
+            onChange={(e) =>
+              handleSetAndSave(e.target.value, setGroupByLLM, "groupByLLM")
+            }
             className="nodrag nowheel"
             data={["within", "across"]}
             size="xs"
@@ -495,7 +520,13 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
       )}
       <Divider my="xs" label="formatting" labelPosition="center" />
       <NativeSelect
-        onChange={(e) => setFormatting(e.target.value as JoinFormat)}
+        onChange={(e) =>
+          handleSetAndSave(
+            e.target.value as JoinFormat,
+            setFormatting,
+            "formatting",
+          )
+        }
         className="nodrag nowheel"
         data={formattingOptions}
         size="xs"

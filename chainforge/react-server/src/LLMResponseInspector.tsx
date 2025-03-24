@@ -22,6 +22,7 @@ import {
   TextInput,
   Stack,
   LoadingOverlay,
+  Box,
 } from "@mantine/core";
 import { useToggle } from "@mantine/hooks";
 import {
@@ -29,6 +30,7 @@ import {
   IconLayoutList,
   IconLetterCaseToggle,
   IconFilter,
+  IconChartBar,
 } from "@tabler/icons-react";
 import {
   MantineReactTable,
@@ -65,6 +67,7 @@ import {
   isImageResponseData,
 } from "./backend/typing";
 import { StringLookup } from "./backend/cache";
+import { VisView } from "./VisNode";
 
 // Helper funcs
 const getLLMName = (resp_obj: LLMResponse) =>
@@ -1047,6 +1050,10 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         // Produce DIV elements grouped by selected vars
         const divs = groupByVars(responses, selected_vars, [], null);
         setResponseDivs(divs);
+      } else if (showEvalScoreOptions && viewFormat === "vis") {
+        // Plot view (only present if eval scores are present)
+        const visView = <VisView responses={responses} wideFormat />;
+        setResponseDivs(visView);
       }
     });
   };
@@ -1147,6 +1154,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       <Tabs
         value={viewFormat}
         onTabChange={(val) => {
+          setResponseDivs([]);
+          setShowLoadingSpinner(true);
           setViewFormat(val ?? "hierarchy");
         }}
         styles={{ tabLabel: { fontSize: wideFormat ? "12pt" : "9pt" } }}
@@ -1166,6 +1175,17 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             />
             {wideFormat ? " Table View" : ""}
           </Tabs.Tab>
+          {showEvalScoreOptions && wideFormat ? (
+            <Tabs.Tab value="vis">
+              <IconChartBar
+                size="10pt"
+                style={{ marginBottom: wideFormat ? "0px" : "-4px" }}
+              />
+              {wideFormat ? " Vis View" : ""}
+            </Tabs.Tab>
+          ) : (
+            <></>
+          )}
         </Tabs.List>
 
         <Tabs.Panel value="hierarchy" pt="xs">

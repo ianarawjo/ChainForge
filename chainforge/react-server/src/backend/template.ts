@@ -201,8 +201,8 @@ export class PromptTemplate {
         print(partial_prompt)
     */
   template: string;
-  fill_history: Dict<StringOrHash>;
-  metavars: Dict<StringOrHash>;
+  fill_history: { [key: string]: any };
+  metavars: { [key: string]: any };
 
   constructor(templateStr: string) {
     /** 
@@ -268,8 +268,8 @@ export class PromptTemplate {
     */
   fill(paramDict: Dict<PromptVarType>): PromptTemplate {
     // Check for special 'past fill history' format:
-    let past_fill_history: Dict<StringOrHash> = {};
-    let past_metavars: Dict<StringOrHash> = {};
+    let past_fill_history = {};
+    let past_metavars = {};
     const some_key = Object.keys(paramDict).pop();
     const some_val = some_key ? paramDict[some_key] : undefined;
     if (len(paramDict) > 0 && isDict(some_val)) {
