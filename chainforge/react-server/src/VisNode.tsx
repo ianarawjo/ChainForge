@@ -233,7 +233,7 @@ const calcMaxCharsPerLine = (shortnames: string[]) => {
 };
 
 const calcLeftPaddingForYLabels = (shortnames: string[]) => {
-  return calcMaxCharsPerLine(shortnames) * 7;
+  return calcMaxCharsPerLine(shortnames) * 7.3;
 };
 
 interface VisNodeData {
@@ -252,6 +252,7 @@ interface VisNodeData {
  */
 export interface VisViewProps {
   responses: LLMResponse[];
+  wideFormat?: boolean;
   id?: string;
   data?: VisNodeData;
   whenReplotting?: (isReplotting: boolean) => void;
@@ -264,7 +265,10 @@ export interface VisViewRef {
  * Inner component for code evaluators/processors, storing the body of the UI (outside of the header and footers).
  */
 export const VisView = forwardRef<VisViewRef, VisViewProps>(
-  function VisViewComponent({ responses, id, data, whenReplotting }, ref) {
+  function VisViewComponent(
+    { responses, id, data, whenReplotting, wideFormat },
+    ref,
+  ) {
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const getColorForLLMAndSetIfNotFound = useStore(
       (state) => state.getColorForLLMAndSetIfNotFound,
@@ -1199,6 +1203,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             display: "flex",
             justifyContent: "center",
             flexWrap: "wrap",
+            margin: wideFormat ? "6pt 0 6pt 0" : undefined,
           }}
         >
           <div style={{ display: "inline-flex", maxWidth: "50%" }}>
@@ -1294,7 +1299,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             </Menu>
           </div>
         </div>
-        <hr />
+        {!wideFormat && <hr />}
         <div
           className="nodrag"
           ref={setPlotDivRef}
@@ -1309,6 +1314,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             className="plotly-vis"
             style={{
               display: plotlySpec && plotlySpec.length > 0 ? "block" : "none",
+              border: wideFormat ? "1px solid #bbb" : "none",
+              paddingBottom: wideFormat ? "6pt" : "0",
             }}
           />
           {plotLegend ?? <></>}

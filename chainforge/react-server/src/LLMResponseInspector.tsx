@@ -22,6 +22,7 @@ import {
   TextInput,
   Stack,
   LoadingOverlay,
+  Box,
 } from "@mantine/core";
 import { useToggle } from "@mantine/hooks";
 import {
@@ -1051,7 +1052,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         setResponseDivs(divs);
       } else if (showEvalScoreOptions && viewFormat === "vis") {
         // Plot view (only present if eval scores are present)
-        const visView = <VisView responses={responses} />;
+        const visView = <VisView responses={responses} wideFormat />;
         setResponseDivs(visView);
       }
     });
@@ -1153,6 +1154,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       <Tabs
         value={viewFormat}
         onTabChange={(val) => {
+          setResponseDivs([]);
+          setShowLoadingSpinner(true);
           setViewFormat(val ?? "hierarchy");
         }}
         styles={{ tabLabel: { fontSize: wideFormat ? "12pt" : "9pt" } }}
@@ -1172,7 +1175,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             />
             {wideFormat ? " Table View" : ""}
           </Tabs.Tab>
-          {showEvalScoreOptions ? (
+          {showEvalScoreOptions && wideFormat ? (
             <Tabs.Tab value="vis">
               <IconChartBar
                 size="10pt"

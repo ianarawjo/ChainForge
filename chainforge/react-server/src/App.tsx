@@ -1512,7 +1512,7 @@ const App = () => {
           }}
         >
           <a
-            href="https://forms.gle/AA82Rbn1X8zztcbj8"
+            href="https://forms.gle/qhr7T2Fe8gYJF16fA"
             target="_blank"
             style={{ color: "#666", fontSize: "11pt" }}
             rel="noreferrer"
