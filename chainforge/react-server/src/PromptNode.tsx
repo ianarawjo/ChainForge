@@ -1119,7 +1119,6 @@ Soft failing by replacing undefined with empty strings.`,
                       typeof r === "object" && r.t === "img" ? r.d : undefined,
                     prompt: resp_obj.prompt,
                     fill_history: resp_obj.vars,
-                    fill_order: resp_obj.fill_order ?? [],
                     llm: _llmItemsCurrState.find(
                       (item) => item.name === resp_obj.llm,
                     ),

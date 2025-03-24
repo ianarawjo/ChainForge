@@ -6,7 +6,6 @@ from statistics import mean, median, stdev
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import numpy as np
 from chainforge.providers.dalai import call_dalai
 from chainforge.providers import ProviderRegistry
 import requests as py_requests
@@ -250,52 +249,6 @@ async def make_sync_call_async(sync_method, *args, **params):
 def exclude_key(d, key_to_exclude):
         return {k: v for k, v in d.items() if k != key_to_exclude}
 
-# Function to perform hierarchical bootstrap
-def hierarchical_bootstrap(data, groups_left, n_bootstrap=10000, statistic=np.mean, seed=42):
-
-    np.random.seed(seed)
-    bootstrapped_stats = []
-
-    def _hier_sample(data, _groups_left, statistic, seed):
-        # Peel off the cluster name at this level
-        cur_cluster = _groups_left[0]
-        _groups_left = _groups_left[1:]
-
-        # Resample clusters at this level
-        sampled_clusters = data[cur_cluster].unique()
-        resampled_clusters = np.random.choice(sampled_clusters, size=len(sampled_clusters), replace=True)
-
-        # Collect resampled data
-        resampled_data = []
-        for cluster in resampled_clusters:
-            # Filter remaining data by only data within this cluster:
-            cluster_data = data[data[cur_cluster] == cluster]
-
-            # If we still have groups left to bootstrap over, recurse to compute the next layer down
-            if len(_groups_left) > 0:
-                d = _hier_sample(cluster_data, _groups_left, statistic, seed)
-                resampled_data.extend(d)
-            else:
-                # Resample at this level
-                res = cluster_data.sample(frac=1, replace=True)
-                resampled_data.append(res)
-
-        return resampled_data
-
-    # Procure n_bootstrap samples
-    for _ in range(n_bootstrap):
-        # Hierarchically sample clusters by groups
-        resampled_data = _hier_sample(data, groups_left, statistic, seed)
-
-        # Combine the resampled data and compute the statistic
-        resampled_df = pd.concat(resampled_data)
-        bootstrapped_stats.append(statistic(resampled_df["Score"]))
-
-    # Compute confidence intervals
-    lower_bound = np.percentile(bootstrapped_stats, 2.5)
-    upper_bound = np.percentile(bootstrapped_stats, 97.5)
-
-    return lower_bound, upper_bound, bootstrapped_stats
 
 """ ===================
     FLASK SERVER ROUTES
@@ -585,36 +538,6 @@ async def callDalai():
         return jsonify({'error': str(e)})
 
     ret = jsonify({'query': query, 'response': response})
-    ret.headers.add('Access-Control-Allow-Origin', '*')
-    return ret
-
-@app.route('/app/bootstrap', methods=['POST'])
-async def bootstrap():
-    """
-        Runs hierarchical bootstrapping to estimate confidence intervals (CIs) for a metric of interest. 
-        Used when reporting stats and error bars in plots, when the CI option is on. 
-        Shifted to Python to leverage numpy to run with fast performance.  
-
-        Expected data format:
-        - data: An array of objects in the form: [[...numeric eval scores...], var_dict], where var_dict is 
-            a one-level variable dictionary like: { "varname1": val, "var2": val2, ... } that represents the prompt variables associated with an LLM output. (These values are used to determine how many unique values there are per var). 
-        - fill_order: The *order* of vars to use to group the data hierarchically. For instance, ["prompt", "text"] means 
-          responses have var "prompt", i.e. an array of prompt templates, that was further filled in with var "text". 
-          (When number of responses per prompt N>1, this "group" is treated as a last stage.)
-        - ci: The confidence interval to use (default=0.95)
-    """
-    # Verify post'd data
-    data = request.get_json()
-    if not set(data.keys()).issuperset({'data', 'fill_order'}):
-        return jsonify({'error': 'POST data is improper format.'})
-    fill_order = data.fill_order
-    data = data.data
-
-    results = None
-
-    # 
-
-    ret = jsonify({'results': results})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 

@@ -551,7 +551,6 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
                     typeof r === "object" && r.t === "img" ? r.d : undefined,
                   prompt: resp_obj.prompt,
                   fill_history: resp_obj.vars,
-                  fill_order: resp_obj.fill_order ?? [],
                   metavars: resp_obj.metavars || {},
                   llm: resp_obj.llm,
                   uid: resp_obj.uid,

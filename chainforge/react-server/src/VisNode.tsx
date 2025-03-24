@@ -38,77 +38,79 @@ import {
   standardDeviation,
   sum,
 } from "simple-statistics";
-import * as jStat from "jstat"; // jStat is a pure JS library without types
+// import * as jStat from "jstat"; // jStat is a pure JS library without types
 
-const bootstrapCI = (
-  values: number[],
-  numSamples = 1000,
-  alpha = 0.05,
-  overFunc?: (ns: number[]) => number,
-) => {
-  const means = [];
-  const f = overFunc ?? mean;
-  for (let i = 0; i < numSamples; i++) {
-    // Resample with replacement
-    const resampled = sampleWithReplacement(values, values.length, Math.random);
-    means.push(f(resampled));
-  }
+// FUTURE: Including in-progress error bar computation for future use.
+// const bootstrapCI = (
+//   values: number[],
+//   numSamples = 1000,
+//   alpha = 0.05,
+//   overFunc?: (ns: number[]) => number,
+// ) => {
+//   const means = [];
+//   const f = overFunc ?? mean;
+//   for (let i = 0; i < numSamples; i++) {
+//     // Resample with replacement
+//     const resampled = sampleWithReplacement(values, values.length, Math.random);
+//     means.push(f(resampled));
+//   }
 
-  // Compute percentiles for the confidence interval
-  const lowerBound = quantile(means, alpha / 2); // 2.5th percentile
-  const upperBound = quantile(means, 1 - alpha / 2); // 97.5th percentile
+//   // Compute percentiles for the confidence interval
+//   const lowerBound = quantile(means, alpha / 2); // 2.5th percentile
+//   const upperBound = quantile(means, 1 - alpha / 2); // 97.5th percentile
 
-  return {
-    ciMean: mean(means), // Bootstrap mean (could be slightly different from original mean)
-    lowerBound: lowerBound,
-    upperBound: upperBound,
-  };
-};
+//   return {
+//     ciMean: mean(means), // Bootstrap mean (could be slightly different from original mean)
+//     lowerBound: lowerBound,
+//     upperBound: upperBound,
+//   };
+// };
 
-/**
- * Computes the lower and upper bound for an error bar to display in a Plotly plot.
- * @param samples The samples to compute the error bar for
- * @param scaleBy A value to scale the outputs by
- * @param overFunc The default function is mean. However, we might want to calculate CI over other values, such as sum or SD. In this case, we must use bootstrapping, since the t-stat standard error method doesn't work in these cases.
- * @returns The [lowerBound, upperBound] values as a 2-item array, normalized to 100%.
- */
-const computeErrorBar = (
-  samples: number[],
-  scaleBy?: number,
-  overFunc?: (ns: number[]) => number,
-) => {
-  if (samples.length < 2) return [0, 0]; // Not enough information
-  const scalar = scaleBy ?? 1.0;
+// /**
+//  * Computes the lower and upper bound for an error bar to display in a Plotly plot.
+//  * @param samples The samples to compute the error bar for
+//  * @param scaleBy A value to scale the outputs by
+//  * @param overFunc The default function is mean. However, we might want to calculate CI over other values, such as sum or SD. In this case, we must use bootstrapping, since the t-stat standard error method doesn't work in these cases.
+//  * @returns The [lowerBound, upperBound] values as a 2-item array, normalized to 100%.
+//  */
+// const computeErrorBar = (
+//   samples: number[],
+//   scaleBy?: number,
+//   overFunc?: (ns: number[]) => number,
+// ) => {
+//   // FUTURE: Implement a more reliable method for computing error bars
+//   if (samples.length < 2) return [0, 0]; // Not enough information
+//   const scalar = scaleBy ?? 1.0;
 
-  // Choose method depending on # of samples
-  // NOTE: The cutoff here is informed by research of Zhu & Kolassa (https://doi.org/10.1080/03610918.2017.1348516)
-  //       which shows that below sample size 50, t-test provides a more reliable predictor of actual CI than bootstrapping methods.
-  if (samples.length < 50 && !overFunc) {
-    // Fallback to standard error-based confidence interval using t-stat
-    const se = standardDeviation(samples) / Math.sqrt(samples.length); // Compute standard Error
-    const t_value = (jStat as any).studentt.inv(
-      1 - (1 - 0.95) / 2,
-      samples.length - 1,
-    ); // 95% CI (assuming normality)
-    const m = mean(samples);
-    console.warn("Error bar t-stat:", m, se, t_value);
-    return [(m - t_value * se) * scalar, (m + t_value * se) * scalar];
-  } else {
-    // Compute a bootstrap 95% CI (confidence interval).
-    //  NOTE: We use bootstrapping because with prompts, we can *never* assume
-    //  the sample of LLM outputs is representative of the population for the user's hypothesis.
-    //  LLM outputs also don't have to follow a normal distribution.
-    //  This is resource-intensive but a much more reliable approx. than standard error/dev.
-    const { ciMean, lowerBound, upperBound } = bootstrapCI(
-      samples,
-      1000,
-      0.05,
-      overFunc,
-    );
-    console.warn("Error bar 95% CI:", ciMean, lowerBound, upperBound);
-    return [(ciMean - lowerBound) * scalar, (upperBound - ciMean) * scalar];
-  }
-};
+//   // Choose method depending on # of samples
+//   // NOTE: The cutoff here is informed by research of Zhu & Kolassa (https://doi.org/10.1080/03610918.2017.1348516)
+//   //       which shows that below sample size 50, t-test provides a more reliable predictor of actual CI than bootstrapping methods.
+//   if (samples.length < 50 && !overFunc) {
+//     // Fallback to standard error-based confidence interval using t-stat
+//     const se = standardDeviation(samples) / Math.sqrt(samples.length); // Compute standard Error
+//     const t_value = (jStat as any).studentt.inv(
+//       1 - (1 - 0.95) / 2,
+//       samples.length - 1,
+//     ); // 95% CI (assuming normality)
+//     const m = mean(samples);
+//     console.warn("Error bar t-stat:", m, se, t_value);
+//     return [(m - t_value * se) * scalar, (m + t_value * se) * scalar];
+//   } else {
+//     // Compute a bootstrap 95% CI (confidence interval).
+//     //  NOTE: We use bootstrapping because with prompts, we can *never* assume
+//     //  the sample of LLM outputs is representative of the population for the user's hypothesis.
+//     //  LLM outputs also don't have to follow a normal distribution.
+//     //  This is resource-intensive but a much more reliable approx. than standard error/dev.
+//     const { ciMean, lowerBound, upperBound } = bootstrapCI(
+//       samples,
+//       1000,
+//       0.05,
+//       overFunc,
+//     );
+//     console.warn("Error bar 95% CI:", ciMean, lowerBound, upperBound);
+//     return [(ciMean - lowerBound) * scalar, (upperBound - ciMean) * scalar];
+//   }
+// };
 
 const castEvalScoreToNum = (score: EvaluationScore): number => {
   if (typeof score === "number") return score;
@@ -582,7 +584,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           const x_items: number[] = [];
           const y_items: string[] = [];
           const marker_colors: string[] = [];
-          const error_values: number[][] = [];
+          // const error_values: number[][] = [];
           for (const name of names) {
             // Add a shortened version of the name as the y-tick
             y_items.push(shortnames[name]);
@@ -605,13 +607,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               x_items.push(num_true_vals * (100 / num_eval_scores));
 
             // Compute error bar info
-            error_values.push(computeErrorBar(all_samples, 100));
-
-            // Compute standard error for the error bar (SE = sqrt(p(1-p)/n) * 100)
-            // const p = num_true_vals / num_eval_scores;
-            // const standard_error =
-            //   Math.sqrt((p * (1 - p)) / num_eval_scores) * 100;
-            // error_values.push(standard_error);
+            // error_values.push(computeErrorBar(all_samples, 100));
 
             // Lookup the color per LLM when displaying LLM differences,
             // otherwise use the palette for displaying variables.
@@ -635,13 +631,13 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               marker: {
                 color: marker_colors,
               },
-              error_x: {
-                type: "data",
-                // Asymmetric errors bars, since we're using bootstrapping to determine the 95% CI
-                array: error_values.map((e) => e[1]), // Upper bound
-                arrayminus: error_values.map((e) => e[0]), // Lower bound
-                visible: true,
-              },
+              // error_x: {
+              //   type: "data",
+              //   // Asymmetric errors bars, since we're using bootstrapping to determine the 95% CI
+              //   array: error_values.map((e) => e[1]), // Upper bound
+              //   arrayminus: error_values.map((e) => e[0]), // Lower bound
+              //   visible: true,
+              // },
               hovertemplate: "%{x:.2f}%<extra>%{y}</extra>",
               showtrace: false,
               orientation: "h",
@@ -776,17 +772,17 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   };
 
                   // Compute error bars if present
-                  const error_values = [
-                    computeErrorBar(x_items.map(castEvalScoreToNum), 1.0, sum),
-                  ];
-                  if (error_values.length > 0)
-                    d.error_x = {
-                      type: "data",
-                      // Asymmetric errors bars, since we're using bootstrapping to determine the 95% CI
-                      array: error_values.map((e) => e[1]), // Upper bound
-                      arrayminus: error_values.map((e) => e[0]), // Lower bound
-                      visible: true,
-                    };
+                  // const error_values = [
+                  //   computeErrorBar(x_items.map(castEvalScoreToNum), 1.0, sum),
+                  // ];
+                  // if (error_values.length > 0)
+                  //   d.error_x = {
+                  //     type: "data",
+                  //     // Asymmetric errors bars, since we're using bootstrapping to determine the 95% CI
+                  //     array: error_values.map((e) => e[1]), // Upper bound
+                  //     arrayminus: error_values.map((e) => e[0]), // Lower bound
+                  //     visible: true,
+                  //   };
                 } else {
                   // Box-and-whiskers plot
                   d.type = "box";
@@ -883,19 +879,17 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   // To make error bars work, we need to sum the numbers, instead of relying
                   // upon the stacked bar chart:
                   let sum_x_items: number[] = [];
-                  // let x_items_by_y: { [key: string]: number[] } = {};
-                  let error_bars: number[][] = [];
+                  // let error_bars: number[][] = [];
                   const seq_y_items = [];
                   for (const name of Object.values(shortnames)) {
                     seq_y_items.push(name);
                     const xs_for_y = x_items
                       .filter((_, idx) => y_items[idx] === name)
                       .map(castEvalScoreToNum);
-                    // x_items_by_y[name] = xs_for_y;
                     sum_x_items = sum_x_items.concat(sum(xs_for_y));
-                    error_bars = error_bars.concat([
-                      computeErrorBar(xs_for_y, 1.0, sum),
-                    ]);
+                    // error_bars = error_bars.concat([
+                    //   computeErrorBar(xs_for_y, 1.0, sum),
+                    // ]);
                   }
                   d.x = sum_x_items;
                   d.y = seq_y_items;
@@ -903,13 +897,13 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   delete d.text;
 
                   // Add error bars to plot
-                  d.error_x = {
-                    type: "data",
-                    // Asymmetric errors bars, since we're using bootstrapping to determine the 95% CI
-                    array: error_bars.map((e) => e[1]), // Upper bound
-                    arrayminus: error_bars.map((e) => e[0]), // Lower bound
-                    visible: true,
-                  };
+                  // d.error_x = {
+                  //   type: "data",
+                  //   // Asymmetric errors bars, since we're using bootstrapping to determine the 95% CI
+                  //   array: error_bars.map((e) => e[1]), // Upper bound
+                  //   arrayminus: error_bars.map((e) => e[0]), // Lower bound
+                  //   visible: true,
+                  // };
                 }
               } else {
                 // Box-and-whiskers plot

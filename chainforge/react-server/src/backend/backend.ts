@@ -160,7 +160,6 @@ function to_standard_format(r: RawLLMResponseObject | Dict): LLMResponse {
   const resp_obj: LLMResponse = {
     vars: r.vars,
     metavars: r.metavars ?? {},
-    fill_order: r.fill_order ?? [],
     llm: r.llm,
     prompt: r.prompt,
     responses: r.responses,

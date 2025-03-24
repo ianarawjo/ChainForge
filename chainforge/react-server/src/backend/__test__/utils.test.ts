@@ -23,7 +23,6 @@ test("merge response objects", () => {
     vars: { var1: "value1", var2: "value2" },
     metavars: { meta1: "meta1" },
     uid: "A",
-    fill_order: [],
   };
   const B: RawLLMResponseObject = {
     responses: ["a", "b", "c"],
@@ -33,7 +32,6 @@ test("merge response objects", () => {
     vars: { varB1: "valueB1", varB2: "valueB2" },
     metavars: { metaB1: "metaB1" },
     uid: "B",
-    fill_order: [],
   };
   const C = merge_response_objs(A, B) as RawLLMResponseObject;
   expect(C.responses).toHaveLength(6);

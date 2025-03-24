@@ -276,7 +276,6 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
             formatting,
           ),
           fill_history: isMetavar ? {} : vars,
-          fill_order: isMetavar ? [] : [varname],
           metavars: isMetavar ? vars : {},
           llm,
           uid: uuid(),
@@ -299,7 +298,6 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
             formatting,
           ),
           fill_history: {},
-          fill_order: [],
           metavars: {},
           llm,
           uid: uuid(),
@@ -382,7 +380,6 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
               joined_texts = {
                 text: joined_texts,
                 fill_history: {},
-                fill_order: [],
                 llm: resp_objs[0].llm,
                 uid: uuid(),
               };

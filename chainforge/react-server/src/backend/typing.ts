@@ -185,9 +185,6 @@ export interface BaseLLMResponseObject {
   vars: Dict<StringOrHash>;
   /** Any associated metavariables. */
   metavars: Dict<StringOrHash>;
-  /** The order in which variable (vars) values were recursively filled in to generate the final, concrete prompt.
-   * This information can be used to determine how to cluster/group LLM responses by the input prompting structure. */
-  fill_order: StringOrHash[];
   /** The LLM to query (usually a dict of settings) */
   llm: StringOrHash | LLMSpec;
   /** Optional: The chat history to pass the LLM */
@@ -250,7 +247,6 @@ export interface TemplateVarInfo {
   text?: StringOrHash;
   image?: StringOrHash; // base-64 encoding
   fill_history?: Dict<StringOrHash>;
-  fill_order: StringOrHash[];
   metavars?: Dict<StringOrHash>;
   associate_id?: StringOrHash;
   prompt?: StringOrHash;

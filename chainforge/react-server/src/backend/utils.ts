@@ -1912,7 +1912,6 @@ export function merge_response_objs(
     llm: resp_obj_B.llm,
     vars: resp_obj_B.vars ?? (resp_obj_B as any).info ?? {}, // backwards compatibility---vars used to be 'info'
     metavars: resp_obj_B.metavars ?? {},
-    fill_order: resp_obj_B.fill_order ?? [],
     uid: resp_obj_B.uid,
   };
   if (resp_obj_B.chat_history !== undefined)
@@ -2084,7 +2083,6 @@ export const toStandardResponseFormat = (r: Dict | string) => {
   const resp_obj: LLMResponse = {
     vars: r?.fill_history ?? {},
     metavars: r?.metavars ?? {},
-    fill_order: r?.fill_order ?? [],
     uid: r?.uid ?? r?.batch_id ?? uuid(),
     llm: r?.llm ?? undefined,
     prompt: r?.prompt ?? "",

@@ -384,7 +384,6 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
                     : undefined,
                 image: typeof r === "object" && r.t === "img" ? r.d : undefined,
                 fill_history: obj.vars,
-                fill_order: obj.fill_order ?? [],
                 metavars: obj.metavars,
               })),
             )
