@@ -57,6 +57,8 @@ export enum NativeLLM {
   Claude_v3_5_sonnet_latest = "claude-3-5-sonnet-latest",
   Claude_v3_5_sonnet = "claude-3-5-sonnet-20240620",
   Claude_v3_5_haiku_latest = "claude-3-5-haiku-latest",
+  Claude_v3_7_sonnet_latest = "claude-3-7-sonnet-latest",
+  Claude_v3_7_sonnet_20250219 = "claude-3-7-sonnet-20250219",
   Claude_v3_haiku = "claude-3-haiku-20240307",
   Claude_v2_1 = "claude-2.1",
   Claude_v2 = "claude-2",
