@@ -20,6 +20,7 @@ import {
   Button,
   Alert,
   Tooltip,
+  Flex,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -31,6 +32,7 @@ import {
   IconPlus,
   IconRobot,
   IconSearch,
+  IconSparkles,
   IconTerminal,
   IconTrash,
 } from "@tabler/icons-react";
@@ -57,6 +59,8 @@ import { GatheringResponsesRingProgress } from "./LLMItemButtonGroup";
 import { Dict, LLMResponse, QueryProgress } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
+import { EvalGenReport } from "./backend/evalgen/typing";
+import EvalGenWizard from "./EvalGen/EvalGenWizard";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
@@ -248,6 +252,8 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   const [lastRunSuccess, setLastRunSuccess] = useState(true);
   const [showDrawer, setShowDrawer] = useState(false);
 
+  const [pulledInputs, setPulledInputs] = useState<LLMResponse[]>([]);
+
   // Debounce helpers
   const debounceTimeoutRef = useRef(null);
   const debounce = genDebounceFunc(debounceTimeoutRef);
@@ -262,9 +268,18 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
 
   // Add an evaluator to the end of the list
   const addEvaluator = useCallback(
-    (name: string, type: EvaluatorContainerDesc["type"], state: Dict) => {
+    (
+      name: string,
+      type: EvaluatorContainerDesc["type"],
+      state: Dict,
+      initiallyOpen = true,
+    ) => {
       setEvaluators(
-        evaluators.concat({ name, uid: uuid(), type, state, justAdded: true }),
+        // evaluators.concat({ name, uid: uuid(), type, state, justAdded: true }),
+        (e) => [
+          ...e,
+          { name, uid: uuid(), type, state, justAdded: initiallyOpen },
+        ],
       );
     },
     [evaluators],
@@ -299,89 +314,56 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
     );
   };
 
-  // const evaluatorComponents = useMemo(() => {
-  //   // evaluatorComponentRefs.current = [];
+  // const evalGenModalRef = useRef<EvalGenModalRef>(null);
+  // const openEvalGen = () => {
+  //   const resps = handlePullInputs();
+  //   evalGenModalRef.current?.trigger(resps, onFinalReportsReady);
+  // };
 
-  //   return evaluators.map((e, idx) => {
-  //     let component: React.ReactNode;
-  //     if (e.type === "python" || e.type === "javascript") {
-  //       component = (
-  //         <CodeEvaluatorComponent
-  //           ref={(el) =>
-  //             (evaluatorComponentRefs.current[idx] = {
-  //               type: "code",
-  //               name: e.name,
-  //               ref: el,
-  //             })
-  //           }
-  //           code={e.state?.code}
-  //           progLang={e.type}
-  //           type="evaluator"
-  //           id={id}
-  //           onCodeEdit={(code) =>
-  //             updateEvalState(idx, (e) => (e.state.code = code))
-  //           }
-  //           showUserInstruction={false}
-  //         />
-  //       );
-  //     } else if (e.type === "llm") {
-  //       component = (
-  //         <LLMEvaluatorComponent
-  //           ref={(el) =>
-  //             (evaluatorComponentRefs.current[idx] = {
-  //               type: "llm",
-  //               name: e.name,
-  //               ref: el,
-  //             })
-  //           }
-  //           prompt={e.state?.prompt}
-  //           grader={e.state?.grader}
-  //           format={e.state?.format}
-  //           id={id}
-  //           showUserInstruction={false}
-  //           onPromptEdit={(prompt) =>
-  //             updateEvalState(idx, (e) => (e.state.prompt = prompt))
-  //           }
-  //           onLLMGraderChange={(grader) =>
-  //             updateEvalState(idx, (e) => (e.state.grader = grader))
-  //           }
-  //           onFormatChange={(format) =>
-  //             updateEvalState(idx, (e) => (e.state.format = format))
-  //           }
-  //         />
-  //       );
-  //     } else {
-  //       console.error(
-  //         `Unknown evaluator type ${e.type} inside multi-evaluator node. Cannot display evaluator UI.`,
-  //       );
-  //       component = <Alert>Error: Unknown evaluator type {e.type}</Alert>;
-  //     }
-  //     return (
-  //       <EvaluatorContainer
-  //         name={e.name}
-  //         key={`${e.name}-${idx}`}
-  //         type={EVAL_TYPE_PRETTY_NAME[e.type]}
-  //         progress={e.progress}
-  //         onDelete={() => {
-  //           delete evaluatorComponentRefs.current[idx];
-  //           setEvaluators(evaluators.filter((_, i) => i !== idx));
-  //         }}
-  //         onChangeTitle={(newTitle) =>
-  //           setEvaluators(
-  //             evaluators.map((e, i) => {
-  //               if (i === idx) e.name = newTitle;
-  //               console.log(e);
-  //               return e;
-  //             }),
-  //           )
-  //         }
-  //         padding={e.type === "llm" ? "8px" : undefined}
-  //       >
-  //         {component}
-  //       </EvaluatorContainer>
-  //     );
-  //   });
-  // }, [evaluators, id]);
+  const onFinalReportsReady = (reports: EvalGenReport) => {
+    // Placeholder for process the final reports returned from EvalGenModel
+    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!! final reports", reports);
+    for (const crit of reports.criteria) {
+      // setTimeout(() => {
+      // console.log("crit", crit);
+      if (crit.eval_method === "code") {
+        // Python
+        addEvaluator(
+          crit.shortname,
+          "python",
+          {
+            code: "def evaluate(r):\n\treturn len(r.text)", // to be populated once python code is implemented for the criteria
+            sandbox: true,
+          },
+          false,
+        );
+      } else if (crit.eval_method === "expert") {
+        // LLM
+        addEvaluator(
+          crit.shortname,
+          "llm",
+          {
+            // to be populated once LLM code is implemented for the criteria
+            prompt: "",
+            format: "bin",
+          },
+          false,
+        );
+      } else {
+        // JavaScript
+        addEvaluator(
+          crit.shortname,
+          "javascript",
+          {
+            code: "function evaluate(r) {\n\treturn r.text.length;\n}", // to be populated once javascript code is implemented for the criteria
+          },
+          false,
+        );
+      }
+      // }, kkk * 5000);
+      // kkk++;
+    }
+  };
 
   const handleError = useCallback(
     (err: Error | string) => {
@@ -619,6 +601,17 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
     }
   }, [data]);
 
+  // EvalGen Wizard
+  const [evalGenOpened, setEvalGenOpened] = useState(false);
+  const openEvalGen = useCallback(() => {
+    setPulledInputs(handlePullInputs());
+    setEvalGenOpened(true);
+  }, []);
+  const handleEvalGenComplete = (evaluationData: EvalGenReport) => {
+    console.log("Evaluation wizard completed with data:", evaluationData);
+    // Do something with the evaluation implementations
+  };
+
   return (
     <BaseNode
       classNames="evaluator-node"
@@ -638,7 +631,15 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         ref={inspectModal}
         jsonResponses={lastResponses}
       />
-      {/* <PickCriteriaModal ref={pickCriteriaModalRef} /> */}
+
+      <EvalGenWizard
+        opened={evalGenOpened}
+        onClose={() => setEvalGenOpened(false)}
+        onComplete={handleEvalGenComplete}
+        responses={pulledInputs}
+      />
+      {/* <EvalGenModal ref={evalGenModalRef} /> */}
+
       <iframe style={{ display: "none" }} id={`${id}-iframe`}></iframe>
 
       {/* {evaluatorComponents} */}
@@ -823,7 +824,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         </Menu>
       </div>
 
-      {/* EvalGen {evaluators && evaluators.length === 0 ? (
+      {evaluators && evaluators.length === 0 ? (
         <Flex justify="center" gap={12} mt="md">
           <Tooltip
             label="Let an AI help you generate criteria and implement evaluation functions."
@@ -831,16 +832,15 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
             position="bottom"
             withArrow
           >
-            <Button onClick={onClickPickCriteria} variant="outline" size="xs">
+            <Button onClick={openEvalGen} variant="outline" size="xs">
               <IconSparkles size="11pt" />
-              &nbsp;Generate criteria
+              &nbsp;Generate evals with EvalGen
             </Button>
-          </Tooltip> */}
-      {/* <Button disabled variant='gradient' gradient={{ from: 'teal', to: 'lime', deg: 105 }}><IconSparkles />&nbsp;Validate</Button> */}
-      {/* </Flex>
+          </Tooltip>
+        </Flex>
       ) : (
         <></>
-      )} */}
+      )}
 
       {lastRunSuccess && lastResponses && lastResponses.length > 0 ? (
         <InspectFooter
