@@ -2488,3 +2488,52 @@ export const cmatrixTextAnnotations = (
   }
   return annotations as Partial<Annotations>[];
 };
+
+/**
+ * Adds a hashtag prefix to template variables in a string.
+ * Converts unescaped templates of the form {template} to {#template}.
+ * Ignores escaped braces like \{ and \}.
+ *
+ * @param input - The input string containing templates
+ * @returns The string with templates converted to hashtagged form
+ */
+export function hashtagTemplateVars(input: string): string {
+  let result = "";
+  let i = 0;
+
+  while (i < input.length) {
+    // Check for escaped braces
+    if (
+      input[i] === "\\" &&
+      i + 1 < input.length &&
+      (input[i + 1] === "{" || input[i + 1] === "}")
+    ) {
+      // Add the escape character and the brace
+      result += input[i] + input[i + 1];
+      i += 2;
+    }
+    // Check for opening brace of a template (that isn't already hashtagged)
+    else if (input[i] === "{" && i + 1 < input.length && input[i + 1] !== "#") {
+      // Add the opening brace and the hashtag
+      result += "{#";
+      i++;
+    }
+    // Regular character
+    else {
+      result += input[i];
+      i++;
+    }
+  }
+
+  return result;
+}
+
+export function stripWrappingQuotes(s: string): string {
+  if (s.startsWith('"') && s.endsWith('"')) {
+    return s.slice(1, -1);
+  }
+  if (s.startsWith("'") && s.endsWith("'")) {
+    return s.slice(1, -1);
+  }
+  return s;
+}

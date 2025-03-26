@@ -10,9 +10,16 @@ import {
   validEvalCriteriaFormat,
 } from "./typing";
 import { Dict, LLMResponse, LLMSpec } from "../typing";
-import { executejs, executepy, simpleQueryLLM } from "../backend";
+import {
+  evalWithLLM,
+  executejs,
+  executepy,
+  queryLLM,
+  simpleQueryLLM,
+} from "../backend";
 import {
   getVarsAndMetavars,
+  hashtagTemplateVars,
   llmResponseDataToString,
   retryAsyncFunc,
 } from "../utils";
@@ -136,42 +143,74 @@ export async function executeLLMEval(
   positiveExample?: LLMResponse,
   negativeExample?: LLMResponse,
 ): Promise<EvalFunctionResult> {
+  // The LLM eval prompt might include template vars. We need to add
+  // a hashtag to indicate to ChainForge that it should use the
+  // fill_history in the provided `example` LLMResponse.
+  const candidateCriteriaPrompt = hashtagTemplateVars(evalFunction.code);
+
   // Construct call to an LLM to evaluate the example
   const evalPrompt =
     "Evaluate the text below according to this criteria: " +
-    evalFunction.code +
+    candidateCriteriaPrompt +
     ' Only return "yes" or "no", nothing else.\n\n```\n' +
-    llmResponseDataToString(example.responses[0]) +
+    "{__input}" +
     "\n```";
 
   // Query an LLM as an evaluator
-  let systemMessage = "You are an expert evaluator.";
+  let systemMessage;
   if (
     positiveExample &&
     positiveExample.responses.length > 0 &&
     negativeExample &&
     negativeExample.responses.length > 0
   ) {
-    systemMessage +=
-      " Please consider the following GOOD example: \n" +
+    systemMessage =
+      "You are an expert evaluator. Please consider the following GOOD example:\n" +
       llmResponseDataToString(positiveExample.responses[0]) +
-      "\nand BAD example: \n" +
+      "\n\nand BAD example:\n" +
       llmResponseDataToString(negativeExample.responses[0]) +
-      "\nwhen making your evaluation.";
+      "\n\nwhen making your evaluation.";
   }
 
-  const result = await simpleQueryLLM(
-    evalPrompt, // prompt
-    typeof llm === "string" ? llm : [llm], // llm
-    systemMessage, // system_msg
+  // We use ChainForge's infrastructure for running LLM evaluators
+  // to score responses based on the criteria.
+  const { responses, errors } = await evalWithLLM(
+    Date.now().toString(), // id to refer to this query
+    llm, // llm
+    evalPrompt,
+    [example], // we pass in a single example
+    undefined,
+    undefined,
+    undefined,
+    systemMessage,
   );
+
+  if (
+    !responses ||
+    responses.length === 0 ||
+    !responses[0].eval_res ||
+    responses[0].eval_res.items.length === 0
+  ) {
+    console.error(
+      "Error executing LLM eval candidate:",
+      errors,
+      evalFunction.code,
+    );
+    return EvalFunctionResult.SKIP;
+  }
+
   // Get the output
-  const output = llmResponseDataToString(result.responses[0].responses[0]);
+  const output = responses[0].eval_res?.items[0];
+  // This should be a boolean... but we need to parse it
+  const is_pass =
+    output === true || (typeof output === "string" && output.includes("yes"));
+  const is_fail =
+    output === false || (typeof output === "string" && output.includes("no"));
 
   // Parse the response to determine the boolean value to return
-  if (output.toLowerCase().includes("yes")) {
+  if (is_pass) {
     return EvalFunctionResult.PASS;
-  } else if (output.toLowerCase().includes("no")) {
+  } else if (is_fail) {
     return EvalFunctionResult.FAIL;
   } else {
     // throw new EvalExecutionError(

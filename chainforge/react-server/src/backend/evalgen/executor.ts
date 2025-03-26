@@ -194,8 +194,9 @@ export default class EvaluationFunctionExecutor {
    */
   public async waitForCompletion(): Promise<void> {
     if (this.backgroundTaskPromise) {
-      await this.backgroundTaskPromise;
+      const promise = this.backgroundTaskPromise;
       this.backgroundTaskPromise = null;
+      await promise;
     }
   }
 
@@ -214,6 +215,10 @@ export default class EvaluationFunctionExecutor {
     const functionExecutionPromises: Promise<any>[] = [];
 
     emitter.on("functionGenerated", (evalFunction) => {
+      this.logFunction(
+        `Generated a new ${evalFunction.evalCriteria.eval_method === "code" ? "code-based" : "LLM-based"} validator for criteria: ${evalFunction.evalCriteria.shortname}${evalFunction.evalCriteria.eval_method === "expert" ? `, with prompt: ${evalFunction.name}` : ""}. Executing it on ${this.examples.length} examples.`,
+      );
+
       const executionPromise = (async () => {
         this.evalFunctions.push(evalFunction);
         const executionPromises = this.examples.map(async (example) => {
@@ -233,6 +238,7 @@ export default class EvaluationFunctionExecutor {
               ? execPyFunc
               : executeLLMEval;
 
+          // Run the function on the example and if there's an error, increment skipped
           const result = await funcToExecute(
             evalFunction,
             this.llms.small,
@@ -285,6 +291,7 @@ export default class EvaluationFunctionExecutor {
       badExample,
       this.apiKeys,
     );
+
     // Update LLM call count by 1
     this.updateNumLLMCalls(1, 0);
 
@@ -306,152 +313,17 @@ export default class EvaluationFunctionExecutor {
   public async generateAndExecuteEvaluationFunctions(
     onProgress?: (progress: QueryProgress) => void,
   ): Promise<void> {
-    const emitter = new EventEmitter();
-    const numCriteriaToProcess = this.evalCriteria.length;
-
-    // Since we don't know how many implementations the LLM will suggest,
-    // we must estimate it here so we can use this information to stream
-    // "progress" updates back to the client:
-    let funcsExecuted = 0;
-    const estimatedFuncsToExecute =
-      numCriteriaToProcess +
-      this.evalCriteria.length * 5 * this.examples.length;
-
-    let criteriaProcessed = 0; // Track the number of criteria processed
-    let resolveAllFunctionsGenerated: any; // To be called when all functions are generated and executed
-    const functionExecutionPromises: Promise<any>[] = []; // Track execution promises for function executions
-
-    // This promise resolves when the 'allFunctionsGenerated' event is emitted
-    const allFunctionsGeneratedPromise = new Promise<void>((resolve) => {
-      resolveAllFunctionsGenerated = resolve;
-    });
-
-    // Listen for generated functions and execute them as they come in
-    emitter.on("functionGenerated", (evalFunction) => {
-      this.logFunction(
-        `Generated a new ${evalFunction.evalCriteria.eval_method === "code" ? "code-based" : "LLM-based"} validator for criteria: ${evalFunction.evalCriteria.shortname}${evalFunction.evalCriteria.eval_method === "expert" ? `, with prompt: ${evalFunction.name}` : ""}. Executing it on ${this.examples.length} examples.`,
-      );
-
-      // Capture the execution promise of each function
-      const executionPromise = (async () => {
-        // Add the eval function to the list of functions
-        this.evalFunctions.push(evalFunction);
-
-        const executionPromises = this.examples.map(async (example) => {
-          // Get random positive and negative examples for this criteria using the perCriteriaGrades
-          const criteriaId = evalFunction.evalCriteria.uid;
-          const randomPositiveExample = this.examples.find(
-            (example) =>
-              this.perCriteriaGrades[criteriaId]?.[example.uid] === true,
-          );
-          const randomNegativeExample = this.examples.find(
-            (example) =>
-              this.perCriteriaGrades[criteriaId]?.[example.uid] === false,
-          );
-
-          const funcToExecute =
-            evalFunction.evalCriteria.eval_method === "code"
-              ? execPyFunc
-              : executeLLMEval;
-
-          // Run the function on the example and if there's an error, increment skipped
-          const result = await funcToExecute(
-            evalFunction,
-            this.llms.small,
-            example,
-            randomPositiveExample,
-            randomNegativeExample,
-          );
-
-          // Update weak model call count by 1 if the eval method is expert
-          if (evalFunction.evalCriteria.eval_method === "expert") {
-            this.updateNumLLMCalls(0, 1);
-          }
-
-          funcsExecuted++;
-          if (onProgress) {
-            onProgress({
-              success: (100 * funcsExecuted) / estimatedFuncsToExecute,
-              error: 0,
-            });
-          }
-
-          // Put result in cache
-          if (!this.resultsCache.has(evalFunction)) {
-            this.resultsCache.set(evalFunction, new Map());
-          }
-          this.resultsCache.get(evalFunction)?.set(example.uid, result);
-
-          // Update the score if the result is false
-          if (result === EvalFunctionResult.FAIL) {
-            this.updateScore(example.uid, evalFunction);
-          }
-        });
-
-        await Promise.all(executionPromises);
-        // console.log(`Function ${evalFunction.name} executed on all examples.`);
-      })();
-
-      functionExecutionPromises.push(executionPromise);
-    });
-
-    // Generate functions for each criterion
-    this.evalCriteria.forEach((criteria) => {
-      console.log(criteria);
-      generateFunctionsForCriteria(
-        criteria,
-        this.llms.large,
-        this.promptTemplate,
-        this.examples[Math.floor(Math.random() * this.examples.length)],
-        emitter, // Pass the EventEmitter instance
-        undefined,
-        this.apiKeys,
-      ).then(() => {
-        emitter.emit("criteriaProcessed");
-        // Update LLM call count by 1
-        this.updateNumLLMCalls(1, 0);
-      });
-    });
-
-    // Listen for a custom 'criteriaProcessed' event to track when each criterion's functions have been generated
-    emitter.on("criteriaProcessed", () => {
-      criteriaProcessed++;
-      if (criteriaProcessed === this.evalCriteria.length) {
-        // Ensure all function executions have completed before emitting 'allFunctionsGenerated'
-        Promise.all(functionExecutionPromises).then(() => {
-          console.log(
-            "All evaluation functions have been generated and executed.",
-          );
-          this.logFunction(
-            "All initially-generated evaluation functions have been generated and executed.",
-          );
-          if (resolveAllFunctionsGenerated) {
-            resolveAllFunctionsGenerated(); // Resolve the promise when all functions have been generated and executed
-          }
-        });
-
-        if (onProgress)
-          onProgress({
-            success: 100,
-            error: 0,
-          });
+    // Enter a continuous monitoring loop for new criteria
+    while (this.backgroundTaskPromise !== null) {
+      // Check if there are any criteria in the queue to process
+      if (this.criteriaQueue.length > 0 && !this.processing) {
+        // Pop a criteria off the queue and process it
+        // TODO: use worker pool to parallelize this
+        await this.processNextCriteria();
       }
-    });
 
-    // Wait for the 'allFunctionsGenerated' event, which now waits for all executions
-    await allFunctionsGeneratedPromise;
-  }
-
-  public generateNewImplementationsForCriteria(
-    criteriaID: EvalCriteriaUID,
-  ): void {
-    const crit = this.evalCriteria.find((c) => c.uid === criteriaID);
-    if (!crit) {
-      throw new Error(`Criteria with ID ${criteriaID} not found.`);
-    }
-    this.criteriaQueue.push(crit);
-    if (!this.processing) {
-      this.processNextCriteria();
+      // Sleep for a short time before checking again (prevents CPU hogging)
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
 
@@ -488,11 +360,12 @@ export default class EvaluationFunctionExecutor {
   }
 
   private async processNextCriteria() {
-    // TODO: use worker pool to parallelize this
     this.processing = true;
     while (this.criteriaQueue.length > 0) {
       const criteria = this.criteriaQueue.shift();
       if (criteria) {
+        // Log the processing of new criteria
+        this.logFunction(`Processing new criteria: ${criteria.shortname}`);
         await this.generateAndExecuteFunctionsForCriteria(criteria);
       }
     }
