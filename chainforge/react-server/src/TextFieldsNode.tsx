@@ -7,7 +7,14 @@ import React, {
   MouseEventHandler,
 } from "react";
 import { Handle, Node, Position } from "reactflow";
-import { Textarea, Tooltip, Skeleton, ScrollArea, Image, AspectRatio } from "@mantine/core";
+import {
+  Textarea,
+  Tooltip,
+  Skeleton,
+  ScrollArea,
+  Image,
+  AspectRatio,
+} from "@mantine/core";
 import {
   IconTextPlus,
   IconEye,
@@ -22,7 +29,12 @@ import TemplateHooks, {
   extractBracketedSubstrings,
 } from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
-import { DebounceRef, genDebounceFunc, setsAreEqual, get_image_infos } from "./backend/utils";
+import {
+  DebounceRef,
+  genDebounceFunc,
+  setsAreEqual,
+  get_image_infos,
+} from "./backend/utils";
 import { Func, Dict } from "./backend/typing";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import AISuggestionsManager from "./backend/aiSuggestionsManager";
@@ -89,7 +101,6 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   const [fieldIsImage, setFieldIsImage] = useState<Dict<boolean>>(
     data.fields_is_image || {},
   );
-
 
   // For when textfields exceed the TextFields Node max height,
   // when we add a new field, this gives us a way to scroll to the bottom. Better UX.
@@ -247,14 +258,14 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     (field_id: string, val: string, shouldDebounce: boolean) => {
       // Update the value of the controlled Textarea component
       const new_fields = { ...textfieldsValues };
-      
+
       // If this is an image field, ensure proper formatting
       if (fieldIsImage[field_id]) {
-        new_fields[field_id] = val.replace(/%IMAGE%/g, ''); // Remove any existing %IMAGE% prefix
+        new_fields[field_id] = val.replace(/%IMAGE%/g, ""); // Remove any existing %IMAGE% prefix
       } else {
         new_fields[field_id] = val;
       }
-      
+
       setTextfieldsValues(new_fields);
 
       // Update the data for the ReactFlow node
@@ -279,7 +290,7 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
       pingOutputNodes,
       setDataPropsForNode,
       id,
-      fieldIsImage
+      fieldIsImage,
     ],
   );
 
@@ -398,38 +409,47 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   // Upload File button mechanisms
   const uploadFileModal = useRef<UploadFileModalRef>(null);
   const [uploadFileInitialVal, setUploadFileInitialVal] = useState<string>("");
-  
+
   // Disable/hide a text field temporarily
   const openUploadFileModal = useCallback(
-      (field_id : string) => {
+    (field_id: string) => {
       setUploadFileInitialVal(field_id);
       if (uploadFileModal && uploadFileModal.current)
         uploadFileModal.current.open();
-    }, 
-    [uploadFileModal]
+    },
+    [uploadFileModal],
   );
 
-  const handleUploadFile = useCallback((new_text: string) => {
-    if (typeof uploadFileInitialVal !== "string") {
-      console.error("Initial column value was not set.");
-      return;
-    }
-    // Clean the URL first by removing any existing %IMAGE% prefix
-    const cleanUrl = new_text.replace(/%IMAGE%/g, '');
-    
-    const new_fields = { ...textfieldsValues };
-    new_fields[uploadFileInitialVal] = cleanUrl;
-    
-    const imgs = { ...fieldIsImage };
-    imgs[uploadFileInitialVal] = true;
-    setFieldIsImage(imgs);
-    setTextfieldsValues(new_fields);
-    setDataPropsForNode(id, { 
-      fields: new_fields,
-      fields_is_image: imgs 
-    });
-    pingOutputNodes(id);
-  }, [textfieldsValues, pingOutputNodes, setDataPropsForNode, id, uploadFileInitialVal]);
+  const handleUploadFile = useCallback(
+    (new_text: string) => {
+      if (typeof uploadFileInitialVal !== "string") {
+        console.error("Initial column value was not set.");
+        return;
+      }
+      // Clean the URL first by removing any existing %IMAGE% prefix
+      const cleanUrl = new_text.replace(/%IMAGE%/g, "");
+
+      const new_fields = { ...textfieldsValues };
+      new_fields[uploadFileInitialVal] = cleanUrl;
+
+      const imgs = { ...fieldIsImage };
+      imgs[uploadFileInitialVal] = true;
+      setFieldIsImage(imgs);
+      setTextfieldsValues(new_fields);
+      setDataPropsForNode(id, {
+        fields: new_fields,
+        fields_is_image: imgs,
+      });
+      pingOutputNodes(id);
+    },
+    [
+      textfieldsValues,
+      pingOutputNodes,
+      setDataPropsForNode,
+      id,
+      uploadFileInitialVal,
+    ],
+  );
 
   // Cache the rendering of the text fields.
   const textFields = useMemo(
@@ -498,7 +518,7 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
                       )}
                     </button>
                   </Tooltip>
-                  </>
+                </>
               ) : (
                 <></>
               )}
@@ -520,24 +540,27 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
                 </button>
               </Tooltip>
             </div>
-              {fieldIsImage[i] ? (
-                <Tooltip
+            {fieldIsImage[i] ? (
+              <Tooltip
                 multiline={true}
                 label={JSON.stringify(get_image_infos(textfieldsValues[i]))}
+              >
+                <div
+                  style={{ width: 50, marginLeft: "auto", marginRight: "auto" }}
                 >
-                  <div style={{ width: 50, marginLeft: 'auto', marginRight: 'auto' }}>
-                    <Image
-                      src={
-                        textfieldsValues[i].startsWith("http") ? 
-                        textfieldsValues[i] : '' // TODO : handle local file case  
-                      }
-                      radius={'lg'}
-                    />
-                  </div>
-                </Tooltip>
-                  ) : (
-                <></>
-              )}
+                  <Image
+                    src={
+                      textfieldsValues[i].startsWith("http")
+                        ? textfieldsValues[i]
+                        : "" // TODO : handle local file case
+                    }
+                    radius={"lg"}
+                  />
+                </div>
+              </Tooltip>
+            ) : (
+              <></>
+            )}
           </div>
         );
       }),
@@ -613,7 +636,7 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
         label="Provide a remote URL pointing to an image"
         onSubmit={handleUploadFile}
       />
-      
+
       <Skeleton visible={isLoading}>
         <div ref={setRef} className="nodrag nowheel">
           <ScrollArea.Autosize mah={580} type="hover" viewportRef={viewport}>

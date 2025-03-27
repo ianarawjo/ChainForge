@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Handle, Position } from "reactflow";
 import { Image, Box, ActionIcon, Text, Group, Tooltip } from "@mantine/core";
-import { 
-  IconPhoto, 
-  IconChevronLeft, 
-  IconChevronRight, 
+import {
+  IconPhoto,
+  IconChevronLeft,
+  IconChevronRight,
   IconUpload,
   IconEye,
   IconEyeOff,
-  IconX 
+  IconX,
 } from "@tabler/icons-react";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
@@ -31,24 +31,27 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const [images, setImages] = useState<string[]>(data.images || []);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [imageVisibility, setImageVisibility] = useState<{ [key: string]: boolean }>(
-    data.images_visibility || {}
-  );
+  const [imageVisibility, setImageVisibility] = useState<{
+    [key: string]: boolean;
+  }>(data.images_visibility || {});
   const containerRef = useRef<HTMLDivElement>(null);
   const uploadFileModal = useRef<UploadFileModalRef>(null);
   const imagePreviewModal = useRef<ImagePreviewModalRef>(null);
 
-  const handleAddImage = useCallback((url: string) => {
-    const cleanUrl = url.replace(/%IMAGE%/g, '');
-    const newImages = [...images, cleanUrl];
-    setImages(newImages);
-    setDataPropsForNode(id, { 
-      ...data, 
-      images: newImages,
-      images_visibility: imageVisibility,
-      value: `{@IMG}`
-    });
-  }, [images, imageVisibility, id, data, setDataPropsForNode]);
+  const handleAddImage = useCallback(
+    (url: string) => {
+      const cleanUrl = url.replace(/%IMAGE%/g, "");
+      const newImages = [...images, cleanUrl];
+      setImages(newImages);
+      setDataPropsForNode(id, {
+        ...data,
+        images: newImages,
+        images_visibility: imageVisibility,
+        value: `{@IMG}`,
+      });
+    },
+    [images, imageVisibility, id, data, setDataPropsForNode],
+  );
 
   const handleNext = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % images.length);
@@ -58,9 +61,12 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
     setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
   }, [images.length]);
 
-  const handleUploadFile = useCallback((url: string) => {
-    handleAddImage(url);
-  }, [handleAddImage]);
+  const handleUploadFile = useCallback(
+    (url: string) => {
+      handleAddImage(url);
+    },
+    [handleAddImage],
+  );
 
   const handleOpenUploadModal = useCallback(() => {
     if (uploadFileModal.current) {
@@ -72,10 +78,10 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
     const newVisibility = { ...imageVisibility };
     newVisibility[currentIndex] = !newVisibility[currentIndex];
     setImageVisibility(newVisibility);
-    setDataPropsForNode(id, { 
-      ...data, 
+    setDataPropsForNode(id, {
+      ...data,
       images_visibility: newVisibility,
-      value: `{@IMG}`
+      value: `{@IMG}`,
     });
   }, [currentIndex, imageVisibility, images, id, data, setDataPropsForNode]);
 
@@ -86,20 +92,24 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
     delete newVisibility[currentIndex];
     setImages(newImages);
     setImageVisibility(newVisibility);
-    setCurrentIndex(prev => prev >= newImages.length ? newImages.length - 1 : prev);
-    setDataPropsForNode(id, { 
-      ...data, 
+    setCurrentIndex((prev) =>
+      prev >= newImages.length ? newImages.length - 1 : prev,
+    );
+    setDataPropsForNode(id, {
+      ...data,
       images: newImages,
       images_visibility: newVisibility,
-      value: `{@IMG}`
+      value: `{@IMG}`,
     });
   }, [images, currentIndex, imageVisibility, id, data, setDataPropsForNode]);
 
   const getTemplateValue = useCallback(() => {
     if (!images || images.length === 0) return "";
-    
-    const visibleImages = images.filter((_, index) => imageVisibility[index] !== false);
-    
+
+    const visibleImages = images.filter(
+      (_, index) => imageVisibility[index] !== false,
+    );
+
     return `{@IMG}`;
   }, [images, imageVisibility]);
 
@@ -131,56 +141,61 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
         nodeId={id}
         icon={<IconPhoto size="16px" />}
       />
-      
-      <div style={{ 
-        borderTop: '1px dashed #ccc', 
-        margin: '10px 0',
-        paddingTop: '10px' 
-      }}>
-        <Box ref={containerRef} sx={{ width: '100%' }}>
+
+      <div
+        style={{
+          borderTop: "1px dashed #ccc",
+          margin: "10px 0",
+          paddingTop: "10px",
+        }}
+      >
+        <Box ref={containerRef} sx={{ width: "100%" }}>
           <div className="carousel-container">
             {images.length > 0 ? (
               <>
-                <div style={{
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '4px',
-                  padding: '8px',
-                  backgroundColor: '#fff',
-                  width: '250px',
-                  margin: '0 auto'
-                }}>
-                  <div 
-                    onClick={handleImageClick}
-                    style={{ cursor: 'pointer' }}
-                  >
+                <div
+                  style={{
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "4px",
+                    padding: "8px",
+                    backgroundColor: "#fff",
+                    width: "250px",
+                    margin: "0 auto",
+                  }}
+                >
+                  <div onClick={handleImageClick} style={{ cursor: "pointer" }}>
                     <Image
                       src={images[currentIndex]}
                       height={200}
                       width={200}
                       fit="contain"
                       withPlaceholder
-                      style={{ 
-                        opacity: imageVisibility[currentIndex] === false ? 0.3 : 1,
-                        backgroundColor: '#f8f9fa',
-                        margin: '0 auto'
+                      style={{
+                        opacity:
+                          imageVisibility[currentIndex] === false ? 0.3 : 1,
+                        backgroundColor: "#f8f9fa",
+                        margin: "0 auto",
                       }}
                     />
                   </div>
                 </div>
 
                 <Group position="center" mt="sm" spacing={20}>
-                  <ActionIcon 
-                    onClick={handlePrev} 
+                  <ActionIcon
+                    onClick={handlePrev}
                     disabled={images.length <= 1}
                     variant="transparent"
                     size="xl"
                   >
                     <IconChevronLeft size={24} />
                   </ActionIcon>
-                  <Text size="sm" style={{ minWidth: '60px', textAlign: 'center' }}>
+                  <Text
+                    size="sm"
+                    style={{ minWidth: "60px", textAlign: "center" }}
+                  >
                     {`${currentIndex + 1}/${images.length}`}
                   </Text>
-                  <ActionIcon 
+                  <ActionIcon
                     onClick={handleNext}
                     disabled={images.length <= 1}
                     variant="transparent"
@@ -191,17 +206,17 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
                 </Group>
               </>
             ) : (
-              <Box 
-                sx={{ 
+              <Box
+                sx={{
                   height: 200,
                   width: 200,
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  backgroundColor: '#f8f9fa',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: '4px',
-                  margin: '0 auto'
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "#f8f9fa",
+                  border: "1px solid #e0e0e0",
+                  borderRadius: "4px",
+                  margin: "0 auto",
                 }}
               >
                 <Text color="dimmed">No images uploaded</Text>
@@ -220,8 +235,15 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
                 <IconX size={16} />
               </ActionIcon>
             </Tooltip>
-            
-            <Tooltip label={imageVisibility[currentIndex] === false ? "Show image" : "Hide image"} position="top">
+
+            <Tooltip
+              label={
+                imageVisibility[currentIndex] === false
+                  ? "Show image"
+                  : "Hide image"
+              }
+              position="top"
+            >
               <ActionIcon
                 variant="subtle"
                 onClick={handleToggleVisibility}
@@ -267,4 +289,4 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
   );
 };
 
-export default CarouselNode; 
+export default CarouselNode;
