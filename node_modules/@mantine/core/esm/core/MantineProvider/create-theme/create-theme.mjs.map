@@ -1,0 +1,1 @@
+{"version":3,"file":"create-theme.mjs","sources":["../../../../src/core/MantineProvider/create-theme/create-theme.ts"],"sourcesContent":["import { MantineThemeOverride } from '../theme.types';\n\nexport function createTheme(theme: MantineThemeOverride): MantineThemeOverride {\n  return theme;\n}\n"],"names":[],"mappings":"AAEO,SAAS,YAAY,KAAmD,EAAA;AAC7E,EAAO,OAAA,KAAA;AACT;;;;"}

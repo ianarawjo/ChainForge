@@ -1,0 +1,24 @@
+@layer mantine {.m_b183c0a2 {
+  font-family: var(--mantine-font-family-monospace);
+  line-height: var(--mantine-line-height);
+  padding: 2px calc(var(--mantine-spacing-xs) / 2);
+  border-radius: var(--mantine-radius-sm);
+  font-size: var(--mantine-font-size-xs);
+  margin: 0;
+  overflow: auto;
+}
+
+  :where([data-mantine-color-scheme='light']) .m_b183c0a2 {
+    background-color: var(--code-bg, var(--mantine-color-gray-1));
+    color: var(--mantine-color-black);
+}
+
+  :where([data-mantine-color-scheme='dark']) .m_b183c0a2 {
+    background-color: var(--code-bg, var(--mantine-color-dark-5));
+    color: var(--mantine-color-white);
+}
+
+  .m_b183c0a2[data-block] {
+    padding: var(--mantine-spacing-xs);
+  }
+}

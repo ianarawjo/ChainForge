@@ -1,0 +1,12 @@
+@layer mantine {.m_bcb3f3c2 {
+  color: var(--mantine-color-black);
+}
+
+  :where([data-mantine-color-scheme='light']) .m_bcb3f3c2 {
+    background-color: var(--mark-bg-light);
+}
+
+  :where([data-mantine-color-scheme='dark']) .m_bcb3f3c2 {
+    background-color: var(--mark-bg-dark);
+}
+}

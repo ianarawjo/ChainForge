@@ -1,0 +1,108 @@
+@layer mantine {.m_48204f9b {
+  width: var(--slider-size);
+  height: var(--slider-size);
+  position: relative;
+  border-radius: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+  .m_48204f9b:focus-within {
+    outline: 2px solid var(--mantine-primary-color-filled);
+    outline-offset: 2px;
+  }
+
+  .m_48204f9b {
+
+  --slider-size: 60px;
+  --thumb-size: calc(var(--slider-size) / 5);
+}
+
+  :where([data-mantine-color-scheme='light']) .m_48204f9b {
+    background-color: var(--mantine-color-gray-1);
+}
+
+  :where([data-mantine-color-scheme='dark']) .m_48204f9b {
+    background-color: var(--mantine-color-dark-5);
+}
+
+.m_bb9cdbad {
+  position: absolute;
+  inset: 1px;
+  border-radius: var(--slider-size);
+  pointer-events: none;
+}
+
+.m_481dd586 {
+  width: 2px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 1px);
+  transform: rotate(var(--angle));
+}
+
+.m_481dd586::before {
+    content: '';
+    position: absolute;
+    top: calc(var(--thumb-size) / 3);
+    left: 0.5px;
+    width: 1px;
+    height: calc(var(--thumb-size) / 1.5);
+    transform: translate(-50%, -50%);
+  }
+
+:where([data-mantine-color-scheme='light']) .m_481dd586::before {
+      background-color: var(--mantine-color-gray-4);
+}
+
+:where([data-mantine-color-scheme='dark']) .m_481dd586::before {
+      background-color: var(--mantine-color-dark-3);
+}
+
+.m_481dd586[data-label]::after {
+    min-width: 18px;
+    text-align: center;
+    content: attr(data-label);
+    position: absolute;
+    top: -24px;
+    left: -7px;
+    transform: rotate(calc(360deg - var(--angle)));
+    font-size: var(--mantine-font-size-xs);
+  }
+
+.m_bc02ba3d {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: calc(50% - 1.5px);
+  height: 100%;
+  width: 3px;
+  outline: none;
+  pointer-events: none;
+}
+
+.m_bc02ba3d::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: min(var(--thumb-size), calc(var(--slider-size) / 2));
+    width: 3px;
+  }
+
+:where([data-mantine-color-scheme='light']) .m_bc02ba3d::before {
+      background-color: var(--mantine-color-gray-7);
+}
+
+:where([data-mantine-color-scheme='dark']) .m_bc02ba3d::before {
+      background-color: var(--mantine-color-dark-1);
+}
+
+.m_bb8e875b {
+  font-size: var(--mantine-font-size-xs);
+}
+}

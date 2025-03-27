@@ -1,0 +1,45 @@
+.m_45c4369d {
+  background-color: transparent;
+  appearance: none;
+  min-width: 100px;
+  flex: 1;
+  border: 0;
+  font-size: inherit;
+  height: 1.6em;
+  color: inherit;
+  padding: 0;
+}
+
+  .m_45c4369d::placeholder {
+    color: var(--input-placeholder-color);
+    opacity: 1;
+  }
+
+  .m_45c4369d:where([data-type='hidden'], [data-type='auto']) {
+    height: 1px;
+    width: 1px;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    position: absolute;
+    opacity: 0;
+  }
+
+  .m_45c4369d:focus {
+    outline: none;
+  }
+
+  .m_45c4369d:where([data-type='auto']:focus) {
+    height: 1.6em;
+    visibility: visible;
+    opacity: 1;
+    position: static;
+  }
+
+  .m_45c4369d:where([data-pointer]:not([data-disabled], :disabled)) {
+    cursor: pointer;
+  }
+
+  .m_45c4369d:where([data-disabled], :disabled) {
+    cursor: not-allowed;
+  }

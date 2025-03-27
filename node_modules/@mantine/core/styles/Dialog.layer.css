@@ -1,0 +1,20 @@
+@layer mantine {.m_e2125a27 {
+  --dialog-size-xs: 160px;
+  --dialog-size-sm: 200px;
+  --dialog-size-md: 340px;
+  --dialog-size-lg: 400px;
+  --dialog-size-xl: 500px;
+  --dialog-size: var(--dialog-size-md);
+
+  position: relative;
+  width: var(--dialog-size);
+  max-width: calc(100vw - var(--mantine-spacing-xl) * 2);
+  min-height: 50px;
+}
+
+.m_5abab665 {
+  position: absolute;
+  top: calc(var(--mantine-spacing-md) / 2);
+  inset-inline-end: calc(var(--mantine-spacing-md) / 2);
+}
+}

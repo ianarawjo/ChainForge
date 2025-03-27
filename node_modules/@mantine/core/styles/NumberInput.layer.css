@@ -1,0 +1,89 @@
+@layer mantine {.m_e2f5cd4e {
+  --ni-right-section-width-xs: 17px;
+  --ni-right-section-width-sm: 24px;
+  --ni-right-section-width-md: 27px;
+  --ni-right-section-width-lg: 31px;
+  --ni-right-section-width-xl: 34px;
+}
+
+.m_95e17d22 {
+  --ni-chevron-size-xs: 10px;
+  --ni-chevron-size-sm: 14px;
+  --ni-chevron-size-md: 16px;
+  --ni-chevron-size-lg: 18px;
+  --ni-chevron-size-xl: 20px;
+  --ni-chevron-size: var(--ni-chevron-size-sm);
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(var(--input-height) - calc(0.125rem * var(--mantine-scale)));
+  max-width: calc(var(--ni-chevron-size) * 1.7);
+  margin-inline-start: auto;
+}
+
+.m_80b4b171 {
+  --control-border: 1px solid var(--input-bd);
+  --control-radius: calc(var(--input-radius) - calc(0.0625rem * var(--mantine-scale)));
+
+  flex: 0 0 50%;
+  width: 100%;
+  padding: 0;
+  height: calc(var(--input-height) / 2 - calc(0.0625rem * var(--mantine-scale)));
+  border-inline-start: var(--control-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mantine-color-text);
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.m_80b4b171:where(:disabled) {
+    background-color: transparent;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+:where([data-mantine-color-scheme='light']) .m_80b4b171:where(:disabled) {
+      color: var(--mantine-color-gray-4);
+}
+
+:where([data-mantine-color-scheme='dark']) .m_80b4b171:where(:disabled) {
+      color: var(--mantine-color-dark-3);
+}
+
+.m_e2f5cd4e[data-error] :where(.m_80b4b171) {
+    color: var(--mantine-color-error);
+  }
+
+@media (hover: hover) {
+    :where([data-mantine-color-scheme='light']) .m_80b4b171:hover {
+      background-color: var(--mantine-color-gray-0);
+  }
+
+    :where([data-mantine-color-scheme='dark']) .m_80b4b171:hover {
+      background-color: var(--mantine-color-dark-4);
+  }
+}
+
+@media (hover: none) {
+    :where([data-mantine-color-scheme='light']) .m_80b4b171:active {
+      background-color: var(--mantine-color-gray-0);
+  }
+
+    :where([data-mantine-color-scheme='dark']) .m_80b4b171:active {
+      background-color: var(--mantine-color-dark-4);
+  }
+}
+
+.m_80b4b171:where(:first-of-type) {
+    border-radius: 0;
+    border-start-end-radius: var(--control-radius);
+  }
+
+.m_80b4b171:last-of-type {
+    border-radius: 0;
+    border-end-end-radius: var(--control-radius);
+  }
+}

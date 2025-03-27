@@ -1,0 +1,22 @@
+@layer mantine {.m_559cce2d {
+  position: relative;
+}
+
+  .m_559cce2d:where([data-has-spoiler]) {
+    margin-bottom: 24px;
+  }
+
+.m_b912df4e {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: max-height var(--spoiler-transition-duration, 200ms) ease;
+}
+
+.m_b9131032 {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 100%;
+  height: 24px;
+}
+}

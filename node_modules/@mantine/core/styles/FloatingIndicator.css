@@ -1,0 +1,20 @@
+.m_96b553a6 {
+  --transition-duration: 150ms;
+
+  top: 0;
+  left: 0;
+  position: absolute;
+  z-index: 0;
+  transition-property: transform, width, height;
+  transition-timing-function: ease;
+  transition-duration: 0ms;
+}
+
+  .m_96b553a6:where([data-initialized]) {
+    transition-duration: var(--transition-duration);
+  }
+
+  .m_96b553a6:where([data-hidden]) {
+    background-color: red;
+    display: none;
+  }

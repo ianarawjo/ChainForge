@@ -1,0 +1,13 @@
+.m_71ac47fc {
+  --ar-ratio: 1;
+  max-width: 100%;
+}
+
+  .m_71ac47fc > :where(*:not(style)) {
+    aspect-ratio: var(--ar-ratio);
+    width: 100%;
+  }
+
+  .m_71ac47fc > :where(img, video) {
+    object-fit: cover;
+  }

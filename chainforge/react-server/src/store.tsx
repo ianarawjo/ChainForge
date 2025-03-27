@@ -675,20 +675,29 @@ const useStore = create<StoreHandles>((set, get) => ({
                 // eslint-disable-next-line
                 (fid) => src_node.data.fields_visibility[fid] !== false,
                 undefined,
-                src_node.data.fields_is_image ? 
-                  ((fid, val) => src_node.data.fields_is_image[fid] ? IMAGE_IDENTIFIER + val : val) 
-                  : undefined
+                src_node.data.fields_is_image
+                  ? (fid, val) =>
+                      src_node.data.fields_is_image[fid]
+                        ? IMAGE_IDENTIFIER + val
+                        : val
+                  : undefined,
               ),
             );
           // return all field values
-          else return Object.values(transformDict(
-            src_node.data.fields,
-            undefined,
-            undefined,
-            src_node.data.fields_is_image ? 
-                  ((fid, val) => src_node.data.fields_is_image[fid] ? IMAGE_IDENTIFIER + val : val) 
-                  : undefined
-          ));
+          else
+            return Object.values(
+              transformDict(
+                src_node.data.fields,
+                undefined,
+                undefined,
+                src_node.data.fields_is_image
+                  ? (fid, val) =>
+                      src_node.data.fields_is_image[fid]
+                        ? IMAGE_IDENTIFIER + val
+                        : val
+                  : undefined,
+              ),
+            );
         }
       }
       // NOTE: This assumes it's on the 'data' prop, with the same id as the handle:

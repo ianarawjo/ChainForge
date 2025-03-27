@@ -1,0 +1,27 @@
+.m_8b3717df {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.m_f678d540 {
+  line-height: 1;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.m_3b8f2208 {
+  margin-inline: var(--bc-separator-margin, var(--mantine-spacing-xs));
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:where([data-mantine-color-scheme='light']) .m_3b8f2208 {
+    color: var(--mantine-color-gray-7);
+}
+
+:where([data-mantine-color-scheme='dark']) .m_3b8f2208 {
+    color: var(--mantine-color-dark-2);
+}

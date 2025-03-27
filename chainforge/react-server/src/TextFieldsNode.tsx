@@ -247,14 +247,21 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     (field_id: string, val: string, shouldDebounce: boolean) => {
       // Update the value of the controlled Textarea component
       const new_fields = { ...textfieldsValues };
-      new_fields[field_id] = val;
+      
+      // If this is an image field, ensure proper formatting
+      if (fieldIsImage[field_id]) {
+        new_fields[field_id] = val.replace(/%IMAGE%/g, ''); // Remove any existing %IMAGE% prefix
+      } else {
+        new_fields[field_id] = val;
+      }
+      
       setTextfieldsValues(new_fields);
 
       // Update the data for the ReactFlow node
       const new_data = updateTemplateVars({ fields: new_fields });
       if (new_data.vars) setTemplateVars(new_data.vars);
 
-      // Debounce the global state change to happen only after 300ms, as it forces a costly rerender:
+      // Debounce the global state change
       debounce(
         (_id: string, _new_data: TextFieldsNodeData) => {
           setDataPropsForNode(_id, _new_data as Dict);
@@ -272,6 +279,7 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
       pingOutputNodes,
       setDataPropsForNode,
       id,
+      fieldIsImage
     ],
   );
 
@@ -396,7 +404,7 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
       (field_id : string) => {
       setUploadFileInitialVal(field_id);
       if (uploadFileModal && uploadFileModal.current)
-        uploadFileModal.current.trigger();
+        uploadFileModal.current.open();
     }, 
     [uploadFileModal]
   );
@@ -406,14 +414,20 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
       console.error("Initial column value was not set.");
       return;
     }
+    // Clean the URL first by removing any existing %IMAGE% prefix
+    const cleanUrl = new_text.replace(/%IMAGE%/g, '');
+    
     const new_fields = { ...textfieldsValues };
-    new_fields[uploadFileInitialVal] = new_text;
+    new_fields[uploadFileInitialVal] = cleanUrl;
     
     const imgs = { ...fieldIsImage };
-    imgs[uploadFileInitialVal] = true; // toggles it
+    imgs[uploadFileInitialVal] = true;
     setFieldIsImage(imgs);
     setTextfieldsValues(new_fields);
-    setDataPropsForNode(id, { fields_is_image: imgs });
+    setDataPropsForNode(id, { 
+      fields: new_fields,
+      fields_is_image: imgs 
+    });
     pingOutputNodes(id);
   }, [textfieldsValues, pingOutputNodes, setDataPropsForNode, id, uploadFileInitialVal]);
 

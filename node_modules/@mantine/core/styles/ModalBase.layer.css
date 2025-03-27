@@ -1,0 +1,57 @@
+@layer mantine {.m_615af6c9 {
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  font-weight: 400;
+  font-size: var(--mantine-font-size-md);
+}
+
+.m_b5489c3c {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--mb-padding, var(--mantine-spacing-md));
+  padding-inline-end: calc(var(--mb-padding, var(--mantine-spacing-md)) - calc(0.3125rem * var(--mantine-scale)));
+  position: sticky;
+  top: 0;
+  background-color: var(--mantine-color-body);
+  z-index: 1000;
+  min-height: 60px;
+  transition: padding-inline-end 100ms;
+}
+
+.m_60c222c7 {
+  position: fixed;
+  width: 100%;
+  top: 0;
+  bottom: 0;
+  z-index: var(--mb-z-index);
+  pointer-events: none;
+}
+
+.m_fd1ab0aa {
+  pointer-events: all;
+  box-shadow: var(--mb-shadow, var(--mantine-shadow-xl));
+}
+
+.m_fd1ab0aa [data-mantine-scrollbar] {
+    z-index: 1001;
+  }
+
+.m_fd1ab0aa:has([data-mantine-scrollbar][data-state='visible']) .m_b5489c3c {
+    padding-inline-end: calc(var(--mb-padding, var(--mantine-spacing-md)) + calc(0.3125rem * var(--mantine-scale)));
+  }
+
+.m_606cb269 {
+  margin-inline-start: auto;
+}
+
+.m_5df29311 {
+  padding: var(--mb-padding, var(--mantine-spacing-md));
+  padding-top: var(--mb-padding, var(--mantine-spacing-md));
+}
+
+.m_5df29311:where(:not(:only-child)) {
+    padding-top: 0;
+  }
+}

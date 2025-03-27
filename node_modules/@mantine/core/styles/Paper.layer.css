@@ -1,0 +1,21 @@
+@layer mantine {.m_1b7284a3 {
+  --paper-radius: var(--mantine-radius-default);
+
+  outline: 0;
+  -webkit-tap-highlight-color: transparent;
+  display: block;
+  touch-action: manipulation;
+  text-decoration: none;
+  border-radius: var(--paper-radius);
+  box-shadow: var(--paper-shadow);
+  background-color: var(--mantine-color-body);
+}
+
+  :where([data-mantine-color-scheme='light']) .m_1b7284a3:where([data-with-border]) {
+      border: calc(0.0625rem * var(--mantine-scale)) solid var(--mantine-color-gray-3);
+}
+
+  :where([data-mantine-color-scheme='dark']) .m_1b7284a3:where([data-with-border]) {
+      border: calc(0.0625rem * var(--mantine-scale)) solid var(--mantine-color-dark-4);
+}
+}

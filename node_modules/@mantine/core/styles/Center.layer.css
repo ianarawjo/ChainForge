@@ -1,0 +1,10 @@
+@layer mantine {.m_4451eb3a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+  .m_4451eb3a:where([data-inline]) {
+    display: inline-flex;
+  }
+}
