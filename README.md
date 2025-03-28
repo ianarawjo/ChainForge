@@ -15,7 +15,7 @@ ChainForge is a data flow prompt engineering environment for analyzing and evalu
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://flask.palletsprojects.com/en/2.3.x/).
 
-**_For user-curated resources and learning materials on the ChainForge ecosystem, check out the [🌟Awesome ChainForge](https://github.com/loloMD/awesome_chainforge) repo!_**
+**_For user-curated resources and learning materials around ChainForge, check out the [🌟Awesome ChainForge](https://github.com/loloMD/awesome_chainforge) repo!_**
 
 # Table of Contents
 
