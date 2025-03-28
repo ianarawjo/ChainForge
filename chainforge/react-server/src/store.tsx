@@ -96,29 +96,22 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "🤖",
     items: [
       {
-        name: "GPT3.5",
+        name: "GPT-3.5",
         emoji: "🤖",
         model: "gpt-3.5-turbo",
         base_model: "gpt-3.5-turbo",
         temp: 1.0,
       }, // The base_model designates what settings form will be used, and must be unique.
       {
-        name: "GPT4",
+        name: "GPT-4o",
         emoji: "🥵",
-        model: "gpt-4",
-        base_model: "gpt-4",
-        temp: 1.0,
-      },
-      {
-        name: "GPT4o",
-        emoji: "👄",
         model: "gpt-4o",
         base_model: "gpt-4",
         temp: 1.0,
       },
       {
         name: "GPT4o-mini",
-        emoji: "👄",
+        emoji: "🔬",
         model: "gpt-4o-mini",
         base_model: "gpt-4",
         temp: 1.0,
