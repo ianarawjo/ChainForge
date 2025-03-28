@@ -1,6 +1,6 @@
-# ⛓️🛠️ ChainForge
+# ⛓️🛠️ ChainForge 
 
-**An open-source visual programming environment for battle-testing prompts to LLMs.**
+**An open-source visual environment for battle-testing prompts to LLMs.** [![Mentioned in Awesome Chainforge](https://awesome.re/mentioned-badge.svg)](https://github.com/loloMD/awesome_chainforge)
 
 <img width="1517" alt="banner" src="https://github.com/ianarawjo/ChainForge/assets/5251713/570879ef-ef8a-4e00-b37c-b49bc3c1a370">
 
@@ -15,7 +15,8 @@ ChainForge is a data flow prompt engineering environment for analyzing and evalu
 
 ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://flask.palletsprojects.com/en/2.3.x/).
 
-**_For user-curated resources and learning materials, check out the [🌟Awesome ChainForge](https://github.com/loloMD/awesome_chainforge) repo!_**
+**_For user-curated resources and learning materials, check out the [🌟Awesome ChainForge](https://github.com/loloMD/awesome_chainforge) repo!_** 
+
 
 # Table of Contents
 
