@@ -716,6 +716,7 @@ export default class EvaluationFunctionExecutor {
 
         // Calculate alignment for this function based on the graded examples
         for (const example of gradedExamples) {
+          // TODO: Change this to use perCriteriaGrades !! 
           const result = gradedResultMap.get(example.uid)?.get(evalFunction);
           const grade = this.grades.get(example.uid)
             ? EvalFunctionResult.PASS
