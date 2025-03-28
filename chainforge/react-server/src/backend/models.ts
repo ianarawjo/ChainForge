@@ -29,6 +29,11 @@ export enum NativeLLM {
   OpenAI_GPT4_32k = "gpt-4-32k",
   OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
   OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
+  OpenAI_o1 = "o1",
+  OpenAI_o1_mini = "o1-mini",
+  OpenAI_o1_pro = "o1-pro",
+  OpenAI_o3_mini = "o3-mini",
+  OpenAI_GPT4_5_Prev = "gpt-4.5-preview",
 
   // OpenAI Text Completions (deprecated)
   OpenAI_Davinci003 = "text-davinci-003",

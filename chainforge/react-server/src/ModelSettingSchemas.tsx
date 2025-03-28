@@ -55,10 +55,15 @@ const ChatGPTSettings: ModelSettingsDict = {
         description:
           "Select an OpenAI model to query. For more details on the differences, see the OpenAI API documentation.",
         enum: [
-          "gpt-3.5-turbo",
-          "gpt-4-turbo",
           "gpt-4o",
           "gpt-4o-mini",
+          "gpt-4-turbo",
+          "o1",
+          "o1-mini",
+          "o1-pro",
+          "o3-mini",
+          "gpt-4.5-preview",
+          "gpt-3.5-turbo",
           "gpt-4o-2024-05-13",
           "gpt-4o-2024-08-06",
           "chatgpt-4o-latest",
@@ -310,18 +315,18 @@ const GPT4Settings: ModelSettingsDict = {
         title: "Nickname",
         description:
           "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "GPT-4",
+        default: "GPT-4o",
       },
       model: {
         ...ChatGPTSettings.schema.properties.model,
-        default: "gpt-4-turbo",
+        default: "gpt-4o",
       },
     },
   },
   uiSchema: {
     ...ChatGPTSettings.uiSchema,
     model: {
-      "ui:help": "Defaults to gpt-4-turbo.",
+      "ui:help": "Defaults to gpt-4o.",
     },
   },
   postprocessors: ChatGPTSettings.postprocessors,
