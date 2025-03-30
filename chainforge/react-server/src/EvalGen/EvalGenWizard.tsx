@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { EvalCriteria, EvalGenReport } from "../backend/evalgen/typing";
+import {
+  EvalCriteria,
+  EvalFunctionSetReport,
+  EvalGenReport,
+} from "../backend/evalgen/typing";
 import { Dict, LLMResponse, RatingDict } from "../backend/typing";
 import useStore from "../store";
 import { escapeBraces } from "../backend/template";
@@ -112,6 +116,8 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
   const [executor, setExecutor] = useState<EvaluationFunctionExecutor | null>(
     null,
   );
+  const [evalGenReport, setEvalGenReport] =
+    useState<EvalFunctionSetReport | null>(null);
 
   // Logs and state from the EvalGen backend
   const [logs, setLogs] = useState<{ date: Date; message: string }[]>([]);
@@ -138,12 +144,16 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
     await executor?.waitForCompletion();
 
     // Filtering eval funcs by grades and present results
-    const filteredFunctions = await executor?.filterEvaluationFunctions(0.25);
+    const filteredFunctions =
+      (await executor?.filterEvaluationFunctions(0.25)) ?? null;
     console.log("Filtered Functions: ", filteredFunctions);
 
     // Return selected implementations to caller
     // TODO
     console.warn(filteredFunctions);
+
+    setActive(4); // Move to the report card step
+    setEvalGenReport(filteredFunctions);
   }, [executor]);
 
   // Update executor whenever resps, grades, or criteria change
@@ -323,9 +333,10 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
       {active === 4 && (
         <ReportCardStep
           onPrevious={handlePrevious}
-          onComplete={handleComplete}
+          onFinish={handleComplete}
           criteria={criteria}
           setOnNextCallback={setOnNextCallback}
+          report={evalGenReport}
         />
       )}
 

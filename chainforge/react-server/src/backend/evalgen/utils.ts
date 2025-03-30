@@ -421,3 +421,80 @@ function processAndEmitFunction(
 
   emitter.emit("functionGenerated", evalFunction);
 }
+
+/**
+ * Calculates the F1 score based on true positives, false positives, and false negatives.
+ * The F1 score is the harmonic mean of precision and recall.
+ * Precision = TP / (TP + FP)
+ * Recall = TP / (TP + FN)
+ * F1 = 2 * (Precision * Recall) / (Precision + Recall)
+ * @param true_positive The number of true positive predictions
+ * @param false_positive The number of false positive predictions
+ * @param false_negative The number of false negative predictions
+ * @returns The F1 score, or undefined if precision and recall are both zero
+ */
+export function calculateF1Score(
+  true_positive: number,
+  false_positive: number,
+  false_negative: number,
+): number | undefined {
+  const precision = true_positive / (true_positive + false_positive);
+  const recall = true_positive / (true_positive + false_negative);
+  if (precision + recall === 0) return undefined; // Avoid division by zero
+  return (2 * precision * recall) / (precision + recall);
+}
+
+/**
+ * Calculates Matthews correlation coefficient (MCC) based on the confusion matrix values.
+ * ```
+ *  MCC = (TP * TN - FP * FN) / sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
+ * ```
+ * @param true_positive The number of true positive predictions
+ * @param true_negative The number of true negative predictions
+ * @param false_positive The number of false positive predictions
+ * @param false_negative The number of false negative predictions
+ * @returns The Matthews correlation coefficient, or undefined if the denominator is zero
+ */
+export function calculateMCC(
+  true_positive: number,
+  true_negative: number,
+  false_positive: number,
+  false_negative: number,
+): number | undefined {
+  const numerator =
+    true_positive * true_negative - false_positive * false_negative;
+  const denominator = Math.sqrt(
+    (true_positive + false_positive) *
+      (true_positive + false_negative) *
+      (true_negative + false_positive) *
+      (true_negative + false_negative),
+  );
+  if (denominator === 0) return undefined; // Avoid division by zero
+  return numerator / denominator;
+}
+
+/**
+ * Calculates Cohen's Kappa coefficient based on the confusion matrix values.
+ * ```
+ *  Kappa = (Po - Pe) / (1 - Pe)
+ * ```
+ * where Po is the observed agreement and Pe is the expected agreement.
+ * @param TP The number of true positive predictions
+ * @param TN The number of true negative predictions
+ * @param FP The number of false positive predictions
+ * @param FN The number of false negative predictions
+ * @returns The Cohen's Kappa coefficient, or undefined if the denominator is zero
+ */
+export function calculateCohensKappa(
+  TP: number,
+  TN: number,
+  FP: number,
+  FN: number,
+): number | undefined {
+  const numerator = 2 * (TP * TN - FP * FN);
+  const denominator = (TP + FP) * (FP + TN) + (TP + FN) * (FN + TN);
+  if (denominator === 0) {
+    return undefined; // Avoid division by zero
+  }
+  return numerator / denominator;
+}

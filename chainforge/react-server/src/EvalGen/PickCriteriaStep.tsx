@@ -50,7 +50,7 @@ interface PickCriteriaStepProps {
   genAIModelNames: { large: string; small: string };
 }
 
-interface CriteriaCardProps {
+export interface CriteriaCardProps {
   title: string;
   description: string;
   evalMethod: string;
@@ -64,7 +64,7 @@ interface CriteriaCardProps {
   otherFuncs?: EvalFunctionReport[];
 }
 
-const CriteriaCard: React.FC<CriteriaCardProps> = function CriteriaCard({
+export const CriteriaCard: React.FC<CriteriaCardProps> = function CriteriaCard({
   title,
   description,
   evalMethod,
@@ -118,6 +118,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = function CriteriaCard({
       />
     );
   }, [evalFuncReport]);
+
   const reportAccuracyRing = useMemo(() => {
     if (!evalFuncReport) return undefined;
     return {

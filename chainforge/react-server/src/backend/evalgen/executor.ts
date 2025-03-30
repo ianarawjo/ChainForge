@@ -1,4 +1,7 @@
 import {
+  calculateCohensKappa,
+  calculateF1Score,
+  calculateMCC,
   execPyFunc,
   executeLLMEval,
   generateFunctionsForCriteria,
@@ -630,6 +633,114 @@ export default class EvaluationFunctionExecutor {
   }
 
   /**
+   * Given an eval function and the results of that function against the examples (LLM responses),
+   * computes the alignment statistics between the eval function and the user grades.
+   * @param evalFunc
+   * @returns A Report, assuming the the function has been executed over some examples and the user has provided grades for those examples. If there's not enough data, returns undefined.
+   */
+  public computeAlignmentStats(
+    evalFunc: EvalFunction,
+  ): EvalFunctionReport | undefined {
+    // Get the eval function results from the cache
+    const results = this.resultsCache.get(evalFunc);
+    if (results === undefined) {
+      console.warn(
+        "No cache results found for this eval function. First ensure that the function has been executed over some examples.",
+      );
+      return undefined;
+    }
+
+    // Get a reference to the perCriteria grades for this eval function
+    const criteriaId = evalFunc.evalCriteria.uid;
+    if (!(criteriaId in this.perCriteriaGrades)) {
+      console.warn(
+        "No user grades found for this eval criteria. You must first grade some examples against this criteria (thumbs up/down) before we can compute alignment.",
+      );
+      return undefined;
+    }
+    // The perCriteriaGrades is a map of ResponseUID to boolean (user grade true/false)
+    // or undefined (no user grade for that example).
+    const userGradedExamples = this.perCriteriaGrades[criteriaId];
+
+    // Now `evalFuncResults` is a Map<ResponseUID, EvalFunctionResult>.
+    // We can compute the alignment stats across all examples.
+    // First, create a report for this function
+    const report: EvalFunctionReport = {
+      evalFunction: evalFunc,
+      true_pass: 0,
+      true_fail: 0,
+      false_pass: 0,
+      false_fail: 0,
+      skipped: 0,
+    };
+
+    // Calculate alignment for this function based on the graded examples
+    Object.entries(userGradedExamples).forEach(([exampleId, grade]) => {
+      if (grade === undefined) return; // Skip if user provides no grade for this example
+      const result = results.get(exampleId);
+      const userGrade = grade
+        ? EvalFunctionResult.PASS
+        : EvalFunctionResult.FAIL;
+
+      if (result !== undefined) {
+        // Handle true positives and true negatives
+        if (result === userGrade) {
+          if (result === EvalFunctionResult.PASS) {
+            report.true_pass++;
+          } else if (result === EvalFunctionResult.FAIL) {
+            report.true_fail++;
+          }
+        } else {
+          if (result === EvalFunctionResult.PASS) {
+            report.false_pass++;
+          } else if (result === EvalFunctionResult.FAIL) {
+            report.false_fail++;
+          } else {
+            report.skipped++;
+          }
+        }
+      }
+    });
+
+    // Calculate alignment in different ways
+    // NOTE: If a denominator during the calculate is 0, this will set the score to undefined.
+    report.f1 = calculateF1Score(
+      report.true_pass,
+      report.false_pass,
+      report.false_fail,
+    );
+    report.mcc = calculateMCC(
+      report.true_pass,
+      report.true_fail,
+      report.false_pass,
+      report.false_fail,
+    );
+    report.cohens_kappa = calculateCohensKappa(
+      report.true_pass,
+      report.true_fail,
+      report.false_pass,
+      report.false_fail,
+    );
+
+    // Calculate failure coverage
+    const failureCoverage =
+      report.true_fail + report.false_pass > 0
+        ? report.true_fail / (report.true_fail + report.false_pass)
+        : 0.0; // 0.0 if there are no failures to detect
+
+    // Calculate false failure rate
+    const falseFailureRate =
+      report.true_pass + report.false_fail > 0
+        ? report.false_fail / (report.true_pass + report.false_fail)
+        : 0.0; // Default to 0.0 if there are no examples that could trigger false failures
+
+    report.failureCoverage = failureCoverage;
+    report.falseFailureRate = falseFailureRate;
+
+    return report;
+  }
+
+  /**
    * Filters out evaluation functions that are incorrect based on the grades provided by the developer.
    *
    * @param falseFailureRateThreshold The threshold for the failure rate of each selected evaluation functions. The returned function set will only contain functions with a false failure rate below this threshold.
@@ -682,12 +793,6 @@ export default class EvaluationFunctionExecutor {
       gradedResultMap.set(example.uid, row);
     }
 
-    const numFailGrades = gradedExamples.filter(
-      (example) => !this.grades.get(example.uid),
-    ).length;
-    const numPassGrades = gradedExamples.filter((example) =>
-      this.grades.get(example.uid),
-    ).length;
     const bestEvalFunctions: EvalFunction[] = [];
     const evalFunctionReport: Map<EvalCriteria, EvalFunctionReport[]> =
       new Map();
@@ -695,7 +800,7 @@ export default class EvaluationFunctionExecutor {
     // Iterate through each criteria
     // For each criteria, select the function with the highest alignment rate
     for (const criteria of this.evalCriteria) {
-      let scoredFunctions = [];
+      const scoredFunctions = [];
 
       for (const evalFunction of this.evalFunctions) {
         // Skip functions that don't match the criteria
@@ -704,60 +809,8 @@ export default class EvaluationFunctionExecutor {
         }
 
         // Create a report for this function
-        const report: EvalFunctionReport = {
-          evalFunction,
-          true_pass: 0,
-          true_fail: 0,
-          false_pass: 0,
-          false_fail: 0,
-          alignment: 0,
-          skipped: 0,
-        };
-
-        // Calculate alignment for this function based on the graded examples
-        for (const example of gradedExamples) {
-          // TODO: Change this to use perCriteriaGrades !! 
-          const result = gradedResultMap.get(example.uid)?.get(evalFunction);
-          const grade = this.grades.get(example.uid)
-            ? EvalFunctionResult.PASS
-            : EvalFunctionResult.FAIL;
-
-          if (result !== undefined) {
-            // Handle true positives and true negatives
-            if (result === grade) {
-              if (result === EvalFunctionResult.PASS) {
-                report.true_pass++;
-              } else if (result === EvalFunctionResult.FAIL) {
-                report.true_fail++;
-              }
-            } else {
-              if (result === EvalFunctionResult.PASS) {
-                report.false_pass++;
-              } else if (result === EvalFunctionResult.FAIL) {
-                report.false_fail++;
-              } else {
-                report.skipped++;
-              }
-            }
-          }
-        }
-
-        // Calculate coverage
-        const failureCoverage =
-          numFailGrades > 0
-            ? report.true_fail / (report.true_fail + report.false_pass)
-            : 1.0;
-
-        // Calculate false failure rate
-        const falseFailureRate =
-          report.false_fail / (report.true_pass + report.false_fail);
-
-        // The alignment is the F1 score of failure coverage and 1 - false failure rate
-        report.alignment =
-          numFailGrades > 0 || numPassGrades > 0
-            ? (2 * failureCoverage * (1 - falseFailureRate)) /
-              (failureCoverage + (1 - falseFailureRate))
-            : undefined;
+        const report: EvalFunctionReport | undefined =
+          this.computeAlignmentStats(evalFunction);
 
         // Save the report for this function
         if (!evalFunctionReport.has(criteria)) {
@@ -768,33 +821,41 @@ export default class EvaluationFunctionExecutor {
 
         scoredFunctions.push({
           evalFunction,
-          failureCoverage,
-          falseFailureRate:
-            report.false_fail / (report.true_pass + report.false_fail),
+          report,
         });
       }
 
-      // See if we can filter out functions with ffr > threshold
-      const numFunctionsBelowThreshold = scoredFunctions.filter(
-        (func) => func.falseFailureRate <= falseFailureRateThreshold,
-      ).length;
-      if (numFunctionsBelowThreshold > 0) {
-        // Filter out functions with ffr > threshold
-        scoredFunctions = scoredFunctions.filter(
-          (func) => func.falseFailureRate <= falseFailureRateThreshold,
-        );
-      }
-
-      // Save the best function for this criteria
-      // Maximize failure coverage and minimize false failure rate
+      // Sort the functions by "alignment"
+      // Here, we are using MCC as the alignment metric, where higher is better.
       scoredFunctions.sort((a, b) => {
-        if (a.failureCoverage === b.failureCoverage) {
-          return a.falseFailureRate - b.falseFailureRate;
+        const a_mcc = a.report?.mcc ?? -1; // If undefined, set to -1, which is lowest possible.
+        const b_mcc = b.report?.mcc ?? -1;
+        if (a_mcc === b_mcc) {
+          // If MCC is the same or not present, sort by false failure rate
+          return (
+            (a.report?.falseFailureRate ?? 0) -
+            (b.report?.falseFailureRate ?? 0)
+          );
         }
-        return b.failureCoverage - a.failureCoverage;
+        return b_mcc - a_mcc; // Sort by MCC descending
       });
 
+      // // See if we can filter out functions with ffr > threshold
+      // const funcsBelowThreshold = scoredFunctions.filter(
+      //   (func) => func.report?.falseFailureRate !== undefined && func.report?.falseFailureRate <= falseFailureRateThreshold,
+      // );
+
+      // // Save the best function for this criteria
+      // // Maximize failure coverage and minimize false failure rate
+      // funcsBelowThreshold.sort((a, b) => {
+      //   if (a.report?.failureCoverage === b.report?.failureCoverage) {
+      //     return a.report?.falseFailureRate - b.report?.falseFailureRate;
+      //   }
+      //   return b.failureCoverage - a.failureCoverage;
+      // });
+
       if (scoredFunctions.length > 0) {
+        // The top result is the 'best' / most aligned function
         bestEvalFunctions.push(scoredFunctions[0].evalFunction);
       }
     }

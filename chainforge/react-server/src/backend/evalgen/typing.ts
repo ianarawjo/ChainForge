@@ -45,7 +45,11 @@ export interface EvalFunctionReport {
   false_pass: number;
   false_fail: number;
   skipped: number;
-  alignment?: number;
+  mcc?: number; // Matthews correlation coefficient, which is a measure of the quality of binary classifications
+  f1?: number; // F1 score, which is the harmonic mean of precision and recall
+  cohens_kappa?: number; // Cohen's kappa, which is a measure of inter-rater agreement
+  failureCoverage?: number; // The percentage of failures that were covered by the eval function
+  falseFailureRate?: number; // The percentage of false failures
 }
 
 export interface EvalFunctionSetReport {
