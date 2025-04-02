@@ -339,7 +339,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     columnResizeMode: "onEnd",
     enableStickyHeader: true,
     initialState: { density: "md", pagination: { pageSize: 30, pageIndex: 0 } },
-    mantineTableHeadCellProps: ({}) => ({
+    mantineTableHeadCellProps: () => ({
       style: {
         paddingTop: "0px",
       },
