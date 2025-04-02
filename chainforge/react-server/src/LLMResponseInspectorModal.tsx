@@ -46,7 +46,7 @@ const LLMResponseInspectorModal = forwardRef<
 
   return (
     <Modal
-      size="90%"
+      size="95%"
       keepMounted
       opened={opened}
       onClose={close}
