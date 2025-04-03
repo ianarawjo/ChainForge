@@ -221,10 +221,10 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
 
-  const flags = useStore((state) => state.flags);
-  const AI_SUPPORT_ENABLED = useMemo(() => {
-    return flags.aiSupport;
-  }, [flags]);
+  // const flags = useStore((state) => state.flags);
+  // const AI_SUPPORT_ENABLED = useMemo(() => {
+  //   return flags.aiSupport;
+  // }, [flags]);
 
   const [status, setStatus] = useState<Status>(Status.NONE);
   // For displaying error messages to user
