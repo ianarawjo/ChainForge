@@ -2570,7 +2570,6 @@ export const ensureUniqueName = (_name: string, _prev_names: string[]) => {
   return new_name;
 };
 
-
 // This function takes a string as argument that represents either :
 //  - a local path
 //  - a URL

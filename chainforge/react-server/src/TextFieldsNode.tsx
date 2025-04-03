@@ -200,16 +200,16 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     const new_fields = { ...textfieldsValues };
     const new_uid = getUID(textfieldsValues);
     new_fields[new_uid] = "";
-    
+
     // Initialize fields_is_image for the new field
     const new_imgs = { ...fieldIsImage };
     new_imgs[new_uid] = false;
-    
+
     setTextfieldsValues(new_fields);
     setFieldIsImage(new_imgs);
-    setDataPropsForNode(id, { 
+    setDataPropsForNode(id, {
       fields: new_fields,
-      fields_is_image: new_imgs
+      fields_is_image: new_imgs,
     });
     pingOutputNodes(id);
 
@@ -220,7 +220,14 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     // Ping AI suggestions to generate autocomplete options
     if (flags.aiAutocomplete)
       aiSuggestionsManager.update(Object.values(textfieldsValues));
-  }, [textfieldsValues, id, flags, setDataPropsForNode, pingOutputNodes, fieldIsImage]);
+  }, [
+    textfieldsValues,
+    id,
+    flags,
+    setDataPropsForNode,
+    pingOutputNodes,
+    fieldIsImage,
+  ]);
 
   // Disable/hide a text field temporarily
   const handleDisableField = useCallback(

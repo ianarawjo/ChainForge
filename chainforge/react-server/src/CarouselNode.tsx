@@ -30,7 +30,9 @@ interface CarouselNodeProps {
 
 const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
-  const [fields, setFields] = useState<{ [key: string]: string }>(data.fields || {});
+  const [fields, setFields] = useState<{ [key: string]: string }>(
+    data.fields || {},
+  );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fieldVisibility, setFieldVisibility] = useState<{
     [key: string]: boolean;
@@ -50,13 +52,13 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
       // Clean the URL by removing any existing %IMAGE% prefix
       const cleanUrl = url.replace(/%IMAGE%/g, "");
       const newFieldId = `image_${Object.keys(fields).length}`;
-      
+
       const newFields = { ...fields, [newFieldId]: cleanUrl };
       setFields(newFields);
-      
+
       const newFieldIsImage = { ...fieldIsImage, [newFieldId]: true };
       setFieldIsImage(newFieldIsImage);
-      
+
       setDataPropsForNode(id, {
         ...data,
         fields: newFields,
@@ -92,40 +94,50 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
   const handleToggleVisibility = useCallback(() => {
     const fieldIds = Object.keys(fields);
     const currentFieldId = fieldIds[currentIndex];
-    
+
     const newVisibility = { ...fieldVisibility };
     newVisibility[currentFieldId] = !newVisibility[currentFieldId];
     setFieldVisibility(newVisibility);
-    
+
     setDataPropsForNode(id, {
       ...data,
       fields_visibility: newVisibility,
       fields_is_image: fieldIsImage,
       value: `{@IMG}`,
     });
-  }, [currentIndex, fields, fieldVisibility, fieldIsImage, id, data, setDataPropsForNode]);
+  }, [
+    currentIndex,
+    fields,
+    fieldVisibility,
+    fieldIsImage,
+    id,
+    data,
+    setDataPropsForNode,
+  ]);
 
   const handleRemoveImage = useCallback(() => {
     if (Object.keys(fields).length <= 1) return;
-    
+
     const fieldIds = Object.keys(fields);
     const currentFieldId = fieldIds[currentIndex];
-    
+
     const newFields = { ...fields };
     delete newFields[currentFieldId];
     setFields(newFields);
-    
+
     const newVisibility = { ...fieldVisibility };
     const newFieldIsImage = { ...fieldIsImage };
     delete newVisibility[currentFieldId];
     delete newFieldIsImage[currentFieldId];
-    
+
     setFieldVisibility(newVisibility);
     setFieldIsImage(newFieldIsImage);
     setCurrentIndex((prev) =>
-      prev >= Object.keys(newFields).length ? Object.keys(newFields).length - 1 : prev,
+      prev >= Object.keys(newFields).length
+        ? Object.keys(newFields).length - 1
+        : prev,
     );
-    
+
     setDataPropsForNode(id, {
       ...data,
       fields: newFields,
@@ -133,7 +145,15 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
       fields_is_image: newFieldIsImage,
       value: `{@IMG}`,
     });
-  }, [fields, currentIndex, fieldVisibility, fieldIsImage, id, data, setDataPropsForNode]);
+  }, [
+    fields,
+    currentIndex,
+    fieldVisibility,
+    fieldIsImage,
+    id,
+    data,
+    setDataPropsForNode,
+  ]);
 
   const getTemplateValue = useCallback(() => {
     if (!Object.keys(fields).length) return "";
@@ -204,7 +224,9 @@ const CarouselNode: React.FC<CarouselNodeProps> = ({ data, id }) => {
                       withPlaceholder
                       style={{
                         opacity:
-                          fieldVisibility[images[currentIndex]] === false ? 0.3 : 1,
+                          fieldVisibility[images[currentIndex]] === false
+                            ? 0.3
+                            : 1,
                         backgroundColor: "#f8f9fa",
                         margin: "0 auto",
                       }}
