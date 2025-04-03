@@ -1,7 +1,0 @@
-.m_6d731127 {
-  display: flex;
-  flex-direction: column;
-  align-items: var(--stack-align, stretch);
-  justify-content: var(--stack-justify, flex-start);
-  gap: var(--stack-gap, var(--mantine-spacing-md));
-}
