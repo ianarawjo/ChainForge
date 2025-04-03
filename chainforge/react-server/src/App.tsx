@@ -36,6 +36,7 @@ import {
   IconForms,
   IconAbacus,
   IconDeviceFloppy,
+  IconPhoto,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -65,6 +66,7 @@ import { v4 as uuid } from "uuid";
 import axios from "axios";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
+import CarouselNode from "./CarouselNode";
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
@@ -191,6 +193,7 @@ const nodeTypes = {
   join: JoinNode,
   split: SplitNode,
   processor: CodeEvaluatorNode,
+  carouselNode: CarouselNode,
 };
 
 const edgeTypes = {
@@ -227,13 +230,13 @@ const getWindowCenter = () => {
   return { centerX: width / 2.0, centerY: height / 2.0 };
 };
 
-const MenuTooltip = ({
-  label,
-  children,
-}: {
+// Add this component definition before the App component
+interface MenuTooltipProps {
   label: string;
   children: React.ReactNode;
-}) => {
+}
+
+const MenuTooltip: React.FC<MenuTooltipProps> = ({ label, children }) => {
   return (
     <Tooltip
       label={label}
@@ -1085,8 +1088,8 @@ const App = () => {
     hideContextMenu,
   ]);
 
-  const addNodeMenu = useMemo(
-    () => (
+  const addNodeMenu = useMemo(() => {
+    return (
       <Menu
         transitionProps={{ transition: "pop-top-left" }}
         position="top-start"
@@ -1276,6 +1279,15 @@ const App = () => {
               Split Node{" "}
             </Menu.Item>
           </MenuTooltip>
+          <MenuTooltip label="Create an image carousel to display multiple images.">
+            <Menu.Item
+              onClick={() => addNode("carouselNode")}
+              icon={<IconPhoto size="16px" />}
+            >
+              {" "}
+              Multimedia Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
           <Menu.Divider />
           <Menu.Label>Misc</Menu.Label>
           <MenuTooltip label="Make a comment about your flow.">
@@ -1299,9 +1311,8 @@ const App = () => {
           )}
         </Menu.Dropdown>
       </Menu>
-    ),
-    [addNode],
-  );
+    );
+  }, [addNode]);
 
   const saveMessage = useMemo(() => {
     if (isSaving) return "Saving...";
@@ -1512,7 +1523,7 @@ const App = () => {
           }}
         >
           <a
-            href="https://forms.gle/AA82Rbn1X8zztcbj8"
+            href="https://forms.gle/qhr7T2Fe8gYJF16fA"
             target="_blank"
             style={{ color: "#666", fontSize: "11pt" }}
             rel="noreferrer"

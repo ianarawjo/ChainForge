@@ -29,6 +29,11 @@ export enum NativeLLM {
   OpenAI_GPT4_32k = "gpt-4-32k",
   OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
   OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
+  OpenAI_o1 = "o1",
+  OpenAI_o1_mini = "o1-mini",
+  OpenAI_o1_pro = "o1-pro",
+  OpenAI_o3_mini = "o3-mini",
+  OpenAI_GPT4_5_Prev = "gpt-4.5-preview",
 
   // OpenAI Text Completions (deprecated)
   OpenAI_Davinci003 = "text-davinci-003",
@@ -57,6 +62,8 @@ export enum NativeLLM {
   Claude_v3_5_sonnet_latest = "claude-3-5-sonnet-latest",
   Claude_v3_5_sonnet = "claude-3-5-sonnet-20240620",
   Claude_v3_5_haiku_latest = "claude-3-5-haiku-latest",
+  Claude_v3_7_sonnet_latest = "claude-3-7-sonnet-latest",
+  Claude_v3_7_sonnet_20250219 = "claude-3-7-sonnet-20250219",
   Claude_v3_haiku = "claude-3-haiku-20240307",
   Claude_v2_1 = "claude-2.1",
   Claude_v2 = "claude-2",

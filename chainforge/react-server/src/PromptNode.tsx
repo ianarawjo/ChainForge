@@ -1339,7 +1339,7 @@ Soft failing by replacing undefined with empty strings.`,
         Math.min(prompts.length - 1, idxPromptVariantShown + shift),
       ); // clamp
       setIdxPromptVariantShown(newIdx);
-      resizeTextarea();
+      // resizeTextarea();
     },
     [promptText, idxPromptVariantShown],
   );
@@ -1355,7 +1355,7 @@ Soft failing by replacing undefined with empty strings.`,
         // We have to force an update here since idxPromptVariantShown might've not changed
         // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
         textAreaRef.current.value = prompts[newIdx];
-        resizeTextarea();
+        // resizeTextarea();
       }
 
       return [...prompts];
@@ -1367,7 +1367,7 @@ Soft failing by replacing undefined with empty strings.`,
     if (textAreaRef.current && Array.isArray(promptText)) {
       // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
       textAreaRef.current.value = promptText[idxPromptVariantShown];
-      resizeTextarea();
+      // resizeTextarea();
     }
   }, [idxPromptVariantShown]);
 

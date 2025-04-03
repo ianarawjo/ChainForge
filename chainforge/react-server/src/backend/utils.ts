@@ -2521,51 +2521,6 @@ export const compressBase64Image = (b64: string): Promise<string> => {
     .then((compressedBlob) => blobToBase64(compressedBlob as Blob));
 };
 
-// This function takes a string as argument that represents either :
-//  - a local path
-//  - a URL
-//  - a base64 encoded string
-// and return ithe following infos about the image:
-//  - size : the size of the image in bytes
-//  - width : the width of the image in pixels
-//  - height : the height of the image in pixels
-//  - type : the type of the image (png, jpeg, ...)
-export const get_image_infos = (image: string): Dict<string> => {
-  const infos: Dict<string> = {
-    size: "",
-    width: "",
-    height: "",
-    type: "",
-  };
-
-  if (image.startsWith("data:image")) {
-    // Base64 image
-    const base64 = image.split(",")[1];
-    const binary = atob(base64);
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    const blob = new Blob([bytes.buffer], { type: "image/png" });
-    infos.size = blob.size.toString();
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.src = url;
-    infos.width = img.width.toString();
-    infos.height = img.height.toString();
-    URL.revokeObjectURL(url);
-  } else {
-    // URL or local path
-    const img = new Image();
-    img.src = image;
-    infos.width = img.width.toString();
-    infos.height = img.height.toString();
-  }
-
-  return infos;
-};
-
 /**
  * Extends array `a` with the values of `b`.
  * @param a The array to extend (in-place).
@@ -2613,4 +2568,49 @@ export const ensureUniqueName = (_name: string, _prev_names: string[]) => {
     new_name = `${name} (${i})`;
   }
   return new_name;
+};
+
+// This function takes a string as argument that represents either :
+//  - a local path
+//  - a URL
+//  - a base64 encoded string
+// and return ithe following infos about the image:
+//  - size : the size of the image in bytes
+//  - width : the width of the image in pixels
+//  - height : the height of the image in pixels
+//  - type : the type of the image (png, jpeg, ...)
+export const get_image_infos = (image: string): Dict<string> => {
+  const infos: Dict<string> = {
+    size: "",
+    width: "",
+    height: "",
+    type: "",
+  };
+
+  if (image.startsWith("data:image")) {
+    // Base64 image
+    const base64 = image.split(",")[1];
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([bytes.buffer], { type: "image/png" });
+    infos.size = blob.size.toString();
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.src = url;
+    infos.width = img.width.toString();
+    infos.height = img.height.toString();
+    URL.revokeObjectURL(url);
+  } else {
+    // URL or local path
+    const img = new Image();
+    img.src = image;
+    infos.width = img.width.toString();
+    infos.height = img.height.toString();
+  }
+
+  return infos;
 };

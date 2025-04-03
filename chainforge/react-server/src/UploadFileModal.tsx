@@ -155,7 +155,8 @@ export interface UploadFileModalProps {
 }
 
 export interface UploadFileModalRef {
-  trigger: (msg?: string) => void;
+  open: () => void;
+  close: () => void;
 }
 
 /** Modal that lets user upload a single file, usin a TextInput field OR a dropdown field. */
@@ -214,7 +215,8 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
       open();
     };
     useImperativeHandle(ref, () => ({
-      trigger,
+      open,
+      close,
     }));
 
     return (

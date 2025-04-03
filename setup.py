@@ -6,7 +6,7 @@ def readme():
 
 setup(
     name="chainforge",
-    version="0.3.4.5",
+    version="0.3.4.8",
     packages=find_packages(),
     author="Ian Arawjo",
     description="A Visual Programming Environment for Prompt Engineering",

@@ -22,6 +22,7 @@ import {
   TextInput,
   Stack,
   LoadingOverlay,
+  Box,
 } from "@mantine/core";
 import { useToggle } from "@mantine/hooks";
 import {
@@ -29,6 +30,7 @@ import {
   IconLayoutList,
   IconLetterCaseToggle,
   IconFilter,
+  IconChartBar,
 } from "@tabler/icons-react";
 import {
   MantineReactTable,
@@ -65,6 +67,7 @@ import {
   isImageResponseData,
 } from "./backend/typing";
 import { StringLookup } from "./backend/cache";
+import { VisView } from "./VisNode";
 
 // Helper funcs
 const getLLMName = (resp_obj: LLMResponse) =>
@@ -336,6 +339,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     columnResizeMode: "onEnd",
     enableStickyHeader: true,
     initialState: { density: "md", pagination: { pageSize: 30, pageIndex: 0 } },
+    mantineTableHeadCellProps: () => ({
+      style: {
+        paddingTop: "0px",
+      },
+    }),
     renderToolbarInternalActions: ({ table }) => (
       <>
         {/* built-in buttons (must pass in table prop for them to work!) */}
@@ -1047,6 +1055,10 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         // Produce DIV elements grouped by selected vars
         const divs = groupByVars(responses, selected_vars, [], null);
         setResponseDivs(divs);
+      } else if (showEvalScoreOptions && viewFormat === "vis") {
+        // Plot view (only present if eval scores are present)
+        const visView = <VisView responses={responses} wideFormat />;
+        setResponseDivs(visView);
       }
     });
   };
@@ -1147,6 +1159,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       <Tabs
         value={viewFormat}
         onTabChange={(val) => {
+          if (viewFormat === val) return;
+          setResponseDivs([]);
+          setShowLoadingSpinner(true);
           setViewFormat(val ?? "hierarchy");
         }}
         styles={{ tabLabel: { fontSize: wideFormat ? "12pt" : "9pt" } }}
@@ -1166,6 +1181,17 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             />
             {wideFormat ? " Table View" : ""}
           </Tabs.Tab>
+          {showEvalScoreOptions && wideFormat ? (
+            <Tabs.Tab value="vis">
+              <IconChartBar
+                size="10pt"
+                style={{ marginBottom: wideFormat ? "0px" : "-4px" }}
+              />
+              {wideFormat ? " Vis View" : ""}
+            </Tabs.Tab>
+          ) : (
+            <></>
+          )}
         </Tabs.List>
 
         <Tabs.Panel value="hierarchy" pt="xs">
@@ -1196,12 +1222,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             />
           </Flex>
         </Tabs.Panel>
-        <Tabs.Panel value="table" pt="xs">
+        <Tabs.Panel value="table" pt="0px">
           <></>
         </Tabs.Panel>
       </Tabs>
 
-      <div className="nowheel nodrag" style={{ height: "800px" }}>
+      <div className="nowheel nodrag" style={{ minHeight: "800px" }}>
         {/* To get the overlay to operate just inside the div, use style={{position: "relative"}}. However it won't show the spinner in the right place. */}
         <LoadingOverlay
           visible={showLoadingSpinner || (isOpen && !isOpenDelayed)}

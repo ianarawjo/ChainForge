@@ -1,19 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Edge, Handle, Position, useUpdateNodeInternals } from "reactflow";
-import { Badge, Text, Switch } from "@mantine/core";
+import { Badge, Text } from "@mantine/core";
 import useStore from "./store";
-import { IconSettings, IconImageInPicture } from "@tabler/icons-react";
-import { Dict } from "./backend/typing";
+import { IconSettings } from "@tabler/icons-react";
 
 const SETTINGS_ICON = (
   <IconSettings
-    size="14px"
-    style={{ paddingTop: "2px", marginLeft: "2px", marginRight: "0px" }}
-  />
-);
-
-const IMAGE_ICON = (
-  <IconImageInPicture
     size="14px"
     style={{ paddingTop: "2px", marginLeft: "2px", marginRight: "0px" }}
   />
@@ -86,23 +78,13 @@ export default function TemplateHooks({
       const handle_type = pos === Position.Left ? "target" : "source";
       return temp_var_names.map((name, idx) => {
         const is_settings_var = name.charAt(0) === "=";
-        let color = is_settings_var ? "orange" : "indigo";
-        const is_image_var = name.charAt(0) === "@";
-        let badge_name = is_settings_var ? (
+        const badge_name = is_settings_var ? (
           <Text display="flex" align="center">
             {name.substring(1)} {SETTINGS_ICON}
           </Text>
         ) : (
           name
         );
-        if (is_image_var) {
-          badge_name = (
-            <Text display="flex" align="center">
-              {name.substring(1)} {IMAGE_ICON}
-            </Text>
-          );
-          color = "yellow";
-        }
         const className = names_to_blink.includes(name)
           ? "hook-tag text-blink"
           : "hook-tag";
@@ -114,7 +96,7 @@ export default function TemplateHooks({
             style={{ display: "flex", justifyContent: pos }}
           >
             <Badge
-              color={color}
+              color={is_settings_var ? "orange" : "indigo"}
               size="md"
               radius="sm"
               style={{ textTransform: "none" }}
