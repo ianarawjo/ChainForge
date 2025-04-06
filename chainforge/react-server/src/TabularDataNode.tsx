@@ -603,12 +603,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   };
 
   return (
-    <BaseNode
-      classNames="tabular-data-node"
-      nodeId={id}
-      // @ts-expect-error onPointerDown does exist here, on the base element, though TypeScript is not catching this.
-      onPointerDown={() => setContextMenuOpened(false)}
-    >
+    <BaseNode classNames="tabular-data-node" nodeId={id}>
       <NodeLabel
         title={data.title || "Tabular Data Node"}
         nodeId={id}

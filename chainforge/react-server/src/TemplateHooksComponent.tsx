@@ -2,10 +2,18 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Edge, Handle, Position, useUpdateNodeInternals } from "reactflow";
 import { Badge, Text } from "@mantine/core";
 import useStore from "./store";
-import { IconSettings } from "@tabler/icons-react";
+import { IconSettings, IconImageInPicture } from "@tabler/icons-react";
+import { IMAGE_COLUMN_NAME } from "./MultimediaNode";
 
 const SETTINGS_ICON = (
   <IconSettings
+    size="14px"
+    style={{ paddingTop: "2px", marginLeft: "2px", marginRight: "0px" }}
+  />
+);
+
+const IMAGE_ICON = (
+  <IconImageInPicture
     size="14px"
     style={{ paddingTop: "2px", marginLeft: "2px", marginRight: "0px" }}
   />
@@ -78,13 +86,24 @@ export default function TemplateHooks({
       const handle_type = pos === Position.Left ? "target" : "source";
       return temp_var_names.map((name, idx) => {
         const is_settings_var = name.charAt(0) === "=";
-        const badge_name = is_settings_var ? (
+        let color = is_settings_var ? "orange" : "indigo";
+        // check if we are on a MultimediaNode and if the name is 'Image'
+        const is_image_var = name === IMAGE_COLUMN_NAME; // TODO: add more condition i.e. if the node is a CarousselTabularDataNode
+        let badge_name = is_settings_var ? (
           <Text display="flex" align="center">
             {name.substring(1)} {SETTINGS_ICON}
           </Text>
         ) : (
           name
         );
+        if (is_image_var) {
+          badge_name = (
+            <Text display="flex" align="center">
+              {name} {IMAGE_ICON}
+            </Text>
+          );
+          color = "yellow";
+        }
         const className = names_to_blink.includes(name)
           ? "hook-tag text-blink"
           : "hook-tag";
@@ -96,7 +115,7 @@ export default function TemplateHooks({
             style={{ display: "flex", justifyContent: pos }}
           >
             <Badge
-              color={is_settings_var ? "orange" : "indigo"}
+              color={color}
               size="md"
               radius="sm"
               style={{ textTransform: "none" }}

@@ -42,7 +42,11 @@ import { LLMListContainer, LLMListContainerRef } from "./LLMListComponent";
 import LLMResponseInspectorModal, {
   LLMResponseInspectorModalRef,
 } from "./LLMResponseInspectorModal";
-import { PromptTemplate, escapeBraces } from "./backend/template";
+import {
+  IMAGE_IDENTIFIER,
+  PromptTemplate,
+  escapeBraces,
+} from "./backend/template";
 import ChatHistoryView from "./ChatHistoryView";
 import InspectFooter from "./InspectFooter";
 import {
@@ -131,7 +135,35 @@ const displayPromptInfos = (
             <hr />
           </Text>
         )}
-        {info.prompt}
+        {info.prompt.includes(IMAGE_IDENTIFIER) ? (
+          info.prompt.split("\n").map((line, i) => {
+            if (line.includes(IMAGE_IDENTIFIER)) {
+              const imageUrl = line.split(IMAGE_IDENTIFIER)[1];
+              return (
+                <img
+                  key={i}
+                  src={imageUrl}
+                  alt="Image"
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "100%",
+                    marginBottom: "8px",
+                  }}
+                />
+              );
+            } else {
+              return (
+                <Text key={i} size="xs" c="black">
+                  {line}
+                </Text>
+              );
+            }
+          })
+        ) : (
+          <Text size="xs" c="black">
+            {info.prompt}
+          </Text>
+        )}
       </div>
       {info.settings &&
         Object.entries(info.settings).map(([key, val]) => {

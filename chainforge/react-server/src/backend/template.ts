@@ -316,7 +316,13 @@ export class PromptTemplate {
       // Recreate the param dict from just the 'text' property of the fill object
       const newParamDict: Dict<StringOrHash> = {};
       Object.entries(paramDict).forEach(([param, obj]) => {
-        newParamDict[param] = (obj as TemplateVarInfo).text as StringOrHash;
+        obj = obj as TemplateVarInfo;
+        // Acces `text` property of the object, if it exists, otherwise access `image` property
+        if (obj.text) {
+          newParamDict[param] = obj.text as StringOrHash;
+        } else {
+          newParamDict[param] = (IMAGE_IDENTIFIER + obj.image) as StringOrHash;
+        }
       });
       paramDict = newParamDict;
     }

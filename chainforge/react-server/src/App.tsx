@@ -67,6 +67,7 @@ import axios from "axios";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
 import CarouselNode from "./CarouselNode";
+import CarousselTabularDataNode from "./MultimediaNode";
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
@@ -193,7 +194,7 @@ const nodeTypes = {
   join: JoinNode,
   split: SplitNode,
   processor: CodeEvaluatorNode,
-  carouselNode: CarouselNode,
+  multimedia: CarousselTabularDataNode,
 };
 
 const edgeTypes = {
@@ -1128,6 +1129,15 @@ const App = () => {
             <Menu.Item onClick={() => addNode("table")} icon={"🗂️"}>
               {" "}
               Tabular Data Node{" "}
+            </Menu.Item>
+          </MenuTooltip>
+          <MenuTooltip label="Multimedia input node.">
+            <Menu.Item
+              onClick={() => addNode("multimediaNode", "multimedia")}
+              icon={"📺"}
+            >
+              {" "}
+              Multimedia Node{" "}
             </Menu.Item>
           </MenuTooltip>
           <Menu.Divider />

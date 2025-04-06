@@ -587,7 +587,7 @@ const useStore = create<StoreHandles>((set, get) => ({
     }
 
     // If the source node has tabular data, use that:
-    if (src_node.type === "table") {
+    if (src_node.type === "table" || src_node.type === "multimedia") {
       if (
         ("sel_rows" in src_node.data || "rows" in src_node.data) &&
         "columns" in src_node.data
@@ -631,10 +631,14 @@ const useStore = create<StoreHandles>((set, get) => ({
                     StringLookup.get(row[key]) ?? "(string lookup failed)"
                   ).toString();
               });
+              const key_name =
+                src_node.type === "multimedia" && sourceHandleKey === "Image"
+                  ? "image"
+                  : "text";
               return {
                 // We escape any braces in the source text before they're passed downstream.
                 // This is a special property of tabular data nodes: we don't want their text to be treated as prompt templates.
-                text: escapeBraces(
+                [key_name]: escapeBraces(
                   src_col.key in row
                     ? (
                         StringLookup.get(row[src_col.key]) ??

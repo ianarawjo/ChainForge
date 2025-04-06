@@ -1,0 +1,857 @@
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useContext,
+  useMemo,
+} from "react";
+import { useDisclosure } from "@mantine/hooks";
+import {
+  Menu,
+  NumberInput,
+  Switch,
+  Text,
+  Tooltip,
+  Group,
+  ActionIcon,
+  Box,
+  Image,
+  Modal,
+} from "@mantine/core";
+import EditableTable from "./EditableTable";
+import * as XLSX from "xlsx";
+import Papa from "papaparse";
+import { v4 as uuidv4 } from "uuid";
+import {
+  IconX,
+  IconArrowBarToUp,
+  IconArrowBarToDown,
+  IconChevronLeft,
+  IconChevronRight,
+  IconUpload,
+  IconInfoCircle,
+  IconPlus,
+} from "@tabler/icons-react";
+import TemplateHooks from "./TemplateHooksComponent";
+import BaseNode from "./BaseNode";
+import NodeLabel from "./NodeLabelComponent";
+import { AlertModalContext } from "./AlertModal";
+import RenameValueModal, { RenameValueModalRef } from "./RenameValueModal";
+import useStore from "./store";
+import { sampleRandomElements } from "./backend/utils";
+import { Dict, TabularDataRowType, TabularDataColType, LLMResponse } from "./backend/typing";
+import { Position } from "reactflow";
+import { AIGenReplaceTablePopover } from "./AiPopover";
+import { parseTableData } from "./backend/tableUtils";
+import { StringLookup } from "./backend/cache";
+import UploadFileModal, { UploadFileModalRef } from "./UploadFileModal";
+import ImagePreviewModal, { ImagePreviewModalRef } from "./ImagePreviewModal";
+import InspectFooter from "./InspectFooter";
+import LLMResponseInspectorModal, { LLMResponseInspectorModalRef } from "./LLMResponseInspectorModal";
+import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
+
+const defaultRows: TabularDataRowType = {
+  question: "What it is described in this image?",
+  answer: "A dog is playing with a ball.",
+};
+
+const defaultColumns: TabularDataColType[] = [
+  {
+    key: "question",
+    header: "Question",
+  },
+  {
+    key: "answer",
+    header: "Expected",
+  },
+];
+
+const __construct_items_in_json_responses = (
+  tableData: TabularDataRowType[],
+  tableColumns: TabularDataColType[],
+) => {
+  const items_in_json_responses: LLMResponse[] = tableData.map((row) => {
+    const item: LLMResponse = {
+        responses: [{ d: String(row['image']).split('base64,')[1], t: 'img' }],
+        uid: String(row.__uid),
+        prompt: 'prompt',
+        vars: tableColumns.reduce((acc, col) => {
+            if (col.key !== "image") acc[col.header] = row[col.key];
+            return acc;
+        }, {} as Record<string, any>),
+        llm: 'image_preview',
+        metavars: {
+            LLM_0: 'image_preview',
+            __pt: '{' + tableColumns.map((dic) => dic.header).filter((e) => e !== 'Image').join('}\n{') + '}',
+        },
+    };
+    return item;
+  });
+  return items_in_json_responses;
+}
+
+export interface CarousselTabularDataNodeData {
+  title?: string;
+  sample?: boolean;
+  sampleNum?: number;
+  rows?: TabularDataRowType[];
+  columns?: TabularDataColType[];
+}
+export interface CarousselTabularDataNodeProps {
+  data: CarousselTabularDataNodeData;
+  id: string;
+}
+
+export const IMAGE_COLUMN_NAME = "Image";
+const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
+  data,
+  id,
+}) => {
+  const [tableData, setTableData] = useState<TabularDataRowType[]>(
+    data.rows || [],
+  );
+  const [tableColumns, setTableColumns] = useState<TabularDataColType[]>(
+    data.columns || [],
+  );
+  const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const pingOutputNodes = useStore((state) => state.pingOutputNodes);
+  const bringNodeToFront = useStore((state) => state.bringNodeToFront);
+
+  const [currentRowIndex, setCurrentRowIndex] = useState(0);
+
+  // Whether to randomly sample N outputs, versus all outputs
+  const [shouldSample, setShouldSample] = useState(data.sample ?? false);
+  const [sampleNum, setSampleNum] = useState(data.sampleNum ?? 1);
+  const handleChangeSampleNum = useCallback(
+    (n: number) => {
+      setSampleNum(n);
+      setDataPropsForNode(id, { sampleNum: n });
+    },
+    [setSampleNum, id],
+  );
+
+  // Dynamically update the position of the template hooks
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [hooksY, setHooksY] = useState(120);
+
+  // For displaying error messages to user
+  const showAlert = useContext(AlertModalContext);
+
+  // For renaming a column
+  const renameColumnModal = useRef<RenameValueModalRef>(null);
+  const [renameColumnInitialVal, setRenameColumnInitialVal] = useState<
+    TabularDataColType | string
+  >("");
+
+  const handleSaveCell = useCallback(
+    (rowIdx: number, columnKey: string, value: string) => {
+      pingOutputNodes(id);
+      if (rowIdx === -1) {
+        // Saving the column header
+        setTableColumns(
+          tableColumns.map((col) => {
+            if (col.key === columnKey) col.header = value;
+            return col;
+          }),
+        );
+        return;
+      }
+      // Update the specific row in the table data
+      const updatedTableData = [...tableData];
+      updatedTableData[rowIdx] = {
+        ...updatedTableData[rowIdx],
+        [columnKey]: value,
+      };
+      setTableData(updatedTableData);
+    },
+    [tableData, tableColumns, pingOutputNodes],
+  );
+
+  // Inserts a column to left or right of existing one
+  const handleInsertColumn = useCallback(
+    (startColKey: string, dir: 1 | -1) => {
+      // Create a unique ID to refer to this new column
+      const uid = `col-${Date.now()}`;
+      const new_col = {
+        key: uid,
+        header: "New Column", // default name
+      };
+
+      // Insert the new column into the columns array
+      const startColIdx = tableColumns.findIndex(
+        (elem) => elem.key === startColKey,
+      );
+      if (dir === -1) tableColumns.splice(startColIdx, 0, new_col);
+      else if (dir === 1)
+        tableColumns.splice(
+          Math.min(startColIdx + 1, tableColumns.length),
+          0,
+          new_col,
+        );
+
+      // Set blank values at that column for each row of the table
+      tableData.forEach((row) => {
+        row[uid] = "";
+      });
+
+      // Update React state
+      setTableColumns([...tableColumns]);
+      setTableData([...tableData]);
+    },
+    [tableColumns, tableData],
+  );
+
+  // Removes a column
+  const handleRemoveColumn = useCallback(
+    (colKey: string) => {
+      // Find the index of the column
+      const colIdx = tableColumns.findIndex((elem) => elem.key === colKey);
+      if (colIdx === -1) {
+        console.error(
+          `Could not find a column with key ${colKey} in the table.`,
+        );
+        return;
+      }
+
+      // Remove the column from the list
+      tableColumns.splice(colIdx, 1);
+
+      // Remove all data associated with that column from the table row data
+      tableData.forEach((row) => {
+        if (colKey in row) delete row[colKey];
+      });
+
+      setTableColumns([...tableColumns]);
+      setTableData([...tableData]);
+      pingOutputNodes(id);
+    },
+    [tableColumns, tableData, pingOutputNodes],
+  );
+
+  // Opens a modal popup to let user rename a column
+  const openRenameColumnModal = useCallback(
+    (col: TabularDataColType) => {
+      setRenameColumnInitialVal(col);
+      if (renameColumnModal && renameColumnModal.current)
+        renameColumnModal.current.trigger();
+    },
+    [renameColumnModal],
+  );
+
+  const handleRenameColumn = useCallback(
+    (new_header: string) => {
+      if (typeof renameColumnInitialVal !== "object") {
+        console.error("Initial column value was not set.");
+        return;
+      }
+      const new_cols = tableColumns.map((c) => {
+        if (c.key === renameColumnInitialVal.key) c.header = new_header;
+        return c;
+      });
+      setTableColumns([...new_cols]);
+      pingOutputNodes(id);
+    },
+    [tableColumns, renameColumnInitialVal, pingOutputNodes],
+  );
+
+  // Import list of JSON data to the table
+  // NOTE: JSON objects should be in row format, with keys
+  //       as the header names. The internal keys of the columns will use uids to be unique.
+  const importJSONList = (jsonl: Array<Dict>) => {
+    // I noticed for some .tsv files, sometimes the last row is empty
+    // so if the last element is empty `{index: "",}`  , remove it
+    const lastRow = jsonl[jsonl.length - 1];
+    if (
+      lastRow.length !== Object.keys(jsonl[0]).length ||
+      Object.values(lastRow).every((v) => v === "")
+    ) {
+      jsonl.pop();
+    }
+
+    const { columns, rows } = parseTableData(jsonl as any[]);
+    console.log(columns, rows);
+
+    // find the image key
+    const image_col = columns.find((col) => col.header === "image");
+    if (!image_col) {
+      throw new Error("No image column found in the data");
+    }
+
+    // Set the new columns,
+    // and verify that if the image column is present in the state tableColumns, we dont add it again
+    // otherwise add it as { key: "image", header: "Image" }
+    const imageColumnExists = tableColumns.some((col) => col.key === "image");
+    const colIdx = columns.findIndex((elem) => elem.header === "image");
+    const imageColumnKey = columns[colIdx].key;
+    if (!imageColumnExists) {
+      columns[colIdx] = {
+        header: IMAGE_COLUMN_NAME,
+        key: "image",
+      };
+    } else {
+      // Remove the image column from the columns array
+      if (colIdx !== -1) {
+        columns.splice(colIdx, 1);
+      }
+    }
+    // Add the new columns to the table
+    const new_columns = columns.map((col) => {
+      const colExists = tableColumns.some((c) => c.key === col.key);
+      if (!colExists) {
+        return {
+          ...col,
+          header: col.header || "New Column",
+        };
+      }
+      return col;
+    });
+    setTableColumns([...tableColumns, ...new_columns]);
+
+    // Set the new rows and
+    // for the field holding data image as "image"
+    const new_rows = rows.map((row) => {
+      // Rename the key of the image column to "image"
+      const new_row: TabularDataRowType = {
+        image: `data:image/jpeg;base64,${row[imageColumnKey]}`,
+      };
+      new_columns.forEach((col) => {
+        if (col.key !== columns[colIdx].key) {
+          new_row[col.key] = row[col.key];
+        }
+      });
+      // Add a unique ID to each row
+      if (!new_row.__uid) {
+        new_row.__uid = uuidv4();
+      }
+      return new_row;
+    });
+    setTableData([...tableData, ...new_rows]);
+    setCurrentRowIndex(new_rows.length - 1);
+    setDataPropsForNode(id, {
+      rows: [...tableData, ...new_rows],
+      columns: [...tableColumns, ...new_columns],
+      sel_rows: null,
+    });
+    pingOutputNodes(id);
+  };
+
+  // Import tabular data from a file
+  // NOTE: Assumes first row of table is a header
+  const openImportFileModal = async () => {
+    // Create an input element with type "file" and accept only JSON files
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".tsv";
+    // Handle file selection
+    input.addEventListener("change", function (event: Event) {
+      const target = event.target as HTMLInputElement;
+      const file = target.files ? target.files[0] : null;
+      const reader = new window.FileReader();
+
+      if (!file) {
+        console.error("Could not load tabular data file. Unknown error.");
+        return;
+      }
+
+      // Handle file load event
+      reader.addEventListener("load", function () {
+        try {
+          if (reader.result === null)
+            throw new Error(
+              "Could not load tabular data file into file reader. Unknown error.",
+            );
+
+          const papa_parsed = Papa.parse(reader.result as string, {
+            header: true,
+          });
+
+          // Verify that the we at least have the following headers:
+          // - image, question, answer
+          const requiredHeaders = ["image", "question", "answer"];
+          const missingHeaders = requiredHeaders.filter((header) => {
+            const firstRow = papa_parsed.data[0] as Record<string, unknown>;
+            return Object.keys(firstRow).indexOf(header) === -1;
+          });
+          if (missingHeaders.length > 0) {
+            throw new Error(
+              `Missing required headers: ${missingHeaders.join(", ")}`,
+            );
+          }
+
+          importJSONList(papa_parsed.data as Dict<any>[]);
+        } catch (error) {
+          handleError(error as Error);
+        }
+      });
+
+      reader.readAsText(file);
+    });
+
+    // Trigger the file selector
+    input.click();
+
+  };
+
+  // Scrolls to bottom of the table when scrollToBottom toggle is true
+  useEffect(() => {
+    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
+  }, []);
+
+  // Updates the internal data store whenever the table data changes
+  useEffect(() => {
+    let sel_rows: TabularDataRowType[] | null = null;
+
+    // Check for sampling
+    if (shouldSample && sampleNum !== undefined) {
+      // If sampling is enabled, randomly choose only sampleNum rows:
+      sel_rows = sampleRandomElements(tableData, sampleNum);
+    }
+
+    setDataPropsForNode(id, {
+      rows: tableData,
+      columns: tableColumns,
+      sel_rows,
+    });
+  }, [
+    tableData,
+    tableColumns,
+    shouldSample,
+    sampleNum,
+    currentRowIndex,
+    id,
+    setDataPropsForNode,
+  ]);
+
+  const handleError = (err: Error) => {
+    if (showAlert) showAlert(err.message);
+    console.error(err.message);
+  };
+
+  // To listen for resize events of the table container, we need to use a ResizeObserver.
+  // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div container.
+  const setRef = useCallback(
+    (elem: HTMLDivElement) => {
+      if (!ref.current && elem && window.ResizeObserver) {
+        let past_hooks_y = 120;
+        const observer = new window.ResizeObserver(() => {
+          if (!ref || !ref.current) return;
+          const new_hooks_y = ref.current.clientHeight + 68;
+          if (past_hooks_y !== new_hooks_y) {
+            setHooksY(new_hooks_y);
+            past_hooks_y = new_hooks_y;
+          }
+        });
+
+        observer.observe(elem);
+        ref.current = elem;
+      }
+    },
+    [ref],
+  );
+
+  const handleNextRow = useCallback(() => {
+    setCurrentRowIndex((prev) => (prev + 1) % tableData.length);
+  }, [tableData.length]);
+
+  const handlePrevRow = useCallback(() => {
+    setCurrentRowIndex(
+      (prev) => (prev - 1 + tableData.length) % tableData.length,
+    );
+  }, [tableData.length]);
+
+  const uploadFileModal = useRef<UploadFileModalRef>(null);
+
+  const handleUploadFile = useCallback(
+    (
+      url: string,
+      new_rows: TabularDataRowType = defaultRows,
+      new_columns: TabularDataColType[] = defaultColumns,
+    ) => {
+      console.log(url, new_rows, new_columns);
+      // Create a new column for the image if it doesn't exist
+      const imageColumnKey = "image";
+      const imageColumnExists = tableColumns.some(
+        (col) => col.key === imageColumnKey,
+      );
+
+      const new_columns_to_add = [];
+      if (!imageColumnExists) {
+        const new_image_column: TabularDataColType = {
+          key: imageColumnKey,
+          header: IMAGE_COLUMN_NAME,
+        };
+        new_columns_to_add.push(new_image_column);
+      }
+
+      // Add new columns to the table if provided in new_columns
+      if (new_columns.length > 0) {
+        new_columns.forEach((col) => {
+          const colExists = tableColumns.some((c) => c.key === col.key);
+          if (!colExists) {
+            new_columns_to_add.push(col);
+          }
+        });
+      }
+
+      // Create a new row with the image URL
+      // if new_rows does not have a __uid, add one
+      if (!new_rows.__uid) {
+        new_rows.__uid = uuidv4();
+      }
+
+      const newRow: TabularDataRowType = new_rows;
+      tableColumns.forEach((col) => {
+        newRow[col.key] = new_rows[col.key] || "";
+      });
+      newRow[imageColumnKey] = url;
+
+      // Add the new row and set it as the current row
+      const updatedTableData = [...tableData, newRow];
+      setTableData(updatedTableData);
+      setCurrentRowIndex(updatedTableData.length - 1);
+      setTableColumns([...tableColumns, ...new_columns_to_add]);
+
+      // Update the store with the new data
+      let sel_rows: TabularDataRowType[] | null = null;
+      if (shouldSample && sampleNum !== undefined) {
+        sel_rows = sampleRandomElements(updatedTableData, sampleNum);
+      }
+      setDataPropsForNode(id, {
+        rows: updatedTableData,
+        columns: tableColumns,
+        sel_rows,
+      });
+    },
+    [tableColumns, tableData, shouldSample, sampleNum, id, setDataPropsForNode],
+  );
+
+  const handleOpenUploadModal = useCallback(() => {
+    if (uploadFileModal.current) {
+      uploadFileModal.current.open();
+    }
+  }, []);
+
+  const imagePreviewModal = useRef<ImagePreviewModalRef>(null);
+
+  const handleImageClick = useCallback(() => {
+    const currentRow = tableData[currentRowIndex];
+    const imageUrl = currentRow.image;
+    if (imagePreviewModal.current && typeof imageUrl === "string") {
+      imagePreviewModal.current.trigger(imageUrl);
+    }
+  }, [tableData, currentRowIndex]);
+
+  // Relative to the info Button
+  const default_header = useMemo(() => {
+    return "Info about Imported File Format";
+  }, []);
+
+  const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] =
+    useDisclosure(false);
+
+  const code_info_modal = useMemo(() => {
+    return (
+      <Box m="lg" mt="xl">
+        <Text mb="sm">
+          TODOOOOO make a little explanation text inspired from guidelines
+          expressed at{" "}
+          <a
+            href="https://github.com/open-compass/VLMEvalKit/blob/main/docs/en/Development.md#1-prepare-your-benchmark-tsv-file"
+            target="_blank"
+            rel="noreferrer"
+          >
+            this link
+          </a>
+        </Text>
+      </Box>
+    );
+  }, [default_header]);
+
+  // -------------------- Everything about the Inspect Items thing
+  const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
+  
+  const [jsonResponses, setJSONResponses] = useState<LLMResponse[] | null>(
+      null,
+  );
+
+  const [showDrawer, setShowDrawer] = useState(false);
+
+
+  const showResponseInspector = useCallback(() => {
+    const items_in_json_responses = __construct_items_in_json_responses(
+      tableData,
+      tableColumns,
+    );
+    setJSONResponses(items_in_json_responses);
+    if (inspectModal && inspectModal.current && jsonResponses) {
+      inspectModal.current?.trigger();
+    }
+  }, [inspectModal, jsonResponses]);
+
+  
+
+  return (
+    <BaseNode classNames="tabular-data-node" nodeId={id}>
+      <NodeLabel
+        title={data.title || "Multimedia Node"}
+        nodeId={id}
+        icon={"📺"}
+        customButtons={[
+          <Tooltip label="Info" key="eval-info">
+            <button
+              onClick={openInfoModal}
+              className="custom-button"
+              style={{ border: "none" }}
+            >
+              <IconInfoCircle
+                size="12pt"
+                color="gray"
+                style={{ marginBottom: "-4px" }}
+              />
+            </button>
+          </Tooltip>,
+          <Tooltip key={0} label="Click on the info button to learn more.">
+            <button
+              className="custom-button"
+              key="import-data"
+              onClick={openImportFileModal}
+            >
+              Import data
+            </button>
+          </Tooltip>,
+        ]}
+      />
+      <Modal
+        title={default_header}
+        size="60%"
+        opened={infoModalOpened}
+        onClose={closeInfoModal}
+        styles={{
+          header: { backgroundColor: "#FFD700" },
+          root: { position: "relative", left: "-5%" },
+        }}
+      >
+        {code_info_modal}
+      </Modal>
+      <RenameValueModal
+        ref={renameColumnModal}
+        initialValue={
+          typeof renameColumnInitialVal === "object"
+            ? renameColumnInitialVal.header
+            : ""
+        }
+        title="Rename column"
+        label="New column name"
+        onSubmit={handleRenameColumn}
+      />
+
+      <ImagePreviewModal ref={imagePreviewModal} />
+      <UploadFileModal
+        ref={uploadFileModal}
+        title="Upload Image"
+        label="Provide a URL pointing to an image"
+        onSubmit={handleUploadFile}
+      />
+
+      <div className="carousel-row-display">
+        {tableData.length > 0 ? (
+          <div ref={setRef} className="tabular-data-container nowheel nodrag">
+            <EditableTable
+              rows={[tableData[currentRowIndex]]}
+              columns={tableColumns.filter((col) => col.key !== "image")}
+              handleSaveCell={(rowIdx, colKey, value) => {
+                // Map the single row index back to the actual table data index
+                handleSaveCell(currentRowIndex, colKey, value);
+              }}
+              handleRemoveColumn={handleRemoveColumn}
+              handleInsertColumn={handleInsertColumn}
+              handleRenameColumn={openRenameColumnModal}
+            />
+          </div>
+        ) : (
+          <Box
+            sx={{
+              height: 200,
+              width: 200,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#f8f9fa",
+              border: "1px solid #e0e0e0",
+              borderRadius: "4px",
+              margin: "0 auto",
+            }}
+          >
+            <Text color="dimmed">No images uploaded</Text>
+          </Box>
+        )}
+      </div>
+
+      {tableData.length > 0 &&
+        tableData[currentRowIndex].image &&
+        typeof tableData[currentRowIndex].image === "string" && (
+          <div
+            style={{
+              border: "1px solid #e0e0e0",
+              borderRadius: "4px",
+              padding: "8px",
+              backgroundColor: "#fff",
+              width: "250px",
+              margin: "0 auto",
+              marginTop: "10px",
+            }}
+          >
+            <div onClick={handleImageClick} style={{ cursor: "pointer" }}>
+              <Image
+                src={tableData[currentRowIndex].image as string}
+                height={200}
+                width={200}
+                fit="contain"
+                withPlaceholder
+                style={{
+                  backgroundColor: "#f8f9fa",
+                  margin: "0 auto",
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+      <div className="tabular-data-footer">
+        <div className="add-table-row-btn">
+          <Tooltip label="Create a new Item by uploading an image">
+            <ActionIcon
+              variant="filled"
+              color="blue"
+              onClick={handleOpenUploadModal}
+            >
+              <IconPlus size={16} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip label="Delete current row">
+            <ActionIcon
+              variant="filled"
+              color="red"
+              onClick={() => {
+                const newTableData = tableData.filter(
+                  (_, index) => index !== currentRowIndex,
+                );
+                setTableData(newTableData);
+                setCurrentRowIndex(
+                  Math.min(currentRowIndex, newTableData.length - 1),
+                );
+                // if no more rows, reinitialize columns also
+                if (newTableData.length === 0) {
+                  setTableColumns([]);
+                }
+              }}
+              // disabled={tableData.length <= 1}
+            >
+              <IconX size={16} />
+            </ActionIcon>
+          </Tooltip>
+        </div>
+
+        <TemplateHooks
+          vars={tableColumns.map((col) => col.header)}
+          nodeId={id}
+          startY={hooksY}
+          position={Position.Right}
+        />
+
+        <Switch
+          label={
+            <Tooltip label="Toggle Random Sampling" position="bottom" withArrow>
+              <Text color={shouldSample ? "indigo" : "gray"}>Sample</Text>
+            </Tooltip>
+          }
+          defaultChecked={true}
+          checked={shouldSample}
+          onChange={(event) => {
+            setShouldSample(event.currentTarget.checked);
+            setDataPropsForNode(id, { sample: event.currentTarget.checked });
+          }}
+          color="indigo"
+          size="xs"
+          mt={shouldSample && tableColumns.length >= 2 ? "-50px" : "-16px"}
+        />
+        {shouldSample ? (
+          <Tooltip
+            label="Number of table rows to sample. Outputs will only draw from this many rows."
+            width={200}
+            position="left"
+            withArrow
+            multiline
+          >
+            <NumberInput
+              size="xs"
+              mt="6px"
+              maw="100px"
+              value={sampleNum}
+              onChange={handleChangeSampleNum}
+              min={1}
+            />
+          </Tooltip>
+        ) : (
+          <></>
+        )}
+
+        {/* Chevron Arrow Buttons */}
+        {tableData.length > 1 && (
+          <Group position="center" mt="sm" spacing={20}>
+            <ActionIcon
+              onClick={handlePrevRow}
+              disabled={tableData.length <= 1}
+              variant="transparent"
+              size="xl"
+            >
+              <IconChevronLeft size={24} />
+            </ActionIcon>
+            <Text size="sm" style={{ minWidth: "60px", textAlign: "center" }}>
+              {`${currentRowIndex + 1}/${tableData.length}`}
+            </Text>
+            <ActionIcon
+              onClick={handleNextRow}
+              disabled={tableData.length <= 1}
+              variant="transparent"
+              size="xl"
+            >
+              <IconChevronRight size={24} />
+            </ActionIcon>
+          </Group>
+        )}
+        {tableData.length > 1 ? (
+          <InspectFooter
+            onClick={showResponseInspector}
+            isDrawerOpen={showDrawer}
+            showDrawerButton={true}
+            onDrawerClick={() => {
+              const items_in_json_responses = __construct_items_in_json_responses(
+                tableData,
+                tableColumns,
+              );
+              setJSONResponses(items_in_json_responses);
+              setShowDrawer(!showDrawer);
+              bringNodeToFront(id);
+            }}
+          />
+        ) : (
+          <></>
+        )}
+
+        <LLMResponseInspectorDrawer
+          jsonResponses={jsonResponses ?? []}
+          showDrawer={showDrawer}
+        />
+      </div>
+    <LLMResponseInspectorModal
+      ref={inspectModal}
+      jsonResponses={jsonResponses ?? []}
+    />
+    </BaseNode>
+  );
+};
+
+export default CarousselTabularDataNode;
