@@ -18,6 +18,7 @@ import {
   Box,
   Image,
   Modal,
+  Button,
 } from "@mantine/core";
 import EditableTable from "./EditableTable";
 import * as XLSX from "xlsx";
@@ -32,6 +33,7 @@ import {
   IconUpload,
   IconInfoCircle,
   IconPlus,
+  IconPencil,
 } from "@tabler/icons-react";
 import TemplateHooks from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
@@ -59,8 +61,8 @@ import LLMResponseInspectorModal, {
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 
 const defaultRows: TabularDataRowType = {
-  question: "What it is described in this image?",
-  answer: "A dog is playing with a ball.",
+  question: "Prompt Question",
+  answer: "Expected Answer",
 };
 
 const defaultColumns: TabularDataColType[] = [
@@ -70,7 +72,7 @@ const defaultColumns: TabularDataColType[] = [
   },
   {
     key: "answer",
-    header: "Expected",
+    header: "Answer",
   },
 ];
 
@@ -408,6 +410,8 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
     input.click();
   };
 
+  
+
   // Scrolls to bottom of the table when scrollToBottom toggle is true
   useEffect(() => {
     if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
@@ -466,20 +470,23 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
   );
 
   const handleNextRow = useCallback(() => {
-    setCurrentRowIndex((prev) => (prev + 1) % tableData.length);
-  }, [tableData.length]);
+    if (tableData.length <= 1) return;
+    const newIndex = (currentRowIndex + 1) % tableData.length;
+    setCurrentRowIndex(newIndex);
+  }, [currentRowIndex, tableData.length]);
 
   const handlePrevRow = useCallback(() => {
-    setCurrentRowIndex(
-      (prev) => (prev - 1 + tableData.length) % tableData.length,
-    );
-  }, [tableData.length]);
+    if (tableData.length <= 1) return;
+    const newIndex = (currentRowIndex - 1 + tableData.length) % tableData.length;
+    setCurrentRowIndex(newIndex);
+  }, [currentRowIndex, tableData.length]);
 
   const uploadFileModal = useRef<UploadFileModalRef>(null);
 
   const handleUploadFile = useCallback(
     (
       url: string,
+      newRow: TabularDataRowType = defaultRows,
       newColumns: TabularDataColType[] = defaultColumns,
     ) => {
       // Ensure the image column exists
@@ -505,14 +512,15 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
         setTableColumns([...tableColumns, ...columnsToAdd]);
       }
 
-      // Create new row with image URL and unique ID
-      const newRow: TabularDataRowType = {
+      // Create new row with image URL and ensure it has a unique ID
+      const rowWithImage: TabularDataRowType = {
+        ...newRow,
         [imageColumnKey]: url,
-        __uid: uuidv4(),
+        __uid: newRow.__uid || uuidv4(),
       };
 
       // Update table data
-      const updatedTableData = [...tableData, newRow];
+      const updatedTableData = [...tableData, rowWithImage];
       setTableData(updatedTableData);
       setCurrentRowIndex(updatedTableData.length - 1);
 
@@ -533,8 +541,12 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
   const handleOpenUploadModal = useCallback(() => {
     if (uploadFileModal.current) {
       uploadFileModal.current.open();
+      // Remove the ref when opening upload modal
+      if (ref.current) {
+        ref.current = null;
+      }
     }
-  }, []);
+  }, [ref]);
 
   const imagePreviewModal = useRef<ImagePreviewModalRef>(null);
 
@@ -594,35 +606,35 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
 
   return (
     <BaseNode classNames="tabular-data-node" nodeId={id}>
-      <NodeLabel
-        title={data.title || "Multimedia Node"}
-        nodeId={id}
-        icon={"📺"}
-        customButtons={[
-          <Tooltip label="Info" key="eval-info">
-            <button
-              onClick={openInfoModal}
-              className="custom-button"
-              style={{ border: "none" }}
-            >
-              <IconInfoCircle
-                size="12pt"
-                color="gray"
-                style={{ marginBottom: "-4px" }}
-              />
-            </button>
-          </Tooltip>,
-          <Tooltip key={0} label="Click on the info button to learn more.">
-            <button
-              className="custom-button"
-              key="import-data"
-              onClick={openImportFileModal}
-            >
-              Import data
-            </button>
-          </Tooltip>,
-        ]}
-      />
+        <NodeLabel
+          title={data.title || "Multimedia Node"}
+          nodeId={id}
+          icon={"📺"}
+          customButtons={[
+            <Tooltip label="Info" key="eval-info">
+              <button
+                onClick={openInfoModal}
+                className="custom-button"
+                style={{ border: "none" }}
+              >
+                <IconInfoCircle
+                  size="12pt"
+                  color="gray"
+                  style={{ marginBottom: "-4px" }}
+                />
+              </button>
+            </Tooltip>,
+            <Tooltip key={0} label="Click on the info button to learn more.">
+              <button
+                className="custom-button"
+                key="import-data"
+                onClick={openImportFileModal}
+              >
+                Import data
+              </button>
+            </Tooltip>,
+          ]}
+        />
       <Modal
         title={default_header}
         size="60%"
@@ -655,7 +667,7 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
         onSubmit={handleUploadFile}
       />
 
-      <div className="carousel-row-display">
+      {/* <div className="carousel-row-display">
         <div ref={setRef} className="tabular-data-container nowheel nodrag">
           {tableData.length > 0 ? (
             <EditableTable
@@ -682,44 +694,10 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
                 margin: "0 auto",
               }}
             >
-              <Text color="dimmed">No images uploaded</Text>
+              <Text color="dimmed">No Media Uploaded</Text>
             </Box>
           )}
         </div>
-      </div>
-
-      {/* <div className="carousel-row-display">
-        {tableData.length > 0 ? (
-          <div ref={setRef} className="tabular-data-container nowheel nodrag">
-            <EditableTable
-              rows={[tableData[currentRowIndex]]}
-              columns={tableColumns.filter((col) => col.key !== "image")}
-              handleSaveCell={(rowIdx, colKey, value) => {
-                // Map the single row index back to the actual table data index
-                handleSaveCell(currentRowIndex, colKey, value);
-              }}
-              handleRemoveColumn={handleRemoveColumn}
-              handleInsertColumn={handleInsertColumn}
-              handleRenameColumn={openRenameColumnModal}
-            />
-          </div>
-        ) : (
-          <Box
-            sx={{
-              height: 200,
-              width: 200,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "#f8f9fa",
-              border: "1px solid #e0e0e0",
-              borderRadius: "4px",
-              margin: "0 auto",
-            }}
-          >
-            <Text color="dimmed">No images uploaded</Text>
-          </Box>
-        )}
       </div> */}
 
       {tableData.length > 0 &&
@@ -752,22 +730,102 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
           </div>
         )}
 
-      <div className="tabular-data-footer">
-        <div className="add-table-row-btn">
-          <Tooltip label="Create a new Item by uploading an image">
-            <ActionIcon
-              variant="filled"
-              color="blue"
-              onClick={handleOpenUploadModal}
+      <div className="carousel-row-display" style={{ marginTop: "20px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "0 20px" }}>
+          {tableColumns
+            .filter((col) => col.key !== "image")
+            .map((col) => (
+              <div key={col.key} style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                  <Text size="sm" weight={500}>
+                    {col.header}
+                  </Text>
+                  <ActionIcon
+                    size="xs"
+                    variant="subtle"
+                    onClick={() => openRenameColumnModal(col)}
+                    style={{ color: "#666" }}
+                  >
+                    <IconPencil size={12} />
+                  </ActionIcon>
+                  {tableColumns.filter(col => col.key !== "image").length > 1 && (
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => handleRemoveColumn(col.key)}
+                      style={{ color: "#666" }}
+                    >
+                      <IconX size={12} />
+                    </ActionIcon>
+                  )}
+                </div>
+                <textarea
+                  value={tableData[currentRowIndex]?.[col.key] || ""}
+                  onChange={(e) => handleSaveCell(currentRowIndex, col.key, e.target.value)}
+                  style={{
+                    padding: "8px",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "4px",
+                    minHeight: "60px",
+                    resize: "vertical",
+                    fontFamily: "monospace",
+                    fontSize: "12px",
+                  }}
+                />
+              </div>
+            ))}
+        </div>
+        {tableData.length === 0 && (
+          <div ref={setRef} className="tabular-data-container nowheel nodrag" style={{ 
+            minHeight: "220px", 
+            minWidth: "220px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}>
+            <Box
+              sx={{
+                height: 200,
+                width: 200,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "#f8f9fa",
+                border: "1px solid #e0e0e0",
+                borderRadius: "4px",
+                margin: "0 auto",
+              }}
             >
-              <IconPlus size={16} />
-            </ActionIcon>
-          </Tooltip>
-
-          <Tooltip label="Delete current row">
-            <ActionIcon
-              variant="filled"
-              color="red"
+              <Text color="dimmed">No Media Uploaded</Text>
+            </Box>
+          </div>
+        )}
+        <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "10px" }}>
+          {tableData.length > 0 && (
+            <Button
+              variant="subtle"
+              size="xs"
+              leftIcon={<IconPlus size={14} />}
+              onClick={() => handleInsertColumn(tableColumns[tableColumns.length - 1].key, 1)}
+              style={{ color: "#666" }}
+            >
+              Add Column
+            </Button>
+          )}
+          <Button
+            variant="subtle"
+            size="xs"
+            leftIcon={<IconPlus size={14} />}
+            onClick={handleOpenUploadModal}
+            style={{ color: "#666" }}
+          >
+            Add Media
+          </Button>
+          {tableData.length > 0 && (
+            <Button
+              variant="subtle"
+              size="xs"
+              leftIcon={<IconX size={14} />}
               onClick={() => {
                 const newTableData = tableData.filter(
                   (_, index) => index !== currentRowIndex,
@@ -781,69 +839,47 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
                   setTableColumns([]);
                 }
               }}
-              // disabled={tableData.length <= 1}
+              style={{ color: "#666" }}
             >
-              <IconX size={16} />
-            </ActionIcon>
-          </Tooltip>
+              Remove Media
+            </Button>
+          )}
         </div>
+      </div>
 
-        <TemplateHooks
-          vars={tableColumns.map((col) => col.header)}
-          nodeId={id}
-          startY={hooksY}
-          position={Position.Right}
-        />
-
-        <Switch
-          label={
-            <Tooltip label="Toggle Random Sampling" position="bottom" withArrow>
-              <Text color={shouldSample ? "indigo" : "gray"}>Sample</Text>
-            </Tooltip>
-          }
-          defaultChecked={true}
-          checked={shouldSample}
-          onChange={(event) => {
-            setShouldSample(event.currentTarget.checked);
-            setDataPropsForNode(id, { sample: event.currentTarget.checked });
-          }}
-          color="indigo"
-          size="xs"
-          mt={shouldSample && tableColumns.length >= 2 ? "-50px" : "-16px"}
-        />
-        {shouldSample ? (
-          <Tooltip
-            label="Number of table rows to sample. Outputs will only draw from this many rows."
-            width={200}
-            position="left"
-            withArrow
-            multiline
-          >
-            <NumberInput
-              size="xs"
-              mt="6px"
-              maw="100px"
-              value={sampleNum}
-              onChange={handleChangeSampleNum}
-              min={1}
-            />
-          </Tooltip>
-        ) : (
-          <></>
-        )}
-
-        {/* Chevron Arrow Buttons */}
+      <div className="tabular-data-footer">
+        {/* Enhanced Carousel Navigation */}
         {tableData.length > 1 && (
-          <Group position="center" mt="sm" spacing={20}>
+          <Group position="center" mt="sm" spacing={0} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             <ActionIcon
               onClick={handlePrevRow}
               disabled={tableData.length <= 1}
               variant="transparent"
               size="xl"
+              sx={{
+                fontSize: "32px",
+                color: "#666",
+                cursor: "pointer",
+                width: "48px",
+                height: "48px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(0, 0, 0, 0.05)",
+                borderRadius: "50%",
+                transition: "all 0.2s",
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.1)",
+                  transform: "scale(1.1)",
+                },
+                "&:active": {
+                  transform: "scale(0.95)",
+                },
+              }}
             >
-              <IconChevronLeft size={24} />
+              <IconChevronLeft size={32} />
             </ActionIcon>
-            <Text size="sm" style={{ minWidth: "60px", textAlign: "center" }}>
+            <Text size="sm" weight={500} style={{ minWidth: "60px", textAlign: "center" }}>
               {`${currentRowIndex + 1}/${tableData.length}`}
             </Text>
             <ActionIcon
@@ -851,11 +887,37 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
               disabled={tableData.length <= 1}
               variant="transparent"
               size="xl"
+              sx={{
+                fontSize: "32px",
+                color: "#666",
+                cursor: "pointer",
+                width: "48px",
+                height: "48px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(0, 0, 0, 0.05)",
+                borderRadius: "50%",
+                transition: "all 0.2s",
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.1)",
+                  transform: "scale(1.1)",
+                },
+                "&:active": {
+                  transform: "scale(0.95)",
+                },
+              }}
             >
-              <IconChevronRight size={24} />
+              <IconChevronRight size={32} />
             </ActionIcon>
           </Group>
         )}
+        <TemplateHooks
+          vars={tableColumns.map((col) => col.header)}
+          nodeId={id}
+          startY={hooksY}
+          position={Position.Right}
+        />
         {tableData.length > 1 ? (
           <InspectFooter
             onClick={showResponseInspector}
