@@ -54,7 +54,6 @@ const read_file = (
   reader.onerror = function (event) {
     console.error("Error reading file:", event);
   };
-  // reader.readAsText(file);
   reader.readAsDataURL(file);
 };
 
@@ -102,7 +101,7 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
               // TODO: Log the content of file in cache
               // Read the file into text and then send it to backend
               onDrop(file as FileWithContent);
-              console.log("TODO: Check File is an image !!!! File content:");
+              console.log("TODO: Check File is an image");
               setIsLoading(false);
             },
           );
