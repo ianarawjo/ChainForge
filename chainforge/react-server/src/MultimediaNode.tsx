@@ -480,62 +480,51 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
   const handleUploadFile = useCallback(
     (
       url: string,
-      new_rows: TabularDataRowType = defaultRows,
-      new_columns: TabularDataColType[] = defaultColumns,
+      newColumns: TabularDataColType[] = defaultColumns,
     ) => {
-      console.log(url, new_rows, new_columns);
-      // Create a new column for the image if it doesn't exist
+      // Ensure the image column exists
       const imageColumnKey = "image";
       const imageColumnExists = tableColumns.some(
         (col) => col.key === imageColumnKey,
       );
 
-      const new_columns_to_add = [];
+      // Add image column if it doesn't exist
       if (!imageColumnExists) {
-        const new_image_column: TabularDataColType = {
+        const imageColumn: TabularDataColType = {
           key: imageColumnKey,
           header: IMAGE_COLUMN_NAME,
         };
-        new_columns_to_add.push(new_image_column);
+        setTableColumns([...tableColumns, imageColumn]);
       }
 
-      // Add new columns to the table if provided in new_columns
-      if (new_columns.length > 0) {
-        new_columns.forEach((col) => {
-          const colExists = tableColumns.some((c) => c.key === col.key);
-          if (!colExists) {
-            new_columns_to_add.push(col);
-          }
-        });
+      // Add any new columns that don't exist yet
+      const columnsToAdd = newColumns.filter(
+        (col) => !tableColumns.some((existing) => existing.key === col.key)
+      );
+      if (columnsToAdd.length > 0) {
+        setTableColumns([...tableColumns, ...columnsToAdd]);
       }
 
-      // Create a new row with the image URL
-      // if new_rows does not have a __uid, add one
-      if (!new_rows.__uid) {
-        new_rows.__uid = uuidv4();
-      }
+      // Create new row with image URL and unique ID
+      const newRow: TabularDataRowType = {
+        [imageColumnKey]: url,
+        __uid: uuidv4(),
+      };
 
-      const newRow: TabularDataRowType = new_rows;
-      tableColumns.forEach((col) => {
-        newRow[col.key] = new_rows[col.key] || "";
-      });
-      newRow[imageColumnKey] = url;
-
-      // Add the new row and set it as the current row
+      // Update table data
       const updatedTableData = [...tableData, newRow];
       setTableData(updatedTableData);
       setCurrentRowIndex(updatedTableData.length - 1);
-      setTableColumns([...tableColumns, ...new_columns_to_add]);
 
-      // Update the store with the new data
-      let sel_rows: TabularDataRowType[] | null = null;
-      if (shouldSample && sampleNum !== undefined) {
-        sel_rows = sampleRandomElements(updatedTableData, sampleNum);
-      }
+      // Update store with new data
+      const selectedRows = shouldSample && sampleNum !== undefined
+        ? sampleRandomElements(updatedTableData, sampleNum)
+        : null;
+
       setDataPropsForNode(id, {
         rows: updatedTableData,
         columns: tableColumns,
-        sel_rows,
+        sel_rows: selectedRows,
       });
     },
     [tableColumns, tableData, shouldSample, sampleNum, id, setDataPropsForNode],
