@@ -5,20 +5,25 @@ import React, {
   useEffect,
 } from "react";
 import { Modal, Image, Text, Stack } from "@mantine/core";
+import { Dict } from "./backend/typing";
 
 export interface ImagePreviewModalRef {
-  trigger: (url: string) => void;
+  trigger: (url: string, data : Dict<string>) => void;
 }
 
 interface ImagePreviewModalProps {
   title?: string;
 }
 
+
+
 interface ImageInfo {
+  user_source: string;
   width: number;
   height: number;
   format: string;
   size: string;
+  token_count?: Dict<string>;
 }
 
 const ImagePreviewModal = forwardRef<
@@ -27,11 +32,14 @@ const ImagePreviewModal = forwardRef<
 >(({ title = "Image Preview" }, ref) => {
   const [opened, setOpened] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
+  const [imageData, setImageData] = useState<Dict<string>>({});
   const [imageInfo, setImageInfo] = useState<ImageInfo | null>(null);
 
   useImperativeHandle(ref, () => ({
-    trigger: (url: string) => {
+    trigger: (url: string, data : Dict<string>) => {
+      console.log("trigger", data);
       setImageUrl(url);
+      setImageData(data);
       setOpened(true);
     },
   }));
@@ -41,9 +49,14 @@ const ImagePreviewModal = forwardRef<
       const img = document.createElement("img");
       img.onload = () => {
         setImageInfo({
+          user_source: imageData?.source,
           width: img.naturalWidth,
           height: img.naturalHeight,
-          format: imageUrl.split(".").pop()?.toUpperCase() || "Unknown",
+          format: (
+            imageUrl.startsWith("http") ?
+            imageUrl : 
+            imageUrl.split(";")[0].split(":")[1] || "Unknown"
+          ),
           size: "N/A", // We can't get file size from URL directly in browser
         });
       };
@@ -81,6 +94,8 @@ const ImagePreviewModal = forwardRef<
         </div>
         {imageInfo && (
           <Text size="sm" color="dimmed">
+            Source: {imageInfo.user_source}
+            <br />
             Original dimensions: {imageInfo.width}x{imageInfo.height}px
             <br />
             Format: {imageInfo.format}

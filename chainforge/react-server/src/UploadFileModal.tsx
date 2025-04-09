@@ -86,7 +86,7 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
   return (
     <Dropzone
       loading={isLoading}
-      accept={IMAGE_MIME_TYPE}
+      accept={["image/png", "image/jpeg"]} // TODO support all image file types of : import IMAGE_MIME_TYPE from "@mantine/dropzone";
       onDrop={(files) => {
         if (files.length === 1) {
           setIsLoading(true);

@@ -66,7 +66,6 @@ import { v4 as uuid } from "uuid";
 import axios from "axios";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
-import CarouselNode from "./CarouselNode";
 import CarousselTabularDataNode from "./MultimediaNode";
 
 // Styling

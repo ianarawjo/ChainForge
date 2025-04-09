@@ -37,11 +37,11 @@ export interface OpenAIFunctionCall {
 
 /** ------ Anthropic chat message format */
 
-export type ImageTypeAnthropic =
-  | "image/jpeg"
-  | "image/png"
-  | "image/gif"
-  | "image/webp";
+export type ImageTypeAnthropic = string;
+// | "image/jpeg"
+// | "image/png"
+// | "image/gif"
+// | "image/webp";
 
 export type ImageContentAnthropic =
   | { type: "base64"; media_type: ImageTypeAnthropic; data: string } // data: base64 encoded image

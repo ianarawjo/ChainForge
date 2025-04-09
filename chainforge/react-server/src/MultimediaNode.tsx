@@ -76,36 +76,65 @@ const defaultColumns: TabularDataColType[] = [
   },
 ];
 
+const __http_url_to_base64 = (url: string) => {
+  return new Promise<string>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.responseType = "arraybuffer";
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const base64String = btoa(
+          new Uint8Array(xhr.response)
+            .reduce((data, byte) => data + String.fromCharCode(byte), ""),
+        );
+        resolve(base64String);
+      } else {
+        reject(new Error("Failed to load image"));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Failed to load image"));
+    xhr.send();
+  });
+}
+
 const __construct_items_in_json_responses = (
   tableData: TabularDataRowType[],
   tableColumns: TabularDataColType[],
 ) => {
-  const items_in_json_responses: LLMResponse[] = tableData.map((row) => {
-    const item: LLMResponse = {
-      responses: [{ d: String(row.image).split("base64,")[1], t: "img" }],
-      uid: String(row.__uid),
-      prompt: "prompt",
-      vars: tableColumns.reduce(
-        (acc, col) => {
-          if (col.key !== "image") acc[col.header] = row[col.key];
-          return acc;
+  const items_in_json_responses: Promise<LLMResponse[]> = Promise.all(
+    tableData.map(async (row) => {
+      const item: LLMResponse = {
+        responses: [{
+          t: "img",
+          d: String(row.image).startsWith('http') ? 
+            // if the image is a URL, convert it to base64, get the string from the response
+            await __http_url_to_base64(String(row.image)):
+            String(row.image).split("base64,")[1],
+        }],
+        uid: String(row.__uid),
+        prompt: "prompt",
+        vars: tableColumns.reduce(
+          (acc, col) => {
+            if (col.key !== "image") acc[col.header] = row[col.key];
+            return acc;
+          },
+          {} as Record<string, any>,
+        ),
+        llm: "image_preview",
+        metavars: {
+          LLM_0: "image_preview",
+          __pt:
+            "{" +
+            tableColumns
+              .map((dic) => dic.header)
+              .filter((e) => e !== "Image")
+              .join("}\n{") +
+            "}",
         },
-        {} as Record<string, any>,
-      ),
-      llm: "image_preview",
-      metavars: {
-        LLM_0: "image_preview",
-        __pt:
-          "{" +
-          tableColumns
-            .map((dic) => dic.header)
-            .filter((e) => e !== "Image")
-            .join("}\n{") +
-          "}",
-      },
-    };
-    return item;
-  });
+      };
+      return item;
+    })
+  );
   return items_in_json_responses;
 };
 
@@ -132,6 +161,8 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
   const [tableColumns, setTableColumns] = useState<TabularDataColType[]>(
     data.columns || [],
   );
+  const [metadataRows, setMetadataRows] = useState<Record<string, Dict<string>>>({}); // New state for metadata
+
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
@@ -344,6 +375,14 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
       }
       return new_row;
     });
+
+    // Update metadata for imported rows
+    const newMetadata = { ...metadataRows };
+    new_rows.forEach((row) => {
+      newMetadata[row.__uid] = { source: ".tsv import" };
+    });
+    setMetadataRows(newMetadata);
+
     setTableData([...tableData, ...new_rows]);
     setCurrentRowIndex(new_rows.length - 1);
     setDataPropsForNode(id, {
@@ -520,6 +559,13 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
       setTableData(updatedTableData);
       setCurrentRowIndex(updatedTableData.length - 1);
 
+      // Update metadata for the new row
+      const newMetadata = {
+        ...metadataRows,
+        [rowWithImage.__uid]: { source: (url.startsWith('http') ? "remote image" : "local file upload") },
+      };
+      setMetadataRows(newMetadata);
+
       // Update store with new data
       const selectedRows =
         shouldSample && sampleNum !== undefined
@@ -532,7 +578,7 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
         sel_rows: selectedRows,
       });
     },
-    [tableColumns, tableData, shouldSample, sampleNum, id, setDataPropsForNode],
+    [tableColumns, tableData, shouldSample, sampleNum, id, setDataPropsForNode, metadataRows],
   );
 
   const handleOpenUploadModal = useCallback(() => {
@@ -550,10 +596,11 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
   const handleImageClick = useCallback(() => {
     const currentRow = tableData[currentRowIndex];
     const imageUrl = currentRow.image;
+    const metadata = metadataRows[currentRow.__uid];
     if (imagePreviewModal.current && typeof imageUrl === "string") {
-      imagePreviewModal.current.trigger(imageUrl);
+      imagePreviewModal.current.trigger(imageUrl, metadata);
     }
-  }, [tableData, currentRowIndex]);
+  }, [tableData, currentRowIndex, metadataRows]);
 
   // Relative to the info Button
   const default_header = useMemo(() => {
@@ -595,7 +642,11 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
       tableData,
       tableColumns,
     );
-    setJSONResponses(items_in_json_responses);
+    items_in_json_responses.then((resolvedResponses) => {
+      setJSONResponses(resolvedResponses);
+    }).catch((error) => {
+      console.error("Error resolving JSON responses:", error);
+    });
     if (inspectModal && inspectModal.current && jsonResponses) {
       inspectModal.current?.trigger();
     }
@@ -712,17 +763,19 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
             }}
           >
             <div onClick={handleImageClick} style={{ cursor: "pointer" }}>
-              <Image
-                src={tableData[currentRowIndex].image as string}
-                height={200}
-                width={200}
-                fit="contain"
-                withPlaceholder
-                style={{
-                  backgroundColor: "#f8f9fa",
-                  margin: "0 auto",
-                }}
-              />
+              <Tooltip label="Click me for more details">
+                <Image
+                  src={tableData[currentRowIndex].image as string}
+                  height={200}
+                  width={200}
+                  fit="contain"
+                  withPlaceholder
+                  style={{
+                    backgroundColor: "#f8f9fa",
+                    margin: "0 auto",
+                  }}
+                />
+              </Tooltip>
             </div>
           </div>
         )}
@@ -957,7 +1010,7 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
           startY={hooksY}
           position={Position.Right}
         />
-        {tableData.length > 1 ? (
+        {tableData.length >= 1 ? (
           <InspectFooter
             onClick={showResponseInspector}
             isDrawerOpen={showDrawer}
@@ -965,7 +1018,11 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
             onDrawerClick={() => {
               const items_in_json_responses =
                 __construct_items_in_json_responses(tableData, tableColumns);
-              setJSONResponses(items_in_json_responses);
+              items_in_json_responses.then((resolvedResponses) => {
+                setJSONResponses(resolvedResponses);
+              }).catch((error) => {
+                console.error("Error resolving JSON responses:", error);
+              });
               setShowDrawer(!showDrawer);
               bringNodeToFront(id);
             }}
