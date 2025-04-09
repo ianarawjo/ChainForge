@@ -410,8 +410,6 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
     input.click();
   };
 
-  
-
   // Scrolls to bottom of the table when scrollToBottom toggle is true
   useEffect(() => {
     if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
@@ -477,7 +475,8 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
 
   const handlePrevRow = useCallback(() => {
     if (tableData.length <= 1) return;
-    const newIndex = (currentRowIndex - 1 + tableData.length) % tableData.length;
+    const newIndex =
+      (currentRowIndex - 1 + tableData.length) % tableData.length;
     setCurrentRowIndex(newIndex);
   }, [currentRowIndex, tableData.length]);
 
@@ -504,12 +503,9 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
         setTableColumns([...tableColumns, imageColumn]);
       }
 
-      // Add any new columns that don't exist yet
-      const columnsToAdd = newColumns.filter(
-        (col) => !tableColumns.some((existing) => existing.key === col.key)
-      );
-      if (columnsToAdd.length > 0) {
-        setTableColumns([...tableColumns, ...columnsToAdd]);
+      // Only add new columns if there are no existing columns
+      if (tableColumns.length === 0) {
+        setTableColumns([...tableColumns, ...newColumns]);
       }
 
       // Create new row with image URL and ensure it has a unique ID
@@ -525,9 +521,10 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
       setCurrentRowIndex(updatedTableData.length - 1);
 
       // Update store with new data
-      const selectedRows = shouldSample && sampleNum !== undefined
-        ? sampleRandomElements(updatedTableData, sampleNum)
-        : null;
+      const selectedRows =
+        shouldSample && sampleNum !== undefined
+          ? sampleRandomElements(updatedTableData, sampleNum)
+          : null;
 
       setDataPropsForNode(id, {
         rows: updatedTableData,
@@ -606,35 +603,35 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
 
   return (
     <BaseNode classNames="tabular-data-node" nodeId={id}>
-        <NodeLabel
-          title={data.title || "Multimedia Node"}
-          nodeId={id}
-          icon={"📺"}
-          customButtons={[
-            <Tooltip label="Info" key="eval-info">
-              <button
-                onClick={openInfoModal}
-                className="custom-button"
-                style={{ border: "none" }}
-              >
-                <IconInfoCircle
-                  size="12pt"
-                  color="gray"
-                  style={{ marginBottom: "-4px" }}
-                />
-              </button>
-            </Tooltip>,
-            <Tooltip key={0} label="Click on the info button to learn more.">
-              <button
-                className="custom-button"
-                key="import-data"
-                onClick={openImportFileModal}
-              >
-                Import data
-              </button>
-            </Tooltip>,
-          ]}
-        />
+      <NodeLabel
+        title={data.title || "Multimedia Node"}
+        nodeId={id}
+        icon={"📺"}
+        customButtons={[
+          <Tooltip label="Info" key="eval-info">
+            <button
+              onClick={openInfoModal}
+              className="custom-button"
+              style={{ border: "none" }}
+            >
+              <IconInfoCircle
+                size="12pt"
+                color="gray"
+                style={{ marginBottom: "-4px" }}
+              />
+            </button>
+          </Tooltip>,
+          <Tooltip key={0} label="Click on the info button to learn more.">
+            <button
+              className="custom-button"
+              key="import-data"
+              onClick={openImportFileModal}
+            >
+              Import data
+            </button>
+          </Tooltip>,
+        ]}
+      />
       <Modal
         title={default_header}
         size="60%"
@@ -731,12 +728,29 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
         )}
 
       <div className="carousel-row-display" style={{ marginTop: "20px" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "0 20px" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            padding: "0 20px",
+          }}
+        >
           {tableColumns
             .filter((col) => col.key !== "image")
             .map((col) => (
-              <div key={col.key} style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+              <div
+                key={col.key}
+                style={{ display: "flex", flexDirection: "column" }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    marginBottom: "4px",
+                  }}
+                >
                   <Text size="sm" weight={500}>
                     {col.header}
                   </Text>
@@ -748,7 +762,8 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
                   >
                     <IconPencil size={12} />
                   </ActionIcon>
-                  {tableColumns.filter(col => col.key !== "image").length > 1 && (
+                  {tableColumns.filter((col) => col.key !== "image").length >
+                    1 && (
                     <ActionIcon
                       size="xs"
                       variant="subtle"
@@ -761,7 +776,9 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
                 </div>
                 <textarea
                   value={tableData[currentRowIndex]?.[col.key] || ""}
-                  onChange={(e) => handleSaveCell(currentRowIndex, col.key, e.target.value)}
+                  onChange={(e) =>
+                    handleSaveCell(currentRowIndex, col.key, e.target.value)
+                  }
                   style={{
                     padding: "8px",
                     border: "1px solid #e0e0e0",
@@ -776,13 +793,17 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
             ))}
         </div>
         {tableData.length === 0 && (
-          <div ref={setRef} className="tabular-data-container nowheel nodrag" style={{ 
-            minHeight: "220px", 
-            minWidth: "220px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center"
-          }}>
+          <div
+            ref={setRef}
+            className="tabular-data-container nowheel nodrag"
+            style={{
+              minHeight: "220px",
+              minWidth: "220px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             <Box
               sx={{
                 height: 200,
@@ -800,13 +821,22 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
             </Box>
           </div>
         )}
-        <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "10px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "8px",
+            marginTop: "10px",
+          }}
+        >
           {tableData.length > 0 && (
             <Button
               variant="subtle"
               size="xs"
               leftIcon={<IconPlus size={14} />}
-              onClick={() => handleInsertColumn(tableColumns[tableColumns.length - 1].key, 1)}
+              onClick={() =>
+                handleInsertColumn(tableColumns[tableColumns.length - 1].key, 1)
+              }
               style={{ color: "#666" }}
             >
               Add Column
@@ -850,7 +880,12 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
       <div className="tabular-data-footer">
         {/* Enhanced Carousel Navigation */}
         {tableData.length > 1 && (
-          <Group position="center" mt="sm" spacing={0} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <Group
+            position="center"
+            mt="sm"
+            spacing={0}
+            style={{ display: "flex", alignItems: "center", gap: "4px" }}
+          >
             <ActionIcon
               onClick={handlePrevRow}
               disabled={tableData.length <= 1}
@@ -879,7 +914,11 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
             >
               <IconChevronLeft size={32} />
             </ActionIcon>
-            <Text size="sm" weight={500} style={{ minWidth: "60px", textAlign: "center" }}>
+            <Text
+              size="sm"
+              weight={500}
+              style={{ minWidth: "60px", textAlign: "center" }}
+            >
               {`${currentRowIndex + 1}/${tableData.length}`}
             </Text>
             <ActionIcon
