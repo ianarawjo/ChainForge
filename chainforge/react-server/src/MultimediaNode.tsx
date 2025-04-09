@@ -40,7 +40,12 @@ import { AlertModalContext } from "./AlertModal";
 import RenameValueModal, { RenameValueModalRef } from "./RenameValueModal";
 import useStore from "./store";
 import { sampleRandomElements } from "./backend/utils";
-import { Dict, TabularDataRowType, TabularDataColType, LLMResponse } from "./backend/typing";
+import {
+  Dict,
+  TabularDataRowType,
+  TabularDataColType,
+  LLMResponse,
+} from "./backend/typing";
 import { Position } from "reactflow";
 import { AIGenReplaceTablePopover } from "./AiPopover";
 import { parseTableData } from "./backend/tableUtils";
@@ -48,7 +53,9 @@ import { StringLookup } from "./backend/cache";
 import UploadFileModal, { UploadFileModalRef } from "./UploadFileModal";
 import ImagePreviewModal, { ImagePreviewModalRef } from "./ImagePreviewModal";
 import InspectFooter from "./InspectFooter";
-import LLMResponseInspectorModal, { LLMResponseInspectorModalRef } from "./LLMResponseInspectorModal";
+import LLMResponseInspectorModal, {
+  LLMResponseInspectorModalRef,
+} from "./LLMResponseInspectorModal";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 
 const defaultRows: TabularDataRowType = {
@@ -73,23 +80,32 @@ const __construct_items_in_json_responses = (
 ) => {
   const items_in_json_responses: LLMResponse[] = tableData.map((row) => {
     const item: LLMResponse = {
-        responses: [{ d: String(row['image']).split('base64,')[1], t: 'img' }],
-        uid: String(row.__uid),
-        prompt: 'prompt',
-        vars: tableColumns.reduce((acc, col) => {
-            if (col.key !== "image") acc[col.header] = row[col.key];
-            return acc;
-        }, {} as Record<string, any>),
-        llm: 'image_preview',
-        metavars: {
-            LLM_0: 'image_preview',
-            __pt: '{' + tableColumns.map((dic) => dic.header).filter((e) => e !== 'Image').join('}\n{') + '}',
+      responses: [{ d: String(row.image).split("base64,")[1], t: "img" }],
+      uid: String(row.__uid),
+      prompt: "prompt",
+      vars: tableColumns.reduce(
+        (acc, col) => {
+          if (col.key !== "image") acc[col.header] = row[col.key];
+          return acc;
         },
+        {} as Record<string, any>,
+      ),
+      llm: "image_preview",
+      metavars: {
+        LLM_0: "image_preview",
+        __pt:
+          "{" +
+          tableColumns
+            .map((dic) => dic.header)
+            .filter((e) => e !== "Image")
+            .join("}\n{") +
+          "}",
+      },
     };
     return item;
   });
   return items_in_json_responses;
-}
+};
 
 export interface CarousselTabularDataNodeData {
   title?: string;
@@ -390,7 +406,6 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
 
     // Trigger the file selector
     input.click();
-
   };
 
   // Scrolls to bottom of the table when scrollToBottom toggle is true
@@ -570,13 +585,12 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
 
   // -------------------- Everything about the Inspect Items thing
   const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
-  
+
   const [jsonResponses, setJSONResponses] = useState<LLMResponse[] | null>(
-      null,
+    null,
   );
 
   const [showDrawer, setShowDrawer] = useState(false);
-
 
   const showResponseInspector = useCallback(() => {
     const items_in_json_responses = __construct_items_in_json_responses(
@@ -588,8 +602,6 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
       inspectModal.current?.trigger();
     }
   }, [inspectModal, jsonResponses]);
-
-  
 
   return (
     <BaseNode classNames="tabular-data-node" nodeId={id}>
@@ -655,6 +667,40 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
       />
 
       <div className="carousel-row-display">
+        <div ref={setRef} className="tabular-data-container nowheel nodrag">
+          {tableData.length > 0 ? (
+            <EditableTable
+              rows={[tableData[currentRowIndex]]}
+              columns={tableColumns.filter((col) => col.key !== "image")}
+              handleSaveCell={(rowIdx, colKey, value) => {
+                handleSaveCell(currentRowIndex, colKey, value);
+              }}
+              handleRemoveColumn={handleRemoveColumn}
+              handleInsertColumn={handleInsertColumn}
+              handleRenameColumn={openRenameColumnModal}
+            />
+          ) : (
+            <Box
+              sx={{
+                height: 200,
+                width: 200,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "#f8f9fa",
+                border: "1px solid #e0e0e0",
+                borderRadius: "4px",
+                margin: "0 auto",
+              }}
+            >
+              <Text color="dimmed">No images uploaded</Text>
+            </Box>
+          )}
+        </div>
+      </div>
+
+
+      {/* <div className="carousel-row-display">
         {tableData.length > 0 ? (
           <div ref={setRef} className="tabular-data-container nowheel nodrag">
             <EditableTable
@@ -686,7 +732,7 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
             <Text color="dimmed">No images uploaded</Text>
           </Box>
         )}
-      </div>
+      </div> */}
 
       {tableData.length > 0 &&
         tableData[currentRowIndex].image &&
@@ -828,10 +874,8 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
             isDrawerOpen={showDrawer}
             showDrawerButton={true}
             onDrawerClick={() => {
-              const items_in_json_responses = __construct_items_in_json_responses(
-                tableData,
-                tableColumns,
-              );
+              const items_in_json_responses =
+                __construct_items_in_json_responses(tableData, tableColumns);
               setJSONResponses(items_in_json_responses);
               setShowDrawer(!showDrawer);
               bringNodeToFront(id);
@@ -846,10 +890,10 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
           showDrawer={showDrawer}
         />
       </div>
-    <LLMResponseInspectorModal
-      ref={inspectModal}
-      jsonResponses={jsonResponses ?? []}
-    />
+      <LLMResponseInspectorModal
+        ref={inspectModal}
+        jsonResponses={jsonResponses ?? []}
+      />
     </BaseNode>
   );
 };
