@@ -699,7 +699,6 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
         </div>
       </div>
 
-
       {/* <div className="carousel-row-display">
         {tableData.length > 0 ? (
           <div ref={setRef} className="tabular-data-container nowheel nodrag">

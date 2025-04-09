@@ -34,6 +34,10 @@ import {
 
 import { AlertModalContext } from "./AlertModal";
 
+interface FileWithContent extends FileWithPath {
+  content?: string;
+}
+
 const MAX_SIZE = 50;
 
 // TODO: Change this for image upload
@@ -50,7 +54,8 @@ const read_file = (
   reader.onerror = function (event) {
     console.error("Error reading file:", event);
   };
-  reader.readAsText(file);
+  // reader.readAsText(file);
+  reader.readAsDataURL(file);
 };
 
 // TODO: To improve & Move this function to utils
@@ -66,7 +71,7 @@ function validate_file_upload(v: string): boolean {
 
 interface ImageFileDropzoneProps {
   onError: (err: string | Error) => void;
-  onDrop: (file: FileWithPath) => void; // TODO:make this function accept a content string for cache mechanism
+  onDrop: (file: FileWithContent) => void;
 }
 
 /** A Dropzone to load an image file.
@@ -88,14 +93,15 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
           setIsLoading(true);
           read_file(
             files[0],
-            (content: string | ArrayBuffer | null, file: FileWithPath) => {
+            (content: string | ArrayBuffer | null, file: FileWithContent) => {
               if (typeof content !== "string") {
                 console.error("File unreadable: Contents are not text.");
                 return;
               }
+              file.content = content;
               // TODO: Log the content of file in cache
               // Read the file into text and then send it to backend
-              onDrop(file);
+              onDrop(file as FileWithContent);
               console.log("TODO: Check File is an image !!!! File content:");
               setIsLoading(false);
             },
@@ -233,11 +239,13 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
               label="Provide Image URL OR choose Local Image File"
               labelPosition="center"
             />
-            <TextInput
-              label={label}
-              autoFocus={false}
-              {...form.getInputProps("value")}
-            />
+            {fileLoaded.length === 0 && (
+              <TextInput
+                label={label}
+                autoFocus={false}
+                {...form.getInputProps("value")}
+              />
+            )}
             <Divider my="xs" label="" labelPosition="center" />
 
             {fileLoaded.length > 0 ? (
@@ -253,7 +261,6 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
                 >
                   <Group position="apart">
                     <Group position="left" mt="md" mb="xs">
-                      <Text w="10px">{p.type.split("/")[1]}</Text>
                       <Text weight={500}>{p.name}</Text>
                     </Group>
                     <Button
@@ -271,10 +278,10 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
             ) : (
               <ImageFileDropzone
                 onError={handleError}
-                onDrop={(file: FileWithPath) => {
+                onDrop={(file: FileWithContent) => {
                   setFileLoaded([file]);
                   console.log("File Loaded:", file);
-                  form.setValues({ value: file.path });
+                  form.setValues({ value: file.content });
                 }}
               />
             )}
