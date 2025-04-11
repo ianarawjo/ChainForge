@@ -8,9 +8,6 @@ import React, {
 } from "react";
 import { useDisclosure } from "@mantine/hooks";
 import {
-  Menu,
-  NumberInput,
-  Switch,
   Text,
   Tooltip,
   Group,
@@ -19,18 +16,14 @@ import {
   Image,
   Modal,
   Button,
+  Code,
 } from "@mantine/core";
-import EditableTable from "./EditableTable";
-import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { v4 as uuidv4 } from "uuid";
 import {
   IconX,
-  IconArrowBarToUp,
-  IconArrowBarToDown,
   IconChevronLeft,
   IconChevronRight,
-  IconUpload,
   IconInfoCircle,
   IconPlus,
   IconPencil,
@@ -49,9 +42,7 @@ import {
   LLMResponse,
 } from "./backend/typing";
 import { Position } from "reactflow";
-import { AIGenReplaceTablePopover } from "./AiPopover";
 import { parseTableData } from "./backend/tableUtils";
-import { StringLookup } from "./backend/cache";
 import UploadFileModal, { UploadFileModalRef } from "./UploadFileModal";
 import ImagePreviewModal, { ImagePreviewModalRef } from "./ImagePreviewModal";
 import InspectFooter from "./InspectFooter";
@@ -84,8 +75,10 @@ const __http_url_to_base64 = (url: string) => {
     xhr.onload = () => {
       if (xhr.status === 200) {
         const base64String = btoa(
-          new Uint8Array(xhr.response)
-            .reduce((data, byte) => data + String.fromCharCode(byte), ""),
+          new Uint8Array(xhr.response).reduce(
+            (data, byte) => data + String.fromCharCode(byte),
+            "",
+          ),
         );
         resolve(base64String);
       } else {
@@ -95,7 +88,7 @@ const __http_url_to_base64 = (url: string) => {
     xhr.onerror = () => reject(new Error("Failed to load image"));
     xhr.send();
   });
-}
+};
 
 const __construct_items_in_json_responses = (
   tableData: TabularDataRowType[],
@@ -104,13 +97,15 @@ const __construct_items_in_json_responses = (
   const items_in_json_responses: Promise<LLMResponse[]> = Promise.all(
     tableData.map(async (row) => {
       const item: LLMResponse = {
-        responses: [{
-          t: "img",
-          d: String(row.image).startsWith('http') ? 
-            // if the image is a URL, convert it to base64, get the string from the response
-            await __http_url_to_base64(String(row.image)):
-            String(row.image).split("base64,")[1],
-        }],
+        responses: [
+          {
+            t: "img",
+            d: String(row.image).startsWith("http")
+              ? // if the image is a URL, convert it to base64, get the string from the response
+                await __http_url_to_base64(String(row.image))
+              : String(row.image).split("base64,")[1],
+          },
+        ],
         uid: String(row.__uid),
         prompt: "prompt",
         vars: tableColumns.reduce(
@@ -133,25 +128,25 @@ const __construct_items_in_json_responses = (
         },
       };
       return item;
-    })
+    }),
   );
   return items_in_json_responses;
 };
 
-export interface CarousselTabularDataNodeData {
+export interface MultimediaNodeData {
   title?: string;
   sample?: boolean;
   sampleNum?: number;
   rows?: TabularDataRowType[];
   columns?: TabularDataColType[];
 }
-export interface CarousselTabularDataNodeProps {
-  data: CarousselTabularDataNodeData;
+export interface MultimediaNodeDataProps {
+  data: MultimediaNodeData;
   id: string;
 }
 
 export const IMAGE_COLUMN_NAME = "Image";
-const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
+const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({
   data,
   id,
 }) => {
@@ -161,7 +156,9 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
   const [tableColumns, setTableColumns] = useState<TabularDataColType[]>(
     data.columns || [],
   );
-  const [metadataRows, setMetadataRows] = useState<Record<string, Dict<string>>>({}); // New state for metadata
+  const [metadataRows, setMetadataRows] = useState<
+    Record<string, Dict<string>>
+  >({}); // New state for metadata
 
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
@@ -319,7 +316,6 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
     }
 
     const { columns, rows } = parseTableData(jsonl as any[]);
-    console.log(columns, rows);
 
     // find the image key
     const image_col = columns.find((col) => col.header === "image");
@@ -533,18 +529,21 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
         (col) => col.key === imageColumnKey,
       );
 
+      const columns_to_add = [];
+
       // Add image column if it doesn't exist
       if (!imageColumnExists) {
         const imageColumn: TabularDataColType = {
           key: imageColumnKey,
           header: IMAGE_COLUMN_NAME,
         };
-        setTableColumns([...tableColumns, imageColumn]);
+        columns_to_add.push(imageColumn);
       }
 
       // Only add new columns if there are no existing columns
       if (tableColumns.length === 0) {
-        setTableColumns([...tableColumns, ...newColumns]);
+        columns_to_add.push(...newColumns);
+        setTableColumns([...tableColumns, ...columns_to_add]);
       }
 
       // Create new row with image URL and ensure it has a unique ID
@@ -562,7 +561,9 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
       // Update metadata for the new row
       const newMetadata = {
         ...metadataRows,
-        [rowWithImage.__uid]: { source: (url.startsWith('http') ? "remote image" : "local file upload") },
+        [rowWithImage.__uid]: {
+          source: url.startsWith("http") ? "remote image" : "local file upload",
+        },
       };
       setMetadataRows(newMetadata);
 
@@ -578,7 +579,15 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
         sel_rows: selectedRows,
       });
     },
-    [tableColumns, tableData, shouldSample, sampleNum, id, setDataPropsForNode, metadataRows],
+    [
+      tableColumns,
+      tableData,
+      shouldSample,
+      sampleNum,
+      id,
+      setDataPropsForNode,
+      metadataRows,
+    ],
   );
 
   const handleOpenUploadModal = useCallback(() => {
@@ -610,12 +619,11 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
   const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] =
     useDisclosure(false);
 
-  const code_info_modal = useMemo(() => {
+  const node_info_modal = useMemo(() => {
     return (
       <Box m="lg" mt="xl">
         <Text mb="sm">
-          TODOOOOO make a little explanation text inspired from guidelines
-          expressed at{" "}
+          To have more details about the .tsv file format, visit{" "}
           <a
             href="https://github.com/open-compass/VLMEvalKit/blob/main/docs/en/Development.md#1-prepare-your-benchmark-tsv-file"
             target="_blank"
@@ -623,6 +631,31 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
           >
             this link
           </a>
+        </Text>
+        <Text mt="sm" mb="sm">
+          Summary of the mandatory fields in the TSV file:
+        </Text>
+        <Text mt="sm" mb="sm">
+          <Code>- index</Code>: Integer, Unique for each line in tsv
+        </Text>
+        <Text mt="sm" mb="sm">
+          <Code>- image</Code>: The base64 of the image. See examples of APIs
+          implemented in{" "}
+          <a
+            href="https://github.com/open-compass/VLMEvalKit/blob/c57f96566c4c1d62dd9bf4b4319a450ce81e4f53/vlmeval/smp/vlm.py#L92-L126"
+            target="_blank"
+            rel="noreferrer"
+          >
+            vlmeval/smp/vlm.py
+          </a>{" "}
+          for encoding and decoding.
+        </Text>
+        <Text mt="sm" mb="sm">
+          <Code>- question</Code>: The question corresponding to the image, a
+          string
+        </Text>
+        <Text mt="sm" mb="sm">
+          <Code>- answer</Code>: The answer to the question, a string.
         </Text>
       </Box>
     );
@@ -642,11 +675,13 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
       tableData,
       tableColumns,
     );
-    items_in_json_responses.then((resolvedResponses) => {
-      setJSONResponses(resolvedResponses);
-    }).catch((error) => {
-      console.error("Error resolving JSON responses:", error);
-    });
+    items_in_json_responses
+      .then((resolvedResponses) => {
+        setJSONResponses(resolvedResponses);
+      })
+      .catch((error) => {
+        console.error("Error resolving JSON responses:", error);
+      });
     if (inspectModal && inspectModal.current && jsonResponses) {
       inspectModal.current?.trigger();
     }
@@ -693,7 +728,7 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
           root: { position: "relative", left: "-5%" },
         }}
       >
-        {code_info_modal}
+        {node_info_modal}
       </Modal>
       <RenameValueModal
         ref={renameColumnModal}
@@ -1018,11 +1053,13 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
             onDrawerClick={() => {
               const items_in_json_responses =
                 __construct_items_in_json_responses(tableData, tableColumns);
-              items_in_json_responses.then((resolvedResponses) => {
-                setJSONResponses(resolvedResponses);
-              }).catch((error) => {
-                console.error("Error resolving JSON responses:", error);
-              });
+              items_in_json_responses
+                .then((resolvedResponses) => {
+                  setJSONResponses(resolvedResponses);
+                })
+                .catch((error) => {
+                  console.error("Error resolving JSON responses:", error);
+                });
               setShowDrawer(!showDrawer);
               bringNodeToFront(id);
             }}
@@ -1044,4 +1081,4 @@ const CarousselTabularDataNode: React.FC<CarousselTabularDataNodeProps> = ({
   );
 };
 
-export default CarousselTabularDataNode;
+export default MultimediaNode;

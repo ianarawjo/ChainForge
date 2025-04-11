@@ -239,13 +239,20 @@ function construct_image_payload(
           type: "image_url",
           image_url: { url: image_url, detail: "auto" },
         };
-      case "gemini":
+      case "gemini": {
+        let extension = image_url.split(".")[-1];
+        if (extension === "jpg") {
+          extension = "jpeg";
+        }
         return {
           inlineData: {
             data: image_url,
-            mimeType: "image/" + image_url.split(".")[-1],
+            mimeType:
+              "image/" +
+              (image_url.split(".")[-1] === "jpg" ? "jpeg" : extension),
           },
         };
+      }
       case "anthropic":
         return { type: "image", source: { type: "url", url: image_url } };
       default:
@@ -253,9 +260,11 @@ function construct_image_payload(
     }
   } else {
     // if image_url is a absolute path to a file, encode it as base64
-    if (!image_url.startsWith("data:image/jpeg;base64,")) {
-      console.log("TO IMPLEMENT : Encoding image as base64");
-      throw new Error("TO IMPLEMENT : Encoding image as base64");
+    if (!image_url.startsWith("data:image/")) {
+      const MSG =
+        "Image URL must be a valid URL (starting with `http`) or a base64 encoded string (starting with `data:image/`)";
+      console.log(MSG);
+      throw new Error(MSG);
     }
 
     switch (variant) {
@@ -264,13 +273,23 @@ function construct_image_payload(
           type: "image_url",
           image_url: { url: image_url, detail: "auto" },
         };
-      case "gemini":
-        return { inlineData: { data: image_url, mimeType: "image/jpeg" } };
-      case "anthropic":
+      case "gemini": {
+        let mimeType_gemini = image_url.split(";")[0].split(":")[1];
+        if (mimeType_gemini === "image/jpg") {
+          mimeType_gemini = "image/jpeg";
+        }
+        return { inlineData: { data: image_url, mimeType: mimeType_gemini } };
+      }
+      case "anthropic": {
+        let mimeType_ant = image_url.split(";")[0].split(":")[1];
+        if (mimeType_ant === "image/jpg") {
+          mimeType_ant = "image/jpeg";
+        }
         return {
           type: "image",
-          source: { type: "base64", media_type: "image/jpeg", data: image_url },
+          source: { type: "base64", media_type: mimeType_ant, data: image_url },
         };
+      }
       default:
         throw new Error(`Unknown variant: ${variant}`);
     }

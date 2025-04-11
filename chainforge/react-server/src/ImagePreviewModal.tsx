@@ -8,14 +8,12 @@ import { Modal, Image, Text, Stack } from "@mantine/core";
 import { Dict } from "./backend/typing";
 
 export interface ImagePreviewModalRef {
-  trigger: (url: string, data : Dict<string>) => void;
+  trigger: (url: string, data: Dict<string>) => void;
 }
 
 interface ImagePreviewModalProps {
   title?: string;
 }
-
-
 
 interface ImageInfo {
   user_source: string;
@@ -36,7 +34,7 @@ const ImagePreviewModal = forwardRef<
   const [imageInfo, setImageInfo] = useState<ImageInfo | null>(null);
 
   useImperativeHandle(ref, () => ({
-    trigger: (url: string, data : Dict<string>) => {
+    trigger: (url: string, data: Dict<string>) => {
       console.log("trigger", data);
       setImageUrl(url);
       setImageData(data);
@@ -52,11 +50,9 @@ const ImagePreviewModal = forwardRef<
           user_source: imageData?.source,
           width: img.naturalWidth,
           height: img.naturalHeight,
-          format: (
-            imageUrl.startsWith("http") ?
-            imageUrl : 
-            imageUrl.split(";")[0].split(":")[1] || "Unknown"
-          ),
+          format: imageUrl.startsWith("http")
+            ? imageUrl
+            : imageUrl.split(";")[0].split(":")[1] || "Unknown",
           size: "N/A", // We can't get file size from URL directly in browser
         });
       };

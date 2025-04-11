@@ -66,7 +66,7 @@ import { v4 as uuid } from "uuid";
 import axios from "axios";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
-import CarousselTabularDataNode from "./MultimediaNode";
+import MultimediaNode from "./MultimediaNode";
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
@@ -193,7 +193,7 @@ const nodeTypes = {
   join: JoinNode,
   split: SplitNode,
   processor: CodeEvaluatorNode,
-  multimedia: CarousselTabularDataNode,
+  multimedia: MultimediaNode,
 };
 
 const edgeTypes = {
@@ -1130,7 +1130,7 @@ const App = () => {
               Tabular Data Node{" "}
             </Menu.Item>
           </MenuTooltip>
-          <MenuTooltip label="Multimedia input node.">
+          <MenuTooltip label="Leverage Image data and pair them with text.">
             <Menu.Item
               onClick={() => addNode("multimediaNode", "multimedia")}
               icon={"📺"}
@@ -1286,15 +1286,6 @@ const App = () => {
             >
               {" "}
               Split Node{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <MenuTooltip label="Create an image carousel to display multiple images.">
-            <Menu.Item
-              onClick={() => addNode("carouselNode")}
-              icon={<IconPhoto size="16px" />}
-            >
-              {" "}
-              Multimedia Node{" "}
             </Menu.Item>
           </MenuTooltip>
           <Menu.Divider />
