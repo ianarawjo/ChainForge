@@ -5,7 +5,7 @@
 
 import React, { useCallback, useMemo, useState, useRef } from "react";
 import { Menu, MenuStylesNames, Styles } from "@mantine/core";
-import { IconCopy, IconX } from "@tabler/icons-react";
+import { IconCopy, IconHeart, IconX } from "@tabler/icons-react";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import useStore from "./store";
 import { Dict } from "./backend/typing";
@@ -31,6 +31,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   contextMenuExts,
 }) => {
   const addNode = useStore((state) => state.addNode);
+  const saveFavoriteNode = useStore((state) => state.saveFavoriteNode);
   const removeNode = useStore((state) => state.removeNode);
   const duplicateNode = useStore((state) => state.duplicateNode);
 
@@ -54,6 +55,12 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
     // Add it to the ReactFlow canvas
     addNode(dupNode);
   }, [nodeId, duplicateNode]);
+
+  // Add the node to the stored Favorites list
+  const handleFavoriteNode = useCallback(() => {
+    // TODO: Ask the user for a name for the favorited node
+    saveFavoriteNode(nodeId, nodeId);
+  }, [nodeId]);
 
   // Remove the node, after user confirmation dialog
   const handleRemoveNode = useCallback(() => {
@@ -123,6 +130,14 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
           <Menu.Item key="duplicate" onClick={handleDuplicateNode}>
             <IconCopy size="10pt" />
             &nbsp;Duplicate Node
+          </Menu.Item>
+          <Menu.Item key="favorite" onClick={handleFavoriteNode}>
+            <IconHeart
+              size="12pt"
+              color="red"
+              style={{ marginBottom: "-3pt", marginLeft: "-2px" }}
+            />
+            &nbsp;Favorite Node
           </Menu.Item>
           <Menu.Item key="delete" onClick={handleRemoveNode}>
             <IconX size="10pt" />

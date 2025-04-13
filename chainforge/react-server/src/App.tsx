@@ -8,7 +8,12 @@ import React, {
   useTransition,
   KeyboardEvent,
 } from "react";
-import ReactFlow, { Controls, Background, ReactFlowInstance } from "reactflow";
+import ReactFlow, {
+  Controls,
+  Background,
+  ReactFlowInstance,
+  Node,
+} from "reactflow";
 import {
   Button,
   Menu,
@@ -36,6 +41,7 @@ import {
   IconForms,
   IconAbacus,
   IconDeviceFloppy,
+  IconHeart,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -104,6 +110,8 @@ import {
 } from "react-device-detect";
 import MultiEvalNode from "./MultiEvalNode";
 import FlowSidebar from "./FlowSidebar";
+import { getPositionCSSStyle } from "./LLMListComponent";
+import NestedMenu, { NestedMenuItemProps } from "./NestedMantineMenu";
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -137,6 +145,7 @@ const selector = (state: StoreHandles) => ({
   resetLLMColors: state.resetLLMColors,
   setAPIKeys: state.setAPIKeys,
   importState: state.importState,
+  favorites: state.favorites,
 });
 
 // The initial LLM to use when new flows are created, or upon first load
@@ -193,6 +202,24 @@ const nodeTypes = {
   processor: CodeEvaluatorNode,
 };
 
+const nodeEmojis = {
+  textfields: <IconTextPlus size={16} />,
+  prompt: "💬",
+  chat: "🗣",
+  simpleval: <IconRuler2 size={16} />,
+  evaluator: <IconTerminal size={16} />,
+  llmeval: <IconRobot size={16} />,
+  multieval: <IconAbacus size={16} />,
+  vis: "📊",
+  inspect: "🔍",
+  script: <IconSettingsAutomation size={16} />,
+  csv: <IconForms size={16} />,
+  table: "🗂️",
+  comment: "✏️",
+  join: <IconArrowMerge size={16} />,
+  split: <IconArrowsSplit size={16} />,
+};
+
 const edgeTypes = {
   default: RemoveEdge,
 };
@@ -227,27 +254,6 @@ const getWindowCenter = () => {
   return { centerX: width / 2.0, centerY: height / 2.0 };
 };
 
-const MenuTooltip = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) => {
-  return (
-    <Tooltip
-      label={label}
-      position="right"
-      width={200}
-      multiline
-      withArrow
-      arrowSize={10}
-    >
-      {children}
-    </Tooltip>
-  );
-};
-
 // const connectionLineStyle = { stroke: '#ddd' };
 const snapGrid: [number, number] = [16, 16];
 
@@ -265,9 +271,10 @@ const App = () => {
     resetLLMColors,
     setAPIKeys,
     importState,
+    favorites,
   } = useStore(selector, shallow);
 
-  // For saving / loading
+  // For saving / loading flows
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
   const [autosavingInterval, setAutosavingInterval] = useState<
     NodeJS.Timeout | undefined
@@ -316,12 +323,257 @@ const App = () => {
     message: "Are you sure?",
   });
 
-  // For Mantine Context Menu forced closing
-  // (for some reason the menu doesn't close automatically upon click-off)
-  const { hideContextMenu } = useContextMenu();
-
   // For displaying a pending 'loading' status
   const [isLoading, setIsLoading] = useState(true);
+
+  // Context menu for "Add Node +" list
+  const { showContextMenu, hideContextMenu, isContextMenuVisible } =
+    useContextMenu();
+  // Mantine ContextMenu does not fix the position of the menu
+  // to be below the clicked button, so we must do it ourselves.
+  const addBtnRef = useRef(null);
+  const [wasContextMenuToggled, setWasContextMenuToggled] = useState(false);
+
+  // Add Nodes list
+  const addNodesMenuItems = useMemo(() => {
+    // All initial nodes available in ChainForge
+    const initNodes = [
+      {
+        // Menu.Label
+        key: "Input Data",
+      },
+      {
+        key: "textfields",
+        title: "TextFields Node",
+        icon: nodeEmojis.textfields,
+        tooltip:
+          "Specify input text to prompt or chat nodes. You can also declare variables in brackets {} to chain TextFields together.",
+        onClick: () => addNode("textFieldsNode", "textfields"),
+      },
+      {
+        key: "table",
+        title: "Tabular Data Node",
+        icon: nodeEmojis.table,
+        tooltip:
+          "Import or create a spreadhseet of data to use as input to prompt or chat nodes. Import accepts xlsx, csv, and jsonl.",
+        onClick: () => addNode("table"),
+      },
+      {
+        key: "csv",
+        title: "Items Node",
+        icon: nodeEmojis.csv,
+        tooltip:
+          "Specify inputs as a comma-separated list of items. Good for specifying lots of short text values. An alternative to TextFields node.",
+        onClick: () => addNode("csvNode", "csv"),
+      },
+      {
+        key: "divider",
+      },
+      {
+        // Menu.Label
+        key: "Prompters",
+      },
+      {
+        key: "prompt",
+        title: "Prompt Node",
+        icon: nodeEmojis.prompt,
+        tooltip:
+          "Prompt one or multiple LLMs. Specify prompt variables in brackets {}.",
+        onClick: () => addNode("promptNode", "prompt", { prompt: "" }),
+      },
+      {
+        key: "chat",
+        title: "Chat Turn Node",
+        icon: nodeEmojis.chat,
+        tooltip:
+          "Start or continue a conversation with chat models. Attach Prompt Node output as past context to continue chatting past the first turn.",
+        onClick: () => addNode("chatTurn", "chat", { prompt: "" }),
+      },
+      {
+        key: "divider",
+      },
+      {
+        // Menu.Label
+        key: "Evaluators and Processors",
+      },
+      {
+        key: "Evaluators",
+        title: "Evaluators",
+        icon: "✅",
+        items: [
+          {
+            key: "simpleval",
+            title: "Simple Evaluator",
+            icon: nodeEmojis.simpleval,
+            tooltip:
+              "Evaluate responses with a simple check (no coding required).",
+            onClick: () => addNode("simpleEval", "simpleval"),
+          },
+          {
+            key: "evaluator-javascript",
+            title: "JavaScript Evaluator",
+            icon: nodeEmojis.evaluator,
+            tooltip: "Evaluate responses by writing JavaScript code.",
+            onClick: () =>
+              addNode("evalNode", "evaluator", {
+                language: "javascript",
+                code: "function evaluate(response) {\n  return response.text.length;\n}",
+              }),
+          },
+          {
+            key: "evaluator-python",
+            title: "Python Evaluator",
+            icon: nodeEmojis.evaluator,
+            tooltip: "Evaluate responses by writing Python code.",
+            onClick: () =>
+              addNode("evalNode", "evaluator", {
+                language: "python",
+                code: "def evaluate(response):\n  return len(response.text)",
+              }),
+          },
+          {
+            key: "llmeval",
+            title: "LLM Evaluation",
+            icon: nodeEmojis.llmeval,
+            tooltip:
+              "Evaluate responses with an LLM. (Note that LLM evaluators should be used with caution and always double-checked.)",
+            onClick: () => addNode("llmeval"),
+          },
+          {
+            key: "multieval",
+            title: "Multi-Evaluator",
+            icon: nodeEmojis.multieval,
+            tooltip:
+              "Evaluate responses across multiple criteria (multiple code and/or LLM evaluators).",
+            onClick: () => addNode("multieval"),
+          },
+        ],
+      },
+      {
+        key: "Processors",
+        title: "Processors",
+        icon: "⚙️",
+        items: [
+          {
+            key: "join",
+            title: "Join Node",
+            icon: nodeEmojis.join,
+            tooltip:
+              "Concatenate responses or input data together before passing into later nodes, within or across variables and LLMs.",
+            onClick: () => addNode("join"),
+          },
+          {
+            key: "split",
+            title: "Split Node",
+            icon: nodeEmojis.split,
+            tooltip:
+              "Split responses or input data by some format. For instance, you can split a markdown list into separate items.",
+            onClick: () => addNode("split"),
+          },
+          {
+            key: "processor-javascript",
+            title: "JavaScript Processor",
+            icon: nodeEmojis.evaluator,
+            tooltip:
+              "Transform responses by mapping a JavaScript function over them.",
+            onClick: () =>
+              addNode("process", "processor", {
+                language: "javascript",
+                code: "function process(response) {\n  return response.text;\n}",
+              }),
+          },
+          {
+            key: "processor-python",
+            title: "Python Processor",
+            icon: nodeEmojis.evaluator,
+            tooltip:
+              "Transform responses by mapping a Python function over them.",
+            onClick: () =>
+              addNode("process", "processor", {
+                language: "python",
+                code: "def process(response):\n  return response.text;",
+              }),
+          },
+        ],
+      },
+      {
+        key: "divider",
+      },
+      {
+        // Menu.Label
+        key: "Visualizers",
+      },
+      {
+        key: "vis",
+        title: "Vis Node",
+        icon: nodeEmojis.vis,
+        tooltip:
+          "Plot evaluation results. (Attach an evaluator or scorer node as input.)",
+        onClick: () => addNode("visNode", "vis", {}),
+      },
+      {
+        key: "inspect",
+        title: "Inspect Node",
+        icon: nodeEmojis.inspect,
+        tooltip:
+          "Used to inspect responses from prompter or evaluation nodes, without opening up the pop-up view.",
+        onClick: () => addNode("inspectNode", "inspect"),
+      },
+      {
+        key: "divider",
+      },
+      {
+        // Menu.Label
+        key: "Misc",
+      },
+      {
+        key: "comment",
+        title: "Comment Node",
+        icon: nodeEmojis.comment,
+        tooltip: "Make a comment about your flow.",
+        onClick: () => addNode("comment"),
+      },
+      {
+        key: "script",
+        title: "Global Python Scripts",
+        icon: nodeEmojis.script,
+        tooltip:
+          "Specify directories to load as local packages, so they can be imported in your Python evaluator nodes (add to sys path).",
+        onClick: () => addNode("scriptNode", "script"),
+      },
+    ] as NestedMenuItemProps[];
+
+    // Add favorite nodes to the menu
+    const favoriteNodes = favorites?.nodes?.map(({ name, value }, idx) => {
+      const type = value.type ?? "";
+      const emoji =
+        type in nodeEmojis ? nodeEmojis[type as keyof typeof nodeEmojis] : "❤️";
+      return {
+        key: `favorite-${name}-${idx}`,
+        title: name,
+        icon: emoji,
+        tooltip: `Add ${name} to the flow`,
+        onClick: () => addNodeFromFavorite(name, value),
+      };
+    });
+
+    if (favoriteNodes && favoriteNodes.length > 0) {
+      initNodes.splice(0, 0, {
+        key: "Favorites",
+        title: "Favorites",
+        icon: <IconHeart size={16} color="red" />,
+        items: favoriteNodes,
+      });
+      initNodes.splice(1, 0, {
+        key: "divider",
+      });
+    }
+
+    // <Menu.Label>Favorites</Menu.Label>
+    // <Menu.Divider />
+
+    return initNodes;
+  }, [favorites]);
 
   // Helper
   const getViewportCenter = useCallback(() => {
@@ -342,7 +594,7 @@ const App = () => {
     ) => {
       const { x, y } = getViewportCenter();
       addNodeToStore({
-        id: `${id}-` + Date.now(),
+        id: `${id}-` + uuid(),
         type: type ?? id,
         data: data ?? {},
         position: {
@@ -352,6 +604,16 @@ const App = () => {
       });
     },
     [addNodeToStore, getViewportCenter],
+  );
+
+  // Add a node from a user's saved favorite
+  const addNodeFromFavorite = useCallback(
+    (name: string, value: Node) => {
+      const data = { ...value.data };
+      if (data.title === undefined) data.title = name;
+      addNode(value.type ?? "favorite", value.type, data);
+    },
+    [addNode],
   );
 
   const onClickExamples = () => {
@@ -1085,224 +1347,6 @@ const App = () => {
     hideContextMenu,
   ]);
 
-  const addNodeMenu = useMemo(
-    () => (
-      <Menu
-        transitionProps={{ transition: "pop-top-left" }}
-        position="top-start"
-        width={220}
-        closeOnClickOutside={true}
-        closeOnEscape
-        styles={{ item: { maxHeight: "28px" } }}
-      >
-        <Menu.Target>
-          <Button size="sm" variant="gradient" compact mr="sm">
-            Add Node +
-          </Button>
-        </Menu.Target>
-
-        <Menu.Dropdown>
-          <Menu.Label>Input Data</Menu.Label>
-          <MenuTooltip label="Specify input text to prompt or chat nodes. You can also declare variables in brackets {} to chain TextFields together.">
-            <Menu.Item
-              onClick={() => addNode("textFieldsNode", "textfields")}
-              icon={<IconTextPlus size="16px" />}
-            >
-              {" "}
-              TextFields Node{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <MenuTooltip label="Specify inputs as a comma-separated list of items. Good for specifying lots of short text values. An alternative to TextFields node.">
-            <Menu.Item
-              onClick={() => addNode("csvNode", "csv")}
-              icon={<IconForms size="16px" />}
-            >
-              {" "}
-              Items Node{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <MenuTooltip label="Import or create a spreadhseet of data to use as input to prompt or chat nodes. Import accepts xlsx, csv, and jsonl.">
-            <Menu.Item onClick={() => addNode("table")} icon={"🗂️"}>
-              {" "}
-              Tabular Data Node{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <Menu.Divider />
-          <Menu.Label>Prompters</Menu.Label>
-          <MenuTooltip label="Prompt one or multiple LLMs. Specify prompt variables in brackets {}.">
-            <Menu.Item
-              onClick={() => addNode("promptNode", "prompt", { prompt: "" })}
-              icon={"💬"}
-            >
-              {" "}
-              Prompt Node{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <MenuTooltip label="Start or continue a conversation with chat models. Attach Prompt Node output as past context to continue chatting past the first turn.">
-            <Menu.Item
-              onClick={() => addNode("chatTurn", "chat", { prompt: "" })}
-              icon={"🗣"}
-            >
-              {" "}
-              Chat Turn Node{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <Menu.Divider />
-          <Menu.Label>Evaluators</Menu.Label>
-          <MenuTooltip label="Evaluate responses with a simple check (no coding required).">
-            <Menu.Item
-              onClick={() => addNode("simpleEval", "simpleval")}
-              icon={<IconRuler2 size="16px" />}
-            >
-              {" "}
-              Simple Evaluator{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <MenuTooltip label="Evaluate responses by writing JavaScript code.">
-            <Menu.Item
-              onClick={() =>
-                addNode("evalNode", "evaluator", {
-                  language: "javascript",
-                  code: "function evaluate(response) {\n  return response.text.length;\n}",
-                })
-              }
-              icon={<IconTerminal size="16px" />}
-            >
-              {" "}
-              JavaScript Evaluator{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <MenuTooltip label="Evaluate responses by writing Python code.">
-            <Menu.Item
-              onClick={() =>
-                addNode("evalNode", "evaluator", {
-                  language: "python",
-                  code: "def evaluate(response):\n  return len(response.text)",
-                })
-              }
-              icon={<IconTerminal size="16px" />}
-            >
-              {" "}
-              Python Evaluator{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <MenuTooltip label="Evaluate responses with an LLM like GPT-4.">
-            <Menu.Item
-              onClick={() => addNode("llmeval")}
-              icon={<IconRobot size="16px" />}
-            >
-              {" "}
-              LLM Scorer{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <MenuTooltip label="Evaluate responses across multiple criteria (multiple code and/or LLM evaluators).">
-            <Menu.Item
-              onClick={() => addNode("multieval")}
-              icon={<IconAbacus size="16px" />}
-            >
-              {" "}
-              Multi-Evaluator{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <Menu.Divider />
-          <Menu.Label>Visualizers</Menu.Label>
-          <MenuTooltip label="Plot evaluation results. (Attach an evaluator or scorer node as input.)">
-            <Menu.Item
-              onClick={() => addNode("visNode", "vis", {})}
-              icon={"📊"}
-            >
-              {" "}
-              Vis Node{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <MenuTooltip label="Used to inspect responses from prompter or evaluation nodes, without opening up the pop-up view.">
-            <Menu.Item
-              onClick={() => addNode("inspectNode", "inspect")}
-              icon={"🔍"}
-            >
-              {" "}
-              Inspect Node{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <Menu.Divider />
-          <Menu.Label>Processors</Menu.Label>
-          <MenuTooltip label="Transform responses by mapping a JavaScript function over them.">
-            <Menu.Item
-              onClick={() =>
-                addNode("process", "processor", {
-                  language: "javascript",
-                  code: "function process(response) {\n  return response.text;\n}",
-                })
-              }
-              icon={<IconTerminal size="14pt" />}
-            >
-              {" "}
-              JavaScript Processor{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          {IS_RUNNING_LOCALLY ? (
-            <MenuTooltip label="Transform responses by mapping a Python function over them.">
-              <Menu.Item
-                onClick={() =>
-                  addNode("process", "processor", {
-                    language: "python",
-                    code: "def process(response):\n  return response.text;",
-                  })
-                }
-                icon={<IconTerminal size="14pt" />}
-              >
-                {" "}
-                Python Processor{" "}
-              </Menu.Item>
-            </MenuTooltip>
-          ) : (
-            <></>
-          )}
-          <MenuTooltip label="Concatenate responses or input data together before passing into later nodes, within or across variables and LLMs.">
-            <Menu.Item
-              onClick={() => addNode("join")}
-              icon={<IconArrowMerge size="14pt" />}
-            >
-              {" "}
-              Join Node{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <MenuTooltip label="Split responses or input data by some format. For instance, you can split a markdown list into separate items.">
-            <Menu.Item
-              onClick={() => addNode("split")}
-              icon={<IconArrowsSplit size="14pt" />}
-            >
-              {" "}
-              Split Node{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          <Menu.Divider />
-          <Menu.Label>Misc</Menu.Label>
-          <MenuTooltip label="Make a comment about your flow.">
-            <Menu.Item onClick={() => addNode("comment")} icon={"✏️"}>
-              {" "}
-              Comment Node{" "}
-            </Menu.Item>
-          </MenuTooltip>
-          {IS_RUNNING_LOCALLY ? (
-            <MenuTooltip label="Specify directories to load as local packages, so they can be imported in your Python evaluator nodes (add to sys path).">
-              <Menu.Item
-                onClick={() => addNode("scriptNode", "script")}
-                icon={<IconSettingsAutomation size="16px" />}
-              >
-                {" "}
-                Global Python Scripts{" "}
-              </Menu.Item>
-            </MenuTooltip>
-          ) : (
-            <></>
-          )}
-        </Menu.Dropdown>
-      </Menu>
-    ),
-    [addNode],
-  );
-
   const saveMessage = useMemo(() => {
     if (isSaving) return "Saving...";
     else if (showSaveSuccess) return "Success!";
@@ -1408,7 +1452,7 @@ const App = () => {
           }}
         >
           <Flex>
-            {addNodeMenu}
+            <NestedMenu items={addNodesMenuItems} buttonLabel="Add Node +" />
             <Button
               onClick={() => exportFlow()}
               size="sm"

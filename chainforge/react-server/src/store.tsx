@@ -30,6 +30,8 @@ import {
 import { TogetherChatSettings } from "./ModelSettingSchemas";
 import { NativeLLM } from "./backend/models";
 import { StringLookup } from "./backend/cache";
+import { saveGlobalConfig } from "./backend/backend";
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -339,7 +341,8 @@ const togetherLLMProviderMenu: LLMGroup = {
 };
 initLLMProviderMenu.push(togetherLLMProviderMenu);
 
-if (APP_IS_RUNNING_LOCALLY()) {
+// Setup for when the app is running locally
+if (IS_RUNNING_LOCALLY) {
   initLLMProviderMenu.push({
     name: "Ollama",
     emoji: "🦙",
@@ -362,6 +365,12 @@ function flattenLLMProviders(providers: (LLMSpec | LLMGroup)[]): LLMSpec[] {
 }
 
 export const initLLMProviders = flattenLLMProviders(initLLMProviderMenu);
+
+// Favorites saved across sessions (nodes, models, etc)
+export interface FavoritesStoreType {
+  nodes: { name: string; value: Node }[];
+  models: { name: string; value: LLMSpec }[];
+}
 
 export interface StoreHandles {
   // Nodes and edges
@@ -399,6 +408,19 @@ export interface StoreHandles {
   getGlobalSetting: (flag: string) => JSONCompatible;
   setGlobalSetting: (flag: string, val: JSONCompatible) => void;
   setGlobalSettings: (settings: Dict<JSONCompatible>) => void;
+
+  // Favorites
+  favorites: FavoritesStoreType;
+  setFavorites: (favorites: FavoritesStoreType) => void;
+  getFavorites: <K extends keyof FavoritesStoreType>(
+    key: K,
+  ) => FavoritesStoreType[K];
+  saveFavorite: <K extends keyof FavoritesStoreType>(
+    key: K,
+    name: string,
+    value: FavoritesStoreType[K][number]["value"],
+  ) => void;
+  saveFavoriteNode: (nodeId: string, name: string) => void;
 
   // Flow-specific state
   state: Dict;
@@ -468,6 +490,44 @@ const useStore = create<StoreHandles>((set, get) => ({
     );
     // Only update API keys present in the new array; don't delete existing ones:
     set({ apiKeys: { ...get().apiKeys, ...new_keys } });
+  },
+
+  // Favorites (nodes, models, etc)
+  favorites: {
+    nodes: [],
+    models: [],
+  },
+  setFavorites: (favorites: FavoritesStoreType) => {
+    set({ favorites });
+  },
+  getFavorites: <K extends keyof FavoritesStoreType>(key: K) => {
+    return get().favorites[key];
+  },
+  saveFavorite: <K extends keyof FavoritesStoreType>(
+    key: K,
+    name: string,
+    value: FavoritesStoreType[K][number]["value"],
+  ) => {
+    const favorites = { ...get().favorites };
+    if (favorites[key] === undefined) favorites[key] = [];
+    favorites[key].push({
+      name,
+      value: value as any,
+    }); // add to end of array
+
+    set({ favorites });
+
+    // Push update to backend
+    if (IS_RUNNING_LOCALLY)
+      saveGlobalConfig("favorites", favorites as Dict<any>);
+  },
+  saveFavoriteNode: (nodeId: string, name: string) => {
+    // Get the data for the node
+    const node = get().getNode(nodeId);
+    if (!node) return;
+
+    // Store the node in the favorites list
+    get().saveFavorite("nodes", name, node);
   },
 
   // Flags to toggle on or off features across the application

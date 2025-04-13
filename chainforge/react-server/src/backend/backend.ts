@@ -1687,8 +1687,10 @@ export async function loadCachedCustomProviders(): Promise<
     });
 }
 
-export async function getGlobalSettings(): Promise<Dict<JSONCompatible>> {
-  return fetch(`${FLASK_BASE_URL}api/getSettings`, {
+export async function getGlobalConfig(
+  configFilename: string,
+): Promise<Dict<JSONCompatible>> {
+  return fetch(`${FLASK_BASE_URL}api/getConfig/${configFilename}`, {
     method: "GET",
     headers: DEFAULT_JSON_HEADERS,
   })
@@ -1697,30 +1699,48 @@ export async function getGlobalSettings(): Promise<Dict<JSONCompatible>> {
     })
     .then(function (json) {
       if (typeof json !== "object") {
-        console.error("Could not load global settings: JSON dict is unexpected return type.");
+        console.error(
+          `Error loading global ${configFilename}: JSON dict is unexpected return type.`,
+        );
         return {};
       }
       return json as Dict<JSONCompatible>;
+    })
+    .catch((err) => {
+      console.error(
+        `Failure when trying to load global ${configFilename}: ` +
+          err.toString(),
+      );
+      // Soft fail
+      return {};
     });
 }
 
-export async function saveGlobalSettings(settings: Dict<JSONCompatible>): Promise<void> {
-  fetch(`${FLASK_BASE_URL}api/saveSettings`, {
+export async function saveGlobalConfig(
+  configFilename: string,
+  config: Dict<JSONCompatible>,
+): Promise<void> {
+  fetch(`${FLASK_BASE_URL}api/saveConfig/${configFilename}`, {
     method: "POST",
     headers: DEFAULT_JSON_HEADERS,
-    body: JSON.stringify(settings),
+    body: JSON.stringify(config),
   })
     .then(function (res) {
       return res.json();
     })
     .then(function (json) {
       if (json.error) {
-        console.error("Failure when trying to save global settings: " + json.error);
+        console.error(
+          `Failure when trying to save global ${configFilename}: ` + json.error,
+        );
         // Soft fail
       }
     })
     .catch((err) => {
-      console.error("Failure when trying to save global settings: " + err.toString());
+      console.error(
+        `Failure when trying to save global ${configFilename}: ` +
+          err.toString(),
+      );
       // Soft fail
     });
 }

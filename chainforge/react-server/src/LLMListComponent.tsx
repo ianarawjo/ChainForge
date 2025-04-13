@@ -36,7 +36,7 @@ const DEFAULT_INIT_LLMS = [initLLMProviders[0]];
 
 // Helper funcs
 /** Get position CSS style below and left-aligned to the input element */
-const getPositionCSSStyle = (
+export const getPositionCSSStyle = (
   elem: HTMLButtonElement,
 ): ContextMenuItemOptions => {
   const rect = elem.getBoundingClientRect();
@@ -277,8 +277,16 @@ export const LLMListContainer = forwardRef<
 ) {
   // All available LLM providers, for the dropdown list
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
+
+  // Dropdown providers list to show providers and models
   const { showContextMenu, hideContextMenu, isContextMenuVisible } =
     useContextMenu();
+
+  // Mantine ContextMenu does not fix the position of the menu
+  // to be below the clicked button, so we must do it ourselves.
+  const addBtnRef = useRef(null);
+  const [wasContextMenuToggled, setWasContextMenuToggled] = useState(false);
+
   // For some reason, when the AvailableLLMs list is updated in the store/, it is not
   // immediately updated here. I've tried all kinds of things, but cannot seem to fix this problem.
   // We must force a re-render of the component:
@@ -440,11 +448,6 @@ export const LLMListContainer = forwardRef<
     }
     return res;
   }, [AvailableLLMs, handleSelectModel]);
-
-  // Mantine ContextMenu does not fix the position of the menu
-  // to be below the clicked button, so we must do it ourselves.
-  const addBtnRef = useRef(null);
-  const [wasContextMenuToggled, setWasContextMenuToggled] = useState(false);
 
   return (
     <div className="llm-list-container nowheel" style={_bgStyle}>

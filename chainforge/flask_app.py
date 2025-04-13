@@ -875,18 +875,18 @@ def get_unique_flow_name():
     This is used to persist settings across sessions.
     The settings file 'settings.json' is stored in the same directory as the user's flows.
 """
-@app.route('/api/getSettings', methods=['GET'])
-def get_settings():
-    """Return the current settings"""
+@app.route('/api/getConfig/<name>', methods=['GET'])
+def get_settings(name):
+    """Return the requested config"""
     try:
-        with open(os.path.join(FLOWS_DIR, SETTINGS_FILENAME), 'r') as f:
+        with open(os.path.join(FLOWS_DIR, f"{name}.json"), 'r') as f:
             settings = json.load(f)
     except FileNotFoundError:
         settings = {}
     return jsonify(settings)
 
-@app.route('/api/saveSettings', methods=['POST'])
-def save_settings():
+@app.route('/api/saveConfig/<name>', methods=['POST'])
+def save_settings(name):
     """Save the current settings"""
     data = request.json
 
@@ -895,7 +895,7 @@ def save_settings():
         return jsonify({"error": "Settings must be a JSON object."}), 400
 
     try:
-        with open(os.path.join(FLOWS_DIR, SETTINGS_FILENAME), 'w') as f:
+        with open(os.path.join(FLOWS_DIR, f"{name}.json"), 'w') as f:
             json.dump(data, f)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

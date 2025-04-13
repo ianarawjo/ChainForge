@@ -34,17 +34,22 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { Dropzone, FileWithPath } from "@mantine/dropzone";
-import useStore from "./store";
+import useStore, { FavoritesStoreType } from "./store";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 import { setCustomProviders } from "./ModelSettingSchemas";
 import { getAIFeaturesModelProviders } from "./backend/ai";
-import { CustomLLMProviderSpec, Dict, JSONCompatible, LLMSpec } from "./backend/typing";
 import {
-  getGlobalSettings,
+  CustomLLMProviderSpec,
+  Dict,
+  JSONCompatible,
+  LLMSpec,
+} from "./backend/typing";
+import {
+  getGlobalConfig,
   initCustomProvider,
   loadCachedCustomProviders,
   removeCustomProvider,
-  saveGlobalSettings,
+  saveGlobalConfig,
 } from "./backend/backend";
 import { AlertModalContext } from "./AlertModal";
 
@@ -54,7 +59,10 @@ interface GlobalSettingsType {
   aiSupport: boolean;
   imageCompression: boolean;
   aiFeaturesProvider: string | LLMSpec;
-};
+}
+
+// The JSON filename in the backend for the global settings
+const SETTINGS_FILENAME = "settings";
 
 const _LINK_STYLE = { color: "#1E90FF", textDecoration: "none" };
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
@@ -172,7 +180,6 @@ export interface GlobalSettingsModalRef {
 
 const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
   function GlobalSettingsModal(props, ref) {
-
     // The first tab's form
     const form = useForm({
       initialValues: {
@@ -210,72 +217,80 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     const loadSettingsFromBackend = useCallback(() => {
       // Load global settings from backend. This fails silently if the backend is not running.
       // It also will only load settings that the form has defined.
-      getGlobalSettings()
-        .then((backendSettings) => {
-          // Set the settings in the first tab's form (mainly API key list)
-          Object.keys(form.values).forEach((key) => {
-            if (key in settings)
-              form.setFieldValue(key, backendSettings[key]);
-          });
-
-          // Set any other settings that are on other pages (not in the form)
-          setSettings((prev) => {
-            Object.keys(prev).forEach((key) => {
-              if (key in backendSettings)
-                prev[key as keyof GlobalSettingsType] = backendSettings[key] as any;
-            });
-            return { ...prev };
-          });
-
-          // Set any API keys that were custom set in the global settings form,
-          // overriding the default ones (including environment variables).
-          setAPIKeys(backendSettings as Dict<string>);
+      getGlobalConfig(SETTINGS_FILENAME).then((backendSettings) => {
+        // Set the settings in the first tab's form (mainly API key list)
+        Object.keys(form.values).forEach((key) => {
+          if (key in settings) form.setFieldValue(key, backendSettings[key]);
         });
+
+        // Set any other settings that are on other pages (not in the form)
+        setSettings((prev) => {
+          Object.keys(prev).forEach((key) => {
+            if (key in backendSettings)
+              prev[key as keyof GlobalSettingsType] = backendSettings[
+                key
+              ] as any;
+          });
+          return { ...prev };
+        });
+
+        // Set any API keys that were custom set in the global settings form,
+        // overriding the default ones (including environment variables).
+        setAPIKeys(backendSettings as Dict<string>);
+      });
     }, [form, settings]);
 
     // Save the global settings to the backend
-    const saveGlobalSettingsToBackend = useCallback((settingsToSave?: Dict<JSONCompatible>) => {
-      // Save global settings to backend. This fails silently if the backend is not running.
-      // Mixes the settings from the form and the other tabs.
-      if (!settingsToSave) 
-        settingsToSave = {
-          ...form.values,
-          ...settings,
-        };
-      saveGlobalSettings(settingsToSave);
-    }, [form, settings]);
+    const saveGlobalSettingsToBackend = useCallback(
+      (settingsToSave?: Dict<JSONCompatible>) => {
+        // Save global settings to backend. This fails silently if the backend is not running.
+        // Mixes the settings from the form and the other tabs.
+        if (!settingsToSave)
+          settingsToSave = {
+            ...form.values,
+            ...settings,
+          };
+        saveGlobalConfig(SETTINGS_FILENAME, settingsToSave);
+      },
+      [form, settings],
+    );
 
     // Set the settings in the store and synchronize to backend
-    const setGlobalSettingsInZustandStore = useStore((state) => state.setGlobalSettings);
-    const handleChangeSetting = useCallback((key: string, value: JSONCompatible) => {
-      setSettings((prev) => {
-        const updated = { ...prev, [key]: value };
+    const setGlobalSettingsInZustandStore = useStore(
+      (state) => state.setGlobalSettings,
+    );
+    const handleChangeSetting = useCallback(
+      (key: string, value: JSONCompatible) => {
+        setSettings((prev) => {
+          const updated = { ...prev, [key]: value };
 
-        if (IS_RUNNING_LOCALLY) {
-          // Synchronize the settings to the backend
-          saveGlobalSettingsToBackend({
-            ...form.values,
-            ...updated,
-          });
-        }
+          if (IS_RUNNING_LOCALLY) {
+            // Synchronize the settings to the backend
+            saveGlobalSettingsToBackend({
+              ...form.values,
+              ...updated,
+            });
+          }
 
-        // Store the non-form settings in the Zustand store global state,
-        // so other components can access them and immediately react to the change.
-        setGlobalSettingsInZustandStore(updated);
+          // Store the non-form settings in the Zustand store global state,
+          // so other components can access them and immediately react to the change.
+          setGlobalSettingsInZustandStore(updated);
 
-        return updated;
-      });
-    }, [form]);
+          return updated;
+        });
+      },
+      [form],
+    );
 
     const [opened, { open, close }] = useDisclosure(false);
     const setAPIKeys = useStore((state) => state.setAPIKeys);
-    const getFlag = useStore((state) => state.getGlobalSetting);
     const AvailableLLMs = useStore((state) => state.AvailableLLMs);
     const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
     const setAIFeaturesProvider = useStore(
       (state) => state.setAIFeaturesProvider,
     );
     const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
+    const setFavorites = useStore((state) => state.setFavorites);
     const nodes = useStore((state) => state.nodes);
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
@@ -320,9 +335,10 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       [customProviders, handleError, AvailableLLMs, refreshLLMProviderLists],
     );
 
-    // On init
+    // On init, load global settings
     useEffect(() => {
-      if (IS_RUNNING_LOCALLY && !LOADED_CUSTOM_PROVIDERS) {
+      if (!IS_RUNNING_LOCALLY) return;
+      if (!LOADED_CUSTOM_PROVIDERS) {
         LOADED_CUSTOM_PROVIDERS = true;
         // Is running locally; try to load any custom providers.
         // Soft fails if it encounters error:
@@ -338,31 +354,34 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       // Load global settings from backend, if it exists
       // NOTE: This deliberately does not have a backup for the web-only version,
       // since saving this data to localStorage would be a security risk.
-      if (IS_RUNNING_LOCALLY) {
-        // Load global settings from backend. This fails silently if the backend is not running.
-        // It also will only load settings that the form has defined.
-        loadSettingsFromBackend();
-      }
+      loadSettingsFromBackend();
 
-      if (IS_RUNNING_LOCALLY) {
-        // Attempt to fetch Ollama model list
-        // TODO: This should use the Ollama BaseURL setting
-        fetch("http://localhost:11434/api/tags")
-          .then((response) => {
-            if (response.ok) {
-              return response.json();
-            } else {
-              throw new Error("Failed to fetch Ollama models");
-            }
-          })
-          .then((data) => {
-            const models_available = data.models?.map((model_obj: Dict) => model_obj.name);
-            setAvailableLLMs(data.models);
-          })
-          .catch((error) => {
-            console.error("Error fetching Ollama models:", error);
-          });
-      }
+      // Fetch favorites list from backend
+      getGlobalConfig("favorites").then((favorites: any) => {
+        if (!favorites) return;
+        // If there's some, set the favorites in the store
+        setFavorites(favorites);
+      });
+
+      // Attempt to fetch Ollama model list
+      // TODO: This should use the Ollama BaseURL setting
+      fetch("http://localhost:11434/api/tags")
+        .then((response) => {
+          if (response.ok) {
+            return response.json();
+          } else {
+            throw new Error("Failed to fetch Ollama models");
+          }
+        })
+        .then((data) => {
+          const models_available = data.models?.map(
+            (model_obj: Dict) => model_obj.name,
+          );
+          setAvailableLLMs(data.models);
+        })
+        .catch((error) => {
+          console.error("Error fetching Ollama models:", error);
+        });
     }, []);
 
     // When the API settings form is submitted
@@ -372,7 +391,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
       // Save the settings to the backend
       if (IS_RUNNING_LOCALLY) {
-        saveGlobalSettings(values); // This fails silently if the backend is not running
+        saveGlobalConfig(SETTINGS_FILENAME, values); // This fails silently if the backend is not running
       }
 
       // Close the modal
@@ -490,19 +509,21 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 />
                 <br />
 
-                {IS_RUNNING_LOCALLY && <>
-                  <Divider
-                    my="xs"
-                    label="Ollama Settings"
-                    labelPosition="center"
-                  />
-                  <TextInput
-                    label="Ollama Server Base URL"
-                    placeholder="Paste your Ollama Server Base URL here. The default is http://localhost:11434. ChainForge will attempt to contact the Ollama API at this URL."
-                    {...form.getInputProps("Ollama_BaseURL")}
-                  />
-                  <br />
-                </>}
+                {IS_RUNNING_LOCALLY && (
+                  <>
+                    <Divider
+                      my="xs"
+                      label="Ollama Settings"
+                      labelPosition="center"
+                    />
+                    <TextInput
+                      label="Ollama Server Base URL"
+                      placeholder="Paste your Ollama Server Base URL here. The default is http://localhost:11434. ChainForge will attempt to contact the Ollama API at this URL."
+                      {...form.getInputProps("Ollama_BaseURL")}
+                    />
+                    <br />
+                  </>
+                )}
 
                 <Divider
                   my="xs"
@@ -595,10 +616,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 description="Adds purple sparkly AI buttons to nodes. These buttons allow you to generate in-context data or code."
                 checked={settings.aiSupport}
                 onChange={(e) => {
-                  handleChangeSetting(
-                    "aiSupport",
-                    e.currentTarget.checked,
-                  );
+                  handleChangeSetting("aiSupport", e.currentTarget.checked);
                 }}
               />
               {settings.aiSupport ? (
@@ -702,7 +720,10 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   ChainForge automatically compresses images output from LLMs."
                   checked={(settings.imageCompression as boolean) ?? false}
                   onChange={(e) => {
-                    handleChangeSetting("imageCompression", e.currentTarget.checked);
+                    handleChangeSetting(
+                      "imageCompression",
+                      e.currentTarget.checked,
+                    );
                   }}
                 />
               </Box>
