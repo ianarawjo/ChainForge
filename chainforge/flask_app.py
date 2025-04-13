@@ -29,6 +29,7 @@ cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
 # The cache and examples files base directories
 FLOWS_DIR = user_data_dir("chainforge")  # platform-agnostic local storage that persists outside the package install location
+SETTINGS_FILENAME = "settings.json"
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
 
@@ -866,6 +867,44 @@ def get_unique_flow_name():
     except Exception as e:
         return jsonify({"error": str(e)}), 404
 
+
+""" 
+    PERSISTENT GLOBAL SETTINGS
+
+    ChainForge global settings are stored in a JSON file in the local disk.
+    This is used to persist settings across sessions.
+    The settings file 'settings.json' is stored in the same directory as the user's flows.
+"""
+@app.route('/api/getSettings', methods=['GET'])
+def get_settings():
+    """Return the current settings"""
+    try:
+        with open(os.path.join(FLOWS_DIR, SETTINGS_FILENAME), 'r') as f:
+            settings = json.load(f)
+    except FileNotFoundError:
+        settings = {}
+    return jsonify(settings)
+
+@app.route('/api/saveSettings', methods=['POST'])
+def save_settings():
+    """Save the current settings"""
+    data = request.json
+
+    # Check the type of data
+    if not isinstance(data, dict):
+        return jsonify({"error": "Settings must be a JSON object."}), 400
+
+    try:
+        with open(os.path.join(FLOWS_DIR, SETTINGS_FILENAME), 'w') as f:
+            json.dump(data, f)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"message": "Settings saved successfully!"})
+
+
+""" 
+    SPIN UP SERVER
+"""
 def run_server(host="", port=8000, flows_dir=None):
     global HOSTNAME, PORT, FLOWS_DIR
     HOSTNAME = host

@@ -387,7 +387,7 @@ const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({
   const nodes = useStore((state) => state.nodes);
 
   // For genAI features
-  const flags = useStore((state) => state.flags);
+  const flags = useStore((state) => state.globalSettings);
   const [isEvalCodeGenerating, setIsEvalCodeGenerating] = useState(false);
   const [lastContext, setLastContext] = useState<VarsContext>({
     vars: [],

@@ -25,6 +25,7 @@ import {
   TemplateVarInfo,
   TabularDataColType,
   TabularDataRowType,
+  JSONCompatible,
 } from "./backend/typing";
 import { TogetherChatSettings } from "./ModelSettingSchemas";
 import { NativeLLM } from "./backend/models";
@@ -331,7 +332,6 @@ const togetherGroups = () => {
   });
   return groupNames.map((name) => groups[name]);
 };
-console.log(togetherGroups());
 const togetherLLMProviderMenu: LLMGroup = {
   group: "Together",
   emoji: "🤝",
@@ -347,9 +347,6 @@ if (APP_IS_RUNNING_LOCALLY()) {
     base_model: "ollama",
     temp: 1.0,
   });
-  // -- Deprecated provider --
-  // initLLMProviders.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
-  // -------------------------
 }
 
 function flattenLLMGroup(group: LLMGroup): LLMSpec[] {
@@ -397,12 +394,13 @@ export interface StoreHandles {
   aiFeaturesProvider: string;
   setAIFeaturesProvider: (llmProvider: string) => void;
 
-  // Global flags
-  flags: Dict<boolean | string>;
-  getFlag: (flag: string) => boolean | string;
-  setFlag: (flag: string, val: boolean | string) => void;
+  // Global settings (flags) from the settings menu
+  globalSettings: Dict<JSONCompatible>;
+  getGlobalSetting: (flag: string) => JSONCompatible;
+  setGlobalSetting: (flag: string, val: JSONCompatible) => void;
+  setGlobalSettings: (settings: Dict<JSONCompatible>) => void;
 
-  // Global state
+  // Flow-specific state
   state: Dict;
   setState: (key: string, val: any) => void;
   importState: (state: Dict) => void;
@@ -473,14 +471,17 @@ const useStore = create<StoreHandles>((set, get) => ({
   },
 
   // Flags to toggle on or off features across the application
-  flags: initialFlags,
-  getFlag: (flagName) => {
-    return get().flags[flagName] ?? false;
+  globalSettings: initialFlags,
+  getGlobalSetting: (flagName) => {
+    return get().globalSettings[flagName] ?? false;
   },
-  setFlag: (flagName, flagValue) => {
-    const flags = { ...get().flags };
+  setGlobalSetting: (flagName, flagValue) => {
+    const flags = { ...get().globalSettings };
     flags[flagName] = flagValue;
-    set({ flags });
+    set({ globalSettings: flags });
+  },
+  setGlobalSettings: (settings: Dict<JSONCompatible>) => {
+    set({ globalSettings: settings });
   },
 
   // State shared across the application, for forcing redraws upon change.
