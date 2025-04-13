@@ -34,7 +34,7 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { Dropzone, FileWithPath } from "@mantine/dropzone";
-import useStore, { FavoritesStoreType } from "./store";
+import useStore from "./store";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 import { setCustomProviders } from "./ModelSettingSchemas";
 import { getAIFeaturesModelProviders } from "./backend/ai";
@@ -63,6 +63,10 @@ interface GlobalSettingsType {
 
 // The JSON filename in the backend for the global settings
 const SETTINGS_FILENAME = "settings";
+
+// The init function may be called twice, so we need to
+// make sure we only load the settings once.
+let INIT_ONCE = false;
 
 const _LINK_STYLE = { color: "#1E90FF", textDecoration: "none" };
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
@@ -237,6 +241,8 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         // Set any API keys that were custom set in the global settings form,
         // overriding the default ones (including environment variables).
         setAPIKeys(backendSettings as Dict<string>);
+
+        console.log("Loaded global settings from backend.");
       });
     }, [form, settings]);
 
@@ -307,6 +313,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     const [customProviders, setLocalCustomProviders] = useState<
       CustomLLMProviderSpec[]
     >([]);
+
     const refreshLLMProviderLists = useCallback(() => {
       // We unfortunately have to force all prompt/chat nodes to refresh their LLM lists, bc
       // apparently the update to the AvailableLLMs list is not immediately propagated to them.
@@ -337,7 +344,10 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
     // On init, load global settings
     useEffect(() => {
-      if (!IS_RUNNING_LOCALLY) return;
+      if (!IS_RUNNING_LOCALLY || INIT_ONCE) return;
+
+      INIT_ONCE = true;
+
       if (!LOADED_CUSTOM_PROVIDERS) {
         LOADED_CUSTOM_PROVIDERS = true;
         // Is running locally; try to load any custom providers.
@@ -361,6 +371,8 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         if (!favorites) return;
         // If there's some, set the favorites in the store
         setFavorites(favorites);
+
+        console.log("Loaded favorites from backend.");
       });
 
       // Attempt to fetch Ollama model list
@@ -378,6 +390,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
             (model_obj: Dict) => model_obj.name,
           );
           setAvailableLLMs(data.models);
+          console.log("Loaded Ollama model list from backend.");
         })
         .catch((error) => {
           console.error("Error fetching Ollama models:", error);
@@ -488,12 +501,12 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 />
                 <br />
 
-                <br />
                 <TextInput
                   label="HuggingFace API Key"
                   placeholder="Paste your HuggingFace API key here"
                   {...form.getInputProps("HuggingFace")}
                 />
+                <br />
 
                 <TextInput
                   label="Together API Key"

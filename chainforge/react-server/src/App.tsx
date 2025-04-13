@@ -42,6 +42,8 @@ import {
   IconAbacus,
   IconDeviceFloppy,
   IconHeart,
+  IconCheckbox,
+  IconTransform,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -399,7 +401,7 @@ const App = () => {
       {
         key: "Evaluators",
         title: "Evaluators",
-        icon: "✅",
+        icon: <IconCheckbox size={16} color="green" />,
         items: [
           {
             key: "simpleval",
@@ -452,7 +454,7 @@ const App = () => {
       {
         key: "Processors",
         title: "Processors",
-        icon: "⚙️",
+        icon: <IconTransform size={16} color="#f05f0c" />,
         items: [
           {
             key: "join",

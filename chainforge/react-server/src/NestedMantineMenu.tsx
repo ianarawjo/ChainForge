@@ -3,6 +3,11 @@ import { Menu, Tooltip, Button, Popover } from "@mantine/core";
 import { IconChevronRight } from "@tabler/icons-react";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
 
+const NESTED_MENU_STYLE = {
+  dropdown: { padding: "0px !important" },
+  item: { padding: "6px 8px 6px 12px" },
+};
+
 export const MenuTooltip = ({
   label,
   children,
@@ -57,9 +62,8 @@ export default function NestedMenu({
         );
     }
     return (
-      <MenuTooltip label={item.tooltip}>
+      <MenuTooltip label={item.tooltip} key={item.key}>
         <Menu.Item
-          key={item.key}
           icon={item.icon}
           rightSection={showChevron ? <IconChevronRight size={14} /> : null}
           className={item.className}
@@ -106,7 +110,7 @@ export default function NestedMenu({
               onMouseLeave={() => setSubmenuOpened(null)}
               p={4}
             >
-              <Menu>
+              <Menu styles={NESTED_MENU_STYLE}>
                 {item.items.map((subItem, subIdx) =>
                   menuItemInfoToMenuItem(subItem, false, subIdx),
                 )}
@@ -126,10 +130,7 @@ export default function NestedMenu({
       shadow="md"
       position="bottom-start"
       width={200}
-      styles={{
-        dropdown: { padding: "0px !important" },
-        item: { padding: "6px 8px 6px 12px" },
-      }}
+      styles={NESTED_MENU_STYLE}
       withinPortal
     >
       <Menu.Target>

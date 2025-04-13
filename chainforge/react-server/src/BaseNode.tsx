@@ -9,6 +9,7 @@ import { IconCopy, IconHeart, IconX } from "@tabler/icons-react";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import useStore from "./store";
 import { Dict } from "./backend/typing";
+import RequestClarificationModal from "./RequestClarificationModal";
 
 interface BaseNodeProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
@@ -40,6 +41,9 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   >({});
   const [contextMenuOpened, setContextMenuOpened] = useState(false);
 
+  // For 'favorite' naming pop-up
+  const [favoriteNameModalOpen, setFavoriteNameModalOpen] = useState(false);
+
   // For 'delete node' confirmation popup
   const deleteConfirmModal = useRef<AreYouSureModalRef>(null);
 
@@ -57,10 +61,13 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   }, [nodeId, duplicateNode]);
 
   // Add the node to the stored Favorites list
-  const handleFavoriteNode = useCallback(() => {
-    // TODO: Ask the user for a name for the favorited node
-    saveFavoriteNode(nodeId, nodeId);
-  }, [nodeId]);
+  const handleFavoriteNode = useCallback(
+    (name: string) => {
+      // TODO: Ask the user for a name for the favorited node
+      saveFavoriteNode(nodeId, name);
+    },
+    [nodeId],
+  );
 
   // Remove the node, after user confirmation dialog
   const handleRemoveNode = useCallback(() => {
@@ -111,6 +118,22 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
     [removeNode, nodeId, deleteConfirmModal],
   );
 
+  const requestClarificationModal = useMemo(
+    () => (
+      <RequestClarificationModal
+        opened={favoriteNameModalOpen}
+        title="Name your favorited node"
+        question="Give it a name:"
+        desc="Keep the name short. This node will be saved to your favorites list."
+        onSubmit={(answer) => {
+          setFavoriteNameModalOpen(false);
+          if (answer != null) handleFavoriteNode(answer);
+        }}
+      />
+    ),
+    [favoriteNameModalOpen, handleFavoriteNode],
+  );
+
   const contextMenu = useMemo(
     () => (
       <Menu
@@ -131,7 +154,10 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
             <IconCopy size="10pt" />
             &nbsp;Duplicate Node
           </Menu.Item>
-          <Menu.Item key="favorite" onClick={handleFavoriteNode}>
+          <Menu.Item
+            key="favorite"
+            onClick={() => setFavoriteNameModalOpen(true)}
+          >
             <IconHeart
               size="12pt"
               color="red"
@@ -167,6 +193,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
       style={style}
     >
       {areYouSureModal}
+      {requestClarificationModal}
       {contextMenu}
     </div>
   );

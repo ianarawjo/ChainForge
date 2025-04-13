@@ -1735,6 +1735,7 @@ export async function saveGlobalConfig(
         );
         // Soft fail
       }
+      console.log(`Saved global ${configFilename} to backend successfully.`);
     })
     .catch((err) => {
       console.error(
