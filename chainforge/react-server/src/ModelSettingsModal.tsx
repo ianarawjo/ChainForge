@@ -4,9 +4,8 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useEffect,
-  useMemo,
 } from "react";
-import { Button, Modal, Popover, Select } from "@mantine/core";
+import { Button, Flex, Modal, Popover, Select, Tooltip } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import emojidata from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
@@ -25,6 +24,7 @@ import {
   LLMSpec,
   ModelSettingsDict,
 } from "./backend/typing";
+import { IconHeart } from "@tabler/icons-react";
 
 // Custom UI widgets for react-jsonschema-form
 const DatalistWidget = (props: WidgetProps) => {
@@ -75,6 +75,7 @@ export interface ModelSettingsModalProps {
     savedItem: LLMSpec,
     formData: Dict<JSONCompatible>,
     settingsData: Dict<JSONCompatible>,
+    makeFavorite?: boolean,
   ) => void;
 }
 type FormData = LLMSpec["formData"];
@@ -163,7 +164,7 @@ const ModelSettingsModal = forwardRef<
   );
 
   const saveFormState = useCallback(
-    (fdata: FormData) => {
+    (fdata: FormData, makeFavorite?: boolean) => {
       if (fdata === undefined) return;
       // For some reason react-json-form-schema returns 'undefined' on empty strings.
       // We need to (1) detect undefined values for keys in formData and (2) if they are of type string, replace with "",
@@ -183,7 +184,12 @@ const ModelSettingsModal = forwardRef<
 
       if (onSettingsSubmit && model !== undefined) {
         model.emoji = modelEmoji;
-        onSettingsSubmit(model, patched_fdata, postprocess(patched_fdata));
+        onSettingsSubmit(
+          model,
+          patched_fdata,
+          postprocess(patched_fdata),
+          makeFavorite,
+        );
       }
     },
     [model, modelEmoji, schema, setFormData, onSettingsSubmit, postprocess],
@@ -226,10 +232,13 @@ const ModelSettingsModal = forwardRef<
     }
   };
 
-  const onClickSubmit = useCallback(() => {
-    if (formData) saveFormState(formData);
-    close();
-  }, [formData, close, saveFormState]);
+  const onClickSubmit = useCallback(
+    (makeFavorite?: boolean) => {
+      if (formData) saveFormState(formData, makeFavorite);
+      close();
+    },
+    [formData, close, saveFormState],
+  );
 
   const onEmojiSelect = useCallback(
     (selection: Dict) => {
@@ -249,70 +258,109 @@ const ModelSettingsModal = forwardRef<
   }));
 
   return (
-    <Modal
-      size="lg"
-      opened={opened}
-      onClose={onClickSubmit}
-      title={
-        <div className="nowheel nodrag">
-          <Popover
-            width={200}
-            position="bottom"
-            withArrow
-            shadow="md"
-            withinPortal
-            opened={emojiPickerOpen}
-            onChange={setEmojiPickerOpen}
-          >
-            <Popover.Target>
+    <Modal.Root size="lg" opened={opened} onClose={onClickSubmit}>
+      <Modal.Overlay />
+      <Modal.Content>
+        <Modal.Header>
+          <Modal.Title>
+            <div className="nowheel nodrag">
+              <Popover
+                width={200}
+                position="bottom"
+                withArrow
+                shadow="md"
+                withinPortal
+                opened={emojiPickerOpen}
+                onChange={setEmojiPickerOpen}
+              >
+                <Popover.Target>
+                  <Button
+                    variant="subtle"
+                    compact
+                    style={{ fontSize: "16pt" }}
+                    onClick={() => {
+                      setEmojiPickerOpen((o: boolean) => !o);
+                    }}
+                  >
+                    {modelEmoji}
+                  </Button>
+                </Popover.Target>
+                <Popover.Dropdown>
+                  <Picker
+                    data={emojidata}
+                    onEmojiSelect={onEmojiSelect}
+                    theme="light"
+                  />
+                </Popover.Dropdown>
+              </Popover>
+              <span>{`Model Settings: ${baseModelName}`}</span>
+            </div>
+          </Modal.Title>
+
+          <Flex justify="right">
+            <Tooltip
+              label="Save as a favorite. Uses the nickname, so make sure it's good."
+              withArrow
+              multiline
+              maw="220px"
+            >
               <Button
+                className="favorite-icon"
+                fw="normal"
+                mr="md"
                 variant="subtle"
-                compact
-                style={{ fontSize: "16pt" }}
+                size="xs"
+                color="gray"
+                rightIcon={<IconHeart size="12pt" />}
                 onClick={() => {
-                  setEmojiPickerOpen((o: boolean) => !o);
+                  // Submit the form and make the saved model settings a favorite
+                  onClickSubmit(true);
                 }}
               >
-                {modelEmoji}
+                Favorite
               </Button>
-            </Popover.Target>
-            <Popover.Dropdown>
-              <Picker
-                data={emojidata}
-                onEmojiSelect={onEmojiSelect}
-                theme="light"
-              />
-            </Popover.Dropdown>
-          </Popover>
-          <span>{`Model Settings: ${baseModelName}`}</span>
-        </div>
-      }
-      closeOnClickOutside={false}
-      style={{ position: "relative", left: "-5%" }}
-    >
-      <Form
-        schema={schema}
-        uiSchema={uiSchema}
-        widgets={widgets} // Custom UI widgets
-        formData={formData}
-        // // @ts-expect-error This is literally the example code from react-json-schema; no idea why it wouldn't typecheck correctly.
-        validator={validator}
-        // @ts-expect-error Expect format is LLMSpec.
-        onChange={onFormDataChange}
-        // @ts-expect-error Expect format is LLMSpec.
-        onSubmit={onSubmit}
-        style={{ width: "100%" }}
-      >
-        <Button
-          title="Submit"
-          onClick={onClickSubmit}
-          style={{ float: "right", marginRight: "30px" }}
-        >
-          Submit
-        </Button>
-        <div style={{ height: "50px" }}></div>
-      </Form>
-    </Modal>
+            </Tooltip>
+            <Modal.CloseButton />
+          </Flex>
+        </Modal.Header>
+        <Modal.Body>
+          <Form
+            schema={schema}
+            uiSchema={uiSchema}
+            widgets={widgets} // Custom UI widgets
+            formData={formData}
+            // // @ts-expect-error This is literally the example code from react-json-schema; no idea why it wouldn't typecheck correctly.
+            validator={validator}
+            // @ts-expect-error Expect format is LLMSpec.
+            onChange={onFormDataChange}
+            // @ts-expect-error Expect format is LLMSpec.
+            onSubmit={onSubmit}
+            style={{ width: "100%" }}
+          >
+            <Button
+              title="Submit"
+              onClick={() => onClickSubmit()}
+              style={{ float: "right", marginRight: "30px" }}
+            >
+              Submit
+            </Button>
+            <div style={{ height: "50px" }}></div>
+          </Form>
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
+    // <Modal
+    //   size="lg"
+    //   opened={opened}
+    //   onClose={onClickSubmit}
+    //   title={
+
+    //   }
+    //   closeOnClickOutside={false}
+    //   style={{ position: "relative", left: "-5%" }}
+    // >
+
+    // </Modal>
   );
 });
 

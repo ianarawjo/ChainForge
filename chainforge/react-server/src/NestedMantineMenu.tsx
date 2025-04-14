@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from "react";
-import { Menu, Tooltip, Button, Popover } from "@mantine/core";
-import { IconChevronRight } from "@tabler/icons-react";
+import React, { ReactNode, useMemo, useState } from "react";
+import { Menu, Tooltip, Popover, ActionIcon } from "@mantine/core";
+import { IconChevronRight, IconTrash } from "@tabler/icons-react";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
 
 const NESTED_MENU_STYLE = {
@@ -33,14 +33,15 @@ export const MenuTooltip = ({
 
 export type NestedMenuItemProps = ContextMenuItemOptions & {
   tooltip?: string;
+  onTrash?: (closeMenu: () => void) => void;
 };
 
 export default function NestedMenu({
   items,
-  buttonLabel,
+  button,
 }: {
   items: NestedMenuItemProps[];
-  buttonLabel: string;
+  button: (closeMenu: () => void) => ReactNode;
 }) {
   const [menuOpened, setMenuOpened] = useState(false);
   const [submenuOpened, setSubmenuOpened] = useState<string | null>(null);
@@ -65,7 +66,24 @@ export default function NestedMenu({
       <MenuTooltip label={item.tooltip} key={item.key}>
         <Menu.Item
           icon={item.icon}
-          rightSection={showChevron ? <IconChevronRight size={14} /> : null}
+          rightSection={
+            item.onTrash ? (
+              <ActionIcon
+                ml="sm"
+                color="red"
+                p={0}
+                size={16}
+                onClick={(evt) => {
+                  evt.stopPropagation();
+                  if (item.onTrash) item.onTrash(() => setMenuOpened(false));
+                }}
+              >
+                <IconTrash size="10pt" />
+              </ActionIcon>
+            ) : showChevron ? (
+              <IconChevronRight size={14} />
+            ) : null
+          }
           className={item.className}
           sx={item.sx}
           onClick={(evt) => {
@@ -131,19 +149,10 @@ export default function NestedMenu({
       position="bottom-start"
       width={200}
       styles={NESTED_MENU_STYLE}
+      offset={1}
       withinPortal
     >
-      <Menu.Target>
-        <Button
-          size="sm"
-          variant="gradient"
-          compact
-          mr="sm"
-          onClick={() => setMenuOpened(!menuOpened)}
-        >
-          {buttonLabel}
-        </Button>
-      </Menu.Target>
+      <Menu.Target>{button(() => setMenuOpened(!menuOpened))}</Menu.Target>
 
       <Menu.Dropdown>
         {menuItems}

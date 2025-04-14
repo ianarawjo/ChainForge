@@ -112,7 +112,6 @@ import {
 } from "react-device-detect";
 import MultiEvalNode from "./MultiEvalNode";
 import FlowSidebar from "./FlowSidebar";
-import { getPositionCSSStyle } from "./LLMListComponent";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMantineMenu";
 
 const IS_ACCEPTED_BROWSER =
@@ -1454,7 +1453,20 @@ const App = () => {
           }}
         >
           <Flex>
-            <NestedMenu items={addNodesMenuItems} buttonLabel="Add Node +" />
+            <NestedMenu
+              items={addNodesMenuItems}
+              button={(toggleMenu) => (
+                <Button
+                  size="sm"
+                  variant="gradient"
+                  compact
+                  mr="sm"
+                  onClick={toggleMenu}
+                >
+                  Add Node +
+                </Button>
+              )}
+            />
             <Button
               onClick={() => exportFlow()}
               size="sm"

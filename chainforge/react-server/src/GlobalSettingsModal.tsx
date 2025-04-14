@@ -377,24 +377,24 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
       // Attempt to fetch Ollama model list
       // TODO: This should use the Ollama BaseURL setting
-      fetch("http://localhost:11434/api/tags")
-        .then((response) => {
-          if (response.ok) {
-            return response.json();
-          } else {
-            throw new Error("Failed to fetch Ollama models");
-          }
-        })
-        .then((data) => {
-          const models_available = data.models?.map(
-            (model_obj: Dict) => model_obj.name,
-          );
-          setAvailableLLMs(data.models);
-          console.log("Loaded Ollama model list from backend.");
-        })
-        .catch((error) => {
-          console.error("Error fetching Ollama models:", error);
-        });
+      // fetch("http://localhost:11434/api/tags")
+      //   .then((response) => {
+      //     if (response.ok) {
+      //       return response.json();
+      //     } else {
+      //       throw new Error("Failed to fetch Ollama models");
+      //     }
+      //   })
+      //   .then((data) => {
+      //     const models_available = data.models?.map(
+      //       (model_obj: Dict) => model_obj.name,
+      //     );
+      //     setAvailableLLMs(data.models);
+      //     console.log("Loaded Ollama model list from backend.");
+      //   })
+      //   .catch((error) => {
+      //     console.error("Error fetching Ollama models:", error);
+      //   });
     }, []);
 
     // When the API settings form is submitted

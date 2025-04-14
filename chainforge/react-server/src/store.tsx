@@ -10,6 +10,7 @@ import {
   MarkerType,
   Connection,
 } from "reactflow";
+import { v4 as uuid } from "uuid";
 import { escapeBraces } from "./backend/template";
 import {
   deepcopy,
@@ -368,8 +369,8 @@ export const initLLMProviders = flattenLLMProviders(initLLMProviderMenu);
 
 // Favorites saved across sessions (nodes, models, etc)
 export interface FavoritesStoreType {
-  nodes: { name: string; value: Node }[];
-  models: { name: string; value: LLMSpec }[];
+  nodes: { name: string; value: Node; uid: string }[];
+  models: { name: string; value: LLMSpec; uid: string }[];
 }
 
 export interface StoreHandles {
@@ -415,12 +416,18 @@ export interface StoreHandles {
   getFavorites: <K extends keyof FavoritesStoreType>(
     key: K,
   ) => FavoritesStoreType[K];
+  refreshFavoriteModelsMenu: () => void;
   saveFavorite: <K extends keyof FavoritesStoreType>(
     key: K,
     name: string,
     value: FavoritesStoreType[K][number]["value"],
   ) => void;
   saveFavoriteNode: (nodeId: string, name: string) => void;
+  saveFavoriteModel: (name: string, spec: LLMSpec) => void;
+  removeFavorite: <K extends keyof FavoritesStoreType>(
+    key: K,
+    uid: string,
+  ) => void;
 
   // Flow-specific state
   state: Dict;
@@ -499,9 +506,38 @@ const useStore = create<StoreHandles>((set, get) => ({
   },
   setFavorites: (favorites: FavoritesStoreType) => {
     set({ favorites });
+    get().refreshFavoriteModelsMenu();
   },
   getFavorites: <K extends keyof FavoritesStoreType>(key: K) => {
     return get().favorites[key];
+  },
+  refreshFavoriteModelsMenu: () => {
+    const favorites = get().favorites;
+
+    // Refresh the LLM menu to include the new model
+    const favoritesMenuIdx = initLLMProviderMenu.findIndex(
+      (item: LLMGroup | LLMSpec) =>
+        "group" in item && item.group === "Favorites",
+    );
+
+    if (favorites.models.length === 0) {
+      if (favoritesMenuIdx !== -1)
+        // If there are no more favorites, remove the menu
+        initLLMProviderMenu.splice(favoritesMenuIdx, 1);
+      return;
+    }
+
+    // Otherwise, update the menu with the new favorites
+    if (favoritesMenuIdx === -1) {
+      initLLMProviderMenu.splice(0, 0, {
+        group: "Favorites",
+        emoji: "♥️",
+        items: get().favorites.models.map((model) => model.value),
+      });
+    } else {
+      (initLLMProviderMenu[favoritesMenuIdx] as LLMGroup).items =
+        get().favorites.models.map((model) => model.value);
+    }
   },
   saveFavorite: <K extends keyof FavoritesStoreType>(
     key: K,
@@ -513,6 +549,11 @@ const useStore = create<StoreHandles>((set, get) => ({
     favorites[key].push({
       name,
       value: value as any,
+      // The uid for a 'model' should be its uuid, if it's set. Otherwise, give it one:
+      uid:
+        key === "models" && "key" in value && value.key !== undefined
+          ? value.key
+          : uuid(),
     }); // add to end of array
 
     set({ favorites });
@@ -528,6 +569,29 @@ const useStore = create<StoreHandles>((set, get) => ({
 
     // Store the node in the favorites list
     get().saveFavorite("nodes", name, node);
+  },
+  saveFavoriteModel: (name: string, spec: LLMSpec) => {
+    // Store the model in the favorites list and refresh the menus
+    get().saveFavorite("models", name, spec);
+    get().refreshFavoriteModelsMenu();
+  },
+  removeFavorite: <K extends keyof FavoritesStoreType>(key: K, uid: string) => {
+    const favorites = { ...get().favorites };
+    console.log("Removing favorite", key, uid);
+    const idx = favorites[key].findIndex((item) => item.uid === uid);
+    if (idx !== -1) {
+      favorites[key].splice(idx, 1);
+    }
+    set({ favorites });
+
+    // Push update to backend
+    if (IS_RUNNING_LOCALLY)
+      saveGlobalConfig("favorites", favorites as Dict<any>);
+
+    // Refresh models list if model favorite was removed
+    if (key === "models") {
+      get().refreshFavoriteModelsMenu();
+    }
   },
 
   // Flags to toggle on or off features across the application

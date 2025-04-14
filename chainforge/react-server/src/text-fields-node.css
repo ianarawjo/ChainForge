@@ -1222,6 +1222,10 @@ th .content-editable-div {
   margin-left: 2px;
 }
 
+.favorite-icon:hover {
+  color: red;
+}
+
 /* Model settings form styling */
 .rjsf fieldset {
   border-style: none;
