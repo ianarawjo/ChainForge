@@ -24,6 +24,7 @@ setup(
         "platformdirs",
         "urllib3==1.26.6",
         "openai",
+        "cryptography",
         "dalaipy>=2.0.2",
         "mistune>=2.0",  # for LLM response markdown parsing
     ],

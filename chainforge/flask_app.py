@@ -1,13 +1,14 @@
 import json, os, sys, asyncio, time, shutil
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
+from typing import List, Literal
 from statistics import mean, median, stdev
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from chainforge.providers.dalai import call_dalai
 from chainforge.providers import ProviderRegistry
+from chainforge.security.password_utils import ensure_password
+from chainforge.security.secure_save import load_json_file, save_json_file
 import requests as py_requests
 from platformdirs import user_data_dir
 
@@ -32,6 +33,10 @@ FLOWS_DIR = user_data_dir("chainforge")  # platform-agnostic local storage that 
 SETTINGS_FILENAME = "settings.json"
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
+
+# Cryptography
+SECURE_MODE: Literal['off', 'settings', 'all'] = 'off'  # The mode of encryption to use for files
+FLOWS_DIR_PWD = None  # The password to use for encryption/decryption
 
 class MetricType(Enum):
     KeyValue = 0
@@ -520,29 +525,6 @@ def makeFetchCall():
         return jsonify({'error': err_msg})
 
 
-@app.route('/app/callDalai', methods=['POST'])
-async def callDalai():
-    """
-        Fetch response from a Dalai-hosted model (Alpaca or Llama).
-        Requires Python backend since depends on custom library code to extract response.
-
-        POST'd data should be a dict of keyword arguments to provide the call_dalai method.
-    """
-    # Verify post'd data
-    data = request.get_json()
-    if not set(data.keys()).issuperset({'prompt', 'model', 'server', 'n', 'temperature'}):
-        return jsonify({'error': 'POST data is improper format.'})
-
-    try:
-        query, response = await call_dalai(**data)
-    except Exception as e:
-        return jsonify({'error': str(e)})
-
-    ret = jsonify({'query': query, 'response': response})
-    ret.headers.add('Access-Control-Allow-Origin', '*')
-    return ret
-
-
 @app.route('/app/initCustomProvider', methods=['POST'])
 def initCustomProvider():
     """
@@ -738,7 +720,7 @@ def get_flows():
             "last_modified": datetime.fromtimestamp(os.path.getmtime(os.path.join(FLOWS_DIR, f))).isoformat()
         }
         for f in os.listdir(FLOWS_DIR) 
-        if f.endswith('.cforge') and f != "__autosave.cforge"  # ignore the special autosave file
+        if (f.endswith('.cforge') or f.endswith('.cforge.enc')) and "__autosave.cforge" not in f  # ignore the special autosave file
     ]
 
     # Sort the flow files by last modified date in descending order (most recent first)
@@ -751,12 +733,26 @@ def get_flows():
 
 @app.route('/api/flows/<filename>', methods=['GET'])
 def get_flow(filename):
+    file_is_pwd_protected = request.args.get("pwd_protected", False)
+
+    if file_is_pwd_protected and SECURE_MODE != "all":
+        # The file is password protected, but the server is not in secure mode, we won't be able to load it
+        return jsonify({"error": "This flow is password protected, but the server is not in secure mode 'all'. Run ChainForge with --secure set to all to load this flow."}), 403
+
     """Return the content of a specific flow"""
     if not filename.endswith('.cforge'):
         filename += '.cforge'
     try:
-        with open(os.path.join(FLOWS_DIR, filename), 'r') as f:
-            return jsonify(json.load(f))
+        filepath = os.path.join(FLOWS_DIR, filename)
+        secure_mode = SECURE_MODE == "all"
+        data = load_json_file(
+            filepath_w_ext=filepath, 
+            secure=secure_mode,
+            password=FLOWS_DIR_PWD if secure_mode else None,
+        )
+        if data is None:
+            raise FileNotFoundError(f"Could not load flow data from {filepath}.")
+        return jsonify(data)
     except FileNotFoundError:
         return jsonify({"error": "Flow not found"}), 404
 
@@ -766,7 +762,7 @@ def get_flow_exists(filename):
     if not filename.endswith('.cforge'):
         filename += '.cforge'
     try:
-        is_file = os.path.isfile(os.path.join(FLOWS_DIR, filename))
+        is_file = os.path.isfile(os.path.join(FLOWS_DIR, filename)) or os.path.isfile(os.path.join(FLOWS_DIR, filename + ".enc"))
         return jsonify({"exists": is_file})
     except FileNotFoundError:
         return jsonify({"error": "Flow not found"}), 404
@@ -774,10 +770,18 @@ def get_flow_exists(filename):
 @app.route('/api/flows/<filename>', methods=['DELETE'])
 def delete_flow(filename):
     """Delete a flow"""
+    secure_mode = SECURE_MODE == "all"
+
     if not filename.endswith('.cforge'):
         filename += '.cforge'
+
+    if secure_mode:
+        filename += '.enc'
+        
     try:
-        os.remove(os.path.join(FLOWS_DIR, filename))
+        # Delete the file
+        if os.path.isfile(os.path.join(FLOWS_DIR, filename)):
+            os.remove(os.path.join(FLOWS_DIR, filename))
         return jsonify({"message": f"Flow {filename} deleted successfully"})
     except FileNotFoundError:
         return jsonify({"error": "Flow not found"}), 404
@@ -786,6 +790,7 @@ def delete_flow(filename):
 def save_or_rename_flow(filename):
     """Save, rename, or duplicate a flow"""
     data = request.json
+    secure_mode = SECURE_MODE == "all"
 
     if not filename.endswith('.cforge'):
         filename += '.cforge'
@@ -797,13 +802,20 @@ def save_or_rename_flow(filename):
         
         try:
             filepath = os.path.join(FLOWS_DIR, filename)
-            with open(filepath, 'w') as f:
-                json.dump(flow_data, f)
+            success = save_json_file(
+                filepath_w_ext=filepath, 
+                data=flow_data, 
+                secure=secure_mode,
+                password=FLOWS_DIR_PWD if secure_mode else None,
+            )
+            if not success:
+                return jsonify({"error": "Failed to save flow."}), 500
 
             # If we should also autosave, then attempt to override the autosave cache file:
             if also_autosave:
-                autosave_filepath = os.path.join(FLOWS_DIR, '__autosave.cforge')
-                shutil.copy2(filepath, autosave_filepath)  # copy the file to __autosave
+                cur_filepath = filepath + ('.enc' if secure_mode else '')
+                autosave_filepath = os.path.join(FLOWS_DIR, '__autosave.cforge' + ('.enc' if secure_mode else ''))
+                shutil.copy2(cur_filepath, autosave_filepath)  # copy the file to __autosave
 
             return jsonify({"message": f"Flow '{filename}' saved!"})
         except FileNotFoundError:
@@ -812,15 +824,19 @@ def save_or_rename_flow(filename):
     elif data.get('newName'):
         # Rename flow
         new_name = data.get('newName')
+        old_path = os.path.join(FLOWS_DIR, filename) + ('.enc' if secure_mode else '')
         
         if not new_name.endswith('.cforge'):
             new_name += '.cforge'
+
+        if secure_mode:
+            new_name += '.enc'
 
         try:
             # Check for name clashes (if a flow already exists with the new name)
             if os.path.isfile(os.path.join(FLOWS_DIR, new_name)):
                 raise Exception("A flow with that name already exists.")
-            os.rename(os.path.join(FLOWS_DIR, filename), os.path.join(FLOWS_DIR, new_name))
+            os.rename(old_path, os.path.join(FLOWS_DIR, new_name))
             return jsonify({"message": f"Flow renamed from {filename} to {new_name}"})
         except Exception as error:
             return jsonify({"error": str(error)}), 404
@@ -828,19 +844,29 @@ def save_or_rename_flow(filename):
     elif data.get('duplicate'):
         # Duplicate flow
         try:
+            old_path = os.path.join(FLOWS_DIR, filename) + ('.enc' if secure_mode else '')
             # Check for name clashes (if a flow already exists with the new name)
             copy_name = _get_unique_flow_name(filename, "Copy of ") 
             # Copy the file to the new (safe) path, and copy metadata too:
-            shutil.copy2(os.path.join(FLOWS_DIR, filename), os.path.join(FLOWS_DIR, f"{copy_name}.cforge"))
+            shutil.copy2(old_path, os.path.join(FLOWS_DIR, f"{copy_name}.cforge" + ('.enc' if secure_mode else '')))
             # Return the new filename
             return jsonify({"copyName": copy_name})
         except Exception as error:
             return jsonify({"error": str(error)}), 404
 
 def _get_unique_flow_name(filename: str, prefix: str = None) -> str: 
+    secure_mode = SECURE_MODE == "all"
+
+    if not filename.endswith('.cforge'):
+        filename += '.cforge'
+
     base, ext = os.path.splitext(filename)
     if ext is None or len(ext) == 0: 
         ext = ".cforge"
+
+    if secure_mode:
+        ext += '.enc'
+
     unique_filename = base + ext
     if prefix is not None:
         unique_filename = prefix + unique_filename
@@ -853,7 +879,7 @@ def _get_unique_flow_name(filename: str, prefix: str = None) -> str:
             unique_filename = prefix + unique_filename
         i += 1
     
-    return unique_filename.replace(".cforge", "")
+    return unique_filename.replace(ext, "")
 
 @app.route('/api/getUniqueFlowFilename', methods=['PUT'])
 def get_unique_flow_name():
@@ -878,10 +904,14 @@ def get_unique_flow_name():
 @app.route('/api/getConfig/<name>', methods=['GET'])
 def get_settings(name):
     """Return the requested config"""
-    try:
-        with open(os.path.join(FLOWS_DIR, f"{name}.json"), 'r') as f:
-            settings = json.load(f)
-    except FileNotFoundError:
+    filepath = os.path.join(FLOWS_DIR, f"{name}.json")
+    secure_mode = SECURE_MODE == "all" or (SECURE_MODE == "settings" and name == "settings")
+    settings = load_json_file(
+        filepath_w_ext=filepath, 
+        secure=secure_mode,
+        password=FLOWS_DIR_PWD if secure_mode else None,
+    )
+    if settings is None:
         settings = {}
     return jsonify(settings)
 
@@ -895,8 +925,16 @@ def save_settings(name):
         return jsonify({"error": "Settings must be a JSON object."}), 400
 
     try:
-        with open(os.path.join(FLOWS_DIR, f"{name}.json"), 'w') as f:
-            json.dump(data, f)
+        filepath = os.path.join(FLOWS_DIR, f"{name}.json")
+        secure_mode = SECURE_MODE == "all" or (SECURE_MODE == "settings" and name == "settings")
+        success = save_json_file(
+            filepath_w_ext=filepath, 
+            data=data, 
+            secure=secure_mode,
+            password=FLOWS_DIR_PWD if secure_mode else None,
+        )
+        if not success:
+            return jsonify({"error": "Failed to save settings."}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     return jsonify({"message": "Settings saved successfully!"})
@@ -905,12 +943,25 @@ def save_settings(name):
 """ 
     SPIN UP SERVER
 """
-def run_server(host="", port=8000, flows_dir=None):
-    global HOSTNAME, PORT, FLOWS_DIR
+def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "settings", "all"] = "off"):
+    global HOSTNAME, PORT, FLOWS_DIR, SECURE_MODE, FLOWS_DIR_PWD
     HOSTNAME = host
     PORT = port
+    SECURE_MODE = secure
     if flows_dir:
         FLOWS_DIR = flows_dir
+
+    # Get the user password, if `secure` is set to "settings" or "all".
+    # :: Create a new password and salt if one doesn't exist, or uses the existing one.
+    if secure != "off":
+        password = ensure_password(
+            hash_filepath=os.path.join(FLOWS_DIR, "salt.bin"), 
+            create_new_msg="\nWelcome to ChainForge! We've noticed you are entering secure mode for the first time. Please enter a password to encrypt your flows and settings. Prepare to enter it again whenever you start ChainForge in secure mode.\n")
+        if not password:
+            print("❌ Password cannot be empty. Please provide a password.")
+            exit(1)
+        FLOWS_DIR_PWD = password
+
     app.run(host=host, port=port)
 
 if __name__ == '__main__':

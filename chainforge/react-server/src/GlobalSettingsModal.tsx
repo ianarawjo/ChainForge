@@ -368,6 +368,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
       // Fetch favorites list from backend
       getGlobalConfig("favorites").then((favorites: any) => {
+        console.warn(favorites);
         if (!favorites) return;
         // If there's some, set the favorites in the store
         setFavorites(favorites);

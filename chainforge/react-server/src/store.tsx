@@ -505,6 +505,12 @@ const useStore = create<StoreHandles>((set, get) => ({
     models: [],
   },
   setFavorites: (favorites: FavoritesStoreType) => {
+    if (
+      !favorites ||
+      typeof favorites !== "object" ||
+      Object.keys(favorites).length < 2
+    )
+      return;
     set({ favorites });
     get().refreshFavoriteModelsMenu();
   },

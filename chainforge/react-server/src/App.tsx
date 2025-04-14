@@ -1030,10 +1030,18 @@ const App = () => {
     async (rf_inst: ReactFlowInstance, fromFilesystem?: boolean) => {
       if (fromFilesystem) {
         // From local filesystem
-        // Fetch the flow
-        const response = await axios.get(
-          `${FLASK_BASE_URL}api/flows/__autosave`,
-        );
+        let response;
+        try {
+          // Fetch the flow
+          response = await axios.get(`${FLASK_BASE_URL}api/flows/__autosave`);
+        } catch (error) {
+          console.error(
+            "Error encountered when loading autosave from local filesystem:",
+            error,
+          );
+          // Soft fail
+          return;
+        }
 
         // Attempt to load flow into the UI
         try {
