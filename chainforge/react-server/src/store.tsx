@@ -100,15 +100,15 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "🤖",
     items: [
       {
-        name: "GPT-3.5",
-        emoji: "🤖",
-        model: "gpt-3.5-turbo",
-        base_model: "gpt-3.5-turbo",
+        name: "GPT-4.1",
+        emoji: "🧑‍💻️",
+        model: "gpt-4.1",
+        base_model: "gpt-4",
         temp: 1.0,
-      }, // The base_model designates what settings form will be used, and must be unique.
+      },
       {
         name: "GPT-4o",
-        emoji: "🥵",
+        emoji: "😁",
         model: "gpt-4o",
         base_model: "gpt-4",
         temp: 1.0,
@@ -120,6 +120,27 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         base_model: "gpt-4",
         temp: 1.0,
       },
+      {
+        name: "o1",
+        emoji: "⭕",
+        model: "o1",
+        base_model: "gpt-4",
+        temp: 1.0,
+      },
+      {
+        name: "o3-mini",
+        emoji: "⭕",
+        model: "o3-mini",
+        base_model: "gpt-4",
+        temp: 1.0,
+      },
+      {
+        name: "GPT-3.5",
+        emoji: "🤖",
+        model: "gpt-3.5-turbo",
+        base_model: "gpt-3.5-turbo",
+        temp: 1.0,
+      }, // The base_model designates what settings form will be used, and must be unique.
       {
         name: "Dall-E",
         emoji: "🖼",
@@ -134,9 +155,9 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "📚",
     items: [
       {
-        name: "Claude 3.5 Sonnet",
+        name: "Claude 3.7 Sonnet",
         emoji: "📚",
-        model: "claude-3-5-sonnet-latest",
+        model: "claude-3-7-sonnet-latest",
         base_model: "claude-v1",
         temp: 0.5,
       },

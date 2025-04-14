@@ -221,29 +221,56 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     const loadSettingsFromBackend = useCallback(() => {
       // Load global settings from backend. This fails silently if the backend is not running.
       // It also will only load settings that the form has defined.
-      getGlobalConfig(SETTINGS_FILENAME).then((backendSettings) => {
-        // Set the settings in the first tab's form (mainly API key list)
-        Object.keys(form.values).forEach((key) => {
-          if (key in settings) form.setFieldValue(key, backendSettings[key]);
-        });
-
-        // Set any other settings that are on other pages (not in the form)
-        setSettings((prev) => {
-          Object.keys(prev).forEach((key) => {
-            if (key in backendSettings)
-              prev[key as keyof GlobalSettingsType] = backendSettings[
-                key
-              ] as any;
+      getGlobalConfig(SETTINGS_FILENAME)
+        .then((backendSettings) => {
+          // Set the settings in the first tab's form (mainly API key list)
+          Object.keys(form.values).forEach((key) => {
+            if (key in settings) form.setFieldValue(key, backendSettings[key]);
           });
-          return { ...prev };
+
+          // Set any other settings that are on other pages (not in the form)
+          setSettings((prev) => {
+            Object.keys(prev).forEach((key) => {
+              if (key in backendSettings)
+                prev[key as keyof GlobalSettingsType] = backendSettings[
+                  key
+                ] as any;
+            });
+            return { ...prev };
+          });
+
+          // Set any API keys that were custom set in the global settings form,
+          // overriding the default ones (including environment variables).
+          setAPIKeys(backendSettings as Dict<string>);
+
+          console.log("Loaded global settings from backend.");
+
+          return backendSettings;
+        })
+        .then((backendSettings) => {
+          // Attempt to fetch Ollama model list
+          // TODO: This should use the Ollama BaseURL setting
+          const Ollama_BaseURL =
+            backendSettings.Ollama_BaseURL ?? "http://localhost:11434";
+          fetch(`${Ollama_BaseURL}/api/tags`)
+            .then((response) => {
+              if (response.ok) {
+                return response.json();
+              } else {
+                throw new Error("Failed to fetch Ollama models");
+              }
+            })
+            .then((data) => {
+              const models_available = data.models?.map(
+                (model_obj: Dict) => model_obj.name,
+              );
+              console.log("Ollama models available:", models_available);
+              console.log("Loaded Ollama model list from backend.");
+            })
+            .catch((error) => {
+              console.error("Error fetching Ollama models:", error);
+            });
         });
-
-        // Set any API keys that were custom set in the global settings form,
-        // overriding the default ones (including environment variables).
-        setAPIKeys(backendSettings as Dict<string>);
-
-        console.log("Loaded global settings from backend.");
-      });
     }, [form, settings]);
 
     // Save the global settings to the backend
@@ -375,27 +402,6 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
         console.log("Loaded favorites from backend.");
       });
-
-      // Attempt to fetch Ollama model list
-      // TODO: This should use the Ollama BaseURL setting
-      // fetch("http://localhost:11434/api/tags")
-      //   .then((response) => {
-      //     if (response.ok) {
-      //       return response.json();
-      //     } else {
-      //       throw new Error("Failed to fetch Ollama models");
-      //     }
-      //   })
-      //   .then((data) => {
-      //     const models_available = data.models?.map(
-      //       (model_obj: Dict) => model_obj.name,
-      //     );
-      //     setAvailableLLMs(data.models);
-      //     console.log("Loaded Ollama model list from backend.");
-      //   })
-      //   .catch((error) => {
-      //     console.error("Error fetching Ollama models:", error);
-      //   });
     }, []);
 
     // When the API settings form is submitted
@@ -532,7 +538,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                     />
                     <TextInput
                       label="Ollama Server Base URL"
-                      placeholder="Paste your Ollama Server Base URL here. The default is http://localhost:11434. ChainForge will attempt to contact the Ollama API at this URL."
+                      placeholder="Paste your Ollama Server Base URL here. The default is http://localhost:11434. ChainForge will attempt to contact the Ollama API at this URL. Ensure it doesn't include a trailing slash."
                       {...form.getInputProps("Ollama_BaseURL")}
                     />
                     <br />

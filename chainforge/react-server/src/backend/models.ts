@@ -34,6 +34,9 @@ export enum NativeLLM {
   OpenAI_o1_pro = "o1-pro",
   OpenAI_o3_mini = "o3-mini",
   OpenAI_GPT4_5_Prev = "gpt-4.5-preview",
+  OpenAI_GPT4_1 = "gpt-4.1",
+  OpenAI_GPT4_1_mini = "gpt-4.1-mini",
+  OpenAI_GPT4_1_nano = "gpt-4.1-nano",
 
   // OpenAI Text Completions (deprecated)
   OpenAI_Davinci003 = "text-davinci-003",
@@ -81,7 +84,9 @@ export enum NativeLLM {
   PaLM2_Text_Bison = "text-bison-001", // it's really models/text-bison-001, but that's confusing
   PaLM2_Chat_Bison = "chat-bison-001",
   GEMINI_PRO = "gemini-pro",
-  GEMINI_v2_flash = "gemini-2.0-flash-exp",
+  GEMINI_v2_5_pro_prev = "gemini-2.5-pro-preview-03-25",
+  GEMINI_v2_flash = "gemini-2.0-flash",
+  GEMINI_v2_flash_lite = "gemini-2.0-flash-lite",
   GEMINI_v1_5_flash = "gemini-1.5-flash",
   GEMINI_v1_5_flash_8B = "gemini-1.5-flash-8b",
   GEMINI_v1_5_pro = "gemini-1.5-pro",
