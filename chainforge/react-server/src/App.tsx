@@ -147,6 +147,7 @@ const selector = (state: StoreHandles) => ({
   setAPIKeys: state.setAPIKeys,
   importState: state.importState,
   favorites: state.favorites,
+  removeFavorite: state.removeFavorite,
 });
 
 // The initial LLM to use when new flows are created, or upon first load
@@ -273,6 +274,7 @@ const App = () => {
     setAPIKeys,
     importState,
     favorites,
+    removeFavorite,
   } = useStore(selector, shallow);
 
   // For saving / loading flows
@@ -328,12 +330,7 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Context menu for "Add Node +" list
-  const { showContextMenu, hideContextMenu, isContextMenuVisible } =
-    useContextMenu();
-  // Mantine ContextMenu does not fix the position of the menu
-  // to be below the clicked button, so we must do it ourselves.
-  const addBtnRef = useRef(null);
-  const [wasContextMenuToggled, setWasContextMenuToggled] = useState(false);
+  const { hideContextMenu } = useContextMenu();
 
   // Add Nodes list
   const addNodesMenuItems = useMemo(() => {
@@ -545,17 +542,21 @@ const App = () => {
     ] as NestedMenuItemProps[];
 
     // Add favorite nodes to the menu
-    const favoriteNodes = favorites?.nodes?.map(({ name, value }, idx) => {
+    const favoriteNodes = favorites?.nodes?.map(({ name, value, uid }, idx) => {
       const type = value.type ?? "";
       const emoji =
         type in nodeEmojis ? nodeEmojis[type as keyof typeof nodeEmojis] : "❤️";
       return {
-        key: `favorite-${name}-${idx}`,
+        key: uid,
         title: name,
         icon: emoji,
         tooltip: `Add ${name} to the flow`,
         onClick: () => addNodeFromFavorite(name, value),
-      };
+        onTrash: (closeMenu) => {
+          removeFavorite("nodes", uid);
+          closeMenu();
+        },
+      } as NestedMenuItemProps;
     });
 
     if (favoriteNodes && favoriteNodes.length > 0) {
