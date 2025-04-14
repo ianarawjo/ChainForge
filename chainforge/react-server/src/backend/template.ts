@@ -8,6 +8,65 @@ import {
   TemplateVarInfo,
 } from "./typing";
 
+/**
+ * Given a template string, returns a generator that yields the template variables
+ * found in the string, one by one.
+ *
+ * > NOTE: This is the core function in ChainForge that extracts template variables from a string.
+ *
+ * @param template The template string to extract variables from
+ * @param sub_dict (Optional) A dictionary of substitutions to apply to the template string
+ * @returns A generator that yields the template variables found in the string --
+ *          OR -- if `sub_dict` is provided, replaces them with their corresponding values from the `sub_dict`
+ */
+export function* extractTemplateVars(
+  // The prompt template string
+  template: string,
+  // Replace option
+  sub_dict?: { [key: string]: string },
+) {
+  let prev_c = "";
+  let group_start_idx = -1;
+  for (let i = 0; i < template.length; i += 1) {
+    const c = template.charAt(i);
+    if (prev_c !== "\\") {
+      // Skip escaped braces
+      if (group_start_idx === -1 && c === "{")
+        // Identify the start of a capture {group}
+        group_start_idx = i;
+      else if (group_start_idx > -1 && c === "\n") {
+        // Break captured groups on newlines
+        group_start_idx = -1;
+      } else if (group_start_idx > -1 && c === "}") {
+        // Identify the end of a capture {group}
+        if (group_start_idx + 1 < i) {
+          // Ignore {} empty braces
+          // We identified a capture group. First check if its key is in the substitution dict:
+          const varname = template.substring(group_start_idx + 1, i);
+          if (!sub_dict) yield varname;
+          else if (varname in sub_dict) {
+            // Replace '{varname}' with the substitution value:
+            const replacement = sub_dict[varname];
+            let tail = template.substring(i + 1);
+            // Check if the varname is a special settings var (starts with =); if so, look for a newline after it:
+            if (varname.charAt(0) === "=" && /^[ \t]*\n/.test(tail))
+              tail = tail.substring(tail.indexOf("\n") + 1); // remove the whitespace and \n, to vanish the line
+            // Patch the string
+            template =
+              template.substring(0, group_start_idx) + replacement + tail;
+            // Reset the iterator to point to the very next character upon the start of the next loop:
+            i = group_start_idx + replacement.length - 1;
+          }
+        }
+        group_start_idx = -1;
+      }
+    }
+    prev_c = c;
+  }
+
+  if (sub_dict) return template;
+}
+
 function len(o: object | string | Array<any>): number {
   // Acts akin to Python's builtin 'len' method
   if (Array.isArray(o)) {
@@ -71,43 +130,15 @@ export class StringTemplate {
    * This algorithm is O(N) complexity.
    */
   safe_substitute(sub_dict: { [key: string]: string }): string {
-    let template = this.val;
-    let prev_c = "";
-    let group_start_idx = -1;
-    for (let i = 0; i < template.length; i += 1) {
-      const c = template.charAt(i);
-      if (prev_c !== "\\") {
-        // Skip escaped braces
-        if (group_start_idx === -1 && c === "{")
-          // Identify the start of a capture {group}
-          group_start_idx = i;
-        else if (group_start_idx > -1 && c === "}") {
-          // Identify the end of a capture {group}
-          if (group_start_idx + 1 < i) {
-            // Ignore {} empty braces
-            // We identified a capture group. First check if its key is in the substitution dict:
-            const varname = template.substring(group_start_idx + 1, i);
-            if (varname in sub_dict) {
-              // Replace '{varname}' with the substitution value:
-              const replacement = sub_dict[varname];
-              let tail = template.substring(i + 1);
-              // Check if the varname is a special settings var (starts with =); if so, look for a newline after it:
-              if (varname.charAt(0) === "=" && /^[ \t]*\n/.test(tail))
-                tail = tail.substring(tail.indexOf("\n") + 1); // remove the whitespace and \n, to vanish the line
-              // Patch the string
-              template =
-                template.substring(0, group_start_idx) + replacement + tail;
-              // Reset the iterator to point to the very next character upon the start of the next loop:
-              i = group_start_idx + replacement.length - 1;
-            }
-            // Because this is safe_substitute, we don't do anything if varname was not in sub_dict.
-          }
-          group_start_idx = -1;
-        }
-      }
-      prev_c = c;
-    }
-    return template;
+    const template = this.val;
+
+    // Run the generator in 'replace' mode until it is done,
+    // and grab the final value (the template with all the replacements):
+    const generator = extractTemplateVars(template, sub_dict);
+    let item = generator.next();
+    while (!item.done) item = generator.next();
+
+    return item.value ?? template;
   }
 
   /**
@@ -116,33 +147,8 @@ export class StringTemplate {
    *   - has at least one varname in passed varnames
    */
   has_vars(varnames?: Array<string>): boolean {
-    const template = this.val;
-    let prev_c = "";
-    let group_start_idx = -1;
-    for (let i = 0; i < template.length; i += 1) {
-      const c = template.charAt(i);
-      if (prev_c !== "\\") {
-        // Skip escaped braces
-        if (group_start_idx === -1 && c === "{")
-          // Identify the start of a capture {group}
-          group_start_idx = i;
-        else if (group_start_idx > -1 && c === "}") {
-          // Identify the end of a capture {group}
-          if (group_start_idx + 1 < i) {
-            // Ignore {} empty braces
-            if (varnames !== undefined) {
-              if (varnames.includes(template.substring(group_start_idx + 1, i)))
-                return true;
-              // If varnames was specified but none matched this capture group, continue.
-            } else {
-              return true; // We identified a capture group.
-            }
-          }
-          group_start_idx = -1;
-        }
-      }
-      prev_c = c;
-    }
+    for (const v of extractTemplateVars(this.val))
+      if (varnames === undefined || varnames.includes(v)) return true;
     return false;
   }
 
@@ -153,27 +159,8 @@ export class StringTemplate {
    * then ["place", "food"] will be returned.
    */
   get_vars(): Array<string> {
-    const template = this.val;
     const varnames: Array<string> = [];
-    let prev_c = "";
-    let group_start_idx = -1;
-    for (let i = 0; i < template.length; i += 1) {
-      const c = template.charAt(i);
-      if (prev_c !== "\\") {
-        // Skip escaped braces
-        if (group_start_idx === -1 && c === "{")
-          // Identify the start of a capture {group}
-          group_start_idx = i;
-        else if (group_start_idx > -1 && c === "}") {
-          // Identify the end of a capture {group}
-          if (group_start_idx + 1 < i)
-            // Ignore {} empty braces
-            varnames.push(template.substring(group_start_idx + 1, i));
-          group_start_idx = -1;
-        }
-      }
-      prev_c = c;
-    }
+    for (const v of extractTemplateVars(this.val)) varnames.push(v);
     return varnames;
   }
 
