@@ -26,9 +26,9 @@ import ModelSettingsModal, {
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
 import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
-import { useContextMenu } from "mantine-contextmenu";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
-import { ensureUniqueName } from "./backend/utils";
+import { deepcopy, ensureUniqueName } from "./backend/utils";
+import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
@@ -36,7 +36,7 @@ const DEFAULT_INIT_LLMS = [initLLMProviders[0]];
 
 // Helper funcs
 /** Get position CSS style below and left-aligned to the input element */
-const getPositionCSSStyle = (
+export const getPositionCSSStyle = (
   elem: HTMLButtonElement,
 ): ContextMenuItemOptions => {
   const rect = elem.getBoundingClientRect();
@@ -64,6 +64,7 @@ export function LLMList({
   const [selectedModel, setSelectedModel] = useState<LLMSpec | undefined>(
     undefined,
   );
+  const saveFavoriteModel = useStore((state) => state.saveFavoriteModel);
 
   const updateItems = useCallback(
     (new_items: LLMSpec[]) => {
@@ -88,6 +89,7 @@ export function LLMList({
       savedItem: LLMSpec,
       formData: Dict<JSONCompatible>,
       settingsData: Dict<JSONCompatible>,
+      makeFavorite?: boolean,
     ) => {
       // First check for the item with key and get it:
       const llm = items.find((i) => i.key === savedItem.key);
@@ -132,6 +134,14 @@ export function LLMList({
             }
 
             if (savedItem.emoji) updated_item.emoji = savedItem.emoji;
+
+            // Save the model to favorites if user made it a favorite (clicked heart button),
+            // creating a unique ID for it to ensure no clashes.
+            if (makeFavorite)
+              saveFavoriteModel(updated_item.name, {
+                ...deepcopy(updated_item),
+                key: uuid(),
+              });
 
             return updated_item;
           } else return item;
@@ -277,8 +287,9 @@ export const LLMListContainer = forwardRef<
 ) {
   // All available LLM providers, for the dropdown list
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
-  const { showContextMenu, hideContextMenu, isContextMenuVisible } =
-    useContextMenu();
+  const removeFavorite = useStore((state) => state.removeFavorite);
+  const apiKeys = useStore((state) => state.apiKeys);
+
   // For some reason, when the AvailableLLMs list is updated in the store/, it is not
   // immediately updated here. I've tried all kinds of things, but cannot seem to fix this problem.
   // We must force a re-render of the component:
@@ -350,9 +361,9 @@ export const LLMListContainer = forwardRef<
   );
 
   const handleSelectModel = useCallback(
-    (item: LLMSpec) => {
+    (_item: LLMSpec) => {
       // Give it a uid as a unique key (this is needed for the draggable list to support multiple same-model items; keys must be unique)
-      item = { key: uuid(), ...item };
+      const item = { ..._item, key: uuid() };
 
       // Generate the default settings for this model
       item.settings = getDefaultModelSettings(item.base_model);
@@ -370,6 +381,20 @@ export const LLMListContainer = forwardRef<
         item.formData.model = item.model.substring(9);
       else item.formData.model = item.model;
 
+      // Ollama models use a different format for the model name, that we need to carry over:
+      if (item.base_model === "ollama") {
+        if (_item?.settings?.ollamaModel) {
+          item.formData.ollamaModel = _item?.settings?.ollamaModel;
+          item.settings.ollamaModel = _item?.settings?.ollamaModel;
+        }
+
+        // If the user has entered a custom base url, pass it over
+        if (apiKeys.Ollama_BaseURL) {
+          item.formData.ollama_url = apiKeys.Ollama_BaseURL;
+          item.settings.ollama_url = apiKeys.Ollama_BaseURL;
+        }
+      }
+
       let new_items: LLMSpec[] = [];
       if (selectModelAction === "add" || selectModelAction === undefined) {
         // Add model to the LLM list (regardless of it's present already or not).
@@ -382,7 +407,13 @@ export const LLMListContainer = forwardRef<
       setLLMItems(new_items);
       if (onSelectModel) onSelectModel(item, new_items);
     },
-    [llmItemsCurrState, onSelectModel, selectModelAction, AvailableLLMs],
+    [
+      llmItemsCurrState,
+      onSelectModel,
+      selectModelAction,
+      AvailableLLMs,
+      apiKeys,
+    ],
   );
 
   const onLLMListItemsChange = useCallback(
@@ -410,23 +441,34 @@ export const LLMListContainer = forwardRef<
 
   const menuItems = useMemo(() => {
     const initModels: Set<string> = new Set<string>();
-    const convert = (item: LLMSpec | LLMGroup): ContextMenuItemOptions => {
+    const convert = (
+      item: LLMSpec | LLMGroup,
+      groupName?: string,
+    ): NestedMenuItemProps => {
       if ("group" in item) {
         return {
           key: item.group,
           title: `${item.emoji} ${item.group}`,
-          items: item.items.map(convert),
+          items: item.items.map((i) => convert(i, item.group)),
         };
       } else {
         initModels.add(item.base_model);
         return {
-          key: item.model,
+          key: item.key ?? item.model,
           title: `${item.emoji} ${item.name}`,
           onClick: () => handleSelectModel(item),
+          onTrash:
+            groupName === "Favorites"
+              ? (closeMenu) => {
+                  removeFavorite("models", item.key ?? item.model);
+                  setTimeout(refreshLLMProviderList, 100);
+                  closeMenu();
+                }
+              : undefined,
         };
       }
     };
-    const res = initLLMProviderMenu.map(convert);
+    const res = initLLMProviderMenu.map((i) => convert(i));
 
     for (const item of AvailableLLMs) {
       if (initModels.has(item.base_model)) {
@@ -439,49 +481,31 @@ export const LLMListContainer = forwardRef<
       });
     }
     return res;
-  }, [AvailableLLMs, handleSelectModel]);
-
-  // Mantine ContextMenu does not fix the position of the menu
-  // to be below the clicked button, so we must do it ourselves.
-  const addBtnRef = useRef(null);
-  const [wasContextMenuToggled, setWasContextMenuToggled] = useState(false);
+  }, [
+    AvailableLLMs,
+    handleSelectModel,
+    refreshLLMProviderList,
+    removeFavorite,
+  ]);
 
   return (
     <div className="llm-list-container nowheel" style={_bgStyle}>
       <div className="llm-list-backdrop" style={_bgStyle}>
         {description || "Models to query:"}
         <div className="add-llm-model-btn nodrag">
-          <button
-            ref={addBtnRef}
-            style={_bgStyle}
-            onPointerDownCapture={() => {
-              setWasContextMenuToggled(
-                isContextMenuVisible && wasContextMenuToggled,
-              );
-            }}
-            onClick={(evt) => {
-              if (wasContextMenuToggled) {
-                setWasContextMenuToggled(false);
-                return; // abort
-              }
-              // This is a hack ---without hiding, the context menu position is not always updated.
-              // This is the case even if hideContextMenu() was triggered elsewhere.
-              hideContextMenu();
-              // Now show the context menu below the button:
-              showContextMenu(
-                menuItems,
-                addBtnRef?.current
-                  ? getPositionCSSStyle(addBtnRef.current)
-                  : undefined,
-              )(evt);
-
-              // Save whether the context menu was open, before
-              // onPointerDown in App.tsx could auto-close the menu.
-              setWasContextMenuToggled(true);
-            }}
-          >
-            {modelSelectButtonText ?? "Add +"}
-          </button>
+          <NestedMenu
+            items={menuItems}
+            button={(closeMenu) => (
+              <button
+                style={_bgStyle}
+                onClick={() => {
+                  closeMenu();
+                }}
+              >
+                {modelSelectButtonText ?? "Add +"}
+              </button>
+            )}
+          />
         </div>
       </div>
       <div className="nodrag">

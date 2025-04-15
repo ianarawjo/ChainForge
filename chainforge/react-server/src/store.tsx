@@ -10,6 +10,7 @@ import {
   MarkerType,
   Connection,
 } from "reactflow";
+import { v4 as uuid } from "uuid";
 import { escapeBraces } from "./backend/template";
 import {
   deepcopy,
@@ -25,10 +26,13 @@ import {
   TemplateVarInfo,
   TabularDataColType,
   TabularDataRowType,
+  JSONCompatible,
 } from "./backend/typing";
 import { TogetherChatSettings } from "./ModelSettingSchemas";
 import { NativeLLM } from "./backend/models";
 import { StringLookup } from "./backend/cache";
+import { saveGlobalConfig } from "./backend/backend";
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // Initial project settings
 const initialAPIKeys = {};
@@ -96,15 +100,15 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "🤖",
     items: [
       {
-        name: "GPT-3.5",
-        emoji: "🤖",
-        model: "gpt-3.5-turbo",
-        base_model: "gpt-3.5-turbo",
+        name: "GPT-4.1",
+        emoji: "🧑‍💻️",
+        model: "gpt-4.1",
+        base_model: "gpt-4",
         temp: 1.0,
-      }, // The base_model designates what settings form will be used, and must be unique.
+      },
       {
         name: "GPT-4o",
-        emoji: "🥵",
+        emoji: "😁",
         model: "gpt-4o",
         base_model: "gpt-4",
         temp: 1.0,
@@ -116,6 +120,27 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         base_model: "gpt-4",
         temp: 1.0,
       },
+      {
+        name: "o1",
+        emoji: "⭕",
+        model: "o1",
+        base_model: "gpt-4",
+        temp: 1.0,
+      },
+      {
+        name: "o3-mini",
+        emoji: "⭕",
+        model: "o3-mini",
+        base_model: "gpt-4",
+        temp: 1.0,
+      },
+      {
+        name: "GPT-3.5",
+        emoji: "🤖",
+        model: "gpt-3.5-turbo",
+        base_model: "gpt-3.5-turbo",
+        temp: 1.0,
+      }, // The base_model designates what settings form will be used, and must be unique.
       {
         name: "Dall-E",
         emoji: "🖼",
@@ -130,9 +155,9 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "📚",
     items: [
       {
-        name: "Claude 3.5 Sonnet",
+        name: "Claude 3.7 Sonnet",
         emoji: "📚",
-        model: "claude-3-5-sonnet-latest",
+        model: "claude-3-7-sonnet-latest",
         base_model: "claude-v1",
         temp: 0.5,
       },
@@ -331,7 +356,6 @@ const togetherGroups = () => {
   });
   return groupNames.map((name) => groups[name]);
 };
-console.log(togetherGroups());
 const togetherLLMProviderMenu: LLMGroup = {
   group: "Together",
   emoji: "🤝",
@@ -339,7 +363,8 @@ const togetherLLMProviderMenu: LLMGroup = {
 };
 initLLMProviderMenu.push(togetherLLMProviderMenu);
 
-if (APP_IS_RUNNING_LOCALLY()) {
+// Setup for when the app is running locally
+if (IS_RUNNING_LOCALLY) {
   initLLMProviderMenu.push({
     name: "Ollama",
     emoji: "🦙",
@@ -347,9 +372,6 @@ if (APP_IS_RUNNING_LOCALLY()) {
     base_model: "ollama",
     temp: 1.0,
   });
-  // -- Deprecated provider --
-  // initLLMProviders.push({ name: "Dalai (Alpaca.7B)", emoji: "🦙", model: "alpaca.7B", base_model: "dalai", temp: 0.5 });
-  // -------------------------
 }
 
 function flattenLLMGroup(group: LLMGroup): LLMSpec[] {
@@ -365,6 +387,12 @@ function flattenLLMProviders(providers: (LLMSpec | LLMGroup)[]): LLMSpec[] {
 }
 
 export const initLLMProviders = flattenLLMProviders(initLLMProviderMenu);
+
+// Favorites saved across sessions (nodes, models, etc)
+export interface FavoritesStoreType {
+  nodes: { name: string; value: Node; uid: string }[];
+  models: { name: string; value: LLMSpec; uid: string }[];
+}
 
 export interface StoreHandles {
   // Nodes and edges
@@ -397,12 +425,32 @@ export interface StoreHandles {
   aiFeaturesProvider: string;
   setAIFeaturesProvider: (llmProvider: string) => void;
 
-  // Global flags
-  flags: Dict<boolean | string>;
-  getFlag: (flag: string) => boolean | string;
-  setFlag: (flag: string, val: boolean | string) => void;
+  // Global settings (flags) from the settings menu
+  globalSettings: Dict<JSONCompatible>;
+  getGlobalSetting: (flag: string) => JSONCompatible;
+  setGlobalSetting: (flag: string, val: JSONCompatible) => void;
+  setGlobalSettings: (settings: Dict<JSONCompatible>) => void;
 
-  // Global state
+  // Favorites
+  favorites: FavoritesStoreType;
+  setFavorites: (favorites: FavoritesStoreType) => void;
+  getFavorites: <K extends keyof FavoritesStoreType>(
+    key: K,
+  ) => FavoritesStoreType[K];
+  refreshFavoriteModelsMenu: () => void;
+  saveFavorite: <K extends keyof FavoritesStoreType>(
+    key: K,
+    name: string,
+    value: FavoritesStoreType[K][number]["value"],
+  ) => void;
+  saveFavoriteNode: (nodeId: string, name: string) => void;
+  saveFavoriteModel: (name: string, spec: LLMSpec) => void;
+  removeFavorite: <K extends keyof FavoritesStoreType>(
+    key: K,
+    uid: string,
+  ) => void;
+
+  // Flow-specific state
   state: Dict;
   setState: (key: string, val: any) => void;
   importState: (state: Dict) => void;
@@ -472,15 +520,119 @@ const useStore = create<StoreHandles>((set, get) => ({
     set({ apiKeys: { ...get().apiKeys, ...new_keys } });
   },
 
-  // Flags to toggle on or off features across the application
-  flags: initialFlags,
-  getFlag: (flagName) => {
-    return get().flags[flagName] ?? false;
+  // Favorites (nodes, models, etc)
+  favorites: {
+    nodes: [],
+    models: [],
   },
-  setFlag: (flagName, flagValue) => {
-    const flags = { ...get().flags };
+  setFavorites: (favorites: FavoritesStoreType) => {
+    if (
+      !favorites ||
+      typeof favorites !== "object" ||
+      Object.keys(favorites).length < 2
+    )
+      return;
+    set({ favorites });
+    get().refreshFavoriteModelsMenu();
+  },
+  getFavorites: <K extends keyof FavoritesStoreType>(key: K) => {
+    return get().favorites[key];
+  },
+  refreshFavoriteModelsMenu: () => {
+    const favorites = get().favorites;
+
+    // Refresh the LLM menu to include the new model
+    const favoritesMenuIdx = initLLMProviderMenu.findIndex(
+      (item: LLMGroup | LLMSpec) =>
+        "group" in item && item.group === "Favorites",
+    );
+
+    if (favorites.models.length === 0) {
+      if (favoritesMenuIdx !== -1)
+        // If there are no more favorites, remove the menu
+        initLLMProviderMenu.splice(favoritesMenuIdx, 1);
+      return;
+    }
+
+    // Otherwise, update the menu with the new favorites
+    if (favoritesMenuIdx === -1) {
+      initLLMProviderMenu.splice(0, 0, {
+        group: "Favorites",
+        emoji: "♥️",
+        items: get().favorites.models.map((model) => model.value),
+      });
+    } else {
+      (initLLMProviderMenu[favoritesMenuIdx] as LLMGroup).items =
+        get().favorites.models.map((model) => model.value);
+    }
+  },
+  saveFavorite: <K extends keyof FavoritesStoreType>(
+    key: K,
+    name: string,
+    value: FavoritesStoreType[K][number]["value"],
+  ) => {
+    const favorites = { ...get().favorites };
+    if (favorites[key] === undefined) favorites[key] = [];
+    favorites[key].push({
+      name,
+      value: value as any,
+      // The uid for a 'model' should be its uuid, if it's set. Otherwise, give it one:
+      uid:
+        key === "models" && "key" in value && value.key !== undefined
+          ? value.key
+          : uuid(),
+    }); // add to end of array
+
+    set({ favorites });
+
+    // Push update to backend
+    if (IS_RUNNING_LOCALLY)
+      saveGlobalConfig("favorites", favorites as Dict<any>);
+  },
+  saveFavoriteNode: (nodeId: string, name: string) => {
+    // Get the data for the node
+    const node = get().getNode(nodeId);
+    if (!node) return;
+
+    // Store the node in the favorites list
+    get().saveFavorite("nodes", name, node);
+  },
+  saveFavoriteModel: (name: string, spec: LLMSpec) => {
+    // Store the model in the favorites list and refresh the menus
+    get().saveFavorite("models", name, spec);
+    get().refreshFavoriteModelsMenu();
+  },
+  removeFavorite: <K extends keyof FavoritesStoreType>(key: K, uid: string) => {
+    const favorites = { ...get().favorites };
+    console.log("Removing favorite", key, uid);
+    const idx = favorites[key].findIndex((item) => item.uid === uid);
+    if (idx !== -1) {
+      favorites[key].splice(idx, 1);
+    }
+    set({ favorites });
+
+    // Push update to backend
+    if (IS_RUNNING_LOCALLY)
+      saveGlobalConfig("favorites", favorites as Dict<any>);
+
+    // Refresh models list if model favorite was removed
+    if (key === "models") {
+      get().refreshFavoriteModelsMenu();
+    }
+  },
+
+  // Flags to toggle on or off features across the application
+  globalSettings: initialFlags,
+  getGlobalSetting: (flagName) => {
+    return get().globalSettings[flagName] ?? false;
+  },
+  setGlobalSetting: (flagName, flagValue) => {
+    const flags = { ...get().globalSettings };
     flags[flagName] = flagValue;
-    set({ flags });
+    set({ globalSettings: flags });
+  },
+  setGlobalSettings: (settings: Dict<JSONCompatible>) => {
+    set({ globalSettings: settings });
   },
 
   // State shared across the application, for forcing redraws upon change.

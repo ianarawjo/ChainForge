@@ -65,7 +65,7 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const apiKeys = useStore((state) => state.apiKeys);
   const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
-  const flags = useStore((state) => state.flags);
+  const flags = useStore((state) => state.globalSettings);
 
   const [textfieldsValues, setTextfieldsValues] = useState<Dict<string>>(
     data.fields ?? {},

@@ -34,20 +34,42 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { Dropzone, FileWithPath } from "@mantine/dropzone";
-import useStore from "./store";
+import useStore, { initLLMProviderMenu } from "./store";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 import { setCustomProviders } from "./ModelSettingSchemas";
 import { getAIFeaturesModelProviders } from "./backend/ai";
-import { CustomLLMProviderSpec, Dict } from "./backend/typing";
 import {
+  CustomLLMProviderSpec,
+  Dict,
+  JSONCompatible,
+  LLMSpec,
+} from "./backend/typing";
+import {
+  getGlobalConfig,
   initCustomProvider,
   loadCachedCustomProviders,
   removeCustomProvider,
+  saveGlobalConfig,
 } from "./backend/backend";
 import { AlertModalContext } from "./AlertModal";
-import StorageCache from "./backend/cache";
+
+// Type for the non-form (non-sensitive) settings
+interface GlobalSettingsType {
+  aiAutocomplete: boolean;
+  aiSupport: boolean;
+  imageCompression: boolean;
+  aiFeaturesProvider: string | LLMSpec;
+}
+
+// The JSON filename in the backend for the global settings
+const SETTINGS_FILENAME = "settings";
+
+// The init function may be called twice, so we need to
+// make sure we only load the settings once.
+let INIT_ONCE = false;
 
 const _LINK_STYLE = { color: "#1E90FF", textDecoration: "none" };
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // To only let us call the backend to load custom providers once upon initalization
 let LOADED_CUSTOM_PROVIDERS = false;
@@ -162,58 +184,183 @@ export interface GlobalSettingsModalRef {
 
 const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
   function GlobalSettingsModal(props, ref) {
+    // The first tab's form
+    const form = useForm({
+      initialValues: {
+        OpenAI: "",
+        OpenAI_BaseURL: "",
+        Anthropic: "",
+        Google: "",
+        Azure_OpenAI: "",
+        Azure_OpenAI_Endpoint: "",
+        HuggingFace: "",
+        AlephAlpha: "",
+        Ollama_BaseURL: "",
+        AWS_Access_Key_ID: "",
+        AWS_Secret_Access_Key: "",
+        AWS_Session_Token: "",
+        AWS_Region: "us-east-1",
+        AmazonBedrock: JSON.stringify({ credentials: {}, region: "us-east-1" }),
+      },
+
+      validate: {
+        // Example:
+        // email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
+      },
+    });
+
+    // Settings within the other tabs
+    const [settings, setSettings] = useState<GlobalSettingsType>({
+      aiAutocomplete: false,
+      aiFeaturesProvider: "OpenAI",
+      aiSupport: true,
+      imageCompression: true,
+    });
+
+    // Fetch the global settings from the backend
+    const loadSettingsFromBackend = useCallback(() => {
+      // Load global settings from backend. This fails silently if the backend is not running.
+      // It also will only load settings that the form has defined.
+      getGlobalConfig(SETTINGS_FILENAME)
+        .then((backendSettings) => {
+          // Set the settings in the first tab's form (mainly API key list)
+          Object.keys(form.values).forEach((key) => {
+            if (key in backendSettings)
+              form.setFieldValue(key, backendSettings[key]);
+          });
+
+          // Set any other settings that are on other pages (not in the form)
+          setSettings((prev) => {
+            Object.keys(prev).forEach((key) => {
+              if (key in backendSettings)
+                prev[key as keyof GlobalSettingsType] = backendSettings[
+                  key
+                ] as any;
+            });
+            return { ...prev };
+          });
+
+          // Set any API keys that were custom set in the global settings form,
+          // overriding the default ones (including environment variables).
+          setAPIKeys(backendSettings as Dict<string>);
+
+          console.log("Loaded global settings from backend.");
+
+          return backendSettings;
+        })
+        .then((backendSettings) => {
+          // Attempt to fetch Ollama model list
+          // TODO: This should use the Ollama BaseURL setting
+          const Ollama_BaseURL =
+            backendSettings.Ollama_BaseURL || "http://localhost:11434";
+          fetch(`${Ollama_BaseURL}/api/tags`)
+            .then((response) => {
+              if (response.ok) {
+                return response.json();
+              } else {
+                throw new Error("Server not running?");
+              }
+            })
+            .then((data) => {
+              const models_available = data.models?.map(
+                (model_obj: Dict) => model_obj.name,
+              );
+
+              if (models_available.length === 0) {
+                console.log("No Ollama models available.");
+                return;
+              }
+
+              // Set the available models in the global provider menu,
+              // by replacing the default Ollama generic model with the model list from the server.
+              const ollama_item = initLLMProviderMenu.findIndex(
+                (item) => "base_model" in item && item.base_model === "ollama",
+              );
+              if (ollama_item !== -1) {
+                initLLMProviderMenu[ollama_item] = {
+                  group: "Ollama",
+                  emoji: "🦙",
+                  items: models_available.map((model: string, idx: number) => ({
+                    key: idx,
+                    name: model,
+                    emoji: "🦙",
+                    model: "ollama",
+                    base_model: "ollama",
+                    formData: {
+                      ollamaModel: model,
+                    },
+                    settings: {
+                      ollamaModel: model,
+                    },
+                    temp: 1.0,
+                  })),
+                };
+              }
+
+              console.log("Ollama models available:", models_available);
+              console.log("Loaded Ollama model list from backend.");
+            })
+            .catch((error) => {
+              console.error("Error trying to fetch Ollama models", error);
+            });
+        });
+    }, [form, settings]);
+
+    // Save the global settings to the backend
+    const saveGlobalSettingsToBackend = useCallback(
+      (settingsToSave?: Dict<JSONCompatible>) => {
+        // Save global settings to backend. This fails silently if the backend is not running.
+        // Mixes the settings from the form and the other tabs.
+        if (!settingsToSave)
+          settingsToSave = {
+            ...form.values,
+            ...settings,
+          };
+        saveGlobalConfig(SETTINGS_FILENAME, settingsToSave);
+      },
+      [form, settings],
+    );
+
+    // Set the settings in the store and synchronize to backend
+    const setGlobalSettingsInZustandStore = useStore(
+      (state) => state.setGlobalSettings,
+    );
+    const handleChangeSetting = useCallback(
+      (key: string, value: JSONCompatible) => {
+        setSettings((prev) => {
+          const updated = { ...prev, [key]: value };
+
+          if (IS_RUNNING_LOCALLY) {
+            // Synchronize the settings to the backend
+            saveGlobalSettingsToBackend({
+              ...form.values,
+              ...updated,
+            });
+          }
+
+          // Store the non-form settings in the Zustand store global state,
+          // so other components can access them and immediately react to the change.
+          setGlobalSettingsInZustandStore(updated);
+
+          return updated;
+        });
+      },
+      [form],
+    );
+
     const [opened, { open, close }] = useDisclosure(false);
     const setAPIKeys = useStore((state) => state.setAPIKeys);
-    const getFlag = useStore((state) => state.getFlag);
-    const setFlag = useStore((state) => state.setFlag);
     const AvailableLLMs = useStore((state) => state.AvailableLLMs);
     const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
     const setAIFeaturesProvider = useStore(
       (state) => state.setAIFeaturesProvider,
     );
     const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
+    const setFavorites = useStore((state) => state.setFavorites);
     const nodes = useStore((state) => state.nodes);
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
     const showAlert = useContext(AlertModalContext);
-
-    const [aiSupportActive, setAISupportActive] = useState<boolean>(
-      getFlag("aiSupport") as boolean,
-    );
-    const [aiAutocompleteActive, setAIAutocompleteActive] = useState<boolean>(
-      getFlag("aiAutocomplete") as boolean,
-    );
-
-    // Image compression ratio setting. Store this flag in localStorage directly.
-    const [imageCompression, _setImageCompression] = useState<boolean>(true);
-    const setImageCompression = (value: boolean) => {
-      StorageCache.saveToLocalStorage("imageCompression", { value });
-      StorageCache.store("imageCompression", value);
-      _setImageCompression(value);
-    };
-
-    const handleAISupportChecked = useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => {
-        const checked = e.currentTarget.checked;
-        setAISupportActive(checked);
-        setFlag("aiSupport", checked);
-        if (!checked) {
-          // turn off autocomplete if AI support is not checked
-          setAIAutocompleteActive(false);
-          setFlag("aiAutocomplete", false);
-        }
-      },
-      [setFlag, setAISupportActive],
-    );
-
-    const handleAIAutocompleteChecked = useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => {
-        const checked = e.currentTarget.checked;
-        setAIAutocompleteActive(checked);
-        setFlag("aiAutocomplete", checked);
-      },
-      [setFlag, setAIAutocompleteActive],
-    );
 
     const handleError = useCallback(
       (err: string | Error) => {
@@ -226,6 +373,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     const [customProviders, setLocalCustomProviders] = useState<
       CustomLLMProviderSpec[]
     >([]);
+
     const refreshLLMProviderLists = useCallback(() => {
       // We unfortunately have to force all prompt/chat nodes to refresh their LLM lists, bc
       // apparently the update to the AvailableLLMs list is not immediately propagated to them.
@@ -254,9 +402,13 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       [customProviders, handleError, AvailableLLMs, refreshLLMProviderLists],
     );
 
-    // On init
+    // On init, load global settings
     useEffect(() => {
-      if (APP_IS_RUNNING_LOCALLY() && !LOADED_CUSTOM_PROVIDERS) {
+      if (!IS_RUNNING_LOCALLY || INIT_ONCE) return;
+
+      INIT_ONCE = true;
+
+      if (!LOADED_CUSTOM_PROVIDERS) {
         LOADED_CUSTOM_PROVIDERS = true;
         // Is running locally; try to load any custom providers.
         // Soft fails if it encounters error:
@@ -269,44 +421,33 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
           .catch(console.error);
       }
 
-      // Load image compression settings from cache (if possible)
-      const cachedImgCompr = (
-        StorageCache.loadFromLocalStorage("imageCompression", false) as Dict
-      )?.value as boolean | undefined;
-      if (typeof cachedImgCompr === "boolean") {
-        setImageCompression(cachedImgCompr);
-        StorageCache.store(
-          "imageCompression",
-          cachedImgCompr ?? imageCompression,
-        );
-      }
+      // Load global settings from backend, if it exists
+      // NOTE: This deliberately does not have a backup for the web-only version,
+      // since saving this data to localStorage would be a security risk.
+      loadSettingsFromBackend();
+
+      // Fetch favorites list from backend
+      getGlobalConfig("favorites").then((favorites: any) => {
+        console.warn(favorites);
+        if (!favorites) return;
+        // If there's some, set the favorites in the store
+        setFavorites(favorites);
+
+        console.log("Loaded favorites from backend.");
+      });
     }, []);
-
-    const form = useForm({
-      initialValues: {
-        OpenAI: "",
-        OpenAI_BaseURL: "",
-        Anthropic: "",
-        Google: "",
-        Azure_OpenAI: "",
-        Azure_OpenAI_Endpoint: "",
-        HuggingFace: "",
-        AlephAlpha: "",
-        AWS_Access_Key_ID: "",
-        AWS_Secret_Access_Key: "",
-        AWS_Session_Token: "",
-        AWS_Region: "us-east-1",
-        AmazonBedrock: JSON.stringify({ credentials: {}, region: "us-east-1" }),
-      },
-
-      validate: {
-        // email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
-      },
-    });
 
     // When the API settings form is submitted
     const onSubmit = (values: Dict<string>) => {
+      // Override existing API keys with any new ones
       setAPIKeys(values);
+
+      // Save the settings to the backend
+      if (IS_RUNNING_LOCALLY) {
+        saveGlobalConfig(SETTINGS_FILENAME, values); // This fails silently if the backend is not running
+      }
+
+      // Close the modal
       close();
     };
 
@@ -381,13 +522,6 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
                 <br />
                 <TextInput
-                  label="HuggingFace API Key"
-                  placeholder="Paste your HuggingFace API key here"
-                  {...form.getInputProps("HuggingFace")}
-                />
-
-                <br />
-                <TextInput
                   label="Anthropic API Key"
                   placeholder="Paste your Anthropic API key here"
                   {...form.getInputProps("Anthropic")}
@@ -395,8 +529,8 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
                 <br />
                 <TextInput
-                  label="Google AI API Key (PaLM/GEMINI)"
-                  placeholder="Paste your Google PaLM/GEMINI API key here"
+                  label="Google AI API Key (Gemini)"
+                  placeholder="Paste your Google Gemini/PaLM API key here"
                   {...form.getInputProps("Google")}
                 />
                 <br />
@@ -406,18 +540,44 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   {...form.getInputProps("DeepSeek")}
                 />
                 <br />
+
                 <TextInput
-                  label="Aleph Alpha API Key"
-                  placeholder="Paste your Aleph Alpha API key here"
-                  {...form.getInputProps("AlephAlpha")}
+                  label="HuggingFace API Key"
+                  placeholder="Paste your HuggingFace API key here"
+                  {...form.getInputProps("HuggingFace")}
                 />
                 <br />
+
                 <TextInput
                   label="Together API Key"
                   placeholder="Paste your Together API key here"
                   {...form.getInputProps("Together")}
                 />
                 <br />
+
+                <TextInput
+                  label="Aleph Alpha API Key"
+                  placeholder="Paste your Aleph Alpha API key here"
+                  {...form.getInputProps("AlephAlpha")}
+                />
+                <br />
+
+                {IS_RUNNING_LOCALLY && (
+                  <>
+                    <Divider
+                      my="xs"
+                      label="Ollama Settings"
+                      labelPosition="center"
+                    />
+                    <TextInput
+                      label="Ollama Server Base URL"
+                      description="ChainForge will attempt to contact the Ollama API at this URL. The default is http://localhost:11434"
+                      placeholder="Paste your Ollama Server Base URL here."
+                      {...form.getInputProps("Ollama_BaseURL")}
+                    />
+                    <br />
+                  </>
+                )}
 
                 <Divider
                   my="xs"
@@ -508,19 +668,26 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 label="AI Support Features"
                 size="sm"
                 description="Adds purple sparkly AI buttons to nodes. These buttons allow you to generate in-context data or code."
-                checked={aiSupportActive}
-                onChange={handleAISupportChecked}
+                checked={settings.aiSupport}
+                onChange={(e) => {
+                  handleChangeSetting("aiSupport", e.currentTarget.checked);
+                }}
               />
-              {aiSupportActive ? (
+              {settings.aiSupport ? (
                 <Group>
                   <Switch
                     label="Autocomplete"
                     size="sm"
                     mt="sm"
-                    disabled={!aiSupportActive}
+                    disabled={!settings.aiSupport}
                     description="Works in background to streamline generation of input data. Press Tab in TextFields Nodes in empty fields to extend input data (currently only works in TextFields). NOTE: This will make OpenAI API calls in the background. We are not responsible for any additional costs incurred."
-                    checked={aiAutocompleteActive}
-                    onChange={handleAIAutocompleteChecked}
+                    checked={settings.aiAutocomplete}
+                    onChange={(e) => {
+                      handleChangeSetting(
+                        "aiAutocomplete",
+                        e.currentTarget.checked,
+                      );
+                    }}
                   />
                   <Select
                     label="LLM Provider"
@@ -605,10 +772,13 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   label="Image compression"
                   description="Images are expensive to store in the browser. To help with storage, 
                   ChainForge automatically compresses images output from LLMs."
-                  checked={imageCompression}
-                  onChange={(event) =>
-                    setImageCompression(event.currentTarget.checked)
-                  }
+                  checked={(settings.imageCompression as boolean) ?? false}
+                  onChange={(e) => {
+                    handleChangeSetting(
+                      "imageCompression",
+                      e.currentTarget.checked,
+                    );
+                  }}
                 />
               </Box>
             </Tabs.Panel>

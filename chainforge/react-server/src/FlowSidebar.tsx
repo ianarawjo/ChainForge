@@ -27,6 +27,7 @@ import { FLASK_BASE_URL } from "./backend/utils";
 
 interface FlowFile {
   name: string;
+  pwd_protected: boolean; // whether the flow is encrypted on the backend
   last_modified: string;
 }
 
@@ -59,7 +60,8 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
       setFlowDir(response.data.flow_dir);
       setSavedFlows(
         flows.map((item) => ({
-          name: item.name.replace(".cforge", ""),
+          name: item.name.replace(/\.cforge(\.enc)?$/, ""),
+          pwd_protected: item.name.endsWith(".enc"),
           last_modified: new Date(item.last_modified).toLocaleString(),
         })),
       );
@@ -69,20 +71,40 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
   };
 
   // Load a flow when clicked, and push it to the caller
-  const handleLoadFlow = async (filename: string) => {
+  const handleLoadFlow = async (flow: FlowFile) => {
     try {
       // Fetch the flow
-      const response = await axios.get(
-        `${FLASK_BASE_URL}api/flows/${filename}`,
-      );
+      const response = await axios
+        .get(`${FLASK_BASE_URL}api/flows/${flow.name}`, {
+          params: {
+            pwd_protected: flow.pwd_protected,
+            autosave: true,
+          },
+        })
+        .catch((error) => {
+          let msg: string;
+          if (error.response) {
+            msg = "Error: " + (error.response.data?.error ?? "Flow not found.");
+          } else if (error.request) {
+            // Request was made but no response was received
+            msg = "No response received from server.";
+          } else {
+            // Something else happened in setting up the request
+            msg = `Unknown Error: ${error.message}`;
+          }
+          console.error(msg);
+          if (showAlert) showAlert(msg);
+        });
+
+      if (!response) return;
 
       // Push the flow to the ReactFlow UI. We also pass the filename
       // so that the caller can use that info to save the right flow when the user presses save.
-      onLoadFlow(response.data, filename);
+      onLoadFlow(response.data, flow.name);
 
       setIsOpen(false); // Close sidebar after loading
     } catch (error) {
-      console.error(`Error loading flow ${filename}:`, error);
+      console.error(`Error loading flow ${flow.name}:`, error);
       if (showAlert) showAlert(error as Error);
     }
   };
@@ -238,7 +260,7 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
                   },
                 })}
                 onClick={() => {
-                  if (editName !== flow.name) handleLoadFlow(flow.name);
+                  if (editName !== flow.name) handleLoadFlow(flow);
                 }}
               >
                 {editName === flow.name ? (
@@ -279,9 +301,23 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
                       ) : (
                         <></>
                       )}
-                      <Text size="sm" mr="auto">
-                        {flow.name}
-                      </Text>
+                      <Flex justify="left" mr="auto">
+                        <Text size="sm">{flow.name}</Text>
+                        {flow.pwd_protected && (
+                          <Tooltip
+                            label="Password protected. (You need to load ChainForge with the --secure flag to load this.)"
+                            withArrow
+                            arrowPosition="center"
+                            multiline
+                            w="200px"
+                            withinPortal
+                          >
+                            <Text size="sm" ml={5}>
+                              🔒
+                            </Text>
+                          </Tooltip>
+                        )}
+                      </Flex>
                       <Flex gap="0px">
                         <Tooltip
                           label="Edit name"

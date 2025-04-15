@@ -115,7 +115,7 @@ const LLMListItem: React.FC<LLMListItemProps> = ({
       <div>
         <CardHeader>
           {item.emoji}&nbsp;{item.name}
-          {temperature !== undefined ? (
+          {/* {temperature !== undefined ? (
             <Tooltip label={"temp = " + (temperature || "0")} withArrow>
               <TemperatureStatus style={{ color: tempColor }}>
                 &nbsp;
@@ -133,7 +133,7 @@ const LLMListItem: React.FC<LLMListItemProps> = ({
             </Tooltip>
           ) : (
             <></>
-          )}
+          )} */}
         </CardHeader>
         <LLMItemButtonGroup
           onClickTrash={() =>

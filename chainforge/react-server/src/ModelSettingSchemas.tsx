@@ -55,6 +55,9 @@ const ChatGPTSettings: ModelSettingsDict = {
         description:
           "Select an OpenAI model to query. For more details on the differences, see the OpenAI API documentation.",
         enum: [
+          "gpt-4.1",
+          "gpt-4.1-mini",
+          "gpt-4.1-nano",
           "gpt-4o",
           "gpt-4o-mini",
           "gpt-4-turbo",
@@ -327,6 +330,7 @@ const GPT4Settings: ModelSettingsDict = {
     ...ChatGPTSettings.uiSchema,
     model: {
       "ui:help": "Defaults to gpt-4o.",
+      "ui:widget": "datalist",
     },
   },
   postprocessors: ChatGPTSettings.postprocessors,
@@ -751,6 +755,9 @@ const PaLM2Settings: ModelSettingsDict = {
         description:
           "Select a PaLM model to query. For more details on the differences, see the Google PaLM API documentation.",
         enum: [
+          "gemini-2.5-pro-preview-03-25",
+          "gemini-2.0-flash",
+          "gemini-2.0-flash-lite",
           "gemini-1.5-flash",
           "gemini-1.5-flash-8b",
           "gemini-1.5-pro",
@@ -764,6 +771,8 @@ const PaLM2Settings: ModelSettingsDict = {
           "text-bison-001": "PaLM2-text",
           "chat-bison-001": "PaLM2-chat",
           "gemini-pro": "Gemini 1.0",
+          "gemini-2.5-pro-preview-03-25": "Gemini 2.5",
+          "gemini-2.0-flash": "Gemini 2.0 Flash",
           "gemini-1.5-pro": "Gemini 1.5",
           "gemini-1.0-pro": "Gemini 1.0",
           "gemini-1.5-flash": "Gemini Flash",
@@ -2370,7 +2379,6 @@ export const TogetherChatSettings: ModelSettingsDict = {
           "Qwen/Qwen2.5-72B-Instruct-Turbo",
           "Qwen/Qwen2-72B-Instruct",
           "Qwen/Qwen2-VL-72B-Instruct",
-          "Qwen/Qwen2.5-Coder-32B-Instruct",
           "Qwen/Qwen2.5-Coder-32B-Instruct",
           "Qwen/QwQ-32B-Preview",
           "Qwen/Qwen1.5-0.5B-Chat",

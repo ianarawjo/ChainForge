@@ -5,10 +5,14 @@
 
 import React, { useCallback, useMemo, useState, useRef } from "react";
 import { Menu, MenuStylesNames, Styles } from "@mantine/core";
-import { IconCopy, IconX } from "@tabler/icons-react";
+import { IconCopy, IconHeart, IconX } from "@tabler/icons-react";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import useStore from "./store";
 import { Dict } from "./backend/typing";
+import RequestClarificationModal from "./RequestClarificationModal";
+import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
+
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 interface BaseNodeProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
@@ -31,6 +35,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   contextMenuExts,
 }) => {
   const addNode = useStore((state) => state.addNode);
+  const saveFavoriteNode = useStore((state) => state.saveFavoriteNode);
   const removeNode = useStore((state) => state.removeNode);
   const duplicateNode = useStore((state) => state.duplicateNode);
 
@@ -38,6 +43,9 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
     Styles<MenuStylesNames>
   >({});
   const [contextMenuOpened, setContextMenuOpened] = useState(false);
+
+  // For 'favorite' naming pop-up
+  const [favoriteNameModalOpen, setFavoriteNameModalOpen] = useState(false);
 
   // For 'delete node' confirmation popup
   const deleteConfirmModal = useRef<AreYouSureModalRef>(null);
@@ -54,6 +62,14 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
     // Add it to the ReactFlow canvas
     addNode(dupNode);
   }, [nodeId, duplicateNode]);
+
+  // Add the node to the stored Favorites list
+  const handleFavoriteNode = useCallback(
+    (name: string) => {
+      saveFavoriteNode(nodeId, name);
+    },
+    [nodeId],
+  );
 
   // Remove the node, after user confirmation dialog
   const handleRemoveNode = useCallback(() => {
@@ -104,6 +120,22 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
     [removeNode, nodeId, deleteConfirmModal],
   );
 
+  const requestClarificationModal = useMemo(
+    () => (
+      <RequestClarificationModal
+        opened={favoriteNameModalOpen}
+        title="Name your favorited node"
+        question="Give it a name:"
+        desc="Keep the name short. This node will be saved to your favorites list."
+        onSubmit={(answer) => {
+          setFavoriteNameModalOpen(false);
+          if (answer != null) handleFavoriteNode(answer);
+        }}
+      />
+    ),
+    [favoriteNameModalOpen, handleFavoriteNode],
+  );
+
   const contextMenu = useMemo(
     () => (
       <Menu
@@ -124,6 +156,19 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
             <IconCopy size="10pt" />
             &nbsp;Duplicate Node
           </Menu.Item>
+          {IS_RUNNING_LOCALLY && (
+            <Menu.Item
+              key="favorite"
+              onClick={() => setFavoriteNameModalOpen(true)}
+            >
+              <IconHeart
+                size="12pt"
+                color="red"
+                style={{ marginBottom: "-3pt", marginLeft: "-2px" }}
+              />
+              &nbsp;Favorite Node
+            </Menu.Item>
+          )}
           <Menu.Item key="delete" onClick={handleRemoveNode}>
             <IconX size="10pt" />
             &nbsp;Delete Node
@@ -152,6 +197,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
       style={style}
     >
       {areYouSureModal}
+      {requestClarificationModal}
       {contextMenu}
     </div>
   );

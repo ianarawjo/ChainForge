@@ -17,6 +17,7 @@ import {
   LLMResponseData,
   PromptVarType,
   StringOrHash,
+  JSONCompatible,
 } from "./typing";
 import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
 import {
@@ -49,6 +50,10 @@ import { baseModelToProvider } from "../ModelSettingSchemas";
 //     SETUP AND GLOBALS
 //     =================
 // """
+const DEFAULT_JSON_HEADERS = {
+  "Content-Type": "application/json",
+  "Access-Control-Allow-Origin": "*",
+};
 
 enum MetricType {
   KeyValue = 0,
@@ -700,10 +705,7 @@ interface LLMPrompterResults {
 export async function fetchEnvironAPIKeys(): Promise<Dict<string>> {
   return fetch(`${FLASK_BASE_URL}app/fetchEnvironAPIKeys`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
+    headers: DEFAULT_JSON_HEADERS,
     body: "",
   }).then((res) => res.json());
 }
@@ -1544,10 +1546,7 @@ export async function fetchExampleFlow(evalname: string): Promise<Dict> {
     // by querying the Flask server:
     return fetch(`${FLASK_BASE_URL}app/fetchExampleFlow`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers: DEFAULT_JSON_HEADERS,
       body: JSON.stringify({ name: evalname }),
     })
       .then(function (res) {
@@ -1585,10 +1584,7 @@ export async function fetchOpenAIEval(evalname: string): Promise<Dict> {
     // by querying the Flask server:
     return fetch(`${FLASK_BASE_URL}app/fetchOpenAIEval`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers: DEFAULT_JSON_HEADERS,
       body: JSON.stringify({ name: evalname }),
     })
       .then(function (res) {
@@ -1626,10 +1622,7 @@ export async function initCustomProvider(
   // by querying the Flask server:
   return fetch(`${FLASK_BASE_URL}app/initCustomProvider`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
+    headers: DEFAULT_JSON_HEADERS,
     body: JSON.stringify({ code }),
   })
     .then(function (res) {
@@ -1654,10 +1647,7 @@ export async function removeCustomProvider(name: string): Promise<boolean> {
   // by querying the Flask server:
   return fetch(`${FLASK_BASE_URL}app/removeCustomProvider`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
+    headers: DEFAULT_JSON_HEADERS,
     body: JSON.stringify({ name }),
   })
     .then(function (res) {
@@ -1681,10 +1671,7 @@ export async function loadCachedCustomProviders(): Promise<
 > {
   return fetch(`${FLASK_BASE_URL}app/loadCachedCustomProviders`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
+    headers: DEFAULT_JSON_HEADERS,
     body: "{}",
   })
     .then(function (res) {
@@ -1697,5 +1684,64 @@ export async function loadCachedCustomProviders(): Promise<
             "Could not load custom provider scripts: Error contacting backend.",
         );
       return json.providers as CustomLLMProviderSpec[];
+    });
+}
+
+export async function getGlobalConfig(
+  configFilename: string,
+): Promise<Dict<JSONCompatible>> {
+  return fetch(`${FLASK_BASE_URL}api/getConfig/${configFilename}`, {
+    method: "GET",
+    headers: DEFAULT_JSON_HEADERS,
+  })
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (json) {
+      if (typeof json !== "object") {
+        console.error(
+          `Error loading global ${configFilename}: JSON dict is unexpected return type.`,
+        );
+        return {};
+      }
+      return json as Dict<JSONCompatible>;
+    })
+    .catch((err) => {
+      console.error(
+        `Failure when trying to load global ${configFilename}: ` +
+          err.toString(),
+      );
+      // Soft fail
+      return {};
+    });
+}
+
+export async function saveGlobalConfig(
+  configFilename: string,
+  config: Dict<JSONCompatible>,
+): Promise<void> {
+  fetch(`${FLASK_BASE_URL}api/saveConfig/${configFilename}`, {
+    method: "POST",
+    headers: DEFAULT_JSON_HEADERS,
+    body: JSON.stringify(config),
+  })
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (json) {
+      if (json.error) {
+        console.error(
+          `Failure when trying to save global ${configFilename}: ` + json.error,
+        );
+        // Soft fail
+      }
+      console.log(`Saved global ${configFilename} to backend successfully.`);
+    })
+    .catch((err) => {
+      console.error(
+        `Failure when trying to save global ${configFilename}: ` +
+          err.toString(),
+      );
+      // Soft fail
     });
 }
