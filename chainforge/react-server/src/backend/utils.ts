@@ -1259,6 +1259,7 @@ export async function call_ollama_provider(
     );
 
   let url: string = appendEndSlashIfMissing(params?.ollama_url);
+  if (!url.endsWith("api/")) url += "api/";
   const ollama_model: string = params?.ollamaModel.toString();
   const model_type: string = params?.model_type ?? "text";
   const system_msg: string = params?.system_msg ?? "";

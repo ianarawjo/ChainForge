@@ -76,7 +76,7 @@ import { EXAMPLEFLOW_1 } from "./example_flows";
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
-import "./text-fields-node.css"; // project
+import "./styles.css"; // ChainForge CSS styling
 
 // Lazy loading images
 import "lazysizes";
@@ -112,7 +112,7 @@ import {
 } from "react-device-detect";
 import MultiEvalNode from "./MultiEvalNode";
 import FlowSidebar from "./FlowSidebar";
-import NestedMenu, { NestedMenuItemProps } from "./NestedMantineMenu";
+import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -1039,6 +1039,9 @@ const App = () => {
             "Error encountered when loading autosave from local filesystem:",
             error,
           );
+
+          // Clear out the flow name, if set, so that it doesn't overwrite
+          setFlowFileNameAndCache(`flow-${Date.now()}`);
           // Soft fail
           return;
         }
@@ -1063,7 +1066,13 @@ const App = () => {
         }
       }
     },
-    [importGlobalStateFromCache, loadFlow, importFlowFromJSON, handleError],
+    [
+      importGlobalStateFromCache,
+      loadFlow,
+      importFlowFromJSON,
+      handleError,
+      setFlowFileNameAndCache,
+    ],
   );
 
   // Load flow from examples modal

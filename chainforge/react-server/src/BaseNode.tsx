@@ -10,6 +10,9 @@ import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import useStore from "./store";
 import { Dict } from "./backend/typing";
 import RequestClarificationModal from "./RequestClarificationModal";
+import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
+
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 interface BaseNodeProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
@@ -63,7 +66,6 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   // Add the node to the stored Favorites list
   const handleFavoriteNode = useCallback(
     (name: string) => {
-      // TODO: Ask the user for a name for the favorited node
       saveFavoriteNode(nodeId, name);
     },
     [nodeId],
@@ -154,17 +156,19 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
             <IconCopy size="10pt" />
             &nbsp;Duplicate Node
           </Menu.Item>
-          <Menu.Item
-            key="favorite"
-            onClick={() => setFavoriteNameModalOpen(true)}
-          >
-            <IconHeart
-              size="12pt"
-              color="red"
-              style={{ marginBottom: "-3pt", marginLeft: "-2px" }}
-            />
-            &nbsp;Favorite Node
-          </Menu.Item>
+          {IS_RUNNING_LOCALLY && (
+            <Menu.Item
+              key="favorite"
+              onClick={() => setFavoriteNameModalOpen(true)}
+            >
+              <IconHeart
+                size="12pt"
+                color="red"
+                style={{ marginBottom: "-3pt", marginLeft: "-2px" }}
+              />
+              &nbsp;Favorite Node
+            </Menu.Item>
+          )}
           <Menu.Item key="delete" onClick={handleRemoveNode}>
             <IconX size="10pt" />
             &nbsp;Delete Node

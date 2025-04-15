@@ -28,7 +28,7 @@ import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
 import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
 import { deepcopy, ensureUniqueName } from "./backend/utils";
-import NestedMenu, { NestedMenuItemProps } from "./NestedMantineMenu";
+import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
@@ -288,6 +288,7 @@ export const LLMListContainer = forwardRef<
   // All available LLM providers, for the dropdown list
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
   const removeFavorite = useStore((state) => state.removeFavorite);
+  const apiKeys = useStore((state) => state.apiKeys);
 
   // For some reason, when the AvailableLLMs list is updated in the store/, it is not
   // immediately updated here. I've tried all kinds of things, but cannot seem to fix this problem.
@@ -360,9 +361,9 @@ export const LLMListContainer = forwardRef<
   );
 
   const handleSelectModel = useCallback(
-    (item: LLMSpec) => {
+    (_item: LLMSpec) => {
       // Give it a uid as a unique key (this is needed for the draggable list to support multiple same-model items; keys must be unique)
-      item = { ...item, key: uuid() };
+      const item = { ..._item, key: uuid() };
 
       // Generate the default settings for this model
       item.settings = getDefaultModelSettings(item.base_model);
@@ -380,6 +381,20 @@ export const LLMListContainer = forwardRef<
         item.formData.model = item.model.substring(9);
       else item.formData.model = item.model;
 
+      // Ollama models use a different format for the model name, that we need to carry over:
+      if (item.base_model === "ollama") {
+        if (_item?.settings?.ollamaModel) {
+          item.formData.ollamaModel = _item?.settings?.ollamaModel;
+          item.settings.ollamaModel = _item?.settings?.ollamaModel;
+        }
+
+        // If the user has entered a custom base url, pass it over
+        if (apiKeys.Ollama_BaseURL) {
+          item.formData.ollama_url = apiKeys.Ollama_BaseURL;
+          item.settings.ollama_url = apiKeys.Ollama_BaseURL;
+        }
+      }
+
       let new_items: LLMSpec[] = [];
       if (selectModelAction === "add" || selectModelAction === undefined) {
         // Add model to the LLM list (regardless of it's present already or not).
@@ -392,7 +407,13 @@ export const LLMListContainer = forwardRef<
       setLLMItems(new_items);
       if (onSelectModel) onSelectModel(item, new_items);
     },
-    [llmItemsCurrState, onSelectModel, selectModelAction, AvailableLLMs],
+    [
+      llmItemsCurrState,
+      onSelectModel,
+      selectModelAction,
+      AvailableLLMs,
+      apiKeys,
+    ],
   );
 
   const onLLMListItemsChange = useCallback(

@@ -25,6 +25,9 @@ import {
   ModelSettingsDict,
 } from "./backend/typing";
 import { IconHeart } from "@tabler/icons-react";
+import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
+
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // Custom UI widgets for react-jsonschema-form
 const DatalistWidget = (props: WidgetProps) => {
@@ -258,7 +261,7 @@ const ModelSettingsModal = forwardRef<
   }));
 
   return (
-    <Modal.Root size="lg" opened={opened} onClose={onClickSubmit}>
+    <Modal.Root size="lg" opened={opened} onClose={() => onClickSubmit(false)}>
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header>
@@ -298,28 +301,30 @@ const ModelSettingsModal = forwardRef<
           </Modal.Title>
 
           <Flex justify="right">
-            <Tooltip
-              label="Save as a favorite. Uses the nickname, so make sure it's good."
-              withArrow
-              multiline
-              maw="220px"
-            >
-              <Button
-                className="favorite-icon"
-                fw="normal"
-                mr="md"
-                variant="subtle"
-                size="xs"
-                color="gray"
-                rightIcon={<IconHeart size="12pt" />}
-                onClick={() => {
-                  // Submit the form and make the saved model settings a favorite
-                  onClickSubmit(true);
-                }}
+            {IS_RUNNING_LOCALLY && (
+              <Tooltip
+                label="Save as a favorite. Uses the nickname, so make sure it's good."
+                withArrow
+                multiline
+                maw="220px"
               >
-                Favorite
-              </Button>
-            </Tooltip>
+                <Button
+                  className="favorite-icon"
+                  fw="normal"
+                  mr="md"
+                  variant="outline"
+                  size="xs"
+                  color="gray"
+                  rightIcon={<IconHeart size="12pt" />}
+                  onClick={() => {
+                    // Submit the form and make the saved model settings a favorite
+                    onClickSubmit(true);
+                  }}
+                >
+                  Favorite
+                </Button>
+              </Tooltip>
+            )}
             <Modal.CloseButton />
           </Flex>
         </Modal.Header>
@@ -339,7 +344,7 @@ const ModelSettingsModal = forwardRef<
           >
             <Button
               title="Submit"
-              onClick={() => onClickSubmit()}
+              onClick={() => onClickSubmit(false)}
               style={{ float: "right", marginRight: "30px" }}
             >
               Submit

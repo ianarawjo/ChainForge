@@ -735,7 +735,7 @@ def get_flows():
 def get_flow(filename):
     file_is_pwd_protected = request.args.get("pwd_protected", False)
 
-    if file_is_pwd_protected and SECURE_MODE != "all":
+    if file_is_pwd_protected == "true" and SECURE_MODE != "all":
         # The file is password protected, but the server is not in secure mode, we won't be able to load it
         return jsonify({"error": "This flow is password protected, but the server is not in secure mode 'all'. Run ChainForge with --secure set to all to load this flow."}), 403
 

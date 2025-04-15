@@ -2380,7 +2380,6 @@ export const TogetherChatSettings: ModelSettingsDict = {
           "Qwen/Qwen2-72B-Instruct",
           "Qwen/Qwen2-VL-72B-Instruct",
           "Qwen/Qwen2.5-Coder-32B-Instruct",
-          "Qwen/Qwen2.5-Coder-32B-Instruct",
           "Qwen/QwQ-32B-Preview",
           "Qwen/Qwen1.5-0.5B-Chat",
           "Qwen/Qwen1.5-1.8B-Chat",

@@ -34,7 +34,7 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { Dropzone, FileWithPath } from "@mantine/dropzone";
-import useStore from "./store";
+import useStore, { initLLMProviderMenu } from "./store";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 import { setCustomProviders } from "./ModelSettingSchemas";
 import { getAIFeaturesModelProviders } from "./backend/ai";
@@ -225,7 +225,8 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         .then((backendSettings) => {
           // Set the settings in the first tab's form (mainly API key list)
           Object.keys(form.values).forEach((key) => {
-            if (key in settings) form.setFieldValue(key, backendSettings[key]);
+            if (key in backendSettings)
+              form.setFieldValue(key, backendSettings[key]);
           });
 
           // Set any other settings that are on other pages (not in the form)
@@ -251,24 +252,56 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
           // Attempt to fetch Ollama model list
           // TODO: This should use the Ollama BaseURL setting
           const Ollama_BaseURL =
-            backendSettings.Ollama_BaseURL ?? "http://localhost:11434";
+            backendSettings.Ollama_BaseURL || "http://localhost:11434";
           fetch(`${Ollama_BaseURL}/api/tags`)
             .then((response) => {
               if (response.ok) {
                 return response.json();
               } else {
-                throw new Error("Failed to fetch Ollama models");
+                throw new Error("Server not running?");
               }
             })
             .then((data) => {
               const models_available = data.models?.map(
                 (model_obj: Dict) => model_obj.name,
               );
+
+              if (models_available.length === 0) {
+                console.log("No Ollama models available.");
+                return;
+              }
+
+              // Set the available models in the global provider menu,
+              // by replacing the default Ollama generic model with the model list from the server.
+              const ollama_item = initLLMProviderMenu.findIndex(
+                (item) => "base_model" in item && item.base_model === "ollama",
+              );
+              if (ollama_item !== -1) {
+                initLLMProviderMenu[ollama_item] = {
+                  group: "Ollama",
+                  emoji: "🦙",
+                  items: models_available.map((model: string, idx: number) => ({
+                    key: idx,
+                    name: model,
+                    emoji: "🦙",
+                    model: "ollama",
+                    base_model: "ollama",
+                    formData: {
+                      ollamaModel: model,
+                    },
+                    settings: {
+                      ollamaModel: model,
+                    },
+                    temp: 1.0,
+                  })),
+                };
+              }
+
               console.log("Ollama models available:", models_available);
               console.log("Loaded Ollama model list from backend.");
             })
             .catch((error) => {
-              console.error("Error fetching Ollama models:", error);
+              console.error("Error trying to fetch Ollama models", error);
             });
         });
     }, [form, settings]);
@@ -538,7 +571,8 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                     />
                     <TextInput
                       label="Ollama Server Base URL"
-                      placeholder="Paste your Ollama Server Base URL here. The default is http://localhost:11434. ChainForge will attempt to contact the Ollama API at this URL. Ensure it doesn't include a trailing slash."
+                      description="ChainForge will attempt to contact the Ollama API at this URL. The default is http://localhost:11434"
+                      placeholder="Paste your Ollama Server Base URL here."
                       {...form.getInputProps("Ollama_BaseURL")}
                     />
                     <br />

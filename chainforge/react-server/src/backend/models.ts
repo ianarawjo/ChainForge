@@ -187,7 +187,6 @@ export enum NativeLLM {
   Together_Qwen_Qwen2_5_72B_Turbo = "Qwen/Qwen2.5-72B-Instruct-Turbo",
   Together_Qwen_Qwen2_5_72B = "Qwen/Qwen2-72B-Instruct",
   Together_Qwen_Qwen2_VL_72B = "Qwen/Qwen2-VL-72B-Instruct",
-  Together_Qwen_Qwen2_5_32B_Coder = "Qwen/Qwen2.5-Coder-32B-Instruct",
   Together_mistralai_Mistral_7B_Instruct = "together/mistralai/Mistral-7B-Instruct-v0.1",
   Together_mistralai_Mistral_7B_Instruct_v0_2 = "together/mistralai/Mistral-7B-Instruct-v0.2",
   Together_mistralai_Mixtral8x7B_Instruct_46_7B = "together/mistralai/Mixtral-8x7B-Instruct-v0.1",
