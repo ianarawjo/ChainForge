@@ -742,7 +742,7 @@ const App = () => {
 
         // If running locally, aattempt to save a copy of the flow to the lcoal filesystem,
         // so it shows up in the list of saved flows.
-        if (IS_RUNNING_LOCALLY)
+        if (IS_RUNNING_LOCALLY) {
           // SAVE TO LOCAL FILESYSTEM (only), and if that fails, try to save to localStorage
           exportFlow(
             flow,
@@ -750,7 +750,7 @@ const App = () => {
             hideErrorAlert,
             saveToLocalStorage,
           )?.then(onFlowSaved);
-        else {
+        } else {
           // SAVE TO BROWSER LOCALSTORAGE
           saveToLocalStorage();
           onFlowSaved();
@@ -810,7 +810,7 @@ const App = () => {
       }, 60000); // 60000 milliseconds = 1 minute
       setAutosavingInterval(interv);
     },
-    [autosavingInterval, saveFlow],
+    [autosavingInterval, saveFlow, flowFileName],
   );
 
   // Triggered when user confirms 'New Flow' button

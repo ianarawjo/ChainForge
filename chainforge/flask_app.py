@@ -734,6 +734,7 @@ def get_flows():
 @app.route('/api/flows/<filename>', methods=['GET'])
 def get_flow(filename):
     file_is_pwd_protected = request.args.get("pwd_protected", False)
+    also_autosave = request.args.get('autosave', False)
 
     if file_is_pwd_protected == "true" and SECURE_MODE != "all":
         # The file is password protected, but the server is not in secure mode, we won't be able to load it
@@ -745,13 +746,28 @@ def get_flow(filename):
     try:
         filepath = os.path.join(FLOWS_DIR, filename)
         secure_mode = SECURE_MODE == "all"
-        data = load_json_file(
+        data, true_filepath = load_json_file(
             filepath_w_ext=filepath, 
             secure=secure_mode,
             password=FLOWS_DIR_PWD if secure_mode else None,
         )
+
         if data is None:
             raise FileNotFoundError(f"Could not load flow data from {filepath}.")
+
+        # If we should also autosave, then attempt to override the autosave cache file:
+        if also_autosave == "true" and filename != "__autosave.cforge":
+            autosave_filepath = os.path.join(FLOWS_DIR, '__autosave.cforge')
+            true_autosave_filepath = autosave_filepath + ('.enc' if true_filepath.endswith('.enc') else '')
+            shutil.copy2(true_filepath, true_autosave_filepath)  # copy the file to __autosave
+
+            # Remove the other __autosave file if it exists
+            # :: Note: This is rather nuanced, but we need to do this if the user is loading both 
+            # :: encrypted and unencrypted flows in the same session. 
+            other_autosave_filepath = autosave_filepath + ('' if true_filepath.endswith('.enc') else '.enc')
+            if os.path.isfile(other_autosave_filepath):
+                os.remove(other_autosave_filepath)
+
         return jsonify(data)
     except FileNotFoundError:
         return jsonify({"error": "Flow not found"}), 404
@@ -906,7 +922,7 @@ def get_settings(name):
     """Return the requested config"""
     filepath = os.path.join(FLOWS_DIR, f"{name}.json")
     secure_mode = SECURE_MODE == "all" or (SECURE_MODE == "settings" and name == "settings")
-    settings = load_json_file(
+    settings, _ = load_json_file(
         filepath_w_ext=filepath, 
         secure=secure_mode,
         password=FLOWS_DIR_PWD if secure_mode else None,

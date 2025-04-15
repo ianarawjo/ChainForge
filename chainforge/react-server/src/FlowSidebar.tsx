@@ -78,6 +78,7 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
         .get(`${FLASK_BASE_URL}api/flows/${flow.name}`, {
           params: {
             pwd_protected: flow.pwd_protected,
+            autosave: true,
           },
         })
         .catch((error) => {

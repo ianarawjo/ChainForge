@@ -1,7 +1,7 @@
 import json
 import os
 import base64
-from typing import Union
+from typing import Union, Tuple
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import Fernet
@@ -15,10 +15,12 @@ def generate_key(password: str, salt: bytes) -> bytes:
   )
   return base64.urlsafe_b64encode(kdf.derive(password.encode()))
 
-def load_json_file(filepath_w_ext: str, secure: bool, password: Union[str, None] = None) -> Union[dict, None]:  
+def load_json_file(filepath_w_ext: str, secure: bool, password: Union[str, None] = None) -> Tuple[Union[dict, None], Union[str, None]]:  
   """
     Load a JSON file. If secure is True, load the encrypted file and decrypt it using the provided password.
     If secure is False, load the plain JSON file.
+
+    Returns a tuple of (data, filepath) where data is the loaded JSON data and filepath is the true path to the file.
   """
   enc_filepath = filepath_w_ext + ".enc"
   if secure and not os.path.exists(enc_filepath):
@@ -28,17 +30,17 @@ def load_json_file(filepath_w_ext: str, secure: bool, password: Union[str, None]
   if not secure:
     if os.path.exists(filepath_w_ext):
       with open(filepath_w_ext, "r") as f:
-        return json.load(f)
+        return json.load(f), filepath_w_ext
     print(f"❌ File not found at path: {filepath_w_ext}. Failed to load.")
-    return None  # File not found
+    return None, None  # File not found
 
   if password is None or len(password) == 0:
     print("❌ Password is required for secure load. Please provide a password at application start.")
-    return None  # Failure
+    return None, None  # Failure
 
   if not os.path.exists(enc_filepath):
     print(f"❌ Encrypted file not found at path: {enc_filepath}. Failed to load.")
-    return None
+    return None, None
 
   try:
     # Read the combined data (salt + encrypted data) from the file
@@ -56,10 +58,10 @@ def load_json_file(filepath_w_ext: str, secure: bool, password: Union[str, None]
 
     # Decrypt the data
     decrypted = fernet.decrypt(encrypted_data)
-    return json.loads(decrypted)
+    return json.loads(decrypted), enc_filepath
   except Exception as e:
     print(f"❌ Failed to decrypt file: {enc_filepath}. Error: {e}")
-    return None
+    return None, None
 
 def save_json_file(data: dict, filepath_w_ext: str, secure: bool, password: Union[str, None] = None) -> bool:
   """
