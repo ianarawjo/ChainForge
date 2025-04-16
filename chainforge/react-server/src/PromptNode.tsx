@@ -22,6 +22,9 @@ import {
   Button,
   ActionIcon,
   Divider,
+  TextInput,
+  Styles,
+  TextInputStylesNames,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -104,6 +107,23 @@ const getRootPromptFor = (
   else if (promptTexts.length === 1) return promptTexts[0];
   else return `{${varNameForRootTemplate}}`;
 };
+
+const promptVariantLabelStyle = {
+  input: {
+    border: "0",
+    fontSize: "10pt",
+    padding: "0px 2px 0px 2px !important",
+    marginTop: "2px",
+    minHeight: "10pt",
+    lineHeight: "1",
+    background: "transparent",
+    height: "10pt",
+    textAlign: "center",
+  },
+  root: {
+    width: "7ch",
+  },
+} satisfies Styles<TextInputStylesNames>;
 
 export class PromptInfo {
   prompt: string;
@@ -305,6 +325,7 @@ export interface PromptNodeProps {
     refresh: boolean;
     refreshLLMList: boolean;
     idxPromptVariantShown?: number;
+    promptVariantLabel?: string[];
   };
   id: string;
   type: string;
@@ -343,6 +364,9 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const [templateVars, setTemplateVars] = useState<string[]>(data.vars ?? []);
   const [promptText, setPromptText] = useState<string | string[]>(
     data.prompt ?? "",
+  );
+  const [promptVariantLabel, setPromptVariantLabel] = useState<string[]>(
+    data.promptVariantLabel ?? ["Variant 1"],
   );
   const [idxPromptVariantShown, setIdxPromptVariantShown] = useState<number>(
     data.idxPromptVariantShown ?? 0,
@@ -946,7 +970,20 @@ Soft failing by replacing undefined with empty strings.`,
         Object.keys(pulled_data),
       );
       if (typeof promptText !== "string" && promptText.length > 1)
-        pulled_data[var_for_prompt_templates] = promptText; // this will be filled in when calling queryLLMs
+        // this will be filled in when calling queryLLMs
+        pulled_data[var_for_prompt_templates] = promptText.map(
+          (prompt, idx) => {
+            const label = promptVariantLabel[idx];
+            const info: TemplateVarInfo = {
+              text: prompt,
+              fill_history: {
+                // We pass the label alongside the prompt text, for easier display and comparison later.
+                [var_for_prompt_templates + " [label]"]: label,
+              },
+            };
+            return info;
+          },
+        );
     } catch (err) {
       if (showAlert) showAlert((err as Error)?.message ?? err);
       console.error(err);
@@ -1227,6 +1264,7 @@ Soft failing by replacing undefined with empty strings.`,
     fetchResponseCounts,
     numGenerations,
     promptText,
+    promptVariantLabel,
     apiKeys,
     showContToggle,
     cancelId,
@@ -1327,7 +1365,9 @@ Soft failing by replacing undefined with empty strings.`,
     ); // clamp
     const curShownPrompt = prompts[curIdx];
     setPromptText(prompts.concat([curShownPrompt]));
+    setPromptVariantLabel((prev) => [...prev, `Variant ${prompts.length + 1}`]);
     setIdxPromptVariantShown(prompts.length);
+    setStatus(Status.WARNING);
   }, [promptText, idxPromptVariantShown]);
 
   const gotoPromptVariant = useCallback(
@@ -1360,6 +1400,12 @@ Soft failing by replacing undefined with empty strings.`,
 
       return [...prompts];
     });
+    setPromptVariantLabel((prev) => {
+      if (prev.length <= 1) return prev; // cannot remove the last one
+      prev.splice(idxPromptVariantShown, 1); // remove the indexed variant
+      return [...prev];
+    });
+    setStatus(Status.WARNING);
   }, [idxPromptVariantShown, textAreaRef]);
 
   // Whenever idx of prompt variant changes, we need to refresh the Textarea:
@@ -1408,10 +1454,36 @@ Soft failing by replacing undefined with empty strings.`,
               <IconArrowLeft size={19} />
             </ActionIcon>
 
-            <Text size="xs">
+            <TextInput
+              value={
+                idxPromptVariantShown <= promptVariantLabel.length
+                  ? promptVariantLabel[idxPromptVariantShown]
+                  : ""
+              }
+              onChange={(e) => {
+                const newLabel = e.currentTarget.value;
+                setPromptVariantLabel((prev) => {
+                  const newLabels = [...prev];
+                  newLabels[idxPromptVariantShown] = newLabel;
+                  return newLabels;
+                });
+                setStatus(Status.WARNING);
+              }}
+              onBlur={(e) => {
+                // On blur, save the state of the variant label array
+                if (idxPromptVariantShown >= promptVariantLabel.length) return;
+                setDataPropsForNode(id, {
+                  promptVariantLabel: promptVariantLabel,
+                });
+              }}
+              className="nopan nodrag"
+              styles={promptVariantLabelStyle}
+            />
+
+            {/* <Text size="xs">
               Variant {idxPromptVariantShown + 1} of{" "}
               {typeof promptText === "string" ? 1 : promptText.length}
-            </Text>
+            </Text> */}
 
             <ActionIcon
               size="xs"
@@ -1421,6 +1493,11 @@ Soft failing by replacing undefined with empty strings.`,
             >
               <IconArrowRight size={19} />
             </ActionIcon>
+
+            <Text mr={2} size="xs">
+              {idxPromptVariantShown + 1} of{" "}
+              {typeof promptText === "string" ? 1 : promptText.length}
+            </Text>
 
             <Tooltip
               label="Add prompt variant"
@@ -1456,7 +1533,12 @@ Soft failing by replacing undefined with empty strings.`,
         )}
       </Flex>
     );
-  }, [idxPromptVariantShown, promptText, deleteVariantConfirmModal]);
+  }, [
+    idxPromptVariantShown,
+    promptVariantLabel,
+    promptText,
+    deleteVariantConfirmModal,
+  ]);
 
   // Add custom context menu options on right-click.
   // 1. Convert TextFields to Items Node, for convenience.
