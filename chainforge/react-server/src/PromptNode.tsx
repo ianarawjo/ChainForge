@@ -1364,11 +1364,19 @@ Soft failing by replacing undefined with empty strings.`,
       Math.min(prompts.length - 1, idxPromptVariantShown),
     ); // clamp
     const curShownPrompt = prompts[curIdx];
-    setPromptText(prompts.concat([curShownPrompt]));
-    setPromptVariantLabel((prev) => [...prev, `Variant ${prompts.length + 1}`]);
+    const updatedPrompts = prompts.concat([curShownPrompt]);
+    const updatedPromptVarLabels = promptVariantLabel.concat([
+      `Variant ${prompts.length + 1}`,
+    ]);
+    setPromptText(updatedPrompts);
+    setPromptVariantLabel(updatedPromptVarLabels);
     setIdxPromptVariantShown(prompts.length);
+    setDataPropsForNode(id, {
+      promptText: updatedPrompts,
+      promptVariantLabel: updatedPromptVarLabels,
+    });
     setStatus(Status.WARNING);
-  }, [promptText, idxPromptVariantShown]);
+  }, [promptText, idxPromptVariantShown, promptVariantLabel]);
 
   const gotoPromptVariant = useCallback(
     (shift: number) => {
@@ -1398,11 +1406,17 @@ Soft failing by replacing undefined with empty strings.`,
         // resizeTextarea();
       }
 
+      setDataPropsForNode(id, {
+        promptText: prompts,
+      });
       return [...prompts];
     });
     setPromptVariantLabel((prev) => {
       if (prev.length <= 1) return prev; // cannot remove the last one
       prev.splice(idxPromptVariantShown, 1); // remove the indexed variant
+      setDataPropsForNode(id, {
+        promptVariantLabel: prev,
+      });
       return [...prev];
     });
     setStatus(Status.WARNING);
