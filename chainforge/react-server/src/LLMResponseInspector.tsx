@@ -475,10 +475,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           // Plot eval scores on columns
           setTableColVar("$EVAL_RES");
           return;
-        } else if (found_llms.length === 1 && found_vars.length > 1) {
-          setTableColVar(found_vars[0]);
-          return; // useEffect will replot with the new values
         }
+        // else if (found_llms.length === 1 && found_vars.length > 1) {
+        // setTableColVar(found_vars[0]);
+        // return; // useEffect will replot with the new values
+        // }
       }
 
       // If this is the first time receiving responses, set the multiSelectValue to whatever is the first:
