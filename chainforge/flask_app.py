@@ -786,13 +786,17 @@ def get_flow_exists(filename):
 @app.route('/api/flows/<filename>', methods=['DELETE'])
 def delete_flow(filename):
     """Delete a flow"""
-    secure_mode = SECURE_MODE == "all"
+    file_is_pwd_protected = request.args.get("pwd_protected", False)
 
-    if not filename.endswith('.cforge'):
-        filename += '.cforge'
-
-    if secure_mode:
-        filename += '.enc'
+    # Compose the extension to the file
+    if file_is_pwd_protected != "true":
+        if not filename.endswith('.cforge'):
+            filename += '.cforge'
+    else:
+        if filename.endswith('.cforge'):
+            filename += '.enc'
+        else:
+            filename += '.cforge.enc'
         
     try:
         # Delete the file

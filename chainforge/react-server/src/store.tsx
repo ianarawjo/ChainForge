@@ -100,16 +100,16 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "🤖",
     items: [
       {
-        name: "GPT-4.1",
-        emoji: "🧑‍💻️",
-        model: "gpt-4.1",
+        name: "GPT-4o",
+        emoji: "🤖",
+        model: "gpt-4o",
         base_model: "gpt-4",
         temp: 1.0,
       },
       {
-        name: "GPT-4o",
-        emoji: "😁",
-        model: "gpt-4o",
+        name: "GPT-4.1",
+        emoji: "🧑‍💻️",
+        model: "gpt-4.1",
         base_model: "gpt-4",
         temp: 1.0,
       },

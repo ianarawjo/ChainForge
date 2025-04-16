@@ -111,16 +111,18 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
 
   // Delete a flow
   const handleDeleteFlow = async (
-    filename: string,
+    flow: FlowFile,
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
   ) => {
     event.stopPropagation(); // Prevent triggering the parent click
-    if (window.confirm(`Are you sure you want to delete "${filename}"?`)) {
+    if (window.confirm(`Are you sure you want to delete "${flow.name}"?`)) {
       try {
-        await axios.delete(`${FLASK_BASE_URL}api/flows/${filename}`);
+        await axios.delete(`${FLASK_BASE_URL}api/flows/${flow.name}`, {
+          params: { pwd_protected: flow.pwd_protected },
+        });
         fetchSavedFlowList(); // Refresh the list
       } catch (error) {
-        console.error(`Error deleting flow ${filename}:`, error);
+        console.error(`Error deleting flow ${flow.name}:`, error);
         if (showAlert) showAlert(error as Error);
       }
     }
@@ -353,7 +355,7 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
                         >
                           <ActionIcon
                             color="red"
-                            onClick={(e) => handleDeleteFlow(flow.name, e)}
+                            onClick={(e) => handleDeleteFlow(flow, e)}
                           >
                             <IconTrash size={18} />
                           </ActionIcon>
