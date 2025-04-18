@@ -113,6 +113,9 @@ import {
 import MultiEvalNode from "./MultiEvalNode";
 import FlowSidebar from "./FlowSidebar";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
+import RequestClarificationModal, {
+  RequestClarificationModalProps,
+} from "./RequestClarificationModal";
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -314,17 +317,6 @@ const App = () => {
 
   // For displaying alerts
   const showAlert = useContext(AlertModalContext);
-
-  // For confirmation popup
-  const confirmationModal = useRef<AreYouSureModalRef>(null);
-  const [confirmationDialogProps, setConfirmationDialogProps] = useState<{
-    title: string;
-    message: string;
-    onConfirm?: () => void;
-  }>({
-    title: "Confirm action",
-    message: "Are you sure?",
-  });
 
   // For displaying a pending 'loading' status
   const [isLoading, setIsLoading] = useState(true);
@@ -814,40 +806,43 @@ const App = () => {
   );
 
   // Triggered when user confirms 'New Flow' button
-  const resetFlow = useCallback(() => {
-    resetLLMColors();
+  const resetFlow = useCallback(
+    (name?: string | null) => {
+      resetLLMColors();
 
-    const uid = (id: string) => `${id}-${Date.now()}`;
-    const starting_nodes = [
-      {
-        id: uid("prompt"),
-        type: "prompt",
-        data: {
-          prompt: "",
-          n: 1,
-          llms: [INITIAL_LLM()],
+      const uid = (id: string) => `${id}-${Date.now()}`;
+      const starting_nodes = [
+        {
+          id: uid("prompt"),
+          type: "prompt",
+          data: {
+            prompt: "",
+            n: 1,
+            llms: [INITIAL_LLM()],
+          },
+          position: { x: 450, y: 200 },
         },
-        position: { x: 450, y: 200 },
-      },
-      {
-        id: uid("textfields"),
-        type: "textfields",
-        data: {},
-        position: { x: 80, y: 270 },
-      },
-    ];
+        {
+          id: uid("textfields"),
+          type: "textfields",
+          data: {},
+          position: { x: 80, y: 270 },
+        },
+      ];
 
-    setNodes(starting_nodes);
-    setEdges([]);
+      setNodes(starting_nodes);
+      setEdges([]);
 
-    StorageCache.clear();
+      StorageCache.clear();
 
-    // New flow filename
-    const new_filename = `flow-${Date.now()}`;
-    setFlowFileNameAndCache(new_filename);
+      // New flow filename
+      if (name == null) name = `flow-${Date.now()}`;
+      setFlowFileNameAndCache(name);
 
-    if (rfInstance) rfInstance.setViewport({ x: 200, y: 80, zoom: 1 });
-  }, [setNodes, setEdges, resetLLMColors, rfInstance]);
+      if (rfInstance) rfInstance.setViewport({ x: 200, y: 80, zoom: 1 });
+    },
+    [setNodes, setEdges, resetLLMColors, rfInstance],
+  );
 
   const loadFlow = useCallback(
     async (flow?: Dict, rf_inst?: ReactFlowInstance | null) => {
@@ -1098,18 +1093,49 @@ const App = () => {
   };
 
   // When the user clicks the 'New Flow' button
+  const [requestFlowNameOpened, setRequestFlowNameOpened] = useState(false);
+  const [requestFlowNameProps, setRequestFlowNameProps] = useState<
+    Partial<RequestClarificationModalProps>
+  >({});
+  const requestClarificationModal = useMemo(
+    () => (
+      <RequestClarificationModal
+        opened={requestFlowNameOpened}
+        title={requestFlowNameProps.title ?? ""}
+        question={requestFlowNameProps.question ?? ""}
+        desc={requestFlowNameProps.desc}
+        onSubmit={requestFlowNameProps.onSubmit ?? (() => {})}
+        validator={(answer) => {
+          // Ensure the filename contains only valid characters
+          const invalidChars = /[<>:"/\\|?*\x00-\x1F.]/g;
+          if (!answer || invalidChars.test(answer)) {
+            return "Flow name contains invalid characters.";
+          } else if (answer && answer.length >= 255) {
+            return "Flow name too long. Must be less than 255 characters.";
+          }
+          return null;
+        }}
+      />
+    ),
+    [requestFlowNameProps, requestFlowNameOpened],
+  );
   const onClickNewFlow = useCallback(() => {
-    setConfirmationDialogProps({
+    setRequestFlowNameProps({
       title: "Create a new flow",
-      message:
-        "Are you sure? Any unexported changes to your existing flow will be lost.",
-      onConfirm: () => resetFlow(), // Set the callback if user confirms action
+      question: "What do you want to name your new flow?",
+      desc: "Any unsaved changes to your existing flow will be lost.",
+      onSubmit: (answer) => {
+        if (answer == null) {
+          // User canceled; do nothing
+          setRequestFlowNameOpened(false);
+          return;
+        }
+        setRequestFlowNameOpened(false);
+        resetFlow(answer); // Set the callback if user confirms action
+      },
     });
-
-    // Trigger the 'are you sure' modal:
-    if (confirmationModal && confirmationModal.current)
-      confirmationModal.current?.trigger();
-  }, [confirmationModal, resetFlow, setConfirmationDialogProps]);
+    setRequestFlowNameOpened(true);
+  }, [resetFlow]);
 
   // When the user clicks the 'Share Flow' button
   const onClickShareFlow = useCallback(async () => {
@@ -1441,15 +1467,10 @@ const App = () => {
       <div onKeyDown={handleCtrlSave}>
         <GlobalSettingsModal ref={settingsModal} />
         <LoadingOverlay visible={isLoading} overlayBlur={1} />
+        {requestClarificationModal}
         <ExampleFlowsModal
           ref={examplesModal}
           handleOnSelect={onSelectExampleFlow}
-        />
-        <AreYouSureModal
-          ref={confirmationModal}
-          title={confirmationDialogProps.title}
-          message={confirmationDialogProps.message}
-          onConfirm={confirmationDialogProps.onConfirm}
         />
         {flowSidebar}
 

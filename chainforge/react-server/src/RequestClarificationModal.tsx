@@ -2,13 +2,14 @@ import React, { useEffect } from "react";
 import { Modal, Button, TextInput, Flex, Text } from "@mantine/core";
 import { useForm } from "@mantine/form";
 
-interface RequestClarificationModalProps {
+export interface RequestClarificationModalProps {
   opened: boolean;
   title: string;
   desc?: string;
   initialValue?: string;
   question: string;
   onSubmit: (answer: string | null) => void;
+  validator?: (value: string) => string | null;
 }
 
 // Requests clarification on a question before continuing.
@@ -19,6 +20,7 @@ const RequestClarificationModal: React.FC<RequestClarificationModalProps> = ({
   desc,
   question,
   onSubmit,
+  validator,
 }) => {
   // Create a form with Mantine's useForm hook
   const form = useForm({
@@ -27,8 +29,15 @@ const RequestClarificationModal: React.FC<RequestClarificationModalProps> = ({
     },
 
     validate: {
-      answer: (value: string) =>
-        value.trim().length === 0 ? "You must provide an answer" : null,
+      answer: (value: string) => {
+        if (value.trim().length === 0) {
+          return "You must provide an answer";
+        }
+        if (validator) {
+          return validator(value);
+        }
+        return null;
+      },
     },
   });
 
@@ -53,6 +62,7 @@ const RequestClarificationModal: React.FC<RequestClarificationModalProps> = ({
       withCloseButton={false}
       title={title}
       centered
+      style={{ position: "relative", left: "-4%" }}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <TextInput
@@ -66,8 +76,10 @@ const RequestClarificationModal: React.FC<RequestClarificationModalProps> = ({
           <Button
             variant="light"
             color="gray"
-            type="submit"
-            onClick={() => onSubmit(null)}
+            onClick={(e) => {
+              e.preventDefault();
+              onSubmit(null);
+            }}
           >
             Cancel
           </Button>
