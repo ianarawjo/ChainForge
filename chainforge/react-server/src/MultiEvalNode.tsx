@@ -57,7 +57,7 @@ import { GatheringResponsesRingProgress } from "./LLMItemButtonGroup";
 import { Dict, LLMResponse, QueryProgress } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
-
+import StorageCache from "./backend/cache";
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 const EVAL_TYPE_PRETTY_NAME = {
@@ -77,6 +77,103 @@ export interface EvaluatorContainerProps {
   children: React.ReactNode;
   initiallyOpen?: boolean;
 }
+
+interface EvaluatorPreset {
+  name: string;
+  description: string;
+  type: "python" | "javascript" | "llm";
+  state: {
+    code?: string;
+    prompt?: string;
+    format?: string;
+    grader?: string;
+    sandbox?: boolean;
+    reasonBeforeScoring?: boolean;
+  };
+}
+
+interface PresetCategory {
+  label: string;
+  presets: EvaluatorPreset[];
+}
+
+const EVALUATOR_PRESETS: PresetCategory[] = [
+  {
+    label: "RAG (Reference-free)",
+    presets: [
+      {
+        name: "Faithfulness",
+        description: "Evaluates text for faithfulness to the reference",
+        type: "llm",
+        state: {
+          prompt:
+            "You are an expert evaluator of retrieval-augmented generation systems. Your task is to assess the faithfulness of a generated answer based solely on the provided context.\n\nFaithfulness measures whether the generated answer contains only information that is supported by the provided context. An answer is considered faithful if all its factual claims are directly supported by or can be reasonably inferred from the context\n\nEvaluation instructions:\n1. Identify all factual claims in the generated answer.\n2. For each claim, determine if it is:\n   - Fully supported by the context (assign 1 point)\n   - Partially supported with some extrapolation (assign 0.5 points)\n   - Not supported or contradicted by the context (assign 0 points)\n3. Calculate the faithfulness score as: (sum of points) / (total number of claims)\n\nReturn a final faithfulness score between 0 and 1, where:\n- 1.0: Perfect faithfulness (all claims fully supported)\n- 0.0: Complete unfaithfulness (no claims supported by context)\n\nProvided Context: {#context}\n\nAnswer:",
+          format: "num",
+          reasonBeforeScoring: true,
+        },
+      },
+      {
+        name: "Answer Relevancy",
+        description: "Evaluates text for relevance to the question",
+        type: "llm",
+        state: {
+          prompt:
+            "You are an expert evaluator of retrieval-augmented generation systems. Your task is to assess how relevant a generated answer is to the given question, regardless of factual accuracy\n\nAnswer Relevancy measures whether the generated answer directly addresses what was asked in the question. An answer is highly relevant if it provides information that specifically responds to the query's intent and information needs.\n\nEvaluation instructions:\n1. Identify the main information need(s) in the question.\n2. Assess whether the answer:\n   - Directly addresses all aspects of the question (assign 1 point)\n   - Only partially addresses the question (assign 0.5 points)\n   - Fails to address the question or is off-topic (assign 0 points)\n\n\nReturn a final answer relevancy score between 0 and 1, where:\n- 1.0: Perfect relevancy (completely addresses the question with focus)\n- 0.0: Complete irrelevancy (does not address the question at all)\n\n```\n{#query}\n```\n\nAnswer:",
+          format: "num",
+          reasonBeforeScoring: true,
+        },
+      },
+      {
+        name: "Context Precision",
+        description: "Evaluates context for precision",
+        type: "llm",
+        state: {
+          prompt:
+            "You are an expert evaluator of retrieval-augmented generation systems. Your task is to assess the precision of the retrieved context relative to the question\n\nContext Precision measures how efficiently the retrieved information is used to answer the question. High precision means most of the retrieved context was necessary and used in generating the answer, with minimal irrelevant information.\n\nEvaluation instructions:\n1. Identify which parts of the context were actually used to generate the answer.\n2. Calculate the proportion of the context that contains information relevant to and used in the answer.\n3. Consider both:\n   - Information density (how much of the context is relevant)\n   - Information utilization (how much of the relevant information was used)\n\n4. Rate the context precision on a scale from 0 to 1:\n   - 1.0: Perfect precision (all retrieved context is relevant and used efficiently)\n   - 0.5: Moderate precision (about half the context is relevant and used)\n   - 0.0: No precision (context is entirely irrelevant)\n\n```\nQuestion: {#query}\n```\nContext: {#context}\n\nAnswer:",
+          format: "num",
+          reasonBeforeScoring: true,
+        },
+      },
+      {
+        name: "Context Relevancy",
+        description: "Evaluates context for relevancy",
+        type: "llm",
+        state: {
+          prompt:
+            "You are an expert evaluator of retrieval-augmented generation systems. Your task is to assess how relevant the retrieved context is to the given question\n\nContext Relevancy measures whether the retrieved information contains content that is useful for answering the question. Highly relevant context provides the necessary information to formulate a complete and accurate answer.\n\nEvaluation instructions:\n1. Identify the main information need(s) in the question.\n2. For each piece of context, assess:\n   - Whether it contains information directly relevant to answering the question\n   - How comprehensive the relevant information is\n   - Whether critical information for answering the question is missing\n\n3. Rate the overall context relevancy on a scale from 0 to 1:\n   - 1.0: Perfect relevancy (context contains all information needed to fully answer the question)\n   - 0.5: Moderate relevancy (context contains some relevant information but has significant gaps)\n   - 0.0: No relevancy (context contains no information related to the question)\n\n```\nQuestion: {#query}\n```\n\nContext:",
+          format: "num",
+          reasonBeforeScoring: true,
+        },
+      },
+    ],
+  },
+  {
+    label: "RAG (Reference-based)",
+    presets: [
+      {
+        name: "Answer Correctness",
+        description:
+          "Evaluates the correctness of the answer, based on the reference answer",
+        type: "llm",
+        state: {
+          prompt:
+            "You are an expert evaluator of retrieval-augmented generation systems. Your task is to assess the correctness of a generated answer based on a reference answer.\n\nAnswer Correctness measures how closely the generated answer matches the reference answer. An answer is considered correct if it contains all the necessary information from the reference answer and is free of errors.\n\nEvaluation instructions:\n1. Identify all factual claims in the generated answer.\n2. For each claim, determine if it is:\n   - Fully supported by the reference answer (assign 1 point)\n   - Partially supported with some extrapolation (assign 0.5 points)\n   - Not supported or contradicted by the reference answer (assign 0 points)\n\n\nReturn a final answer correctness score between 0 and 1, where:\n- 1.0: Perfect correctness (all claims fully supported)\n- 0.0: Complete incorrectness (no claims supported by reference)\n\n```\nReference Answer: {#reference}\n```\n\nAnswer:",
+          format: "num",
+          reasonBeforeScoring: true,
+        },
+      },
+      {
+        name: "Chunk Overlap",
+        description: "Calculates the overlap between retrieved chunks and ",
+        type: "python",
+        state: {
+          code: "def evaluate(response):\n  context = response.var['context']\n  gtruth = response.meta['answer_context']\n  chunks = context.split('\\n\\n')\n  return any(c in gtruth for c in chunks)",
+          sandbox: true,
+        },
+      },
+    ],
+  },
+];
 
 /** A wrapper for a single evaluator, that can be renamed */
 const EvaluatorContainer: React.FC<EvaluatorContainerProps> = ({
@@ -265,6 +362,21 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
     (name: string, type: EvaluatorContainerDesc["type"], state: Dict) => {
       setEvaluators(
         evaluators.concat({ name, uid: uuid(), type, state, justAdded: true }),
+      );
+    },
+    [evaluators],
+  );
+
+  const addPresetEvaluator = useCallback(
+    (preset: EvaluatorPreset) => {
+      setEvaluators(
+        evaluators.concat({
+          name: preset.name,
+          uid: uuid(),
+          type: preset.type,
+          state: preset.state,
+          justAdded: true,
+        }),
       );
     },
     [evaluators],
@@ -587,12 +699,17 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
           }
         });
       });
-
+      const finalResponses = Object.values(merged_res_objs_by_uid);
+      console.log("Output length:", finalResponses.length);
+      console.log("MultiEval Output:", finalResponses[0]?.eval_res?.items[0]);
       // We now have a dict of the form { uid: LLMResponse }
       // We need return only the values of this dict:
-      setLastResponses(Object.values(merged_res_objs_by_uid));
+      setLastResponses(finalResponses);
       setLastRunSuccess(true);
-
+      setDataPropsForNode(id, { output: finalResponses });
+      console.log("Setting output");
+      StorageCache.store(`${id}.json`, finalResponses);
+      pingOutputNodes(id);
       setStatus(Status.READY);
     });
   }, [
@@ -726,6 +843,13 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
               format={e.state?.format}
               id={`${id}-${e.uid}`}
               showUserInstruction={false}
+              reasonBeforeScoring={e.state?.reasonBeforeScoring}
+              onReasonBeforeScoringChange={(newValue: boolean) =>
+                updateEvalState(
+                  idx,
+                  (e) => (e.state.reasonBeforeScoring = newValue),
+                )
+              }
               onPromptEdit={(prompt) =>
                 updateEvalState(idx, (e) => (e.state.prompt = prompt))
               }
@@ -749,13 +873,13 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         className="grouped-handle"
         style={{ top: "50%" }}
       />
-      {/* TO IMPLEMENT <Handle
+      <Handle
         type="source"
         position={Position.Right}
         id="output"
         className="grouped-handle"
         style={{ top: "50%" }}
-      /> */}
+      />
 
       <div className="add-text-field-btn">
         <Menu withinPortal position="right-start" shadow="sm">
@@ -819,6 +943,35 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
             ) : (
               <></>
             )} */}
+            <Menu.Divider />
+            {EVALUATOR_PRESETS.map((category, idx) => (
+              <React.Fragment key={category.label}>
+                {idx > 0 && <Menu.Divider />}
+                <Menu.Label>{category.label}</Menu.Label>
+                {category.presets.map((preset) => (
+                  <Menu.Item
+                    key={preset.name}
+                    icon={
+                      preset.type === "llm" ? (
+                        <IconRobot size="14px" />
+                      ) : (
+                        <IconTerminal size="14px" />
+                      )
+                    }
+                    onClick={() => addPresetEvaluator(preset)}
+                  >
+                    <Tooltip
+                      label={preset.description}
+                      position="right"
+                      multiline
+                      width={200}
+                    >
+                      <span>{preset.name}</span>
+                    </Tooltip>
+                  </Menu.Item>
+                ))}
+              </React.Fragment>
+            ))}
           </Menu.Dropdown>
         </Menu>
       </div>
