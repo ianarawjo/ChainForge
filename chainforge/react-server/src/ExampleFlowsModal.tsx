@@ -427,6 +427,7 @@ const ExampleFlowsModal = forwardRef<
         <Tabs.List>
           <Tabs.Tab value="examples">Basic Examples</Tabs.Tab>
           <Tabs.Tab value="openai-evals">OpenAI Evals</Tabs.Tab>
+          <Tabs.Tab value="rag">RAG Examples</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="examples" pt="xs">
@@ -568,6 +569,17 @@ const ExampleFlowsModal = forwardRef<
                 key={evalname}
               />
             ))}
+          </SimpleGrid>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="rag" pt="xs">
+          <SimpleGrid cols={3} spacing="sm" verticalSpacing="sm">
+            <ExampleFlowCard
+              title="📑 Evaluate RAG Pipeline"
+              description="Build a RAG pipeline using a variety of chunking and retrieval methods. Evaluate the pipeline using RAGAS and reference-based metrics."
+              filename="evaluate-rag-pipeline"
+              onSelect={onSelect}
+            />
           </SimpleGrid>
         </Tabs.Panel>
       </Tabs>
