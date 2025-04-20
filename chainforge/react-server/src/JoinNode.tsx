@@ -182,7 +182,7 @@ export interface JoinNodeProps {
       label: string;
       value: string;
     }[];
-    groupByVar: string;
+    selectedGroupVars?: string[];
     groupByLLM: string;
     formatting: JoinFormat;
   };
@@ -213,7 +213,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
     data.groupByVars ?? [DEFAULT_GROUPBY_VAR_ALL],
   );
   const [selectedGroupVars, setSelectedGroupVars] = useState<string[]>(
-    data.groupByVar ? [data.groupByVar] : ["A"],
+    data.selectedGroupVars ?? ["A"],
   );
   const [groupByLLM, setGroupByLLM] = useState(data.groupByLLM ?? "within");
   const [formatting, setFormatting] = useState(
@@ -456,6 +456,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
     groupAndJoinByVars,
     id,
     setDataPropsForNode,
+    handleSetAndSave,
   ]);
 
   if (data.input) {
@@ -527,7 +528,9 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
         <MultiSelect
           data={groupByVars}
           value={selectedGroupVars}
-          onChange={setSelectedGroupVars}
+          onChange={(value) =>
+            handleSetAndSave(value, setSelectedGroupVars, "selectedGroupVars")
+          }
           className="nodrag nowheel"
           placeholder="Select grouping variables"
           size="xs"
