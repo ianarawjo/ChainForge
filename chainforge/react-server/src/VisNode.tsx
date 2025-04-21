@@ -1185,6 +1185,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       selectedLegendItems,
       plotDivRef,
       graphType,
+      colorScheme,
     ]);
 
     // Resizing the plot when div is resized:
