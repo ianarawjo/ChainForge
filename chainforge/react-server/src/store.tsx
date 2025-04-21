@@ -1033,6 +1033,7 @@ const useStore = create<StoreHandles>((set, get) => ({
 
     connection = connection as Edge;
     connection.interactionWidth = 40;
+    connection.animated = true;
     connection.markerEnd = { type: MarkerType.Arrow, width: 22, height: 22 }; // 22px
     connection.type = "default";
 

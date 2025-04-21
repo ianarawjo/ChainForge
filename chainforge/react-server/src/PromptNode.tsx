@@ -25,6 +25,8 @@ import {
   TextInput,
   Styles,
   TextInputStylesNames,
+  useMantineColorScheme,
+  NumberInput,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -32,6 +34,8 @@ import {
   IconArrowRight,
   IconEraser,
   IconList,
+  IconMessageChatbot,
+  IconMessageCircle,
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react";
@@ -336,10 +340,15 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   id,
   type: node_type,
 }) => {
-  const node_icon = useMemo(
-    () => (node_type === "chat" ? "🗣" : "💬"),
-    [node_type],
-  );
+  // Color scheme
+  const { colorScheme } = useMantineColorScheme();
+
+  const node_icon = useMemo(() => {
+    if (colorScheme === "dark") {
+      if (node_type === "chat") return <IconMessageChatbot size={16} />;
+      else return <IconMessageCircle size={16} />;
+    } else return node_type === "chat" ? "🗣" : "💬";
+  }, [node_type, colorScheme]);
   const node_default_title = useMemo(
     () => (node_type === "chat" ? "Chat Turn" : "Prompt Node"),
     [node_type],
@@ -1298,12 +1307,9 @@ Soft failing by replacing undefined with empty strings.`,
   }, [cancelId, refreshCancelId, debounceTimeoutRef]);
 
   const handleNumGenChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      let n: string | number = event.target.value;
-      // @ts-expect-error The isNaN check on a string input is the correct approach to determining what we want, yet this will show an error in TS.
-      if (!isNaN(n) && n.length > 0 && /^\d+$/.test(n)) {
+    (n: number | "" | undefined) => {
+      if (typeof n === "number" && !isNaN(n)) {
         // n is an integer; save it
-        n = parseInt(n);
         if (n !== numGenerationsLastRun && status === Status.READY)
           setStatus(Status.WARNING);
         setNumGenerations(n);
@@ -1445,6 +1451,7 @@ Soft failing by replacing undefined with empty strings.`,
             withinPortal
           >
             <Button
+              className="prompt-variant-add-btn"
               size="xs"
               variant="subtle"
               color="gray"
@@ -1690,19 +1697,21 @@ Soft failing by replacing undefined with empty strings.`,
       <hr />
       <div>
         <div style={{ marginBottom: "10px", padding: "4px" }}>
-          <label htmlFor="num-generations" style={{ fontSize: "10pt" }}>
-            Num responses per prompt:&nbsp;
-          </label>
-          <input
-            id="num-generations"
-            name="num-generations"
-            type="number"
-            min={1}
-            max={999}
-            defaultValue={data.n || 1}
-            onChange={handleNumGenChange}
-            className="nodrag"
-          ></input>
+          <Flex align="center">
+            <label htmlFor="num-generations" style={{ fontSize: "10pt" }}>
+              Num responses per prompt:&nbsp;
+            </label>
+            <NumberInput
+              min={1}
+              max={999}
+              defaultValue={data.n || 1}
+              onChange={handleNumGenChange}
+              classNames={{ input: "nodrag" }}
+              size="xs"
+              ml="4px"
+              w="25%"
+            />
+          </Flex>
         </div>
 
         {showContToggle ? (

@@ -1,5 +1,7 @@
 :root {
   --monofont: monospace;
+  --dark: #1a1b1e;
+  --dark-btn-border: #555;
 }
 .monofont {
   font-family: var(--monofont);
@@ -133,6 +135,24 @@ hr {
   width: 290px;
 }
 
+html[data-mantine-color-scheme="dark"] .llm-list-container {
+  background-color: var(--dark);
+  color: white;
+  border: 1px solid #222;
+  border-radius: 5px;
+}
+html[data-mantine-color-scheme="dark"] .llm-list-backdrop {
+  color: #999;
+}
+
+.llm-list-item {
+  background: white;
+}
+html[data-mantine-color-scheme="dark"] .llm-list-item {
+  background: #222;
+  color: #ddd;
+}
+
 button.remove-edge-btn {
   border-radius: 50%;
   border-color: #ddd;
@@ -148,6 +168,21 @@ button.remove-edge-btn:active {
   background-color: #777;
   color: #fff;
   border-color: #777;
+}
+
+html[data-mantine-color-scheme="dark"] button.remove-edge-btn {
+  background-color: #444;
+  border-color: #444;
+  border-width: 6px;
+}
+html[data-mantine-color-scheme="dark"] button.remove-edge-btn:hover {
+  background-color: #555;
+  border-color: #555;
+}
+html[data-mantine-color-scheme="dark"] button.remove-edge-btn:active {
+  background-color: #333;
+  color: #fff;
+  border-color: #333;
 }
 
 .input-field {
@@ -172,6 +207,13 @@ button.remove-edge-btn:active {
   color: #666;
   background-color: #eee;
 }
+html[data-mantine-color-scheme="dark"] .remove-text-field-btn {
+  color: #555;
+}
+html[data-mantine-color-scheme="dark"] .remove-text-field-btn:hover {
+  color: #eee;
+  background-color: #666;
+}
 
 .input-field input {
   margin-left: 5px;
@@ -182,12 +224,21 @@ button.remove-edge-btn:active {
   border-top: 0px;
   border-left: 0px;
   border-right: 0px;
-  border-style: dashed;
+  border-style: solid;
+  border-bottom-color: #ddd;
   margin-bottom: 12px;
   padding-bottom: 4px;
 }
 .node-header:hover {
   border-bottom-color: #888;
+}
+
+html[data-mantine-color-scheme="dark"] .node-header {
+  color: #ccc;
+  border-bottom-color: #222;
+}
+html[data-mantine-color-scheme="dark"] .node-header:hover {
+  border-bottom-color: #999;
 }
 
 .prompt-node {
@@ -202,6 +253,10 @@ button.remove-edge-btn:active {
   width: 100%;
   resize: none;
   box-sizing: border-box;
+}
+
+html[data-mantine-color-scheme="dark"] .prompt-variant-add-btn {
+  color: #777;
 }
 
 .evaluator-node {
@@ -747,6 +802,34 @@ g.ytick text {
 }
 .cfnode:hover {
   border-color: #222;
+  /* box-shadow: 0px 0px 6px #999; */
+}
+
+html[data-mantine-color-scheme="dark"] .cfnode {
+  background-color: var(--dark);
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 5px;
+}
+html[data-mantine-color-scheme="dark"] .cfnode:hover {
+  border-color: #eee;
+}
+
+html[data-mantine-color-scheme="dark"] textarea {
+  background-color: var(--dark);
+  color: #eee;
+  border: 1px solid #999;
+}
+
+.comment-node {
+  background-color: #eee !important;
+}
+html[data-mantine-color-scheme="dark"] .comment-node {
+  background-color: var(--dark) !important;
+  color: #ddd !important;
+}
+html[data-mantine-color-scheme="dark"] .comment-node textarea {
+  border: none;
 }
 
 .join-node {
@@ -892,10 +975,39 @@ th .content-editable-div {
   border-color: #999;
 }
 
+html[data-mantine-color-scheme="dark"]
+  .prompt-field-fixed
+  .mantine-Textarea-wrapper
+  textarea {
+  background-color: var(--dark);
+  border-color: #444;
+}
+
+html[data-mantine-color-scheme="dark"]
+  .text-field-fixed
+  .mantine-Textarea-wrapper
+  textarea {
+  background-color: var(--dark);
+  border-color: #444;
+}
+
 .add-text-field-btn {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+html[data-mantine-color-scheme="dark"] .add-text-field-btn button {
+  background-color: var(--dark);
+  border-color: #444;
+  border-style: solid;
+}
+html[data-mantine-color-scheme="dark"] .add-text-field-btn button:hover {
+  background-color: #555;
+  border-color: #bbb;
+}
+html[data-mantine-color-scheme="dark"] .add-text-field-btn button:active {
+  background-color: #000;
+  border-color: #eee;
 }
 
 .add-llm-model-btn {
@@ -919,6 +1031,18 @@ th .content-editable-div {
 .add-llm-model-btn:active button {
   background-color: black;
   color: white;
+}
+
+html[data-mantine-color-scheme="dark"] .add-llm-model-btn button {
+  background-color: var(--dark);
+  border-color: var(--dark-btn-border);
+  color: #ccc;
+}
+html[data-mantine-color-scheme="dark"] .add-llm-model-btn:hover button {
+  background-color: #333;
+}
+html[data-mantine-color-scheme="dark"] .add-llm-model-btn:active button {
+  background-color: #000;
 }
 
 /* Play button triangle |> */
@@ -954,7 +1078,6 @@ th .content-editable-div {
   transition: all 0.2s ease-in;
   cursor: pointer;
 }
-
 .AmitSahoo45-button-3:hover {
   background: rgb(26, 200, 69);
   color: white;
@@ -966,6 +1089,21 @@ th .content-editable-div {
 .AmitSahoo45-button-3:active {
   background: #40a829;
   color: yellow;
+}
+
+html[data-mantine-color-scheme="dark"] .AmitSahoo45-button-3 {
+  background: var(--dark);
+  color: rgb(26, 200, 69);
+  border-color: var(--dark-btn-border);
+}
+html[data-mantine-color-scheme="dark"] .AmitSahoo45-button-3:hover {
+  background: rgb(26, 200, 69);
+  color: #fff;
+  box-shadow: 0 0 30px 5px rgb(63, 234, 106, 0.815);
+}
+html[data-mantine-color-scheme="dark"] .AmitSahoo45-button-3:active {
+  background: #040;
+  color: #0f0;
 }
 
 .AmitSahoo45-button-3:hover::before {
@@ -1018,6 +1156,7 @@ th .content-editable-div {
   -moz-transition: all 0.2s ease-in;
   transition: all 0.2s ease-in;
   cursor: pointer;
+  height: 20px;
 }
 .close-button:hover {
   background: rgb(200, 26, 69);
@@ -1052,6 +1191,21 @@ th .content-editable-div {
   -ms-transform: skewX(-20deg);
   -o-transform: skewX(-20deg);
   transform: skewX(-20deg);
+}
+
+html[data-mantine-color-scheme="dark"] .close-button {
+  background: var(--dark);
+  color: #ddd;
+  border-color: var(--dark-btn-border);
+}
+html[data-mantine-color-scheme="dark"] .close-button:hover {
+  background: rgb(200, 26, 69);
+  color: #fff;
+  box-shadow: 0 0 30px 5px rgb(234, 63, 106, 0.815);
+}
+html[data-mantine-color-scheme="dark"] .close-button:active {
+  background: #660000;
+  color: red;
 }
 
 /* Custom button styling */
@@ -1108,6 +1262,17 @@ th .content-editable-div {
   transform: skewX(-20deg);
 }
 
+html[data-mantine-color-scheme="dark"] .custom-button {
+  background: var(--dark);
+  color: #ddd;
+  border-color: var(--dark-btn-border);
+}
+html[data-mantine-color-scheme="dark"] .custom-button:hover {
+  background: rgb(241, 208, 44);
+  color: #222;
+  box-shadow: 0 0 30px 5px rgba(255, 222, 35, 0.815);
+}
+
 /* AI button */
 .ai-button {
   position: relative;
@@ -1158,6 +1323,21 @@ th .content-editable-div {
   -ms-transform: skewX(-20deg);
   -o-transform: skewX(-20deg);
   transform: skewX(-20deg);
+}
+
+html[data-mantine-color-scheme="dark"] .ai-button {
+  background: var(--dark);
+  color: hotpink;
+  border-color: var(--dark-btn-border);
+}
+html[data-mantine-color-scheme="dark"] .ai-button:hover {
+  background: rgb(210, 57, 244);
+  color: #fff;
+  box-shadow: 0 0 30px 5px rgb(210, 57, 244);
+}
+html[data-mantine-color-scheme="dark"] .ai-button:active {
+  background: #660066;
+  color: hotpink;
 }
 
 /* Make text blink */
@@ -1287,4 +1467,17 @@ th .content-editable-div {
 .rjsf .help-block {
   color: #999;
   margin: 0;
+}
+
+html[data-mantine-color-scheme="dark"] .react-flow__controls-button {
+  background-color: #777 !important;
+  color: #ddd;
+}
+html[data-mantine-color-scheme="dark"] .react-flow__controls-button:hover {
+  background-color: #999 !important;
+  color: #fff;
+}
+html[data-mantine-color-scheme="dark"] .react-flow__attribution {
+  background-color: #222 !important;
+  color: #fff;
 }

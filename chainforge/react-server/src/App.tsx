@@ -25,6 +25,7 @@ import {
   Tooltip,
   ActionIcon,
   Flex,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useContextMenu } from "mantine-contextmenu";
@@ -279,6 +280,9 @@ const App = () => {
     favorites,
     removeFavorite,
   } = useStore(selector, shallow);
+
+  // Color theme (dark or light mode)
+  const { colorScheme } = useMantineColorScheme();
 
   // For saving / loading flows
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
@@ -1350,7 +1354,13 @@ const App = () => {
         style={{ display: "flex", height: "100vh" }}
         onPointerDown={hideContextMenu}
       >
-        <div style={{ height: "100%", backgroundColor: "#eee", flexGrow: "1" }}>
+        <div
+          style={{
+            height: "100%",
+            backgroundColor: colorScheme === "light" ? "#eee" : "#222",
+            flexGrow: "1",
+          }}
+        >
           <ReactFlow
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
@@ -1497,7 +1507,8 @@ const App = () => {
               button={(toggleMenu) => (
                 <Button
                   size="sm"
-                  variant="gradient"
+                  variant={colorScheme === "light" ? "gradient" : "filled"}
+                  color={colorScheme === "light" ? "blue" : "gray"}
                   compact
                   mr="sm"
                   onClick={toggleMenu}
@@ -1510,7 +1521,8 @@ const App = () => {
               onClick={() => exportFlow()}
               size="sm"
               variant="outline"
-              bg="#eee"
+              color={colorScheme === "light" ? "blue" : "gray"}
+              bg={colorScheme === "light" ? "#eee" : "#222"}
               compact
               mr="xs"
             >
@@ -1520,25 +1532,37 @@ const App = () => {
               onClick={importFlowFromFile}
               size="sm"
               variant="outline"
-              bg="#eee"
+              color={colorScheme === "light" ? "blue" : "gray"}
+              bg={colorScheme === "light" ? "#eee" : "#222"}
               compact
             >
               Import
             </Button>
-            <ActionIcon
-              variant="outline"
-              color="blue"
-              ml="sm"
-              size="1.625rem"
-              onClick={() => saveFlow()}
-              bg="#eee"
-              loading={isSaving}
-              disabled={isLoading || isSaving}
-            >
-              <Tooltip label={saveMessage} withArrow>
-                <IconDeviceFloppy fill="#dde" />
-              </Tooltip>
-            </ActionIcon>
+            <Tooltip label={saveMessage} withArrow>
+              <Button
+                variant="outline"
+                ml="sm"
+                size="sm"
+                compact
+                onClick={() => saveFlow()}
+                color={colorScheme === "light" ? "blue" : "gray"}
+                bg={colorScheme === "light" ? "#eee" : "#222"}
+                loading={isSaving}
+                disabled={isLoading || isSaving}
+                leftIcon={
+                  <IconDeviceFloppy
+                    fill={colorScheme === "light" ? "#dde" : "#222"}
+                  />
+                }
+                styles={{
+                  leftIcon: {
+                    marginRight: "3px",
+                  },
+                }}
+              >
+                Save
+              </Button>
+            </Tooltip>
           </Flex>
         </div>
         <div
@@ -1552,7 +1576,13 @@ const App = () => {
               size="sm"
               variant="outline"
               compact
-              color={clipboard.copied ? "teal" : "blue"}
+              color={
+                clipboard.copied
+                  ? "teal"
+                  : colorScheme === "light"
+                    ? "blue"
+                    : "gray"
+              }
               mr="xs"
               style={{ float: "left" }}
             >
@@ -1572,7 +1602,8 @@ const App = () => {
             onClick={onClickNewFlow}
             size="sm"
             variant="outline"
-            bg="#eee"
+            color={colorScheme === "light" ? "blue" : "gray"}
+            bg={colorScheme === "light" ? "#eee" : "#222"}
             compact
             mr="xs"
             style={{ float: "left" }}
@@ -1584,6 +1615,7 @@ const App = () => {
             onClick={onClickExamples}
             size="sm"
             variant="filled"
+            color={colorScheme === "light" ? "blue" : "gray"}
             compact
             mr="xs"
             style={{ float: "left" }}
@@ -1594,7 +1626,8 @@ const App = () => {
           <Button
             onClick={onClickSettings}
             size="sm"
-            variant="gradient"
+            variant={colorScheme === "light" ? "gradient" : "filled"}
+            color={colorScheme === "light" ? "blue" : "gray"}
             compact
           >
             <IconSettings size={"90%"} />

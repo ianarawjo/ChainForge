@@ -4,15 +4,15 @@ import { BaseEdge, EdgeLabelRenderer, getBezierPath } from "@reactflow/core";
 import useStore from "./store";
 import { Position } from "reactflow";
 import { Dict } from "./backend/typing";
+import { useMantineColorScheme } from "@mantine/core";
 
 const EdgePathContainer = styled.g`
-  path:nth-child(2) {
+  path {
+    stroke: #999;
+    transition: stroke 0.2s;
     pointer-events: all;
     &:hover {
-      & + .edgebutton {
-        // Make add node button visible
-        visibility: visible;
-      }
+      stroke: #000;
     }
   }
 `;
@@ -52,6 +52,9 @@ export default function CustomEdge({
   const [hovering, setHovering] = useState(false);
   const removeEdge = useStore((state) => state.removeEdge);
 
+  // Color theme
+  const { colorScheme } = useMantineColorScheme();
+
   const onEdgeClick = (
     evt: React.MouseEvent<HTMLButtonElement>,
     id: string,
@@ -69,7 +72,14 @@ export default function CustomEdge({
       <BaseEdge
         path={edgePath}
         markerEnd={markerEnd}
-        style={{ ...style, stroke: hovering ? "#000" : "#999" }}
+        style={{
+          ...style,
+          stroke: hovering
+            ? colorScheme === "light"
+              ? "#000"
+              : "#eee"
+            : "#999",
+        }}
       />
       <EdgeLabelRenderer>
         <div
