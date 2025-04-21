@@ -267,7 +267,7 @@ html[data-mantine-color-scheme="dark"] .node-header:hover {
   padding: 10px;
   border: 1px solid #999;
   border-radius: 5px;
-  width: 290px;
+  width: 310px;
 }
 
 .prompt-node textarea {
@@ -278,6 +278,14 @@ html[data-mantine-color-scheme="dark"] .node-header:hover {
 
 html[data-mantine-color-scheme="dark"] .prompt-variant-add-btn {
   color: #777;
+}
+
+.multi-eval-node {
+  background-color: #eee !important;
+}
+html[data-mantine-color-scheme="dark"] .multi-eval-node {
+  background-color: var(--dark) !important;
+  color: #ddd;
 }
 
 .evaluator-node {
@@ -316,6 +324,15 @@ html[data-mantine-color-scheme="dark"] .prompt-variant-add-btn {
 .eval-inspect-response-footer button {
   cursor: zoom-in;
 }
+
+html[data-mantine-color-scheme="dark"] .eval-inspect-response-footer {
+  background-color: #333;
+  color: #ccc;
+}
+html[data-mantine-color-scheme="dark"] .eval-inspect-response-footer button {
+  color: #ccc;
+}
+
 /* .blink-inspect-response-footer {
     animation: blink-footer 0.7s ease-in 1;
   }
@@ -383,6 +400,10 @@ g.ytick text {
   margin: -3px 0px 0px 0px !important;
   padding: 4px 4px 8px 8px !important;
   border-radius: 0px 0px 12px 12px !important;
+}
+html[data-mantine-color-scheme="dark"] .settings-var-inline {
+  background: #222;
+  color: #ccc;
 }
 .wrap-line {
   white-space: pre-wrap;
@@ -483,150 +504,12 @@ g.ytick text {
   border-bottom-left-radius: 2px;
   box-shadow: 4px 0px 4px 0px rgba(0, 0, 0, 0.1) inset;
 }
-.response-group-component-header:hover {
-  color: #05e;
-  cursor: pointer;
-  text-decoration: underline;
-}
-.response-group-component-header:active {
-  color: #00c;
-}
-.response-var-header {
-  background-color: #e0f4fa;
-  border-radius: 1px;
-  padding: 2px 8px 4px 8px;
-  line-height: 0.9;
-}
-.response-var-inline-container {
-  display: flex;
-  align-items: start;
-  flex-wrap: wrap;
-  justify-content: left;
-  /* font-style: italic; */
-  padding-bottom: 1px;
-}
-.response-llm-header {
-  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
-  font-size: 9pt;
-  font-weight: 500;
-  padding: 4px 4px 4px 7px;
-  border-top-left-radius: 5px;
-  border-top-right-radius: 15px;
-}
-.response-var-inline {
-  margin: 0px 4px;
-  /* background-color: #ffffff33; */
-  color: #00000088;
-  border-radius: 4px;
-  text-rendering: optimizeSpeed;
-  /* mix-blend-mode: color-burn; */
-  padding: 0px 4px;
-}
-.response-var-name {
-  font-size: 9pt;
-  font-weight: bold;
-}
-.response-var-value {
-  font-family: monospace;
-  font-size: 8pt;
-}
-.inspect-modal-prompt-box {
-  background-color: #eee;
-  padding: 10px;
-  margin: 0px 0px 10px 0px;
-  border-bottom-style: solid;
-  border-bottom-color: #aaa;
-  box-shadow: 1px 1px 8px #ccc;
-  max-height: 200px;
-  overflow-y: auto;
-}
-.inspect-modal-prompt-text {
-  font-family: monospace;
-  font-size: 11pt;
-  white-space: pre-line;
-}
-.inspect-modal-prompt-prefix {
-  font-size: 10pt;
-  font-weight: bold;
+html[data-mantine-color-scheme="dark"] .inspect-responses-drawer {
+  color: #ccc;
+  background-color: var(--dark);
+  border: 1px solid #444;
 }
 
-.inspector-node {
-  background-color: #fff;
-  padding: 10px;
-  border: 1px solid #999;
-  border-radius: 5px;
-}
-.inspect-response-container {
-  overflow-y: scroll;
-  min-width: 150px;
-  width: 280px;
-  min-height: 270px;
-  height: 200px;
-  max-width: 1150px;
-  max-height: 750px;
-  resize: both;
-}
-.inspect-modal-response-container .response-var-header {
-  padding: 10px;
-  margin-top: 8px;
-  line-height: 1.2;
-}
-.inspect-modal-response-container .response-var-name {
-  font-size: 10pt;
-  font-weight: bold;
-}
-.inspect-modal-response-container .response-var-value {
-  font-size: 10pt;
-  letter-spacing: -0.5px;
-}
-.inspect-modal-response-container .response-llm-header {
-  font-size: 10pt;
-}
-.inspect-modal-response-container .small-response {
-  font-size: 10pt;
-  margin: 6px -1px 8px -1px;
-  padding: 8px;
-}
-.inspect-modal-response-container .small-response-metrics {
-  font-size: 12pt;
-}
-.inspect-modal-response-container .num-same-responses {
-  font-size: 10pt;
-}
-.inspect-table-var {
-  background-color: rgb(224, 244, 250);
-  padding-top: 10px;
-  border-right: 1px solid #cde;
-  font-weight: 500;
-  white-space: pre-wrap;
-}
-.inspect-table-metavar {
-  background-color: rgb(224, 232, 250);
-  padding-top: 10px;
-  border-right: 1px solid #cde;
-  font-weight: 500;
-  white-space: pre-wrap;
-}
-.inspect-table-llm-resp {
-  padding-top: 8px;
-  padding-bottom: 20px;
-  min-width: 160px;
-  border-right: 1px solid #eee;
-  padding-left: 8px !important;
-  padding-right: 0px !important;
-}
-.inspect-responses-drawer {
-  position: absolute;
-  left: 100%;
-  top: 12px;
-  background-color: white;
-  border: 1px solid #999;
-  border-top-right-radius: 5px;
-  border-bottom-right-radius: 5px;
-  border-bottom-left-radius: 2px;
-  box-shadow: 4px 0px 4px 0px rgba(0, 0, 0, 0.1) inset;
-}
 .response-group-component-header:hover {
   color: #05e;
   cursor: pointer;
@@ -635,11 +518,22 @@ g.ytick text {
 .response-group-component-header:active {
   color: #00c;
 }
+html[data-mantine-color-scheme="dark"] .response-group-component-header:hover {
+  color: #fff;
+}
+html[data-mantine-color-scheme="dark"] .response-group-component-header:active {
+  color: orange;
+}
+
 .response-var-header {
   background-color: #e0f4fa;
   border-radius: 1px;
   padding: 2px 8px 4px 8px;
   line-height: 0.9;
+}
+html [data-mantine-color-scheme="dark"] .response-var-header {
+  background-color: #222;
+  color: #ccc;
 }
 .response-var-inline-container {
   display: flex;
@@ -648,6 +542,7 @@ g.ytick text {
   justify-content: left;
   /* font-style: italic; */
   padding-bottom: 1px;
+  padding-top: 1px;
 }
 .response-llm-header {
   font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
@@ -658,6 +553,9 @@ g.ytick text {
   border-top-left-radius: 5px;
   border-top-right-radius: 15px;
 }
+html[data-mantine-color-scheme="dark"] .response-llm-header {
+  color: #fff;
+}
 .response-var-inline {
   margin: 0px 4px;
   /* background-color: #ffffff33; */
@@ -665,6 +563,7 @@ g.ytick text {
   border-radius: 4px;
   text-rendering: optimizeSpeed;
   /* mix-blend-mode: color-burn; */
+  line-height: 0.9;
   padding: 0px 4px;
 }
 .response-var-name {
@@ -672,7 +571,7 @@ g.ytick text {
   font-weight: bold;
 }
 .response-var-value {
-  font-family: var(--monofont), monospace;
+  font-family: monospace;
   font-size: 8pt;
 }
 .inspect-modal-prompt-box {
@@ -686,7 +585,7 @@ g.ytick text {
   overflow-y: auto;
 }
 .inspect-modal-prompt-text {
-  font-family: var(--monofont), monospace;
+  font-family: monospace;
   font-size: 11pt;
   white-space: pre-line;
 }
@@ -724,6 +623,12 @@ g.ytick text {
   user-select: text;
   cursor: text;
 }
+html[data-mantine-color-scheme="dark"] .small-response {
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.6);
+  border: none;
+  padding: 6px;
+}
 .small-response-metrics {
   font-size: 9pt;
   font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
@@ -738,6 +643,10 @@ g.ytick text {
   color: #333;
   white-space: pre-wrap;
 }
+html[data-mantine-color-scheme="dark"] .small-response-metrics {
+  color: #fff;
+}
+
 .num-same-responses {
   position: relative;
   display: block;
@@ -846,10 +755,10 @@ html[data-mantine-color-scheme="dark"] textarea {
   background-color: #eee !important;
 }
 html[data-mantine-color-scheme="dark"] .comment-node {
-  background-color: var(--dark) !important;
-  color: #ddd !important;
+  background-color: #222 !important;
 }
 html[data-mantine-color-scheme="dark"] .comment-node textarea {
+  background-color: #222 !important;
   border: none;
 }
 
@@ -929,6 +838,21 @@ th .content-editable-div {
 }
 .add-table-row-btn button {
   margin-right: 10px;
+}
+html[data-mantine-color-scheme="dark"] .add-table-row-btn button {
+  font-size: 10pt;
+  padding: 4px;
+  background-color: var(--dark);
+  border-color: #444;
+  border-style: solid;
+}
+html[data-mantine-color-scheme="dark"] .add-table-row-btn button:hover {
+  background-color: #555;
+  border-color: #bbb;
+}
+html[data-mantine-color-scheme="dark"] .add-table-row-btn button:active {
+  background-color: #000;
+  border-color: #eee;
 }
 /* .add-column-btn {
     position: relative;
@@ -1394,6 +1318,15 @@ html[data-mantine-color-scheme="dark"] .ai-button:active {
   background: #333 border-box;
   color: #fff;
 }
+html[data-mantine-color-scheme="dark"] .chat-bubble {
+  background: #eee border-box;
+  color: #222;
+}
+html[data-mantine-color-scheme="dark"] .chat-bubble textarea {
+  background: transparent !important;
+  border: none;
+  color: #000;
+}
 .chat-msg-left {
   --_d: 0%;
   border-left: var(--t) solid #0000;
@@ -1506,4 +1439,58 @@ html[data-mantine-color-scheme="dark"] .react-flow__controls-button:hover {
 html[data-mantine-color-scheme="dark"] .react-flow__attribution {
   background-color: #222 !important;
   color: #fff;
+}
+
+.script-node {
+  background-color: #fff;
+  padding: 10px;
+  border: 1px solid #000;
+  border-radius: 5px;
+}
+
+.script-node-input {
+  min-width: 300px;
+}
+
+.csv-element {
+  position: relative;
+  color: #8a3e07;
+  background-color: #ffe8cc;
+  font-size: inherit;
+  font-family: monospace;
+  padding: 0.2em 0.4em;
+  border: none;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  margin: 4px 2px;
+  cursor: pointer;
+  border-radius: 10px;
+}
+html[data-mantine-color-scheme="dark"] .csv-element {
+  background-color: #333;
+  color: #fff;
+}
+
+/* set a muted text */
+.csv-comma {
+  color: #ffc107;
+}
+html[data-mantine-color-scheme="dark"] .csv-comma {
+  color: #7f7f7f;
+}
+
+.csv-div {
+  width: 290px;
+  max-height: 250px;
+  overflow-y: auto;
+  font-size: 10pt;
+  font-family: monospace;
+}
+
+.csv-input {
+  width: 290px;
+  height: 150px;
+  font-size: 10pt;
+  font-family: monospace;
 }

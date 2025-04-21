@@ -8,7 +8,12 @@ import React, {
   useTransition,
 } from "react";
 import { Handle, Position } from "reactflow";
-import { Button, Menu, NativeSelect } from "@mantine/core";
+import {
+  Button,
+  Menu,
+  NativeSelect,
+  useMantineColorScheme,
+} from "@mantine/core";
 import useStore, { colorPalettes } from "./store";
 import Plot from "react-plotly.js";
 import BaseNode from "./BaseNode";
@@ -269,6 +274,9 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     { responses, id, data, whenReplotting, wideFormat },
     ref,
   ) {
+    // Color scheme
+    const { colorScheme } = useMantineColorScheme();
+
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
     const getColorForLLMAndSetIfNotFound = useStore(
       (state) => state.getColorForLLMAndSetIfNotFound,
@@ -481,7 +489,16 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             t: 20,
             pad: 6,
           },
-          yaxis: { showgrid: true },
+          yaxis: {
+            showgrid: true,
+            color: colorScheme === "light" ? "#444" : "#ddd",
+          },
+          // Make the plot background transparent
+          paper_bgcolor: "rgba(0,0,0,0)",
+          plot_bgcolor: "rgba(0,0,0,0)",
+          xaxis: {
+            color: colorScheme === "light" ? "#444" : "#ddd",
+          },
         };
 
         // Bucket responses by LLM:
@@ -652,6 +669,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             tickmode: "linear",
             tick0: 0,
             dtick: 10,
+            ...layout.xaxis,
           };
 
           setForcedGraphType("bar"); // bar chart
@@ -936,6 +954,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           if (metric_axes_labels.length > 0)
             layout.xaxis = {
               title: { font: { size: 12 }, text: metric_axes_labels[0] },
+              ...layout.xaxis,
             };
         };
 
@@ -1314,8 +1333,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             className="plotly-vis"
             style={{
               display: plotlySpec && plotlySpec.length > 0 ? "block" : "none",
-              border: wideFormat ? "1px solid #bbb" : "none",
-              paddingBottom: wideFormat ? "6pt" : "0",
+              // border: wideFormat ? "1px solid #bbb" : "none",
+              // paddingBottom: wideFormat ? "6pt" : "0",
             }}
           />
           {plotLegend ?? <></>}

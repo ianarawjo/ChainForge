@@ -3,8 +3,18 @@ import { useLocalStorage } from "@mantine/hooks";
 import {
   ColorScheme,
   ColorSchemeProvider,
+  useMantineColorScheme,
   MantineProvider,
+  ActionIcon,
+  Group,
+  Switch,
 } from "@mantine/core";
+import {
+  IconSun,
+  IconMoon,
+  IconSunFilled,
+  IconSunHigh,
+} from "@tabler/icons-react";
 
 export default function ColorThemeProvider({
   children,
@@ -43,5 +53,24 @@ export default function ColorThemeProvider({
         {children}
       </MantineProvider>
     </ColorSchemeProvider>
+  );
+}
+
+export function ColorSchemeToggle() {
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const dark = colorScheme === "dark";
+
+  return (
+    <Group position="center">
+      <Switch
+        description="Color theme"
+        checked={dark}
+        onChange={() => toggleColorScheme()}
+        color="gray"
+        size="md"
+        onLabel={<IconMoon size={16} style={{ color: "cyan" }} />}
+        offLabel={<IconSunHigh size={16} style={{ color: "OrangeRed" }} />}
+      />
+    </Group>
   );
 }

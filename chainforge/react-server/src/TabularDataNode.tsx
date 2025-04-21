@@ -694,7 +694,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
 
       <div className="tabular-data-footer">
         <div className="add-table-row-btn">
-          <button onClick={handleAddRow}>add row +</button>
+          <button onClick={handleAddRow}>+ Add row</button>
         </div>
 
         <TemplateHooks

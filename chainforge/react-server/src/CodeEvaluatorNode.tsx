@@ -9,7 +9,15 @@ import React, {
   useContext,
 } from "react";
 import { Handle, Position } from "reactflow";
-import { Code, Modal, Tooltip, Box, Text, Skeleton } from "@mantine/core";
+import {
+  Code,
+  Modal,
+  Tooltip,
+  Box,
+  Text,
+  Skeleton,
+  useMantineColorScheme,
+} from "@mantine/core";
 import { Prism } from "@mantine/prism";
 import { useDisclosure } from "@mantine/hooks";
 import useStore from "./store";
@@ -30,6 +38,7 @@ import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/theme-xcode";
+import "ace-builds/src-noconflict/theme-monokai";
 import "ace-builds/src-noconflict/ext-language_tools";
 import {
   APP_IS_RUNNING_LOCALLY,
@@ -219,6 +228,9 @@ export const CodeEvaluatorComponent = forwardRef<
     false,
   );
 
+  // Color theme
+  const { colorScheme } = useMantineColorScheme();
+
   // Debounce helpers
   const debounceTimeoutRef = useRef(null);
   const debounce = genDebounceFunc(debounceTimeoutRef);
@@ -327,7 +339,7 @@ export const CodeEvaluatorComponent = forwardRef<
       <div className="ace-editor-container nodrag">
         <AceEditor
           mode={progLang}
-          theme="xcode"
+          theme={colorScheme === "light" ? "xcode" : "monokai"}
           onChange={handleCodeEdit}
           value={codeText}
           name={"aceeditor_" + id}

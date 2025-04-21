@@ -345,7 +345,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
   const node_icon = useMemo(() => {
     if (colorScheme === "dark") {
-      if (node_type === "chat") return <IconMessageChatbot size={16} />;
+      if (node_type === "chat") return "🗣";
       else return <IconMessageCircle size={16} />;
     } else return node_type === "chat" ? "🗣" : "💬";
   }, [node_type, colorScheme]);
@@ -1438,6 +1438,7 @@ Soft failing by replacing undefined with empty strings.`,
   }, [idxPromptVariantShown]);
 
   const promptVariantControls = useMemo(() => {
+    if (node_type === "chat") return null; // no prompt variants for chat nodes
     return (
       <Flex justify="right" pos="absolute" right={10}>
         {typeof promptText === "string" || promptText.length === 1 ? (
@@ -1559,6 +1560,7 @@ Soft failing by replacing undefined with empty strings.`,
     promptVariantLabel,
     promptText,
     deleteVariantConfirmModal,
+    node_type,
   ]);
 
   // Add custom context menu options on right-click.

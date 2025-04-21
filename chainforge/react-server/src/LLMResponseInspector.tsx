@@ -23,6 +23,7 @@ import {
   Stack,
   LoadingOverlay,
   Box,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { useToggle } from "@mantine/hooks";
 import {
@@ -282,6 +283,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
 
+  // Color scheme
+  const { colorScheme } = useMantineColorScheme();
+
   // Debounce isOpen changes, to avoid blocking the UI
   const [isOpenDelayed, setIsOpenDelayed] = useState(false);
   useEffect(() => {
@@ -526,16 +530,14 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       // Functions to associate a color to each LLM in responses
       const color_for_llm = (llm: string) =>
         getColorForLLMAndSetIfNotFound(llm) + "99";
-      const header_bg_colors = ["#e0f4fa", "#c0def9", "#a9c0f9", "#a6b2ea"];
-      const response_box_colors = [
-        "#eee",
-        "#fff",
-        "#eee",
-        "#ddd",
-        "#eee",
-        "#ddd",
-        "#eee",
-      ];
+      const header_bg_colors =
+        colorScheme === "light"
+          ? ["#e0f4fa", "#c0def9", "#a9c0f9", "#a6b2ea"]
+          : ["#333", "#222", "#333", "#222"];
+      const response_box_colors =
+        colorScheme === "light"
+          ? ["#eee", "#fff", "#eee", "#ddd", "#eee", "#ddd", "#eee"]
+          : ["#222", "#111", "#222", "#111", "#222", "#111", "#222"];
       const rgroup_color = (depth: number) =>
         response_box_colors[depth % response_box_colors.length];
 
@@ -1078,6 +1080,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     searchValue,
     caseSensitive,
     filterBySearchValue,
+    colorScheme,
   ]);
 
   // When the user clicks an item in the drop-down,
@@ -1196,7 +1199,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         </Tabs.List>
 
         <Tabs.Panel value="hierarchy" pt="xs">
-          <Flex gap={sz} align="end" w="100%" mb={wideFormat ? "0px" : "xs"}>
+          <Flex gap={sz} align="end" w="100%" mb="xs">
             <MultiSelect
               ref={multiSelectRef}
               onChange={handleMultiSelectValueChange}
