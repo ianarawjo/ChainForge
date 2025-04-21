@@ -446,7 +446,6 @@ html[data-mantine-color-scheme="dark"] .settings-var-inline {
 }
 .inspect-modal-response-container .response-var-header {
   padding: 10px;
-  margin-top: 8px;
   line-height: 1.2;
 }
 .inspect-modal-response-container .response-var-name {
@@ -604,6 +603,29 @@ html[data-mantine-color-scheme="dark"] .response-llm-header {
   color: #444;
   white-space: pre-wrap;
 }
+.prompt-preview-template {
+  background-color: #ddf1f8;
+}
+.prompt-preview-popover {
+  pointer-events: none;
+  max-height: 500px;
+  max-width: 400px;
+  overflow-y: auto;
+  background-color: #fff;
+}
+
+html[data-mantine-color-scheme="dark"] .prompt-preview {
+  background-color: #222;
+  color: #eee;
+}
+html[data-mantine-color-scheme="dark"] .prompt-preview-template {
+  background-color: #333;
+}
+html[data-mantine-color-scheme="dark"] .prompt-preview-popover {
+  background-color: #444;
+  color: #eee;
+}
+
 .join-text-preview {
   margin: 0px 0px 10px 0px;
 }
@@ -897,6 +919,9 @@ html[data-mantine-color-scheme="dark"] .add-table-row-btn button:active {
   font-size: 10pt;
   color: #333;
   margin-bottom: 4px;
+}
+html[data-mantine-color-scheme="dark"] .code-mirror-field-header {
+  color: #666;
 }
 
 /* Allows resizing the Mantine Textarea component */
@@ -1493,4 +1518,37 @@ html[data-mantine-color-scheme="dark"] .csv-comma {
   height: 150px;
   font-size: 10pt;
   font-family: monospace;
+}
+
+.prompt-list-modal .mantine-Modal-header {
+  background-color: #ffd700;
+}
+
+html[data-mantine-color-scheme="dark"]
+  .prompt-list-modal
+  .mantine-Modal-header {
+  background-color: #333;
+  color: #fff;
+}
+
+html[data-mantine-color-scheme="dark"]
+  .prompt-list-modal
+  .mantine-Modal-content {
+  background-color: #444;
+}
+
+.saved-flows-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  background: white;
+  padding: 10px;
+  border-top: 1px solid #ddd;
+  color: grey;
+}
+
+html[data-mantine-color-scheme="dark"] .saved-flows-footer {
+  background: #222;
+  border-top: 1px solid #444;
+  color: white;
 }

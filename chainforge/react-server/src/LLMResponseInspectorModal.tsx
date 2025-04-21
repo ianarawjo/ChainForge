@@ -46,15 +46,13 @@ const LLMResponseInspectorModal = forwardRef<
 
   return (
     <Modal
-      size="95%"
+      size="100%"
       keepMounted
       opened={opened}
       onClose={close}
       closeOnClickOutside={true}
-      style={{ position: "relative", left: "-5%" }}
       title={
         <div>
-          {/* <span>Response Inspector</span> */}
           <button
             className="custom-button"
             style={{

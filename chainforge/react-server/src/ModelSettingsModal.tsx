@@ -354,18 +354,6 @@ const ModelSettingsModal = forwardRef<
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>
-    // <Modal
-    //   size="lg"
-    //   opened={opened}
-    //   onClose={onClickSubmit}
-    //   title={
-
-    //   }
-    //   closeOnClickOutside={false}
-    //   style={{ position: "relative", left: "-5%" }}
-    // >
-
-    // </Modal>
   );
 });
 

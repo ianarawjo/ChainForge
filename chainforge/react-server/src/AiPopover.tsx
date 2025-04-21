@@ -222,7 +222,7 @@ export function AIPopover({
     >
       <Popover.Target>
         <button className="ai-button nodrag">
-          <IconSparkles size={10} stroke={3} />
+          <IconSparkles size={10} fill="violet" />
         </button>
       </Popover.Target>
       <Popover.Dropdown className="nodrag nowheel">

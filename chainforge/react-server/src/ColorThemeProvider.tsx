@@ -5,16 +5,31 @@ import {
   ColorSchemeProvider,
   useMantineColorScheme,
   MantineProvider,
-  ActionIcon,
   Group,
   Switch,
 } from "@mantine/core";
-import {
-  IconSun,
-  IconMoon,
-  IconSunFilled,
-  IconSunHigh,
-} from "@tabler/icons-react";
+import { IconMoon, IconSunHigh } from "@tabler/icons-react";
+
+/**
+ * Tries to detect the user's OS color scheme preference.
+ * If the browser does not support the `prefers-color-scheme` media query,
+ * it will return `undefined`.
+ */
+function getOSPreferredColorScheme(): "dark" | "light" | undefined {
+  if (
+    window !== undefined &&
+    window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme)").media !== "not all"
+  ) {
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
+    return prefersDark ? "dark" : "light";
+  } else {
+    console.log("prefers-color-scheme not supported");
+    return undefined;
+  }
+}
 
 export default function ColorThemeProvider({
   children,
@@ -23,7 +38,7 @@ export default function ColorThemeProvider({
 }) {
   const [colorScheme, setColorScheme] = useLocalStorage<ColorScheme>({
     key: "mantine-color-scheme",
-    defaultValue: "dark",
+    defaultValue: getOSPreferredColorScheme() ?? "dark",
     getInitialValueInEffect: true,
   });
 

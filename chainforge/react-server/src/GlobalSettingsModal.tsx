@@ -473,7 +473,6 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
           </Flex>
         }
         closeOnClickOutside={false}
-        style={{ position: "relative", left: "-5%" }}
       >
         <Box mx="auto">
           <Tabs defaultValue="api-keys">

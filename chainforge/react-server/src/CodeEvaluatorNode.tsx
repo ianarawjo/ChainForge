@@ -175,6 +175,22 @@ function process(response) {
     return "NOT FOUND";
 }`;
 
+function getRunLogBgColor(noErrors: boolean, colorScheme: "light" | "dark") {
+  if (noErrors) {
+    return colorScheme === "light" ? "#eee" : "#222";
+  } else {
+    return colorScheme === "light" ? "#f19e9eb1" : "#a10f0fb1";
+  }
+}
+
+function getRunLogTextColor(noErrors: boolean, colorScheme: "light" | "dark") {
+  if (noErrors) {
+    return colorScheme === "light" ? "#999" : "#ccc";
+  } else {
+    return colorScheme === "light" ? "#a10f0f" : "#fff";
+  }
+}
+
 export interface CodeEvaluatorComponentRef {
   run: (
     inputs: LLMResponse[],
@@ -390,6 +406,9 @@ const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({
   // where the user is given two options ---running unsandboxed (in Flask) and running sandboxed with Pyodide (in browser).
   // When ChainForge is running nonlocally (i.e. the website) Python code is always run sandboxed.
   const [runInSandbox, setRunInSandbox] = useState(data.sandbox ?? true);
+
+  // Color scheme
+  const { colorScheme } = useMantineColorScheme();
 
   const pullInputData = useStore((state) => state.pullInputData);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
@@ -834,10 +853,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
         size="60%"
         opened={infoModalOpened}
         onClose={closeInfoModal}
-        styles={{
-          header: { backgroundColor: "#FFD700" },
-          root: { position: "relative", left: "-5%" },
-        }}
+        className="prompt-list-modal"
       >
         {code_info_modal}
       </Modal>
@@ -874,9 +890,11 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
       {lastRunLogs && lastRunLogs.length > 0 ? (
         <div
           className="eval-output-footer nowheel"
-          style={{ backgroundColor: lastRunSuccess ? "#eee" : "#f19e9eb1" }}
+          style={{
+            backgroundColor: getRunLogBgColor(lastRunSuccess, colorScheme),
+          }}
         >
-          <p style={{ color: lastRunSuccess ? "#999" : "#a10f0f" }}>
+          <p style={{ color: getRunLogTextColor(lastRunSuccess, colorScheme) }}>
             <strong>out:</strong> {lastRunLogs}
           </p>
         </div>

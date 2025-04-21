@@ -144,13 +144,17 @@ export class PromptInfo {
 const displayPromptInfos = (
   promptInfos: PromptInfo[],
   wideFormat: boolean,
-  bgColor?: string,
+  isTemplate?: boolean,
 ) =>
   promptInfos.map((info, idx) => (
     <div key={idx}>
-      <div className="prompt-preview" style={{ backgroundColor: bgColor }}>
+      <div
+        className={
+          "prompt-preview" + (isTemplate ? " prompt-preview-template" : "")
+        }
+      >
         {info.label && (
-          <Text c="black" size="xs" fw="bold" mb={0}>
+          <Text size="xs" fw="bold" mb={0}>
             {info.label}
             <hr />
           </Text>
@@ -176,6 +180,7 @@ export interface PromptListPopoverProps {
   onHover: () => void;
   onClick: () => void;
   promptTemplates?: string[] | string;
+  theme?: "dark" | "light";
 }
 
 export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
@@ -183,6 +188,7 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
   onHover,
   onClick,
   promptTemplates,
+  theme,
 }) => {
   const [opened, { close, open }] = useDisclosure(false);
 
@@ -199,14 +205,6 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
       shadow="rgb(38, 57, 77) 0px 10px 30px -14px"
       key="query-info"
       opened={opened}
-      styles={{
-        dropdown: {
-          maxHeight: "500px",
-          maxWidth: "400px",
-          overflowY: "auto",
-          backgroundColor: "#fff",
-        },
-      }}
     >
       <Popover.Target>
         <Tooltip label="Click to view all prompts" withArrow>
@@ -225,9 +223,9 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
           </button>
         </Tooltip>
       </Popover.Target>
-      <Popover.Dropdown sx={{ pointerEvents: "none" }}>
+      <Popover.Dropdown className="prompt-preview-popover">
         <Center>
-          <Text size="xs" fw={500} color="#666">
+          <Text size="xs" fw={500}>
             Preview of generated prompts ({promptInfos.length} total)
           </Text>
         </Center>
@@ -235,6 +233,7 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
           <Box>
             <Divider
               my="xs"
+              color={theme && theme === "dark" ? "white" : "gray.0"}
               label="Prompt variants"
               fw="bold"
               labelPosition="center"
@@ -244,10 +243,11 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
                 (t, i) => new PromptInfo(t, undefined, `Variant ${i + 1}`),
               ),
               false,
-              "#ddf1f8",
+              true,
             )}
             <Divider
               my="xs"
+              color={theme && theme === "dark" ? "white" : "gray.0"}
               label="Concrete prompts"
               fw="bold"
               labelPosition="center"
@@ -265,6 +265,7 @@ export interface PromptListModalProps {
   infoModalOpened: boolean;
   closeInfoModal: () => void;
   promptTemplates?: string[] | string;
+  theme?: "dark" | "light";
 }
 
 export const PromptListModal: React.FC<PromptListModalProps> = ({
@@ -272,6 +273,7 @@ export const PromptListModal: React.FC<PromptListModalProps> = ({
   infoModalOpened,
   closeInfoModal,
   promptTemplates,
+  theme,
 }) => {
   return (
     <Modal
@@ -283,16 +285,14 @@ export const PromptListModal: React.FC<PromptListModalProps> = ({
       size="xl"
       opened={infoModalOpened}
       onClose={closeInfoModal}
-      styles={{
-        header: { backgroundColor: "#FFD700" },
-        root: { position: "relative", left: "-5%" },
-      }}
+      className="prompt-list-modal"
     >
       <Box m="lg" mt="xl">
         {Array.isArray(promptTemplates) && promptTemplates.length > 1 && (
           <Box>
             <Divider
               my="xs"
+              color={theme && theme === "dark" ? "white" : "gray.0"}
               label="Prompt variants"
               fw="bold"
               labelPosition="center"
@@ -302,10 +302,11 @@ export const PromptListModal: React.FC<PromptListModalProps> = ({
                 (t, i) => new PromptInfo(t, undefined, `Variant ${i + 1}`),
               ),
               true,
-              "#ddf1f8",
+              true,
             )}
             <Divider
               my="xs"
+              color={theme && theme === "dark" ? "white" : "gray.0"}
               label="Concrete prompts (filled in)"
               fw="bold"
               labelPosition="center"
@@ -1607,6 +1608,7 @@ Soft failing by replacing undefined with empty strings.`,
             promptTemplates={promptText}
             onHover={handlePreviewHover}
             onClick={openInfoModal}
+            theme={colorScheme}
           />,
         ]}
       />
@@ -1619,6 +1621,7 @@ Soft failing by replacing undefined with empty strings.`,
         promptTemplates={promptText}
         infoModalOpened={infoModalOpened}
         closeInfoModal={closeInfoModal}
+        theme={colorScheme}
       />
       <AreYouSureModal
         ref={deleteVariantConfirmModal}

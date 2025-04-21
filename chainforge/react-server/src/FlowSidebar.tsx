@@ -379,19 +379,9 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
         </Stack>
 
         {/* Sticky footer */}
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            background: "white",
-            padding: "10px",
-            borderTop: "1px solid #ddd",
-          }}
-        >
+        <div className="saved-flows-footer">
           {flowDir ? (
-            <Text size="xs" color="gray">
-              Local flows are saved at: {flowDir}
-            </Text>
+            <Text size="xs">Local flows are saved at: {flowDir}</Text>
           ) : (
             <></>
           )}
