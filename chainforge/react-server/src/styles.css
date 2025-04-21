@@ -1,7 +1,8 @@
 :root {
   --monofont: monospace;
   --dark: #1a1b1e;
-  --dark-btn-border: #555;
+  --dark-btn-border: #777;
+  --dark-btn-border-hover: #fff;
 }
 .monofont {
   font-family: var(--monofont);
@@ -150,7 +151,27 @@ html[data-mantine-color-scheme="dark"] .llm-list-backdrop {
 }
 html[data-mantine-color-scheme="dark"] .llm-list-item {
   background: #222;
-  color: #ddd;
+  color: #ccc;
+}
+html[data-mantine-color-scheme="dark"] .llm-list-item button {
+  background: var(--dark);
+  color: #999;
+}
+html[data-mantine-color-scheme="dark"] .llm-list-item button:hover {
+  background: #ccc;
+  color: #222;
+}
+
+/* Tooltip */
+html[data-mantine-color-scheme="dark"] .mantine-Tooltip-tooltip {
+  background: #000;
+  border: 1px solid #fff;
+  color: #fff;
+}
+html[data-mantine-color-scheme="dark"] .mantine-Tooltip-arrow {
+  background: #000;
+  border: 1px solid #fff;
+  color: #fff;
 }
 
 button.remove-edge-btn {
@@ -1040,6 +1061,7 @@ html[data-mantine-color-scheme="dark"] .add-llm-model-btn button {
 }
 html[data-mantine-color-scheme="dark"] .add-llm-model-btn:hover button {
   background-color: #333;
+  border-color: var(--dark-btn-border-hover);
 }
 html[data-mantine-color-scheme="dark"] .add-llm-model-btn:active button {
   background-color: #000;
@@ -1099,6 +1121,7 @@ html[data-mantine-color-scheme="dark"] .AmitSahoo45-button-3 {
 html[data-mantine-color-scheme="dark"] .AmitSahoo45-button-3:hover {
   background: rgb(26, 200, 69);
   color: #fff;
+  border-color: var(--dark-btn-border-hover);
   box-shadow: 0 0 30px 5px rgb(63, 234, 106, 0.815);
 }
 html[data-mantine-color-scheme="dark"] .AmitSahoo45-button-3:active {
@@ -1201,6 +1224,7 @@ html[data-mantine-color-scheme="dark"] .close-button {
 html[data-mantine-color-scheme="dark"] .close-button:hover {
   background: rgb(200, 26, 69);
   color: #fff;
+  border-color: var(--dark-btn-border-hover);
   box-shadow: 0 0 30px 5px rgb(234, 63, 106, 0.815);
 }
 html[data-mantine-color-scheme="dark"] .close-button:active {
@@ -1270,6 +1294,7 @@ html[data-mantine-color-scheme="dark"] .custom-button {
 html[data-mantine-color-scheme="dark"] .custom-button:hover {
   background: rgb(241, 208, 44);
   color: #222;
+  border-color: var(--dark-btn-border-hover);
   box-shadow: 0 0 30px 5px rgba(255, 222, 35, 0.815);
 }
 
@@ -1333,6 +1358,7 @@ html[data-mantine-color-scheme="dark"] .ai-button {
 html[data-mantine-color-scheme="dark"] .ai-button:hover {
   background: rgb(210, 57, 244);
   color: #fff;
+  border-color: var(--dark-btn-border-hover);
   box-shadow: 0 0 30px 5px rgb(210, 57, 244);
 }
 html[data-mantine-color-scheme="dark"] .ai-button:active {
