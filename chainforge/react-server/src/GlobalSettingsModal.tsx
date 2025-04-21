@@ -52,6 +52,7 @@ import {
   saveGlobalConfig,
 } from "./backend/backend";
 import { AlertModalContext } from "./AlertModal";
+import { ColorSchemeToggle } from "./ColorThemeProvider";
 
 // Type for the non-form (non-sensitive) settings
 interface GlobalSettingsType {
@@ -465,9 +466,13 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         keepMounted
         opened={opened}
         onClose={close}
-        title="ChainForge Settings"
+        title={
+          <Flex align="center" gap="md">
+            <Text>ChainForge Settings</Text>
+            <ColorSchemeToggle />
+          </Flex>
+        }
         closeOnClickOutside={false}
-        style={{ position: "relative", left: "-5%" }}
       >
         <Box mx="auto">
           <Tabs defaultValue="api-keys">

@@ -620,11 +620,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   }, [data]);
 
   return (
-    <BaseNode
-      classNames="evaluator-node"
-      nodeId={id}
-      style={{ backgroundColor: "#eee" }}
-    >
+    <BaseNode classNames="evaluator-node multi-eval-node" nodeId={id}>
       <NodeLabel
         title={data.title || "Multi-Evaluator"}
         nodeId={id}

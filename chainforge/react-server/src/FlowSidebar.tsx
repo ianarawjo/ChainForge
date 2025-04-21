@@ -22,6 +22,7 @@ import {
   Divider,
   ScrollArea,
   Tooltip,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { FLASK_BASE_URL } from "./backend/utils";
 
@@ -41,6 +42,9 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
   onLoadFlow,
   currentFlow,
 }) => {
+  // Color theme (dark or light mode)
+  const { colorScheme } = useMantineColorScheme();
+
   const [isOpen, setIsOpen] = useState(false);
   const [savedFlows, setSavedFlows] = useState<FlowFile[]>([]);
   const [editName, setEditName] = useState<string | null>(null);
@@ -216,7 +220,8 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
 
       {/* Toggle Button */}
       <ActionIcon
-        variant="gradient"
+        variant={colorScheme === "light" ? "gradient" : "filled"}
+        color={colorScheme === "light" ? "blue" : "gray"}
         size="1.625rem"
         style={{
           position: "absolute",
@@ -374,19 +379,9 @@ const FlowSidebar: React.FC<FlowSidebarProps> = ({
         </Stack>
 
         {/* Sticky footer */}
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            background: "white",
-            padding: "10px",
-            borderTop: "1px solid #ddd",
-          }}
-        >
+        <div className="saved-flows-footer">
           {flowDir ? (
-            <Text size="xs" color="gray">
-              Local flows are saved at: {flowDir}
-            </Text>
+            <Text size="xs">Local flows are saved at: {flowDir}</Text>
           ) : (
             <></>
           )}

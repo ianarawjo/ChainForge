@@ -48,6 +48,7 @@ const InspectFooter: React.FC<InspectFooterProps> = ({
           label={`${isDrawerOpen ? "Close" : "Open"} inspector drawer`}
           position="bottom"
           withArrow
+          withinPortal
         >
           <Button
             color="blue"
@@ -77,7 +78,12 @@ const InspectFooter: React.FC<InspectFooterProps> = ({
       className="eval-inspect-response-footer nodrag"
       style={{ display: "flex", justifyContent: "center" }}
     >
-      <Tooltip label="Open fullscreen inspector" position="bottom" withArrow>
+      <Tooltip
+        label="Open fullscreen inspector"
+        position="bottom"
+        withArrow
+        withinPortal
+      >
         <Button
           color="blue"
           variant="subtle"
