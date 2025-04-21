@@ -1552,3 +1552,7 @@ html[data-mantine-color-scheme="dark"] .saved-flows-footer {
   border-top: 1px solid #444;
   color: white;
 }
+
+.icl {
+  white-space: pre;
+}

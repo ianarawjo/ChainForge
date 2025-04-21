@@ -844,7 +844,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           ),
           Cell: ({ cell, row }: { cell: MRT_Cell; row: any }) => {
             const val = row.original[`c${i}`];
-            if (typeof val === "string") return val;
+            if (typeof val === "string")
+              return <span className="icl">{val}</span>;
             else if ("type" in val && val.type === "eval") {
               return (
                 <Stack spacing={0}>
