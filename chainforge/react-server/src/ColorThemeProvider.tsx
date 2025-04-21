@@ -38,7 +38,7 @@ export default function ColorThemeProvider({
 }) {
   const [colorScheme, setColorScheme] = useLocalStorage<ColorScheme>({
     key: "mantine-color-scheme",
-    defaultValue: getOSPreferredColorScheme() ?? "dark",
+    defaultValue: getOSPreferredColorScheme() ?? "light",
     getInitialValueInEffect: true,
   });
 

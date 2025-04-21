@@ -207,7 +207,7 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
       opened={opened}
     >
       <Popover.Target>
-        <Tooltip label="Click to view all prompts" withArrow>
+        <Tooltip label="Click to view all prompts" withArrow withinPortal>
           <button
             className="custom-button"
             onMouseEnter={_onHover}

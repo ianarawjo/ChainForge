@@ -143,7 +143,7 @@ const JoinedTextsPopover: React.FC<JoinedTextsPopoverProps> = ({
       opened={opened}
     >
       <Popover.Target>
-        <Tooltip label="Click to view all joined inputs" withArrow>
+        <Tooltip label="Click to view all joined inputs" withArrow withinPortal>
           <button
             className="custom-button"
             onMouseEnter={_onHover}

@@ -191,7 +191,7 @@ const SplitTextsPopover: React.FC<SplitTextsPopoverProps> = ({
       opened={opened}
     >
       <Popover.Target>
-        <Tooltip label="Click to view all split inputs" withArrow>
+        <Tooltip label="Click to view all split inputs" withArrow withinPortal>
           <button
             className="custom-button"
             onMouseEnter={_onHover}
