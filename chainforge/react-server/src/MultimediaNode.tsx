@@ -485,7 +485,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         let past_hooks_y = 120;
         const observer = new window.ResizeObserver(() => {
           if (!ref || !ref.current) return;
-          const new_hooks_y = ref.current.clientHeight + 68;
+          const new_hooks_y = ref.current.clientHeight + 342;
           if (past_hooks_y !== new_hooks_y) {
             setHooksY(new_hooks_y);
             past_hooks_y = new_hooks_y;
