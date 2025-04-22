@@ -34,7 +34,7 @@ import NodeLabel from "./NodeLabelComponent";
 import { AlertModalContext } from "./AlertModal";
 import RenameValueModal, { RenameValueModalRef } from "./RenameValueModal";
 import useStore from "./store";
-import { sampleRandomElements } from "./backend/utils";
+import { sampleRandomElements, __http_url_to_base64 } from "./backend/utils";
 import {
   Dict,
   TabularDataRowType,
@@ -66,29 +66,6 @@ const defaultColumns: TabularDataColType[] = [
     header: "Answer",
   },
 ];
-
-const __http_url_to_base64 = (url: string) => {
-  return new Promise<string>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("GET", url, true);
-    xhr.responseType = "arraybuffer";
-    xhr.onload = () => {
-      if (xhr.status === 200) {
-        const base64String = btoa(
-          new Uint8Array(xhr.response).reduce(
-            (data, byte) => data + String.fromCharCode(byte),
-            "",
-          ),
-        );
-        resolve(base64String);
-      } else {
-        reject(new Error("Failed to load image"));
-      }
-    };
-    xhr.onerror = () => reject(new Error("Failed to load image"));
-    xhr.send();
-  });
-};
 
 const __construct_items_in_json_responses = (
   tableData: TabularDataRowType[],
@@ -146,10 +123,7 @@ export interface MultimediaNodeDataProps {
 }
 
 export const IMAGE_COLUMN_NAME = "Image";
-const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({
-  data,
-  id,
-}) => {
+const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   const [tableData, setTableData] = useState<TabularDataRowType[]>(
     data.rows || [],
   );
@@ -562,7 +536,9 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({
       const newMetadata = {
         ...metadataRows,
         [rowWithImage.__uid]: {
-          source: url.startsWith("http") ? "remote image" : "local file upload",
+          source: url.startsWith("http")
+            ? "Remote image"
+            : "Local file Uploaded",
         },
       };
       setMetadataRows(newMetadata);
@@ -619,6 +595,10 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({
   const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] =
     useDisclosure(false);
 
+  // TODO : ADD TO THE INFO MESSAGE BELOW
+  //  THE GENERAL USAGE OF THE NODE AND
+  //      DONT FORGET TO SAY THAT THE CORRESPONDING {image} TEMPLATE VARS IN THE PromptNode
+  //      must be surrounded by line breaks
   const node_info_modal = useMemo(() => {
     return (
       <Box m="lg" mt="xl">
@@ -749,39 +729,6 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({
         label="Provide a URL pointing to an image"
         onSubmit={handleUploadFile}
       />
-
-      {/* <div className="carousel-row-display">
-        <div ref={setRef} className="tabular-data-container nowheel nodrag">
-          {tableData.length > 0 ? (
-            <EditableTable
-              rows={[tableData[currentRowIndex]]}
-              columns={tableColumns.filter((col) => col.key !== "image")}
-              handleSaveCell={(rowIdx, colKey, value) => {
-                handleSaveCell(currentRowIndex, colKey, value);
-              }}
-              handleRemoveColumn={handleRemoveColumn}
-              handleInsertColumn={handleInsertColumn}
-              handleRenameColumn={openRenameColumnModal}
-            />
-          ) : (
-            <Box
-              sx={{
-                height: 200,
-                width: 200,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "#f8f9fa",
-                border: "1px solid #e0e0e0",
-                borderRadius: "4px",
-                margin: "0 auto",
-              }}
-            >
-              <Text color="dimmed">No Media Uploaded</Text>
-            </Box>
-          )}
-        </div>
-      </div> */}
 
       {tableData.length > 0 &&
         tableData[currentRowIndex].image &&

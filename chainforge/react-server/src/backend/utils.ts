@@ -298,7 +298,7 @@ function construct_image_payload(
 
 function resolve_image_in_user_messages(
   messages: ChatHistory,
-  variant: "openai" | "gemini" | "anthropic",
+  variant: "openai" | "gemini" | "anthropic" | "ollama",
 ): Array<any> {
   const res = [];
   for (const message of messages) {
@@ -308,22 +308,62 @@ function resolve_image_in_user_messages(
     }
 
     const prompt = message.content;
-    if (prompt.includes(IMAGE_IDENTIFIER)) {
-      // TODO: Add a step to merge consecutive text elements, when splitting by '\n'
-      const new_content = prompt
-        .split("\n")
-        .filter((line) => line.trim().length > 0)
-        .map((line) => {
-          if (line.includes(IMAGE_IDENTIFIER)) {
-            const image_url = line.replace(IMAGE_IDENTIFIER, "").trim();
-            return construct_image_payload(image_url, variant);
-          } else {
-            return construct_text_payload(line, variant);
-          }
+    if (variant === "ollama") {
+      // Resolving Image in user messages
+      if (prompt.includes(IMAGE_IDENTIFIER)) {
+        const images_in_prompt: Array<string> = [];
+        const texts_in_prompt: Array<string> = [];
+
+        prompt
+          .split("\n") // This split only works bc we specified to surround the {image} template vars (in PromptNode text field) with newlines
+          .filter((line) => line.trim().length > 0) // remove empty lines
+          .map((line) => {
+            if (line.includes(IMAGE_IDENTIFIER)) {
+              // if line contains the image identifier
+              let image_url = line.replace(IMAGE_IDENTIFIER, "").trim();
+
+              if (image_url.startsWith("http")) {
+                __http_url_to_base64(image_url).then((b64) => {
+                  // console.log("Image URL to base64: ", b64);
+                  images_in_prompt.push(b64);
+                });
+              } else {
+                // if string contains ',' -> means there is the special prefix 'data:image/...;base64'
+                // indeed b64 string only consists of (A–Z, a–z) (0–9) and '+/='.
+                if (image_url.includes(",")) {
+                  image_url = image_url.split(",")[1];
+                }
+                images_in_prompt.push(image_url);
+              }
+              return image_url;
+            } else {
+              texts_in_prompt.push(line);
+              return line;
+            }
+          });
+        res.push({
+          content: texts_in_prompt.join("\n"),
+          images: images_in_prompt,
         });
-      res.push({ role: "user", content: new_content });
+      }
     } else {
-      res.push(message);
+      if (prompt.includes(IMAGE_IDENTIFIER)) {
+        // TODO: Add a step to merge consecutive text elements, when splitting by '\n'
+        const new_content = prompt
+          .split("\n")
+          .filter((line) => line.trim().length > 0)
+          .map((line) => {
+            if (line.includes(IMAGE_IDENTIFIER)) {
+              const image_url = line.replace(IMAGE_IDENTIFIER, "").trim();
+              return construct_image_payload(image_url, variant);
+            } else {
+              return construct_text_payload(line, variant);
+            }
+          });
+        res.push({ role: "user", content: new_content });
+      } else {
+        res.push(message);
+      }
     }
   }
   return res;
@@ -1424,6 +1464,7 @@ export async function call_ollama_provider(
     },
   };
 
+  let n_images = 0;
   // If the model type is explicitly or implicitly set to "chat", pass chat history instead:
   if (model_type === "chat" || /[-:](chat)/.test(ollama_model)) {
     // Construct chat history and pass to query payload
@@ -1433,16 +1474,61 @@ export async function call_ollama_provider(
       system_msg,
     );
     url += "chat";
-    // TODO: process images here
+
+    query.messages = resolve_image_in_user_messages(query.messages, "ollama");
+    n_images = query.messages.filter(
+      (msg: Dict) => msg.role === "user" && msg.images.length > 0,
+    ).length;
+    console.log(
+      "Resolved images in user messages: ",
+      query.messages,
+      query.messages.length,
+    );
   } else {
     // Text-only models
     query.prompt = prompt;
     url += "generate";
-    // TODO: process images here
-  }
 
+    // Resolving Image in user messages
+    if (prompt.includes(IMAGE_IDENTIFIER)) {
+      const images_in_prompt: Array<string> = [];
+      const texts_in_prompt: Array<string> = [];
+
+      prompt
+        .split("\n") // This split only works bc we specified to surround the {image} template vars (in PromptNode text field) with newlines
+        .filter((line) => line.trim().length > 0) // remove empty lines
+        .map((line) => {
+          if (line.includes(IMAGE_IDENTIFIER)) {
+            // if line contains the image identifier
+            n_images += 1;
+            let image_url = line.replace(IMAGE_IDENTIFIER, "").trim();
+
+            if (image_url.startsWith("http")) {
+              __http_url_to_base64(image_url).then((b64) => {
+                console.log("Image URL to base64: ", b64);
+                images_in_prompt.push(b64);
+              });
+            } else {
+              // if string contains ',' -> means there is the special prefix 'data:image/...;base64'
+              // indeed b64 string only consists of (A–Z, a–z) (0–9) and '+/='.
+              if (image_url.includes(",")) {
+                image_url = image_url.split(",")[1];
+              }
+              images_in_prompt.push(image_url);
+            }
+            return image_url;
+          } else {
+            texts_in_prompt.push(line);
+            return line;
+          }
+        });
+      query.prompt = texts_in_prompt.join("\n");
+      query.images = images_in_prompt;
+    }
+  }
+  console.log(query)
   console.log(
-    `Calling Ollama API at ${url} for model '${ollama_model}' with prompt '${prompt}' n=${n} times. Please be patient...`,
+    `Calling Ollama API at ${url} for model '${ollama_model}' with prompt '${query.prompt !== undefined ? query.prompt : query.messages[query.messages.length - 1].content}' n=${n} times. Contains n_img=${n_images} Please be patient...`,
   );
 
   // If there are structured outputs specified, convert to an object:
@@ -2632,4 +2718,27 @@ export const get_image_infos = (image: string): Dict<string> => {
   }
 
   return infos;
+};
+
+export const __http_url_to_base64 = (url: string) => {
+  return new Promise<string>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.responseType = "arraybuffer";
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const base64String = btoa(
+          new Uint8Array(xhr.response).reduce(
+            (data, byte) => data + String.fromCharCode(byte),
+            "",
+          ),
+        );
+        resolve(base64String);
+      } else {
+        reject(new Error("Failed to load image"));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Failed to load image"));
+    xhr.send();
+  });
 };
