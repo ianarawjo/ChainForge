@@ -146,10 +146,7 @@ export interface MultimediaNodeDataProps {
 }
 
 export const IMAGE_COLUMN_NAME = "Image";
-const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({
-  data,
-  id,
-}) => {
+const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   const [tableData, setTableData] = useState<TabularDataRowType[]>(
     data.rows || [],
   );
@@ -816,12 +813,18 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({
         )}
 
       <div className="carousel-row-display" style={{ marginTop: "20px" }}>
+        {tableData.length > 0 && (
         <div
+          ref={setRef}
+          className="tabular-data-container nowheel nodrag"
           style={{
+            minHeight: "220px",
+            minWidth: "220px",
+            height: "220px",
+            overflowY: "auto",
+            border: "none",
             display: "flex",
             flexDirection: "column",
-            gap: "10px",
-            padding: "0 20px",
           }}
         >
           {tableColumns
@@ -879,7 +882,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({
                 />
               </div>
             ))}
-        </div>
+        </div>)}
         {tableData.length === 0 && (
           <div
             ref={setRef}
