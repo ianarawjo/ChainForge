@@ -367,8 +367,7 @@ const App = () => {
         key: "multimedia",
         title: "Multimedia Node",
         icon: nodeEmojis.multimedia,
-        tooltip:
-          "Add image data with corresponding tags.",
+        tooltip: "Add image data with corresponding tags.",
         onClick: () => addNode("multimediaNode", "multimedia"),
       },
       {
