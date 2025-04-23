@@ -1526,7 +1526,7 @@ export async function call_ollama_provider(
       query.images = images_in_prompt;
     }
   }
-  console.log(query)
+  console.log(query);
   console.log(
     `Calling Ollama API at ${url} for model '${ollama_model}' with prompt '${query.prompt !== undefined ? query.prompt : query.messages[query.messages.length - 1].content}' n=${n} times. Contains n_img=${n_images} Please be patient...`,
   );
