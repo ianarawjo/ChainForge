@@ -462,7 +462,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         let past_hooks_y = 120;
         const observer = new window.ResizeObserver(() => {
           if (!ref || !ref.current) return;
-          const new_hooks_y = ref.current.clientHeight + 68;
+          const new_hooks_y = ref.current.clientHeight + 342;
           if (past_hooks_y !== new_hooks_y) {
             setHooksY(new_hooks_y);
             past_hooks_y = new_hooks_y;
@@ -763,70 +763,77 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         )}
 
       <div className="carousel-row-display" style={{ marginTop: "20px" }}>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px",
-            padding: "0 20px",
-          }}
-        >
-          {tableColumns
-            .filter((col) => col.key !== "image")
-            .map((col) => (
-              <div
-                key={col.key}
-                style={{ display: "flex", flexDirection: "column" }}
-              >
+        {tableData.length > 0 && (
+          <div
+            ref={setRef}
+            className="tabular-data-container nowheel nodrag"
+            style={{
+              minHeight: "220px",
+              minWidth: "220px",
+              height: "220px",
+              overflowY: "auto",
+              border: "none",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {tableColumns
+              .filter((col) => col.key !== "image")
+              .map((col) => (
                 <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    marginBottom: "4px",
-                  }}
+                  key={col.key}
+                  style={{ display: "flex", flexDirection: "column" }}
                 >
-                  <Text size="sm" weight={500}>
-                    {col.header}
-                  </Text>
-                  <ActionIcon
-                    size="xs"
-                    variant="subtle"
-                    onClick={() => openRenameColumnModal(col)}
-                    style={{ color: "#666" }}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      marginBottom: "4px",
+                    }}
                   >
-                    <IconPencil size={12} />
-                  </ActionIcon>
-                  {tableColumns.filter((col) => col.key !== "image").length >
-                    1 && (
+                    <Text size="sm" weight={500}>
+                      {col.header}
+                    </Text>
                     <ActionIcon
                       size="xs"
                       variant="subtle"
-                      onClick={() => handleRemoveColumn(col.key)}
+                      onClick={() => openRenameColumnModal(col)}
                       style={{ color: "#666" }}
                     >
-                      <IconX size={12} />
+                      <IconPencil size={12} />
                     </ActionIcon>
-                  )}
+                    {tableColumns.filter((col) => col.key !== "image").length >
+                      1 && (
+                      <ActionIcon
+                        size="xs"
+                        variant="subtle"
+                        onClick={() => handleRemoveColumn(col.key)}
+                        style={{ color: "#666" }}
+                      >
+                        <IconX size={12} />
+                      </ActionIcon>
+                    )}
+                  </div>
+                  <textarea
+                    value={tableData[currentRowIndex]?.[col.key] || ""}
+                    onChange={(e) =>
+                      handleSaveCell(currentRowIndex, col.key, e.target.value)
+                    }
+                    style={{
+                      padding: "8px",
+                      border: "1px solid #e0e0e0",
+                      borderRadius: "4px",
+                      minHeight: "60px",
+                      resize: "vertical",
+                      fontFamily: "monospace",
+                      fontSize: "12px",
+                    }}
+                  />
                 </div>
-                <textarea
-                  value={tableData[currentRowIndex]?.[col.key] || ""}
-                  onChange={(e) =>
-                    handleSaveCell(currentRowIndex, col.key, e.target.value)
-                  }
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #e0e0e0",
-                    borderRadius: "4px",
-                    minHeight: "60px",
-                    resize: "vertical",
-                    fontFamily: "monospace",
-                    fontSize: "12px",
-                  }}
-                />
-              </div>
-            ))}
-        </div>
+              ))}
+          </div>
+        )}
         {tableData.length === 0 && (
           <div
             ref={setRef}
