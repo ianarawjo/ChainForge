@@ -1,3 +1,4 @@
+import { IconCheck, IconX } from "@tabler/icons-react";
 import React from "react";
 
 export enum Status {
@@ -28,14 +29,14 @@ export default function StatusIndicator({
     case Status.READY: // Display green checkmark 'ready' icon
       return (
         <div className="status-icon ready-status">
-          &#10004;
+          <IconCheck size={20} stroke={3} style={{ marginBottom: "-4px" }} />
           <span className="status-tooltip">Responses collected and ready.</span>
         </div>
       );
     case Status.ERROR: // Display red 'error' icon
       return (
         <div className="status-icon error-status">
-          &#10006;
+          <IconX size={20} stroke={3} style={{ marginBottom: "-4px" }} />
           <span className="status-tooltip">Error collecting responses.</span>
         </div>
       );

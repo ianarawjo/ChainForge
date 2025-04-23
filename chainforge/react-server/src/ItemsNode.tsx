@@ -52,7 +52,7 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
   const removeNode = useStore((state) => state.removeNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
-  const flags = useStore((state) => state.flags);
+  const flags = useStore((state) => state.globalSettings);
 
   const [contentDiv, setContentDiv] = useState<React.ReactNode | null>(null);
   const [isEditing, setIsEditing] = useState(false);

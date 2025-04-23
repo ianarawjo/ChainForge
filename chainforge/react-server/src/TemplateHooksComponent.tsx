@@ -3,6 +3,7 @@ import { Edge, Handle, Position, useUpdateNodeInternals } from "reactflow";
 import { Badge, Text } from "@mantine/core";
 import useStore from "./store";
 import { IconSettings, IconImageInPicture } from "@tabler/icons-react";
+import { extractTemplateVars } from "./backend/template";
 import { IMAGE_COLUMN_NAME } from "./MultimediaNode";
 
 const SETTINGS_ICON = (
@@ -28,23 +29,8 @@ export const extractBracketedSubstrings = (text: string) => {
    *  NOTE: We don't use Regex here for compatibility of browsers
    *  that don't support negative lookbehinds/aheads (e.g., Safari).
    */
-  let prev_c = "";
-  let group_start_idx = -1;
-  let capture_groups = [];
-  for (let i = 0; i < text.length; i += 1) {
-    const c = text[i];
-    if (prev_c !== "\\") {
-      // Skipped escaped chars
-      if (group_start_idx === -1 && c === "{") group_start_idx = i;
-      else if (group_start_idx > -1 && c === "}") {
-        if (group_start_idx + 1 < i)
-          // Skip {} empty braces
-          capture_groups.push(text.substring(group_start_idx + 1, i));
-        group_start_idx = -1;
-      }
-    }
-    prev_c = c;
-  }
+  let capture_groups: Array<string> = [];
+  for (const v of extractTemplateVars(text)) capture_groups.push(v);
 
   // Ignore any varnames that begin with the special character #:
   capture_groups = capture_groups.filter((s) => s.length === 0 || s[0] !== "#");

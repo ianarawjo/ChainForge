@@ -100,7 +100,14 @@ const displayJoinedTexts = (
         truncLenForVars={72}
         llmName={llm_name ?? ""}
       >
-        {ps}
+        {llm_name !== undefined ? (
+          <div>
+            <h1>{llm_name}</h1>
+            {ps}
+          </div>
+        ) : (
+          ps
+        )}
       </ResponseBox>
     );
   });
@@ -134,17 +141,9 @@ const JoinedTextsPopover: React.FC<JoinedTextsPopoverProps> = ({
       shadow="rgb(38, 57, 77) 0px 10px 30px -14px"
       key="query-info"
       opened={opened}
-      styles={{
-        dropdown: {
-          maxHeight: "500px",
-          maxWidth: "400px",
-          overflowY: "auto",
-          backgroundColor: "#fff",
-        },
-      }}
     >
       <Popover.Target>
-        <Tooltip label="Click to view all joined inputs" withArrow>
+        <Tooltip label="Click to view all joined inputs" withArrow withinPortal>
           <button
             className="custom-button"
             onMouseEnter={_onHover}
@@ -160,7 +159,7 @@ const JoinedTextsPopover: React.FC<JoinedTextsPopoverProps> = ({
           </button>
         </Tooltip>
       </Popover.Target>
-      <Popover.Dropdown sx={{ pointerEvents: "none" }}>
+      <Popover.Dropdown className="prompt-preview-popover">
         <Center>
           <Text size="xs" fw={500} color="#666">
             Preview of joined inputs ({textInfos?.length} total)
@@ -460,10 +459,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
         size="xl"
         opened={infoModalOpened}
         onClose={closeInfoModal}
-        styles={{
-          header: { backgroundColor: "#FFD700" },
-          root: { position: "relative", left: "-5%" },
-        }}
+        className="prompt-list-modal"
       >
         <Box m="lg" mt="xl">
           {displayJoinedTexts(joinedTexts, getColorForLLMAndSetIfNotFound)}

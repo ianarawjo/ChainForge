@@ -6,7 +6,7 @@ def readme():
 
 setup(
     name="chainforge",
-    version="0.3.4.8",
+    version="0.3.5.5",
     packages=find_packages(),
     author="Ian Arawjo",
     description="A Visual Programming Environment for Prompt Engineering",
@@ -24,6 +24,7 @@ setup(
         "platformdirs",
         "urllib3==1.26.6",
         "openai",
+        "cryptography",
         "dalaipy>=2.0.2",
         "mistune>=2.0",  # for LLM response markdown parsing
     ],

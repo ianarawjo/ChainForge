@@ -421,7 +421,6 @@ const ExampleFlowsModal = forwardRef<
         </div>
       }
       closeOnClickOutside={true}
-      style={{ position: "relative", left: "-5%" }}
     >
       <Tabs defaultValue="examples">
         <Tabs.List>

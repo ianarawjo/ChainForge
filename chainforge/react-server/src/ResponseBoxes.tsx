@@ -67,10 +67,10 @@ export const getEvalResultStr = (
   } else {
     const eval_str = eval_item.toString().trim().toLowerCase();
     const color = SUCCESS_EVAL_SCORES.has(eval_str)
-      ? "black"
+      ? "inherit"
       : FAILURE_EVAL_SCORES.has(eval_str)
         ? "red"
-        : "black";
+        : "inherit";
     if (onlyString) return [eval_str, eval_str];
     else
       return [

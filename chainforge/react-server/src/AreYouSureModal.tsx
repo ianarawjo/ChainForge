@@ -39,7 +39,6 @@ const AreYouSureModal = forwardRef<AreYouSureModalRef, AreYouSureModalProps>(
         title={title}
         styles={{
           header: { backgroundColor: color ?? "orange", color: "white" },
-          root: { position: "relative", left: "-5%" },
         }}
       >
         <Box maw={400} mx="auto" mt="md" mb="md">

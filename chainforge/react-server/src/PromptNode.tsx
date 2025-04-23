@@ -22,6 +22,11 @@ import {
   Button,
   ActionIcon,
   Divider,
+  TextInput,
+  Styles,
+  TextInputStylesNames,
+  useMantineColorScheme,
+  NumberInput,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -29,6 +34,8 @@ import {
   IconArrowRight,
   IconEraser,
   IconList,
+  IconMessageChatbot,
+  IconMessageCircle,
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react";
@@ -109,6 +116,23 @@ const getRootPromptFor = (
   else return `{${varNameForRootTemplate}}`;
 };
 
+const promptVariantLabelStyle = {
+  input: {
+    border: "0",
+    fontSize: "10pt",
+    padding: "0px 2px 0px 2px !important",
+    marginTop: "2px",
+    minHeight: "10pt",
+    lineHeight: "1",
+    background: "transparent",
+    height: "10pt",
+    textAlign: "center",
+  },
+  root: {
+    width: "7ch",
+  },
+} satisfies Styles<TextInputStylesNames>;
+
 export class PromptInfo {
   prompt: string;
   settings?: Dict;
@@ -124,13 +148,17 @@ export class PromptInfo {
 const displayPromptInfos = (
   promptInfos: PromptInfo[],
   wideFormat: boolean,
-  bgColor?: string,
+  isTemplate?: boolean,
 ) =>
   promptInfos.map((info, idx) => (
     <div key={idx}>
-      <div className="prompt-preview" style={{ backgroundColor: bgColor }}>
+      <div
+        className={
+          "prompt-preview" + (isTemplate ? " prompt-preview-template" : "")
+        }
+      >
         {info.label && (
-          <Text c="black" size="xs" fw="bold" mb={0}>
+          <Text size="xs" fw="bold" mb={0}>
             {info.label}
             <hr />
           </Text>
@@ -184,6 +212,7 @@ export interface PromptListPopoverProps {
   onHover: () => void;
   onClick: () => void;
   promptTemplates?: string[] | string;
+  theme?: "dark" | "light";
 }
 
 export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
@@ -191,6 +220,7 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
   onHover,
   onClick,
   promptTemplates,
+  theme,
 }) => {
   const [opened, { close, open }] = useDisclosure(false);
 
@@ -207,17 +237,9 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
       shadow="rgb(38, 57, 77) 0px 10px 30px -14px"
       key="query-info"
       opened={opened}
-      styles={{
-        dropdown: {
-          maxHeight: "500px",
-          maxWidth: "400px",
-          overflowY: "auto",
-          backgroundColor: "#fff",
-        },
-      }}
     >
       <Popover.Target>
-        <Tooltip label="Click to view all prompts" withArrow>
+        <Tooltip label="Click to view all prompts" withArrow withinPortal>
           <button
             className="custom-button"
             onMouseEnter={_onHover}
@@ -233,9 +255,9 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
           </button>
         </Tooltip>
       </Popover.Target>
-      <Popover.Dropdown sx={{ pointerEvents: "none" }}>
+      <Popover.Dropdown className="prompt-preview-popover">
         <Center>
-          <Text size="xs" fw={500} color="#666">
+          <Text size="xs" fw={500}>
             Preview of generated prompts ({promptInfos.length} total)
           </Text>
         </Center>
@@ -243,6 +265,7 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
           <Box>
             <Divider
               my="xs"
+              color={theme && theme === "dark" ? "white" : "gray.0"}
               label="Prompt variants"
               fw="bold"
               labelPosition="center"
@@ -252,10 +275,11 @@ export const PromptListPopover: React.FC<PromptListPopoverProps> = ({
                 (t, i) => new PromptInfo(t, undefined, `Variant ${i + 1}`),
               ),
               false,
-              "#ddf1f8",
+              true,
             )}
             <Divider
               my="xs"
+              color={theme && theme === "dark" ? "white" : "gray.0"}
               label="Concrete prompts"
               fw="bold"
               labelPosition="center"
@@ -273,6 +297,7 @@ export interface PromptListModalProps {
   infoModalOpened: boolean;
   closeInfoModal: () => void;
   promptTemplates?: string[] | string;
+  theme?: "dark" | "light";
 }
 
 export const PromptListModal: React.FC<PromptListModalProps> = ({
@@ -280,6 +305,7 @@ export const PromptListModal: React.FC<PromptListModalProps> = ({
   infoModalOpened,
   closeInfoModal,
   promptTemplates,
+  theme,
 }) => {
   return (
     <Modal
@@ -291,16 +317,14 @@ export const PromptListModal: React.FC<PromptListModalProps> = ({
       size="xl"
       opened={infoModalOpened}
       onClose={closeInfoModal}
-      styles={{
-        header: { backgroundColor: "#FFD700" },
-        root: { position: "relative", left: "-5%" },
-      }}
+      className="prompt-list-modal"
     >
       <Box m="lg" mt="xl">
         {Array.isArray(promptTemplates) && promptTemplates.length > 1 && (
           <Box>
             <Divider
               my="xs"
+              color={theme && theme === "dark" ? "white" : "gray.0"}
               label="Prompt variants"
               fw="bold"
               labelPosition="center"
@@ -310,10 +334,11 @@ export const PromptListModal: React.FC<PromptListModalProps> = ({
                 (t, i) => new PromptInfo(t, undefined, `Variant ${i + 1}`),
               ),
               true,
-              "#ddf1f8",
+              true,
             )}
             <Divider
               my="xs"
+              color={theme && theme === "dark" ? "white" : "gray.0"}
               label="Concrete prompts (filled in)"
               fw="bold"
               labelPosition="center"
@@ -337,6 +362,7 @@ export interface PromptNodeProps {
     refresh: boolean;
     refreshLLMList: boolean;
     idxPromptVariantShown?: number;
+    promptVariantLabel?: string[];
   };
   id: string;
   type: string;
@@ -347,10 +373,15 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   id,
   type: node_type,
 }) => {
-  const node_icon = useMemo(
-    () => (node_type === "chat" ? "🗣" : "💬"),
-    [node_type],
-  );
+  // Color scheme
+  const { colorScheme } = useMantineColorScheme();
+
+  const node_icon = useMemo(() => {
+    if (colorScheme === "dark") {
+      if (node_type === "chat") return "🗣";
+      else return <IconMessageCircle size={16} />;
+    } else return node_type === "chat" ? "🗣" : "💬";
+  }, [node_type, colorScheme]);
   const node_default_title = useMemo(
     () => (node_type === "chat" ? "Chat Turn" : "Prompt Node"),
     [node_type],
@@ -375,6 +406,9 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const [templateVars, setTemplateVars] = useState<string[]>(data.vars ?? []);
   const [promptText, setPromptText] = useState<string | string[]>(
     data.prompt ?? "",
+  );
+  const [promptVariantLabel, setPromptVariantLabel] = useState<string[]>(
+    data.promptVariantLabel ?? ["Variant 1"],
   );
   const [idxPromptVariantShown, setIdxPromptVariantShown] = useState<number>(
     data.idxPromptVariantShown ?? 0,
@@ -978,7 +1012,20 @@ Soft failing by replacing undefined with empty strings.`,
         Object.keys(pulled_data),
       );
       if (typeof promptText !== "string" && promptText.length > 1)
-        pulled_data[var_for_prompt_templates] = promptText; // this will be filled in when calling queryLLMs
+        // this will be filled in when calling queryLLMs
+        pulled_data[var_for_prompt_templates] = promptText.map(
+          (prompt, idx) => {
+            const label = promptVariantLabel[idx];
+            const info: TemplateVarInfo = {
+              text: prompt,
+              fill_history: {
+                // We pass the label alongside the prompt text, for easier display and comparison later.
+                [var_for_prompt_templates + " [label]"]: label,
+              },
+            };
+            return info;
+          },
+        );
     } catch (err) {
       if (showAlert) showAlert((err as Error)?.message ?? err);
       console.error(err);
@@ -1259,6 +1306,7 @@ Soft failing by replacing undefined with empty strings.`,
     fetchResponseCounts,
     numGenerations,
     promptText,
+    promptVariantLabel,
     apiKeys,
     showContToggle,
     cancelId,
@@ -1292,12 +1340,9 @@ Soft failing by replacing undefined with empty strings.`,
   }, [cancelId, refreshCancelId, debounceTimeoutRef]);
 
   const handleNumGenChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      let n: string | number = event.target.value;
-      // @ts-expect-error The isNaN check on a string input is the correct approach to determining what we want, yet this will show an error in TS.
-      if (!isNaN(n) && n.length > 0 && /^\d+$/.test(n)) {
+    (n: number | "" | undefined) => {
+      if (typeof n === "number" && !isNaN(n)) {
         // n is an integer; save it
-        n = parseInt(n);
         if (n !== numGenerationsLastRun && status === Status.READY)
           setStatus(Status.WARNING);
         setNumGenerations(n);
@@ -1358,9 +1403,19 @@ Soft failing by replacing undefined with empty strings.`,
       Math.min(prompts.length - 1, idxPromptVariantShown),
     ); // clamp
     const curShownPrompt = prompts[curIdx];
-    setPromptText(prompts.concat([curShownPrompt]));
+    const updatedPrompts = prompts.concat([curShownPrompt]);
+    const updatedPromptVarLabels = promptVariantLabel.concat([
+      `Variant ${prompts.length + 1}`,
+    ]);
+    setPromptText(updatedPrompts);
+    setPromptVariantLabel(updatedPromptVarLabels);
     setIdxPromptVariantShown(prompts.length);
-  }, [promptText, idxPromptVariantShown]);
+    setDataPropsForNode(id, {
+      promptText: updatedPrompts,
+      promptVariantLabel: updatedPromptVarLabels,
+    });
+    setStatus(Status.WARNING);
+  }, [promptText, idxPromptVariantShown, promptVariantLabel]);
 
   const gotoPromptVariant = useCallback(
     (shift: number) => {
@@ -1390,8 +1445,20 @@ Soft failing by replacing undefined with empty strings.`,
         // resizeTextarea();
       }
 
+      setDataPropsForNode(id, {
+        promptText: prompts,
+      });
       return [...prompts];
     });
+    setPromptVariantLabel((prev) => {
+      if (prev.length <= 1) return prev; // cannot remove the last one
+      prev.splice(idxPromptVariantShown, 1); // remove the indexed variant
+      setDataPropsForNode(id, {
+        promptVariantLabel: prev,
+      });
+      return [...prev];
+    });
+    setStatus(Status.WARNING);
   }, [idxPromptVariantShown, textAreaRef]);
 
   // Whenever idx of prompt variant changes, we need to refresh the Textarea:
@@ -1404,6 +1471,7 @@ Soft failing by replacing undefined with empty strings.`,
   }, [idxPromptVariantShown]);
 
   const promptVariantControls = useMemo(() => {
+    if (node_type === "chat") return null; // no prompt variants for chat nodes
     return (
       <Flex justify="right" pos="absolute" right={10}>
         {typeof promptText === "string" || promptText.length === 1 ? (
@@ -1417,6 +1485,7 @@ Soft failing by replacing undefined with empty strings.`,
             withinPortal
           >
             <Button
+              className="prompt-variant-add-btn"
               size="xs"
               variant="subtle"
               color="gray"
@@ -1440,10 +1509,36 @@ Soft failing by replacing undefined with empty strings.`,
               <IconArrowLeft size={19} />
             </ActionIcon>
 
-            <Text size="xs">
+            <TextInput
+              value={
+                idxPromptVariantShown <= promptVariantLabel.length
+                  ? promptVariantLabel[idxPromptVariantShown]
+                  : ""
+              }
+              onChange={(e) => {
+                const newLabel = e.currentTarget.value;
+                setPromptVariantLabel((prev) => {
+                  const newLabels = [...prev];
+                  newLabels[idxPromptVariantShown] = newLabel;
+                  return newLabels;
+                });
+                setStatus(Status.WARNING);
+              }}
+              onBlur={(e) => {
+                // On blur, save the state of the variant label array
+                if (idxPromptVariantShown >= promptVariantLabel.length) return;
+                setDataPropsForNode(id, {
+                  promptVariantLabel: promptVariantLabel,
+                });
+              }}
+              className="nopan nodrag"
+              styles={promptVariantLabelStyle}
+            />
+
+            {/* <Text size="xs">
               Variant {idxPromptVariantShown + 1} of{" "}
               {typeof promptText === "string" ? 1 : promptText.length}
-            </Text>
+            </Text> */}
 
             <ActionIcon
               size="xs"
@@ -1453,6 +1548,11 @@ Soft failing by replacing undefined with empty strings.`,
             >
               <IconArrowRight size={19} />
             </ActionIcon>
+
+            <Text mr={2} size="xs">
+              {idxPromptVariantShown + 1} of{" "}
+              {typeof promptText === "string" ? 1 : promptText.length}
+            </Text>
 
             <Tooltip
               label="Add prompt variant"
@@ -1488,7 +1588,13 @@ Soft failing by replacing undefined with empty strings.`,
         )}
       </Flex>
     );
-  }, [idxPromptVariantShown, promptText, deleteVariantConfirmModal]);
+  }, [
+    idxPromptVariantShown,
+    promptVariantLabel,
+    promptText,
+    deleteVariantConfirmModal,
+    node_type,
+  ]);
 
   // Add custom context menu options on right-click.
   // 1. Convert TextFields to Items Node, for convenience.
@@ -1534,6 +1640,7 @@ Soft failing by replacing undefined with empty strings.`,
             promptTemplates={promptText}
             onHover={handlePreviewHover}
             onClick={openInfoModal}
+            theme={colorScheme}
           />,
         ]}
       />
@@ -1546,6 +1653,7 @@ Soft failing by replacing undefined with empty strings.`,
         promptTemplates={promptText}
         infoModalOpened={infoModalOpened}
         closeInfoModal={closeInfoModal}
+        theme={colorScheme}
       />
       <AreYouSureModal
         ref={deleteVariantConfirmModal}
@@ -1626,19 +1734,21 @@ Soft failing by replacing undefined with empty strings.`,
       <hr />
       <div>
         <div style={{ marginBottom: "10px", padding: "4px" }}>
-          <label htmlFor="num-generations" style={{ fontSize: "10pt" }}>
-            Num responses per prompt:&nbsp;
-          </label>
-          <input
-            id="num-generations"
-            name="num-generations"
-            type="number"
-            min={1}
-            max={999}
-            defaultValue={data.n || 1}
-            onChange={handleNumGenChange}
-            className="nodrag"
-          ></input>
+          <Flex align="center">
+            <label htmlFor="num-generations" style={{ fontSize: "10pt" }}>
+              Num responses per prompt:&nbsp;
+            </label>
+            <NumberInput
+              min={1}
+              max={999}
+              defaultValue={data.n || 1}
+              onChange={handleNumGenChange}
+              classNames={{ input: "nodrag" }}
+              size="xs"
+              ml="4px"
+              w="25%"
+            />
+          </Flex>
         </div>
 
         {showContToggle ? (
