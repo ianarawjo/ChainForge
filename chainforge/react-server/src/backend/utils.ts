@@ -387,7 +387,7 @@ export async function call_deepseek(
  * Calls OpenAI Image models via OpenAI's API.
    @returns raw query and response JSON dicts.
  */
-export async function call_dalle(
+export async function call_openai_image_gen(
   prompt: string,
   model: LLM,
   n = 1,
@@ -408,7 +408,6 @@ export async function call_dalle(
   const openai = new OpenAIApi(configuration);
 
   const modelname = model.toString();
-  const is_dalle_3 = modelname.includes("dall-e-3");
   console.log(
     `Querying OpenAI image model '${model}' with prompt '${prompt}'...`,
   );
@@ -416,14 +415,22 @@ export async function call_dalle(
   const query: Dict = {
     prompt,
     model: modelname,
-    response_format: "b64_json", // request image in base-64 encoded string
-    size: params?.size ?? (is_dalle_3 ? "1024x1024" : "256x256"),
+    size: params?.size ?? "auto",
   };
 
+  if (modelname.includes("gpt-image") && params) {
+    // Pass in GPT-Image-1 specific settings
+    Object.entries(params).forEach(([key, value]) => {
+      query[key] = value;
+    });
+  }
   if (modelname.includes("dall-e-3")) {
     // Pass in DALLE-3 specific settings
     if (params?.quality) query.quality = params.quality;
     if (params?.style) query.style = params.style;
+  }
+  if (modelname.startsWith("dall-e")) {
+    query.response_format = "b64_json"; // request image in base-64 encoded string
   }
 
   // Try to call OpenAI
@@ -1636,7 +1643,8 @@ export async function call_llm(
 
   const llm_name = llm.toString().toLowerCase();
   if (llm_provider === LLMProvider.OpenAI) {
-    if (llm_name.startsWith("dall-e")) call_api = call_dalle;
+    if (llm_name.startsWith("dall-e") || llm_name.startsWith("gpt-image"))
+      call_api = call_openai_image_gen;
     else call_api = call_chatgpt;
   } else if (llm_provider === LLMProvider.Azure_OpenAI)
     call_api = call_azure_openai;
@@ -1845,7 +1853,7 @@ export function extract_responses(
   const llm_name = llm.toString().toLowerCase();
   switch (llm_provider) {
     case LLMProvider.OpenAI:
-      if (llm_name.startsWith("dall-e"))
+      if (llm_name.startsWith("dall-e") || llm_name.startsWith("gpt-image"))
         return _extract_openai_image_responses(
           response as Array<ImagesResponseDataInner>,
         );

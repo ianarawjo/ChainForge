@@ -852,6 +852,7 @@ th .content-editable-div {
 }
 .add-table-row-btn {
   position: absolute;
+  font-size: 10pt;
   width: 100%;
   display: flex;
   align-items: center;
@@ -862,7 +863,6 @@ th .content-editable-div {
   margin-right: 10px;
 }
 html[data-mantine-color-scheme="dark"] .add-table-row-btn button {
-  font-size: 10pt;
   padding: 4px;
   background-color: var(--dark);
   border-color: #444;

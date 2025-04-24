@@ -46,6 +46,7 @@ export enum NativeLLM {
   // OpenAI Image models
   OpenAI_DallE_2 = "dall-e-2",
   OpenAI_DallE_3 = "dall-e-3",
+  OpenAI_GPT_Image_1 = "gpt-image-1",
 
   // Azure OpenAI Endpoints
   Azure_OpenAI = "azure-openai",
