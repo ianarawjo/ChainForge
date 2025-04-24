@@ -4,7 +4,7 @@
 
 [![Based on ChainForge](https://img.shields.io/badge/Based%20on-ChainForge-blueviolet)](https://github.com/ianarawjo/ChainForge)
 
-<img width="1517" alt="RAGForge Pipeline Visualization" src="placeholder_ragforge_banner.png">
+<img width="1517" alt="RAGForge Pipeline Visualization" src="ragforge.png">
 
 **RAGForge** extends ChainForge’s visual and modular framework to tackle the nuanced engineering challenges of Retrieval-Augmented Generation (RAG) systems. Designed for research and practical prototyping alike, RAGForge introduces a graph-based interface for constructing, visualizing, and benchmarking full RAG pipelines — from document ingestion and chunking to retrieval, prompting, and evaluation.
 
