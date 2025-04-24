@@ -57,6 +57,7 @@ Developing robust RAG systems requires navigating a high-dimensional design spac
 # Installation
 
 **Note:** RAGForge is currently available as a development fork. Installation involves cloning the repository and running the frontend and backend components locally.
+
 **Prerequisites:**
 *   Git
 *   Python 3.9 or higher
