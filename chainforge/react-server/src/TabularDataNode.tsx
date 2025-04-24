@@ -631,7 +631,6 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
     // pulling via "nodes", which fetches the cache'd LLM outputs from another node.
     // We need to consider both since we don't know what nodes the user will attach.
     const pulled_data = pullInputData(["load-data"], id);
-    console.log(pulled_data);
 
     if (Object.keys(pulled_data).length > 1) {
       // If there's more than one key pulled, this likely means
@@ -687,7 +686,6 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
       key: col,
       header: col,
     }));
-    console.warn(pulled_data_table, pulled_resps_table);
 
     // Merge the tables, removing duplicates
     const uids_in_table = new Set<string>();
@@ -701,7 +699,6 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
         }
       });
     });
-    console.log(uids_in_table);
     const dedup_pulled_data_table = pulled_data_table.filter(
       (row) =>
         !(typeof row["Batch Id"] === "string") ||
