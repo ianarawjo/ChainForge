@@ -182,7 +182,7 @@ RAGForge provides the building blocks for RAG pipelines:
         *   `OpenAI Embeddings`: Uses OpenAI's embedding API.
         *   `Cohere Embeddings`: Uses Cohere's embedding API.
         *   `Sentence Transformers`: Uses the `sentence-transformers` library directly.
-    *   *(Note: Currently invoked internally by retrieval nodes.*
+    *   *Note: Currently invoked internally by retrieval nodes.*
 *   **Retrieval:**
     *   `Retrieval Node`: Retrieves context chunks based on a query using various methods.
     *   **Supported Handlers:**
