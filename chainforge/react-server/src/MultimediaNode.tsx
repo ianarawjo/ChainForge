@@ -462,7 +462,9 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         let past_hooks_y = 120;
         const observer = new window.ResizeObserver(() => {
           if (!ref || !ref.current) return;
-          const new_hooks_y = ref.current.clientHeight + 342;
+          // Depending if there is the < > Chevron buttons or not, the offset is not the same
+          const vertical_y_offset_hooks = tableData.length > 1 ? 405 : 345
+          const new_hooks_y = ref.current.clientHeight + vertical_y_offset_hooks;
           if (past_hooks_y !== new_hooks_y) {
             setHooksY(new_hooks_y);
             past_hooks_y = new_hooks_y;
@@ -766,16 +768,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         {tableData.length > 0 && (
           <div
             ref={setRef}
-            className="tabular-data-container nowheel nodrag"
-            style={{
-              minHeight: "220px",
-              minWidth: "220px",
-              height: "220px",
-              overflowY: "auto",
-              border: "none",
-              display: "flex",
-              flexDirection: "column",
-            }}
+            className="multimedia-textfields-container nowheel nodrag"
           >
             {tableColumns
               .filter((col) => col.key !== "image")
@@ -820,15 +813,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
                     onChange={(e) =>
                       handleSaveCell(currentRowIndex, col.key, e.target.value)
                     }
-                    style={{
-                      padding: "8px",
-                      border: "1px solid #e0e0e0",
-                      borderRadius: "4px",
-                      minHeight: "60px",
-                      resize: "vertical",
-                      fontFamily: "monospace",
-                      fontSize: "12px",
-                    }}
+                    className="text-field-fixed-in-multimedia-node"
                   />
                 </div>
               ))}
@@ -837,28 +822,9 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         {tableData.length === 0 && (
           <div
             ref={setRef}
-            className="tabular-data-container nowheel nodrag"
-            style={{
-              minHeight: "220px",
-              minWidth: "220px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            className="multimedia-textfields-container nowheel nodrag"
           >
-            <Box
-              sx={{
-                height: 200,
-                width: 200,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "#f8f9fa",
-                border: "1px solid #e0e0e0",
-                borderRadius: "4px",
-                margin: "0 auto",
-              }}
-            >
+            <Box className="empty-state-box-multimedia-node">
               <Text color="dimmed">No Media Uploaded</Text>
             </Box>
           </div>
@@ -933,26 +899,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
               disabled={tableData.length <= 1}
               variant="transparent"
               size="xl"
-              sx={{
-                fontSize: "32px",
-                color: "#666",
-                cursor: "pointer",
-                width: "48px",
-                height: "48px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(0, 0, 0, 0.05)",
-                borderRadius: "50%",
-                transition: "all 0.2s",
-                "&:hover": {
-                  backgroundColor: "rgba(0, 0, 0, 0.1)",
-                  transform: "scale(1.1)",
-                },
-                "&:active": {
-                  transform: "scale(0.95)",
-                },
-              }}
+              className="carousel-nav-button"
             >
               <IconChevronLeft size={32} />
             </ActionIcon>
@@ -968,26 +915,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
               disabled={tableData.length <= 1}
               variant="transparent"
               size="xl"
-              sx={{
-                fontSize: "32px",
-                color: "#666",
-                cursor: "pointer",
-                width: "48px",
-                height: "48px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(0, 0, 0, 0.05)",
-                borderRadius: "50%",
-                transition: "all 0.2s",
-                "&:hover": {
-                  backgroundColor: "rgba(0, 0, 0, 0.1)",
-                  transform: "scale(1.1)",
-                },
-                "&:active": {
-                  transform: "scale(0.95)",
-                },
-              }}
+              className="carousel-nav-button" 
             >
               <IconChevronRight size={32} />
             </ActionIcon>
