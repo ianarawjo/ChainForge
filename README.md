@@ -22,7 +22,7 @@ Whether you're comparing retriever performance, testing chunking granularity, or
 *   **Utilize RAG-Specific Evaluation Metrics:** Employ built-in evaluation presets (e.g., Faithfulness, Answer Relevancy, Context Precision/Relevance, Answer Correctness) within the `MultiEvalNode`, alongside LLM-as-judge capabilities (including reasoning extraction).
 *   **Debug and Inspect Intermediate Stages:** Examine outputs at each step – uploaded text, generated chunks, retrieved context snippets, formatted prompts, final generations, and evaluation scores – for granular analysis and debugging.
 
-[**Check out our launch blog post for an introduction and walkthrough!**](blog_post) It features a step-by-step tutorial using the `evaluate-rag-pipeline.cforge` example — a complete, easy-to-follow RAG pipeline covering document upload, chunking, retrieval, prompting, and evaluation.
+[**Check out our launch blog post for an introduction and walkthrough!**](https://medium.com/@ilias.zouine/introducing-ragforge-the-visual-way-to-build-test-and-optimize-rag-pipelines-%EF%B8%8F-%EF%B8%8F-c271b666962f) It features a step-by-step tutorial using the `evaluate-rag-pipeline.cforge` example — a complete, easy-to-follow RAG pipeline covering document upload, chunking, retrieval, prompting, and evaluation.
 
 
 RAGForge leverages [ReactFlow](https://reactflow.dev) for its interactive graph interface and [Flask](https://flask.palletsprojects.com/en/2.3.x/) for its backend, extending the core ChainForge architecture with RAG-centric nodes and extensible handler registries.
