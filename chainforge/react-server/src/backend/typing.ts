@@ -78,11 +78,6 @@ export type MultiModalContentGemini =
   | { text: string }
   | { inlineData: ImageContentGemini };
 
-export type MultiModalContent =
-  | Array<MultiModalContentAnthropic>
-  | Array<MultiModalContentOpenAI>
-  | Array<MultiModalContentGemini>;
-
 // ===================
 
 export interface ChatMessage {

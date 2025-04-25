@@ -28,7 +28,6 @@ import {
   isImageResponseData,
   StringOrHash,
   PromptVarsDict,
-  MultiModalContent,
   MultiModalContentAnthropic,
   MultiModalContentOpenAI,
   MultiModalContentGemini,
