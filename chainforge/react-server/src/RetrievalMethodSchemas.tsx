@@ -783,7 +783,7 @@ export const PineconeSchema: ModelSettingsDict = {
         type: "string",
         default: "cosine",
         title: "Distance Metric",
-        enum: ["cosine", "euclidean", "dotproduct"],
+        enum: ["cosine", "l2", "dotproduct"],
         description:
           "Select the similarity measure used for retrieval: Cosine, Euclidean, or Dot Product.",
       },
@@ -852,7 +852,7 @@ export const PineconeSchema: ModelSettingsDict = {
       "ui:options": {
         enumOptions: [
           { label: "Cosine Similarity", value: "cosine" },
-          { label: "Euclidean Distance", value: "euclidean" },
+          { label: "Euclidean Distance", value: "l2" },
           { label: "Dot Product", value: "dotproduct" },
         ],
       },
@@ -981,134 +981,6 @@ export const ChromaDBSchema: ModelSettingsDict = {
   postprocessors: {},
 };
 
-/**
- * CosmosDB Vectorstore
- *
- */
-export const CosmosDBSchema: ModelSettingsDict = {
-  fullName: "CosmosDB Vectorstore",
-  description:
-    "Persistent vector storage using Azure Cosmos DB for similarity search.",
-  schema: {
-    type: "object",
-    required: [
-      "top_k",
-      "similarity_threshold",
-      "cosmosMode",
-      "cosmosContainer",
-      "cosmosEndpoint",
-      "cosmosKey",
-    ],
-    properties: {
-      shortName: {
-        type: "string",
-        default: "CosmosDB Vectorstore",
-        title: "Nickname",
-        description:
-          "Unique identifier to appear in ChainForge. Keep it short.",
-      },
-      top_k: {
-        type: "number",
-        default: 5,
-        title: "Top K Results",
-      },
-      similarity_threshold: {
-        type: "number",
-        default: 50,
-        title: "Similarity Threshold (%)",
-        minimum: 0,
-        maximum: 100,
-        step: 1,
-        description:
-          "Minimum similarity percentage (0-100) required for a result to be considered relevant.",
-      },
-      cosmosMode: {
-        type: "string",
-        default: "create",
-        title: "CosmosDB Mode",
-        enum: ["create", "load"],
-        description:
-          "Choose whether to create a new container or load an existing one. ⚠️ Creating may overwrite existing data.",
-      },
-      cosmosContainer: {
-        type: "string",
-        default: "vector-container",
-        title: "Cosmos Container Name",
-      },
-      cosmosEndpoint: {
-        type: "string",
-        default: "",
-        title: "Cosmos Endpoint URI",
-      },
-      cosmosKey: {
-        type: "string",
-        default: "",
-        title: "Cosmos Primary Key",
-      },
-      embeddingModel: {
-        type: "string",
-        title: "Embedding Model",
-        default: "",
-      },
-    },
-  },
-  uiSchema: {
-    shortName: {
-      "ui:widget": "text",
-      "ui:options": {
-        placeholder: "Custom name for your retrieval method",
-      },
-    },
-    top_k: {
-      "ui:widget": "range",
-      "ui:options": {
-        min: 1,
-        max: 20,
-        step: 1,
-      },
-    },
-    similarity_threshold: {
-      "ui:widget": "range",
-      "ui:options": {
-        min: 0,
-        max: 100,
-        step: 1,
-      },
-    },
-    cosmosMode: {
-      "ui:widget": "select",
-      "ui:options": {
-        enumOptions: [
-          { label: "Create a new CosmosDB container", value: "create" },
-          { label: "Load an existing container", value: "load" },
-        ],
-      },
-    },
-    cosmosContainer: {
-      "ui:widget": "text",
-      "ui:options": {
-        placeholder: "Container name (e.g., vectors)",
-      },
-    },
-    cosmosEndpoint: {
-      "ui:widget": "text",
-      "ui:options": {
-        placeholder: "Your CosmosDB endpoint URI",
-      },
-    },
-    cosmosKey: {
-      "ui:widget": "password",
-      "ui:options": {
-        placeholder: "Your CosmosDB primary key",
-      },
-    },
-    embeddingModel: {
-      "ui:widget": "select",
-    },
-  },
-  postprocessors: {},
-};
-
 // Combined schema object for all retrieval methods
 export const RetrievalMethodSchemas: {
   [baseMethod: string]: ModelSettingsDict;
@@ -1124,7 +996,6 @@ export const RetrievalMethodSchemas: {
   faiss: FAISSSchema,
   pinecone: PineconeSchema,
   chromadb: ChromaDBSchema,
-  cosmosdb: CosmosDBSchema,
 };
 
 // Method groupings for the menu
@@ -1227,14 +1098,6 @@ export const retrievalMethodGroups = [
         methodName: "ChromaDB Vectorstore",
         library: "ChromaDB",
         emoji: "🧠",
-        group: "Vectorstores",
-        needsEmbeddingModel: true,
-      },
-      {
-        baseMethod: "cosmosdb",
-        methodName: "CosmosDB Vectorstore",
-        library: "CosmosDB",
-        emoji: "☄️",
         group: "Vectorstores",
         needsEmbeddingModel: true,
       },
