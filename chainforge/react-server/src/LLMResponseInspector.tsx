@@ -65,6 +65,7 @@ import {
   Dict,
   LLMResponse,
   LLMResponseData,
+  TemplateVarInfo,
   isImageResponseData,
 } from "./backend/typing";
 import { StringLookup } from "./backend/cache";
@@ -167,39 +168,52 @@ function genSpansForHighlightedValue(
   );
 }
 
-// Export the JSON responses to an excel file (downloads the file):
-export const exportToExcel = (
+// Transform the JSON responses into a table
+export const pulledInputsToTable = (data: string[] | TemplateVarInfo[]) => {
+  // The data is the result of pullInputData. We need to transform it into a table.
+  return data
+    .map((info) => {
+      if (typeof info === "string") return { text: info };
+      const llm = getLLMName({ llm: info.llm } as LLMResponse);
+      const prompt = StringLookup.get(info.prompt) ?? undefined;
+      const vars = info.fill_history ?? {};
+      const metavars = info.metavars ?? {};
+      const row: Dict<string | number> = {};
+      const uid =
+        info.uid ??
+        ("batch_id" in info ? (info.batch_id as string) : undefined);
+
+      if (info.llm !== undefined) row.LLM = llm;
+      if (prompt !== undefined) row.Prompt = prompt;
+      if (info.text !== undefined) {
+        row[info.llm !== undefined ? "Response" : "text"] =
+          llmResponseDataToString(info.text);
+      }
+      if (uid) row["Batch Id"] = uid;
+
+      // Add columns for vars
+      Object.entries(vars).forEach(([varname, val]) => {
+        if (varname.length === 0) return; // skip empty varnames
+        row[varname] = StringLookup.get(val) ?? "";
+      });
+
+      // Add columns for metavars, if present
+      Object.entries(metavars).forEach(([varname, val]) => {
+        if (varname.length === 0) return; // skip empty varnames
+        if (!cleanMetavarsFilterFunc(varname)) return; // skip llm group metavars
+        row[varname] = StringLookup.get(val) ?? "";
+      });
+
+      return row;
+    })
+    .flat();
+};
+
+export const responsesToTable = (
   jsonResponses: LLMResponse[],
-  filename?: string,
+  wrapVars?: boolean,
 ) => {
-  if (filename === undefined) filename = "responses.xlsx";
-
-  // Check that there are responses to export:
-  if (
-    !jsonResponses ||
-    (Array.isArray(jsonResponses) && jsonResponses.length === 0)
-  ) {
-    throw new Error(
-      "No responses to export. Try connecting the inspector node to a prompt node or evaluator node.",
-    );
-  }
-
-  // Check format of responses
-  // TODO: Support export of images in Excel sheets
-  if (
-    jsonResponses.some(
-      (r) => r.responses.length > 0 && isImageResponseData(r.responses[0]),
-    )
-  ) {
-    throw new Error(
-      "Images cannot be exported to Excel at this time. If you need this feature and you are a developer, please consider submitting a PR to our GitHub repository.",
-    );
-  }
-
-  // We can construct the data as an array of JSON dicts, with keys as header names:
-  // NOTE: We need to 'unwind' responses in each batch, since each res_obj can have N>1 responses.
-  //       We will store every response text on a single row, but keep track of batches by creating a batch ID number.
-  const data = jsonResponses
+  return jsonResponses
     .map((res_obj, res_obj_idx) => {
       const llm = getLLMName(res_obj);
       const prompt = StringLookup.get(res_obj.prompt) ?? "";
@@ -215,12 +229,13 @@ export const exportToExcel = (
           LLM: llm,
           Prompt: prompt,
           Response: llmResponseDataToString(r),
-          "Response Batch Id": res_obj.uid ?? res_obj_idx,
+          "Batch Id": res_obj.uid ?? res_obj_idx,
         };
 
         // Add columns for vars
         Object.entries(vars).forEach(([varname, val]) => {
-          row[`Var: ${varname}`] = StringLookup.get(val) ?? "";
+          row[wrapVars ? `Var: ${varname}` : varname] =
+            StringLookup.get(val) ?? "";
         });
 
         // Add column(s) for human ratings, if present
@@ -254,13 +269,49 @@ export const exportToExcel = (
         // Add columns for metavars, if present
         Object.entries(metavars).forEach(([varname, val]) => {
           if (!cleanMetavarsFilterFunc(varname)) return; // skip llm group metavars
-          row[`Metavar: ${varname}`] = StringLookup.get(val) ?? "";
+          row[wrapVars ? `Metavar: ${varname}` : varname] =
+            StringLookup.get(val) ?? "";
         });
 
         return row;
       });
     })
     .flat();
+};
+
+// Export the JSON responses to an excel file (downloads the file):
+export const exportToExcel = (
+  jsonResponses: LLMResponse[],
+  filename?: string,
+) => {
+  if (filename === undefined) filename = "responses.xlsx";
+
+  // Check that there are responses to export:
+  if (
+    !jsonResponses ||
+    (Array.isArray(jsonResponses) && jsonResponses.length === 0)
+  ) {
+    throw new Error(
+      "No responses to export. Try connecting the inspector node to a prompt node or evaluator node.",
+    );
+  }
+
+  // Check format of responses
+  // TODO: Support export of images in Excel sheets
+  if (
+    jsonResponses.some(
+      (r) => r.responses.length > 0 && isImageResponseData(r.responses[0]),
+    )
+  ) {
+    throw new Error(
+      "Images cannot be exported at this time. If you need this feature and you are a developer, please consider submitting a PR to our GitHub repository.",
+    );
+  }
+
+  // We can construct the data as an array of JSON dicts, with keys as header names:
+  // NOTE: We need to 'unwind' responses in each batch, since each res_obj can have N>1 responses.
+  //       We will store every response text on a single row, but keep track of batches by creating a batch ID number.
+  const data = responsesToTable(jsonResponses, true);
 
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();

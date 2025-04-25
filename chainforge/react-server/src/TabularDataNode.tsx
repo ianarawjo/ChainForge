@@ -5,7 +5,16 @@ import React, {
   useCallback,
   useContext,
 } from "react";
-import { Menu, NumberInput, Switch, Text, Tooltip } from "@mantine/core";
+import {
+  Badge,
+  Button,
+  Flex,
+  Menu,
+  NumberInput,
+  Switch,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 import EditableTable from "./EditableTable";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
@@ -14,6 +23,9 @@ import {
   IconX,
   IconArrowBarToUp,
   IconArrowBarToDown,
+  IconLoader,
+  IconSquareArrowRight,
+  IconArrowBarUp,
 } from "@tabler/icons-react";
 import TemplateHooks from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
@@ -21,12 +33,20 @@ import NodeLabel from "./NodeLabelComponent";
 import { AlertModalContext } from "./AlertModal";
 import RenameValueModal, { RenameValueModalRef } from "./RenameValueModal";
 import useStore from "./store";
-import { sampleRandomElements } from "./backend/utils";
-import { Dict, TabularDataRowType, TabularDataColType } from "./backend/typing";
-import { Position } from "reactflow";
+import { sampleRandomElements, transformDict } from "./backend/utils";
+import {
+  Dict,
+  TabularDataRowType,
+  TabularDataColType,
+  StringOrHash,
+  TemplateVarInfo,
+} from "./backend/typing";
+import { Handle, Position } from "reactflow";
 import { AIGenReplaceTablePopover } from "./AiPopover";
 import { parseTableData } from "./backend/tableUtils";
 import { StringLookup } from "./backend/cache";
+import { pulledInputsToTable, responsesToTable } from "./LLMResponseInspector";
+import { generatePrompts, grabResponses } from "./backend/backend";
 
 const defaultRows: TabularDataRowType[] = [
   {
@@ -77,6 +97,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   );
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
+  const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
 
   const [contextMenuPos, setContextMenuPos] = useState({ left: -100, top: 0 });
   const [contextMenuOpened, setContextMenuOpened] = useState(false);
@@ -602,6 +623,110 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
     setRowValues(updatedRows.map((row) => JSON.stringify(row))); // Update row values
   };
 
+  // Pulls data from input nodes into the table
+  const pullInputData = useStore((state) => state.pullInputData);
+  const handlePullDataIn = async () => {
+    // There are two ways in CF to pull data, unfortunately:
+    // pulling via "input data", which includes things like text fields, and
+    // pulling via "nodes", which fetches the cache'd LLM outputs from another node.
+    // We need to consider both since we don't know what nodes the user will attach.
+    const pulled_data = pullInputData(["load-data"], id);
+
+    if (Object.keys(pulled_data).length > 1) {
+      // If there's more than one key pulled, this likely means
+      // we are pulling prompt templates from the input nodes.
+      const other_vars = transformDict(pulled_data, (k) => k !== "load-data");
+      pulled_data["load-data"] = (
+        await Promise.all(
+          pulled_data["load-data"].map(async (info) => {
+            // Skip LLM responses
+            if (typeof info !== "string" && info.llm !== undefined) return info;
+            // Get the text version of the info object
+            const text =
+              typeof info === "string" ? info : StringLookup.get(info.text);
+            if (!text) return info;
+            // Generate the prompts for the text
+            const texts = await generatePrompts(text, other_vars);
+            return texts.map(
+              (t) =>
+                ({
+                  text: t.toString(),
+                  fill_history: {
+                    ...t.fill_history,
+                    Input: text,
+                  },
+                  metavars: t.metavars,
+                }) as TemplateVarInfo,
+            );
+          }),
+        )
+      ).flat() as TemplateVarInfo[];
+    }
+
+    // Grab the input node ids
+    // Get the ids from the connected input nodes:
+    const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
+    const resps =
+      input_node_ids.length > 0
+        ? await grabResponses(input_node_ids).catch(() => {
+            // Surpress the error.
+          })
+        : [];
+
+    const pulled_data_table = pulledInputsToTable(pulled_data["load-data"]);
+    const pulled_resps_table = responsesToTable(resps ?? []);
+    const col_names = new Set<string>();
+    pulled_data_table.forEach((row) => {
+      Object.keys(row).forEach((key) => col_names.add(key));
+    });
+    pulled_resps_table.forEach((row) => {
+      Object.keys(row).forEach((key) => col_names.add(key));
+    });
+    const new_table_columns = Array.from(col_names).map((col) => ({
+      key: col,
+      header: col,
+    }));
+
+    // Merge the tables, removing duplicates
+    const uids_in_table = new Set<string>();
+    pulled_resps_table.forEach((row) => {
+      if (typeof row["Batch Id"] === "string")
+        uids_in_table.add(row["Batch Id"]);
+      // ...also convert boolean values to strings, while we're at it
+      Object.keys(row).forEach((key) => {
+        if (typeof row[key] === "boolean") {
+          row[key] = row[key].toString();
+        }
+      });
+    });
+    const dedup_pulled_data_table = pulled_data_table.filter(
+      (row) =>
+        !(typeof row["Batch Id"] === "string") ||
+        !uids_in_table.has(row["Batch Id"]),
+    );
+
+    const new_table = [
+      ...dedup_pulled_data_table,
+      ...pulled_resps_table,
+    ] as Dict<StringOrHash>[];
+
+    // Remove 'Batch Id's from the table, if it exists
+    // NOTE: We do this since the Batch Ids are likely not useful for the user.
+    new_table.forEach((row) => {
+      if (typeof row["Batch Id"] === "string") {
+        delete row["Batch Id"];
+      }
+    });
+    const col_batch_id_idx = new_table_columns.findIndex(
+      (col) => col.key === "Batch Id",
+    );
+    if (col_batch_id_idx !== -1) {
+      new_table_columns.splice(col_batch_id_idx, 1);
+    }
+
+    replaceTable(new_table_columns, new_table);
+  };
+
   return (
     <BaseNode
       classNames="tabular-data-node"
@@ -702,7 +827,46 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
           nodeId={id}
           startY={hooksY}
           position={Position.Right}
+          ignoreHandles={["load-data"]}
         />
+
+        <div
+          className="hook-tag"
+          style={{ display: "flex", justifyContent: Position.Left }}
+        >
+          <Tooltip
+            label="Pulls input data into table. Attach input(s), and click to load. Will replace table values."
+            multiline
+            w="220px"
+            withArrow
+            withinPortal
+          >
+            <Button
+              onClick={handlePullDataIn}
+              color="green"
+              variant="light"
+              size="xs"
+              h="20px"
+              pl="xs"
+              pr="xs"
+              radius="sm"
+              tt="none"
+              pos="absolute"
+              top={hooksY - 9 + "px"}
+            >
+              <Flex gap="4px" align="center">
+                <Text>Load into</Text>
+                <IconArrowBarUp size="12pt" />
+              </Flex>
+            </Button>
+          </Tooltip>
+          <Handle
+            type="target"
+            id="load-data"
+            position={Position.Left}
+            style={{ top: hooksY + "px", background: "#555" }}
+          />
+        </div>
 
         <Switch
           label={
@@ -718,7 +882,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
           }}
           color="indigo"
           size="xs"
-          mt={shouldSample && tableColumns.length >= 2 ? "-50px" : "-16px"}
+          mt={shouldSample && tableColumns.length >= 2 ? "-50px" : "0px"}
         />
         {shouldSample ? (
           <Tooltip

@@ -124,14 +124,6 @@ export default function TemplateHooks({
 
   const [templateHooks, setTemplateHooks] = useState<React.ReactNode[]>([]);
 
-  // const blinkTemplateVars = (vars_to_blink) => {
-  //   setTemplateHooks(genTemplateHooks(vars, vars_to_blink));
-  //   setTimeout(() => {
-  //     // Set timeout to turn off blinking:
-  //     blinkTemplateVars([]);
-  //   }, 750 * 2);
-  // };
-
   useEffect(() => {
     // Determine if there's any handles that were deleted in temp_var_names,
     // and manually remove them as edges:
