@@ -1294,6 +1294,7 @@ export async function evalWithLLM(
   api_keys?: Dict,
   progress_listener?: (progress: { [key: symbol]: any }) => void,
   cancel_id?: string | number,
+  useReasoning?: boolean,
 ): Promise<{ responses?: LLMResponse[]; errors: string[] }> {
   // Check format of response_ids
   if (!Array.isArray(response_ids)) response_ids = [response_ids];
@@ -1355,12 +1356,63 @@ export async function evalWithLLM(
 
     const err_vals: string[] = Object.values(errors).flat();
     if (err_vals.length > 0) all_errors = all_errors.concat(err_vals);
+    // If reasoning mode is enabled, extract the scores from the responses
+    if (useReasoning) {
+      responses.forEach((r: LLMResponse) => {
+        if (!r.responses || r.responses.length === 0) return;
+
+        // Process each response item within the LLMResponse
+        r.responses = r.responses.map((response_item) => {
+          // First, convert the response item (LLMResponseData) to a string
+          const response_str = llmResponseDataToString(response_item);
+
+          // Now apply the regex to the string representation
+          if (typeof response_str !== "string") {
+            // Should not happen if llmResponseDataToString works correctly, but handle defensively
+            console.warn(
+              "Response item did not convert to string:",
+              response_item,
+            );
+            return response_item; // Return original item if conversion failed
+          }
+
+          // console.log("Attempting to extract score from:", response_str); // Optional: for debugging
+
+          try {
+            // Extract the score from the SCORE: format
+            const match = response_str.match(
+              /score:\s*(\d+(?:\.\d+)?)(?:\s*)?$/i,
+            ); // Made decimal part optional
+            if (match && match[1]) {
+              const extracted_score = match[1].trim();
+              // console.log("match found:", extracted_score); // Optional: for debugging
+              // Return the extracted score string. This replaces the original
+              // response_item (which could be an object) in the r.responses array.
+              return extracted_score;
+            }
+            // If no match, return the original string (or potentially handle as error/default)
+            // console.log("No score match found in:", response_str); // Optional: for debugging
+            return response_str; // Return the full string if no score pattern found
+          } catch (e) {
+            console.warn("Failed during regex matching or processing:", e);
+            return response_str; // Return the full string in case of error
+          }
+        });
+      });
+    }
 
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
     responses.forEach((r: LLMResponse) => {
       const __i = parseInt(StringLookup.get(r.metavars.__i) ?? "");
       const __j = parseInt(StringLookup.get(r.metavars.__j) ?? "");
+      // Ensure indices are valid
+      if (isNaN(__i) || isNaN(__j) || __i < 0 || __i >= resp_objs.length) {
+        console.error(
+          `Invalid indices found in response metadata: __i=${__i}, __j=${__j}. Skipping response mapping.`,
+        );
+        return; // Skip this response
+      }
       const resp_obj = resp_objs[__i];
       if (resp_obj.eval_res !== undefined)
         resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
