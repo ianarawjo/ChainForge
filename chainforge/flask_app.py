@@ -1,4 +1,4 @@
-import json, os, sys, asyncio, time, shutil
+import json, os, sys, asyncio, time, shutil, io
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Literal
@@ -11,8 +11,11 @@ from chainforge.security.password_utils import ensure_password
 from chainforge.security.secure_save import load_json_file, save_json_file
 import requests as py_requests
 from platformdirs import user_data_dir
-import io
-import fitz
+
+# RAG-specific imports
+from chainforge.rag.chunk_handlers import ChunkingMethodRegistry
+from chainforge.rag.retrieve_handlers import RetrievalMethodRegistry, EmbeddingModelRegistry
+import pymupdf
 from docx import Document
 
 """ =================
@@ -968,7 +971,7 @@ def extract_text_from_pdf(file_bytes):
     """Extracts text from PDF bytes."""
     try:
         text = ""
-        with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+        with pymupdf.open(stream=file_bytes, filetype="pdf") as doc:
             for page in doc:
                 text += page.get_text()
         return text
@@ -1043,7 +1046,6 @@ def upload_files():
 
 
 # Chunking Endpoint
-from .chunk_handlers import ChunkingMethodRegistry
 @app.route("/chunk", methods=["POST"])
 def chunk():
     """
@@ -1109,7 +1111,6 @@ def chunk():
 
 
 # === Retrieval Endpoint===
-from .retrieve_handlers import RetrievalMethodRegistry, EmbeddingModelRegistry
 @app.route("/retrieve", methods=["POST"])
 def retrieve():
     """

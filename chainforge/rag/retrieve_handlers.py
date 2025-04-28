@@ -1,6 +1,9 @@
-# For Retrieval Methods
-from sklearn.feature_extraction.text import TfidfVectorizer
-from rank_bm25 import BM25Okapi
+import math, os
+from typing import List
+import numpy as np
+import heapq
+from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine
+from sklearn.cluster import KMeans
 from gensim.utils import simple_preprocess
 
 class EmbeddingModelRegistry:
@@ -189,6 +192,8 @@ class RetrievalMethodRegistry:
 
 @RetrievalMethodRegistry.register("bm25")
 def handle_bm25(chunk_objs, query_objs, settings):
+    from rank_bm25 import BM25Okapi
+
     top_k = settings.get("top_k", 5)
     k1 = settings.get("bm25_k1", 1.5)
     b = settings.get("bm25_b", 0.75)
@@ -224,6 +229,8 @@ def handle_bm25(chunk_objs, query_objs, settings):
 
 @RetrievalMethodRegistry.register("tfidf")
 def handle_tfidf(chunk_objs, query_objs, settings):
+    from sklearn.feature_extraction.text import TfidfVectorizer
+
     top_k = settings.get("top_k", 5)
     max_features = settings.get("max_features", 500)
     
@@ -344,13 +351,6 @@ def handle_keyword_overlap(chunk_objs, query_objs, settings):
         results.append({'query_object': query_obj, 'retrieved_chunks': retrieved})
     
     return results
-
-import numpy as np
-import heapq
-from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine
-from sklearn.cluster import KMeans
-import math
-
 
 # Helper functions for similarity calculations
 def cosine_similarity(vec1, vec2):
@@ -540,45 +540,41 @@ def handle_clustered(chunk_objs, chunk_embeddings, query_objs, query_embeddings,
     return results
 
 
-# VECTOR STORE RETRIEVAL METHODS
-from langchain_core.embeddings import Embeddings
-from typing import List
-import numpy as np
-
-# --- Define DummyEmbeddings Class ---
-class DummyEmbeddings(Embeddings):
-    """
-    A dummy embedding class implementing the LangChain Embeddings interface.
-    Used when pre-computed embeddings are provided.
-    Returns zero vectors of the specified dimension.
-    """
-    def __init__(self, dimension: int):
-        if not isinstance(dimension, int) or dimension <= 0:
-            raise ValueError(f"Dimension must be a positive integer, got {dimension}")
-        self.dimension = dimension
-        # Store a zero vector template for efficiency
-        self._zero_vector = [0.0] * self.dimension
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Return zero vectors for a list of documents."""
-        return [self._zero_vector for _ in texts]
-
-    def embed_query(self, text: str) -> List[float]:
-        """Return a single zero vector for a query."""
-        return self._zero_vector
-
-# FAISS
-import faiss
-import os
-from langchain_community.vectorstores import FAISS
-from langchain_community.docstore.in_memory import InMemoryDocstore
-from langchain_core.documents import Document
-
 @RetrievalMethodRegistry.register("faiss")
 def handle_faiss(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings):
     """
     Retrieve chunks using FAISS with L2 (Euclidean) or IP (Inner Product) metric.
     """
+
+    # FAISS
+    import faiss
+    from langchain_community.vectorstores import FAISS
+    from langchain_community.docstore.in_memory import InMemoryDocstore
+    from langchain_core.documents import Document
+    from langchain_core.embeddings import Embeddings
+
+    # --- Define DummyEmbeddings Class ---
+    class DummyEmbeddings(Embeddings):
+        """
+        A dummy embedding class implementing the LangChain Embeddings interface.
+        Used when pre-computed embeddings are provided.
+        Returns zero vectors of the specified dimension.
+        """
+        def __init__(self, dimension: int):
+            if not isinstance(dimension, int) or dimension <= 0:
+                raise ValueError(f"Dimension must be a positive integer, got {dimension}")
+            self.dimension = dimension
+            # Store a zero vector template for efficiency
+            self._zero_vector = [0.0] * self.dimension
+
+        def embed_documents(self, texts: List[str]) -> List[List[float]]:
+            """Return zero vectors for a list of documents."""
+            return [self._zero_vector for _ in texts]
+
+        def embed_query(self, text: str) -> List[float]:
+            """Return a single zero vector for a query."""
+            return self._zero_vector
+
     top_k = settings.get("top_k", 5)
     user_requested_metric = settings.get("metric", "l2").lower()
     if user_requested_metric not in ["l2", "ip"]:

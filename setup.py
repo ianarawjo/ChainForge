@@ -27,10 +27,12 @@ setup(
         "cryptography",
         "dalaipy>=2.0.2",
         "mistune>=2.0",  # for LLM response markdown parsing
-        "PyMuPDF",
+        "pymupdf",
         "python-docx",
         "tiktoken",
         "langchain",
+        "langchain-core",
+        "langchain-community",
         "nltk",
         "gensim",
         "transformers",
@@ -39,6 +41,7 @@ setup(
         "sentence-transformers",
         "rank-bm25",
         "whoosh",
+        "cohere",
     ],
     entry_points={
         "console_scripts": [
