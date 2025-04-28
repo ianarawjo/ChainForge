@@ -202,6 +202,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         AWS_Session_Token: "",
         AWS_Region: "us-east-1",
         AmazonBedrock: JSON.stringify({ credentials: {}, region: "us-east-1" }),
+        Together: "",
       },
 
       validate: {
