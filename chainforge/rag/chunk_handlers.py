@@ -1,20 +1,6 @@
 # --- Chunk Endpoint ---
 import sys
-from typing import List, Dict, Any, Callable
-import nltk
-from nltk.tokenize import TextTilingTokenizer
-
-# SpaCy for sentence splitting and NLP objects
-import spacy
-
-# OpenAI's Tiktoken for token-based chunking
-import tiktoken
-
-# LangChain's Text Splitter
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-# HuggingFace Tokenizers for token-based chunking
-from transformers import AutoTokenizer
+from typing import List, Dict, Any, Callable, Union
 
 # === Define the Chunking Registry (Place after imports) ===
 class ChunkingMethodRegistry:
@@ -38,13 +24,16 @@ class ChunkingMethodRegistry:
         return decorator
 
     @classmethod
-    def get_handler(cls, identifier: str) -> Callable | None:
+    def get_handler(cls, identifier: str) -> Union[Callable, None]:
         """Get the handler function for a given method identifier."""
         return cls._methods.get(identifier)
 
 # === Chunking Helper Functions ===
 @ChunkingMethodRegistry.register("overlapping_langchain")
 def overlapping_langchain_textsplitter(text: str, **kwargs: Any) -> List[str]:
+    # LangChain's Text Splitter
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+
     chunk_size = int(kwargs.get("chunk_size", 200))
     chunk_overlap = int(kwargs.get("chunk_overlap", 50))
     keep_separator = bool(kwargs.get("keep_separator", True))
@@ -57,6 +46,9 @@ def overlapping_langchain_textsplitter(text: str, **kwargs: Any) -> List[str]:
 
 @ChunkingMethodRegistry.register("overlapping_openai_tiktoken")
 def overlapping_openai_tiktoken(text: str, **kwargs: Any) -> List[str]:
+    # OpenAI's Tiktoken for token-based chunking
+    import tiktoken
+
     chunk_size = int(kwargs.get("chunk_size", 200))
     chunk_overlap = int(kwargs.get("chunk_overlap", 50))
 
@@ -94,6 +86,9 @@ def overlapping_openai_tiktoken(text: str, **kwargs: Any) -> List[str]:
 
 @ChunkingMethodRegistry.register("overlapping_huggingface_tokenizers")
 def overlapping_huggingface_tokenizers(text: str, **kwargs: Any) -> List[str]:
+    # HuggingFace Tokenizers for token-based chunking
+    from transformers import AutoTokenizer
+
     # Consider making model name configurable
     tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
     chunk_size = int(kwargs.get("chunk_size", 200))
@@ -125,6 +120,9 @@ def overlapping_huggingface_tokenizers(text: str, **kwargs: Any) -> List[str]:
 
 @ChunkingMethodRegistry.register("syntax_spacy")
 def syntax_spacy(text: str, **kwargs: Any) -> List[str]:
+    # SpaCy for sentence splitting and NLP objects
+    import spacy
+
     # Load model once and cache it if possible, or handle loading errors
     try:
         # Potential optimization: cache the loaded nlp model globally?
@@ -141,9 +139,11 @@ def syntax_spacy(text: str, **kwargs: Any) -> List[str]:
     sents = [s.text.strip() for s in doc.sents if s.text.strip()]
     return sents if sents else [text]
 
-
 @ChunkingMethodRegistry.register("syntax_texttiling")
 def syntax_texttiling(text: str, **kwargs: Any) -> List[str]:
+    import nltk
+    from nltk.tokenize import TextTilingTokenizer
+
     try:
         # Ensure necessary NLTK data is downloaded (punkt is often needed)
         try:
