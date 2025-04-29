@@ -19,7 +19,11 @@ import Plot from "react-plotly.js";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import PlotLegend from "./PlotLegend";
-import { cleanMetavarsFilterFunc, truncStr } from "./backend/utils";
+import {
+  cleanMetavarsFilterFunc,
+  llmResponseDataToString,
+  truncStr,
+} from "./backend/utils";
 import {
   Dict,
   EvaluationResults,
@@ -568,7 +572,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             ? resp_obj.metavars[varname.slice("__meta_".length)]
             : resp_obj.vars[varname];
           if (v === undefined && empty_str_if_undefined) return "";
-          return StringLookup.get(v) ?? "";
+          return llmResponseDataToString(v);
         };
 
         const get_var_and_trim = (

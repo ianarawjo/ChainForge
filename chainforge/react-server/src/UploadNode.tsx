@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { Handle, Position } from "reactflow";
 import { v4 as uuid } from "uuid";
-import { Button, Group, Text, Box, List, ThemeIcon } from "@mantine/core";
+import { Button, Group, Text, Box, List, ThemeIcon, Flex } from "@mantine/core";
 import { IconUpload, IconTrash } from "@tabler/icons-react";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
@@ -17,6 +17,7 @@ import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import { TemplateVarInfo } from "./backend/typing";
 import { FLASK_BASE_URL } from "./backend/utils";
+import { MediaLookup } from "./backend/cache";
 
 interface UploadNodeProps {
   data: {
@@ -53,22 +54,21 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
         const formData = new FormData();
         formData.append("file", file);
 
-        try {
-          const res = await fetch(`${FLASK_BASE_URL}/upload`, {
-            method: "POST",
-            body: formData,
-          });
-          if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.error || "Failed to process file");
-          }
+        console.log("Uploading file:", file, file.name);
 
-          const json = await res.json();
-          const textContent = json.text || "";
+        try {
+          // Upload the file to the lookup and get its UID
+          const uid = await MediaLookup.upload(file);
+
+          // Grab the content of the file, in plain text
+          // TODO: Make this work on the front-end if backend is not available
+          const text = await MediaLookup.getAsText(uid);
+
+          console.log("File content:", text);
 
           // Add filename + text content as a new TemplateVarInfo
           updatedFields.push({
-            text: textContent,
+            text: text,
             prompt: "",
             fill_history: {},
             llm: undefined,
@@ -76,7 +76,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
               size: file.size.toString(),
               type: file.type,
               filename: file.name, // important: store doc name
-              id: uuid(),
+              id: uid,
             },
           });
         } catch (error: any) {
@@ -196,11 +196,9 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
 
         {!fileListCollapsed && fields.length > 0 && (
           <Box
+            className="nopan nowheel"
             style={{
               maxHeight: 200,
-              maxWidth: 290, // this is a magic number, but it works for now to keep the node's width when expanded, must be fixed later
-              overflowY: "auto",
-              overflowX: "auto",
               border: "1px solid #eee",
               borderRadius: "8px",
               padding: "8px",
@@ -210,20 +208,33 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
             <List spacing="xs" size="sm">
               {fields.map((field, index) => (
                 <List.Item
-                  key={field.metavars?.id}
+                  key={
+                    field.metavars?.id === "string" ? field.metavars.id : index
+                  }
+                  w="100%"
                   icon={
                     <ThemeIcon color="blue" size={20} radius="xl">
                       📄
                     </ThemeIcon>
                   }
                 >
-                  <Group position="apart">
+                  <Flex justify="space-between" align="center">
                     <Box>
-                      <Text size="sm" weight={500}>
-                        {field.metavars?.filename || "Untitled file"}
+                      <Text
+                        lh={1.0}
+                        size="sm"
+                        weight={500}
+                        style={{
+                          overflowWrap: "anywhere",
+                          wordBreak: "break-all",
+                        }}
+                      >
+                        {typeof field.metavars?.filename === "string"
+                          ? field.metavars.filename
+                          : "Untitled file"}
                       </Text>
                       {field.text && typeof field.text === "string" && (
-                        <Text size="xs" color="dimmed">
+                        <Text size="xs" color="dimmed" lh={1.0}>
                           {field.text.slice(0, 50)}
                           {field.text.length > 50 ? "..." : ""}
                         </Text>
@@ -238,7 +249,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
                     >
                       <IconTrash size="14" />
                     </Button>
-                  </Group>
+                  </Flex>
                 </List.Item>
               ))}
             </List>

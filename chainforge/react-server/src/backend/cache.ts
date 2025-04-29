@@ -1,5 +1,9 @@
 import { Dict, JSONCompatible } from "./typing";
 import LZString from "lz-string";
+import { APP_IS_RUNNING_LOCALLY, FLASK_BASE_URL } from "./utils";
+import { v4 as uuid } from "uuid";
+
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 /**
  * Singleton JSON cache that functions like a local filesystem in a Python backend,
@@ -314,5 +318,112 @@ export class StringLookup {
     table.indexToString = data.dictionary;
     table.stringToIndex = new Map(data.dictionary.map((str, i) => [str, i]));
     StringLookup.instance = table;
+  }
+}
+
+/** Global media lookup table for efficient storage and retrieval of media (images, PDFs, etc) with the Flask backend. */
+export class MediaLookup {
+  // eslint-disable-next-line no-use-before-define
+  private static instance: MediaLookup;
+  // Use a cache if running locally, otherwise use the backend
+  private cache: Dict<Blob> = {};
+
+  static getInstance(): MediaLookup {
+    if (!MediaLookup.instance) {
+      MediaLookup.instance = new MediaLookup();
+    }
+    return MediaLookup.instance;
+  }
+
+  /**
+   * Uploads a file to the backend and returns its UID.
+   * @param file A Blob or File object to upload
+   * @returns The UID assigned by the backend
+   */
+  public static async upload(file: Blob): Promise<string> {
+    if (IS_RUNNING_LOCALLY) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${FLASK_BASE_URL}upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Upload failed: ${res.statusText}`);
+      }
+
+      const json = await res.json();
+      return json.uid;
+    } else {
+      // Make a uid for the file, and use it to cache the file:
+      // NOTE: We keep the file name around just in case we need to recover it later.
+      const uid = `${uuid()}__${file.name}`;
+      MediaLookup.getInstance().cache[uid] = file;
+      return uid;
+    }
+  }
+
+  /**
+   * Fetches the raw Blob from the backend using a UID.
+   * @param uid The UID of the file
+   * @returns Blob (image, PDF, etc.)
+   */
+  public static async get(uid: string): Promise<Blob | undefined> {
+    if (IS_RUNNING_LOCALLY) {
+      // Fetch the file from the backend
+      const res = await fetch(`${FLASK_BASE_URL}media/${uid}`);
+      if (!res.ok) {
+        console.error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+        return undefined;
+      }
+      return await res.blob();
+    } else {
+      // Check if the file is in the cache
+      const blob = MediaLookup.getInstance().cache[uid];
+      if (blob) {
+        return blob;
+      } else {
+        console.error(`File with UID ${uid} not found in cache.`);
+        return undefined;
+      }
+    }
+  }
+
+  /**
+   * Fetches the text content from the backend using a UID.
+   * @param uid The UID of the file (must be a doc)
+   * @returns Text content as a string
+   */
+  public static async getAsText(uid: string): Promise<string | undefined> {
+    if (IS_RUNNING_LOCALLY) {
+      // Fetch the file from the backend
+      const res = await fetch(`${FLASK_BASE_URL}mediaToText/${uid}`);
+      if (!res.ok) {
+        throw new Error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+      }
+      const json = await res.json();
+      return json.text;
+    } else {
+      throw new Error(
+        `Text content not available for UID ${uid} in local cache.`,
+      );
+    }
+  }
+
+  /**
+   * Returns a usable object URL (e.g., for <img src=...>) for a given UID.
+   * Automatically revokes the previous URL for the same UID.
+   * @param uid The UID of the file
+   * @returns An object URL string
+   */
+  public static async getUrl(uid: string): Promise<string> {
+    const blob = await MediaLookup.get(uid);
+    if (!blob) {
+      console.error(`Blob not found for UID ${uid}`);
+      return "";
+    }
+    return URL.createObjectURL(blob);
   }
 }

@@ -194,14 +194,14 @@ export const pulledInputsToTable = (data: string[] | TemplateVarInfo[]) => {
       // Add columns for vars
       Object.entries(vars).forEach(([varname, val]) => {
         if (varname.length === 0) return; // skip empty varnames
-        row[varname] = StringLookup.get(val) ?? "";
+        row[varname] = llmResponseDataToString(val);
       });
 
       // Add columns for metavars, if present
       Object.entries(metavars).forEach(([varname, val]) => {
         if (varname.length === 0) return; // skip empty varnames
         if (!cleanMetavarsFilterFunc(varname)) return; // skip llm group metavars
-        row[varname] = StringLookup.get(val) ?? "";
+        row[varname] = llmResponseDataToString(val);
       });
 
       return row;
@@ -235,7 +235,7 @@ export const responsesToTable = (
         // Add columns for vars
         Object.entries(vars).forEach(([varname, val]) => {
           row[wrapVars ? `Var: ${varname}` : varname] =
-            StringLookup.get(val) ?? "";
+            llmResponseDataToString(val);
         });
 
         // Add column(s) for human ratings, if present
@@ -270,7 +270,7 @@ export const responsesToTable = (
         Object.entries(metavars).forEach(([varname, val]) => {
           if (!cleanMetavarsFilterFunc(varname)) return; // skip llm group metavars
           row[wrapVars ? `Metavar: ${varname}` : varname] =
-            StringLookup.get(val) ?? "";
+            llmResponseDataToString(val);
         });
 
         return row;
@@ -696,7 +696,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           var_cols = found_vars
             .filter((v) => v !== tableColVar)
             .concat(found_llms.length > 1 ? ["LLM"] : []); // only add LLM column if num LLMs > 1
-          getColVal = (r) => StringLookup.get(r.vars[tableColVar]) ?? "";
+          getColVal = (r) => llmResponseDataToString(r.vars[tableColVar]);
           colnames = var_cols;
           found_sel_var_vals = [];
         }
@@ -722,7 +722,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             responses.reduce((acc, res_obj) => {
               acc.add(
                 tableColVar in res_obj.vars
-                  ? StringLookup.get(res_obj.vars[tableColVar]) ?? ""
+                  ? llmResponseDataToString(res_obj.vars[tableColVar])
                   : "(unspecified)",
               );
               return acc;
@@ -815,11 +815,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             > = {};
             let vals_arr_start_idx = 0;
             var_cols_vals.forEach((v, i) => {
-              row[`c${i}`] = StringLookup.get(v);
+              row[`c${i}`] = llmResponseDataToString(v);
             });
             vals_arr_start_idx += var_cols_vals.length;
             metavar_cols_vals.forEach((v, i) => {
-              row[`c${i + vals_arr_start_idx}`] = StringLookup.get(v);
+              row[`c${i + vals_arr_start_idx}`] = llmResponseDataToString(v);
             });
             vals_arr_start_idx += metavar_cols_vals.length;
             sel_var_cols.forEach((v, i) => {
@@ -1030,7 +1030,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               ? groupResponsesBy(resps, getLLMName)
               : groupResponsesBy(resps, (r) =>
                   group_name in r.vars
-                    ? StringLookup.get(r.vars[group_name])
+                    ? llmResponseDataToString(r.vars[group_name])
                     : null,
                 );
           const get_header =
