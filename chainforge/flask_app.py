@@ -1,10 +1,10 @@
-import json, os, sys, asyncio, time, shutil, io
+import json, os, sys, asyncio, time, shutil, io, uuid, hashlib
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Literal
 from statistics import mean, median, stdev
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 from chainforge.providers import ProviderRegistry
 from chainforge.security.password_utils import ensure_password
@@ -17,6 +17,8 @@ from chainforge.rag.chunk_handlers import ChunkingMethodRegistry
 from chainforge.rag.retrieve_handlers import RetrievalMethodRegistry, EmbeddingModelRegistry
 import pymupdf
 from docx import Document
+
+
 
 """ =================
     SETUP AND GLOBALS
@@ -39,6 +41,7 @@ FLOWS_DIR = user_data_dir("chainforge")  # platform-agnostic local storage that 
 SETTINGS_FILENAME = "settings.json"
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
+MEDIA_DIR = os.path.join(FLOWS_DIR, 'media')
 
 # Cryptography
 SECURE_MODE: Literal['off', 'settings', 'all'] = 'off'  # The mode of encryption to use for files
@@ -965,7 +968,59 @@ def save_settings(name):
         return jsonify({"error": str(e)}), 500
     return jsonify({"message": "Settings saved successfully!"})
 
-# --- Upload Endpoint ---
+
+"""
+    Media File Storage and Retrieval
+    (Images, PDFs, Videos, etc.)
+"""
+def compute_file_hash(file_stream):
+    """Calculate SHA256 hash of a file-like object (does not reset pointer)."""
+    hash_obj = hashlib.sha256()
+    file_stream.seek(0)
+    while chunk := file_stream.read(8192):
+        hash_obj.update(chunk)
+    file_stream.seek(0)  # Reset for reuse
+    return hash_obj.hexdigest()
+
+def gen_unique_media_filename(ext, existing_filenames):
+    """Generate a new unique filename using UUID, retrying on rare clash."""
+    while True:
+        uid = str(uuid.uuid4()) + ext
+        if uid not in existing_filenames:
+            return uid
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    """Store a file to the backend and return a unique identifier (UID) for it."""
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+
+    # Compute hash of content to check for duplicates
+    file_hash = compute_file_hash(file.stream)
+
+    # Search for existing file by hash (filename format: hash + ext)
+    for fname in os.listdir(MEDIA_DIR):
+        if fname.startswith(file_hash):
+            return jsonify(uid=fname)  # Already exists
+
+    # Create new UID: hash + uuid + ext to prevent hash collision issues
+    uid = f"{file_hash}-{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(MEDIA_DIR, uid)
+
+    # Double-check: regenerate if clash (extremely unlikely)
+    existing = set(os.listdir(MEDIA_DIR))
+    while uid in existing:
+        uid = f"{file_hash}-{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(MEDIA_DIR, uid)
+
+    file.save(file_path)
+    return jsonify(uid=uid)
+
+@app.route('/media/<uid>')
+def get_media(uid):
+    """Retrieve a file from the media directory using its UID."""
+    return send_from_directory(MEDIA_DIR, uid, as_attachment=False)
+
 ## --- Helper Functions ---
 def extract_text_from_pdf(file_bytes):
     """Extracts text from PDF bytes."""
@@ -999,51 +1054,42 @@ def extract_text_from_txt(file_bytes):
         print(f"Error extracting text from TXT: {e}", file=sys.stderr)
         raise # Re-raise the exception
 
-@app.route("/upload", methods=["POST"])
-def upload_files():
+@app.route('/mediaToText/<uid>', methods=['GET'])
+def media_to_text(uid):
     """
-    Handles file uploads, extracts text based on extension,
-    and returns the text content.
-    Used by the UploadNode.
+    Convert a media file to text using the appropriate method.
+    Supported formats: PDF, DOCX, TXT.
     """
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part in the request"}), 400
-
-    file = request.files['file']
-    if not file or file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-
-    filename = file.filename.lower()
-    
-    # Securely get the extension
-    if '.' not in filename:
-         return jsonify({"error": "File has no extension"}), 400
-    ext = filename.rsplit('.', 1)[1]
-
-    allowed_extensions = {"pdf", "txt", "docx"}
-    if ext not in allowed_extensions:
-        return jsonify({"error": f"Unsupported file type: {ext}. Allowed types: {', '.join(allowed_extensions)}"}), 400
+    file_path = os.path.join(MEDIA_DIR, uid)
+    if not os.path.isfile(file_path):
+        return jsonify({"error": "File not found"}), 404
 
     try:
-        file_bytes = file.read() # Read the file content as bytes
+        ext = os.path.splitext(file_path)[1].lower()
+        with open(file_path, 'rb') as f:
+            file_bytes = f.read()
 
-        text = ""
-        if ext == "pdf":
+        if ext == '.pdf':
             text = extract_text_from_pdf(file_bytes)
-        elif ext == "txt":
-            text = extract_text_from_txt(file_bytes)
-        elif ext == "docx":
+        elif ext == '.docx':
             text = extract_text_from_docx(file_bytes)
+        elif ext == '.txt':
+            text = extract_text_from_txt(file_bytes)
+        else:
+            allowed_extensions = {"pdf", "txt", "docx"}
+            return jsonify({"error": f"Unsupported file type: {ext}. Allowed types: {', '.join(allowed_extensions)}"}), 400
 
-        return jsonify({"text": text}), 200
-
+        return jsonify(text=text), 200
     except Exception as e:
-        print(f"An error occurred during file processing for {filename}: {e}", file=sys.stderr)
+        print(f"An error occurred during file processing for {uid}: {e}", file=sys.stderr)
         # Optionally, log the full traceback here if needed for debugging
         # import traceback
         # traceback.print_exc()
-        return jsonify({"error": f"Failed to process file {filename}. Internal server error."}), 500
+        return jsonify({"error": f"Failed to process file {uid}. Internal server error."}), 500
 
+"""
+    RAGForge Endpoints and Functions
+"""
 
 # Chunking Endpoint
 @app.route("/chunk", methods=["POST"])
@@ -1398,12 +1444,19 @@ def retrieve():
     SPIN UP SERVER
 """
 def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "settings", "all"] = "off"):
-    global HOSTNAME, PORT, FLOWS_DIR, SECURE_MODE, FLOWS_DIR_PWD
+    global HOSTNAME, PORT, FLOWS_DIR, MEDIA_DIR, SECURE_MODE, FLOWS_DIR_PWD
     HOSTNAME = host
     PORT = port
     SECURE_MODE = secure
     if flows_dir:
+        # Set the flows directory to the specified path. 
+        # and create it if it doesn't exist.
         FLOWS_DIR = flows_dir
+        MEDIA_DIR = os.path.join(flows_dir, "media")
+    
+    # Make sure the directories for local storage exist
+    os.makedirs(FLOWS_DIR, exist_ok=True)
+    os.makedirs(MEDIA_DIR, exist_ok=True)
 
     # Get the user password, if `secure` is set to "settings" or "all".
     # :: Create a new password and salt if one doesn't exist, or uses the existing one.

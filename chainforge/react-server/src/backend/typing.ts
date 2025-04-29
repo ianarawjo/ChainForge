@@ -16,6 +16,24 @@ export interface Dict<T = any> {
 /** A string or a number representing the index to a hash table (`StringLookup`). */
 export type StringOrHash = string | number;
 
+export type ResponseUID = string;
+
+/** What kind of data can be each individual response from the model.
+ * string is basic text; but could be images or more data types in the future.
+ */
+export type LLMResponseData =
+  | {
+      t: "img" | "doc"; // type
+      d: string; // the unique ID in the MediaLookup table, NOT the raw data
+    }
+  | StringOrHash;
+
+export function isImageResponseData(
+  r: LLMResponseData,
+): r is { t: "img"; d: string } {
+  return typeof r === "object" && r.t === "img";
+}
+
 // Function types
 export type Func<T = void> = (...args: any[]) => T;
 
@@ -71,9 +89,10 @@ export interface HuggingFaceChatHistory {
 // Chat history with 'carried' variable metadata
 export interface ChatHistoryInfo {
   messages: ChatHistory;
-  fill_history: Dict<StringOrHash>;
-  metavars?: Dict<StringOrHash>;
+  fill_history: Dict<LLMResponseData>;
+  metavars?: Dict<LLMResponseData>;
   llm?: string;
+  uid?: ResponseUID;
 }
 
 export function isEqualChatHistory(
@@ -157,24 +176,6 @@ export interface ModelSettingsDict {
   postprocessors: Dict<(val: string | number | boolean) => any>;
 }
 
-export type ResponseUID = string;
-
-/** What kind of data can be each individual response from the model.
- * string is basic text; but could be images or more data types in the future.
- */
-export type LLMResponseData =
-  | {
-      t: "img"; // type
-      d: string; // payload
-    }
-  | StringOrHash;
-
-export function isImageResponseData(
-  r: LLMResponseData,
-): r is { t: "img"; d: string } {
-  return typeof r === "object" && r.t === "img";
-}
-
 /** Standard properties that every LLM response object must have. */
 export interface BaseLLMResponseObject {
   /** A unique ID to refer to this response */
@@ -182,9 +183,9 @@ export interface BaseLLMResponseObject {
   /** The concrete prompt that led to this response. */
   prompt: StringOrHash;
   /** The variables fed into the prompt. */
-  vars: Dict<StringOrHash>;
+  vars: Dict<LLMResponseData>;
   /** Any associated metavariables. */
-  metavars: Dict<StringOrHash>;
+  metavars: Dict<LLMResponseData>;
   /** The LLM to query (usually a dict of settings) */
   llm: StringOrHash | LLMSpec;
   /** Optional: The chat history to pass the LLM */
@@ -246,8 +247,8 @@ export type EvaluatedResponsesResults = {
 export interface TemplateVarInfo {
   text?: StringOrHash;
   image?: StringOrHash; // base-64 encoding
-  fill_history?: Dict<StringOrHash>;
-  metavars?: Dict<StringOrHash>;
+  fill_history?: Dict<LLMResponseData>;
+  metavars?: Dict<LLMResponseData>;
   associate_id?: StringOrHash;
   prompt?: StringOrHash;
   uid?: ResponseUID;
@@ -264,9 +265,9 @@ export type VarsContext = {
   metavars: string[];
 };
 
-export type PromptVarType = StringOrHash | TemplateVarInfo;
+export type PromptVarType = LLMResponseData | TemplateVarInfo;
 export type PromptVarsDict = {
-  [key: string]: PromptVarType[] | StringOrHash;
+  [key: string]: PromptVarType[] | LLMResponseData;
 };
 
 export type TabularDataRowType = Dict<StringOrHash>;

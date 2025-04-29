@@ -27,6 +27,7 @@ import {
   groupResponsesBy,
   getVarsAndMetavars,
   cleanMetavarsFilterFunc,
+  llmResponseDataToString,
 } from "./backend/utils";
 import StorageCache, { StringLookup } from "./backend/cache";
 import { ResponseBox } from "./ResponseBoxes";
@@ -289,8 +290,14 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
       const [groups, leftover] = groupResponsesBy(
         items,
         isMeta
-          ? (r) => (r.metavars ? r.metavars[vname] : undefined)
-          : (r) => (r.fill_history ? r.fill_history[vname] : undefined),
+          ? (r) =>
+              r.metavars
+                ? llmResponseDataToString(r.metavars[vname])
+                : undefined
+          : (r) =>
+              r.fill_history
+                ? llmResponseDataToString(r.fill_history[vname])
+                : undefined,
       );
 
       const res: (TemplateVarInfo | string)[] = [];

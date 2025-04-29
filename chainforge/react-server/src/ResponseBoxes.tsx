@@ -7,9 +7,7 @@ import {
   EvaluationScore,
   LLMResponse,
   LLMResponseData,
-  StringOrHash,
 } from "./backend/typing";
-import { StringLookup } from "./backend/cache";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -146,7 +144,7 @@ export const ResponseGroup: React.FC<ResponseGroupProps> = ({
  */
 interface ResponseBoxProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
-  vars?: Dict<StringOrHash>;
+  vars?: Dict<LLMResponseData>;
   truncLenForVars?: number;
   llmName?: string;
   boxColor?: string;
@@ -165,7 +163,7 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
     if (vars === undefined) return [];
     return Object.entries(vars).map(([varname, val]) => {
       const v = truncStr(
-        (StringLookup.get(val) ?? "").trim(),
+        llmResponseDataToString(val).trim(),
         truncLenForVars ?? 18,
       );
       return (

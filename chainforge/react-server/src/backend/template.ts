@@ -2,11 +2,13 @@ import { StringLookup } from "./cache";
 import { isEqual } from "./setUtils";
 import {
   Dict,
+  LLMResponseData,
   PromptVarsDict,
   PromptVarType,
   StringOrHash,
   TemplateVarInfo,
 } from "./typing";
+import { llmResponseDataToString } from "./utils";
 
 /**
  * Given a template string, returns a generator that yields the template variables
@@ -351,7 +353,7 @@ export class PromptTemplate {
    * Modifies the prompt template in place.
    * @param fill_history A fill history dict.
    */
-  fill_special_vars(fill_history: Dict<StringOrHash>): void {
+  fill_special_vars(fill_history: Dict<LLMResponseData>): void {
     // Special variables {#...} denotes filling a variable from a matching var in fill_history or metavars.
     // Find any special variables:
     const unfilled_vars = new StringTemplate(this.template).get_vars();
@@ -360,7 +362,8 @@ export class PromptTemplate {
       if (v.length > 0 && v[0] === "#") {
         // special template variables must begin with #
         const svar = v.substring(1);
-        if (svar in fill_history) special_vars_to_fill[v] = fill_history[svar];
+        if (svar in fill_history)
+          special_vars_to_fill[v] = llmResponseDataToString(fill_history[svar]);
         else
           console.warn(
             `Could not find a value to fill special var ${v} in prompt template.`,
