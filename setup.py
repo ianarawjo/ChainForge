@@ -37,6 +37,7 @@ setup(
         "gensim",
         "transformers",
         "spacy",
+        "scipy==1.10.1",
         "scikit-learn",
         "sentence-transformers",
         "rank-bm25",
@@ -60,6 +61,6 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
     ],
-    python_requires=">=3.10",
+    python_requires=">=3.10,<3.12",
     include_package_data=True,
 )

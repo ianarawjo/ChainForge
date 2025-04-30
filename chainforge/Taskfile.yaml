@@ -11,7 +11,7 @@ tasks:
       - 'command -v uv'
 
     cmds:
-      - 'uv venv --verbose --prompt Chainforge_venv .venv'
+      - 'uv venv --verbose --python ">=3.10,<3.12" --prompt Chainforge_venv .venv'
       - 'uv pip install --editable {{.ROOT_DIR}}' 
       
 
