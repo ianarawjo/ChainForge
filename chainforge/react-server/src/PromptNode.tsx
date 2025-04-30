@@ -661,7 +661,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     // include the most recent prompt and response --for that, we need to use the 'prompt' and 'text' items.
     // We need to create a revised chat history that concatenates the past history with the last AI + human turns:
     const past_chats = past_chat_inputs.map<ChatHistoryInfo>(
-      (info: TemplateVarInfo) => {
+      (info: TemplateVarInfo): ChatHistoryInfo => {
         // Add to unique LLMs list, if necessary
         if (
           typeof info?.llm !== "string" &&

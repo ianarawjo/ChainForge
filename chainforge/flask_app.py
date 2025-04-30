@@ -1,16 +1,25 @@
-import json, os, sys, asyncio, time, shutil
+import json, os, sys, asyncio, time, shutil, io, uuid, hashlib
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Literal
 from statistics import mean, median, stdev
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 from chainforge.providers import ProviderRegistry
 from chainforge.security.password_utils import ensure_password
 from chainforge.security.secure_save import load_json_file, save_json_file
 import requests as py_requests
 from platformdirs import user_data_dir
+
+# RAG-specific imports
+from chainforge.rag.chunk_handlers import ChunkingMethodRegistry
+from chainforge.rag.retrieve_handlers import RetrievalMethodRegistry, EmbeddingModelRegistry
+from markitdown import MarkItDown
+# import pymupdf
+# from docx import Document
+
+
 
 """ =================
     SETUP AND GLOBALS
@@ -33,6 +42,7 @@ FLOWS_DIR = user_data_dir("chainforge")  # platform-agnostic local storage that 
 SETTINGS_FILENAME = "settings.json"
 CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
+MEDIA_DIR = os.path.join(FLOWS_DIR, 'media')
 
 # Cryptography
 SECURE_MODE: Literal['off', 'settings', 'all'] = 'off'  # The mode of encryption to use for files
@@ -960,16 +970,462 @@ def save_settings(name):
     return jsonify({"message": "Settings saved successfully!"})
 
 
+"""
+    Media File Storage and Retrieval
+    (Images, PDFs, Videos, etc.)
+"""
+def compute_file_hash(file_stream):
+    """Calculate SHA256 hash of a file-like object (does not reset pointer)."""
+    hash_obj = hashlib.sha256()
+    file_stream.seek(0)
+    while chunk := file_stream.read(8192):
+        hash_obj.update(chunk)
+    file_stream.seek(0)  # Reset for reuse
+    return hash_obj.hexdigest()
+
+def gen_unique_media_filename(ext, existing_filenames):
+    """Generate a new unique filename using UUID, retrying on rare clash."""
+    while True:
+        uid = str(uuid.uuid4()) + ext
+        if uid not in existing_filenames:
+            return uid
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    """Store a file to the backend and return a unique identifier (UID) for it."""
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+
+    # Compute hash of content to check for duplicates
+    file_hash = compute_file_hash(file.stream)
+
+    # Search for existing file by hash (filename format: hash + ext)
+    for fname in os.listdir(MEDIA_DIR):
+        if fname.startswith(file_hash):
+            return jsonify(uid=fname)  # Already exists
+
+    # Create new UID: hash + uuid + ext to prevent hash collision issues
+    uid = f"{file_hash}-{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(MEDIA_DIR, uid)
+
+    # Double-check: regenerate if clash (extremely unlikely)
+    existing = set(os.listdir(MEDIA_DIR))
+    while uid in existing:
+        uid = f"{file_hash}-{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(MEDIA_DIR, uid)
+
+    file.save(file_path)
+    return jsonify(uid=uid)
+
+@app.route('/media/<uid>')
+def get_media(uid):
+    """Retrieve a file from the media directory using its UID."""
+    return send_from_directory(MEDIA_DIR, uid, as_attachment=False)
+
+@app.route('/mediaToText/<uid>', methods=['GET'])
+def media_to_text(uid):
+    """
+    Convert a media file to text using the appropriate method.
+    For currently supported formats, see function body.
+    """
+    file_path = os.path.join(MEDIA_DIR, uid)
+    if not os.path.isfile(file_path):
+        return jsonify({"error": "File not found"}), 404
+
+    try:
+        ext = os.path.splitext(file_path)[1].lower()
+
+        allowed_extensions = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".pptx"}
+        if ext == '.txt':
+            # Read text files directly
+            with open(file_path, 'rb') as f:
+                file_bytes = f.read()
+            text = file_bytes.decode("utf-8", errors="ignore")
+        elif ext in allowed_extensions:
+            # We use markitdown for all other file types
+            md = MarkItDown(enable_plugins=False)
+            result = md.convert(file_path)
+            text = result.text_content
+        else:
+            return jsonify({"error": f"Unsupported file type: {ext}. Allowed types: {', '.join(allowed_extensions)}"}), 400
+
+        return jsonify(text=text), 200
+    except Exception as e:
+        print(f"An error occurred during file processing for {uid}: {e}", file=sys.stderr)
+        # Optionally, log the full traceback here if needed for debugging
+        # import traceback
+        # traceback.print_exc()
+        return jsonify({"error": f"Failed to process file {uid}. Internal server error."}), 500
+
+"""
+    RAGForge Endpoints and Functions
+"""
+# Chunking Endpoint
+@app.route("/chunk", methods=["POST"])
+def chunk():
+    """
+    Handles text processing requests, specifically chunking.
+    Uses a registry to dispatch to the correct chunking function.
+    Expects form data with 'methodName', 'library', 'text', and optional settings.
+    """
+    if not request.form:
+        return jsonify({"error": "Request must be form data"}), 400
+
+    base_method = request.form.get("baseMethod")
+    text = request.form.get("text")
+
+    if not base_method:
+        return jsonify({"error": "Missing 'baseMethod' in form data"}), 400
+    if text is None: # Allow empty string but not missing key
+        return jsonify({"error": "Missing 'text' in form data"}), 400
+
+    # Construct the identifier used in the registry
+    handler = ChunkingMethodRegistry.get_handler(base_method)
+
+    if not handler:
+        return jsonify({"error": f"Unsupported chunking method: {base_method}"}), 400
+
+    # Extract additional settings from form data, converting types carefully
+    settings = {}
+    known_int_params = {"chunk_size", "chunk_overlap", "n_topics", "min_topic_size", "top_k", "max_features"}
+    known_float_params = {"bm25_k1", "bm25_b"}
+    known_bool_params = {"keep_separator"}
+
+    for key, value in request.form.items():
+        if key not in ["baseMethod", "text"]:
+            try:
+                if key in known_int_params:
+                    settings[key] = int(value)
+                elif key in known_float_params:
+                    settings[key] = float(value)
+                elif key in known_bool_params:
+                    # Handle boolean conversion robustly
+                    settings[key] = value.lower() in ['true', '1', 't', 'y', 'yes']
+                else:
+                    settings[key] = value # Keep as string if type unknown
+            except (ValueError, TypeError):
+                print(f"Warning: Could not convert setting '{key}' with value '{value}' to expected type. Using raw value.", file=sys.stderr)
+                settings[key] = value # Fallback to string if conversion fails
+
+    try:
+        # Call the registered handler function
+        chunks = handler(text, **settings)
+        return jsonify({"chunks": chunks}), 200
+    except ValueError as ve: # Catch specific config/setup errors
+        print(f"Configuration or setup error during chunking ({base_method}): {ve}", file=sys.stderr)
+        return jsonify({"error": f"Setup error: {ve}"}), 400 # Bad Request
+    except ImportError as ie:
+         print(f"Import error during chunking ({base_method}): {ie}", file=sys.stderr)
+         return jsonify({"error": f"Missing library dependency: {ie.name}"}), 500 # Internal Server Error
+    except Exception as e:
+        # Log the full error for server-side debugging
+        print(f"Unexpected error during chunking ({base_method}): {e}", file=sys.stderr)
+        # Return a generic error to the client
+        return jsonify({"error": "An internal error occurred during text processing."}), 500
+
+
+
+# === Retrieval Endpoint===
+@app.route("/retrieve", methods=["POST"])
+def retrieve():
+    """
+    Process multiple retrieval methods against provided chunks and queries.
+    
+    Expected request format:
+    {
+        "methods": [
+            {
+                "id": "unique_method_id",
+                "baseMethod": "bm25",
+                "methodName": "BM25",
+                "library": "BM25",
+                "settings": { "top_k": 5, ... }
+            },
+            ...
+        ],
+        "chunks": [
+            {
+                "text": "chunk text",
+                "prompt": "original query",
+                "fill_history": {"chunkMethod": "method name", "docTitle": "doc1", ...},
+                "metavars": {"docTitle": "doc1", "chunkLibrary": "library", ...},
+                ...
+            },
+            ...
+        ],
+        "queries": [
+            {
+                "query": "query text",
+                "fill_history": {"chunkMethod": "method name", "docTitle": "doc1", ...},
+                "metavars": {"docTitle": "doc1", "chunkLibrary": "library", ...},
+                ...
+            },
+            ...
+        ] 
+    }
+
+    Expected output format:
+    A flat array of objects in the ChainForge TemplateVarInfo format:
+    [
+        {
+            "text": "chunk text",
+            "prompt": "query text",
+            "vars": {
+                "query": "query text",
+                "chunkMethod": "chunking method used"
+            },
+            "metavars": {
+                "method": "retrieval method name",
+                "baseMethod": "retrieval base method",
+                "chunkMethod": "chunking method used",
+                "similarity": 0.85,
+                "docTitle": "document title",
+                "chunkId": "unique id",
+                "rank": 1
+            },
+            "fill_history": {
+                "retrievalMethod": "method name",
+                "baseMethod": "base method type",
+                "methodId": "method id",
+                "embeddingModel": "model name if applicable",
+                "chunkMethod": "chunking method used",
+                "similarity": 0.85,
+                "docTitle": "document title",
+                "chunkId": "unique id"
+            },
+            "llm": "retrieval method name"
+        },
+        ...
+    ]
+    """
+    data = request.json
+    methods = data.get("methods", [])
+    chunks = data.get("chunks", [])
+    queries = data.get("queries", [])
+    print("[DEBUG] ", methods)
+    
+    # Validate inputs
+    if not methods:
+        return jsonify({"error": "No retrieval methods provided"}), 400
+    if not chunks:
+        return jsonify({"error": "No chunks provided"}), 400
+    if not queries:
+        return jsonify({"error": "No queries provided"}), 400
+    def find_query_metadata(query_text, queries):
+        for q in queries:
+            if isinstance(q, dict) and q.get("text") == query_text:
+                return q
+        return {}
+    
+
+    
+    # Group chunks by chunking method
+    chunks_by_method = {}
+    for chunk in chunks:
+        # Extract chunking method from the chunk
+        chunk_method = chunk.get("fill_history", {}).get("chunkMethod", "unknown")
+        
+        if chunk_method not in chunks_by_method:
+            chunks_by_method[chunk_method] = []
+        
+        # Store the full chunk with all its metadata
+        chunks_by_method[chunk_method].append({
+            "text": chunk.get("text", ""),
+            "docTitle": chunk.get("metavars", {}).get("docTitle", ""),
+            "chunkId": chunk.get("metavars", {}).get("chunkId", ""),
+            "chunkMethod": chunk_method,
+            "chunkLibrary": chunk.get("metavars", {}).get("chunkLibrary", "")
+        })
+
+    print(len(chunks_by_method))
+    
+    # Group retrieval methods by embedding model to avoid redundant computation
+    embedding_methods = {}  # model -> list of methods requiring this model
+    keyword_methods = []    # methods not requiring embeddings
+
+    for method in methods:
+        embedding_provider = method.get("embeddingProvider", None)
+        if embedding_provider:
+            # This is an embedding-based method
+            embedding_model = method.get("settings", {}).get("embeddingModel", "default")
+            full_embedder = f"{embedding_provider}#{embedding_model}"    
+            if full_embedder not in embedding_methods:
+                embedding_methods[full_embedder] = []
+            embedding_methods[full_embedder].append(method)
+        else:
+            # Non-embedding method
+            keyword_methods.append(method)
+
+    print("[DEBUG] ", embedding_methods)
+    # Prepare the final flat results array
+    flat_results = []
+    
+    # Process each chunking method separately
+    for chunk_method, chunk_group in chunks_by_method.items():
+        # Skip empty chunk groups
+        if not chunk_group:
+            continue
+            
+        # Process keyword methods for this chunk group
+        for method in keyword_methods:
+            method_id = method.get("id")
+            base_method = method.get("baseMethod")
+            method_name = method.get("methodName")
+            
+            try:
+                handler = RetrievalMethodRegistry.get_handler(base_method)
+                if not handler:
+                    raise ValueError(f"Unknown method: {base_method}")
+                
+                # Get retrieved chunks for this method and chunk group
+                retrieved = handler(chunk_group, queries, method.get("settings", {}))
+                # Process retrieved chunks for each query
+                for resp in retrieved:
+                    query_object = resp.get("query_object", "")
+                    retrieved_chunks = resp.get("retrieved_chunks", [])
+                    for i, chunk in enumerate(retrieved_chunks):
+                        # Create response object
+                        response_obj = {
+                            "text": chunk["text"],
+                            "prompt": query_object['text'],
+                            "vars": {
+                                "query": query_object['text'],
+                                **query_object.get("vars", {}),  # Include original query vars
+                                "chunkMethod": chunk_method,  # Add chunking method to vars for grouping
+                                "similarity": str(chunk["similarity"]),
+                            },
+                            "metavars": {
+                                **query_object.get("metavars", {}),  # Include original query metavars
+                                "method": method_name,
+                                "baseMethod": base_method,
+                                "chunkMethod": chunk_method,  # Include chunking method in metavars
+                                "signature": chunk_method + "-" + method_name,
+                                "docTitle": chunk.get("docTitle", ""),
+                                "chunkId": chunk.get("chunkId", ""),
+                                "rank": i + 1
+                            },
+                            "fill_history": {
+                                **query_object.get("fill_history", {}),  # Include original query fill_history
+                                "retrievalMethod": method_name,
+                                "query": query_object['text'],
+                                "baseMethod": base_method,
+                                "methodId": method_id,
+                                "chunkMethod": chunk_method,
+                                "similarity": chunk["similarity"],
+                                "docTitle": chunk.get("docTitle", ""),
+                                "chunkId": chunk.get("chunkId", ""),
+                                "chunkLibrary": chunk.get("chunkLibrary", "")
+                            },
+                            "llm": method_name
+                        }
+                        
+                        flat_results.append(response_obj)
+            except Exception as e:
+                # Skip errors - we'll just not include results from this method
+                print(f"Error with {method_name} on {chunk_method}: {str(e)}")
+                continue
+
+        # Process embedding-based methods for this chunk group
+        for embedder, methods in embedding_methods.items():
+            try:
+                provider, model_name = embedder.split("#", 1)
+                embedder_func = EmbeddingModelRegistry.get_embedder(provider)
+                if not embedder_func:
+                    raise ValueError(f"Unknown embedding model: {model_name}")
+                
+                # Compute embeddings once for all methods using this model
+                chunk_texts = [c["text"] for c in chunk_group]
+                chunk_embeddings = embedder_func(chunk_texts, model_name)
+                query_embeddings = embedder_func([query.get("text", "") for query in queries], model_name)
+                
+            except Exception as e:
+                # Skip this embedder if there's an error
+                print(f"Embedding error with {embedder} on {chunk_method}: {str(e)}")
+                continue
+            
+            # Process each method with the same embeddings
+            for method in methods:
+                method_id = method.get("id")
+                base_method = method.get("baseMethod")
+                method_name = method.get("methodName")
+                
+                try:
+                    handler = RetrievalMethodRegistry.get_handler(base_method)
+                    if not handler:
+                        raise ValueError(f"Unknown method: {base_method}")
+                    
+                    # Get retrieved chunks for this method and chunk group
+                    retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method.get("settings", {}))
+                    
+                    # Process retrieved chunks for each query
+                    for resp in retrieved:
+                        query_object = resp.get("query_object", "")
+                        retrieved_chunks = resp.get("retrieved_chunks", [])
+                        for i, chunk in enumerate(retrieved_chunks):
+                            # Create response object
+                            response_obj = {
+                                "text": chunk["text"],
+                                "prompt": query_object['text'],
+                                "vars": {
+                                    "query": query_object['text'],
+                                    **query_object.get("vars", {}),  # Include original query vars
+                                    "chunkMethod": chunk_method,  # Add chunking method to vars for grouping
+                                    "similarity": str(chunk["similarity"]),
+                                },
+                                "metavars": {
+                                    **query_object.get("metavars", {}),  # Include original query metavars
+                                    "method": method_name,
+                                    "baseMethod": base_method,
+                                    "chunkMethod": chunk_method,
+                                    "signature": chunk_method + "-" + method_name,
+                                    "embeddingModel": model_name,
+                                    "docTitle": chunk.get("docTitle", ""),
+                                    "chunkId": chunk.get("chunkId", ""),
+                                    "rank": i + 1
+                                },
+                                "fill_history": {
+                                    **query_object.get("fill_history", {}),  # Include original query fill_history
+                                    "retrievalMethod": method_name,
+                                    "query": query_object['text'],
+                                    "baseMethod": base_method,
+                                    "methodId": method_id,
+                                    "embeddingModel": model_name,
+                                    "chunkMethod": chunk_method,
+                                    "similarity": chunk["similarity"],
+                                    "docTitle": chunk.get("docTitle", ""),
+                                    "chunkId": chunk.get("chunkId", ""),
+                                    "chunkLibrary": chunk.get("chunkLibrary", "")
+                                },
+                                "llm": method_name
+                            }
+                            
+                            flat_results.append(response_obj)
+                            
+                except Exception as e:
+                    # Skip errors - we'll just not include results from this method
+                    print(f"Error with {method_name} on {chunk_method}: {str(e)}")
+                    continue
+    
+    return jsonify(flat_results), 200
+
+
 """ 
     SPIN UP SERVER
 """
 def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "settings", "all"] = "off"):
-    global HOSTNAME, PORT, FLOWS_DIR, SECURE_MODE, FLOWS_DIR_PWD
+    global HOSTNAME, PORT, FLOWS_DIR, MEDIA_DIR, SECURE_MODE, FLOWS_DIR_PWD
     HOSTNAME = host
     PORT = port
     SECURE_MODE = secure
     if flows_dir:
+        # Set the flows directory to the specified path. 
+        # and create it if it doesn't exist.
         FLOWS_DIR = flows_dir
+        MEDIA_DIR = os.path.join(flows_dir, "media")
+    
+    # Make sure the directories for local storage exist
+    os.makedirs(FLOWS_DIR, exist_ok=True)
+    os.makedirs(MEDIA_DIR, exist_ok=True)
 
     # Get the user password, if `secure` is set to "settings" or "all".
     # :: Create a new password and salt if one doesn't exist, or uses the existing one.

@@ -14,6 +14,7 @@ import {
   Center,
   Modal,
   Box,
+  MultiSelect,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { escapeBraces } from "./backend/template";
@@ -26,6 +27,7 @@ import {
   groupResponsesBy,
   getVarsAndMetavars,
   cleanMetavarsFilterFunc,
+  llmResponseDataToString,
 } from "./backend/utils";
 import StorageCache, { StringLookup } from "./backend/cache";
 import { ResponseBox } from "./ResponseBoxes";
@@ -180,7 +182,7 @@ export interface JoinNodeProps {
       label: string;
       value: string;
     }[];
-    groupByVar: string;
+    selectedGroupVars?: string[];
     groupByLLM: string;
     formatting: JoinFormat;
   };
@@ -206,10 +208,13 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
   );
 
   const [inputHasLLMs, setInputHasLLMs] = useState(false);
+  // Available variables / metavariables to group by
   const [groupByVars, setGroupByVars] = useState(
     data.groupByVars ?? [DEFAULT_GROUPBY_VAR_ALL],
   );
-  const [groupByVar, setGroupByVar] = useState(data.groupByVar ?? "A");
+  const [selectedGroupVars, setSelectedGroupVars] = useState<string[]>(
+    data.selectedGroupVars ?? ["A"],
+  );
   const [groupByLLM, setGroupByLLM] = useState(data.groupByLLM ?? "within");
   const [formatting, setFormatting] = useState(
     data.formatting ?? formattingOptions[0].value,
@@ -224,6 +229,101 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
     setter(value);
     setDataPropsForNode(id, { [propName]: value as any });
   };
+
+  /* ------------------------------------------------------------------ *
+   *  Recursive helper – groups & joins by an ordered list of vars.
+   * ------------------------------------------------------------------ */
+  const groupAndJoinByVars = useCallback(
+    (
+      items: TemplateVarInfo[],
+      varnames: string[],
+      eatenvars: string[] = [],
+    ): (TemplateVarInfo | string)[] => {
+      if (items.length === 0) return [];
+      if (varnames.length === 0) {
+        /* Base‑case: no more vars to eat → just join texts */
+        const joined_text = joinTexts(
+          items.map((it) =>
+            typeof it === "string" || typeof it === "number"
+              ? StringLookup.get(it) ?? ""
+              : StringLookup.get(it.text) ?? "",
+          ),
+          formatting,
+        );
+        const llm = countNumLLMs(items) === 1 ? items[0].llm : undefined;
+
+        /* Preserve ONLY metadata common to all items in this bucket */
+        const shared_meta: Dict = {};
+        const shared_fill: Dict = {};
+        const first = items.find((it) => typeof it !== "string");
+        if (first && typeof first !== "string") {
+          Object.assign(shared_meta, first.metavars ?? {});
+          Object.assign(shared_fill, first.fill_history ?? {});
+          items.forEach((it) => {
+            if (typeof it === "string") return;
+            Object.keys(shared_meta).forEach(
+              (k) =>
+                it.metavars?.[k] !== shared_meta[k] && delete shared_meta[k],
+            );
+            Object.keys(shared_fill).forEach(
+              (k) =>
+                it.fill_history?.[k] !== shared_fill[k] &&
+                delete shared_fill[k],
+            );
+          });
+        }
+        return [
+          {
+            text: joined_text,
+            fill_history: shared_fill,
+            metavars: shared_meta,
+            llm,
+            uid: uuid(),
+          },
+        ];
+      }
+
+      /* Recursive case – group by the first remaining var */
+      const cur = varnames[0];
+      const isMeta = cur[0] === "M";
+      const vname = cur.substring(1);
+      const [groups, leftover] = groupResponsesBy(
+        items,
+        isMeta
+          ? (r) =>
+              r.metavars
+                ? llmResponseDataToString(r.metavars[vname])
+                : undefined
+          : (r) =>
+              r.fill_history
+                ? llmResponseDataToString(r.fill_history[vname])
+                : undefined,
+      );
+
+      const res: (TemplateVarInfo | string)[] = [];
+      Object.entries(groups).forEach(([val, grp]) =>
+        groupAndJoinByVars(grp, varnames.slice(1), [
+          ...eatenvars,
+          vname,
+        ]).forEach((item) => {
+          if (typeof item !== "string") {
+            if (isMeta) item.metavars = { ...item.metavars, [vname]: val };
+            else item.fill_history = { ...item.fill_history, [vname]: val };
+            res.push(item);
+          }
+        }),
+      );
+      if (leftover.length > 0)
+        res.push(
+          ...groupAndJoinByVars(leftover, varnames.slice(1), [
+            ...eatenvars,
+            vname,
+          ]),
+        );
+      return res;
+    },
+    [formatting],
+  );
 
   const handleOnConnect = useCallback(() => {
     let input_data: LLMResponsesByVarDict = pullInputData(["__input"], id);
@@ -264,69 +364,6 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
     // Tag all response objects in the input data with a metavar for their LLM (using the llm key as a uid)
     input_data = tagMetadataWithLLM(input_data);
 
-    // A function to group the input (an array of texts/resp_objs) by the selected var
-    // and then join the texts within the groups
-    const joinByVar = (input: TemplateVarInfo[]) => {
-      const varname = groupByVar.substring(1);
-      const isMetavar = groupByVar[0] === "M";
-      const [groupedResps, unspecGroup] = groupResponsesBy(
-        input,
-        isMetavar
-          ? (r) => (r.metavars ? r.metavars[varname] : undefined)
-          : (r) => (r.fill_history ? r.fill_history[varname] : undefined),
-      );
-
-      // Now join texts within each group:
-      // (NOTE: We can do this directly here as response texts can't be templates themselves)
-      const joined_texts: (TemplateVarInfo | string)[] = Object.entries(
-        groupedResps,
-      ).map(([var_val, resp_objs]) => {
-        if (resp_objs.length === 0) return "";
-        const llm = countNumLLMs(resp_objs) > 1 ? undefined : resp_objs[0].llm;
-        const vars: Dict<string> = {};
-        if (groupByVar !== "A") vars[varname] = var_val;
-        return {
-          text: joinTexts(
-            resp_objs.map(
-              (r) =>
-                (typeof r === "string" || typeof r === "number"
-                  ? StringLookup.get(r)
-                  : StringLookup.get(r.text)) ?? "",
-            ),
-            formatting,
-          ),
-          fill_history: isMetavar ? {} : vars,
-          metavars: isMetavar ? vars : {},
-          llm,
-          uid: uuid(),
-          // NOTE: We lose all other metadata here, because we could've joined across other vars or metavars values.
-        };
-      });
-
-      // Add any data from unspecified group
-      if (unspecGroup.length > 0) {
-        const llm =
-          countNumLLMs(unspecGroup) > 1 ? undefined : unspecGroup[0].llm;
-        joined_texts.push({
-          text: joinTexts(
-            unspecGroup.map(
-              (u) =>
-                (typeof u === "string" || typeof u === "number"
-                  ? StringLookup.get(u)
-                  : StringLookup.get(u.text)) ?? "",
-            ),
-            formatting,
-          ),
-          fill_history: {},
-          metavars: {},
-          llm,
-          uid: uuid(),
-        });
-      }
-
-      return joined_texts;
-    };
-
     // Generate (flatten) the inputs, which could be recursively chained templates
     // and a mix of LLM resp objects, templates, and strings.
     // (We tagged each object with its LLM key so that we can use built-in features to keep track of the LLM associated with each response object)
@@ -362,11 +399,14 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
                 : r.llm?.key,
           );
           // eslint-disable-next-line
-          Object.entries(groupedRespsByLLM).forEach(([llm_key, resp_objs]) => {
-            // Group only within the LLM
-            joined_texts = joined_texts.concat(joinByVar(resp_objs));
+          Object.entries(groupedRespsByLLM).forEach(([_, llmGroup]) => {
+            joined_texts = joined_texts.concat(
+              groupAndJoinByVars(
+                llmGroup,
+                selectedGroupVars.filter((v) => v !== "A"),
+              ),
+            );
           });
-
           if (nonLLMRespGroup.length > 0)
             joined_texts.push(
               joinTexts(
@@ -374,14 +414,18 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
                 formatting,
               ),
             );
-
           setJoinedTexts(joined_texts);
           setDataPropsForNode(id, { fields: joined_texts });
         } else {
           // Join across LLMs (join irrespective of LLM):
-          if (groupByVar !== "A") {
-            // If groupByVar is set to non-ALL (not "A"), then we need to group responses by that variable first:
-            const joined_texts = joinByVar(resp_objs);
+          if (
+            selectedGroupVars.length > 1 ||
+            (selectedGroupVars.length === 1 && selectedGroupVars[0] !== "A")
+          ) {
+            const joined_texts = groupAndJoinByVars(
+              resp_objs,
+              selectedGroupVars.filter((v) => v !== "A"),
+            );
             setJoinedTexts(joined_texts);
             setDataPropsForNode(id, { fields: joined_texts });
           } else {
@@ -410,7 +454,16 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
         }
       })
       .catch(console.error);
-  }, [formatting, pullInputData, groupByVar, groupByLLM]);
+  }, [
+    formatting,
+    pullInputData,
+    selectedGroupVars,
+    groupByLLM,
+    groupAndJoinByVars,
+    id,
+    setDataPropsForNode,
+    handleSetAndSave,
+  ]);
 
   if (data.input) {
     // If there's a change in inputs...
@@ -423,7 +476,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
   // Refresh join output anytime the dropdowns change
   useEffect(() => {
     handleOnConnect();
-  }, [groupByVar, groupByLLM, formatting]);
+  }, [selectedGroupVars, groupByLLM, formatting]);
 
   // Store the outputs to the cache whenever they change
   useEffect(() => {
@@ -468,24 +521,26 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
       <div
         style={{
           display: "flex",
+          flexDirection: "column",
           justifyContent: "left",
           maxWidth: "100%",
           marginBottom: "10px",
         }}
       >
-        <Text mt="3px" mr="xs">
-          Join
-        </Text>
-        <NativeSelect
-          onChange={(e) =>
-            handleSetAndSave(e.target.value, setGroupByVar, "groupByVar")
+        <Text mb="xs">Group by (in order):</Text>
+        <MultiSelect
+          data={groupByVars}
+          value={selectedGroupVars}
+          onChange={(value) =>
+            handleSetAndSave(value, setSelectedGroupVars, "selectedGroupVars")
           }
           className="nodrag nowheel"
-          data={groupByVars}
+          placeholder="Select grouping variables"
           size="xs"
-          value={groupByVar}
-          miw="80px"
-          mr="xs"
+          clearable
+          searchable
+          mb="sm"
+          style={{ maxWidth: "200px" }}
         />
       </div>
       {inputHasLLMs ? (

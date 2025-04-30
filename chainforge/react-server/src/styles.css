@@ -27,7 +27,13 @@ hr {
 
 .grouped-handle {
   background: #555;
-  height: 15px !important;
+  height: 16px !important;
+}
+
+.react-flow__handle {
+  background: #555;
+  width: 8px;
+  height: 8px;
 }
 
 .small-standard-font {
@@ -1554,7 +1560,42 @@ html[data-mantine-color-scheme="dark"] .saved-flows-footer {
 }
 
 .icl {
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.upload-node {
+  width: 290px;
+}
+
+.upload-node-droparea {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  margin: 10px;
+  background-color: #f9f9f9;
+  cursor: pointer;
+}
+html[data-mantine-color-scheme="dark"] .upload-node-droparea {
+  background-color: #333;
+  border-color: #444;
+}
+
+.upload-node-list {
+  max-height: 200px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fafafa;
+}
+html[data-mantine-color-scheme="dark"] .upload-node-list {
+  background: #222;
+  border-color: #444;
+}
+
+.chunk-node {
+  width: 290px;
 }
 
 /* Classes relative to the multimedia Node */

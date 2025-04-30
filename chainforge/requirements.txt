@@ -8,3 +8,20 @@ urllib3==1.26.6
 mistune>=2.0
 platformdirs
 cryptography
+pymupdf
+python-docx
+tiktoken
+langchain
+langchain-core
+langchain-community
+nltk
+gensim
+transformers
+spacy
+scikit-learn
+sentence-transformers
+rank-bm25
+whoosh
+cohere
+markitdown[pdf, docx, xlsx, xls, pptx]
+chonkie[all]

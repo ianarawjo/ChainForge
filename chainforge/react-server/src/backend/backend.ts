@@ -273,7 +273,8 @@ function filterVarsByLLM(vars: PromptVarsDict, llm_key: string): Dict {
       (v) =>
         typeof v === "string" ||
         typeof v === "number" ||
-        v?.llm === undefined ||
+        !("llm" in v) ||
+        v.llm === undefined ||
         typeof v.llm === "string" ||
         typeof v.llm === "number" ||
         v.llm.key === llm_key,
@@ -769,7 +770,7 @@ export async function queryLLM(
   llm: string | (string | LLMSpec)[],
   n: number,
   prompt: string,
-  vars: Dict,
+  vars: PromptVarsDict,
   chat_histories?: ChatHistoryInfo[] | { [key: string]: ChatHistoryInfo[] },
   api_keys?: Dict,
   no_cache?: boolean,
@@ -976,12 +977,28 @@ export async function queryLLM(
   );
 
   // Reorder the responses to match the original vars dict ordering of keys and values
-  const vars_lookup: { [key: string]: Dict } = {}; // we create a lookup table for faster sort
+  const vars_lookup: { [key: string]: Dict<number> } = {}; // we create a lookup table for faster sort
+  const getStringForVarObj = (vobj: PromptVarType): string => {
+    if (typeof vobj === "string" || typeof vobj === "number") {
+      return StringLookup.get(vobj) ?? vobj.toString();
+    } else if (typeof vobj === "object" && vobj != null) {
+      // If the object has a 'text' property, use that as the key
+      if ("text" in vobj && vobj.text !== undefined) {
+        return StringLookup.get(vobj.text) ?? vobj.text.toString();
+      } else if ("d" in vobj) {
+        // Otherwise, use the 'd' property as the key
+        return vobj.d;
+      } else {
+        console.error(`Invalid variable object: ${JSON.stringify(vobj)}`);
+      }
+    }
+    return "(unknown)";
+  };
   Object.entries(vars).forEach(([varname, vals]) => {
     vars_lookup[varname] = {};
-    vals.forEach((vobj: Dict | string, i: number) => {
-      const v = typeof vobj === "string" ? vobj : vobj?.text;
-      vars_lookup[varname][v] = i;
+    if (!Array.isArray(vals)) vals = [vals];
+    vals.forEach((vobj, i: number) => {
+      vars_lookup[varname][getStringForVarObj(vobj)] = i;
     });
   });
   const vars_entries = Object.entries(vars_lookup);
@@ -989,8 +1006,8 @@ export async function queryLLM(
     if (!a.vars || !b.vars) return 0;
     for (const [varname, vals] of vars_entries) {
       if (varname in a.vars && varname in b.vars) {
-        const a_idx = vals[a.vars[varname]];
-        const b_idx = vals[b.vars[varname]];
+        const a_idx = vals[getStringForVarObj(a.vars[varname])];
+        const b_idx = vals[getStringForVarObj(b.vars[varname])];
         if (a_idx > -1 && b_idx > -1 && a_idx !== b_idx) return a_idx - b_idx;
       }
     }
@@ -1294,6 +1311,7 @@ export async function evalWithLLM(
   api_keys?: Dict,
   progress_listener?: (progress: { [key: symbol]: any }) => void,
   cancel_id?: string | number,
+  useReasoning?: boolean,
 ): Promise<{ responses?: LLMResponse[]; errors: string[] }> {
   // Check format of response_ids
   if (!Array.isArray(response_ids)) response_ids = [response_ids];
@@ -1355,12 +1373,63 @@ export async function evalWithLLM(
 
     const err_vals: string[] = Object.values(errors).flat();
     if (err_vals.length > 0) all_errors = all_errors.concat(err_vals);
+    // If reasoning mode is enabled, extract the scores from the responses
+    if (useReasoning) {
+      responses.forEach((r: LLMResponse) => {
+        if (!r.responses || r.responses.length === 0) return;
+
+        // Process each response item within the LLMResponse
+        r.responses = r.responses.map((response_item) => {
+          // First, convert the response item (LLMResponseData) to a string
+          const response_str = llmResponseDataToString(response_item);
+
+          // Now apply the regex to the string representation
+          if (typeof response_str !== "string") {
+            // Should not happen if llmResponseDataToString works correctly, but handle defensively
+            console.warn(
+              "Response item did not convert to string:",
+              response_item,
+            );
+            return response_item; // Return original item if conversion failed
+          }
+
+          // console.log("Attempting to extract score from:", response_str); // Optional: for debugging
+
+          try {
+            // Extract the score from the SCORE: format
+            const match = response_str.match(
+              /score:\s*(\d+(?:\.\d+)?)(?:\s*)?$/i,
+            ); // Made decimal part optional
+            if (match && match[1]) {
+              const extracted_score = match[1].trim();
+              // console.log("match found:", extracted_score); // Optional: for debugging
+              // Return the extracted score string. This replaces the original
+              // response_item (which could be an object) in the r.responses array.
+              return extracted_score;
+            }
+            // If no match, return the original string (or potentially handle as error/default)
+            // console.log("No score match found in:", response_str); // Optional: for debugging
+            return response_str; // Return the full string if no score pattern found
+          } catch (e) {
+            console.warn("Failed during regex matching or processing:", e);
+            return response_str; // Return the full string in case of error
+          }
+        });
+      });
+    }
 
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
     responses.forEach((r: LLMResponse) => {
-      const __i = parseInt(StringLookup.get(r.metavars.__i) ?? "");
-      const __j = parseInt(StringLookup.get(r.metavars.__j) ?? "");
+      const __i = parseInt(StringLookup.get(r.metavars.__i as number) ?? "");
+      const __j = parseInt(StringLookup.get(r.metavars.__j as number) ?? "");
+      // Ensure indices are valid
+      if (isNaN(__i) || isNaN(__j) || __i < 0 || __i >= resp_objs.length) {
+        console.error(
+          `Invalid indices found in response metadata: __i=${__i}, __j=${__j}. Skipping response mapping.`,
+        );
+        return; // Skip this response
+      }
       const resp_obj = resp_objs[__i];
       if (resp_obj.eval_res !== undefined)
         resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
