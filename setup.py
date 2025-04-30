@@ -43,6 +43,7 @@ setup(
         "whoosh",
         "cohere",
         "markitdown[pdf, docx, xlsx, xls, pptx]",
+        "chonkie[all]",
     ],
     entry_points={
         "console_scripts": [
