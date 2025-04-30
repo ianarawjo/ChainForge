@@ -463,8 +463,9 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         const observer = new window.ResizeObserver(() => {
           if (!ref || !ref.current) return;
           // Depending if there is the < > Chevron buttons or not, the offset is not the same
-          const vertical_y_offset_hooks = tableData.length > 1 ? 405 : 345
-          const new_hooks_y = ref.current.clientHeight + vertical_y_offset_hooks;
+          const vertical_y_offset_hooks = tableData.length > 1 ? 405 : 345;
+          const new_hooks_y =
+            ref.current.clientHeight + vertical_y_offset_hooks;
           if (past_hooks_y !== new_hooks_y) {
             setHooksY(new_hooks_y);
             past_hooks_y = new_hooks_y;
@@ -915,7 +916,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
               disabled={tableData.length <= 1}
               variant="transparent"
               size="xl"
-              className="carousel-nav-button" 
+              className="carousel-nav-button"
             >
               <IconChevronRight size={32} />
             </ActionIcon>

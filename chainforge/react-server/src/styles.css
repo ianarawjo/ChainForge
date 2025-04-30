@@ -1630,9 +1630,19 @@ html[data-mantine-color-scheme="dark"] .saved-flows-footer {
 /* Dark Mode Overrides */
 html[data-mantine-color-scheme="dark"] .carousel-nav-button {
   color: #bbb; /* Lighter color for dark mode */
-  background-color: rgba(255, 255, 255, 0.1); /* Light background for dark mode */
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.1
+  ); /* Light background for dark mode */
 }
 
 html[data-mantine-color-scheme="dark"] .carousel-nav-button:hover {
-  background-color: rgba(255, 255, 255, 0.2); /* Brighter hover background for dark mode */
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.2
+  ); /* Brighter hover background for dark mode */
 }
