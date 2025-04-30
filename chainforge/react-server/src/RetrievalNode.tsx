@@ -34,9 +34,9 @@ interface RetrievalNodeProps {
 }
 
 // Constants for handle positioning and styling
-const HANDLE_Y_START = 10; // Adjust this value to move the first handle up/down
+const HANDLE_Y_START = 60; // Adjust this value to move the first handle up/down
 const HANDLE_Y_GAP = 30; // Adjust this value for spacing between handles
-const HANDLE_X_OFFSET = "-24px"; // Nudge handle horizontally if needed (ReactFlow default is centered)
+const HANDLE_X_OFFSET = "-14px"; // Nudge handle horizontally if needed (ReactFlow default is centered)
 
 const handleStyle: React.CSSProperties = {
   background: "#555",
@@ -261,11 +261,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
   }, [id, methodItems, results, setDataPropsForNode]);
 
   return (
-    <BaseNode
-      nodeId={id}
-      classNames="retrieval-node"
-      style={{ width: "400px", backgroundColor: "rgba(255,255,255,0.9)" }}
-    >
+    <BaseNode nodeId={id} classNames="retrieval-node">
       <NodeLabel
         title={data.title || nodeDefaultTitle}
         nodeId={id}
@@ -275,7 +271,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         runButtonTooltip="Run Retrieval"
       />
 
-      <div style={{ padding: 8, position: "relative" }}>
+      <div>
         <LoadingOverlay visible={loading} />
 
         {/* Labeled Handle for 'queries' */}
@@ -314,7 +310,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         </div>
 
         {/* Add margin top to push list below handles */}
-        <div style={{ marginTop: `${HANDLE_Y_START + 2 * HANDLE_Y_GAP}px` }}>
+        <div style={{ marginTop: `${HANDLE_Y_START + 1 * HANDLE_Y_GAP}px` }}>
           <RetrievalMethodListContainer
             initMethodItems={methodItems}
             onItemsChange={handleMethodsChange}

@@ -8,7 +8,16 @@ import React, {
 } from "react";
 import { Handle, Position } from "reactflow";
 import { v4 as uuid } from "uuid";
-import { Button, Group, Text, Box, List, ThemeIcon, Flex } from "@mantine/core";
+import {
+  Button,
+  Group,
+  Text,
+  Box,
+  List,
+  ThemeIcon,
+  Flex,
+  ScrollArea,
+} from "@mantine/core";
 import { IconUpload, IconTrash } from "@tabler/icons-react";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
@@ -150,15 +159,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
-        style={{
-          border: "2px dashed #ccc",
-          borderRadius: "8px",
-          padding: "20px",
-          textAlign: "center",
-          margin: "10px",
-          backgroundColor: "#f9f9f9",
-          cursor: "pointer",
-        }}
+        className="upload-node-droparea"
         onClick={() => fileInputRef.current?.click()}
       >
         <IconUpload size={40} color="#888" />
@@ -195,15 +196,9 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
         </Group>
 
         {!fileListCollapsed && fields.length > 0 && (
-          <Box
-            className="nopan nowheel"
-            style={{
-              maxHeight: 200,
-              border: "1px solid #eee",
-              borderRadius: "8px",
-              padding: "8px",
-              background: "#fafafa",
-            }}
+          <ScrollArea.Autosize
+            mah={200}
+            className="upload-node-list nopan nowheel"
           >
             <List spacing="xs" size="sm">
               {fields.map((field, index) => (
@@ -253,7 +248,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
                 </List.Item>
               ))}
             </List>
-          </Box>
+          </ScrollArea.Autosize>
         )}
       </Box>
     </BaseNode>

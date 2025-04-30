@@ -138,18 +138,18 @@ const RetrievalMethodListItem: React.FC<RetrievalMethodListItemProps> = ({
           <ActionIcon
             size="sm"
             variant="subtle"
-            color="gray"
-            onClick={() => open()}
-          >
-            <IconSettings size={14} />
-          </ActionIcon>
-          <ActionIcon
-            size="sm"
-            variant="subtle"
             color="red"
             onClick={() => onRemove(methodItem.key)}
           >
             <IconTrash size={14} />
+          </ActionIcon>
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            color="blue"
+            onClick={() => open()}
+          >
+            <IconSettings size={14} />
           </ActionIcon>
         </Group>
       </Group>
@@ -296,10 +296,10 @@ export const RetrievalMethodListContainer = forwardRef<
             <Button
               size="xs"
               variant="light"
-              leftIcon={<IconPlus size={14} />}
+              rightIcon={<IconPlus size={14} />}
               onClick={() => setMenuOpened((o) => !o)}
             >
-              Add +
+              Add
             </Button>
           </Menu.Target>
           <Menu.Dropdown>

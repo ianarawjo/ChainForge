@@ -48,7 +48,11 @@ export default function LLMItemButtonGroup({
 }: LLMItemButtonGroupProps) {
   return (
     <div>
-      <Group position="right" style={{ float: "right", height: "20px" }}>
+      <Group
+        position="right"
+        spacing="xs"
+        style={{ float: "right", height: "20px" }}
+      >
         <GatheringResponsesRingProgress progress={ringProgress} />
         {hideTrashIcon ? (
           <></>

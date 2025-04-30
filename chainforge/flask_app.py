@@ -15,8 +15,9 @@ from platformdirs import user_data_dir
 # RAG-specific imports
 from chainforge.rag.chunk_handlers import ChunkingMethodRegistry
 from chainforge.rag.retrieve_handlers import RetrievalMethodRegistry, EmbeddingModelRegistry
-import pymupdf
-from docx import Document
+from markitdown import MarkItDown
+# import pymupdf
+# from docx import Document
 
 
 
@@ -1021,44 +1022,11 @@ def get_media(uid):
     """Retrieve a file from the media directory using its UID."""
     return send_from_directory(MEDIA_DIR, uid, as_attachment=False)
 
-## --- Helper Functions ---
-def extract_text_from_pdf(file_bytes):
-    """Extracts text from PDF bytes."""
-    try:
-        text = ""
-        with pymupdf.open(stream=file_bytes, filetype="pdf") as doc:
-            for page in doc:
-                text += page.get_text()
-        return text
-    except Exception as e:
-        print(f"Error extracting text from PDF: {e}", file=sys.stderr)
-        raise  # Re-raise the exception to be caught by the endpoint
-
-def extract_text_from_docx(file_bytes):
-    """Extracts text from DOCX bytes."""
-    try:
-        file_stream = io.BytesIO(file_bytes)
-        doc = Document(file_stream)
-        full_text = [para.text for para in doc.paragraphs]
-        return "\n".join(full_text)
-    except Exception as e:
-        print(f"Error extracting text from DOCX: {e}", file=sys.stderr)
-        raise # Re-raise the exception
-
-def extract_text_from_txt(file_bytes):
-    """Extracts text from TXT bytes."""
-    try:
-        # Decode with UTF-8, ignore errors for maximum compatibility
-        return file_bytes.decode("utf-8", errors="ignore")
-    except Exception as e:
-        print(f"Error extracting text from TXT: {e}", file=sys.stderr)
-        raise # Re-raise the exception
-
 @app.route('/mediaToText/<uid>', methods=['GET'])
 def media_to_text(uid):
     """
     Convert a media file to text using the appropriate method.
-    Supported formats: PDF, DOCX, TXT.
+    For currently supported formats, see function body.
     """
     file_path = os.path.join(MEDIA_DIR, uid)
     if not os.path.isfile(file_path):
@@ -1066,17 +1034,19 @@ def media_to_text(uid):
 
     try:
         ext = os.path.splitext(file_path)[1].lower()
-        with open(file_path, 'rb') as f:
-            file_bytes = f.read()
 
-        if ext == '.pdf':
-            text = extract_text_from_pdf(file_bytes)
-        elif ext == '.docx':
-            text = extract_text_from_docx(file_bytes)
-        elif ext == '.txt':
-            text = extract_text_from_txt(file_bytes)
+        allowed_extensions = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".pptx"}
+        if ext == '.txt':
+            # Read text files directly
+            with open(file_path, 'rb') as f:
+                file_bytes = f.read()
+            text = file_bytes.decode("utf-8", errors="ignore")
+        elif ext in allowed_extensions:
+            # We use markitdown for all other file types
+            md = MarkItDown(enable_plugins=False)
+            result = md.convert(file_path)
+            text = result.text_content
         else:
-            allowed_extensions = {"pdf", "txt", "docx"}
             return jsonify({"error": f"Unsupported file type: {ext}. Allowed types: {', '.join(allowed_extensions)}"}), 400
 
         return jsonify(text=text), 200
@@ -1090,7 +1060,6 @@ def media_to_text(uid):
 """
     RAGForge Endpoints and Functions
 """
-
 # Chunking Endpoint
 @app.route("/chunk", methods=["POST"])
 def chunk():
