@@ -114,7 +114,6 @@ export const ResponseGroup: React.FC<ResponseGroupProps> = ({
   defaultState,
 }) => {
   const [opened, { toggle }] = useDisclosure(defaultState);
-
   return (
     <div>
       <div className="response-group-component-header" onClick={toggle}>

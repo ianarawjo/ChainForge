@@ -16,6 +16,7 @@ import {
   Modal,
   Divider,
   Flex,
+  ScrollArea,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus, IconTrash, IconSettings } from "@tabler/icons-react";
@@ -23,7 +24,7 @@ import Form from "@rjsf/core";
 import validator from "@rjsf/validator-ajv8";
 import { v4 as uuid } from "uuid";
 import { ChunkMethodSchemas, ChunkMethodGroups } from "./ChunkMethodSchemas";
-import { transformDict } from "./backend/utils";
+import { transformDict, truncStr } from "./backend/utils";
 
 export interface ChunkMethodSpec {
   key: string;
@@ -95,13 +96,19 @@ const ChunkMethodListItem: React.FC<{
           {methodItem.settings &&
             Object.entries(
               transformDict(methodItem.settings, (k) => k !== "shortname"),
-            ).map(([key, value]) => (
-              <Text
-                key={key}
-                size="xs"
-                color="dimmed"
-              >{`${key}: ${value}`}</Text>
-            ))}
+            ).map(([key, value]) =>
+              value ? (
+                <Text
+                  key={key}
+                  size={10}
+                  ml="lg"
+                  lh={1.2}
+                  color="dimmed"
+                >{`${key}: ${truncStr(value, 112)}`}</Text>
+              ) : (
+                <></>
+              ),
+            )}
           {/* {fullName || description || ""} */}
         </div>
         <Flex gap={2}>
@@ -128,7 +135,7 @@ const ChunkMethodListItem: React.FC<{
         opened={settingsModalOpen}
         onClose={close}
         title="Chunk Method Settings"
-        size="md"
+        size="lg"
       >
         {schema && Object.keys(schema).length > 0 ? (
           <Form
@@ -232,7 +239,7 @@ const ChunkMethodListContainer = forwardRef<
 
   return (
     <div style={{ padding: 4 }}>
-      <Group position="apart" mb="xs">
+      <Group position="apart" mb="0">
         <Text weight={500} size="sm">
           Chunking Methods
         </Text>
@@ -283,14 +290,16 @@ const ChunkMethodListContainer = forwardRef<
           No chunk methods selected.
         </Text>
       ) : (
-        methodItems.map((item) => (
-          <ChunkMethodListItem
-            key={item.key}
-            methodItem={item}
-            onRemove={handleRemoveMethod}
-            onSettingsUpdate={handleSettingsUpdate}
-          />
-        ))
+        <ScrollArea.Autosize mah={500} className="nopan nowheel">
+          {methodItems.map((item) => (
+            <ChunkMethodListItem
+              key={item.key}
+              methodItem={item}
+              onRemove={handleRemoveMethod}
+              onSettingsUpdate={handleSettingsUpdate}
+            />
+          ))}
+        </ScrollArea.Autosize>
       )}
     </div>
   );
