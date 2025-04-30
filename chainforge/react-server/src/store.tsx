@@ -27,6 +27,8 @@ import {
   TabularDataColType,
   TabularDataRowType,
   JSONCompatible,
+  ModelSettingsDict,
+  CustomChunkerSpec,
 } from "./backend/typing";
 import { TogetherChatSettings } from "./ModelSettingSchemas";
 import { NativeLLM } from "./backend/models";
@@ -424,6 +426,14 @@ export interface StoreHandles {
   AvailableLLMs: LLMSpec[];
   setAvailableLLMs: (specs: LLMSpec[]) => void;
 
+  // Custom chunkers
+  customChunkers: CustomChunkerSpec[];
+  chunkerSettingsSchemas: { [id: string]: ModelSettingsDict };
+  // Custom Chunkers Actions
+  setCustomChunkers: (chunkers: CustomChunkerSpec[]) => void;
+  addOrUpdateCustomChunker: (chunkerSpec: CustomChunkerSpec) => void;
+  removeCustomChunkerState: (identifier: string) => void;
+
   // API keys to LLM providers
   apiKeys: Dict<string>;
   setAPIKeys: (apiKeys: Dict<string>) => void;
@@ -508,6 +518,96 @@ const useStore = create<StoreHandles>((set, get) => ({
     set({ AvailableLLMs: llmProviderList });
   },
 
+  // Available chunkers in ChainForge, in the format expected by ChunkersListItems.
+  customChunkers: [],
+  chunkerSettingsSchemas: {},
+  // Custom Chunkers Actions Implementation
+  setCustomChunkers: (chunkers) => {
+    const schemas: { [id: string]: ModelSettingsDict } = {};
+    chunkers.forEach((c) => {
+      // Reconstruct the ModelSettingsDict structure for the schema lookup
+      schemas[c.identifier] = {
+        // Create a reasonable default fullName/description
+        fullName: `${c.name} (custom)`,
+        description: `Custom chunker: ${c.name}`,
+        // Use the schema from the spec, providing empty fallbacks
+        schema: {
+          type: "object",
+          properties: c.settings_schema?.settings ?? {},
+          required: [],
+        },
+        uiSchema: c.settings_schema?.ui ?? {},
+        postprocessors: {}, // Assume no postprocessors for custom chunkers
+      };
+    });
+    console.log("Setting custom chunkers:", chunkers);
+    console.log("Setting chunker schemas:", schemas);
+    set({ customChunkers: chunkers, chunkerSettingsSchemas: schemas });
+  },
+
+  addOrUpdateCustomChunker: (chunkerSpec) => {
+    const currentChunkers = get().customChunkers;
+    const currentSchemas = get().chunkerSettingsSchemas;
+    const idx = currentChunkers.findIndex(
+      (c) => c.identifier === chunkerSpec.identifier,
+    );
+
+    // Construct the schema for the UI
+    const newSchema: ModelSettingsDict = {
+      fullName: `${chunkerSpec.name} (custom)`,
+      description: `Custom chunker: ${chunkerSpec.name}`,
+      schema: {
+        type: "object",
+        properties: chunkerSpec.settings_schema?.settings ?? {},
+        required: [],
+      },
+      uiSchema: chunkerSpec.settings_schema?.ui ?? {},
+      postprocessors: {},
+    };
+    let updatedChunkers: CustomChunkerSpec[];
+    if (idx > -1) {
+      // Update existing chunker in the list
+      updatedChunkers = [...currentChunkers];
+      updatedChunkers[idx] = chunkerSpec;
+    } else {
+      // Add new chunker to the list
+      updatedChunkers = [...currentChunkers, chunkerSpec];
+    }
+
+    // Update state
+    set({
+      customChunkers: updatedChunkers,
+      chunkerSettingsSchemas: {
+        ...currentSchemas,
+        [chunkerSpec.identifier]: newSchema,
+      },
+    });
+    // console.log("Added/Updated chunker:", chunkerSpec);
+    // console.log("New customChunkers:", updatedChunkers);
+  },
+
+  removeCustomChunkerState: (identifier: string) => {
+    const currentChunkers = get().customChunkers;
+    const currentSchemas = get().chunkerSettingsSchemas;
+
+    // Filter out the chunker to remove
+    const updatedChunkers = currentChunkers.filter(
+      (c) => c.identifier !== identifier,
+    );
+
+    // Remove the schema entry
+    const updatedSchemas = { ...currentSchemas };
+    delete updatedSchemas[identifier];
+
+    // Update state
+    set({
+      customChunkers: updatedChunkers,
+      chunkerSettingsSchemas: updatedSchemas,
+    });
+    // console.log("Removed chunker state for:", identifier);
+    // console.log("New customChunkers:", updatedChunkers);
+  },
+  // The LLM provider used for genAI features
   aiFeaturesProvider: "OpenAI",
   setAIFeaturesProvider: (llmProvider) => {
     set({ aiFeaturesProvider: llmProvider });
