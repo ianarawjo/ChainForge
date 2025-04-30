@@ -62,11 +62,10 @@ import GlobalSettingsModal, {
   GlobalSettingsModalRef,
 } from "./GlobalSettingsModal";
 import ExampleFlowsModal, { ExampleFlowsModalRef } from "./ExampleFlowsModal";
-import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
 import SimpleEvalNode from "./SimpleEvalNode";
 import UploadNode from "./UploadNode";
-import ChunkingNode from "./ChunkingNode";
+import ChunkNode from "./ChunkNode";
 import RetrievalNode from "./RetrievalNode";
 import {
   getDefaultModelFormData,
@@ -209,7 +208,7 @@ const nodeTypes = {
   split: SplitNode,
   processor: CodeEvaluatorNode,
   upload: UploadNode,
-  chunking: ChunkingNode,
+  chunk: ChunkNode,
   retrieval: RetrievalNode,
 };
 
@@ -230,7 +229,7 @@ const nodeEmojis = {
   join: <IconArrowMerge size={16} />,
   split: <IconArrowsSplit size={16} />,
   upload: "📁",
-  chunking: "📄",
+  chunk: "📄",
   retrieval: "🔍",
 };
 
@@ -551,11 +550,11 @@ const App = () => {
         onClick: () => addNode("upload"),
       },
       {
-        key: "chunking",
+        key: "chunk",
         title: "Chunking Node",
-        icon: nodeEmojis.chunking,
+        icon: nodeEmojis.chunk,
         tooltip: "Chunk text into smaller pieces.",
-        onClick: () => addNode("chunking"),
+        onClick: () => addNode("chunk"),
       },
       {
         key: "retrieval",

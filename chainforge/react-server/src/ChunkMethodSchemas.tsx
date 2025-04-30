@@ -365,20 +365,20 @@ export const ChunkMethodGroups = [
     items: [
       {
         baseMethod: "overlapping_langchain",
-        methodName: "Overlapping Chunking",
-        library: "LangChain TextSplitter",
+        methodType: "Overlapping Chunking",
+        name: "LangChain TextSplitter",
         emoji: "🌐",
       },
       {
         baseMethod: "overlapping_openai_tiktoken",
-        methodName: "Overlapping Chunking",
-        library: "OpenAI tiktoken",
+        methodType: "Overlapping Chunking",
+        name: "OpenAI tiktoken",
         emoji: "🤖",
       },
       {
         baseMethod: "overlapping_huggingface_tokenizers",
-        methodName: "Overlapping Chunking",
-        library: "HuggingFace Tokenizers",
+        methodType: "Overlapping Chunking",
+        name: "HuggingFace Tokenizers",
         emoji: "🤗",
       },
     ],
@@ -388,14 +388,14 @@ export const ChunkMethodGroups = [
     items: [
       {
         baseMethod: "syntax_spacy",
-        methodName: "Syntax-Based Chunking",
-        library: "spaCy Sentence Splitter",
+        methodType: "Syntax-Based Chunking",
+        name: "spaCy Sentence Splitter",
         emoji: "🐍",
       },
       {
         baseMethod: "syntax_texttiling",
-        methodName: "Syntax-Based Chunking",
-        library: "TextTilingTokenizer",
+        methodType: "Syntax-Based Chunking",
+        name: "TextTilingTokenizer",
         emoji: "📑",
       },
     ],

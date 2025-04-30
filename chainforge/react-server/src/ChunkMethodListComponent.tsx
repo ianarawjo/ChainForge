@@ -4,6 +4,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useCallback,
+  useMemo,
 } from "react";
 import {
   Menu,
@@ -14,6 +15,7 @@ import {
   ActionIcon,
   Modal,
   Divider,
+  Flex,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus, IconTrash, IconSettings } from "@tabler/icons-react";
@@ -21,12 +23,13 @@ import Form from "@rjsf/core";
 import validator from "@rjsf/validator-ajv8";
 import { v4 as uuid } from "uuid";
 import { ChunkMethodSchemas, ChunkMethodGroups } from "./ChunkMethodSchemas";
+import { transformDict } from "./backend/utils";
 
 export interface ChunkMethodSpec {
   key: string;
   baseMethod: string;
-  methodName: string;
-  library: string;
+  methodType: string;
+  name: string;
   emoji?: string;
   settings?: Record<string, any>;
 }
@@ -46,32 +49,62 @@ const ChunkMethodListItem: React.FC<{
   onSettingsUpdate: (key: string, newSettings: any) => void;
 }> = ({ methodItem, onRemove, onSettingsUpdate }) => {
   // Fetch the relevant schema
-  const schemaEntry = ChunkMethodSchemas[methodItem.baseMethod] || {
-    schema: {},
-    uiSchema: {},
-    description: "",
-    fullName: "",
-  };
-  const { schema, uiSchema, fullName, description } = schemaEntry;
+  const schemaEntry = useMemo(
+    () =>
+      ChunkMethodSchemas[methodItem.baseMethod] || {
+        schema: {},
+        uiSchema: {},
+        description: "",
+        fullName: "",
+      },
+    [methodItem],
+  );
+  const schema = useMemo(() => {
+    const s = schemaEntry?.schema;
+    const schemaWithShortname = {
+      ...s,
+      properties: {
+        shortname: {
+          type: "string",
+          title: "Short Name",
+          description: "A nickname for this method.",
+          default: methodItem.name,
+        },
+        ...s.properties,
+      },
+    } as typeof s;
+    return schemaWithShortname;
+  }, [schemaEntry]);
+  const uiSchema = useMemo(() => schemaEntry?.uiSchema, [schemaEntry]);
 
   const [settingsModalOpen, { open, close }] = useDisclosure(false);
 
   return (
-    <Card shadow="sm" p="sm" withBorder mt="xs">
-      <Group position="apart" align="center">
+    <Card shadow="sm" p="3px 6px" withBorder mt="xs">
+      <Flex justify="space-between" align="center">
         <div>
-          <Text size="sm" weight={600}>
+          <Text
+            size="sm"
+            fz="10pt"
+            weight={600}
+            style={{ overflowX: "hidden" }}
+          >
             {methodItem.emoji ? methodItem.emoji + " " : ""}
-            {methodItem.methodName} ({methodItem.library})
+            {methodItem.name}
           </Text>
-          <Text size="xs" color="dimmed">
-            {fullName || description || ""}
-          </Text>
+          {methodItem.settings &&
+            Object.entries(
+              transformDict(methodItem.settings, (k) => k !== "shortname"),
+            ).map(([key, value]) => (
+              <Text
+                key={key}
+                size="xs"
+                color="dimmed"
+              >{`${key}: ${value}`}</Text>
+            ))}
+          {/* {fullName || description || ""} */}
         </div>
-        <Group spacing="xs">
-          <ActionIcon variant="subtle" onClick={open} title="Open Settings">
-            <IconSettings size={16} />
-          </ActionIcon>
+        <Flex gap={2}>
           <ActionIcon
             color="red"
             variant="subtle"
@@ -80,8 +113,16 @@ const ChunkMethodListItem: React.FC<{
           >
             <IconTrash size={16} />
           </ActionIcon>
-        </Group>
-      </Group>
+          <ActionIcon
+            variant="light"
+            color="blue"
+            onClick={open}
+            title="Open Settings"
+          >
+            <IconSettings size={16} />
+          </ActionIcon>
+        </Flex>
+      </Flex>
 
       <Modal
         opened={settingsModalOpen}
@@ -94,11 +135,24 @@ const ChunkMethodListItem: React.FC<{
             schema={schema}
             uiSchema={uiSchema}
             formData={methodItem.settings}
-            onChange={(evt) => onSettingsUpdate(methodItem.key, evt.formData)}
+            // onChange={(evt) => onSettingsUpdate(methodItem.key, evt.formData)}
+            onSubmit={(evt) => {
+              onSettingsUpdate(methodItem.key, evt.formData);
+              close();
+            }}
             validator={validator as any}
             liveValidate
             noHtml5Validate
-          ></Form>
+          >
+            <Button
+              title="Submit"
+              type="submit"
+              style={{ float: "right", marginRight: "30px" }}
+            >
+              Submit
+            </Button>
+            <div style={{ height: "50px" }}></div>
+          </Form>
         ) : (
           <Text size="sm" color="dimmed">
             (No custom settings for this method.)
@@ -143,7 +197,13 @@ const ChunkMethodListContainer = forwardRef<
   const handleSettingsUpdate = useCallback(
     (key: string, newSettings: any) => {
       const newItems = methodItems.map((m) =>
-        m.key === key ? { ...m, settings: newSettings } : m,
+        m.key === key
+          ? {
+              ...m,
+              settings: newSettings,
+              name: newSettings.shortname ?? m.name,
+            }
+          : m,
       );
       setMethodItems(newItems);
       notifyItemsChanged(newItems);
@@ -156,8 +216,8 @@ const ChunkMethodListContainer = forwardRef<
       const newItem: ChunkMethodSpec = {
         key: uuid(),
         baseMethod: m.baseMethod,
-        methodName: m.methodName,
-        library: m.library,
+        methodType: m.methodType,
+        name: m.name,
         emoji: m.emoji,
         settings: {},
       };
@@ -171,26 +231,27 @@ const ChunkMethodListContainer = forwardRef<
   const [menuOpened, setMenuOpened] = useState(false);
 
   return (
-    <div style={{ border: "1px dashed #ccc", borderRadius: 6, padding: 8 }}>
+    <div style={{ padding: 4 }}>
       <Group position="apart" mb="xs">
         <Text weight={500} size="sm">
-          Selected Chunk Methods
+          Chunking Methods
         </Text>
 
         <Menu
           opened={menuOpened}
           onChange={setMenuOpened}
-          position="bottom-end"
+          position="right-start"
           withinPortal
+          withArrow
         >
           <Menu.Target>
             <Button
               size="xs"
               variant="light"
-              leftIcon={<IconPlus size={14} />}
+              rightIcon={<IconPlus size={14} />}
               onClick={() => setMenuOpened((o) => !o)}
             >
-              Add +
+              Add
             </Button>
           </Menu.Target>
           <Menu.Dropdown>
@@ -206,7 +267,7 @@ const ChunkMethodListContainer = forwardRef<
                       setMenuOpened(false);
                     }}
                   >
-                    {item.library}
+                    {item.name}
                   </Menu.Item>
                 ))}
 
