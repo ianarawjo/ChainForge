@@ -1,5 +1,6 @@
 import MarkdownIt from "markdown-it";
 import axios from "axios";
+import JSZip from "jszip";
 import { v4 as uuid } from "uuid";
 import {
   Dict,
@@ -33,7 +34,7 @@ import {
   extendArray,
   extendArrayDict,
 } from "./utils";
-import StorageCache, { StringLookup } from "./cache";
+import StorageCache, { MediaLookup, StringLookup } from "./cache";
 import { PromptPipeline } from "./query";
 import {
   PromptPermutationGenerator,
@@ -1564,11 +1565,18 @@ export async function exportCache(ids: string[]): Promise<Dict<Dict>> {
       cache_files[key] = load_from_cache(key);
     });
   }
+
   // Bundle up specific other state in StorageCache, which
   // includes things like human ratings for responses:
   const cache_state = StorageCache.getAllMatching(
     (key) => key.startsWith("r.") || key === "__s",
   );
+
+  // Export the MediaLookup table (NOTE: this only contains media file uids and,
+  // if running only on the front-end, cache'd media data)
+  const mediaCache = await MediaLookup.toJSON();
+  cache_state.__media = mediaCache;
+
   return { ...cache_files, ...cache_state };
 }
 
@@ -1588,8 +1596,13 @@ export async function importCache(files: {
     StorageCache.saveToLocalStorage("chainforge-state");
 
     // Write imported files to StorageCache
-    // Verify filenames, data, and access permissions to write to cache
     Object.entries(files).forEach(([filename, data]) => {
+      if (filename === "__media") {
+        // If the cache key is __media, we need to restore the MediaLookup table instead:
+        // NOTE: This will NOT override any existing media files in the MediaLookup table.
+        MediaLookup.restoreFrom(data as any);
+        return;
+      }
       StorageCache.store(filename, data);
     });
 
@@ -1600,6 +1613,149 @@ export async function importCache(files: {
   }
 
   console.log("Imported cache data and stored to cache.");
+}
+
+/**
+ * Export a flow and its media files as a bundle and download it
+ * @param flowData The flow JSON data
+ * @param flowName Optional name for the downloaded file
+ */
+export async function exportFlowBundle(
+  flowData: any,
+  flowName?: string,
+): Promise<void> {
+  try {
+    // Make a POST request to the export endpoint
+    const response = await fetch(`${FLASK_BASE_URL}api/exportFlowBundle`, {
+      method: "POST",
+      headers: DEFAULT_JSON_HEADERS,
+      body: JSON.stringify({
+        flow: flowData,
+        flowName: flowName || "flow_bundle",
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to export flow bundle: ${response.statusText}`);
+    }
+
+    // Get the blob from response (a zip file with .cfzip extension)
+    const blob = await response.blob();
+
+    // Create a download link and trigger the download
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.style.display = "none";
+    a.href = url;
+
+    // Use the filename from Content-Disposition if available, otherwise use flowName
+    const contentDisposition = response.headers.get("Content-Disposition");
+    const filenameMatch =
+      contentDisposition && contentDisposition.match(/filename="?([^"]+)"?/);
+    const filename = filenameMatch
+      ? filenameMatch[1]
+      : `${flowName || "flow_bundle"}.cfzip`;
+
+    // Download the file
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+
+    // Clean up
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    console.log(`Flow bundle exported successfully as ${filename}.`);
+  } catch (error) {
+    console.error("Error exporting flow bundle:", error);
+    throw error;
+  }
+}
+
+/**
+ * Import a flow bundle from a .cfzip file
+ * @param file The .cfzip file to import
+ * @returns Promise with the imported flow data and name
+ */
+export async function importFlowBundle(
+  file: File,
+): Promise<{ flow: any; flowName: string }> {
+  if (!file.name.endsWith(".cfzip") && !file.name.endsWith(".zip")) {
+    throw new Error("Invalid file format. Expected .cfzip or .zip");
+  }
+
+  if (APP_IS_RUNNING_LOCALLY()) {
+    // If running locally, use the Flask backend to import the flow bundle
+    try {
+      // Create form data with the file
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Make a POST request to the import endpoint, sending the file over
+      // and receiving just the JSON flow data in response
+      const response = await fetch(`${FLASK_BASE_URL}api/importFlowBundle`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error ||
+            `Failed to import flow bundle: ${response.statusText}`,
+        );
+      }
+
+      // Parse the response JSON
+      const result = await response.json();
+
+      console.log(`Flow bundle imported successfully: ${result.flowName}`);
+      return {
+        flow: result.flow,
+        flowName: result.flowName,
+      };
+    } catch (error) {
+      console.error("Error importing flow bundle:", error);
+      throw error;
+    }
+  } else {
+    // Try to unzip and import a flow bundle entirely in the front-end
+    const zip = await JSZip.loadAsync(file);
+
+    // Extract flow.json
+    const flowFile = zip.file("flow.json");
+    if (!flowFile) {
+      throw new Error("Missing flow.json in bundle");
+    }
+    const flowJsonText = await flowFile.async("text");
+    const flow = JSON.parse(flowJsonText);
+
+    // Extract media files (if present)
+    const mediaFiles = Object.keys(zip.files).filter(
+      (path) => path.startsWith("media/") && !zip.files[path].dir,
+    );
+
+    // Deliberately clear the media cache before importing
+    // NOTE: This will wipe all media cache data, so be careful!
+    MediaLookup.clear();
+
+    for (const path of mediaFiles) {
+      const fileBlob = await zip.file(path)!.async("blob");
+      const filename = path.substring("media/".length); // remove folder prefix
+      // Here we manually set the cache data for the media file
+      // NOTE: We aren't checking integrity of the media files here, so backend
+      // import is preferred if running locally.
+      MediaLookup.setCacheData(filename, fileBlob);
+    }
+
+    // Here we manually save the state to local storage, just in case
+    MediaLookup.getInstance().saveStateToStorageCache();
+
+    const flowName = file.name.replace(/\.(cfzip|zip)$/, "");
+
+    console.log(`Flow bundle imported successfully: ${flowName}`);
+    return { flow, flowName };
+  }
 }
 
 /**
