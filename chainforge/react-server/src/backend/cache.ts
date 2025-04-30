@@ -1,6 +1,11 @@
 import { Dict, JSONCompatible } from "./typing";
 import LZString from "lz-string";
-import { APP_IS_RUNNING_LOCALLY, FLASK_BASE_URL } from "./utils";
+import {
+  APP_IS_RUNNING_LOCALLY,
+  blobOrFileToDataURL,
+  dataURLToBlob,
+  FLASK_BASE_URL,
+} from "./utils";
 import { v4 as uuid } from "uuid";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
@@ -142,7 +147,9 @@ export default class StorageCache {
         // Replaces the current cache data with the loaded data
         StorageCache.getInstance().data = data;
         // Restores the current StringLookup table with the contents of the loaded data, if the __s key is present.
-        StringLookup.restoreFrom(data.__s);
+        if (data.__s) StringLookup.restoreFrom(data.__s);
+        // Restores the current MediaLookup table with the contents of the loaded data, if the __media key is present.
+        if (data.__media) MediaLookup.restoreFrom(data.__media);
       }
       console.log("loaded", data);
       return data;
@@ -325,14 +332,75 @@ export class StringLookup {
 export class MediaLookup {
   // eslint-disable-next-line no-use-before-define
   private static instance: MediaLookup;
+  /**
+   * All media UIDs that are used in the currently loaded flow.
+   * This is used to keep track of the currently loaded media,
+   * and export all the relevant media for the flow when the user clicks "Export".
+   */
+  private mediaUIDs = new Set<string>();
   // Use a cache if running locally, otherwise use the backend
   private cache: Dict<Blob> = {};
+
+  private constructor() {
+    // Initialize the singleton instance
+    this.mediaUIDs = new Set<string>();
+    this.cache = {};
+  }
+
+  /**
+   * Saves the current state of the media lookup table to localStorage.
+   */
+  public saveStateToStorageCache(): void {
+    const savedState = {
+      mediaUIDs: Array.from(this.mediaUIDs),
+      cache: this.cache,
+    };
+    StorageCache.store("__media", savedState);
+  }
+
+  public restoreStateFromStorageCache(): boolean {
+    const savedState = StorageCache.get("__media");
+    if (savedState) {
+      this.mediaUIDs = new Set(savedState.mediaUIDs);
+      this.cache = savedState.cache;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Adds a UID to the media UIDs set and optionally adds a Blob to the cache.
+   * Handles saving the state to localStorage.
+   * @param uid The UID of the media
+   * @param blob Optional. A Blob or File object to cache
+   */
+  private add(uid: string, blob?: Blob | File): void {
+    this.mediaUIDs.add(uid);
+
+    if (blob) this.cache[uid] = blob;
+
+    this.saveStateToStorageCache();
+  }
+
+  public static setCacheData(uid: string, blob: Blob | File): void {
+    const mediaLookup = MediaLookup.getInstance();
+    mediaLookup.mediaUIDs.add(uid);
+    mediaLookup.cache[uid] = blob;
+  }
 
   static getInstance(): MediaLookup {
     if (!MediaLookup.instance) {
       MediaLookup.instance = new MediaLookup();
     }
     return MediaLookup.instance;
+  }
+
+  public static hasAnyMedia(): boolean {
+    const mediaLookup = MediaLookup.getInstance();
+    return (
+      mediaLookup.mediaUIDs.size > 0 ||
+      Object.keys(mediaLookup.cache).length > 0
+    );
   }
 
   /**
@@ -350,18 +418,23 @@ export class MediaLookup {
         body: formData,
       });
 
-      if (!res.ok) {
-        throw new Error(`Upload failed: ${res.statusText}`);
-      }
+      if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
 
       const json = await res.json();
-      return json.uid;
+      const uid = json.uid;
+
+      if (!uid) throw new Error("Upload failed: No UID returned");
+
+      // Store the UID in the media UIDs set
+      MediaLookup.getInstance().add(uid);
+
+      return uid;
     } else {
       // Make a uid for the file, and use it to cache the file:
       // NOTE: We keep the file name around, if there is one, just in case we need to recover it later.
       const uid =
         `cache__${uuid()}__cache` + ("name" in file ? `__${file.name}` : "");
-      MediaLookup.getInstance().cache[uid] = file;
+      MediaLookup.getInstance().add(uid, file);
       return uid;
     }
   }
@@ -372,6 +445,15 @@ export class MediaLookup {
    * @returns Blob (image, PDF, etc.)
    */
   public static async get(uid: string): Promise<Blob | undefined> {
+    // Check if the file is in the mediaUIDs
+    const mediaLookup = MediaLookup.getInstance();
+    const isInLookup = mediaLookup.mediaUIDs.has(uid);
+    if (!isInLookup) {
+      console.error(
+        `File with UID ${uid} not found in media UIDs. Still proceeding to try to fetch....`,
+      );
+    }
+
     if (IS_RUNNING_LOCALLY) {
       // Fetch the file from the backend
       const res = await fetch(`${FLASK_BASE_URL}media/${uid}`);
@@ -379,11 +461,20 @@ export class MediaLookup {
         console.error(`Fetch failed for UID ${uid}: ${res.statusText}`);
         return undefined;
       }
-      return await res.blob();
+
+      const blob = await res.blob();
+
+      // If the file was for some reason not listed in the media UIDs, add it now:
+      if (!isInLookup) mediaLookup.add(uid);
+
+      return blob;
     } else {
       // Check if the file is in the cache
-      const blob = MediaLookup.getInstance().cache[uid];
+      const blob = mediaLookup.cache[uid];
       if (blob) {
+        // If the file was for some reason not listed in the media UIDs, add it now:
+        if (!isInLookup) mediaLookup.add(uid);
+
         return blob;
       } else {
         console.error(`File with UID ${uid} not found in cache.`);
@@ -398,6 +489,15 @@ export class MediaLookup {
    * @returns Text content as a string
    */
   public static async getAsText(uid: string): Promise<string | undefined> {
+    // Check if the file is in the mediaUIDs
+    const mediaLookup = MediaLookup.getInstance();
+    const isInLookup = mediaLookup.mediaUIDs.has(uid);
+    if (!isInLookup) {
+      console.error(
+        `File with UID ${uid} not found in media UIDs. Still proceeding to try to fetch....`,
+      );
+    }
+
     if (IS_RUNNING_LOCALLY) {
       // Fetch the file from the backend
       const res = await fetch(`${FLASK_BASE_URL}mediaToText/${uid}`);
@@ -405,8 +505,17 @@ export class MediaLookup {
         throw new Error(`Fetch failed for UID ${uid}: ${res.statusText}`);
       }
       const json = await res.json();
+      const text = json.text;
+
+      if (text === undefined)
+        throw new Error(`Fetch failed for UID ${uid}: No text returned`);
+
+      // If the file was for some reason not listed in the media UIDs, add it now:
+      if (!isInLookup) mediaLookup.add(uid);
+
       return json.text;
     } else {
+      // TODO: Implement this for the local cache
       throw new Error(
         `Text content not available for UID ${uid} in local cache.`,
       );
@@ -426,5 +535,81 @@ export class MediaLookup {
       return "";
     }
     return URL.createObjectURL(blob);
+  }
+
+  /**
+   * Clears the media lookup table and its cache entirely.
+   */
+  public static clear(): void {
+    const mediaLookup = MediaLookup.getInstance();
+    mediaLookup.mediaUIDs.clear();
+    mediaLookup.cache = {};
+    mediaLookup.saveStateToStorageCache();
+  }
+
+  /**
+   * Restores the media lookup table from a saved state.
+   * NOTE: This deliberately does not override the current mediaUIDs or cache.
+   * If you want to clear the current mediaUIDs or cache, use the clear() method first.
+   * @param savedState The saved state containing mediaUIDs and cache.
+   */
+  public static restoreFrom(savedState?: {
+    uids: string[];
+    cache?: Dict<string>;
+  }): void {
+    if (!savedState) return;
+
+    const mediaLookup = MediaLookup.getInstance();
+
+    if (Array.isArray(savedState.uids)) {
+      savedState.uids.forEach((uid) => {
+        mediaLookup.mediaUIDs.add(uid);
+      });
+    }
+
+    if (savedState.cache !== undefined) {
+      // Convert each data URL back to a Blob
+      for (const [key, base64String] of Object.entries(savedState.cache)) {
+        const blob = dataURLToBlob(base64String);
+        mediaLookup.cache[key] = blob;
+      }
+    }
+
+    mediaLookup.saveStateToStorageCache();
+  }
+
+  /**
+   * Serializes the media lookup table to a JSON-compatible object.
+   * @returns An object containing the mediaUIDs and cache.
+   */
+  public static async toJSON(): Promise<{
+    uids: string[];
+    cache?: Dict<string>;
+  }> {
+    const mediaLookup = MediaLookup.getInstance();
+
+    // Convert each Blob to a base64 string
+    const serializedCache: Dict<Promise<string>> = {};
+    for (const [key, blob] of Object.entries(mediaLookup.cache)) {
+      serializedCache[key] = blobOrFileToDataURL(blob);
+    }
+
+    // Wait for all the base64 strings to be generated
+    const serializedCacheEntries = await Promise.all(
+      Object.entries(serializedCache).map(async ([key, blobPromise]) => {
+        const base64String = await blobPromise;
+        return [key, base64String];
+      }),
+    );
+
+    // Convert the array of entries back to an object
+    const serializedBlobs: Dict<string> = Object.fromEntries(
+      serializedCacheEntries,
+    );
+
+    return {
+      uids: Array.from(mediaLookup.mediaUIDs),
+      cache: serializedBlobs,
+    };
   }
 }

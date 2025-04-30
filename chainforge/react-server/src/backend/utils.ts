@@ -2458,3 +2458,39 @@ export const ensureUniqueName = (_name: string, _prev_names: string[]) => {
   }
   return new_name;
 };
+
+/**
+ * Converts a Blob or File to a Data URL.
+ * @param input The Blob or File to convert.
+ * @returns A Promise that resolves with the Data URL string.
+ */
+export function blobOrFileToDataURL(input: Blob | File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result); // full data URL
+      } else {
+        throw new Error("Failed to convert Blob/File to Data URL.");
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(input);
+  });
+}
+
+/**
+ * Converts a Data URL to a Blob.
+ * @param dataURL The Data URL to convert.
+ * @returns A Blob object representing the data.
+ */
+export function dataURLToBlob(dataURL: string): Blob {
+  const [meta, base64] = dataURL.split(",");
+  const mime = meta.match(/:(.*?);/)?.[1] || "application/octet-stream";
+  const byteString = atob(base64);
+  const byteArray = new Uint8Array(byteString.length);
+  for (let i = 0; i < byteString.length; i++) {
+    byteArray[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([byteArray], { type: mime });
+}
