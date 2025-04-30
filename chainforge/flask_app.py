@@ -21,7 +21,7 @@ from platformdirs import user_data_dir
 HOSTNAME = "localhost"
 PORT = 8000
 # SESSION_TOKEN = secrets.token_hex(32)
-BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
+BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'public')
 STATIC_DIR = os.path.join(BUILD_DIR, 'static')
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
 
