@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: '3'
+
+tasks:
+  
+  setup: 
+    desc: Setup the project Python Venv with `uv`
+    
+    preconditions:
+      # Verifying that the `uv` command is available
+      - 'command -v uv'
+
+    cmds:
+      - 'uv venv --verbose --prompt Chainforge_venv .venv'
+      - 'uv pip install --editable {{.ROOT_DIR}}' 
+      
+
+  serve:
+    desc: Run the Flask app server
+
+    cmds:
+      - mkdir --verbose --parent {{.ROOT_DIR_ASSET}} 
+      - 'uv run chainforge serve --dir {{.ROOT_DIR_ASSET}} --secure all'
