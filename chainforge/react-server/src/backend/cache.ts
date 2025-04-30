@@ -340,7 +340,7 @@ export class MediaLookup {
    * @param file A Blob or File object to upload
    * @returns The UID assigned by the backend
    */
-  public static async upload(file: Blob): Promise<string> {
+  public static async upload(file: File | Blob): Promise<string> {
     if (IS_RUNNING_LOCALLY) {
       const formData = new FormData();
       formData.append("file", file);
@@ -358,8 +358,9 @@ export class MediaLookup {
       return json.uid;
     } else {
       // Make a uid for the file, and use it to cache the file:
-      // NOTE: We keep the file name around just in case we need to recover it later.
-      const uid = `${uuid()}__${file.name}`;
+      // NOTE: We keep the file name around, if there is one, just in case we need to recover it later.
+      const uid =
+        `cache__${uuid()}__cache` + ("name" in file ? `__${file.name}` : "");
       MediaLookup.getInstance().cache[uid] = file;
       return uid;
     }
