@@ -1,0 +1,3 @@
+# pytest.ini
+[pytest]
+pythonpath = .
