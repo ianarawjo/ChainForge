@@ -90,7 +90,7 @@ def overlapping_huggingface_tokenizers(text: str, **kwargs: Any) -> List[str]:
     # HuggingFace Tokenizers for token-based chunking
     from transformers import AutoTokenizer
 
-    tokenizer = int(kwargs.get("tokenizer", "bert-base-uncased"))
+    tokenizer = kwargs.get("tokenizer", "bert-base-uncased")
 
     # Consider making model name configurable
     try:
@@ -130,20 +130,26 @@ def overlapping_huggingface_tokenizers(text: str, **kwargs: Any) -> List[str]:
 def syntax_spacy(text: str, **kwargs: Any) -> List[str]:
     # SpaCy for sentence splitting and NLP objects
     import spacy
+    import sys
 
-    # Load model once and cache it if possible, or handle loading errors
+    # Try to load the SpaCy model and handle errors if it's not found
     try:
-        # Potential optimization: cache the loaded nlp model globally?
-        # global _spacy_nlp_en
-        # if '_spacy_nlp_en' not in globals():
-        #     _spacy_nlp_en = spacy.load("en_core_web_sm")
-        # nlp = _spacy_nlp_en
         nlp = spacy.load("en_core_web_sm")
     except OSError as e:
         print(f"spaCy model 'en_core_web_sm' not found. Please run 'python -m spacy download en_core_web_sm'. Error: {e}", file=sys.stderr)
-        raise ValueError("spaCy language model not available.") from e
+        
+        # Optionally, you can download the model automatically here if you want
+        print("Attempting to download the model...")
+        try:
+            from subprocess import run
+            run(["python", "-m", "spacy", "download", "en_core_web_sm"], check=True)
+            print("Model downloaded successfully.")
+            nlp = spacy.load("en_core_web_sm")  # Reload after download
+        except Exception as download_error:
+            print(f"Error downloading the model: {download_error}", file=sys.stderr)
+            raise ValueError("spaCy language model not available.") from download_error
 
-    doc = nlp(text) # Process the single text directly
+    doc = nlp(text)  # Process the single text directly
     sents = [s.text.strip() for s in doc.sents if s.text.strip()]
     return sents if sents else [text]
 
@@ -153,19 +159,28 @@ def syntax_texttiling(text: str, **kwargs: Any) -> List[str]:
         # Ensure necessary NLTK data is downloaded (punkt is often needed)
         import nltk
         from nltk.tokenize import TextTilingTokenizer
-
-        try:
-            nltk.data.find('tokenizers/punkt')
-        except nltk.downloader.DownloadError:
-            print("NLTK 'punkt' data not found. Attempting download...", file=sys.stderr)
-            nltk.download('punkt', quiet=True)
-        
-        tt = TextTilingTokenizer()
-        chunks = tt.tokenize(text)
-        return chunks if chunks else [text]
     except ImportError:
         print("NLTK not found or TextTilingTokenizer unavailable.", file=sys.stderr)
         raise ValueError("NLTK TextTilingTokenizer unavailable.")
+
+    # Check if the 'punkt' tokenizer is available
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except nltk.downloader.DownloadError:
+        print("NLTK 'punkt' data not found. Attempting download...", file=sys.stderr)
+        nltk.download('punkt', quiet=True)
+
+    # Check if the 'stopwords' corpus is available
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        print("Stopwords corpus not found. Downloading now...")
+        nltk.download('stopwords')
+
+    try: 
+        tt = TextTilingTokenizer()
+        chunks = tt.tokenize(text)
+        return chunks if chunks else [text]
     except Exception as e:
         print(f"Error during NLTK TextTiling: {e}", file=sys.stderr)
         raise
@@ -200,8 +215,8 @@ def chonkie_sentence(text: str, **kwargs: Any) -> List[str]:
     chunk_size = int(kwargs.get("chunk_size", 512))
     chunk_overlap = int(kwargs.get("chunk_overlap", 0))
     min_sentences_per_chunk = int(kwargs.get("min_sentences_per_chunk", 1))
-    min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 0))
-    delim = kwargs.get("delim", "['.', '!', '?', '\\n']")
+    min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 12))
+    delim = kwargs.get("delim", '[".", "!", "?", "\\n"]')
     include_delim = kwargs.get("include_delim", None)
 
     try: 
@@ -298,7 +313,7 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
     threshold_step = float(kwargs.get("threshold_step", 0.01))
     
     # Handle delimiters - convert from JSON string if needed
-    delim = kwargs.get("delim", "['.', '!', '?', '\\n']")
+    delim = kwargs.get("delim", '[".", "!", "?", "\\n"]')
     try: 
         delim = json.loads(delim)  # Parse JSON format
         if not isinstance(delim, list) or not all(isinstance(d, str) for d in delim):
@@ -330,11 +345,11 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
         chunk_size=chunk_size,
         similarity_window=similarity_window,
         min_sentences=min_sentences,
-        min_chunk_size=min_chunk_size,
         min_characters_per_sentence=min_characters_per_sentence,
         threshold_step=threshold_step,
         delim=delim,
         return_type="texts",  # Always return as texts to match other handlers
+        **({} if min_chunk_size is None else {'max_chunk_size': min_chunk_size})
     )
 
     texts = chunker.chunk(text)
@@ -362,7 +377,7 @@ def chonkie_sdpm(text: str, **kwargs: Any) -> List[str]:
     skip_window = int(kwargs.get("skip_window", 1))
     
     # Handle delimiters - convert from JSON string if needed
-    delim = kwargs.get("delim", "['.', '!', '?', '\\n']")
+    delim = kwargs.get("delim", '[".", "!", "?", "\\n"]')
     include_delim = kwargs.get("include_delim", None)
     
     try: 
@@ -406,7 +421,7 @@ def chonkie_late(text: str, **kwargs: Any) -> List[str]:
     import json
 
     # Basic parameters
-    embedding_model = kwargs.get("embedding_model", "all-MiniLM-L6-v2")
+    embedding_model = kwargs.get("embedding_model", "sentence-transformers/all-MiniLM-L6-v2")
     chunk_size = int(kwargs.get("chunk_size", 512))
     min_characters_per_chunk = int(kwargs.get("min_characters_per_chunk", 24))
 
@@ -447,11 +462,10 @@ def chonkie_late(text: str, **kwargs: Any) -> List[str]:
         chunk_size=chunk_size,
         rules=rules,
         min_characters_per_chunk=min_characters_per_chunk,
-        return_type="texts", 
     )
 
-    texts = chunker.chunk(text)
-    return texts if texts else [text]
+    chunks = chunker.chunk(text)
+    return [chunk.text for chunk in chunks] if chunks else [text]
 
 @ChunkingMethodRegistry.register("chonkie_neural")
 def chonkie_neural(text: str, **kwargs: Any) -> List[str]:
@@ -475,3 +489,4 @@ def chonkie_neural(text: str, **kwargs: Any) -> List[str]:
         return [chunk.text for chunk in latechunk_objs] if latechunk_objs else [text]
     except Exception as e:
         raise Exception(f"Error during neural chunking: {e}. Make sure you've installed with 'pip install \"chonkie[neural]\"'.", file=sys.stderr)
+    

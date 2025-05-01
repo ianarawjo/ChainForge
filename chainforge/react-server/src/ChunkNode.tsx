@@ -276,27 +276,27 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
         onItemsChange={handleMethodItemsChange}
       />
 
-      <InspectFooter
-        onClick={openInspector}
-        showDrawerButton={false}
-        onDrawerClick={() => {
-          // Do nothing
-        }}
-        isDrawerOpen={false}
-        label={
-          <>
-            Inspect chunks <IconSearch size="12pt" />
-          </>
-        }
-      />
-
-      {/* The LLM Response Inspector */}
       {jsonResponses && jsonResponses.length > 0 && (
-        <LLMResponseInspectorModal
-          ref={inspectorRef}
-          jsonResponses={jsonResponses}
+        <InspectFooter
+          onClick={openInspector}
+          showDrawerButton={false}
+          onDrawerClick={() => {
+            // Do nothing
+          }}
+          isDrawerOpen={false}
+          label={
+            <>
+              Inspect chunks <IconSearch size="12pt" />
+            </>
+          }
         />
       )}
+
+      {/* The LLM Response Inspector */}
+      <LLMResponseInspectorModal
+        ref={inspectorRef}
+        jsonResponses={jsonResponses}
+      />
 
       <Handle
         type="source"
