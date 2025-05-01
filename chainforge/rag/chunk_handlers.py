@@ -90,7 +90,7 @@ def overlapping_huggingface_tokenizers(text: str, **kwargs: Any) -> List[str]:
     # HuggingFace Tokenizers for token-based chunking
     from transformers import AutoTokenizer
 
-    tokenizer = int(kwargs.get("tokenizer", "bert-base-uncased"))
+    tokenizer = kwargs.get("tokenizer", "bert-base-uncased")
 
     # Consider making model name configurable
     try:
@@ -130,20 +130,26 @@ def overlapping_huggingface_tokenizers(text: str, **kwargs: Any) -> List[str]:
 def syntax_spacy(text: str, **kwargs: Any) -> List[str]:
     # SpaCy for sentence splitting and NLP objects
     import spacy
+    import sys
 
-    # Load model once and cache it if possible, or handle loading errors
+    # Try to load the SpaCy model and handle errors if it's not found
     try:
-        # Potential optimization: cache the loaded nlp model globally?
-        # global _spacy_nlp_en
-        # if '_spacy_nlp_en' not in globals():
-        #     _spacy_nlp_en = spacy.load("en_core_web_sm")
-        # nlp = _spacy_nlp_en
         nlp = spacy.load("en_core_web_sm")
     except OSError as e:
         print(f"spaCy model 'en_core_web_sm' not found. Please run 'python -m spacy download en_core_web_sm'. Error: {e}", file=sys.stderr)
-        raise ValueError("spaCy language model not available.") from e
+        
+        # Optionally, you can download the model automatically here if you want
+        print("Attempting to download the model...")
+        try:
+            from subprocess import run
+            run(["python", "-m", "spacy", "download", "en_core_web_sm"], check=True)
+            print("Model downloaded successfully.")
+            nlp = spacy.load("en_core_web_sm")  # Reload after download
+        except Exception as download_error:
+            print(f"Error downloading the model: {download_error}", file=sys.stderr)
+            raise ValueError("spaCy language model not available.") from download_error
 
-    doc = nlp(text) # Process the single text directly
+    doc = nlp(text)  # Process the single text directly
     sents = [s.text.strip() for s in doc.sents if s.text.strip()]
     return sents if sents else [text]
 
@@ -153,19 +159,28 @@ def syntax_texttiling(text: str, **kwargs: Any) -> List[str]:
         # Ensure necessary NLTK data is downloaded (punkt is often needed)
         import nltk
         from nltk.tokenize import TextTilingTokenizer
-
-        try:
-            nltk.data.find('tokenizers/punkt')
-        except nltk.downloader.DownloadError:
-            print("NLTK 'punkt' data not found. Attempting download...", file=sys.stderr)
-            nltk.download('punkt', quiet=True)
-        
-        tt = TextTilingTokenizer()
-        chunks = tt.tokenize(text)
-        return chunks if chunks else [text]
     except ImportError:
         print("NLTK not found or TextTilingTokenizer unavailable.", file=sys.stderr)
         raise ValueError("NLTK TextTilingTokenizer unavailable.")
+
+    # Check if the 'punkt' tokenizer is available
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except nltk.downloader.DownloadError:
+        print("NLTK 'punkt' data not found. Attempting download...", file=sys.stderr)
+        nltk.download('punkt', quiet=True)
+
+    # Check if the 'stopwords' corpus is available
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        print("Stopwords corpus not found. Downloading now...")
+        nltk.download('stopwords')
+
+    try: 
+        tt = TextTilingTokenizer()
+        chunks = tt.tokenize(text)
+        return chunks if chunks else [text]
     except Exception as e:
         print(f"Error during NLTK TextTiling: {e}", file=sys.stderr)
         raise
