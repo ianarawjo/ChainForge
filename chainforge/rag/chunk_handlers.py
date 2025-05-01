@@ -200,8 +200,8 @@ def chonkie_sentence(text: str, **kwargs: Any) -> List[str]:
     chunk_size = int(kwargs.get("chunk_size", 512))
     chunk_overlap = int(kwargs.get("chunk_overlap", 0))
     min_sentences_per_chunk = int(kwargs.get("min_sentences_per_chunk", 1))
-    min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 0))
-    delim = kwargs.get("delim", "['.', '!', '?', '\\n']")
+    min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 12))
+    delim = kwargs.get("delim", '[".", "!", "?", "\\n"]')
     include_delim = kwargs.get("include_delim", None)
 
     try: 
@@ -298,7 +298,7 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
     threshold_step = float(kwargs.get("threshold_step", 0.01))
     
     # Handle delimiters - convert from JSON string if needed
-    delim = kwargs.get("delim", "['.', '!', '?', '\\n']")
+    delim = kwargs.get("delim", '[".", "!", "?", "\\n"]')
     try: 
         delim = json.loads(delim)  # Parse JSON format
         if not isinstance(delim, list) or not all(isinstance(d, str) for d in delim):
@@ -330,11 +330,11 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
         chunk_size=chunk_size,
         similarity_window=similarity_window,
         min_sentences=min_sentences,
-        min_chunk_size=min_chunk_size,
         min_characters_per_sentence=min_characters_per_sentence,
         threshold_step=threshold_step,
         delim=delim,
         return_type="texts",  # Always return as texts to match other handlers
+        **({} if min_chunk_size is None else {'max_chunk_size': min_chunk_size})
     )
 
     texts = chunker.chunk(text)
@@ -362,7 +362,7 @@ def chonkie_sdpm(text: str, **kwargs: Any) -> List[str]:
     skip_window = int(kwargs.get("skip_window", 1))
     
     # Handle delimiters - convert from JSON string if needed
-    delim = kwargs.get("delim", "['.', '!', '?', '\\n']")
+    delim = kwargs.get("delim", '[".", "!", "?", "\\n"]')
     include_delim = kwargs.get("include_delim", None)
     
     try: 
@@ -406,7 +406,7 @@ def chonkie_late(text: str, **kwargs: Any) -> List[str]:
     import json
 
     # Basic parameters
-    embedding_model = kwargs.get("embedding_model", "all-MiniLM-L6-v2")
+    embedding_model = kwargs.get("embedding_model", "sentence-transformers/all-MiniLM-L6-v2")
     chunk_size = int(kwargs.get("chunk_size", 512))
     min_characters_per_chunk = int(kwargs.get("min_characters_per_chunk", 24))
 
@@ -447,11 +447,10 @@ def chonkie_late(text: str, **kwargs: Any) -> List[str]:
         chunk_size=chunk_size,
         rules=rules,
         min_characters_per_chunk=min_characters_per_chunk,
-        return_type="texts", 
     )
 
-    texts = chunker.chunk(text)
-    return texts if texts else [text]
+    chunks = chunker.chunk(text)
+    return [chunk.text for chunk in chunks] if chunks else [text]
 
 @ChunkingMethodRegistry.register("chonkie_neural")
 def chonkie_neural(text: str, **kwargs: Any) -> List[str]:
@@ -475,3 +474,4 @@ def chonkie_neural(text: str, **kwargs: Any) -> List[str]:
         return [chunk.text for chunk in latechunk_objs] if latechunk_objs else [text]
     except Exception as e:
         raise Exception(f"Error during neural chunking: {e}. Make sure you've installed with 'pip install \"chonkie[neural]\"'.", file=sys.stderr)
+    

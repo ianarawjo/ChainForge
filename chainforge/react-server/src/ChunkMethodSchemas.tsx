@@ -735,7 +735,7 @@ export const ChonkieLateSchema: ModelSettingsDict = {
     properties: {
       embedding_model: {
         type: "string",
-        default: "all-MiniLM-L6-v2",
+        default: "sentence-transformers/all-MiniLM-L6-v2",
         title: "Embedding Model",
         description:
           "Model to use for embeddings. See Chonkie docs for options.",
