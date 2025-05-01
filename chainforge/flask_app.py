@@ -1408,6 +1408,146 @@ def retrieve():
     
     return jsonify(flat_results), 200
 
+from chainforge.rag.chunk_handlers import (
+    _newly_registered_chunkers,
+    _load_chunker_metadata,
+    _save_chunker_metadata,
+    load_and_register_cached_custom_chunkers,
+    CustomChunkerMetadata,
+    CUSTOM_CHUNKERS_DIR
+)
+
+import sys
+import traceback
+from werkzeug.utils import secure_filename
+
+# --- Load Custom Chunkers on Startup ---
+# This should  run only once when the server starts
+with app.app_context():
+    load_and_register_cached_custom_chunkers()
+
+# --- Add Flask Endpoints ---
+
+@app.route('/app/initCustomChunker', methods=['POST'])
+def init_custom_chunker():
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 415
+    data = request.get_json()
+    if not data or 'code' not in data or not isinstance(data['code'], str):
+        return jsonify({"error": "Missing or invalid 'code' in request body"}), 400
+    code = data['code']
+
+    # Reset the temporary list before execution
+    _newly_registered_chunkers.clear()
+    exec_globals = {'__file__': '<custom_chunker_script>'} # Basic context
+
+    try:
+        exec(code, exec_globals)
+
+        if not _newly_registered_chunkers:
+             # This can happen if the script is valid Python but doesn't use the decorator
+             return jsonify({"error": "No chunkers found or registered in the provided script. Did you use the @custom_chunker decorator correctly?"}), 400
+
+        # Persist the successful ones found in this execution run
+        all_metadata = _load_chunker_metadata()
+        saved_specs: List[CustomChunkerMetadata] = []
+
+        for spec in _newly_registered_chunkers:
+            identifier = spec['identifier']
+            safe_filename = secure_filename(identifier)
+            if not safe_filename:
+                 print(f"Warning: Skipping saving chunker with invalid identifier for filename: {identifier}", file=sys.stderr)
+                 continue # Skip this chunker
+            script_filename = f"{safe_filename}.py"
+            script_path = os.path.join(CUSTOM_CHUNKERS_DIR, script_filename)
+
+            # Save the script code that was executed
+            try:
+                with open(script_path, 'w', encoding='utf-8') as f:
+                    f.write(code) # Save the original code
+            except IOError as e:
+                 print(f"Error saving custom chunker script {script_path}: {e}", file=sys.stderr)
+                 # Decide if you should skip this one or return a partial error
+                 continue # Skip saving this chunker's script and metadata
+
+            # Add/update metadata entry
+            all_metadata[identifier] = spec
+            saved_specs.append(spec) # Add to the list of successfully processed specs in this call
+
+        # Save the potentially updated metadata collection
+        _save_chunker_metadata(all_metadata)
+
+        # Return only the specs that were newly registered in this specific call
+        return jsonify({"chunkers": saved_specs}), 200
+
+    except Exception as e:
+        # Log the full error for server-side debugging
+        print(f"Error executing custom chunker script: {e}\n{traceback.format_exc()}", file=sys.stderr)
+        # Return a generic error
+        # Check for specific error types if needed (e.g., SyntaxError)
+        return jsonify({"error": f"Error processing script: {str(e)}"}), 500
+    finally:
+        # Clear the temporary list regardless of success/failure for this request
+        _newly_registered_chunkers.clear()
+
+
+@app.route('/app/loadCachedCustomChunkers', methods=['POST'])
+def load_cached_custom_chunkers_endpoint():
+    """Returns the metadata of all successfully loaded/cached custom chunkers."""
+    all_metadata = _load_chunker_metadata()
+    # Convert dict values to a list of specs for the frontend
+    specs = list(all_metadata.values())
+    return jsonify({"chunkers": specs}), 200
+
+
+@app.route('/app/removeCustomChunker', methods=['POST'])
+def remove_custom_chunker():
+    if not request.is_json:
+        return jsonify({"error": "Request must be JSON"}), 415
+    data = request.get_json()
+    if not data or 'identifier' not in data or not isinstance(data['identifier'], str):
+         return jsonify({"error": "Missing or invalid 'identifier' in request body"}), 400
+    identifier = data['identifier']
+    safe_filename = secure_filename(identifier)
+
+    all_metadata = _load_chunker_metadata()
+
+    if identifier not in all_metadata:
+        return jsonify({"error": f"Custom chunker '{identifier}' not found in metadata."}), 404
+
+    # 1. Remove from metadata
+    del all_metadata[identifier]
+    _save_chunker_metadata(all_metadata)
+    print(f"Removed metadata for custom chunker: {identifier}")
+
+    # 2. Remove the script file if filename is valid
+    if safe_filename:
+        script_filename = f"{safe_filename}.py"
+        script_path = os.path.join(CUSTOM_CHUNKERS_DIR, script_filename)
+        try:
+            if os.path.exists(script_path):
+                os.remove(script_path)
+                print(f"Removed script file: {script_path}")
+            else:
+                print(f"Script file not found during removal (might have been removed already): {script_path}")
+        except OSError as e:
+            print(f"Error removing custom chunker script {script_path}: {e}", file=sys.stderr)
+            # Decide if you should return an error or just warn; proceed with unregistering
+
+    # 3. Unregister from the live registry (important!)
+    if identifier in ChunkingMethodRegistry._methods:
+        try:
+            del ChunkingMethodRegistry._methods[identifier]
+            print(f"Unregistered live handler for: {identifier}")
+        except Exception as e:
+             print(f"Error unregistering handler for {identifier}: {e}", file=sys.stderr)
+             # This shouldn't usually happen with dicts, but good practice
+    else:
+        print(f"Warning: Handler for {identifier} was not found in the live registry during removal (might not have loaded successfully).")
+
+    return jsonify({"success": True}), 200
+
+
 
 """ 
     SPIN UP SERVER

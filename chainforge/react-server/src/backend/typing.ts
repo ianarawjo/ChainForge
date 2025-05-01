@@ -176,6 +176,18 @@ export interface ModelSettingsDict {
   postprocessors: Dict<(val: string | number | boolean) => any>;
 }
 
+/** Internal description of custom chunker settings, passed to react-json-schema */
+export type CustomChunkerSpec = {
+  identifier: string; // Unique key, maps to baseMethod
+  name: string; // User-friendly name for display
+  emoji?: string;
+  settings_schema?: {
+    // Structure mirroring python CustomChunkerSettingsSchema
+    settings: ModelSettingsDict["schema"]["properties"]; // Re-use schema properties structure
+    ui: ModelSettingsDict["uiSchema"]; // Re-use uiSchema structure
+  };
+};
+
 /** Standard properties that every LLM response object must have. */
 export interface BaseLLMResponseObject {
   /** A unique ID to refer to this response */

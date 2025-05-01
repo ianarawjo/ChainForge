@@ -24,6 +24,7 @@ import {
   Switch,
   Select,
   Checkbox,
+  ActionIcon,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
@@ -43,11 +44,15 @@ import {
   Dict,
   JSONCompatible,
   LLMSpec,
+  CustomChunkerSpec,
 } from "./backend/typing";
 import {
   getGlobalConfig,
+  initCustomChunker,
   initCustomProvider,
+  loadCachedCustomChunkers,
   loadCachedCustomProviders,
+  removeCustomChunker,
   removeCustomProvider,
   saveGlobalConfig,
 } from "./backend/backend";
@@ -169,13 +174,196 @@ const CustomProviderScriptDropzone: React.FC<
               Drag a Python script for your custom model provider here
             </Text>
             <Text size="sm" color="dimmed" inline mt={7}>
-              Each script should contain one or more registered @provider
-              callables
+              Script should contain functions decorated with @provider
             </Text>
           </Box>
         </Center>
       </Flex>
     </Dropzone>
+  );
+};
+
+// --- Create CustomChunkerDropzone ---
+interface CustomChunkerDropzoneProps {
+  onError: (err: string | Error) => void;
+  // Removed onSetProviders as we'll update the store directly
+}
+
+const CustomChunkerDropzone: React.FC<CustomChunkerDropzoneProps> = ({
+  onError,
+  ...dropzoneProps
+}) => {
+  const theme = useMantineTheme();
+  const [isLoading, setIsLoading] = useState(false);
+  const addOrUpdateCustomChunker = useStore((s) => s.addOrUpdateCustomChunker);
+
+  const handleDrop = useCallback(
+    (files: FileWithPath[]) => {
+      if (files.length !== 1) {
+        onError("Please drop only one Python script (.py) at a time.");
+        return;
+      }
+
+      const file = files[0];
+      if (!file.name.endsWith(".py")) {
+        onError("Invalid file type. Please drop a Python script (.py).");
+        return;
+      }
+
+      setIsLoading(true);
+      read_file(file, (content: string | ArrayBuffer | null) => {
+        if (typeof content !== "string") {
+          setIsLoading(false);
+          onError("Could not read file content as text.");
+          return;
+        }
+
+        initCustomChunker(content)
+          .then((newChunkers) => {
+            setIsLoading(false);
+            if (newChunkers && newChunkers.length > 0) {
+              console.log(
+                "Successfully initialized custom chunkers:",
+                newChunkers,
+              );
+              // Add each new chunker to the global store
+              newChunkers.forEach((spec) => {
+                addOrUpdateCustomChunker(spec);
+              });
+              // Optionally show a success message
+            } else {
+              // Might happen if the script runs but registers nothing
+              onError(
+                "Script executed, but no new chunkers were registered. Check the @custom_chunker decorator.",
+              );
+            }
+          })
+          .catch((err) => {
+            setIsLoading(false);
+            onError(err); // Pass the error object or message
+          });
+      });
+    },
+    [addOrUpdateCustomChunker, onError],
+  );
+
+  return (
+    <Dropzone
+      loading={isLoading}
+      onDrop={handleDrop}
+      onReject={(files) =>
+        onError(`File rejected (size or type error): ${files[0].file.name}`)
+      }
+      maxSize={3 * 1024 ** 2} // 3MB limit
+      accept={["text/x-python", ".py"]} // Accept .py files
+      {...dropzoneProps} // Pass other dropzone props
+    >
+      <Flex style={{ minHeight: rem(80), pointerEvents: "none" }}>
+        <Center>
+          {/* Using standard Dropzone status icons */}
+          <Dropzone.Accept>
+            <IconUpload
+              size="3.2rem"
+              stroke={1.5}
+              color={theme.colors[theme.primaryColor][6]}
+            />
+          </Dropzone.Accept>
+          <Dropzone.Reject>
+            <IconX size="3.2rem" stroke={1.5} color={theme.colors.red[6]} />
+          </Dropzone.Reject>
+          <Dropzone.Idle>
+            <IconBrandPython size="3.2rem" stroke={1.5} />
+          </Dropzone.Idle>
+
+          <Box ml="md">
+            <Text size="md" lh={1.2} inline>
+              Drag a Python script for your custom chunker here
+            </Text>
+            <Text size="sm" color="dimmed" inline mt={7}>
+              Script should contain functions decorated with @custom_chunker
+            </Text>
+          </Box>
+        </Center>
+      </Flex>
+    </Dropzone>
+  );
+};
+
+// --- Create LoadedCustomChunkersList ---
+const LoadedCustomChunkersList: React.FC = () => {
+  const customChunkers = useStore((s) => s.customChunkers);
+  const removeChunkerState = useStore((s) => s.removeCustomChunkerState);
+  const showAlert = useContext(AlertModalContext);
+
+  const handleRemove = useCallback(
+    (identifier: string, name: string) => {
+      if (
+        !window.confirm(
+          `Are you sure you want to remove the custom chunker "${name}"? This cannot be undone.`,
+        )
+      ) {
+        return;
+      }
+
+      removeCustomChunker(identifier)
+        .then(() => {
+          console.log("Removed custom chunker from backend:", identifier);
+          removeChunkerState(identifier);
+          // Optionally: show success message
+        })
+        .catch((err) => {
+          console.error("Failed to remove custom chunker:", err);
+          showAlert?.(`Error removing chunker "${name}": ${err.message}`);
+        });
+    },
+    [removeChunkerState, showAlert],
+  );
+
+  if (!customChunkers || customChunkers.length === 0) {
+    return (
+      <Text size="sm" color="dimmed" align="center" mt="md">
+        No custom chunkers loaded yet.
+      </Text>
+    );
+  }
+
+  return (
+    <Box mt="md">
+      {customChunkers.map((chunker) => (
+        <Card
+          key={chunker.identifier}
+          shadow="sm"
+          radius="sm"
+          p="xs"
+          mb="sm"
+          withBorder
+        >
+          <Group position="apart">
+            <Group position="left" spacing="xs">
+              {chunker.emoji && <Text>{chunker.emoji}</Text>}
+              <Text weight={500} size="sm">
+                {chunker.name}
+              </Text>
+              {chunker.settings_schema &&
+                (Object.keys(chunker.settings_schema.settings).length > 0 ||
+                  Object.keys(chunker.settings_schema.ui).length > 0) && (
+                  <Badge color="blue" variant="light" size="sm">
+                    has settings
+                  </Badge>
+                )}
+            </Group>
+            <ActionIcon
+              onClick={() => handleRemove(chunker.identifier, chunker.name)}
+              color="red"
+              variant="subtle"
+              title={`Remove ${chunker.name}`}
+            >
+              <IconX size={16} />
+            </ActionIcon>
+          </Group>
+        </Card>
+      ))}
+    </Box>
   );
 };
 
@@ -358,6 +546,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       (state) => state.setAIFeaturesProvider,
     );
     const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
+    const setCustomChunkers = useStore((state) => state.setCustomChunkers);
     const setFavorites = useStore((state) => state.setFavorites);
     const nodes = useStore((state) => state.nodes);
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
@@ -423,6 +612,17 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
           .catch(console.error);
       }
 
+      // Load Custom Chunkers
+      // No need for a separate LOADED_ flag if it runs in the same effect
+      loadCachedCustomChunkers()
+        .then((chunkers: CustomChunkerSpec[]) => {
+          setCustomChunkers(chunkers); // Update global store
+          console.log("Loaded cached custom chunkers:", chunkers);
+        })
+        .catch((err) => {
+          console.warn("Failed to load custom chunkers on init:", err.message);
+        });
+
       // Load global settings from backend, if it exists
       // NOTE: This deliberately does not have a backup for the web-only version,
       // since saving this data to localStorage would be a security risk.
@@ -481,6 +681,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
               <Tabs.Tab value="api-keys">API Keys</Tabs.Tab>
               <Tabs.Tab value="ai-support">AI Support (BETA)</Tabs.Tab>
               <Tabs.Tab value="custom-providers">Custom Providers</Tabs.Tab>
+              <Tabs.Tab value="custom-chunkers">Custom Chunkers</Tabs.Tab>
               <Tabs.Tab value="advanced">Advanced</Tabs.Tab>
             </Tabs.List>
 
@@ -767,6 +968,29 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                     setLocalCustomProviders(ps);
                   }}
                 />
+              </Tabs.Panel>
+            ) : (
+              <></>
+            )}
+
+            {APP_IS_RUNNING_LOCALLY() ? (
+              <Tabs.Panel value="custom-chunkers" pt="md">
+                <Text mb="md" fz="sm" lh={1.3}>
+                  Add custom text chunking methods by providing a Python script
+                  using the
+                  <Text component="code" fz="sm">
+                    @custom_chunker
+                  </Text>{" "}
+                  decorator.
+                  {/* TODO: Add link to documentation when available */}
+                </Text>
+                <CustomChunkerDropzone onError={handleError} />
+                <Divider
+                  my="lg"
+                  label="Loaded Custom Chunkers"
+                  labelPosition="center"
+                />
+                <LoadedCustomChunkersList />
               </Tabs.Panel>
             ) : (
               <></>

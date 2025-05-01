@@ -18,6 +18,7 @@ import {
   PromptVarType,
   StringOrHash,
   JSONCompatible,
+  CustomChunkerSpec,
 } from "./typing";
 import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
 import {
@@ -1812,5 +1813,98 @@ export async function saveGlobalConfig(
           err.toString(),
       );
       // Soft fail
+    });
+}
+
+// --- Custom Chunker API Calls ---
+
+export async function initCustomChunker(
+  code: string,
+): Promise<CustomChunkerSpec[]> {
+  return fetch(`${FLASK_BASE_URL}app/initCustomChunker`, {
+    method: "POST",
+    headers: DEFAULT_JSON_HEADERS,
+    body: JSON.stringify({ code }),
+  })
+    .then((res) => {
+      if (!res.ok) {
+        // Try to parse error message from backend if available
+        return res.json().then((err) => {
+          throw new Error(err.error || `HTTP error ${res.status}`);
+        });
+      }
+      return res.json();
+    })
+    .then((json) => {
+      // The backend returns { chunkers: CustomChunkerSpec[] } on success
+      if (!json || !Array.isArray(json.chunkers)) {
+        throw new Error(
+          json?.error ||
+            "Received invalid response format from backend when initializing chunker.",
+        );
+      }
+      return json.chunkers as CustomChunkerSpec[];
+    })
+    .catch((error) => {
+      console.error("Error initializing custom chunker:", error);
+      throw error; // Re-throw the error to be caught by the caller
+    });
+}
+
+export async function loadCachedCustomChunkers(): Promise<CustomChunkerSpec[]> {
+  return fetch(`${FLASK_BASE_URL}app/loadCachedCustomChunkers`, {
+    method: "POST", // Using POST consistent with LLM providers, even though no body needed
+    headers: DEFAULT_JSON_HEADERS,
+    body: "{}", // Empty JSON body
+  })
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((json) => {
+      if (!json || !Array.isArray(json.chunkers)) {
+        throw new Error(
+          "Could not load custom chunkers: Invalid response format from backend.",
+        );
+      }
+      return json.chunkers as CustomChunkerSpec[];
+    })
+    .catch((error) => {
+      // Soft fail is reasonable here, maybe the backend isn't running or feature is disabled
+      console.warn("Could not load cached custom chunkers:", error.message);
+      return []; // Return empty list on failure
+    });
+}
+
+export async function removeCustomChunker(
+  identifier: string,
+): Promise<boolean> {
+  return fetch(`${FLASK_BASE_URL}app/removeCustomChunker`, {
+    method: "POST",
+    headers: DEFAULT_JSON_HEADERS,
+    body: JSON.stringify({ identifier }),
+  })
+    .then((res) => {
+      if (!res.ok) {
+        return res.json().then((err) => {
+          throw new Error(err.error || `HTTP error ${res.status}`);
+        });
+      }
+      return res.json();
+    })
+    .then((json) => {
+      if (!json || !json.success) {
+        throw new Error(
+          json?.error ||
+            "Failed to remove custom chunker: Unknown error from backend.",
+        );
+      }
+      return true; // Success
+    })
+    .catch((error) => {
+      console.error("Error removing custom chunker:", error);
+      throw error; // Re-throw
     });
 }

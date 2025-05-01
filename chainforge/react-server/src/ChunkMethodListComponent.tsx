@@ -25,6 +25,7 @@ import validator from "@rjsf/validator-ajv8";
 import { v4 as uuid } from "uuid";
 import { ChunkMethodSchemas, ChunkMethodGroups } from "./ChunkMethodSchemas";
 import { transformDict, truncStr } from "./backend/utils";
+import useStore from "./store";
 
 export interface ChunkMethodSpec {
   key: string;
@@ -49,10 +50,14 @@ const ChunkMethodListItem: React.FC<{
   onRemove: (key: string) => void;
   onSettingsUpdate: (key: string, newSettings: any) => void;
 }> = ({ methodItem, onRemove, onSettingsUpdate }) => {
+  // Get ALL schemas (built-in and custom) from the store and static defs
+  const customChunkerSchemas = useStore((s) => s.chunkerSettingsSchemas);
+  const presetChunkerSchemas = ChunkMethodSchemas;
   // Fetch the relevant schema
   const schemaEntry = useMemo(
     () =>
-      ChunkMethodSchemas[methodItem.baseMethod] || {
+      customChunkerSchemas[methodItem.baseMethod] ||
+      presetChunkerSchemas[methodItem.baseMethod] || {
         schema: {},
         uiSchema: {},
         description: "",
@@ -179,6 +184,9 @@ const ChunkMethodListContainer = forwardRef<
   );
   const oldItemsRef = useRef<ChunkMethodSpec[]>(methodItems);
 
+  // Get custom chunkers from the store
+  const customChunkers = useStore((s) => s.customChunkers);
+
   useImperativeHandle(ref, () => ({}));
 
   // If parent node wants to track changes
@@ -281,6 +289,32 @@ const ChunkMethodListContainer = forwardRef<
                 {groupIdx < ChunkMethodGroups.length - 1 && <Divider my="xs" />}
               </React.Fragment>
             ))}
+            {/* Render custom chunkers if any */}
+            {customChunkers.length > 0 && (
+              <>
+                {ChunkMethodGroups.length > 0 && <Divider my="xs" />}
+                <Menu.Label>Custom Chunkers</Menu.Label>
+                {customChunkers.map((chunker) => (
+                  <Menu.Item
+                    key={chunker.identifier}
+                    icon={
+                      chunker.emoji ? <Text>{chunker.emoji}</Text> : undefined
+                    }
+                    onClick={() => {
+                      addMethod({
+                        baseMethod: chunker.identifier,
+                        methodType: chunker.name,
+                        name: chunker.name,
+                        emoji: chunker.emoji,
+                      });
+                      setMenuOpened(false);
+                    }}
+                  >
+                    {chunker.name}
+                  </Menu.Item>
+                ))}
+              </>
+            )}
           </Menu.Dropdown>
         </Menu>
       </Group>

@@ -475,3 +475,159 @@ def chonkie_neural(text: str, **kwargs: Any) -> List[str]:
         return [chunk.text for chunk in latechunk_objs] if latechunk_objs else [text]
     except Exception as e:
         raise Exception(f"Error during neural chunking: {e}. Make sure you've installed with 'pip install \"chonkie[neural]\"'.", file=sys.stderr)
+
+# --- Custom chunker ---
+from typing import TypedDict, Optional
+import os
+import traceback
+import json
+from werkzeug.utils import secure_filename
+
+class CustomChunkerSettingsSchema(TypedDict):
+    settings: Dict[str, Any]
+    ui: Dict[str, Any]
+
+class CustomChunkerMetadata(TypedDict):
+    identifier: str
+    name: str
+    emoji: str
+    settings_schema: Optional[CustomChunkerSettingsSchema]
+
+# --- Decorator ---
+
+# Temporary store for metadata captured during script execution by initCustomChunker
+_newly_registered_chunkers: List[CustomChunkerMetadata] = []
+
+def custom_chunker(
+    identifier: str,
+    name: str,
+    emoji: str = '🧩',
+    settings_schema: Optional[CustomChunkerSettingsSchema] = None
+):
+    """
+    Decorator to register a custom chunking function and its metadata.
+
+    Args:
+        identifier: Unique string ID for the chunker. Will be used as 'baseMethod'.
+        name: User-friendly display name.
+        emoji: Emoji icon for the UI.
+        settings_schema: Optional dictionary matching react-jsonschema-form structure
+                         with 'settings' and 'ui' keys.
+    """
+    if not isinstance(identifier, str) or not identifier:
+        raise ValueError("Chunker identifier must be a non-empty string.")
+    if identifier in ChunkingMethodRegistry._methods:
+        print(f"Warning: Custom chunker identifier '{identifier}' might conflict with a built-in or existing one.", file=sys.stderr)
+    # Basic validation of schema structure if provided
+    if settings_schema and (not isinstance(settings_schema, dict) or 'settings' not in settings_schema or 'ui' not in settings_schema):
+         print(f"Warning: Invalid settings_schema structure for chunker '{identifier}'. It should have 'settings' and 'ui' keys.", file=sys.stderr)
+         settings_schema = None # Discard invalid schema
+
+    def decorator(handler_func: Callable[[str, Any], List[str]]):
+        # 1. Register the actual handler function with the existing registry
+        if not callable(handler_func):
+            raise TypeError(f"The object decorated with @custom_chunker (identifier: {identifier}) must be a callable function.")
+        ChunkingMethodRegistry.register(identifier)(handler_func)
+
+        # 2. Capture metadata for the frontend/persistence
+        metadata: CustomChunkerMetadata = {
+            "identifier": identifier,
+            "name": name,
+            "emoji": emoji,
+            "settings_schema": settings_schema,
+        }
+        _newly_registered_chunkers.append(metadata)
+        # print(f"Registered custom chunker via decorator: {name} ({identifier})") # For debugging
+        return handler_func
+    return decorator
+
+# --- Expected Protocol (for documentation); not implemented yet ---
+class ChunkerProviderProtocol:
+    def __call__(self, text: str, **kwargs: Any) -> List[str]:
+        """
+        Protocol definition for custom chunker functions.
+
+        Args:
+            text: The input text to be chunked.
+            **kwargs: Settings passed from the UI, based on settings_schema.
+
+        Returns:
+            A list of strings representing the chunks.
+        """
+        return NotImplementedError("Custom chunker functions must implement this protocol.")
+
+
+# Where custom chunkers are stored, might want to move this to a parent directory that also contains providers?
+CUSTOM_CHUNKERS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'custom_chunkers_data')
+CUSTOM_CHUNKERS_METADATA_FILE = os.path.join(CUSTOM_CHUNKERS_DIR, 'metadata.json')
+os.makedirs(CUSTOM_CHUNKERS_DIR, exist_ok=True)
+
+def _load_chunker_metadata() -> Dict[str, CustomChunkerMetadata]:
+    """Loads the metadata file."""
+    if not os.path.exists(CUSTOM_CHUNKERS_METADATA_FILE):
+        return {}
+    try:
+        with open(CUSTOM_CHUNKERS_METADATA_FILE, 'r', encoding='utf-8') as f:
+            # Basic validation could be added here
+            data = json.load(f)
+            if isinstance(data, dict):
+                return data
+            else:
+                print(f"Error: Invalid format in {CUSTOM_CHUNKERS_METADATA_FILE}. Expected a JSON object.", file=sys.stderr)
+                return {}
+    except json.JSONDecodeError:
+        print(f"Error reading custom chunker metadata file: {CUSTOM_CHUNKERS_METADATA_FILE}", file=sys.stderr)
+        return {}
+    except IOError as e:
+        print(f"Error opening custom chunker metadata file {CUSTOM_CHUNKERS_METADATA_FILE}: {e}", file=sys.stderr)
+        return {}
+
+def _save_chunker_metadata(metadata: Dict[str, CustomChunkerMetadata]):
+    """Saves the metadata file."""
+    try:
+        with open(CUSTOM_CHUNKERS_METADATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2)
+    except IOError as e:
+        print(f"Error writing custom chunker metadata to {CUSTOM_CHUNKERS_METADATA_FILE}: {e}", file=sys.stderr)
+    except TypeError as e:
+        print(f"Error serializing custom chunker metadata: {e}", file=sys.stderr)
+
+
+# --- Server Startup Loading ---
+
+def load_and_register_cached_custom_chunkers():
+    """Loads .py files for cached chunkers and executes them to register handlers."""
+    #print("Loading cached custom chunkers...")
+    all_metadata = _load_chunker_metadata()
+    registered_count = 0
+    exec_globals = {'__file__': __file__} # Provide a basic global context
+
+    for identifier, meta in all_metadata.items():
+        # Use a secure version of the identifier for the filename
+        safe_filename = secure_filename(identifier)
+        if not safe_filename:
+             print(f"Warning: Skipping custom chunker with invalid identifier for filename: {identifier}", file=sys.stderr)
+             continue
+        script_filename = f"{safe_filename}.py"
+        script_path = os.path.join(CUSTOM_CHUNKERS_DIR, script_filename)
+
+        if os.path.exists(script_path):
+            try:
+                with open(script_path, 'r', encoding='utf-8') as f:
+                    code = f.read()
+                # IMPORTANT: Execute in a controlled context if possible.
+                # exec() is inherently risky. For production, consider sandboxing.
+                exec(code, exec_globals) # Make sure registry decorator runs
+                # Check if it was actually registered in this run (it might already be there)
+                if identifier in ChunkingMethodRegistry._methods:
+                     # print(f"Successfully loaded and registered: {identifier}") # Verbose
+                     registered_count += 1
+                else:
+                     print(f"Warning: Code in {script_path} executed but did not register handler for identifier '{identifier}'. Check the @custom_chunker decorator.", file=sys.stderr)
+
+            except Exception as e:
+                print(f"Error loading or executing custom chunker script {script_path}: {e}\n{traceback.format_exc()}", file=sys.stderr)
+        else:
+            print(f"Warning: Metadata found for '{identifier}', but script not found at {script_path}. Metadata might be stale.", file=sys.stderr)
+
+    print(f"Finished loading custom chunkers. {registered_count} handlers active (including potential duplicates if re-run).")
