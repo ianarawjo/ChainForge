@@ -34,7 +34,7 @@ setup(
         "langchain-core",
         "langchain-community",
         "nltk",
-        "gensim",
+        "gensim>=4.3.3",
         "transformers",
         "spacy",
         "scipy==1.10.1",
