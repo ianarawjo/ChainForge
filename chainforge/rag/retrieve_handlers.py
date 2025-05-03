@@ -1,10 +1,6 @@
-import math, os
+import math, os, heapq
 from typing import List
 import numpy as np
-import heapq
-from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine
-from sklearn.cluster import KMeans
-from gensim.utils import simple_preprocess
 
 class EmbeddingModelRegistry:
     _models = {}
@@ -193,6 +189,7 @@ class RetrievalMethodRegistry:
 @RetrievalMethodRegistry.register("bm25")
 def handle_bm25(chunk_objs, query_objs, settings):
     from rank_bm25 import BM25Okapi
+    from gensim.utils import simple_preprocess
 
     top_k = settings.get("top_k", 5)
     k1 = settings.get("bm25_k1", 1.5)
@@ -268,6 +265,8 @@ def handle_tfidf(chunk_objs, query_objs, settings):
 
 @RetrievalMethodRegistry.register("boolean")
 def handle_boolean(chunk_objs, query_objs, settings):
+    from gensim.utils import simple_preprocess
+
     top_k = settings.get("top_k", 5)
     required_match_count = settings.get("required_match_count", 1)
     
@@ -313,6 +312,8 @@ def handle_boolean(chunk_objs, query_objs, settings):
 
 @RetrievalMethodRegistry.register("overlap")
 def handle_keyword_overlap(chunk_objs, query_objs, settings):
+    from gensim.utils import simple_preprocess
+
     top_k = settings.get("top_k", 5)
     
     # Extract text from chunk objects
@@ -486,6 +487,9 @@ def handle_clustered(chunk_objs, chunk_embeddings, query_objs, query_embeddings,
     """
     Retrieve chunks using a combination of query similarity and cluster similarity.
     """
+    from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine
+    from sklearn.cluster import KMeans
+
     top_k = settings.get("top_k", 5)
     n_clusters = settings.get("n_clusters", 3)
     query_coeff = settings.get("query_coeff", 0.6)

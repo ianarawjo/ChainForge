@@ -15,7 +15,7 @@ langchain
 langchain-core
 langchain-community
 nltk
-gensim
+gensim>=4.3.3
 transformers
 spacy
 scikit-learn
