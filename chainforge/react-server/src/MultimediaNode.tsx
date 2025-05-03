@@ -201,13 +201,13 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
     setMetadataRows({});
     setCurrentRowIndex(0);
     setImageUrl(undefined);
-    
+
     // Update the data store
     setDataPropsForNode(id, {
       rows: [],
       columns: [],
     });
-    
+
     // Notify connected nodes
     pingOutputNodes(id);
   }, [id, setDataPropsForNode, pingOutputNodes]);
@@ -930,36 +930,36 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
           </Button>
           {tableData.length > 0 && (
             <>
-            <Button
-              variant="subtle"
-              size="xs"
-              leftIcon={<IconX size={14} />}
-              onClick={() => {
-                const newTableData = tableData.filter(
-                  (_, index) => index !== currentRowIndex,
-                );
-                setTableData(newTableData);
-                setCurrentRowIndex(
-                  Math.min(currentRowIndex, newTableData.length - 1),
-                );
-                // if no more rows, reinitialize columns also
-                if (newTableData.length === 0) {
-                  setTableColumns([]);
-                }
-              }}
-              style={{ color: "#666" }}
-            >
-              Remove Media
-            </Button>
-            <Button
-              variant="subtle"
-              size="xs"
-              leftIcon={<IconTrash size={14} />}
-              onClick={handleRemoveAll}
-              style={{ color: "#666" }}
-            >
-              Remove ALL
-            </Button>
+              <Button
+                variant="subtle"
+                size="xs"
+                leftIcon={<IconX size={14} />}
+                onClick={() => {
+                  const newTableData = tableData.filter(
+                    (_, index) => index !== currentRowIndex,
+                  );
+                  setTableData(newTableData);
+                  setCurrentRowIndex(
+                    Math.min(currentRowIndex, newTableData.length - 1),
+                  );
+                  // if no more rows, reinitialize columns also
+                  if (newTableData.length === 0) {
+                    setTableColumns([]);
+                  }
+                }}
+                style={{ color: "#666" }}
+              >
+                Remove Media
+              </Button>
+              <Button
+                variant="subtle"
+                size="xs"
+                leftIcon={<IconTrash size={14} />}
+                onClick={handleRemoveAll}
+                style={{ color: "#666" }}
+              >
+                Remove ALL
+              </Button>
             </>
           )}
         </div>

@@ -92,15 +92,29 @@ const ImagePreviewModal = forwardRef<
           />
         </div>
         {imageInfo && (
-          <div style={{ width: '100%', maxWidth: '600px', padding: '0px', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "600px",
+              padding: "0px",
+              borderRadius: "8px",
+              border: "1px solid #e9ecef",
+            }}
+          >
             <Text size="sm" style={{ lineHeight: 1.7 }}>
-              <strong>Format:</strong> {imageInfo.format}<br />
-              <strong>Timestamp:</strong> {imageInfo.timestamp}<br />
-              <strong>Source:</strong> {imageInfo.user_source}<br />
-                <hr style={{ margin: '10px 0' }} />
-              <strong>Width:</strong> {imageInfo.width} px<br />
-              <strong>Height:</strong> {imageInfo.height} px<br />
-              <strong>Size:</strong> {imageInfo.size} bytes<br />
+              <strong>Format:</strong> {imageInfo.format}
+              <br />
+              <strong>Timestamp:</strong> {imageInfo.timestamp}
+              <br />
+              <strong>Source:</strong> {imageInfo.user_source}
+              <br />
+              <hr style={{ margin: "10px 0" }} />
+              <strong>Width:</strong> {imageInfo.width} px
+              <br />
+              <strong>Height:</strong> {imageInfo.height} px
+              <br />
+              <strong>Size:</strong> {imageInfo.size} bytes
+              <br />
               {/* TODO: Token Count: 'TODO Feature coming' */}
             </Text>
           </div>
