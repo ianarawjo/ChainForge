@@ -4,7 +4,7 @@ import { Badge, Text } from "@mantine/core";
 import useStore from "./store";
 import { IconSettings, IconImageInPicture } from "@tabler/icons-react";
 import { extractTemplateVars } from "./backend/template";
-import { IMAGE_COLUMN_NAME } from "./MultimediaNode";
+import { IMAGE_COLUMN } from "./MultimediaNode";
 
 const SETTINGS_ICON = (
   <IconSettings
@@ -74,7 +74,8 @@ export default function TemplateHooks({
         const is_settings_var = name.charAt(0) === "=";
         let color = is_settings_var ? "orange" : "indigo";
         // check if we are on a MultimediaNode and if the name is 'Image'
-        const is_image_var = name === IMAGE_COLUMN_NAME; // TODO: add more condition i.e. if the node is a CarousselTabularDataNode
+        const is_image_var =
+          name === IMAGE_COLUMN.header && nodeId.startsWith("multimediaNode");
         let badge_name = is_settings_var ? (
           <Text display="flex" align="center">
             {name.substring(1)} {SETTINGS_ICON}

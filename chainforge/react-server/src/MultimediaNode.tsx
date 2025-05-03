@@ -27,6 +27,7 @@ import {
   IconInfoCircle,
   IconPlus,
   IconPencil,
+  IconTrash,
 } from "@tabler/icons-react";
 import TemplateHooks from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
@@ -34,12 +35,12 @@ import NodeLabel from "./NodeLabelComponent";
 import { AlertModalContext } from "./AlertModal";
 import RenameValueModal, { RenameValueModalRef } from "./RenameValueModal";
 import useStore from "./store";
-import { sampleRandomElements, __http_url_to_base64 } from "./backend/utils";
 import {
   Dict,
   TabularDataRowType,
   TabularDataColType,
   LLMResponse,
+  FileWithContent,
 } from "./backend/typing";
 import { Position } from "reactflow";
 import { parseTableData } from "./backend/tableUtils";
@@ -50,6 +51,9 @@ import LLMResponseInspectorModal, {
   LLMResponseInspectorModalRef,
 } from "./LLMResponseInspectorModal";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
+
+import { MediaLookup } from "./backend/cache";
+import { blobOrFileToDataURL, dataURLToBlob } from "./backend/utils";
 
 const defaultRows: TabularDataRowType = {
   question: "Prompt Question",
@@ -67,20 +71,21 @@ const defaultColumns: TabularDataColType[] = [
   },
 ];
 
-const __construct_items_in_json_responses = (
+// This function serves to convert the `tableData` and `tableColumns` into objects that
+// the `LLMResponseInspectorModal` and `LLMResponseInspectorDrawer` support.
+// The sum up, it converts the `tableData` into a list of `LLMResponse` objects
+//  as if the image was the LLM response the InspectorModal should display
+const __construct_items_in_json_responses = async (
   tableData: TabularDataRowType[],
   tableColumns: TabularDataColType[],
 ) => {
-  const items_in_json_responses: Promise<LLMResponse[]> = Promise.all(
+  const items_in_json_responses: LLMResponse[] = await Promise.all(
     tableData.map(async (row) => {
       const item: LLMResponse = {
         responses: [
           {
             t: "img",
-            d: String(row.image).startsWith("http")
-              ? // if the image is a URL, convert it to base64, get the string from the response
-                await __http_url_to_base64(String(row.image))
-              : String(row.image).split("base64,")[1],
+            d: await MediaLookup.getUrl(row.image as string),
           },
         ],
         uid: String(row.__uid),
@@ -110,6 +115,15 @@ const __construct_items_in_json_responses = (
   return items_in_json_responses;
 };
 
+export type metadataRowType = {
+  coming_from: "Remote image" | "Local file Uploaded" | ".tsv data import";
+  source: string;
+  timestamp: string;
+  size: string;
+  // TODO : Feature VISUAL TOKEN COUNT
+  // token_count: string;
+};
+
 export interface MultimediaNodeData {
   title?: string;
   sample?: boolean;
@@ -122,48 +136,83 @@ export interface MultimediaNodeDataProps {
   id: string;
 }
 
-export const IMAGE_COLUMN_NAME = "Image";
+// This serves to recognize the column that contains the image data
+export const IMAGE_COLUMN: TabularDataColType = {
+  header: "Image",
+  key: "image",
+};
+
 const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
+  // ----- State variables
   const [tableData, setTableData] = useState<TabularDataRowType[]>(
     data.rows || [],
   );
+
   const [tableColumns, setTableColumns] = useState<TabularDataColType[]>(
     data.columns || [],
   );
-  const [metadataRows, setMetadataRows] = useState<
-    Record<string, Dict<string>>
-  >({}); // New state for metadata
+
+  const [metadataRows, setMetadataRows] = useState<Dict<metadataRowType>>({}); // Keys are the __uid of the tableData rows
+
+  const [currentRowIndex, setCurrentRowIndex] = useState(0);
+
+  const [hooksY, setHooksY] = useState(120);
+
+  // Will store the image the Caroussel View is currently focusing on.
+  // Purpose is to LAZY LOAD image data ON-THE-FLY only when user focuses it !!! see `fetchImageUrl` below
+  const [imageUrl, setImageUrl] = useState<string | undefined>();
+
+  const [renameColumnInitialVal, setRenameColumnInitialVal] = useState<
+    TabularDataColType | string
+  >("");
 
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
 
-  const [currentRowIndex, setCurrentRowIndex] = useState(0);
-
-  // Whether to randomly sample N outputs, versus all outputs
-  const [shouldSample, setShouldSample] = useState(data.sample ?? false);
-  const [sampleNum, setSampleNum] = useState(data.sampleNum ?? 1);
-  const handleChangeSampleNum = useCallback(
-    (n: number) => {
-      setSampleNum(n);
-      setDataPropsForNode(id, { sampleNum: n });
-    },
-    [setSampleNum, id],
-  );
-
   // Dynamically update the position of the template hooks
   const ref = useRef<HTMLDivElement | null>(null);
-  const [hooksY, setHooksY] = useState(120);
 
   // For displaying error messages to user
   const showAlert = useContext(AlertModalContext);
 
   // For renaming a column
   const renameColumnModal = useRef<RenameValueModalRef>(null);
-  const [renameColumnInitialVal, setRenameColumnInitialVal] = useState<
-    TabularDataColType | string
-  >("");
 
+  // For clickable image
+  const imagePreviewModal = useRef<ImagePreviewModalRef>(null);
+
+  // For displaying the message when the user clicks on the INFO button
+  const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] =
+    useDisclosure(false);
+
+  // For dispalying the LLMResponseInspectorModal
+  const [jsonResponses, setJSONResponses] = useState<LLMResponse[] | null>(
+    null,
+  );
+  const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
+  const [showDrawer, setShowDrawer] = useState(false);
+
+  // Add a handler for the "Remove ALL" button
+  const handleRemoveAll = useCallback(() => {
+    // Clear all data
+    setTableData([]);
+    setTableColumns([]);
+    setMetadataRows({});
+    setCurrentRowIndex(0);
+    setImageUrl(undefined);
+    
+    // Update the data store
+    setDataPropsForNode(id, {
+      rows: [],
+      columns: [],
+    });
+    
+    // Notify connected nodes
+    pingOutputNodes(id);
+  }, [id, setDataPropsForNode, pingOutputNodes]);
+
+  // called on the change of a textarea field
   const handleSaveCell = useCallback(
     (rowIdx: number, columnKey: string, value: string) => {
       pingOutputNodes(id);
@@ -188,9 +237,9 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
     [tableData, tableColumns, pingOutputNodes],
   );
 
-  // Inserts a column to left or right of existing one
+  // Inserts a new textfield area under existing ones, considered in the States as a column (hence the name)
   const handleInsertColumn = useCallback(
-    (startColKey: string, dir: 1 | -1) => {
+    (startColKey: string) => {
       // Create a unique ID to refer to this new column
       const uid = `col-${Date.now()}`;
       const new_col = {
@@ -202,13 +251,11 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       const startColIdx = tableColumns.findIndex(
         (elem) => elem.key === startColKey,
       );
-      if (dir === -1) tableColumns.splice(startColIdx, 0, new_col);
-      else if (dir === 1)
-        tableColumns.splice(
-          Math.min(startColIdx + 1, tableColumns.length),
-          0,
-          new_col,
-        );
+      tableColumns.splice(
+        Math.min(startColIdx + 1, tableColumns.length),
+        0,
+        new_col,
+      );
 
       // Set blank values at that column for each row of the table
       tableData.forEach((row) => {
@@ -275,11 +322,42 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
     [tableColumns, renameColumnInitialVal, pingOutputNodes],
   );
 
-  // Import list of JSON data to the table
-  // NOTE: JSON objects should be in row format, with keys
-  //       as the header names. The internal keys of the columns will use uids to be unique.
-  const importJSONList = (jsonl: Array<Dict>) => {
-    // I noticed for some .tsv files, sometimes the last row is empty
+  const handleError = (err: Error) => {
+    if (showAlert) showAlert(err.message);
+    console.error(err.message);
+  };
+
+  useEffect(() => {
+    const fetchImageUrl = async () => {
+      if (tableData[currentRowIndex]?.image) {
+        const url = await MediaLookup.getUrl(
+          tableData[currentRowIndex].image as string,
+        );
+        setImageUrl(url);
+      }
+    };
+    fetchImageUrl();
+  }, [tableData, currentRowIndex]);
+
+  // Scrolls to bottom of the table when scrollToBottom toggle is true
+  useEffect(() => {
+    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
+  }, []);
+
+  // Updates the internal data store whenever the table data changes
+  useEffect(() => {
+    setDataPropsForNode(id, {
+      rows: tableData,
+      columns: tableColumns,
+    });
+  }, [tableData, tableColumns, currentRowIndex, id, setDataPropsForNode]);
+
+  // Used when user imports a .tsv file through the upload button
+  // Arg `jsonl` is the converted JSON object from the .tsv file
+  // where JSON objects should be in row format, with keys as the header names.
+  // The internal keys of the columns will use uids to be unique.
+  const importJSONList = (jsonl: Array<Dict>, source_file_data: Dict) => {
+    // I noticed for some .tsv files, sometimes the last row is empty ( may originates from Papa.parse(...) function)
     // so if the last element is empty `{index: "",}`  , remove it
     const lastRow = jsonl[jsonl.length - 1];
     if (
@@ -292,78 +370,95 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
     const { columns, rows } = parseTableData(jsonl as any[]);
 
     // find the image key
-    const image_col = columns.find((col) => col.header === "image");
+    const image_col = columns.find((col) => col.header === IMAGE_COLUMN.key);
     if (!image_col) {
       throw new Error("No image column found in the data");
     }
 
     // Set the new columns,
     // and verify that if the image column is present in the state tableColumns, we dont add it again
-    // otherwise add it as { key: "image", header: "Image" }
-    const imageColumnExists = tableColumns.some((col) => col.key === "image");
+    const imageColumnExists = tableColumns.some(
+      (col) => col.key === IMAGE_COLUMN.key,
+    );
     const colIdx = columns.findIndex((elem) => elem.header === "image");
     const imageColumnKey = columns[colIdx].key;
     if (!imageColumnExists) {
-      columns[colIdx] = {
-        header: IMAGE_COLUMN_NAME,
-        key: "image",
-      };
+      columns[colIdx] = IMAGE_COLUMN;
     } else {
-      // Remove the image column from the columns array
-      if (colIdx !== -1) {
-        columns.splice(colIdx, 1);
-      }
+      columns.splice(colIdx, 1);
     }
-    // Add the new columns to the table
-    const new_columns = columns.map((col) => {
-      const colExists = tableColumns.some((c) => c.key === col.key);
-      if (!colExists) {
-        return {
-          ...col,
-          header: col.header || "New Column",
-        };
-      }
-      return col;
-    });
-    setTableColumns([...tableColumns, ...new_columns]);
 
-    // Set the new rows and
-    // for the field holding data image as "image"
-    const new_rows = rows.map((row) => {
-      // Rename the key of the image column to "image"
-      const new_row: TabularDataRowType = {
-        image: `data:image/jpeg;base64,${row[imageColumnKey]}`,
-      };
-      new_columns.forEach((col) => {
-        if (col.key !== columns[colIdx].key) {
-          new_row[col.key] = row[col.key];
+    // (VERY UNLIKELY) Check if some columns are already present in the state tableColumns
+    // and if not, add them to the state tableColumns
+    // and set the header to "New Column" if not already set
+    const new_columns = columns
+      .map((col, index) => {
+        const colExists = tableColumns.some(
+          (c) => c.key === col.key && c.header === col.header,
+        );
+        if (!colExists) {
+          return {
+            ...col,
+            header: col.header || `New Column ${index + 1}th of the file`,
+          };
+        } else {
+          console.warn(
+            `Column ${col} (${index}th column in the file) already exists in the table. Not adding it again.`,
+          );
+          return undefined;
         }
+      })
+      .filter((col) => col !== undefined) as TabularDataColType[];
+
+    // Set the new rows
+    const new_rows = rows.map((row) => {
+      const image_data_row = row[imageColumnKey] as string;
+      const blob_object_to_upload = dataURLToBlob(
+        image_data_row.startsWith("data:image")
+          ? image_data_row
+          : `data:image/jpeg;base64,${image_data_row}`,
+      );
+
+      const new_row: TabularDataRowType = {};
+
+      new_columns.forEach((col) => {
+        new_row[col.key] = row[col.key];
       });
+
+      MediaLookup.upload(blob_object_to_upload).then((uid) => {
+        new_row[IMAGE_COLUMN.key] = uid;
+      });
+
       // Add a unique ID to each row
-      if (!new_row.__uid) {
-        new_row.__uid = uuidv4();
-      }
+      new_row.__uid = uuidv4();
       return new_row;
     });
 
     // Update metadata for imported rows
-    const newMetadata = { ...metadataRows };
+    const newMetadata: Dict<metadataRowType> = { ...metadataRows };
     new_rows.forEach((row) => {
-      newMetadata[row.__uid] = { source: ".tsv import" };
+      newMetadata[row.__uid] = {
+        source: source_file_data.name,
+        coming_from: ".tsv data import",
+        timestamp: source_file_data.lastModified.toString(),
+        size: source_file_data.size.toString(),
+      };
     });
-    setMetadataRows(newMetadata);
 
+    // Call the callbacks
+    setMetadataRows(newMetadata);
+    setTableColumns([...tableColumns, ...new_columns]);
     setTableData([...tableData, ...new_rows]);
     setCurrentRowIndex(new_rows.length - 1);
     setDataPropsForNode(id, {
       rows: [...tableData, ...new_rows],
       columns: [...tableColumns, ...new_columns],
-      sel_rows: null,
     });
     pingOutputNodes(id);
   };
 
-  // Import tabular data from a file
+  // Import tabular data from a .tsv file
+  // and sanity check the minimal headers required for the .tsv file
   // NOTE: Assumes first row of table is a header
   const openImportFileModal = async () => {
     // Create an input element with type "file" and accept only JSON files
@@ -388,7 +483,12 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
             throw new Error(
               "Could not load tabular data file into file reader. Unknown error.",
             );
-
+          const source_file_data = {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            lastModified: file.lastModified,
+          };
           const papa_parsed = Papa.parse(reader.result as string, {
             header: true,
           });
@@ -406,7 +506,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
             );
           }
 
-          importJSONList(papa_parsed.data as Dict<any>[]);
+          importJSONList(papa_parsed.data as Dict<any>[], source_file_data);
         } catch (error) {
           handleError(error as Error);
         }
@@ -417,41 +517,6 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
 
     // Trigger the file selector
     input.click();
-  };
-
-  // Scrolls to bottom of the table when scrollToBottom toggle is true
-  useEffect(() => {
-    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
-  }, []);
-
-  // Updates the internal data store whenever the table data changes
-  useEffect(() => {
-    let sel_rows: TabularDataRowType[] | null = null;
-
-    // Check for sampling
-    if (shouldSample && sampleNum !== undefined) {
-      // If sampling is enabled, randomly choose only sampleNum rows:
-      sel_rows = sampleRandomElements(tableData, sampleNum);
-    }
-
-    setDataPropsForNode(id, {
-      rows: tableData,
-      columns: tableColumns,
-      sel_rows,
-    });
-  }, [
-    tableData,
-    tableColumns,
-    shouldSample,
-    sampleNum,
-    currentRowIndex,
-    id,
-    setDataPropsForNode,
-  ]);
-
-  const handleError = (err: Error) => {
-    if (showAlert) showAlert(err.message);
-    console.error(err.message);
   };
 
   // To listen for resize events of the table container, we need to use a ResizeObserver.
@@ -476,7 +541,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         ref.current = elem;
       }
     },
-    [ref],
+    [ref, tableData, currentRowIndex, tableColumns],
   );
 
   const handleNextRow = useCallback(() => {
@@ -495,12 +560,12 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   const uploadFileModal = useRef<UploadFileModalRef>(null);
 
   const handleUploadFile = useCallback(
-    (
-      url: string,
+    async (
+      image_data: FileWithContent,
       newRow: TabularDataRowType = defaultRows,
       newColumns: TabularDataColType[] = defaultColumns,
     ) => {
-      // Ensure the image column exists
+      //  ------- HANDLING NEW COLUMNS
       const imageColumnKey = "image";
       const imageColumnExists = tableColumns.some(
         (col) => col.key === imageColumnKey,
@@ -510,25 +575,25 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
 
       // Add image column if it doesn't exist
       if (!imageColumnExists) {
-        const imageColumn: TabularDataColType = {
-          key: imageColumnKey,
-          header: IMAGE_COLUMN_NAME,
-        };
-        columns_to_add.push(imageColumn);
+        columns_to_add.push(IMAGE_COLUMN);
       }
 
       // Only add new columns if there are no existing columns
       if (tableColumns.length === 0) {
-        columns_to_add.push(...newColumns);
-        setTableColumns([...tableColumns, ...columns_to_add]);
+        setTableColumns([...newColumns, ...columns_to_add]);
       }
+      //  -------
+
+      //  ------- HANDLING NEW ROWS
+      const uid_image_cached = await MediaLookup.upload(image_data);
 
       // Create new row with image URL and ensure it has a unique ID
       const rowWithImage: TabularDataRowType = {
         ...newRow,
-        [imageColumnKey]: url,
+        [imageColumnKey]: uid_image_cached,
         __uid: newRow.__uid || uuidv4(),
       };
+      //  -------
 
       // Update table data
       const updatedTableData = [...tableData, rowWithImage];
@@ -536,37 +601,30 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       setCurrentRowIndex(updatedTableData.length - 1);
 
       // Update metadata for the new row
+      const coming_from: metadataRowType["coming_from"] =
+        image_data.name.startsWith("http")
+          ? "Remote image"
+          : "Local file Uploaded";
+
+      const timestamp = image_data.lastModified;
+
       const newMetadata = {
         ...metadataRows,
         [rowWithImage.__uid]: {
-          source: url.startsWith("http")
-            ? "Remote image"
-            : "Local file Uploaded",
+          source: image_data.name,
+          coming_from: coming_from,
+          timestamp: timestamp.toString(),
+          size: image_data.size.toString(),
         },
       };
       setMetadataRows(newMetadata);
 
-      // Update store with new data
-      const selectedRows =
-        shouldSample && sampleNum !== undefined
-          ? sampleRandomElements(updatedTableData, sampleNum)
-          : null;
-
       setDataPropsForNode(id, {
         rows: updatedTableData,
         columns: tableColumns,
-        sel_rows: selectedRows,
       });
     },
-    [
-      tableColumns,
-      tableData,
-      shouldSample,
-      sampleNum,
-      id,
-      setDataPropsForNode,
-      metadataRows,
-    ],
+    [tableColumns, tableData, id, setDataPropsForNode, metadataRows],
   );
 
   const handleOpenUploadModal = useCallback(() => {
@@ -579,24 +637,17 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
     }
   }, [ref]);
 
-  const imagePreviewModal = useRef<ImagePreviewModalRef>(null);
-
   const handleImageClick = useCallback(() => {
-    const currentRow = tableData[currentRowIndex];
-    const imageUrl = currentRow.image;
-    const metadata = metadataRows[currentRow.__uid];
+    const metadata = metadataRows[tableData[currentRowIndex].__uid];
     if (imagePreviewModal.current && typeof imageUrl === "string") {
       imagePreviewModal.current.trigger(imageUrl, metadata);
     }
-  }, [tableData, currentRowIndex, metadataRows]);
+  }, [tableData, currentRowIndex, metadataRows, imageUrl]);
 
   // Relative to the info Button
   const default_header = useMemo(() => {
     return "Info about Imported File Format";
   }, []);
-
-  const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] =
-    useDisclosure(false);
 
   // TODO : ADD TO THE INFO MESSAGE BELOW
   //  THE GENERAL USAGE OF THE NODE AND
@@ -645,13 +696,6 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   }, [default_header]);
 
   // -------------------- Everything about the Inspect Items thing
-  const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
-
-  const [jsonResponses, setJSONResponses] = useState<LLMResponse[] | null>(
-    null,
-  );
-
-  const [showDrawer, setShowDrawer] = useState(false);
 
   const showResponseInspector = useCallback(() => {
     const items_in_json_responses = __construct_items_in_json_responses(
@@ -701,6 +745,15 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
           </Tooltip>,
         ]}
       />
+
+      {/* MODAL COMPONENTS :
+            - Info Modal (for info button on the top right)
+            - Rename Column Modal (to rename a column)
+            - Upload File Modal (to upload a file)
+            - Image Preview Modal (to have image info when clicking on the image)
+            - LLMResponseInspectorModal (to inspect the LLM response)
+            - LLMResponseInspectorDrawer (to inspect the LLM response in a drawer)
+      */}
       <Modal
         title={default_header}
         size="60%"
@@ -728,43 +781,49 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       <ImagePreviewModal ref={imagePreviewModal} />
       <UploadFileModal
         ref={uploadFileModal}
-        title="Upload Image"
-        label="Provide a URL pointing to an image"
+        title="Upload Image : HTTP url or local file"
         onSubmit={handleUploadFile}
       />
+      <LLMResponseInspectorModal
+        ref={inspectModal}
+        jsonResponses={jsonResponses ?? []}
+      />
 
-      {tableData.length > 0 &&
-        tableData[currentRowIndex].image &&
-        typeof tableData[currentRowIndex].image === "string" && (
-          <div
-            style={{
-              border: "1px solid #e0e0e0",
-              borderRadius: "4px",
-              padding: "8px",
-              backgroundColor: "#fff",
-              width: "250px",
-              margin: "0 auto",
-              marginTop: "10px",
-            }}
-          >
-            <div onClick={handleImageClick} style={{ cursor: "pointer" }}>
-              <Tooltip label="Click me for more details">
-                <Image
-                  src={tableData[currentRowIndex].image as string}
-                  height={200}
-                  width={200}
-                  fit="contain"
-                  withPlaceholder
-                  style={{
-                    backgroundColor: "#f8f9fa",
-                    margin: "0 auto",
-                  }}
-                />
-              </Tooltip>
-            </div>
+      {/* if data present, display a clickable Image  */}
+      {tableData.length > 0 && tableData[currentRowIndex].image && (
+        <div
+          style={{
+            border: "1px solid #e0e0e0",
+            padding: "8px",
+            backgroundColor: "#fff",
+            width: "250px",
+            margin: "0 auto",
+            marginTop: "10px",
+          }}
+        >
+          <div onClick={handleImageClick} style={{ cursor: "pointer" }}>
+            <Tooltip label="Click me for more details">
+              <Image
+                src={imageUrl}
+                height={200}
+                width={200}
+                fit="contain"
+                withPlaceholder
+                style={{
+                  backgroundColor: "#f8f9fa",
+                  margin: "0 auto",
+                }}
+              />
+            </Tooltip>
           </div>
-        )}
+        </div>
+      )}
 
+      {/* 
+        if data present, for each column, display a textarea filled with the adequate row data
+         and a button to rename the column
+         and if we have more than one column, a button to remove the column
+      */}
       <div className="carousel-row-display" style={{ marginTop: "20px" }}>
         {tableData.length > 0 && (
           <div
@@ -820,6 +879,8 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
               ))}
           </div>
         )}
+
+        {/* If no data present, display a message */}
         {tableData.length === 0 && (
           <div
             ref={setRef}
@@ -830,6 +891,13 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
             </Box>
           </div>
         )}
+
+        {/* 
+          Display the button to add a media file
+          and if data is present :
+              - a button to add a column
+              - a button to remove the media
+        */}
         <div
           style={{
             display: "flex",
@@ -844,7 +912,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
               size="xs"
               leftIcon={<IconPlus size={14} />}
               onClick={() =>
-                handleInsertColumn(tableColumns[tableColumns.length - 1].key, 1)
+                handleInsertColumn(tableColumns[tableColumns.length - 1].key)
               }
               style={{ color: "#666" }}
             >
@@ -861,6 +929,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
             Add Media
           </Button>
           {tableData.length > 0 && (
+            <>
             <Button
               variant="subtle"
               size="xs"
@@ -882,12 +951,24 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
             >
               Remove Media
             </Button>
+            <Button
+              variant="subtle"
+              size="xs"
+              leftIcon={<IconTrash size={14} />}
+              onClick={handleRemoveAll}
+              style={{ color: "#666" }}
+            >
+              Remove ALL
+            </Button>
+            </>
           )}
         </div>
       </div>
 
+      {/* 
+        if we have more than one row, display Carousel Navigation left/right arrows
+      */}
       <div className="tabular-data-footer">
-        {/* Enhanced Carousel Navigation */}
         {tableData.length > 1 && (
           <Group
             position="center"
@@ -922,12 +1003,17 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
             </ActionIcon>
           </Group>
         )}
+
         <TemplateHooks
           vars={tableColumns.map((col) => col.header)}
           nodeId={id}
           startY={hooksY}
           position={Position.Right}
         />
+
+        {/* 
+          if we have more than one row, display the Inspect button
+        */}
         {tableData.length >= 1 ? (
           <InspectFooter
             onClick={showResponseInspector}
@@ -956,10 +1042,6 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
           showDrawer={showDrawer}
         />
       </div>
-      <LLMResponseInspectorModal
-        ref={inspectModal}
-        jsonResponses={jsonResponses ?? []}
-      />
     </BaseNode>
   );
 };

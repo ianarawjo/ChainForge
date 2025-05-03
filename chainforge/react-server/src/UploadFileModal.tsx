@@ -30,17 +30,16 @@ import {
   IconBrandPython,
   IconX,
   IconImageInPicture,
+  IconArrowRight,
 } from "@tabler/icons-react";
 
 import { AlertModalContext } from "./AlertModal";
+import { blobOrFileToDataURL, FLASK_BASE_URL } from "./backend/utils";
+import { FileWithContent } from "./backend/typing";
 
-interface FileWithContent extends FileWithPath {
-  content?: string;
-}
-
+// This constant serves as the maximum size of the Image file that can be uploaded
 const MAX_SIZE = 50;
 
-// TODO: Change this for image upload
 // Read a file as text and pass the text to a cb (callback) function
 const read_file = (
   file: FileWithPath,
@@ -56,15 +55,6 @@ const read_file = (
   };
   reader.readAsDataURL(file);
 };
-
-// TODO: To improve & Move this function to utils
-// given a string, validate if it is a valid image URL
-function validate_file_upload(v: string): boolean {
-  console.log("Validating URL:", v);
-  // TODO: implement this function , check it is an URL or a valid image file
-  // check it is an existing URL and points to a image file
-  return true;
-}
 
 // ====================================== File Dropzone Modal ======================================
 
@@ -98,10 +88,7 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
                 return;
               }
               file.content = content;
-              // TODO: Log the content of file in cache
-              // Read the file into text and then send it to backend
               onDrop(file as FileWithContent);
-              console.log("TODO: Check File is an image");
               setIsLoading(false);
             },
           );
@@ -155,8 +142,7 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
 // ====================================== UploadFile Modal ======================================
 export interface UploadFileModalProps {
   title: string;
-  label: string;
-  onSubmit?: (val: string) => void;
+  onSubmit?: (file: FileWithContent) => void;
 }
 
 export interface UploadFileModalRef {
@@ -166,10 +152,11 @@ export interface UploadFileModalRef {
 
 /** Modal that lets user upload a single file, usin a TextInput field OR a dropdown field. */
 const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
-  function UploadFileModal({ title, label, onSubmit }, ref) {
+  function UploadFileModal({ title, onSubmit }, ref) {
     const [opened, { open, close }] = useDisclosure(false);
 
-    const [fileLoaded, setFileLoaded] = useState<FileWithPath[]>([]);
+    const [fileLoaded, setFileLoaded] = useState<FileWithContent[]>([]);
+    const [isFetching, setIsFetching] = useState(false);
 
     const previews = fileLoaded.map((file, index) => {
       const imageUrl = URL.createObjectURL(file);
@@ -182,13 +169,16 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
       );
     });
 
-    const handleRemoveFileLoaded = useCallback(
-      (name: string) => {
-        setFileLoaded([]);
-        form.setValues({ value: "" });
+    const form = useForm({
+      initialValues: {
+        value: "",
       },
-      [setFileLoaded],
-    );
+    });
+
+    const handleRemoveFileLoaded = useCallback(() => {
+      setFileLoaded([]);
+      form.setValues({ value: "" });
+    }, [setFileLoaded]);
 
     const showAlert = useContext(AlertModalContext);
     const handleError = useCallback(
@@ -199,54 +189,89 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
       [showAlert],
     );
 
-    const form = useForm({
-      initialValues: {
-        value: "",
-      },
-      validate: {
-        value: (v) =>
-          validate_file_upload(v)
-            ? null
-            : `Not an URL or local imgage file: ${v}`,
-      },
-    });
+    const handleFetchImage = useCallback(async () => {
+      const url = form.values.value.trim();
+
+      setIsFetching(true);
+      try {
+        const proxyUrl = `${FLASK_BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
+        const response = await fetch(proxyUrl);
+
+        const blob = await response.blob();
+        const b64_string = await blobOrFileToDataURL(blob);
+
+        const file = new File([blob], url, { type: blob.type });
+        const fileWithContent = file as FileWithContent;
+        fileWithContent.content = b64_string;
+
+        setFileLoaded([fileWithContent]);
+      } catch (error) {
+        handleError(error as Error);
+      } finally {
+        setIsFetching(false);
+      }
+    }, [form.values.value, handleError]);
 
     useEffect(() => {
       form.setValues({ value: "" });
     }, []);
 
-    // This gives the parent access to triggering the modal alert
-    const trigger = () => {
-      open();
-    };
     useImperativeHandle(ref, () => ({
       open,
       close,
     }));
 
     return (
-      <Modal opened={opened} onClose={close} title={title}>
-        <Box maw={500} mx="auto">
+      <Modal
+        opened={opened}
+        onClose={close}
+        size="xl"
+        closeOnClickOutside={true}
+        title={
+          <div>
+            <IconImageInPicture
+              size={24}
+              style={{ position: "relative", marginRight: "8px", top: "4px" }}
+            />
+            <span style={{ fontSize: "14pt" }}>{title}</span>
+          </div>
+        }
+      >
+        <Box maw="auto" mx="auto">
           <form
-            onSubmit={form.onSubmit((values) => {
-              if (onSubmit) onSubmit(values.value);
+            onSubmit={form.onSubmit(() => {
+              if (onSubmit) onSubmit(fileLoaded[0]);
               close();
             })}
           >
-            <Divider
-              my="xs"
-              label="Provide Image URL OR choose Local Image File"
-              labelPosition="center"
-            />
             {fileLoaded.length === 0 && (
-              <TextInput
-                label={label}
-                autoFocus={false}
-                {...form.getInputProps("value")}
-              />
+              <>
+                <Divider
+                  my="l"
+                  label="Provide HTTP url of an image file"
+                  labelPosition="center"
+                />
+                <TextInput
+                  label="Click on the fetch button to verify integrity of the image URL"
+                  autoFocus={false}
+                  placeholder="https://example.com/image.png"
+                  {...form.getInputProps("value")}
+                />
+                <Button
+                  onClick={handleFetchImage}
+                  loading={isFetching}
+                  disabled={!form.values.value.trim()}
+                  rightIcon={<IconArrowRight size={14} />}
+                >
+                  Fetch
+                </Button>
+                <Divider
+                  my="l"
+                  label="Upload a local image file"
+                  labelPosition="center"
+                />
+              </>
             )}
-            <Divider my="xs" label="" labelPosition="center" />
-
             {fileLoaded.length > 0 ? (
               fileLoaded.map((p) => (
                 <Card
@@ -259,11 +284,8 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
                   withBorder
                 >
                   <Group position="apart">
-                    <Group position="left" mt="md" mb="xs">
-                      <Text weight={500}>{p.name}</Text>
-                    </Group>
                     <Button
-                      onClick={() => handleRemoveFileLoaded(p.name)}
+                      onClick={() => handleRemoveFileLoaded()}
                       color="red"
                       p="0px"
                       mt="4px"
@@ -271,6 +293,7 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
                     >
                       <IconX />
                     </Button>
+                    <Text weight={500}>{p.path ? p.path : p.name}</Text>
                   </Group>
                 </Card>
               ))

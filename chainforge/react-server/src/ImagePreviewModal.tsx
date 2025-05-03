@@ -6,9 +6,10 @@ import React, {
 } from "react";
 import { Modal, Image, Text, Stack } from "@mantine/core";
 import { Dict } from "./backend/typing";
+import { metadataRowType } from "./MultimediaNode";
 
 export interface ImagePreviewModalRef {
-  trigger: (url: string, data: Dict<string>) => void;
+  trigger: (url: string, data: metadataRowType) => void;
 }
 
 interface ImagePreviewModalProps {
@@ -21,20 +22,23 @@ interface ImageInfo {
   height: number;
   format: string;
   size: string;
+  timestamp: string;
   token_count?: Dict<string>;
 }
 
 const ImagePreviewModal = forwardRef<
   ImagePreviewModalRef,
   ImagePreviewModalProps
->(({ title = "Image Preview" }, ref) => {
+>(({ title = "Image Details Info" }, ref) => {
   const [opened, setOpened] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
-  const [imageData, setImageData] = useState<Dict<string>>({});
+  const [imageData, setImageData] = useState<metadataRowType>(
+    {} as metadataRowType,
+  );
   const [imageInfo, setImageInfo] = useState<ImageInfo | null>(null);
 
   useImperativeHandle(ref, () => ({
-    trigger: (url: string, data: Dict<string>) => {
+    trigger: (url: string, data: metadataRowType) => {
       console.log("trigger", data);
       setImageUrl(url);
       setImageData(data);
@@ -47,13 +51,12 @@ const ImagePreviewModal = forwardRef<
       const img = document.createElement("img");
       img.onload = () => {
         setImageInfo({
-          user_source: imageData?.source,
+          user_source: imageData.source,
           width: img.naturalWidth,
           height: img.naturalHeight,
-          format: imageUrl.startsWith("http")
-            ? imageUrl
-            : imageUrl.split(";")[0].split(":")[1] || "Unknown",
-          size: "N/A", // We can't get file size from URL directly in browser
+          format: imageData.coming_from,
+          size: imageData.size,
+          timestamp: new Date(parseInt(imageData.timestamp) * 1000).toString(),
         });
       };
       img.src = imageUrl;
@@ -70,8 +73,8 @@ const ImagePreviewModal = forwardRef<
       <Stack spacing="md" align="center">
         <div
           style={{
-            width: 400,
-            height: 400,
+            width: 600,
+            height: 600,
             overflow: "hidden",
             display: "flex",
             alignItems: "center",
@@ -89,11 +92,18 @@ const ImagePreviewModal = forwardRef<
           />
         </div>
         {imageInfo && (
-          <Text size="sm" color="dimmed">
-            Original dimensions: {imageInfo.width}x{imageInfo.height}px
-            <br />
-            Format: {imageInfo.format}
-          </Text>
+          <div style={{ width: '100%', maxWidth: '600px', padding: '0px', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+            <Text size="sm" style={{ lineHeight: 1.7 }}>
+              <strong>Format:</strong> {imageInfo.format}<br />
+              <strong>Timestamp:</strong> {imageInfo.timestamp}<br />
+              <strong>Source:</strong> {imageInfo.user_source}<br />
+                <hr style={{ margin: '10px 0' }} />
+              <strong>Width:</strong> {imageInfo.width} px<br />
+              <strong>Height:</strong> {imageInfo.height} px<br />
+              <strong>Size:</strong> {imageInfo.size} bytes<br />
+              {/* TODO: Token Count: 'TODO Feature coming' */}
+            </Text>
+          </div>
         )}
       </Stack>
     </Modal>

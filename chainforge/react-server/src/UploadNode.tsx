@@ -60,9 +60,6 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
       const updatedFields = [...fields];
 
       for (const file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append("file", file);
-
         console.log("Uploading file:", file, file.name);
 
         try {
