@@ -1,6 +1,7 @@
 flask>=2.2.3
 flask[async]
 flask_cors
+numpy<2.0
 requests
 openai
 dalaipy==2.0.2

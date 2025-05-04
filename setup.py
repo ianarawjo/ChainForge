@@ -20,6 +20,7 @@ setup(
         "flask>=2.2.3",
         "flask[async]",
         "flask_cors",
+        "numpy<2.0", # numpy 2.0+ is not compatible with many ML and chunking libraries atm
         "requests",
         "platformdirs",
         "urllib3==1.26.6",

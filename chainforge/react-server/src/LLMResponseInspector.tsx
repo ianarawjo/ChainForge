@@ -226,7 +226,7 @@ export const responsesToTable = (
       const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
       return res_obj.responses.map((r, r_idx) => {
         const row: Dict<string | number | boolean> = {
-          LLM: llm,
+          Method: llm,
           Prompt: prompt,
           Response: llmResponseDataToString(r),
           "Batch Id": res_obj.uid ?? res_obj_idx,

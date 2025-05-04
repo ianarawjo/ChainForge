@@ -216,8 +216,10 @@ def chonkie_sentence(text: str, **kwargs: Any) -> List[str]:
     chunk_overlap = int(kwargs.get("chunk_overlap", 0))
     min_sentences_per_chunk = int(kwargs.get("min_sentences_per_chunk", 1))
     min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 12))
-    delim = kwargs.get("delim", '[".", "!", "?", "\\n"]')
-    include_delim = kwargs.get("include_delim", None)
+    delim = kwargs.get("delim", '[".", "!", "?", "\\n\\n"]')
+    include_delim = kwargs.get("include_delim", "prev")
+    if len(include_delim.strip()) == 0:
+        include_delim = None
 
     try: 
         delim = json.loads(delim)  # Validate JSON format
@@ -308,19 +310,19 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
     # Advanced parameters
     similarity_window = int(kwargs.get("similarity_window", 1))
     min_sentences = int(kwargs.get("min_sentences", 1))
-    min_chunk_size = kwargs.get("min_chunk_size", None)
+    min_chunk_size = kwargs.get("min_chunk_size", 0)
     min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 12))
     threshold_step = float(kwargs.get("threshold_step", 0.01))
     
     # Handle delimiters - convert from JSON string if needed
-    delim = kwargs.get("delim", '[".", "!", "?", "\\n"]')
+    delim = kwargs.get("delim", '[".", "!", "?", "\\n\\n"]')
     try: 
         delim = json.loads(delim)  # Parse JSON format
         if not isinstance(delim, list) or not all(isinstance(d, str) for d in delim):
             raise ValueError("Delim must be a JSON parseable string representing an array of characters.")
     except Exception as e:
         print(f"Invalid JSON format for delim: {delim}. Using default delimiters. Error: {e}", file=sys.stderr)
-        delim = ['.', '!', '?', '\n']
+        delim = ['.', '!', '?', '\n\n']
 
     # Convert threshold to appropriate type if it's a string and not "auto"
     if isinstance(threshold, str) and threshold != "auto":
@@ -349,7 +351,7 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
         threshold_step=threshold_step,
         delim=delim,
         return_type="texts",  # Always return as texts to match other handlers
-        **({} if min_chunk_size is None else {'max_chunk_size': min_chunk_size})
+        **({} if min_chunk_size == 0 else {'min_chunk_size': min_chunk_size})
     )
 
     texts = chunker.chunk(text)
@@ -377,7 +379,7 @@ def chonkie_sdpm(text: str, **kwargs: Any) -> List[str]:
     skip_window = int(kwargs.get("skip_window", 1))
     
     # Handle delimiters - convert from JSON string if needed
-    delim = kwargs.get("delim", '[".", "!", "?", "\\n"]')
+    delim = kwargs.get("delim", '[".", "!", "?", "\\n\\n"]')
     include_delim = kwargs.get("include_delim", None)
     
     try: 
@@ -386,7 +388,7 @@ def chonkie_sdpm(text: str, **kwargs: Any) -> List[str]:
             raise ValueError("Delim must be a JSON parseable string representing an array of characters.")
     except Exception as e:
         print(f"Invalid JSON format for delim: {delim}. Using default delimiters. Error: {e}", file=sys.stderr)
-        delim = ['.', '!', '?', '\n']
+        delim = ['.', '!', '?', '\n\n']
 
     # Convert threshold to appropriate type if it's a string and not "auto"
     if isinstance(threshold, str) and threshold != "auto":

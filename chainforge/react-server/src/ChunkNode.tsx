@@ -191,10 +191,10 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
                 vars: {
                   chunkId: index.toString(),
                   docTitle,
-                  chunkLibrary: name,
+                  // chunkLibrary: name,
                 },
                 responses: [cText],
-                llm: method.name,
+                llm: name,
                 metavars: chunkVar.metavars || {},
               };
 
