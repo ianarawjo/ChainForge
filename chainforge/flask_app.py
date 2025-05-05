@@ -13,8 +13,9 @@ import requests as py_requests
 from platformdirs import user_data_dir
 
 # RAG-specific imports
-from chainforge.rag.chunk_handlers import ChunkingMethodRegistry
-from chainforge.rag.retrieve_handlers import RetrievalMethodRegistry, EmbeddingModelRegistry
+from chainforge.rag.chunkers import ChunkingMethodRegistry
+from chainforge.rag.retrievers import RetrievalMethodRegistry
+from chainforge.rag.embeddings import EmbeddingMethodRegistry
 from markitdown import MarkItDown
 # import pymupdf
 # from docx import Document
@@ -1579,7 +1580,7 @@ def retrieve():
         for embedder, methods in embedding_methods.items():
             try:
                 provider, model_name = embedder.split("#", 1)
-                embedder_func = EmbeddingModelRegistry.get_embedder(provider)
+                embedder_func = EmbeddingMethodRegistry.get_embedder(provider)
                 if not embedder_func:
                     raise ValueError(f"Unknown embedding model: {model_name}")
                 
