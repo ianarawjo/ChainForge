@@ -1374,6 +1374,21 @@ const AlephAlphaLuminousSettings: ModelSettingsDict = {
           "luminous-supreme-control": "luminous-supr-ctrl",
         },
       },
+      chat_model: {
+        type: "boolean",
+        title: "chat_model",
+        description: "Specifies whether the model is a chat model.",
+        enum: [true, false],
+        default: false,
+      },
+      system_msg: {
+        type: "string",
+        title: "System Message (chat models only)",
+        description:
+          "Enter your system message here. Note that the type of model must be set to 'chat' for this to be passed.",
+        default: "You are a helpful assistant.",
+        allow_empty_str: true,
+      },
       temperature: {
         type: "number",
         title: "temperature",
@@ -1446,6 +1461,15 @@ const AlephAlphaLuminousSettings: ModelSettingsDict = {
     model: {
       "ui:help": "Defaults to Luminous Base.",
       "ui:widget": "datalist",
+    },
+    chat_model: {
+      "ui:widget": "radio",
+      "ui:help":
+        "Defaults to false. Set to true if you're using a chat-capable model.",
+    },
+    system_msg: {
+      "ui:widget": "textarea",
+      "ui:help": "Defaults to 'You are a helpful assistant.'",
     },
     temperature: {
       "ui:help": "Defaults to 0.0.",
