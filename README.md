@@ -73,7 +73,7 @@ Now you can open the browser of your choice and open `http://127.0.0.1:8000`.
 - Together.ai
 - [Ollama API](https://github.com/jmorganca/ollama) (locally-hosted models)
 - Microsoft Azure OpenAI Endpoints
-- [AlephAlpha](https://app.aleph-alpha.com/)
+- [Aleph Alpha](https://docs.aleph-alpha.com/docs/introduction)
 - Amazon Bedrock-hosted on-demand inference, including Anthropic Claude 3
 - ...and any other provider through [custom provider scripts](https://chainforge.ai/docs/custom_providers/)!
 
