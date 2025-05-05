@@ -325,6 +325,6 @@ export type TabularDataColType = {
 
 export type PythonInterpreter = "flask" | "pyodide";
 
-export type FileWithContent = FileWithPath & {
-  content: string;
+export interface FileWithContent extends FileWithPath {
+  content?: string; 
 }
