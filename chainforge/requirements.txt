@@ -19,10 +19,12 @@ nltk
 gensim>=4.3.3
 transformers
 spacy
-scikit-learn
+scikit-learn>=1.4.0
 sentence-transformers
 rank-bm25
 whoosh
 cohere
 markitdown[pdf, docx, xlsx, xls, pptx]
 chonkie[all]>=1.0
+pyarrow>=14.0,<=16.0.0
+lancedb<=0.18.0

@@ -38,13 +38,15 @@ setup(
         "gensim>=4.3.3",
         "transformers",
         "spacy",
-        "scikit-learn",
+        "scikit-learn>=1.4.0",
         "sentence-transformers",
         "rank-bm25",
         "whoosh",
         "cohere",
         "markitdown[pdf, docx, xlsx, xls, pptx]",
         "chonkie[all]>=1.0",
+        "pyarrow>=14.0,<=16.0.0",  # newer versions of pyarrow require CMake 3.25 or higher, which is not compatible with all systems
+        "lancedb<0.18.0"  # pylance requires pyarrow 14 or higher. Later versions of LanceDB give strange errors with pyarrow<=16.0.0. 
     ],
     entry_points={
         "console_scripts": [
