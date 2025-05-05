@@ -50,6 +50,7 @@ import LLMResponseInspectorModal, {
   LLMResponseInspectorModalRef,
 } from "./LLMResponseInspectorModal";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
+import { MediaLookup } from "./backend/cache";
 
 const defaultRows: TabularDataRowType = {
   question: "Prompt Question",
@@ -80,7 +81,7 @@ const __construct_items_in_json_responses = (
             d: String(row.image).startsWith("http")
               ? // if the image is a URL, convert it to base64, get the string from the response
                 await __http_url_to_base64(String(row.image))
-              : String(row.image).split("base64,")[1],
+              : String(row.image), // Use the UID directly
           },
         ],
         uid: String(row.__uid),
@@ -139,6 +140,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
 
   const [currentRowIndex, setCurrentRowIndex] = useState(0);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string>("");
 
   // Whether to randomly sample N outputs, versus all outputs
   const [shouldSample, setShouldSample] = useState(data.sample ?? false);
@@ -495,7 +497,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   const uploadFileModal = useRef<UploadFileModalRef>(null);
 
   const handleUploadFile = useCallback(
-    (
+    async (
       url: string,
       newRow: TabularDataRowType = defaultRows,
       newColumns: TabularDataColType[] = defaultColumns,
@@ -523,10 +525,48 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         setTableColumns([...tableColumns, ...columns_to_add]);
       }
 
-      // Create new row with image URL and ensure it has a unique ID
+      // Store the image in MediaLookup regardless of source (local or URL)
+      let imageUid: string;
+      try {
+        let blob: Blob;
+        if (url.startsWith("data:")) {
+          // Convert data URL to blob
+          const response = await fetch(url);
+          const contentType =
+            response.headers.get("content-type") || "image/png";
+          blob = await response.blob();
+          // Create a new blob with the correct type
+          blob = new Blob([blob], { type: contentType });
+        } else {
+          // Fetch URL and convert to blob
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(
+              `Failed to fetch image from URL: ${response.statusText}`,
+            );
+          }
+          const contentType =
+            response.headers.get("content-type") || "image/png";
+          blob = await response.blob();
+          // Create a new blob with the correct type
+          blob = new Blob([blob], { type: contentType });
+        }
+        // Store in MediaLookup and get the UID
+        imageUid = await MediaLookup.upload(blob);
+      } catch (error) {
+        console.error("Error storing image in MediaLookup:", error);
+        if (showAlert) {
+          showAlert(
+            `Failed to store image in MediaLookup: ${error instanceof Error ? error.message : "Unknown error"}`,
+          );
+        }
+        return; // Exit early if upload fails
+      }
+
+      // Create new row with image UID and ensure it has a unique ID
       const rowWithImage: TabularDataRowType = {
         ...newRow,
-        [imageColumnKey]: url,
+        [imageColumnKey]: imageUid,
         __uid: newRow.__uid || uuidv4(),
       };
 
@@ -566,6 +606,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       id,
       setDataPropsForNode,
       metadataRows,
+      showAlert,
     ],
   );
 
@@ -581,14 +622,27 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
 
   const imagePreviewModal = useRef<ImagePreviewModalRef>(null);
 
-  const handleImageClick = useCallback(() => {
+  const handleImageClick = useCallback(async () => {
     const currentRow = tableData[currentRowIndex];
-    const imageUrl = currentRow.image;
+    const imageUid = currentRow.image;
     const metadata = metadataRows[currentRow.__uid];
-    if (imagePreviewModal.current && typeof imageUrl === "string") {
-      imagePreviewModal.current.trigger(imageUrl, metadata);
+    if (imagePreviewModal.current && typeof imageUid === "string") {
+      try {
+        const blob = await MediaLookup.get(imageUid);
+        if (blob) {
+          const objectUrl = URL.createObjectURL(blob);
+          imagePreviewModal.current.trigger(objectUrl, metadata);
+        }
+      } catch (error) {
+        console.error("Error getting image from MediaLookup:", error);
+        if (showAlert) {
+          showAlert(
+            `Failed to load image: ${error instanceof Error ? error.message : "Unknown error"}`,
+          );
+        }
+      }
     }
-  }, [tableData, currentRowIndex, metadataRows]);
+  }, [tableData, currentRowIndex, metadataRows, showAlert]);
 
   // Relative to the info Button
   const default_header = useMemo(() => {
@@ -652,6 +706,49 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   );
 
   const [showDrawer, setShowDrawer] = useState(false);
+
+  // Update image URL when current row changes
+  useEffect(() => {
+    const updateImageUrl = async () => {
+      if (tableData.length > 0 && tableData[currentRowIndex].image) {
+        const imageUid = tableData[currentRowIndex].image as string;
+        try {
+          const blob = await MediaLookup.get(imageUid);
+          if (blob) {
+            const objectUrl = URL.createObjectURL(blob);
+            setCurrentImageUrl(objectUrl);
+          } else {
+            setCurrentImageUrl("");
+          }
+        } catch (error) {
+          console.error("Error getting image from MediaLookup:", error);
+          if (showAlert) {
+            showAlert(
+              `Failed to load image: ${error instanceof Error ? error.message : "Unknown error"}`,
+            );
+          }
+          setCurrentImageUrl("");
+        }
+      } else {
+        setCurrentImageUrl("");
+      }
+    };
+    updateImageUrl();
+  }, [currentRowIndex, tableData, showAlert]);
+
+  // Add cleanup function for when node is closed
+  const handleNodeClose = useCallback(() => {
+    // Revoke any active object URLs
+    if (currentImageUrl && currentImageUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(currentImageUrl);
+    }
+    // Clear all media associated with this node
+    tableData.forEach(row => {
+      if (row.image) {
+        MediaLookup.remove(row.image as string);
+      }
+    });
+  }, [currentImageUrl, tableData]);
 
   const showResponseInspector = useCallback(() => {
     const items_in_json_responses = __construct_items_in_json_responses(
@@ -750,7 +847,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
             <div onClick={handleImageClick} style={{ cursor: "pointer" }}>
               <Tooltip label="Click me for more details">
                 <Image
-                  src={tableData[currentRowIndex].image as string}
+                  src={currentImageUrl}
                   height={200}
                   width={200}
                   fit="contain"
@@ -865,7 +962,25 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
               variant="subtle"
               size="xs"
               leftIcon={<IconX size={14} />}
-              onClick={() => {
+              onClick={async () => {
+                const currentRow = tableData[currentRowIndex];
+                const imageUid = currentRow.image as string;
+
+                // Remove from MediaLookup
+                try {
+                  MediaLookup.remove(imageUid);
+                } catch (error) {
+                  console.error(
+                    "Error removing image from MediaLookup:",
+                    error,
+                  );
+                  if (showAlert) {
+                    showAlert(
+                      `Failed to remove image from MediaLookup: ${error instanceof Error ? error.message : "Unknown error"}`,
+                    );
+                  }
+                }
+
                 const newTableData = tableData.filter(
                   (_, index) => index !== currentRowIndex,
                 );

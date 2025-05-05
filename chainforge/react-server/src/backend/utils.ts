@@ -33,7 +33,7 @@ import {
   MultiModalContentGemini,
 } from "./typing";
 import { v4 as uuid } from "uuid";
-import { StringTemplate, IMAGE_IDENTIFIER, PromptTemplate } from "./template";
+import { StringTemplate, PromptTemplate } from "./template";
 
 /* LLM API SDKs */
 import axios from "axios";
@@ -55,7 +55,7 @@ import {
   fromModelId,
   ChatMessage as BedrockChatMessage,
 } from "@mirai73/bedrock-fm";
-import StorageCache, { StringLookup } from "./cache";
+import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import Compressor from "compressorjs";
 import ChatHistoryView from "../ChatHistoryView";
 // import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
@@ -224,81 +224,47 @@ function construct_text_payload(
   }
 }
 
-function construct_image_payload(
-  image_url: string,
+async function construct_image_payload(
+  image_blob: Blob,
   variant: "openai" | "gemini" | "anthropic",
-):
+): Promise<
   | MultiModalContentAnthropic
   | MultiModalContentOpenAI
-  | MultiModalContentGemini {
-  if (image_url.startsWith("http")) {
-    switch (variant) {
-      case "openai":
-        return {
-          type: "image_url",
-          image_url: { url: image_url, detail: "auto" },
-        };
-      case "gemini": {
-        let extension = image_url.split(".")[-1];
-        if (extension === "jpg") {
-          extension = "jpeg";
-        }
-        return {
-          inlineData: {
-            data: image_url,
-            mimeType:
-              "image/" +
-              (image_url.split(".")[-1] === "jpg" ? "jpeg" : extension),
-          },
-        };
-      }
-      case "anthropic":
-        return { type: "image", source: { type: "url", url: image_url } };
-      default:
-        throw new Error(`Unknown variant: ${variant}`);
+  | MultiModalContentGemini
+> {
+  const base64 = await blobToBase64(image_blob);
+  switch (variant) {
+    case "openai":
+      return {
+        type: "image_url",
+        image_url: { url: `data:image/png;base64,${base64}`, detail: "auto" },
+      };
+    case "gemini": {
+      return {
+        inlineData: {
+          data: base64,
+          mimeType: "image/png",
+        },
+      };
     }
-  } else {
-    // if image_url is a absolute path to a file, encode it as base64
-    if (!image_url.startsWith("data:image/")) {
-      const MSG =
-        "Image URL must be a valid URL (starting with `http`) or a base64 encoded string (starting with `data:image/`)";
-      console.log(MSG);
-      throw new Error(MSG);
-    }
-
-    switch (variant) {
-      case "openai":
-        return {
-          type: "image_url",
-          image_url: { url: image_url, detail: "auto" },
-        };
-      case "gemini": {
-        let mimeType_gemini = image_url.split(";")[0].split(":")[1];
-        if (mimeType_gemini === "image/jpg") {
-          mimeType_gemini = "image/jpeg";
-        }
-        return { inlineData: { data: image_url, mimeType: mimeType_gemini } };
-      }
-      case "anthropic": {
-        let mimeType_ant = image_url.split(";")[0].split(":")[1];
-        if (mimeType_ant === "image/jpg") {
-          mimeType_ant = "image/jpeg";
-        }
-        return {
-          type: "image",
-          source: { type: "base64", media_type: mimeType_ant, data: image_url },
-        };
-      }
-      default:
-        throw new Error(`Unknown variant: ${variant}`);
-    }
+    case "anthropic":
+      return { 
+        type: "image", 
+        source: { 
+          type: "base64", 
+          media_type: "image/png", 
+          data: base64 
+        } 
+      };
+    default:
+      throw new Error(`Unknown variant: ${variant}`);
   }
 }
 
-function resolve_image_in_user_messages(
+async function resolve_image_in_user_messages(
   messages: ChatHistory,
   variant: "openai" | "gemini" | "anthropic" | "ollama",
-): Array<any> {
+): Promise<Array<any>> {
   const res = [];
   for (const message of messages) {
     if (message.role !== "user") {
@@ -309,56 +275,40 @@ function resolve_image_in_user_messages(
     const prompt = message.content;
     if (variant === "ollama") {
       // Resolving Image in user messages
-      if (prompt.includes(IMAGE_IDENTIFIER)) {
+      if (MediaLookup.hasAnyMedia()) {
         const images_in_prompt: Array<string> = [];
         const texts_in_prompt: Array<string> = [];
 
-        prompt
-          .split("\n") // This split only works bc we specified to surround the {image} template vars (in PromptNode text field) with newlines
-          .filter((line) => line.trim().length > 0) // remove empty lines
-          .map((line) => {
-            if (line.includes(IMAGE_IDENTIFIER)) {
-              // if line contains the image identifier
-              let image_url = line.replace(IMAGE_IDENTIFIER, "").trim();
-
-              if (image_url.startsWith("http")) {
-                __http_url_to_base64(image_url).then((b64) => {
-                  // console.log("Image URL to base64: ", b64);
-                  images_in_prompt.push(b64);
-                });
-              } else {
-                // if string contains ',' -> means there is the special prefix 'data:image/...;base64'
-                // indeed b64 string only consists of (A–Z, a–z) (0–9) and '+/='.
-                if (image_url.includes(",")) {
-                  image_url = image_url.split(",")[1];
-                }
-                images_in_prompt.push(image_url);
-              }
-              return image_url;
-            } else {
-              texts_in_prompt.push(line);
-              return line;
-            }
-          });
+        for (const line of prompt.split("\n").filter(line => line.trim().length > 0)) {
+          // Check if the line contains a media UID
+          const mediaUid = line.trim();
+          const mediaBlob = await MediaLookup.get(mediaUid);
+          if (mediaBlob) {
+            // Convert blob to base64
+            const base64 = await blobToBase64(mediaBlob);
+            images_in_prompt.push(base64);
+          } else {
+            texts_in_prompt.push(line);
+          }
+        }
         res.push({
           content: texts_in_prompt.join("\n"),
           images: images_in_prompt,
         });
       }
     } else {
-      if (prompt.includes(IMAGE_IDENTIFIER)) {
+      if (MediaLookup.hasAnyMedia()) {
         // TODO: Add a step to merge consecutive text elements, when splitting by '\n'
-        const new_content = prompt
-          .split("\n")
-          .filter((line) => line.trim().length > 0)
-          .map((line) => {
-            if (line.includes(IMAGE_IDENTIFIER)) {
-              const image_url = line.replace(IMAGE_IDENTIFIER, "").trim();
-              return construct_image_payload(image_url, variant);
-            } else {
-              return construct_text_payload(line, variant);
-            }
-          });
+        const new_content = [];
+        for (const line of prompt.split("\n").filter(line => line.trim().length > 0)) {
+          const mediaUid = line.trim();
+          const mediaBlob = await MediaLookup.get(mediaUid);
+          if (mediaBlob) {
+            new_content.push(await construct_image_payload(mediaBlob, variant));
+          } else {
+            new_content.push(construct_text_payload(line, variant));
+          }
+        }
         res.push({ role: "user", content: new_content });
       } else {
         res.push(message);
@@ -502,7 +452,7 @@ export async function call_chatgpt(
     );
   }
 
-  query.messages = resolve_image_in_user_messages(query.messages, "openai");
+  query.messages = await resolve_image_in_user_messages(query.messages, "openai");
 
   // Try to call OpenAI
   let response: Dict = {};
@@ -856,7 +806,7 @@ export async function call_anthropic(
     query.prompt = wrapped_prompt;
   }
 
-  query.messages = resolve_image_in_user_messages(query.messages, "anthropic");
+  query.messages = await resolve_image_in_user_messages(query.messages, "anthropic");
 
   console.log(
     `Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`,
@@ -1482,7 +1432,7 @@ export async function call_ollama_provider(
     );
     url += "chat";
 
-    query.messages = resolve_image_in_user_messages(query.messages, "ollama");
+    query.messages = await resolve_image_in_user_messages(query.messages, "ollama");
     n_images = query.messages.filter(
       (msg: Dict) => msg.role === "user" && msg.images.length > 0,
     ).length;
@@ -1497,38 +1447,23 @@ export async function call_ollama_provider(
     url += "generate";
 
     // Resolving Image in user messages
-    if (prompt.includes(IMAGE_IDENTIFIER)) {
+    if (MediaLookup.hasAnyMedia()) {
       const images_in_prompt: Array<string> = [];
       const texts_in_prompt: Array<string> = [];
 
-      prompt
-        .split("\n") // This split only works bc we specified to surround the {image} template vars (in PromptNode text field) with newlines
-        .filter((line) => line.trim().length > 0) // remove empty lines
-        .map((line) => {
-          if (line.includes(IMAGE_IDENTIFIER)) {
-            // if line contains the image identifier
-            n_images += 1;
-            let image_url = line.replace(IMAGE_IDENTIFIER, "").trim();
-
-            if (image_url.startsWith("http")) {
-              __http_url_to_base64(image_url).then((b64) => {
-                console.log("Image URL to base64: ", b64);
-                images_in_prompt.push(b64);
-              });
-            } else {
-              // if string contains ',' -> means there is the special prefix 'data:image/...;base64'
-              // indeed b64 string only consists of (A–Z, a–z) (0–9) and '+/='.
-              if (image_url.includes(",")) {
-                image_url = image_url.split(",")[1];
-              }
-              images_in_prompt.push(image_url);
-            }
-            return image_url;
-          } else {
-            texts_in_prompt.push(line);
-            return line;
-          }
-        });
+      for (const line of prompt.split("\n").filter(line => line.trim().length > 0)) {
+        const mediaUid = line.trim();
+        const mediaBlob = await MediaLookup.get(mediaUid);
+        if (mediaBlob) {
+          // if line contains a valid media UID
+          n_images += 1;
+          // Convert blob to base64
+          const base64 = await blobToBase64(mediaBlob);
+          images_in_prompt.push(base64);
+        } else {
+          texts_in_prompt.push(line);
+        }
+      }
       query.prompt = texts_in_prompt.join("\n");
       query.images = images_in_prompt;
     }

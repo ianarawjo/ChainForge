@@ -91,8 +91,6 @@ const ImagePreviewModal = forwardRef<
         {imageInfo && (
           <Text size="sm" color="dimmed">
             Original dimensions: {imageInfo.width}x{imageInfo.height}px
-            <br />
-            Format: {imageInfo.format}
           </Text>
         )}
       </Stack>
