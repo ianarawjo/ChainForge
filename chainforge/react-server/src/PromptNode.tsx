@@ -49,10 +49,7 @@ import { LLMListContainer, LLMListContainerRef } from "./LLMListComponent";
 import LLMResponseInspectorModal, {
   LLMResponseInspectorModalRef,
 } from "./LLMResponseInspectorModal";
-import {
-  PromptTemplate,
-  escapeBraces,
-} from "./backend/template";
+import { PromptTemplate, escapeBraces } from "./backend/template";
 import ChatHistoryView from "./ChatHistoryView";
 import InspectFooter from "./InspectFooter";
 import {

@@ -1,3 +1,4 @@
+import { FileWithPath } from "@mantine/dropzone";
 import { LLM } from "./models";
 
 /** Raised when there is an error generating a single response from an LLM */
@@ -323,3 +324,7 @@ export type TabularDataColType = {
 };
 
 export type PythonInterpreter = "flask" | "pyodide";
+
+export type FileWithContent = FileWithPath & {
+  content: string;
+}

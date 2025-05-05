@@ -228,9 +228,7 @@ async function construct_image_payload(
   image_blob: Blob,
   variant: "openai" | "gemini" | "anthropic",
 ): Promise<
-  | MultiModalContentAnthropic
-  | MultiModalContentOpenAI
-  | MultiModalContentGemini
+  MultiModalContentAnthropic | MultiModalContentOpenAI | MultiModalContentGemini
 > {
   const base64 = await blobToBase64(image_blob);
   switch (variant) {
@@ -248,13 +246,13 @@ async function construct_image_payload(
       };
     }
     case "anthropic":
-      return { 
-        type: "image", 
-        source: { 
-          type: "base64", 
-          media_type: "image/png", 
-          data: base64 
-        } 
+      return {
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: "image/png",
+          data: base64,
+        },
       };
     default:
       throw new Error(`Unknown variant: ${variant}`);
@@ -279,7 +277,9 @@ async function resolve_image_in_user_messages(
         const images_in_prompt: Array<string> = [];
         const texts_in_prompt: Array<string> = [];
 
-        for (const line of prompt.split("\n").filter(line => line.trim().length > 0)) {
+        for (const line of prompt
+          .split("\n")
+          .filter((line) => line.trim().length > 0)) {
           // Check if the line contains a media UID
           const mediaUid = line.trim();
           const mediaBlob = await MediaLookup.get(mediaUid);
@@ -300,7 +300,9 @@ async function resolve_image_in_user_messages(
       if (MediaLookup.hasAnyMedia()) {
         // TODO: Add a step to merge consecutive text elements, when splitting by '\n'
         const new_content = [];
-        for (const line of prompt.split("\n").filter(line => line.trim().length > 0)) {
+        for (const line of prompt
+          .split("\n")
+          .filter((line) => line.trim().length > 0)) {
           const mediaUid = line.trim();
           const mediaBlob = await MediaLookup.get(mediaUid);
           if (mediaBlob) {
@@ -452,7 +454,10 @@ export async function call_chatgpt(
     );
   }
 
-  query.messages = await resolve_image_in_user_messages(query.messages, "openai");
+  query.messages = await resolve_image_in_user_messages(
+    query.messages,
+    "openai",
+  );
 
   // Try to call OpenAI
   let response: Dict = {};
@@ -806,7 +811,10 @@ export async function call_anthropic(
     query.prompt = wrapped_prompt;
   }
 
-  query.messages = await resolve_image_in_user_messages(query.messages, "anthropic");
+  query.messages = await resolve_image_in_user_messages(
+    query.messages,
+    "anthropic",
+  );
 
   console.log(
     `Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`,
@@ -1432,7 +1440,10 @@ export async function call_ollama_provider(
     );
     url += "chat";
 
-    query.messages = await resolve_image_in_user_messages(query.messages, "ollama");
+    query.messages = await resolve_image_in_user_messages(
+      query.messages,
+      "ollama",
+    );
     n_images = query.messages.filter(
       (msg: Dict) => msg.role === "user" && msg.images.length > 0,
     ).length;
@@ -1451,7 +1462,9 @@ export async function call_ollama_provider(
       const images_in_prompt: Array<string> = [];
       const texts_in_prompt: Array<string> = [];
 
-      for (const line of prompt.split("\n").filter(line => line.trim().length > 0)) {
+      for (const line of prompt
+        .split("\n")
+        .filter((line) => line.trim().length > 0)) {
         const mediaUid = line.trim();
         const mediaBlob = await MediaLookup.get(mediaUid);
         if (mediaBlob) {

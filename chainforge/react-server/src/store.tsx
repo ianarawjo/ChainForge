@@ -11,7 +11,7 @@ import {
   Connection,
 } from "reactflow";
 import { v4 as uuid } from "uuid";
-import { escapeBraces} from "./backend/template";
+import { escapeBraces } from "./backend/template";
 import {
   deepcopy,
   transformDict,
@@ -831,7 +831,7 @@ const useStore = create<StoreHandles>((set, get) => ({
                 // eslint-disable-next-line
                 (fid) => src_node.data.fields_visibility[fid] !== false,
                 undefined,
-                undefined
+                undefined,
               ),
             );
           // return all field values
@@ -841,7 +841,7 @@ const useStore = create<StoreHandles>((set, get) => ({
                 src_node.data.fields,
                 undefined,
                 undefined,
-                undefined
+                undefined,
               ),
             );
         }
