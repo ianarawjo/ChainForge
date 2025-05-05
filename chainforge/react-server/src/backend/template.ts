@@ -1,4 +1,4 @@
-import { StringLookup } from "./cache";
+import { StringLookup, MediaLookup } from "./cache";
 import { isEqual } from "./setUtils";
 import {
   Dict,
@@ -68,8 +68,6 @@ export function* extractTemplateVars(
 
   if (sub_dict) return template;
 }
-
-export const IMAGE_IDENTIFIER = "%IMAGE%";
 
 function len(o: object | string | Array<any>): number {
   // Acts akin to Python's builtin 'len' method
@@ -285,11 +283,12 @@ export class PromptTemplate {
       const newParamDict: Dict<StringOrHash> = {};
       Object.entries(paramDict).forEach(([param, obj]) => {
         obj = obj as TemplateVarInfo;
-        // Acces `text` property of the object, if it exists, otherwise access `image` property
+        // Access `text` property of the object, if it exists, otherwise access `image` property
         if (obj.text) {
           newParamDict[param] = obj.text as StringOrHash;
-        } else {
-          newParamDict[param] = (IMAGE_IDENTIFIER + obj.image) as StringOrHash;
+        } else if (obj.image) {
+          // Store the image UID directly without IMAGE_IDENTIFIER prefix
+          newParamDict[param] = obj.image as StringOrHash;
         }
       });
       paramDict = newParamDict;

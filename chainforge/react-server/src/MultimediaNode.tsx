@@ -580,6 +580,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
 
       // Only add new columns if there are no existing columns
       if (tableColumns.length === 0) {
+
         setTableColumns([...newColumns, ...columns_to_add]);
       }
       //  -------
@@ -587,7 +588,8 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       //  ------- HANDLING NEW ROWS
       const uid_image_cached = await MediaLookup.upload(image_data);
 
-      // Create new row with image URL and ensure it has a unique ID
+      // Create new row with image UID and ensure it has a unique ID
+
       const rowWithImage: TabularDataRowType = {
         ...newRow,
         [imageColumnKey]: uid_image_cached,
@@ -624,7 +626,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         columns: tableColumns,
       });
     },
-    [tableColumns, tableData, id, setDataPropsForNode, metadataRows],
+    [tableColumns, tableData, id, setDataPropsForNode, metadataRows, showAlert],
   );
 
   const handleOpenUploadModal = useCallback(() => {
@@ -934,7 +936,25 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
                 variant="subtle"
                 size="xs"
                 leftIcon={<IconX size={14} />}
-                onClick={() => {
+                onClick={async () => {
+                const currentRow = tableData[currentRowIndex];
+                const imageUid = currentRow.image as string;
+
+                // Remove from MediaLookup
+                try {
+                  MediaLookup.remove(imageUid);
+                } catch (error) {
+                  console.error(
+                    "Error removing image from MediaLookup:",
+                    error,
+                  );
+                  if (showAlert) {
+                    showAlert(
+                      `Failed to remove image from MediaLookup: ${error instanceof Error ? error.message : "Unknown error"}`,
+                    );
+                  }
+                }
+
                   const newTableData = tableData.filter(
                     (_, index) => index !== currentRowIndex,
                   );
