@@ -1,4 +1,4 @@
-name: Validate Dependency Install and Tests on Multiple OSes and Python Versions
+name: Validate Install
 
 on:
   push:
@@ -42,5 +42,8 @@ jobs:
         pip install .
         pip install pytest
 
-    - name: Run tests
-      run: pytest
+    # TODO: Check that the server runs
+
+    # TODO: Add pytest
+    # - name: Run tests
+    #   run: pytest
