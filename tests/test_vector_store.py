@@ -175,6 +175,14 @@ class TestLocalVectorStore:
             assert "score" in result
             assert "metadata" in result
         
+        # Try different distance_metrics 
+        results_l2 = vector_store.search(query_embedding, k=3, distance_metric="l2")
+        assert len(results_l2) <= 3
+        results_cosine = vector_store.search(query_embedding, k=3, distance_metric="cosine")
+        assert len(results_cosine) <= 3
+        results_dot = vector_store.search(query_embedding, k=3, distance_metric="dot")
+        assert len(results_dot) <= 3
+
         # Test MMR search
         mmr_results = vector_store.search(query_embedding, k=3, method="mmr")
         assert len(mmr_results) <= 3

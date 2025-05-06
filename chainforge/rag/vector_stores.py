@@ -301,6 +301,7 @@ class LocalVectorStore(VectorStore):
             query_embedding: The query embedding vector
             k: Number of results to return
             **kwargs: Additional search parameters:
+                - distance_metric: Distance metric for search ('l2', 'cosine', or 'dot')
                 - method: Search method ('similarity', 'mmr', 'hybrid')
                 - lambda_param: Balance between relevance and diversity for MMR (0-1)
                 - keyword: Keyword for hybrid search
@@ -313,6 +314,7 @@ class LocalVectorStore(VectorStore):
         if self.table is None:
             return []
             
+        distance_metric = kwargs.get("distance_metric", "l2")
         method = kwargs.get("method", "similarity")
         filters = kwargs.get("filters", None)
 
@@ -326,8 +328,8 @@ class LocalVectorStore(VectorStore):
             # If query is a list, assume it's already an embedding
             query_embedding = query
         
-        # Search the table using the query embedding
-        q = self.table.search(query_embedding)
+        # Search the table using the query embedding and distance metric
+        q = self.table.search(query_embedding).metric(distance_metric)
         
         if filters:
             q = q.where(filters)

@@ -25,5 +25,6 @@ whoosh
 cohere
 markitdown[pdf, docx, xlsx, xls, pptx]
 chonkie>=1.0
+model2vec>=0.5.0  # required by chonkie
 pyarrow>=14.0,<=16.0.0
 lancedb<=0.18.0
