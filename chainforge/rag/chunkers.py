@@ -484,11 +484,11 @@ def chonkie_neural(text: str, **kwargs: Any) -> List[str]:
     try:
         chunker = NeuralChunker(
             model=model,
-            device=device,
+            device_map=device,
             min_characters_per_chunk=min_characters_per_chunk,
         )
         latechunk_objs = chunker.chunk(text)
         return [chunk.text for chunk in latechunk_objs] if latechunk_objs else [text]
     except Exception as e:
-        raise Exception(f"Error during neural chunking: {e}. Make sure you've installed with 'pip install \"chonkie[neural]\"'.", file=sys.stderr)
+        raise Exception(f"Error during neural chunking: {e}. Make sure you've installed with 'pip install \"chonkie[neural]\"'.")
     

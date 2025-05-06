@@ -20,13 +20,12 @@ setup(
         "flask>=2.2.3",
         "flask[async]",
         "flask_cors",
-        "numpy<2.0", # numpy 2.0+ is not compatible with many ML and chunking libraries atm
+        "numpy",
         "requests",
         "platformdirs",
         "urllib3==1.26.6",
         "openai",
         "cryptography",
-        "dalaipy>=2.0.2",
         "mistune>=2.0",  # for LLM response markdown parsing
         "pymupdf",
         "python-docx",
@@ -35,7 +34,6 @@ setup(
         "langchain-core",
         "langchain-community",
         "nltk",
-        "gensim>=4.3.3",
         "transformers",
         "spacy",
         "scikit-learn>=1.4.0",
@@ -44,7 +42,8 @@ setup(
         "whoosh",
         "cohere",
         "markitdown[pdf, docx, xlsx, xls, pptx]",
-        "chonkie[all]>=1.0",
+        "chonkie>=1.0",
+        "chonkie[model2vec]>=1.0",
         "pyarrow>=14.0,<=16.0.0",  # newer versions of pyarrow require CMake 3.25 or higher, which is not compatible with all systems
         "lancedb<0.18.0"  # pylance requires pyarrow 14 or higher. Later versions of LanceDB give strange errors with pyarrow<=16.0.0. 
     ],

@@ -1,6 +1,7 @@
 import math, os, heapq
 from typing import List
 import numpy as np
+from chainforge.rag.simple_preprocess import simple_preprocess
 
 # Define a registry for retrieval methods
 class RetrievalMethodRegistry:
@@ -20,7 +21,6 @@ class RetrievalMethodRegistry:
 @RetrievalMethodRegistry.register("bm25")
 def handle_bm25(chunk_objs, query_objs, settings):
     from rank_bm25 import BM25Okapi
-    from gensim.utils import simple_preprocess
 
     top_k = settings.get("top_k", 5)
     k1 = settings.get("bm25_k1", 1.5)
@@ -96,7 +96,6 @@ def handle_tfidf(chunk_objs, query_objs, settings):
 
 @RetrievalMethodRegistry.register("boolean")
 def handle_boolean(chunk_objs, query_objs, settings):
-    from gensim.utils import simple_preprocess
 
     top_k = settings.get("top_k", 5)
     required_match_count = settings.get("required_match_count", 1)
@@ -143,7 +142,6 @@ def handle_boolean(chunk_objs, query_objs, settings):
 
 @RetrievalMethodRegistry.register("overlap")
 def handle_keyword_overlap(chunk_objs, query_objs, settings):
-    from gensim.utils import simple_preprocess
 
     top_k = settings.get("top_k", 5)
     

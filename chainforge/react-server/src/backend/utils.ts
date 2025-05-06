@@ -1029,33 +1029,6 @@ export async function call_google_gemini(
   return [query, responses];
 }
 
-export async function call_dalai(
-  prompt: string,
-  model: LLM,
-  n = 1,
-  temperature = 0.7,
-  params?: Dict,
-  should_cancel?: () => boolean,
-): Promise<[Dict, Dict]> {
-  if (APP_IS_RUNNING_LOCALLY()) {
-    // Try to call Dalai server, through Flask:
-    const { query, response, error } = await call_flask_backend("callDalai", {
-      prompt,
-      model,
-      n,
-      temperature,
-      ...params,
-    });
-    if (error !== undefined) throw new Error(error);
-    return [query, response];
-  } else {
-    throw new Error(
-      "Cannot call Dalai: The ChainForge app does not appear to be running locally. You can only call Dalai-hosted models if" +
-        "you are running a server with the Dalai Node.js package and have installed ChainForge on your local machine.",
-    );
-  }
-}
-
 export async function call_huggingface(
   prompt: string,
   model: LLM,
@@ -1665,7 +1638,6 @@ export async function call_llm(
   } else if (llm_provider === LLMProvider.Azure_OpenAI)
     call_api = call_azure_openai;
   else if (llm_provider === LLMProvider.Google) call_api = call_google_ai;
-  else if (llm_provider === LLMProvider.Dalai) call_api = call_dalai;
   else if (llm_provider === LLMProvider.Anthropic) call_api = call_anthropic;
   else if (llm_provider === LLMProvider.HuggingFace)
     call_api = call_huggingface;
@@ -1880,8 +1852,6 @@ export function extract_responses(
       return _extract_openai_responses(response);
     case LLMProvider.Google:
       return _extract_google_ai_responses(response as Dict, llm);
-    case LLMProvider.Dalai:
-      return [response.toString()];
     case LLMProvider.Anthropic:
       if (is_newer_anthropic_model(llm_name))
         return _extract_anthropic_chat_responses(response as Dict[]);

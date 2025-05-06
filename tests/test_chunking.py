@@ -96,7 +96,10 @@ class TestChonkieChunking:
               skip_window=1, min_sentences=1)
     assert isinstance(chunks, list)
     assert len(chunks) > 0
-  
+
+  # Late and Neural chunkers may pose problems because 
+  # their dependencies require numpy>=2.0 yet other libraries 
+  # require numpy<2.0.
   def test_chonkie_late(self):
     chunker = chonkie_late
     if chunker is None or not callable(chunker):
