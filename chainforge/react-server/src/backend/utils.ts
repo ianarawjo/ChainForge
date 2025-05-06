@@ -262,6 +262,7 @@ async function construct_image_payload(
 async function resolve_image_in_user_messages(
   messages: ChatHistory,
   variant: "openai" | "gemini" | "anthropic" | "ollama",
+  images?: string[],
 ): Promise<Array<any>> {
   const res = [];
   for (const message of messages) {
@@ -273,44 +274,45 @@ async function resolve_image_in_user_messages(
     const prompt = message.content;
     if (variant === "ollama") {
       // Resolving Image in user messages
-      if (MediaLookup.hasAnyMedia()) {
+      if (images && images.length > 0 && MediaLookup.hasAnyMedia()) {
         const images_in_prompt: Array<string> = [];
         const texts_in_prompt: Array<string> = [];
 
-        for (const line of prompt
-          .split("\n")
-          .filter((line) => line.trim().length > 0)) {
-          // Check if the line contains a media UID
-          const mediaUid = line.trim();
-          const mediaBlob = await MediaLookup.get(mediaUid);
+        // Get all valid image blobs from MediaLookup
+        for (const imageKey of images) {
+          const mediaBlob = await MediaLookup.get(imageKey);
           if (mediaBlob) {
             // Convert blob to base64
             const base64 = await blobToBase64(mediaBlob);
             images_in_prompt.push(base64);
-          } else {
-            texts_in_prompt.push(line);
           }
         }
+        
+        // Add the prompt text
+        texts_in_prompt.push(prompt);
+        
         res.push({
           content: texts_in_prompt.join("\n"),
           images: images_in_prompt,
         });
+      } else {
+        res.push(message);
       }
     } else {
-      if (MediaLookup.hasAnyMedia()) {
-        // TODO: Add a step to merge consecutive text elements, when splitting by '\n'
+      if (images && images.length > 0 && MediaLookup.hasAnyMedia()) {
         const new_content = [];
-        for (const line of prompt
-          .split("\n")
-          .filter((line) => line.trim().length > 0)) {
-          const mediaUid = line.trim();
-          const mediaBlob = await MediaLookup.get(mediaUid);
+        
+        // Get all valid image blobs from MediaLookup
+        for (const imageKey of images) {
+          const mediaBlob = await MediaLookup.get(imageKey);
           if (mediaBlob) {
             new_content.push(await construct_image_payload(mediaBlob, variant));
-          } else {
-            new_content.push(construct_text_payload(line, variant));
           }
         }
+        
+        // Add the prompt text
+        new_content.push(construct_text_payload(prompt, variant));
+        
         res.push({ role: "user", content: new_content });
       } else {
         res.push(message);
@@ -435,6 +437,9 @@ export async function call_chatgpt(
     ...params, // 'the rest' of the settings, passed from the front-end settings
   };
 
+  // Remove images from query
+  delete query.images;
+
   // Get the correct function to call
   let openai_call: any;
   if (modelname.includes("davinci") || modelname.includes("instruct")) {
@@ -457,6 +462,7 @@ export async function call_chatgpt(
   query.messages = await resolve_image_in_user_messages(
     query.messages,
     "openai",
+    params?.images,
   );
 
   // Try to call OpenAI
@@ -814,7 +820,11 @@ export async function call_anthropic(
   query.messages = await resolve_image_in_user_messages(
     query.messages,
     "anthropic",
+    params?.images,
   );
+
+  // Remove images from query
+  delete query.images;
 
   console.log(
     `Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`,
@@ -1443,6 +1453,7 @@ export async function call_ollama_provider(
     query.messages = await resolve_image_in_user_messages(
       query.messages,
       "ollama",
+      params?.images,
     );
     n_images = query.messages.filter(
       (msg: Dict) => msg.role === "user" && msg.images.length > 0,
@@ -1481,6 +1492,12 @@ export async function call_ollama_provider(
       query.images = images_in_prompt;
     }
   }
+
+  // Remove images from query if it exists
+  if (query.images) {
+    delete query.images;
+  }
+
   console.log(query);
   console.log(
     `Calling Ollama API at ${url} for model '${ollama_model}' with prompt '${query.prompt !== undefined ? query.prompt : query.messages[query.messages.length - 1].content}' n=${n} times. Contains n_img=${n_images} Please be patient...`,
@@ -1805,6 +1822,7 @@ export async function call_llm(
   temperature: number,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   // Get the correct API call for the given LLM:
   let call_api: LLMAPICall | undefined;
@@ -1835,6 +1853,7 @@ export async function call_llm(
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
     );
+  if (images) params = { ...params, images };
   return call_api(prompt, llm, n, temperature, params, should_cancel);
 }
 
