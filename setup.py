@@ -21,7 +21,7 @@ setup(
         "flask[async]",
         "flask_cors",
         "grpcio==1.44.0",  # later versions of grpcio hang indefinitely on some Mac systems, upon building the wheel
-        "numpy",
+        "numpy<2.0",  # numpy>=2.0 is not compatible with libraries like torch
         "requests",
         "platformdirs",
         "urllib3==1.26.6",
