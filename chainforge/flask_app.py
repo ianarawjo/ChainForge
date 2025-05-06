@@ -1468,8 +1468,6 @@ def retrieve():
                 return q
         return {}
     
-
-    
     # Group chunks by chunking method
     chunks_by_method = {}
     for chunk in chunks:
@@ -1599,6 +1597,10 @@ def retrieve():
                 method_id = method.get("id")
                 base_method = method.get("baseMethod")
                 method_name = method.get("methodName")
+
+                # A safe database path to use to store on local disk, if necessary
+                # :: For instance, vector databases like LanceDB, FAISS or Chroma. 
+                db_path = os.path.join(MEDIA_DIR, method_id + ".db")
                 
                 try:
                     handler = RetrievalMethodRegistry.get_handler(base_method)
@@ -1606,7 +1608,7 @@ def retrieve():
                         raise ValueError(f"Unknown method: {base_method}")
                     
                     # Get retrieved chunks for this method and chunk group
-                    retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method.get("settings", {}))
+                    retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method.get("settings", {}), db_path)
                     
                     # Process retrieved chunks for each query
                     for resp in retrieved:

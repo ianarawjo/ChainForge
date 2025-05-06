@@ -405,7 +405,7 @@ class LocalVectorStore(VectorStore):
             for _, row in vector_results.iterrows():
                 doc_id = row["id"]
                 vector_score = row["_distance"]  # LanceDB distance score
-                all_results[doc_id] = {"row": row, "score": blend * vector_score}
+                all_results[doc_id] = {"row": row, "similarity": blend * vector_score}
             
             # Add or update with keyword results
             for _, row in keyword_results.iterrows():
@@ -413,12 +413,12 @@ class LocalVectorStore(VectorStore):
                 keyword_score = 1.0  # Binary match score for simplicity
                 
                 if doc_id in all_results:
-                    all_results[doc_id]["score"] += (1 - blend) * keyword_score
+                    all_results[doc_id]["similarity"] += (1 - blend) * keyword_score
                 else:
-                    all_results[doc_id] = {"row": row, "score": (1 - blend) * keyword_score}
+                    all_results[doc_id] = {"row": row, "similarity": (1 - blend) * keyword_score}
             
             # Sort by blended score and take top k
-            sorted_results = sorted(all_results.values(), key=lambda x: x["score"], reverse=True)[:k]
+            sorted_results = sorted(all_results.values(), key=lambda x: x["similarity"], reverse=True)[:k]
             results = pd.DataFrame([r["row"] for r in sorted_results])
         
         else:
@@ -430,7 +430,7 @@ class LocalVectorStore(VectorStore):
             formatted_results.append({
                 "id": row["id"],
                 "text": row["text"],
-                "score": 1 - row["_distance"],  # Convert distance to similarity score
+                "similarity": 1 - row["_distance"],  # Convert distance to similarity score
                 "metadata": pickle.loads(row["metadata"])  # Deserialize metadata
             })
         
