@@ -196,6 +196,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         Azure_OpenAI_Endpoint: "",
         HuggingFace: "",
         AlephAlpha: "",
+        AlephAlpha_BaseURL: "",
         Ollama_BaseURL: "",
         AWS_Access_Key_ID: "",
         AWS_Secret_Access_Key: "",
