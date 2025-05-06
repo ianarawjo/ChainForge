@@ -561,13 +561,6 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 />
                 <br />
 
-                <TextInput
-                  label="Aleph Alpha API Key"
-                  placeholder="Paste your Aleph Alpha API key here"
-                  {...form.getInputProps("AlephAlpha")}
-                />
-                <br />
-
                 {IS_RUNNING_LOCALLY && (
                   <>
                     <Divider
@@ -654,6 +647,20 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   label="Azure OpenAI Endpoint"
                   placeholder="Paste your Azure OpenAI Endpoint here"
                   {...form.getInputProps("Azure_OpenAI_Endpoint")}
+                />
+                <br />
+                <Divider my="xs" label="Aleph Alpha" labelPosition="center" />
+
+                <TextInput
+                  label="Aleph Alpha API Key"
+                  placeholder="Paste your Aleph Alpha API Key here"
+                  {...form.getInputProps("AlephAlpha")}
+                  style={{ marginBottom: "8pt" }}
+                />
+                <TextInput
+                  label="Pharia AI Inference Base URL"
+                  placeholder="Paste your Pharia AI Inference URL here"
+                  {...form.getInputProps("AlephAlpha_BaseURL")}
                 />
 
                 <Group position="right" mt="md">
