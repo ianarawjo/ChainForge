@@ -75,6 +75,7 @@ import { v4 as uuid } from "uuid";
 import axios from "axios";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
+import MultimediaNode from "./MultimediaNode";
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
@@ -212,6 +213,7 @@ const nodeTypes = {
   upload: UploadNode,
   chunk: ChunkNode,
   retrieval: RetrievalNode,
+  multimedia: MultimediaNode,
 };
 
 const nodeEmojis = {
@@ -233,6 +235,7 @@ const nodeEmojis = {
   upload: "📁",
   chunk: "📄",
   retrieval: "🔍",
+  multimedia: "📺",
 };
 
 const edgeTypes = {
@@ -368,6 +371,13 @@ const App = () => {
         tooltip:
           "Specify inputs as a comma-separated list of items. Good for specifying lots of short text values. An alternative to TextFields node.",
         onClick: () => addNode("csvNode", "csv"),
+      },
+      {
+        key: "multimedia",
+        title: "Multimedia Node",
+        icon: nodeEmojis.multimedia,
+        tooltip: "Add image data with corresponding tags.",
+        onClick: () => addNode("multimediaNode", "multimedia"),
       },
       {
         key: "divider",

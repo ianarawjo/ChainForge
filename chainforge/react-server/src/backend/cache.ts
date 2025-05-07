@@ -548,6 +548,17 @@ export class MediaLookup {
   }
 
   /**
+   * Removes a specific UID from the media lookup table and its cache.
+   * @param uid The UID to remove
+   */
+  public static remove(uid: string): void {
+    const mediaLookup = MediaLookup.getInstance();
+    mediaLookup.mediaUIDs.delete(uid);
+    delete mediaLookup.cache[uid];
+    mediaLookup.saveStateToStorageCache();
+  }
+
+  /**
    * Restores the media lookup table from a saved state.
    * NOTE: This deliberately does not override the current mediaUIDs or cache.
    * If you want to clear the current mediaUIDs or cache, use the clear() method first.

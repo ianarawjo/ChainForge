@@ -1,3 +1,4 @@
+import { FileWithPath } from "@mantine/dropzone";
 import { LLM } from "./models";
 
 /** Raised when there is an error generating a single response from an LLM */
@@ -51,7 +52,53 @@ export interface OpenAIFunctionCall {
   description?: string;
 }
 
-/** OpenAI chat message format */
+// =================== Multimodal Chat Types ===================
+
+/** ------ Anthropic chat message format */
+
+export type ImageTypeAnthropic = string;
+// | "image/jpeg"
+// | "image/png"
+// | "image/gif"
+// | "image/webp";
+
+export type ImageContentAnthropic =
+  | { type: "base64"; media_type: ImageTypeAnthropic; data: string } // data: base64 encoded image
+  | { type: "url"; url: string }; // url: image url
+
+export type MultiModalContentAnthropic =
+  | { type: "text"; text?: string; source?: never }
+  | { type: "image"; source?: ImageContentAnthropic; text?: never };
+
+/** ------ OpenAI chat message format */
+
+export type ImageContentOpenAI = {
+  url: string; // base64 encoded image OR image http-url
+  detail?: "low" | "high" | "auto";
+};
+
+export type MultiModalContentOpenAI =
+  | { type: "text"; text?: string; image_url?: never }
+  | { type: "image_url"; image_url?: ImageContentOpenAI; text?: never };
+
+/** ------ Gemini chat message format */
+
+export type ImageContentGemini = {
+  mimeType: string;
+  // | "image/png"
+  // | "image/jpeg"
+  // | "image/webp"
+  // | "image/heic"
+  // | "image/heif";
+  data: string; // base64 encoded image OR image http-url
+};
+
+export type MultiModalContentGemini =
+  | { text: string }
+  | { inlineData: ImageContentGemini };
+
+// ===================
+
 export interface ChatMessage {
   role: string;
   content: string;
@@ -277,3 +324,7 @@ export type TabularDataColType = {
 };
 
 export type PythonInterpreter = "flask" | "pyodide";
+
+export interface FileWithContent extends FileWithPath {
+  content?: string; 
+}

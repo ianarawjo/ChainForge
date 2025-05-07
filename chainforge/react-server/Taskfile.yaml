@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+tasks:
+  start:
+    desc: Run the React Node server
+
+    cmd: "npm start"
+
+  setup:
+    desc: Install dependencies for the React Node server
+    preconditions:
+      # Check if the npm command is available
+      - sh: "command -v npm"
+        msg: "npm command not found. Please install Node.js and npm."
+
+    cmd: "npm install"
+
+  build:
+    desc: Launch the build process
+
+    preconditions:
+      # Check if the npm command is available
+      - sh: "command -v npm"
+        msg: "npm command not found. Please install Node.js and npm."
+
+    cmd: "npm run build"

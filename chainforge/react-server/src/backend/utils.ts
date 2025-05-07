@@ -28,11 +28,17 @@ import {
   isImageResponseData,
   StringOrHash,
   PromptVarsDict,
+  MultiModalContentAnthropic,
+  MultiModalContentOpenAI,
+  MultiModalContentGemini,
 } from "./typing";
 import { v4 as uuid } from "uuid";
-import { StringTemplate } from "./template";
+import { StringTemplate, PromptTemplate } from "./template";
 
 /* LLM API SDKs */
+import axios from "axios";
+import { Buffer } from "buffer";
+
 import {
   Configuration as OpenAIConfig,
   OpenAIApi,
@@ -49,8 +55,9 @@ import {
   fromModelId,
   ChatMessage as BedrockChatMessage,
 } from "@mirai73/bedrock-fm";
-import StorageCache, { StringLookup } from "./cache";
+import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import Compressor from "compressorjs";
+import ChatHistoryView from "../ChatHistoryView";
 // import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
@@ -204,6 +211,120 @@ export function get_azure_openai_api_keys(): [
   return [AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT];
 }
 
+function construct_text_payload(
+  text: string,
+  variant: "openai" | "gemini" | "anthropic",
+): Dict {
+  switch (variant) {
+    case "openai":
+      return { type: "text", text: text };
+    case "gemini":
+      return { text: text };
+    case "anthropic":
+      return { type: "text", text: text };
+    default:
+      throw new Error(`Unknown variant: ${variant}`);
+  }
+}
+
+async function construct_image_payload(
+  image_blob: Blob,
+  variant: "openai" | "gemini" | "anthropic",
+): Promise<
+  MultiModalContentAnthropic | MultiModalContentOpenAI | MultiModalContentGemini
+> {
+  const base64 = await blobToBase64(image_blob);
+  switch (variant) {
+    case "openai":
+      return {
+        type: "image_url",
+        image_url: { url: `data:image/png;base64,${base64}`, detail: "auto" },
+      };
+    case "gemini": {
+      return {
+        inlineData: {
+          data: base64,
+          mimeType: "image/png",
+        },
+      };
+    }
+    case "anthropic":
+      return {
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: "image/png",
+          data: base64,
+        },
+      };
+    default:
+      throw new Error(`Unknown variant: ${variant}`);
+  }
+}
+
+async function resolve_image_in_user_messages(
+  messages: ChatHistory,
+  variant: "openai" | "gemini" | "anthropic" | "ollama",
+  images?: string[],
+): Promise<Array<any>> {
+  const res = [];
+  for (const message of messages) {
+    if (message.role !== "user") {
+      res.push(message);
+      continue;
+    }
+
+    const prompt = message.content;
+    if (variant === "ollama") {
+      // Resolving Image in user messages
+      if (images && images.length > 0 && MediaLookup.hasAnyMedia()) {
+        const images_in_prompt: Array<string> = [];
+        const texts_in_prompt: Array<string> = [];
+
+        // Get all valid image blobs from MediaLookup
+        for (const imageKey of images) {
+          const mediaBlob = await MediaLookup.get(imageKey);
+          if (mediaBlob) {
+            // Convert blob to base64
+            const base64 = await blobToBase64(mediaBlob);
+            images_in_prompt.push(base64);
+          }
+        }
+        
+        // Add the prompt text
+        texts_in_prompt.push(prompt);
+        
+        res.push({
+          content: texts_in_prompt.join("\n"),
+          images: images_in_prompt,
+        });
+      } else {
+        res.push(message);
+      }
+    } else {
+      if (images && images.length > 0 && MediaLookup.hasAnyMedia()) {
+        const new_content = [];
+        
+        // Get all valid image blobs from MediaLookup
+        for (const imageKey of images) {
+          const mediaBlob = await MediaLookup.get(imageKey);
+          if (mediaBlob) {
+            new_content.push(await construct_image_payload(mediaBlob, variant));
+          }
+        }
+        
+        // Add the prompt text
+        new_content.push(construct_text_payload(prompt, variant));
+        
+        res.push({ role: "user", content: new_content });
+      } else {
+        res.push(message);
+      }
+    }
+  }
+  return res;
+}
+
 /**
  * Construct an OpenAI format chat history for sending off to an OpenAI API call.
  * @param prompt The next prompt (user message) to append.
@@ -319,6 +440,9 @@ export async function call_chatgpt(
     ...params, // 'the rest' of the settings, passed from the front-end settings
   };
 
+  // Remove images from query
+  delete query.images;
+
   // Get the correct function to call
   let openai_call: any;
   if (modelname.includes("davinci") || modelname.includes("instruct")) {
@@ -337,6 +461,12 @@ export async function call_chatgpt(
       system_msg,
     );
   }
+
+  query.messages = await resolve_image_in_user_messages(
+    query.messages,
+    "openai",
+    params?.images,
+  );
 
   // Try to call OpenAI
   let response: Dict = {};
@@ -690,6 +820,15 @@ export async function call_anthropic(
     query.prompt = wrapped_prompt;
   }
 
+  query.messages = await resolve_image_in_user_messages(
+    query.messages,
+    "anthropic",
+    params?.images,
+  );
+
+  // Remove images from query
+  delete query.images;
+
   console.log(
     `Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`,
   );
@@ -1008,6 +1147,11 @@ export async function call_google_gemini(
 
   const responses: Array<Dict> = [];
 
+  // TODO: to finish
+  // if (prompt.includes(IMAGE_IDENTIFIER) && typeof prompt === "string") {
+  //   prompt = resolve_image_in_user_messages([{role : 'user', content : prompt}], 'gemini');
+  // }
+
   while (responses.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
@@ -1284,6 +1428,7 @@ export async function call_ollama_provider(
     },
   };
 
+  let n_images = 0;
   // If the model type is explicitly or implicitly set to "chat", pass chat history instead:
   if (model_type === "chat" || /[-:](chat)/.test(ollama_model)) {
     // Construct chat history and pass to query payload
@@ -1293,14 +1438,58 @@ export async function call_ollama_provider(
       system_msg,
     );
     url += "chat";
+
+    query.messages = await resolve_image_in_user_messages(
+      query.messages,
+      "ollama",
+      params?.images,
+    );
+    n_images = query.messages.filter(
+      (msg: Dict) => msg.role === "user" && msg.images.length > 0,
+    ).length;
+    console.log(
+      "Resolved images in user messages: ",
+      query.messages,
+      query.messages.length,
+    );
   } else {
     // Text-only models
     query.prompt = prompt;
     url += "generate";
+
+    // Resolving Image in user messages
+    if (MediaLookup.hasAnyMedia()) {
+      const images_in_prompt: Array<string> = [];
+      const texts_in_prompt: Array<string> = [];
+
+      for (const line of prompt
+        .split("\n")
+        .filter((line) => line.trim().length > 0)) {
+        const mediaUid = line.trim();
+        const mediaBlob = await MediaLookup.get(mediaUid);
+        if (mediaBlob) {
+          // if line contains a valid media UID
+          n_images += 1;
+          // Convert blob to base64
+          const base64 = await blobToBase64(mediaBlob);
+          images_in_prompt.push(base64);
+        } else {
+          texts_in_prompt.push(line);
+        }
+      }
+      query.prompt = texts_in_prompt.join("\n");
+      query.images = images_in_prompt;
+    }
   }
 
+  // Remove images from query if it exists
+  if (query.images) {
+    delete query.images;
+  }
+
+  console.log(query);
   console.log(
-    `Calling Ollama API at ${url} for model '${ollama_model}' with prompt '${prompt}' n=${n} times. Please be patient...`,
+    `Calling Ollama API at ${url} for model '${ollama_model}' with prompt '${query.prompt !== undefined ? query.prompt : query.messages[query.messages.length - 1].content}' n=${n} times. Contains n_img=${n_images} Please be patient...`,
   );
 
   // If there are structured outputs specified, convert to an object:
@@ -1622,6 +1811,7 @@ export async function call_llm(
   temperature: number,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   // Get the correct API call for the given LLM:
   let call_api: LLMAPICall | undefined;
@@ -1651,6 +1841,7 @@ export async function call_llm(
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
     );
+  if (images) params = { ...params, images };
   return call_api(prompt, llm, n, temperature, params, should_cancel);
 }
 
@@ -2480,3 +2671,71 @@ export function dataURLToBlob(dataURL: string): Blob {
   }
   return new Blob([byteArray], { type: mime });
 }
+
+// This function takes a string as argument that represents either :
+//  - a local path
+//  - a URL
+//  - a base64 encoded string
+// and return ithe following infos about the image:
+//  - size : the size of the image in bytes
+//  - width : the width of the image in pixels
+//  - height : the height of the image in pixels
+//  - type : the type of the image (png, jpeg, ...)
+export const get_image_infos = (image: string): Dict<string> => {
+  const infos: Dict<string> = {
+    size: "",
+    width: "",
+    height: "",
+    type: "",
+  };
+
+  if (image.startsWith("data:image")) {
+    // Base64 image
+    const base64 = image.split(",")[1];
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([bytes.buffer], { type: "image/png" });
+    infos.size = blob.size.toString();
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.src = url;
+    infos.width = img.width.toString();
+    infos.height = img.height.toString();
+    URL.revokeObjectURL(url);
+  } else {
+    // URL or local path
+    const img = new Image();
+    img.src = image;
+    infos.width = img.width.toString();
+    infos.height = img.height.toString();
+  }
+
+  return infos;
+};
+
+export const __http_url_to_base64 = (url: string) => {
+  return new Promise<string>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.responseType = "arraybuffer";
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const base64String = btoa(
+          new Uint8Array(xhr.response).reduce(
+            (data, byte) => data + String.fromCharCode(byte),
+            "",
+          ),
+        );
+        resolve(base64String);
+      } else {
+        reject(new Error("Failed to load image"));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Failed to load image"));
+    xhr.send();
+  });
+};

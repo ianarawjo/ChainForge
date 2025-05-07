@@ -31,7 +31,7 @@ from markitdown import MarkItDown
 HOSTNAME = "localhost"
 PORT = 8000
 # SESSION_TOKEN = secrets.token_hex(32)
-BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
+BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'public')
 STATIC_DIR = os.path.join(BUILD_DIR, 'static')
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
 
@@ -1662,6 +1662,38 @@ def retrieve():
     return jsonify(flat_results), 200
 
 
+@app.route('/api/proxy-image', methods=['GET'])
+def proxy_image():
+    """Proxy for fetching images to avoid CORS restrictions"""
+    url = request.args.get('url')
+    if not url:
+        return jsonify({"error": "URL parameter is required"}), 400
+    
+    try:
+        # Use Python requests to fetch the image
+        response = py_requests.get(url, stream=True)
+        print('tototo  ', response)
+        if not response.ok:
+            return jsonify({"error": f"Failed to fetch image: {response.status_code} {response.reason}"}), response.status_code
+        
+        # Check if content is an image
+        content_type = response.headers.get('Content-Type', '')
+        if not content_type.startswith('image/'):
+            return jsonify({"error": "The URL does not point to an image"}), 400
+        
+        # Create a Flask response with the image content
+        flask_response = app.response_class(
+            response=response.raw,
+            status=response.status_code,
+            headers=dict(response.headers)
+        )
+        
+        return flask_response
+    
+    except Exception as e:
+        return jsonify({"error": f"Error fetching image: {str(e)}"}), 500
+
+      
 """ 
     SPIN UP SERVER
 """
@@ -1691,7 +1723,7 @@ def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "setti
             exit(1)
         FLOWS_DIR_PWD = password
 
-    app.run(host=host, port=port)
+    app.run(host=host, port=port, debug=True, )
 
 if __name__ == '__main__':
     print("Run app.py instead.")

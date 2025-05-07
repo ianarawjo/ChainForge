@@ -1,4 +1,4 @@
-import { StringLookup } from "./cache";
+import { StringLookup, MediaLookup } from "./cache";
 import { isEqual } from "./setUtils";
 import {
   Dict,
@@ -282,7 +282,14 @@ export class PromptTemplate {
       // Recreate the param dict from just the 'text' property of the fill object
       const newParamDict: Dict<StringOrHash> = {};
       Object.entries(paramDict).forEach(([param, obj]) => {
-        newParamDict[param] = (obj as TemplateVarInfo).text as StringOrHash;
+        obj = obj as TemplateVarInfo;
+        // Access `text` property of the object, if it exists, otherwise access `image` property
+        if (obj.text) {
+          newParamDict[param] = obj.text as StringOrHash;
+        } else if (obj.image) {
+          // Store the image UID directly without IMAGE_IDENTIFIER prefix
+          newParamDict[param] = obj.image as StringOrHash;
+        }
       });
       paramDict = newParamDict;
     }

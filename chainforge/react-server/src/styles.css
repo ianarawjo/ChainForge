@@ -1597,3 +1597,93 @@ html[data-mantine-color-scheme="dark"] .upload-node-list {
 .chunk-node {
   width: 290px;
 }
+
+/* Classes relative to the multimedia Node */
+
+.multimedia-textfields-container {
+  resize: both;
+  min-height: 100px;
+  min-width: 370px;
+  height: 210px;
+  overflow-y: auto;
+  border: none;
+  display: flex;
+  flex-direction: column;
+
+  /* Taken from the tabular-data-container part */
+  resize: both;
+  overflow: auto;
+  border-bottom-style: solid;
+  border-right-style: solid;
+  border-bottom-width: 1px;
+  border-right-width: 1px;
+  border-color: #ccc;
+  display: block;
+}
+
+.text-field-fixed-in-multimedia-node {
+  resize: vertical;
+  overflow-y: auto;
+  min-height: fit-content;
+  width: inherit;
+  padding: calc(0.5rem / 3);
+  font-size: 10pt;
+  font-family: var(--monofont), monospace;
+  line-height: 1.2;
+  border-color: #999;
+}
+
+.empty-state-box-multimedia-node {
+  height: 200px;
+  width: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin: 0 auto;
+}
+
+.carousel-nav-button {
+  font-size: 32px;
+  color: #666;
+  cursor: pointer;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.carousel-nav-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
+}
+
+.carousel-nav-button:active {
+  transform: scale(0.95);
+}
+
+/* Dark Mode Overrides */
+html[data-mantine-color-scheme="dark"] .carousel-nav-button {
+  color: #bbb; /* Lighter color for dark mode */
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.1
+  ); /* Light background for dark mode */
+}
+
+html[data-mantine-color-scheme="dark"] .carousel-nav-button:hover {
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.2
+  ); /* Brighter hover background for dark mode */
+}

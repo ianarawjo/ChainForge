@@ -133,11 +133,13 @@ export class PromptInfo {
   prompt: string;
   settings?: Dict;
   label?: string;
+  image?: string;
 
-  constructor(prompt: string, settings?: Dict, label?: string) {
+  constructor(prompt: string, settings?: Dict, label?: string, image?: string) {
     this.prompt = prompt;
     this.settings = settings;
     this.label = label;
+    this.image = image;
   }
 }
 
@@ -159,7 +161,15 @@ const displayPromptInfos = (
             <hr />
           </Text>
         )}
-        {info.prompt}
+        {info.image ? (
+          <Text size="xs" c="blue">
+            [Image UID: {info.image}]
+          </Text>
+        ) : (
+          <Text size="xs" c="black">
+            {info.prompt}
+          </Text>
+        )}
       </div>
       {info.settings &&
         Object.entries(info.settings).map(([key, val]) => {
@@ -731,13 +741,19 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         (results) => {
           // Handle all the results here
           const all_concrete_prompts = results.flatMap((ps) =>
-            ps.map(
-              (p: PromptTemplate) =>
-                new PromptInfo(
-                  p.toString(),
-                  extractSettingsVars(p.fill_history),
-                ),
-            ),
+            ps.map((p: PromptTemplate) => {
+              // Find the image UID in the fill_history
+              const imageUid = Object.entries(p.fill_history).find(
+                ([_, value]) => typeof value === "object" && value?.image,
+              )?.[1]?.image;
+
+              return new PromptInfo(
+                p.toString(),
+                extractSettingsVars(p.fill_history),
+                undefined,
+                imageUid,
+              );
+            }),
           );
           setPromptPreviews(all_concrete_prompts);
         },
@@ -1644,8 +1660,7 @@ Soft failing by replacing undefined with empty strings.`,
                 defaultValue={
                   typeof data.prompt === "string"
                     ? data.prompt
-                    : data.prompt &&
-                      data.prompt[data.idxPromptVariantShown ?? 0]
+                    : data.prompt[data.idxPromptVariantShown ?? 0]
                 }
                 onChange={handleInputChange}
                 miw={230}
