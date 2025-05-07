@@ -13,8 +13,9 @@ import requests as py_requests
 from platformdirs import user_data_dir
 
 # RAG-specific imports
-from chainforge.rag.chunk_handlers import ChunkingMethodRegistry
-from chainforge.rag.retrieve_handlers import RetrievalMethodRegistry, EmbeddingModelRegistry
+from chainforge.rag.chunkers import ChunkingMethodRegistry
+from chainforge.rag.retrievers import RetrievalMethodRegistry
+from chainforge.rag.embeddings import EmbeddingMethodRegistry
 from markitdown import MarkItDown
 # import pymupdf
 # from docx import Document
@@ -1467,8 +1468,6 @@ def retrieve():
                 return q
         return {}
     
-
-    
     # Group chunks by chunking method
     chunks_by_method = {}
     for chunk in chunks:
@@ -1579,7 +1578,7 @@ def retrieve():
         for embedder, methods in embedding_methods.items():
             try:
                 provider, model_name = embedder.split("#", 1)
-                embedder_func = EmbeddingModelRegistry.get_embedder(provider)
+                embedder_func = EmbeddingMethodRegistry.get_embedder(provider)
                 if not embedder_func:
                     raise ValueError(f"Unknown embedding model: {model_name}")
                 
@@ -1598,6 +1597,10 @@ def retrieve():
                 method_id = method.get("id")
                 base_method = method.get("baseMethod")
                 method_name = method.get("methodName")
+
+                # A safe database path to use to store on local disk, if necessary
+                # :: For instance, vector databases like LanceDB, FAISS or Chroma. 
+                db_path = os.path.join(MEDIA_DIR, method_id + ".db")
                 
                 try:
                     handler = RetrievalMethodRegistry.get_handler(base_method)
@@ -1605,7 +1608,7 @@ def retrieve():
                         raise ValueError(f"Unknown method: {base_method}")
                     
                     # Get retrieved chunks for this method and chunk group
-                    retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method.get("settings", {}))
+                    retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method.get("settings", {}), db_path)
                     
                     # Process retrieved chunks for each query
                     for resp in retrieved:
@@ -1690,6 +1693,7 @@ def proxy_image():
     except Exception as e:
         return jsonify({"error": f"Error fetching image: {str(e)}"}), 500
 
+      
 """ 
     SPIN UP SERVER
 """

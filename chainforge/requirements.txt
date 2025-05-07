@@ -1,9 +1,10 @@
 flask>=2.2.3
 flask[async]
 flask_cors
+grpcio==1.44.0
+numpy<2.0
 requests
 openai
-dalaipy==2.0.2
 urllib3==1.26.6
 mistune>=2.0
 platformdirs
@@ -15,13 +16,15 @@ langchain
 langchain-core
 langchain-community
 nltk
-gensim>=4.3.3
 transformers
 spacy
-scikit-learn
+scikit-learn>=1.4.0
 sentence-transformers
 rank-bm25
 whoosh
 cohere
 markitdown[pdf, docx, xlsx, xls, pptx]
-chonkie[all]>=1.0
+chonkie>=1.0
+model2vec>=0.5.0  # required by chonkie
+pyarrow>=14.0,<=16.0.0
+lancedb<=0.18.0

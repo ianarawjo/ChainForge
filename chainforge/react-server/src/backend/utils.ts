@@ -160,6 +160,7 @@ let AZURE_OPENAI_KEY = get_environ("AZURE_OPENAI_KEY");
 let AZURE_OPENAI_ENDPOINT = get_environ("AZURE_OPENAI_ENDPOINT");
 let HUGGINGFACE_API_KEY = get_environ("HUGGINGFACE_API_KEY");
 let ALEPH_ALPHA_API_KEY = get_environ("ALEPH_ALPHA_API_KEY");
+let ALEPH_ALPHA_BASE_URL = get_environ("ALEPH_ALPHA_BASE_URL");
 let AWS_ACCESS_KEY_ID = get_environ("AWS_ACCESS_KEY_ID");
 let AWS_SECRET_ACCESS_KEY = get_environ("AWS_SECRET_ACCESS_KEY");
 let AWS_SESSION_TOKEN = get_environ("AWS_SESSION_TOKEN");
@@ -189,6 +190,8 @@ export function set_api_keys(api_keys: Dict<string>): void {
   if (key_is_present("Azure_OpenAI_Endpoint"))
     AZURE_OPENAI_ENDPOINT = api_keys.Azure_OpenAI_Endpoint;
   if (key_is_present("AlephAlpha")) ALEPH_ALPHA_API_KEY = api_keys.AlephAlpha;
+  if (key_is_present("AlephAlpha_BaseURL"))
+    ALEPH_ALPHA_BASE_URL = api_keys.AlephAlpha_BaseURL;
   // Soft fail for non-present keys
   if (key_is_present("AWS_Access_Key_ID"))
     AWS_ACCESS_KEY_ID = api_keys.AWS_Access_Key_ID;
@@ -840,7 +843,9 @@ export async function call_anthropic(
     if (APP_IS_RUNNING_LOCALLY()) {
       // If we're running locally, route the request through the Flask backend,
       // where we can use the Anthropic Python API to make the API call:
-      const url = `https://api.anthropic.com/v1/${use_messages_api ? "messages" : "complete"}`;
+      const url = `https://api.anthropic.com/v1/${
+        use_messages_api ? "messages" : "complete"
+      }`;
       const headers = {
         Accept: "application/json",
         "anthropic-version": "2023-06-01",
@@ -1168,33 +1173,6 @@ export async function call_google_gemini(
   return [query, responses];
 }
 
-export async function call_dalai(
-  prompt: string,
-  model: LLM,
-  n = 1,
-  temperature = 0.7,
-  params?: Dict,
-  should_cancel?: () => boolean,
-): Promise<[Dict, Dict]> {
-  if (APP_IS_RUNNING_LOCALLY()) {
-    // Try to call Dalai server, through Flask:
-    const { query, response, error } = await call_flask_backend("callDalai", {
-      prompt,
-      model,
-      n,
-      temperature,
-      ...params,
-    });
-    if (error !== undefined) throw new Error(error);
-    return [query, response];
-  } else {
-    throw new Error(
-      "Cannot call Dalai: The ChainForge app does not appear to be running locally. You can only call Dalai-hosted models if" +
-        "you are running a server with the Dalai Node.js package and have installed ChainForge on your local machine.",
-    );
-  }
-}
-
 export async function call_huggingface(
   prompt: string,
   model: LLM,
@@ -1362,38 +1340,49 @@ export async function call_alephalpha(
       "Could not find an API key for Aleph Alpha models. Double-check that your API key is set in Settings or in your local environment.",
     );
 
-  const url = "https://api.aleph-alpha.com/complete";
-  const headers: Dict<string> = {
+  const isChatModel = params?.chat_model ?? false;
+  const base_url = ALEPH_ALPHA_BASE_URL ?? "https://api.aleph-alpha.com";
+  const endpoint = isChatModel ? "chat/completions" : "complete";
+  const url = `${base_url}/${endpoint}`;
+
+  const headers = {
     "Content-Type": "application/json",
     Accept: "application/json",
+    Authorization: `Bearer ${ALEPH_ALPHA_API_KEY}`,
   };
-  if (ALEPH_ALPHA_API_KEY !== undefined)
-    headers.Authorization = `Bearer ${ALEPH_ALPHA_API_KEY}`;
 
-  const data = JSON.stringify({
+  const requestPayload: Dict = {
     model: model.toString(),
-    prompt,
+    temperature,
     n,
     ...params,
-  });
-
-  // Setup the args for the query
-  const query: Dict = {
-    model: model.toString(),
-    n,
-    temperature,
-    ...params, // 'the rest' of the settings, passed from the front-end settings
   };
+
+  if (isChatModel) {
+    const chatHistory = construct_openai_chat_history(
+      prompt,
+      params?.chat_history,
+      params?.system_msg,
+    );
+    requestPayload.messages = chatHistory;
+  } else {
+    requestPayload.prompt = prompt;
+  }
 
   const response = await fetch(url, {
     headers,
     method: "POST",
-    body: data,
+    body: JSON.stringify(requestPayload),
   });
-  const result = await response.json();
-  const responses = await result.completions?.map((x: any) => x.completion);
 
-  return [query, responses];
+  const result = await response.json();
+
+  // Extract responses based on model type
+  const responses = isChatModel
+    ? result.choices?.map((x: any) => x.message.content)
+    : result.completions?.map((x: any) => x.completion);
+
+  return [requestPayload, responses];
 }
 
 export async function call_ollama_provider(
@@ -1839,7 +1828,6 @@ export async function call_llm(
   } else if (llm_provider === LLMProvider.Azure_OpenAI)
     call_api = call_azure_openai;
   else if (llm_provider === LLMProvider.Google) call_api = call_google_ai;
-  else if (llm_provider === LLMProvider.Dalai) call_api = call_dalai;
   else if (llm_provider === LLMProvider.Anthropic) call_api = call_anthropic;
   else if (llm_provider === LLMProvider.HuggingFace)
     call_api = call_huggingface;
@@ -2055,8 +2043,6 @@ export function extract_responses(
       return _extract_openai_responses(response);
     case LLMProvider.Google:
       return _extract_google_ai_responses(response as Dict, llm);
-    case LLMProvider.Dalai:
-      return [response.toString()];
     case LLMProvider.Anthropic:
       if (is_newer_anthropic_model(llm_name))
         return _extract_anthropic_chat_responses(response as Dict[]);

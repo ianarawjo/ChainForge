@@ -51,14 +51,6 @@ export enum NativeLLM {
   // Azure OpenAI Endpoints
   Azure_OpenAI = "azure-openai",
 
-  // Dalai-served models (Alpaca and Llama)
-  Dalai_Alpaca_7B = "alpaca.7B",
-  Dalai_Alpaca_13B = "alpaca.13B",
-  Dalai_Llama_7B = "llama.7B",
-  Dalai_Llama_13B = "llama.13B",
-  Dalai_Llama_30B = "llama.30B",
-  Dalai_Llama_65B = "llama.65B",
-
   // Anthropic
   Claude_v3_opus_latest = "claude-3-opus-latest",
   Claude_v3_opus = "claude-3-opus-20240229",
@@ -241,7 +233,6 @@ export function getEnumName(
 export enum LLMProvider {
   OpenAI = "openai",
   Azure_OpenAI = "azure",
-  Dalai = "dalai",
   Anthropic = "anthropic",
   Google = "google",
   HuggingFace = "hf",
@@ -264,7 +255,6 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   else if (llm_name?.startsWith("Azure")) return LLMProvider.Azure_OpenAI;
   else if (llm_name?.startsWith("PaLM2") || llm_name?.startsWith("GEMINI"))
     return LLMProvider.Google;
-  else if (llm_name?.startsWith("Dalai")) return LLMProvider.Dalai;
   else if (llm_name?.startsWith("HF_")) return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith("claude")) return LLMProvider.Anthropic;
   else if (llm_name?.startsWith("Aleph_Alpha")) return LLMProvider.Aleph_Alpha;

@@ -6,7 +6,7 @@ def readme():
 
 setup(
     name="chainforge",
-    version="0.3.5.6",
+    version="0.3.5.7",
     packages=find_packages(),
     author="Ian Arawjo",
     description="A Visual Programming Environment for Prompt Engineering",
@@ -20,12 +20,13 @@ setup(
         "flask>=2.2.3",
         "flask[async]",
         "flask_cors",
+        "grpcio==1.44.0",  # later versions of grpcio hang indefinitely on some Mac systems, upon building the wheel
+        "numpy<2.0",  # numpy>=2.0 is not compatible with libraries like torch
         "requests",
         "platformdirs",
         "urllib3==1.26.6",
         "openai",
         "cryptography",
-        "dalaipy>=2.0.2",
         "mistune>=2.0",  # for LLM response markdown parsing
         "pymupdf",
         "python-docx",
@@ -34,17 +35,18 @@ setup(
         "langchain-core",
         "langchain-community",
         "nltk",
-        "gensim>=4.3.2",
         "transformers",
         "spacy",
-        # "scipy==1.10.1",
-        "scikit-learn",
+        "scikit-learn>=1.4.0",
         "sentence-transformers",
         "rank-bm25",
         "whoosh",
         "cohere",
         "markitdown[pdf, docx, xlsx, xls, pptx]",
-        "chonkie[all]>=1.0",
+        "chonkie>=1.0",
+        "model2vec>=0.5.0",  # required by chonkie
+        "pyarrow>=14.0,<=16.0.0",  # newer versions of pyarrow require CMake 3.25 or higher, which is not compatible with all systems
+        "lancedb<0.18.0"  # pylance requires pyarrow 14 or higher. Later versions of LanceDB give strange errors with pyarrow<=16.0.0. 
     ],
     entry_points={
         "console_scripts": [
@@ -61,6 +63,6 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
     ],
-    python_requires=">=3.10,<3.12",
+    python_requires=">=3.10",
     include_package_data=True,
 )

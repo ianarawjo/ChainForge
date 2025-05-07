@@ -415,12 +415,12 @@ export const ChonkieSentenceSchema: ModelSettingsDict = {
       },
       delim: {
         type: "string",
-        default: '[".", "!", "?", "\\n"]',
+        default: '[".", "!", "?"]',
         title: "Sentence delimiters (JSON array)",
       },
       include_delim: {
         type: "string",
-        default: "",
+        default: "prev",
         title:
           "Include delimiters in chunks (prev, next, or leave blank for none)",
       },
@@ -568,7 +568,7 @@ export const ChonkieSemanticSchema: ModelSettingsDict = {
       },
       delim: {
         type: "string",
-        default: '[".", "!", "?", "\\n"]',
+        default: '[".", "!", "?", "\\n\\n"]',
         title: "Sentence delimiters (JSON array)",
       },
     },
@@ -678,7 +678,7 @@ export const ChonkieSDPMSchema: ModelSettingsDict = {
       },
       delim: {
         type: "string",
-        default: '[".", "!", "?", "\\n"]',
+        default: '[".", "!", "?", "\\n\\n"]',
         title: "Sentence delimiters (JSON array)",
       },
       include_delim: {
