@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Tuple, Union
-import os, uuid
+from typing import List, Dict, Any, Optional, Union
+import os
 import numpy as np
 import pandas as pd
 import lancedb
