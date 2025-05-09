@@ -9,6 +9,7 @@ import {
   ChatHistoryInfo,
   ModelSettingsDict,
   isImageResponseData,
+  LLMResponseData,
 } from "./typing";
 import {
   extract_responses,
@@ -20,6 +21,7 @@ import {
   areEqualVarsDicts,
   repairCachedResponses,
   compressBase64Image,
+  blobToBase64,
 } from "./utils";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import { UserForcedPrematureExit } from "./errors";
@@ -237,8 +239,6 @@ export class PromptPipeline {
       // *has to be correct* and match the param name, for this to work.
       const settings_params = extractSettingsVars(info);
 
-      
-
       // Loop over any present chat histories. (If none, will have a single pass with 'undefined' as chat_history value.)
       for (const chat_history of _chat_histories) {
         // If there's chat history, we need to fill any special (#) vars from the carried chat_history vars and metavars:
@@ -396,15 +396,19 @@ export class PromptPipeline {
       params.chat_history = chat_history.messages;
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;
-    let images: string[] = [];
+
+    // Array of images (as media UIDs) to send to the LLM
+    const images: string[] = [];
     if (prompt.fill_history) {
       for (const value of Object.values(prompt.fill_history)) {
-        const mediaBlob = await MediaLookup.get(value);
-        if (mediaBlob) {
-          images.push(value);
-        }
+        if (!isImageResponseData(value)) continue;
+        // NOTE: We only check if the UID is present here,
+        // since it is much cheaper than pulling the image data into browser memory.
+        const hasMedia = await MediaLookup.has(value.d);
+        if (hasMedia) images.push(value.d);
       }
     }
+
     try {
       // When/if we emerge from sleep, check if this process has been canceled in the meantime:
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();

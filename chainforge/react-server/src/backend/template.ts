@@ -1,4 +1,4 @@
-import { StringLookup, MediaLookup } from "./cache";
+import { StringLookup } from "./cache";
 import { isEqual } from "./setUtils";
 import {
   Dict,
@@ -259,6 +259,7 @@ export class PromptTemplate {
     // Check for special 'past fill history' format:
     let past_fill_history = {};
     let past_metavars = {};
+    const image_params: string[] = [];
     const some_key = Object.keys(paramDict).pop();
     const some_val = some_key ? paramDict[some_key] : undefined;
     if (len(paramDict) > 0 && isDict(some_val)) {
@@ -280,41 +281,57 @@ export class PromptTemplate {
       past_metavars = StringLookup.concretizeDict(past_metavars);
 
       // Recreate the param dict from just the 'text' property of the fill object
-      const newParamDict: Dict<StringOrHash> = {};
+      const newParamDict: Dict<PromptVarType> = {};
       Object.entries(paramDict).forEach(([param, obj]) => {
         obj = obj as TemplateVarInfo;
         // Access `text` property of the object, if it exists, otherwise access `image` property
-        if (obj.text) {
+        if (
+          obj.text !== undefined &&
+          (typeof obj.text === "string" || typeof obj.text === "number")
+        ) {
           newParamDict[param] = obj.text as StringOrHash;
-        } else if (obj.image) {
-          // Store the image UID directly without IMAGE_IDENTIFIER prefix
-          newParamDict[param] = obj.image as StringOrHash;
+        } else if (obj.image !== undefined && typeof obj.image === "string") {
+          // This is a special case for images.
+          image_params.push(param);
+          newParamDict[param] = {
+            t: "img",
+            d: obj.image,
+          };
         }
       });
       paramDict = newParamDict;
     }
 
-    // Concretize the params
-    paramDict = StringLookup.concretizeDict(paramDict) as Dict<
-      string | TemplateVarInfo
-    >;
+    // Concretize the params (cast hashed numbers to strings)
+    paramDict = StringLookup.concretizeDict(paramDict) as Dict<PromptVarType>;
 
     // For 'settings' template vars of form {=system_msg}, we use the same logic of storing param
     // values as before -- the only difference is that, when it comes to the actual substitution of
     // the string, we *don't fill the template with anything* --it vanishes.
-    let params_wo_settings = paramDict as Dict<string>;
+    let params_wo_settings = paramDict;
     // To improve performance, we first check if there's a settings var present at all before deep cloning:
-    if (Object.keys(paramDict).some((key) => key?.charAt(0) === "=")) {
+    if (
+      image_params.length > 0 ||
+      Object.keys(paramDict).some((key) => key?.charAt(0) === "=")
+    ) {
       // A settings var is present; deep clone the param dict and replace it with the empty string:
       params_wo_settings = JSON.parse(JSON.stringify(paramDict));
       Object.keys(paramDict).forEach((key) => {
-        if (key?.charAt(0) === "=") params_wo_settings[key] = ""; // set settings params to empty
+        if (key?.charAt(0) === "=") params_wo_settings[key] = ""; // set settings params to empty, so they vanish from the prompt string
+      });
+
+      // We also need to remove any image params from the paramDict, since they are not strings:
+      image_params.forEach((param) => {
+        if (param in params_wo_settings) params_wo_settings[param] = ""; // set image params to empty, so they vanish from the prompt string
+        // Note that this means all "llmResponseData" image params should be converted to empty strings
       });
     }
 
     // Perform the fill on the main text
     const filled_pt = new PromptTemplate(
-      new StringTemplate(this.template).safe_substitute(params_wo_settings),
+      new StringTemplate(this.template).safe_substitute(
+        params_wo_settings as any,
+      ), // have to cast to any to avoid complex type error
     );
 
     // Deep copy prior fill history of this PromptTemplate from this version over to new one
@@ -326,7 +343,7 @@ export class PromptTemplate {
       if (!key.startsWith("=")) return;
       filled_pt.fill_history[key] = new StringTemplate(
         StringLookup.get(val) ?? "",
-      ).safe_substitute(params_wo_settings);
+      ).safe_substitute(params_wo_settings as any);
     });
 
     // Append any past history passed as vars:
@@ -344,7 +361,7 @@ export class PromptTemplate {
     });
 
     // Add the new fill history using the passed parameters that we just filled in
-    Object.entries(paramDict as Dict<string>).forEach(([key, val]) => {
+    Object.entries(paramDict as Dict<PromptVarType>).forEach(([key, val]) => {
       if (key in filled_pt.fill_history)
         console.log(
           `Warning: PromptTemplate already has fill history for key ${key}.`,

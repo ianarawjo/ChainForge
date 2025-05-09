@@ -1599,38 +1599,29 @@ html[data-mantine-color-scheme="dark"] .upload-node-list {
 }
 
 /* Classes relative to the multimedia Node */
+.multimedia-node {
+  width: 340px;
+  max-width: 340px;
+}
 
 .multimedia-textfields-container {
-  resize: both;
-  min-height: 100px;
-  min-width: 370px;
-  height: 210px;
+  min-width: 100%;
+  width: 100%;
   overflow-y: auto;
   border: none;
-  display: flex;
-  flex-direction: column;
-
-  /* Taken from the tabular-data-container part */
-  resize: both;
-  overflow: auto;
-  border-bottom-style: solid;
-  border-right-style: solid;
-  border-bottom-width: 1px;
-  border-right-width: 1px;
-  border-color: #ccc;
   display: block;
 }
 
-.text-field-fixed-in-multimedia-node {
-  resize: vertical;
-  overflow-y: auto;
-  min-height: fit-content;
-  width: inherit;
-  padding: calc(0.5rem / 3);
-  font-size: 10pt;
-  font-family: var(--monofont), monospace;
-  line-height: 1.2;
-  border-color: #999;
+.multimedia-textfields-container
+  .text-field-fixed
+  .mantine-Textarea-wrapper
+  textarea {
+  width: 100%;
+}
+
+.multimedia-image-preview-container {
+  width: 100%;
+  margin: 0 auto;
 }
 
 .empty-state-box-multimedia-node {
@@ -1645,12 +1636,17 @@ html[data-mantine-color-scheme="dark"] .upload-node-list {
   margin: 0 auto;
 }
 
+html[data-mantine-color-scheme="dark"] .empty-state-box-multimedia-node {
+  background-color: #333;
+  border-color: #444;
+}
+
 .carousel-nav-button {
-  font-size: 32px;
+  font-size: 28px;
   color: #666;
   cursor: pointer;
-  width: 48px;
-  height: 48px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1661,7 +1657,7 @@ html[data-mantine-color-scheme="dark"] .upload-node-list {
 
 .carousel-nav-button:hover {
   background-color: rgba(0, 0, 0, 0.1);
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 .carousel-nav-button:active {

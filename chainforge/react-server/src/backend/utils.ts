@@ -33,11 +33,7 @@ import {
   MultiModalContentGemini,
 } from "./typing";
 import { v4 as uuid } from "uuid";
-import { StringTemplate, PromptTemplate } from "./template";
-
-/* LLM API SDKs */
-import axios from "axios";
-import { Buffer } from "buffer";
+import { StringTemplate } from "./template";
 
 import {
   Configuration as OpenAIConfig,
@@ -57,7 +53,6 @@ import {
 } from "@mirai73/bedrock-fm";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import Compressor from "compressorjs";
-import ChatHistoryView from "../ChatHistoryView";
 // import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
@@ -227,23 +222,26 @@ function construct_text_payload(
   }
 }
 
-async function construct_image_payload(
-  image_blob: Blob,
+function construct_image_payload(
+  base64image: string,
   variant: "openai" | "gemini" | "anthropic",
-): Promise<
-  MultiModalContentAnthropic | MultiModalContentOpenAI | MultiModalContentGemini
-> {
-  const base64 = await blobToBase64(image_blob);
+):
+  | MultiModalContentAnthropic
+  | MultiModalContentOpenAI
+  | MultiModalContentGemini {
   switch (variant) {
     case "openai":
       return {
         type: "image_url",
-        image_url: { url: `data:image/png;base64,${base64}`, detail: "auto" },
+        image_url: {
+          url: `data:image/png;base64,${base64image}`,
+          detail: "auto",
+        },
       };
     case "gemini": {
       return {
         inlineData: {
-          data: base64,
+          data: base64image,
           mimeType: "image/png",
         },
       };
@@ -254,7 +252,7 @@ async function construct_image_payload(
         source: {
           type: "base64",
           media_type: "image/png",
-          data: base64,
+          data: base64image,
         },
       };
     default:
@@ -262,10 +260,9 @@ async function construct_image_payload(
   }
 }
 
-async function resolve_image_in_user_messages(
+async function resolve_images_in_user_messages(
   messages: ChatHistory,
   variant: "openai" | "gemini" | "anthropic" | "ollama",
-  images?: string[],
 ): Promise<Array<any>> {
   const res = [];
   for (const message of messages) {
@@ -275,47 +272,53 @@ async function resolve_image_in_user_messages(
     }
 
     const prompt = message.content;
+    let images = message.images;
+
+    // Cast any images to base64 strings
+    if (images && images.length > 0) {
+      const base64_images: Array<string> = [];
+      for (const image of images) {
+        const imageBlob = await MediaLookup.get(image);
+        if (!imageBlob) {
+          // This should never happen, but just in case:
+          console.error(`Image not found in MediaLookup: ${image}`);
+          continue;
+        }
+        const base64_image = await blobToBase64(imageBlob);
+        if (base64_image) base64_images.push(base64_image);
+      }
+      images = base64_images;
+    }
+
     if (variant === "ollama") {
       // Resolving Image in user messages
-      if (images && images.length > 0 && MediaLookup.hasAnyMedia()) {
-        const images_in_prompt: Array<string> = [];
+      if (images && images.length > 0) {
+        // These images should already be base64 encoded
+        const images_in_prompt: Array<string> = images;
         const texts_in_prompt: Array<string> = [];
 
-        // Get all valid image blobs from MediaLookup
-        for (const imageKey of images) {
-          const mediaBlob = await MediaLookup.get(imageKey);
-          if (mediaBlob) {
-            // Convert blob to base64
-            const base64 = await blobToBase64(mediaBlob);
-            images_in_prompt.push(base64);
-          }
-        }
-        
         // Add the prompt text
         texts_in_prompt.push(prompt);
-        
+
         res.push({
           content: texts_in_prompt.join("\n"),
-          images: images_in_prompt,
+          images: images_in_prompt.map(
+            (img: string) => `data:image/png;base64,${img}`,
+          ), // base64 encoded images
         });
       } else {
         res.push(message);
       }
     } else {
-      if (images && images.length > 0 && MediaLookup.hasAnyMedia()) {
+      if (images && images.length > 0) {
         const new_content = [];
-        
-        // Get all valid image blobs from MediaLookup
-        for (const imageKey of images) {
-          const mediaBlob = await MediaLookup.get(imageKey);
-          if (mediaBlob) {
-            new_content.push(await construct_image_payload(mediaBlob, variant));
-          }
-        }
-        
+
+        for (const image of images)
+          new_content.push(construct_image_payload(image, variant));
+
         // Add the prompt text
         new_content.push(construct_text_payload(prompt, variant));
-        
+
         res.push({ role: "user", content: new_content });
       } else {
         res.push(message);
@@ -331,14 +334,18 @@ async function resolve_image_in_user_messages(
  * @param chat_history The prior turns of the chat, ending with the AI assistants' turn.
  * @param system_msg Optional; the system message to use if none is present in chat_history. (Ignored if chat_history already has a sys message.)
  */
-function construct_openai_chat_history(
+function construct_chat_history(
   prompt: string,
+  images: string[] | undefined,
   chat_history?: ChatHistory,
   system_msg?: string,
   system_role_name?: string,
 ): ChatHistory {
   const sys_role_name = system_role_name ?? "system";
   const prompt_msg: ChatMessage = { role: "user", content: prompt };
+  if (images && images.length > 0) {
+    prompt_msg.images = images;
+  }
   const sys_msg: ChatMessage[] =
     system_msg !== undefined
       ? [{ role: sys_role_name, content: system_msg }]
@@ -366,6 +373,7 @@ export async function call_chatgpt(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
   BASE_URL?: string,
   API_KEY?: string,
 ): Promise<[Dict, Dict]> {
@@ -423,7 +431,7 @@ export async function call_chatgpt(
 
   // Determine the system message and whether there's chat history to continue:
   const chat_history: ChatHistory | undefined = params?.chat_history;
-  let system_msg: string | undefined =
+  const system_msg: string | undefined =
     params?.system_msg !== undefined ? params.system_msg : undefined;
   delete params?.system_msg;
   delete params?.chat_history;
@@ -431,7 +439,7 @@ export async function call_chatgpt(
   // The o1 and later OpenAI models, for whatever reason, block the system message from being sent in the chat history.
   // The official API states that "developer" works, but it doesn't for some models, so until OpenAI fixes this
   // and fully supports system messages, we have to block them from being sent in the chat history.
-  if (model.startsWith("o")) system_msg = undefined;
+  // if (model.startsWith("o")) system_msg = undefined;
 
   const query: Dict = {
     model: modelname,
@@ -439,9 +447,6 @@ export async function call_chatgpt(
     temperature,
     ...params, // 'the rest' of the settings, passed from the front-end settings
   };
-
-  // Remove images from query
-  delete query.images;
 
   // Get the correct function to call
   let openai_call: any;
@@ -455,17 +460,17 @@ export async function call_chatgpt(
     openai_call = openai.createChatCompletion.bind(openai);
 
     // Carry over chat history, if present:
-    query.messages = construct_openai_chat_history(
+    query.messages = construct_chat_history(
       prompt,
+      images,
       chat_history,
       system_msg,
     );
   }
 
-  query.messages = await resolve_image_in_user_messages(
+  query.messages = await resolve_images_in_user_messages(
     query.messages,
     "openai",
-    params?.images,
   );
 
   // Try to call OpenAI
@@ -496,6 +501,7 @@ export async function call_deepseek(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!DEEPSEEK_API_KEY)
     throw new Error(
@@ -511,6 +517,7 @@ export async function call_deepseek(
     temperature,
     params,
     should_cancel,
+    images,
     "https://api.deepseek.com",
     DEEPSEEK_API_KEY,
   );
@@ -605,6 +612,7 @@ export async function call_azure_openai(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!AZURE_OPENAI_KEY)
     throw new Error(
@@ -674,7 +682,7 @@ export async function call_azure_openai(
     arg2 = [prompt];
   } else {
     openai_call = client.getChatCompletions.bind(client);
-    arg2 = construct_openai_chat_history(prompt, chat_history, system_msg);
+    arg2 = construct_chat_history(prompt, images, chat_history, system_msg);
   }
 
   let response: Dict = {};
@@ -715,6 +723,7 @@ export async function call_anthropic(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!ANTHROPIC_API_KEY)
     throw new Error(
@@ -807,8 +816,9 @@ export async function call_anthropic(
 
   if (use_messages_api) {
     query.max_tokens = max_tokens_to_sample; // this goes by a different name than text completions
-    query.messages = construct_openai_chat_history(
+    query.messages = construct_chat_history(
       prompt,
+      images,
       chat_history,
       undefined,
     );
@@ -820,14 +830,10 @@ export async function call_anthropic(
     query.prompt = wrapped_prompt;
   }
 
-  query.messages = await resolve_image_in_user_messages(
+  query.messages = await resolve_images_in_user_messages(
     query.messages,
     "anthropic",
-    params?.images,
   );
-
-  // Remove images from query
-  delete query.images;
 
   console.log(
     `Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`,
@@ -894,6 +900,7 @@ export async function call_google_ai(
   temperature = 0.7,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (
     model === NativeLLM.PaLM2_Chat_Bison ||
@@ -906,6 +913,7 @@ export async function call_google_ai(
       temperature,
       params,
       should_cancel,
+      images,
     );
   else
     return call_google_gemini(
@@ -915,6 +923,7 @@ export async function call_google_ai(
       temperature,
       params,
       should_cancel,
+      images,
     );
 }
 
@@ -929,6 +938,7 @@ export async function call_google_palm(
   temperature = 0.7,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!GOOGLE_PALM_API_KEY)
     throw new Error(
@@ -1051,6 +1061,7 @@ export async function call_google_gemini(
   temperature = 0.7,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!GOOGLE_PALM_API_KEY)
     throw new Error(
@@ -1180,6 +1191,7 @@ export async function call_huggingface(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   // Whether we should notice a given param in 'params'
   const param_exists = (p: any) =>
@@ -1334,6 +1346,7 @@ export async function call_alephalpha(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!ALEPH_ALPHA_API_KEY)
     throw Error(
@@ -1359,8 +1372,9 @@ export async function call_alephalpha(
   };
 
   if (isChatModel) {
-    const chatHistory = construct_openai_chat_history(
+    const chatHistory = construct_chat_history(
       prompt,
+      images,
       params?.chat_history,
       params?.system_msg,
     );
@@ -1392,6 +1406,7 @@ export async function call_ollama_provider(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!params?.ollama_url)
     throw Error(
@@ -1432,17 +1447,17 @@ export async function call_ollama_provider(
   // If the model type is explicitly or implicitly set to "chat", pass chat history instead:
   if (model_type === "chat" || /[-:](chat)/.test(ollama_model)) {
     // Construct chat history and pass to query payload
-    query.messages = construct_openai_chat_history(
+    query.messages = construct_chat_history(
       prompt,
+      images,
       chat_history,
       system_msg,
     );
     url += "chat";
 
-    query.messages = await resolve_image_in_user_messages(
+    query.messages = await resolve_images_in_user_messages(
       query.messages,
       "ollama",
-      params?.images,
     );
     n_images = query.messages.filter(
       (msg: Dict) => msg.role === "user" && msg.images.length > 0,
@@ -1455,36 +1470,12 @@ export async function call_ollama_provider(
   } else {
     // Text-only models
     query.prompt = prompt;
-    url += "generate";
-
-    // Resolving Image in user messages
-    if (MediaLookup.hasAnyMedia()) {
-      const images_in_prompt: Array<string> = [];
-      const texts_in_prompt: Array<string> = [];
-
-      for (const line of prompt
-        .split("\n")
-        .filter((line) => line.trim().length > 0)) {
-        const mediaUid = line.trim();
-        const mediaBlob = await MediaLookup.get(mediaUid);
-        if (mediaBlob) {
-          // if line contains a valid media UID
-          n_images += 1;
-          // Convert blob to base64
-          const base64 = await blobToBase64(mediaBlob);
-          images_in_prompt.push(base64);
-        } else {
-          texts_in_prompt.push(line);
-        }
-      }
-      query.prompt = texts_in_prompt.join("\n");
-      query.images = images_in_prompt;
+    if (images && images.length > 0) {
+      query.images = images.map(
+        (img: string) => `data:image/png;base64,${img}`,
+      );
     }
-  }
-
-  // Remove images from query if it exists
-  if (query.images) {
-    delete query.images;
+    url += "generate";
   }
 
   console.log(query);
@@ -1570,6 +1561,7 @@ export async function call_bedrock(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (
     !AWS_ACCESS_KEY_ID ||
@@ -1626,8 +1618,9 @@ export async function call_bedrock(
         modelName.startsWith("mistral") ||
         modelName.startsWith("meta")
       ) {
-        const chat_history: ChatHistory = construct_openai_chat_history(
+        const chat_history: ChatHistory = construct_chat_history(
           prompt,
+          images,
           params?.chat_history,
           params?.system_msg,
         );
@@ -1662,6 +1655,7 @@ export async function call_together(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!TOGETHER_API_KEY)
     throw new Error(
@@ -1725,8 +1719,9 @@ export async function call_together(
   const together_call: any = together.createChatCompletion.bind(together);
 
   // Carry over chat history, if present:
-  query.messages = construct_openai_chat_history(
+  query.messages = construct_chat_history(
     prompt,
+    images,
     chat_history,
     system_msg,
   );
@@ -1756,6 +1751,7 @@ async function call_custom_provider(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict[]]> {
   if (!APP_IS_RUNNING_LOCALLY())
     throw new Error(
@@ -1841,8 +1837,7 @@ export async function call_llm(
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
     );
-  if (images) params = { ...params, images };
-  return call_api(prompt, llm, n, temperature, params, should_cancel);
+  return call_api(prompt, llm, n, temperature, params, should_cancel, images);
 }
 
 /**

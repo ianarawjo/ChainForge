@@ -986,6 +986,9 @@ export async function queryLLM(
       // If the object has a 'text' property, use that as the key
       if ("text" in vobj && vobj.text !== undefined) {
         return StringLookup.get(vobj.text) ?? vobj.text.toString();
+      } else if ("image" in vobj && vobj.image !== undefined) {
+        // If the object has an 'image' property, use that as the key
+        return vobj.image;
       } else if ("d" in vobj) {
         // Otherwise, use the 'd' property as the key
         return vobj.d;

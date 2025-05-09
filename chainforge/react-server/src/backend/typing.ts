@@ -20,11 +20,13 @@ export type StringOrHash = string | number;
 export type ResponseUID = string;
 
 /** What kind of data can be each individual response from the model.
- * string is basic text; but could be images or more data types in the future.
+ * string is basic text and number is a hash table index in the `StringLookup` table.
+ * The object type is used for images and documents ("media") that are accessed via the `MediaLookup` table.
+ * The `d` field is the unique ID in the `MediaLookup` table, NOT the raw data.
  */
 export type LLMResponseData =
   | {
-      t: "img" | "doc"; // type
+      t: "img" | "doc"; // type of Media
       d: string; // the unique ID in the MediaLookup table, NOT the raw data
     }
   | StringOrHash;
@@ -32,7 +34,7 @@ export type LLMResponseData =
 export function isImageResponseData(
   r: LLMResponseData,
 ): r is { t: "img"; d: string } {
-  return typeof r === "object" && r.t === "img";
+  return typeof r === "object" && r.t === "img" && typeof r.d === "string";
 }
 
 // Function types
@@ -102,6 +104,7 @@ export type MultiModalContentGemini =
 export interface ChatMessage {
   role: string;
   content: string;
+  images?: string[]; // MediaLookup UIDs
   name?: string;
   function_call?: OpenAIFunctionCall;
 }
@@ -170,6 +173,7 @@ export interface LLMAPICall {
     temperature: number,
     params?: Dict,
     should_cancel?: () => boolean,
+    images?: string[],
   ): Promise<[Dict, Dict]>;
 }
 
@@ -293,7 +297,7 @@ export type EvaluatedResponsesResults = {
  * Used to populate prompt templates and carry variables/metavariables along the chain. */
 export interface TemplateVarInfo {
   text?: StringOrHash;
-  image?: StringOrHash; // base-64 encoding
+  image?: string; // MediaLookup UID or a base64 image (NOTE: It may currently only use the UID.)
   fill_history?: Dict<LLMResponseData>;
   metavars?: Dict<LLMResponseData>;
   associate_id?: StringOrHash;
@@ -326,5 +330,5 @@ export type TabularDataColType = {
 export type PythonInterpreter = "flask" | "pyodide";
 
 export interface FileWithContent extends FileWithPath {
-  content?: string; 
+  content?: string;
 }

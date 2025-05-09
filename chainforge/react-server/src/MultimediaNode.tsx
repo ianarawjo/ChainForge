@@ -17,6 +17,10 @@ import {
   Modal,
   Button,
   Code,
+  Textarea,
+  ScrollArea,
+  Flex,
+  Stack,
 } from "@mantine/core";
 import Papa from "papaparse";
 import { v4 as uuidv4 } from "uuid";
@@ -29,6 +33,7 @@ import {
   IconPencil,
   IconTrash,
 } from "@tabler/icons-react";
+import { Position } from "reactflow";
 import TemplateHooks from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
@@ -41,8 +46,8 @@ import {
   TabularDataColType,
   LLMResponse,
   FileWithContent,
+  Func,
 } from "./backend/typing";
-import { Position } from "reactflow";
 import { parseTableData } from "./backend/tableUtils";
 import UploadFileModal, { UploadFileModalRef } from "./UploadFileModal";
 import ImagePreviewModal, { ImagePreviewModalRef } from "./ImagePreviewModal";
@@ -51,25 +56,8 @@ import LLMResponseInspectorModal, {
   LLMResponseInspectorModalRef,
 } from "./LLMResponseInspectorModal";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
-
 import { MediaLookup } from "./backend/cache";
-import { blobOrFileToDataURL, dataURLToBlob } from "./backend/utils";
-
-const defaultRows: TabularDataRowType = {
-  question: "Prompt Question",
-  answer: "Expected Answer",
-};
-
-const defaultColumns: TabularDataColType[] = [
-  {
-    key: "question",
-    header: "Question",
-  },
-  {
-    key: "answer",
-    header: "Answer",
-  },
-];
+import { dataURLToBlob, DebounceRef, genDebounceFunc } from "./backend/utils";
 
 // This function serves to convert the `tableData` and `tableColumns` into objects that
 // the `LLMResponseInspectorModal` and `LLMResponseInspectorDrawer` support.
@@ -142,14 +130,26 @@ export const IMAGE_COLUMN: TabularDataColType = {
   key: "image",
 };
 
+const defaultRows: TabularDataRowType = {
+  caption: "Caption",
+};
+
+const defaultColumns: TabularDataColType[] = [
+  IMAGE_COLUMN,
+  {
+    key: "caption",
+    header: "Caption",
+  },
+];
+
 const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   // ----- State variables
   const [tableData, setTableData] = useState<TabularDataRowType[]>(
-    data.rows || [],
+    data.rows ?? [],
   );
 
   const [tableColumns, setTableColumns] = useState<TabularDataColType[]>(
-    data.columns || [],
+    data.columns ?? [],
   );
 
   const [metadataRows, setMetadataRows] = useState<Dict<metadataRowType>>({}); // Keys are the __uid of the tableData rows
@@ -186,12 +186,25 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] =
     useDisclosure(false);
 
-  // For dispalying the LLMResponseInspectorModal
+  // For displaying the LLMResponseInspectorModal
   const [jsonResponses, setJSONResponses] = useState<LLMResponse[] | null>(
     null,
   );
   const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
   const [showDrawer, setShowDrawer] = useState(false);
+
+  // For when metadata textfields exceed the max height,
+  // when we add a new field, this gives us a way to scroll to the bottom. Better UX.
+  const viewport = useRef<HTMLDivElement>(null);
+  const scrollToBottom = () =>
+    viewport?.current?.scrollTo({
+      top: viewport.current.scrollHeight,
+      behavior: "smooth",
+    });
+
+  // Debounce helpers
+  const debounceTimeoutRef: DebounceRef = useRef(null);
+  const debounce: Func<Func> = genDebounceFunc(debounceTimeoutRef);
 
   // Add a handler for the "Remove ALL" button
   const handleRemoveAll = useCallback(() => {
@@ -215,7 +228,6 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   // called on the change of a textarea field
   const handleSaveCell = useCallback(
     (rowIdx: number, columnKey: string, value: string) => {
-      pingOutputNodes(id);
       if (rowIdx === -1) {
         // Saving the column header
         setTableColumns(
@@ -226,6 +238,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         );
         return;
       }
+
       // Update the specific row in the table data
       const updatedTableData = [...tableData];
       updatedTableData[rowIdx] = {
@@ -233,6 +246,8 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         [columnKey]: value,
       };
       setTableData(updatedTableData);
+
+      pingOutputNodes(id);
     },
     [tableData, tableColumns, pingOutputNodes],
   );
@@ -244,7 +259,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       const uid = `col-${Date.now()}`;
       const new_col = {
         key: uid,
-        header: "New Column", // default name
+        header: `New Field ${tableColumns.length + 1}`, // default name
       };
 
       // Insert the new column into the columns array
@@ -265,6 +280,10 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       // Update React state
       setTableColumns([...tableColumns]);
       setTableData([...tableData]);
+
+      setTimeout(() => {
+        scrollToBottom();
+      }, 10);
     },
     [tableColumns, tableData],
   );
@@ -339,17 +358,15 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
     fetchImageUrl();
   }, [tableData, currentRowIndex]);
 
-  // Scrolls to bottom of the table when scrollToBottom toggle is true
-  useEffect(() => {
-    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
-  }, []);
-
   // Updates the internal data store whenever the table data changes
   useEffect(() => {
-    setDataPropsForNode(id, {
-      rows: tableData,
-      columns: tableColumns,
-    });
+    // Debounce the update to avoid a very costly rerender for every minor change
+    debounce(() => {
+      setDataPropsForNode(id, {
+        rows: tableData,
+        columns: tableColumns,
+      });
+    }, 300)();
   }, [tableData, tableColumns, currentRowIndex, id, setDataPropsForNode]);
 
   // Used when user imports a .tsv file through the upload button
@@ -528,7 +545,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         const observer = new window.ResizeObserver(() => {
           if (!ref || !ref.current) return;
           // Depending if there is the < > Chevron buttons or not, the offset is not the same
-          const vertical_y_offset_hooks = tableData.length > 1 ? 405 : 345;
+          const vertical_y_offset_hooks = 292;
           const new_hooks_y =
             ref.current.clientHeight + vertical_y_offset_hooks;
           if (past_hooks_y !== new_hooks_y) {
@@ -566,7 +583,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       newColumns: TabularDataColType[] = defaultColumns,
     ) => {
       //  ------- HANDLING NEW COLUMNS
-      const imageColumnKey = "image";
+      const imageColumnKey = IMAGE_COLUMN.key;
       const imageColumnExists = tableColumns.some(
         (col) => col.key === imageColumnKey,
       );
@@ -574,13 +591,16 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       const columns_to_add = [];
 
       // Add image column if it doesn't exist
-      if (!imageColumnExists) {
+      if (
+        !imageColumnExists &&
+        !newColumns.some((col) => col.key === imageColumnKey)
+      ) {
         columns_to_add.push(IMAGE_COLUMN);
       }
 
       // Only add new columns if there are no existing columns
       if (tableColumns.length === 0) {
-        setTableColumns([...newColumns, ...columns_to_add]);
+        setTableColumns([...columns_to_add, ...newColumns]);
       }
       //  -------
 
@@ -650,10 +670,6 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
     return "Info about Imported File Format";
   }, []);
 
-  // TODO : ADD TO THE INFO MESSAGE BELOW
-  //  THE GENERAL USAGE OF THE NODE AND
-  //      DONT FORGET TO SAY THAT THE CORRESPONDING {image} TEMPLATE VARS IN THE PromptNode
-  //      must be surrounded by line breaks
   const node_info_modal = useMemo(() => {
     return (
       <Box m="lg" mt="xl">
@@ -696,8 +712,6 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
     );
   }, [default_header]);
 
-  // -------------------- Everything about the Inspect Items thing
-
   const showResponseInspector = useCallback(() => {
     const items_in_json_responses = __construct_items_in_json_responses(
       tableData,
@@ -716,13 +730,18 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   }, [inspectModal, jsonResponses]);
 
   return (
-    <BaseNode classNames="tabular-data-node" nodeId={id}>
+    <BaseNode classNames="multimedia-node" nodeId={id}>
       <NodeLabel
         title={data.title || "Multimedia Node"}
         nodeId={id}
         icon={"📺"}
         customButtons={[
-          <Tooltip label="Info" key="eval-info">
+          <Tooltip
+            label="More info on .tsv dataset loading"
+            key="eval-info"
+            withArrow
+            withinPortal
+          >
             <button
               onClick={openInfoModal}
               className="custom-button"
@@ -735,13 +754,18 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
               />
             </button>
           </Tooltip>,
-          <Tooltip key={0} label="Click on the info button to learn more.">
+          <Tooltip
+            key={0}
+            label="Import .tsv datasets. Click on the info button to learn more."
+            withArrow
+            withinPortal
+          >
             <button
               className="custom-button"
               key="import-data"
               onClick={openImportFileModal}
             >
-              Import data
+              Import .tsv data
             </button>
           </Tooltip>,
         ]}
@@ -774,8 +798,8 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
             ? renameColumnInitialVal.header
             : ""
         }
-        title="Rename column"
-        label="New column name"
+        title="Rename field"
+        label="New field name"
         onSubmit={handleRenameColumn}
       />
 
@@ -792,32 +816,52 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
 
       {/* if data present, display a clickable Image  */}
       {tableData.length > 0 && tableData[currentRowIndex].image && (
-        <div
-          style={{
-            border: "1px solid #e0e0e0",
-            padding: "8px",
-            backgroundColor: "#fff",
-            width: "250px",
-            margin: "0 auto",
-            marginTop: "10px",
-          }}
-        >
-          <div onClick={handleImageClick} style={{ cursor: "pointer" }}>
-            <Tooltip label="Click me for more details">
-              <Image
-                src={imageUrl}
-                height={200}
-                width={200}
-                fit="contain"
-                withPlaceholder
-                style={{
-                  backgroundColor: "#f8f9fa",
-                  margin: "0 auto",
-                }}
-              />
-            </Tooltip>
-          </div>
-        </div>
+        <Flex align="center" justify="space-between" mt="sm" gap={3}>
+          <ActionIcon
+            onClick={handlePrevRow}
+            disabled={tableData.length <= 1}
+            variant="transparent"
+            size="md"
+            className="carousel-nav-button"
+          >
+            <IconChevronLeft size={32} />
+          </ActionIcon>
+          <Stack w="100%" spacing={3}>
+            <div className="multimedia-image-preview-container">
+              <div onClick={handleImageClick} style={{ cursor: "pointer" }}>
+                <Tooltip
+                  label="Click me for more details"
+                  withArrow
+                  withinPortal
+                >
+                  <Image
+                    src={imageUrl}
+                    height={200}
+                    width="100%"
+                    fit="contain"
+                    withPlaceholder
+                  />
+                </Tooltip>
+              </div>
+            </div>
+            <Text
+              size="sm"
+              weight={500}
+              style={{ minWidth: "60px", textAlign: "center" }}
+            >
+              {`${currentRowIndex + 1}/${tableData.length}`}
+            </Text>
+          </Stack>
+          <ActionIcon
+            onClick={handleNextRow}
+            disabled={tableData.length <= 1}
+            variant="transparent"
+            size="md"
+            className="carousel-nav-button"
+          >
+            <IconChevronRight size={32} />
+          </ActionIcon>
+        </Flex>
       )}
 
       {/* 
@@ -825,10 +869,12 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
          and a button to rename the column
          and if we have more than one column, a button to remove the column
       */}
-      <div className="carousel-row-display" style={{ marginTop: "20px" }}>
+      <div ref={setRef} className="carousel-row-display">
         {tableData.length > 0 && (
-          <div
-            ref={setRef}
+          <ScrollArea.Autosize
+            mah={212}
+            type="hover"
+            viewportRef={viewport}
             className="multimedia-textfields-container nowheel nodrag"
           >
             {tableColumns
@@ -869,24 +915,30 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
                       </ActionIcon>
                     )}
                   </div>
-                  <textarea
-                    value={tableData[currentRowIndex]?.[col.key] || ""}
-                    onChange={(e) =>
-                      handleSaveCell(currentRowIndex, col.key, e.target.value)
-                    }
-                    className="text-field-fixed-in-multimedia-node"
-                  />
+                  <div className="input-field">
+                    <Textarea
+                      value={tableData[currentRowIndex]?.[col.key] || ""}
+                      onChange={(e) => {
+                        handleSaveCell(
+                          currentRowIndex,
+                          col.key,
+                          e.target.value,
+                        );
+                      }}
+                      className="text-field-fixed"
+                      style={{
+                        width: "100%",
+                      }}
+                    />
+                  </div>
                 </div>
               ))}
-          </div>
+          </ScrollArea.Autosize>
         )}
 
         {/* If no data present, display a message */}
         {tableData.length === 0 && (
-          <div
-            ref={setRef}
-            className="multimedia-textfields-container nowheel nodrag"
-          >
+          <div className="multimedia-textfields-container nowheel nodrag">
             <Box className="empty-state-box-multimedia-node">
               <Text color="dimmed">No Media Uploaded</Text>
             </Box>
@@ -901,8 +953,6 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         */}
         <div
           style={{
-            display: "flex",
-            justifyContent: "center",
             gap: "8px",
             marginTop: "10px",
           }}
@@ -917,7 +967,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
               }
               style={{ color: "#666" }}
             >
-              Add Column
+              Add Field
             </Button>
           )}
           <Button
@@ -984,45 +1034,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         </div>
       </div>
 
-      {/* 
-        if we have more than one row, display Carousel Navigation left/right arrows
-      */}
       <div className="tabular-data-footer">
-        {tableData.length > 1 && (
-          <Group
-            position="center"
-            mt="sm"
-            spacing={0}
-            style={{ display: "flex", alignItems: "center", gap: "4px" }}
-          >
-            <ActionIcon
-              onClick={handlePrevRow}
-              disabled={tableData.length <= 1}
-              variant="transparent"
-              size="xl"
-              className="carousel-nav-button"
-            >
-              <IconChevronLeft size={32} />
-            </ActionIcon>
-            <Text
-              size="sm"
-              weight={500}
-              style={{ minWidth: "60px", textAlign: "center" }}
-            >
-              {`${currentRowIndex + 1}/${tableData.length}`}
-            </Text>
-            <ActionIcon
-              onClick={handleNextRow}
-              disabled={tableData.length <= 1}
-              variant="transparent"
-              size="xl"
-              className="carousel-nav-button"
-            >
-              <IconChevronRight size={32} />
-            </ActionIcon>
-          </Group>
-        )}
-
         <TemplateHooks
           vars={tableColumns.map((col) => col.header)}
           nodeId={id}

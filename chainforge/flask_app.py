@@ -1023,6 +1023,15 @@ def get_media(uid):
     """Retrieve a file from the media directory using its UID."""
     return send_from_directory(MEDIA_DIR, uid, as_attachment=False)
 
+@app.route('/mediaExists/<uid>')
+def has_media(uid):
+    """Check if a file exists in the media directory using its UID."""
+    file_path = os.path.join(MEDIA_DIR, uid)
+    if os.path.isfile(file_path):
+        return jsonify({"exists": True})
+    else:
+        return jsonify({"exists": False}), 404
+
 @app.route('/mediaToText/<uid>', methods=['GET'])
 def media_to_text(uid):
     """
@@ -1662,7 +1671,7 @@ def retrieve():
     return jsonify(flat_results), 200
 
 
-@app.route('/api/proxy-image', methods=['GET'])
+@app.route('/api/proxyImage', methods=['GET'])
 def proxy_image():
     """Proxy for fetching images to avoid CORS restrictions"""
     url = request.args.get('url')
@@ -1672,7 +1681,7 @@ def proxy_image():
     try:
         # Use Python requests to fetch the image
         response = py_requests.get(url, stream=True)
-        print('tototo  ', response)
+
         if not response.ok:
             return jsonify({"error": f"Failed to fetch image: {response.status_code} {response.reason}"}), response.status_code
         
@@ -1680,7 +1689,7 @@ def proxy_image():
         content_type = response.headers.get('Content-Type', '')
         if not content_type.startswith('image/'):
             return jsonify({"error": "The URL does not point to an image"}), 400
-        
+    
         # Create a Flask response with the image content
         flask_response = app.response_class(
             response=response.raw,
@@ -1723,7 +1732,7 @@ def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "setti
             exit(1)
         FLOWS_DIR_PWD = password
 
-    app.run(host=host, port=port, debug=True, )
+    app.run(host=host, port=port, debug=False)
 
 if __name__ == '__main__':
     print("Run app.py instead.")

@@ -332,19 +332,97 @@ export class StringLookup {
 export class MediaLookup {
   // eslint-disable-next-line no-use-before-define
   private static instance: MediaLookup;
+
   /**
    * All media UIDs that are used in the currently loaded flow.
    * This is used to keep track of the currently loaded media,
    * and export all the relevant media for the flow when the user clicks "Export".
    */
   private mediaUIDs = new Set<string>();
+
   // Use a cache if running locally, otherwise use the backend
   private cache: Dict<Blob> = {};
+
+  // Temporary in-memory cache with size limit
+  private tempCache: {
+    items: Map<string, Blob>;
+    size: number;
+    accessOrder: string[];
+  } = {
+    items: new Map(),
+    size: 0,
+    accessOrder: [],
+  };
+
+  // Maximum size of the temporary cache in bytes (50MB)
+  private readonly MAX_TEMP_CACHE_SIZE = 50 * 1024 * 1024;
 
   private constructor() {
     // Initialize the singleton instance
     this.mediaUIDs = new Set<string>();
     this.cache = {};
+    this.tempCache = {
+      items: new Map(),
+      size: 0,
+      accessOrder: [],
+    };
+  }
+
+  /**
+   * Adds a blob to the temporary cache with size management.
+   * Removes least recently used items if needed to stay under size limit.
+   * @param uid The UID of the media
+   * @param blob The blob to cache
+   */
+  private addToTempCache(uid: string, blob: Blob): void {
+    // Skip if blob is too large on its own
+    if (blob.size > this.MAX_TEMP_CACHE_SIZE) {
+      return;
+    }
+
+    // Check if already in cache
+    if (this.tempCache.items.has(uid)) {
+      // Update access order (move to end)
+      this.tempCache.accessOrder = this.tempCache.accessOrder.filter(
+        (id) => id !== uid,
+      );
+      this.tempCache.accessOrder.push(uid);
+      return;
+    }
+
+    // Make room if needed
+    while (
+      this.tempCache.size + blob.size > this.MAX_TEMP_CACHE_SIZE &&
+      this.tempCache.accessOrder.length > 0
+    ) {
+      const oldestUid = this.tempCache.accessOrder.shift()!;
+      if (oldestUid === undefined) break; // Safety check. This should not happen, but just in case.
+      const oldestBlob = this.tempCache.items.get(oldestUid)!;
+      this.tempCache.size -= oldestBlob.size;
+      this.tempCache.items.delete(oldestUid);
+    }
+
+    // Add the new blob
+    this.tempCache.items.set(uid, blob);
+    this.tempCache.size += blob.size;
+    this.tempCache.accessOrder.push(uid);
+  }
+
+  /**
+   * Gets a blob from the temporary cache and updates its access order
+   * @param uid The UID of the media
+   * @returns The cached blob or undefined if not found
+   */
+  private getFromTempCache(uid: string): Blob | undefined {
+    const blob = this.tempCache.items.get(uid);
+    if (blob) {
+      // Update access order (move to end)
+      this.tempCache.accessOrder = this.tempCache.accessOrder.filter(
+        (id) => id !== uid,
+      );
+      this.tempCache.accessOrder.push(uid);
+    }
+    return blob;
   }
 
   /**
@@ -440,6 +518,25 @@ export class MediaLookup {
   }
 
   /**
+   * Checks if a media UID exists in the lookup table.
+   * @param uid The UID to check
+   * @returns True if the UID exists, false otherwise
+   */
+  public static async has(uid: string): Promise<boolean> {
+    const mediaLookup = MediaLookup.getInstance();
+    const isInLookup = mediaLookup.mediaUIDs.has(uid);
+    if (isInLookup) return true;
+    else {
+      console.error(
+        `File with UID ${uid} not found in media UIDs. Still proceeding to try to fetch....`,
+      );
+    }
+    const res = await fetch(`${FLASK_BASE_URL}mediaExists/${uid}`);
+    if (res.ok) mediaLookup.add(uid); // Add to the mediaUIDs set if it exists
+    return res.ok;
+  }
+
+  /**
    * Fetches the raw Blob from the backend using a UID.
    * @param uid The UID of the file
    * @returns Blob (image, PDF, etc.)
@@ -454,6 +551,12 @@ export class MediaLookup {
       );
     }
 
+    // Check if the file is in the temp cache first
+    const tempCachedBlob = mediaLookup.getFromTempCache(uid);
+    if (tempCachedBlob) {
+      return tempCachedBlob;
+    }
+
     if (IS_RUNNING_LOCALLY) {
       // Fetch the file from the backend
       const res = await fetch(`${FLASK_BASE_URL}media/${uid}`);
@@ -466,6 +569,9 @@ export class MediaLookup {
 
       // If the file was for some reason not listed in the media UIDs, add it now:
       if (!isInLookup) mediaLookup.add(uid);
+
+      // Add to the temp cache
+      mediaLookup.addToTempCache(uid, blob);
 
       return blob;
     } else {
@@ -544,6 +650,12 @@ export class MediaLookup {
     const mediaLookup = MediaLookup.getInstance();
     mediaLookup.mediaUIDs.clear();
     mediaLookup.cache = {};
+
+    // Clear the temp cache
+    mediaLookup.tempCache.items.clear();
+    mediaLookup.tempCache.size = 0;
+    mediaLookup.tempCache.accessOrder = [];
+
     mediaLookup.saveStateToStorageCache();
   }
 
@@ -555,6 +667,16 @@ export class MediaLookup {
     const mediaLookup = MediaLookup.getInstance();
     mediaLookup.mediaUIDs.delete(uid);
     delete mediaLookup.cache[uid];
+
+    // Remove from temp cache if present
+    if (mediaLookup.tempCache.items.has(uid)) {
+      const blob = mediaLookup.tempCache.items.get(uid)!;
+      mediaLookup.tempCache.size -= blob.size;
+      mediaLookup.tempCache.items.delete(uid);
+      mediaLookup.tempCache.accessOrder =
+        mediaLookup.tempCache.accessOrder.filter((id) => id !== uid);
+    }
+
     mediaLookup.saveStateToStorageCache();
   }
 

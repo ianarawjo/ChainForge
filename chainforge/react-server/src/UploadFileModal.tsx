@@ -24,10 +24,9 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
-import { Dropzone, FileWithPath, IMAGE_MIME_TYPE } from "@mantine/dropzone";
+import { Dropzone, FileWithPath } from "@mantine/dropzone";
 import {
   IconUpload,
-  IconBrandPython,
   IconX,
   IconImageInPicture,
   IconArrowRight,
@@ -189,13 +188,18 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
       [showAlert],
     );
 
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const handleFetchImage = useCallback(async () => {
       const url = form.values.value.trim();
 
       setIsFetching(true);
       try {
-        const proxyUrl = `${FLASK_BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`;
+        const proxyUrl = `${FLASK_BASE_URL}/api/proxyImage?url=${encodeURIComponent(url)}`;
         const response = await fetch(proxyUrl);
+
+        if (!response.ok) {
+          throw new Error(`Error fetching image: ${response.statusText}`);
+        }
 
         const blob = await response.blob();
         const b64_string = await blobOrFileToDataURL(blob);
@@ -206,7 +210,7 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
 
         setFileLoaded([fileWithContent]);
       } catch (error) {
-        handleError(error as Error);
+        setFetchError((error as Error).message);
       } finally {
         setIsFetching(false);
       }
@@ -252,9 +256,11 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
                   labelPosition="center"
                 />
                 <TextInput
-                  label="Click on the fetch button to verify integrity of the image URL"
+                  label="Click on the fetch button to grab the image from the URL"
                   autoFocus={false}
                   placeholder="https://example.com/image.png"
+                  mt="sm"
+                  mb="sm"
                   {...form.getInputProps("value")}
                 />
                 <Button
@@ -262,9 +268,15 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
                   loading={isFetching}
                   disabled={!form.values.value.trim()}
                   rightIcon={<IconArrowRight size={14} />}
+                  mb="md"
                 >
-                  Fetch
+                  Fetch Image from URL
                 </Button>
+                {fetchError && (
+                  <Text color="red" size="sm" mb="md">
+                    {fetchError}
+                  </Text>
+                )}
                 <Divider
                   my="l"
                   label="Upload a local image file"
