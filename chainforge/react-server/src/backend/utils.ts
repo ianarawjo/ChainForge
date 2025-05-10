@@ -31,6 +31,7 @@ import {
   MultiModalContentAnthropic,
   MultiModalContentOpenAI,
   MultiModalContentGemini,
+  PromptVarType,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
@@ -2158,6 +2159,74 @@ export const extractSettingsVars = (vars?: PromptVarsDict) => {
   } else return {};
 };
 
+export const extractMediaVars = (vars?: PromptVarsDict) => {
+  if (vars === undefined) return {};
+
+  const media_vars: Dict<LLMResponseData[]> = {};
+  Object.entries(vars).forEach(([k, v]) => {
+    if (
+      Array.isArray(v) &&
+      v.length > 0 &&
+      v.some((i) => typeof i === "object" && "t" in i)
+    ) {
+      media_vars[k] = (v as PromptVarType[]).filter(
+        (i) => typeof i === "object" && "t" in i,
+      ) as LLMResponseData[];
+    } else if (typeof v === "object" && v !== null && "t" in v) {
+      media_vars[k] = [v];
+    }
+  });
+
+  return media_vars;
+};
+
+export const areEqualLLMResponseData = (
+  A: TemplateVarInfo | LLMResponseData | undefined,
+  B: TemplateVarInfo | LLMResponseData | undefined,
+): boolean => {
+  if (A === undefined || B === undefined) {
+    if (A === undefined && B === undefined) return true;
+    return false;
+  }
+  if (typeof A !== typeof B) return false;
+  if (typeof A === "string" || typeof A === "number") return A === B;
+  else if (typeof A === "object" && typeof B === "object") {
+    const keys_A = Object.keys(A);
+    const keys_B = Object.keys(B);
+    if (keys_A.length !== keys_B.length) return false;
+    for (const k of keys_A) {
+      // @ts-expect-error TS doesn't know that k is a key of A/B
+      if (!(k in B) || A[k] !== B[k]) return false;
+    }
+    return true;
+  }
+  return false;
+};
+
+const areEqualPromptVarsDictValues = (
+  A: LLMResponseData | PromptVarType[] | undefined,
+  B: LLMResponseData | PromptVarType[] | undefined,
+): boolean => {
+  if (A === undefined || B === undefined) {
+    if (A === undefined && B === undefined) return true;
+    return false;
+  }
+  if (
+    (Array.isArray(A) && !Array.isArray(B)) ||
+    (!Array.isArray(A) && Array.isArray(B))
+  )
+    return false;
+  else if (Array.isArray(A) && Array.isArray(B)) {
+    if (A.length !== B.length) return false;
+    for (let i = 0; i < A.length; i++) {
+      if (!areEqualLLMResponseData(A[i], B[i])) return false;
+    }
+    return true;
+  } else {
+    return areEqualLLMResponseData(A as LLMResponseData, B as LLMResponseData);
+  }
+};
+
 /**
  * Given two info vars dicts, detects whether any + all vars (keys) match values.
  */
@@ -2175,7 +2244,8 @@ export const areEqualVarsDicts = (
   else if (keys_A.length === 0) return true;
   const all_vars = new Set(keys_A.concat(keys_B));
   for (const v of all_vars) {
-    if (!(v in B) || !(v in A) || B[v] !== A[v]) return false;
+    if (!(v in B) || !(v in A) || !areEqualPromptVarsDictValues(A[v], B[v]))
+      return false;
   }
   return true;
 };

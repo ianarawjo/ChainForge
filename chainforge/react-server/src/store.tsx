@@ -32,6 +32,7 @@ import { TogetherChatSettings } from "./ModelSettingSchemas";
 import { NativeLLM } from "./backend/models";
 import { StringLookup } from "./backend/cache";
 import { saveGlobalConfig } from "./backend/backend";
+import { remove } from "jszip";
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // Initial project settings
@@ -486,9 +487,13 @@ export interface StoreHandles {
   ) => void;
 
   // Rasterize data output from nodes ("pull" the data out)
+  // NOTE: If targetNodeId and targetHandleKey are provided, the function will
+  // delete the edge if the source node does not exist.
   output: (
     sourceNodeId: string,
     sourceHandleKey: string,
+    targetNodeId?: string,
+    targetHandleKey?: string,
   ) => (string | TemplateVarInfo)[] | null;
   pullInputData: (
     _targetHandles: string[],
@@ -737,11 +742,26 @@ const useStore = create<StoreHandles>((set, get) => ({
       }
     });
   },
-  output: (sourceNodeId, sourceHandleKey) => {
+  output: (sourceNodeId, sourceHandleKey, targetNodeId, targetHandleKey) => {
     // Get the source node
     const src_node = get().getNode(sourceNodeId);
     if (!src_node) {
       console.error("Could not find node with id", sourceNodeId);
+      if (targetNodeId !== undefined && targetHandleKey !== undefined) {
+        // If the source node doesn't exist, delete the edge if it exists
+        const edges = get().edges.filter(
+          (e) =>
+            e.source === sourceNodeId &&
+            e.target === targetNodeId &&
+            e.targetHandle === targetHandleKey,
+        );
+        if (edges.length > 0) {
+          console.warn("Removing invalid edge...");
+          edges.forEach((e) => {
+            get().removeEdge(e.id);
+          });
+        }
+      }
       return null;
     }
 
@@ -909,7 +929,7 @@ const useStore = create<StoreHandles>((set, get) => ({
             // Get the immediate output:
             const out =
               e.sourceHandle != null
-                ? output(e.source, e.sourceHandle)
+                ? output(e.source, e.sourceHandle, e.target, e.targetHandle)
                 : undefined;
             if (!out || !Array.isArray(out) || out.length === 0) return;
 

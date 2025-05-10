@@ -161,15 +161,7 @@ const displayPromptInfos = (
             <hr />
           </Text>
         )}
-        {info.image ? (
-          <Text size="xs" c="blue">
-            [Image UID: {info.image}]
-          </Text>
-        ) : (
-          <Text size="xs" c="black">
-            {info.prompt}
-          </Text>
-        )}
+        {info.image ? "Image UID: " + info.image.toString() : info.prompt}
       </div>
       {info.settings &&
         Object.entries(info.settings).map(([key, val]) => {

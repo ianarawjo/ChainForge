@@ -22,6 +22,7 @@ import {
   repairCachedResponses,
   compressBase64Image,
   blobToBase64,
+  extractMediaVars,
 } from "./utils";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import { UserForcedPrematureExit } from "./errors";
@@ -238,6 +239,7 @@ export class PromptPipeline {
       // These must be extracted and, below, passed as 'llm_params'. Note that the name of the param
       // *has to be correct* and match the param name, for this to work.
       const settings_params = extractSettingsVars(info);
+      const media_params = extractMediaVars(info);
 
       // Loop over any present chat histories. (If none, will have a single pass with 'undefined' as chat_history value.)
       for (const chat_history of _chat_histories) {
@@ -252,7 +254,7 @@ export class PromptPipeline {
 
         if (!prompt.is_concrete())
           throw new Error(
-            `Cannot send a prompt '${prompt}' to LLM: Prompt is a template.`,
+            `Cannot send a prompt '${prompt}' to LLM: Prompt is a template. Either fill all the template variables {} with inputs, or escape the braces in the prompt if you want to send it as-is.\n\nFor more info on templating in ChainForge, see: https://chainforge.ai/docs/prompt_templates/`,
           );
 
         // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)
@@ -266,7 +268,7 @@ export class PromptPipeline {
         // Check if there's a cached response with the same prompt + (if present) chat history and settings vars:
         let cached_resp: RawLLMResponseObject | undefined;
         let cached_resp_idx = -1;
-        // Find an indivdual response obj that matches the chat history + (if present) settings vars:
+        // Find an individual response obj that matches the chat history + (if present) settings vars:
         for (let i = 0; i < cached_resps.length; i++) {
           if (
             isEqualChatHistory(
@@ -276,6 +278,10 @@ export class PromptPipeline {
             areEqualVarsDicts(
               settings_params,
               extractSettingsVars(cached_resps[i].vars),
+            ) &&
+            areEqualVarsDicts(
+              media_params,
+              extractMediaVars(cached_resps[i].vars),
             )
           ) {
             cached_resp = cached_resps[i];
@@ -303,7 +309,6 @@ export class PromptPipeline {
           };
           if (chat_history !== undefined)
             resp.chat_history = chat_history.messages;
-
           yield resp;
           continue;
         }

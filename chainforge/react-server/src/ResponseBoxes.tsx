@@ -1,13 +1,18 @@
-import React, { Suspense, useMemo, lazy } from "react";
+import React, { Suspense, useMemo, lazy, useEffect } from "react";
 import { Collapse, Flex, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { llmResponseDataToString, truncStr } from "./backend/utils";
+import {
+  blobToBase64,
+  llmResponseDataToString,
+  truncStr,
+} from "./backend/utils";
 import {
   Dict,
   EvaluationScore,
   LLMResponse,
   LLMResponseData,
 } from "./backend/typing";
+import { MediaLookup } from "./backend/cache";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -305,4 +310,33 @@ export const genResponseTextsDisplay = (
       </div>
     );
   });
+};
+
+// Image response display
+interface MediaBoxProps {
+  mediaUID: string;
+}
+
+// Buffers the MediaLookup data to display,
+// since fetching the data is async.
+export const MediaBox: React.FC<MediaBoxProps> = ({ mediaUID }) => {
+  // Whenever the mediaUID changes, we need to re-fetch the image.
+  const [mediaStr, setMediaStr] = React.useState<string | null>(null);
+  useEffect(() => {
+    MediaLookup.get(mediaUID).then((blob) => {
+      if (blob) {
+        blobToBase64(blob).then(setMediaStr);
+      }
+    });
+  }, [mediaUID]);
+
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <img
+        className="lazyload"
+        data-src={mediaStr ? `data:image/png;base64,${mediaStr}` : ""}
+        style={{ maxWidth: "100%", width: "auto" }}
+      />
+    </Suspense>
+  );
 };

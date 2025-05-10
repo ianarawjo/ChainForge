@@ -55,6 +55,7 @@ import {
   genDebounceFunc,
 } from "./backend/utils";
 import {
+  MediaBox,
   ResponseBox,
   ResponseGroup,
   genResponseTextsDisplay,
@@ -68,7 +69,7 @@ import {
   TemplateVarInfo,
   isImageResponseData,
 } from "./backend/typing";
-import { StringLookup } from "./backend/cache";
+import { MediaLookup, StringLookup } from "./backend/cache";
 import { VisView } from "./VisNode";
 
 // Helper funcs
@@ -173,6 +174,7 @@ export const pulledInputsToTable = (data: string[] | TemplateVarInfo[]) => {
   // The data is the result of pullInputData. We need to transform it into a table.
   return data
     .map((info) => {
+      console.log(info);
       if (typeof info === "string") return { text: info };
       const llm = getLLMName({ llm: info.llm } as LLMResponse);
       const prompt = StringLookup.get(info.prompt) ?? undefined;
@@ -183,7 +185,7 @@ export const pulledInputsToTable = (data: string[] | TemplateVarInfo[]) => {
         info.uid ??
         ("batch_id" in info ? (info.batch_id as string) : undefined);
 
-      if (info.llm !== undefined) row.LLM = llm;
+      if (info.llm !== undefined) row.Method = llm;
       if (prompt !== undefined) row.Prompt = prompt;
       if (info.text !== undefined) {
         row[info.llm !== undefined ? "Response" : "text"] =
@@ -193,16 +195,22 @@ export const pulledInputsToTable = (data: string[] | TemplateVarInfo[]) => {
 
       // Add columns for vars
       Object.entries(vars).forEach(([varname, val]) => {
-        if (varname.length === 0) return; // skip empty varnames
+        if (varname === undefined || varname.length === 0) return; // skip empty varnames
         row[varname] = llmResponseDataToString(val);
       });
 
       // Add columns for metavars, if present
       Object.entries(metavars).forEach(([varname, val]) => {
-        if (varname.length === 0) return; // skip empty varnames
+        if (varname === undefined || varname.length === 0) return; // skip empty varnames
         if (!cleanMetavarsFilterFunc(varname)) return; // skip llm group metavars
         row[varname] = llmResponseDataToString(val);
       });
+
+      // Add column for images, if present
+      if (info.image !== undefined) {
+        row[info.llm !== undefined ? "Image Response" : "image"] =
+          llmResponseDataToString(info.image);
+      }
 
       return row;
     })
@@ -234,6 +242,7 @@ export const responsesToTable = (
 
         // Add columns for vars
         Object.entries(vars).forEach(([varname, val]) => {
+          // TODO: Decide how to export images in the future
           row[wrapVars ? `Var: ${varname}` : varname] =
             llmResponseDataToString(val);
         });
@@ -740,7 +749,10 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
 
         // Then group responses by prompts. Each prompt will become a separate row of the table (will be treated as unique)
         const responses_by_prompt = groupResponsesBy(responses, (r) =>
-          var_cols.map((v) => getVar(r, v)).join("|"),
+          var_cols
+            .map((v) => getVar(r, v))
+            .map(llmResponseDataToString)
+            .join("|"),
         )[0];
 
         const rows = Object.entries(responses_by_prompt).map(
@@ -806,8 +818,21 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               }
             });
 
+            // const serializeLLMResponseData = async (
+            //   val: LLMResponseData,
+            // ): Promise<string | undefined> => {
+            //   if (typeof val === "string" || typeof val === "number")
+            //     return StringLookup.get(val) ?? "(string lookup failed)";
+            //   else if (isImageResponseData(val)) {
+            //     return await MediaLookup.getUrl(val.d);
+            //   } else {
+            //     return await MediaLookup.getAsText(val.d);
+            //   }
+            // }
+
             const row: Dict<
               | string
+              | LLMResponseData
               | undefined
               | LLMResponse[]
               | LLMResponseData[]
@@ -815,11 +840,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             > = {};
             let vals_arr_start_idx = 0;
             var_cols_vals.forEach((v, i) => {
-              row[`c${i}`] = llmResponseDataToString(v);
+              row[`c${i}`] = v;
             });
             vals_arr_start_idx += var_cols_vals.length;
             metavar_cols_vals.forEach((v, i) => {
-              row[`c${i + vals_arr_start_idx}`] = llmResponseDataToString(v);
+              row[`c${i + vals_arr_start_idx}`] = v;
             });
             vals_arr_start_idx += metavar_cols_vals.length;
             sel_var_cols.forEach((v, i) => {
@@ -854,19 +879,24 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               colHasLLMResponses.add(cname);
             // Count the number of chars in the total text that will be displaced in this cell,
             // and add it to the count:
-            const numChars = hasLLMResps
-              ? val
-                  .map((r) =>
-                    (r as LLMResponse).responses
-                      .map(llmResponseDataToString)
-                      .join(""),
-                  )
-                  .join("").length
-              : typeof val === "string"
-                ? val.length
-                : (val.data as (string | JSX.Element)[][])
-                    .map((e) => e[1])
-                    .join("").length;
+            let numChars = 0;
+            if (hasLLMResps) {
+              numChars = val
+                .map((r) =>
+                  (r as LLMResponse).responses
+                    .map(llmResponseDataToString)
+                    .join(""),
+                )
+                .join("").length;
+            } else if (typeof val === "string" || typeof val === "number") {
+              numChars = StringLookup.get(val)?.length ?? 0;
+            } else if ("type" in val && val.type === "eval") {
+              numChars = (val.data as (string | JSX.Element)[][])
+                .map((e) => e[1])
+                .join("").length;
+            } else if (val !== undefined && "t" in val) {
+              numChars = llmResponseDataToString(val).length;
+            }
             colAvgNumChars[cname] += (numChars * 1.0) / numRows; // we apply the averaging here for speed
           });
         });
@@ -876,8 +906,16 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           accessorFn: (row) => {
             // Get the text for this row. Used when filtering or sorting.
             const val = row[`c${i}`];
-            if (typeof val === "string" || val === undefined) return val;
-            else if ("type" in val && val.type === "eval") {
+            if (
+              typeof val === "string" ||
+              typeof val === "number" ||
+              val === undefined
+            )
+              return StringLookup.get(val) ?? "";
+            else if (typeof val === "object" && "t" in val) {
+              // LLMResponseData -- image or doc
+              return llmResponseDataToString(val); // doc
+            } else if ("type" in val && val.type === "eval") {
               return (val.data as (string | JSX.Element)[][])
                 .map((e) => e[1])
                 .join("\n");
@@ -895,9 +933,18 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           ),
           Cell: ({ cell, row }: { cell: MRT_Cell; row: any }) => {
             const val = row.original[`c${i}`];
-            if (typeof val === "string")
-              return <span className="icl">{val}</span>;
-            else if ("type" in val && val.type === "eval") {
+            if (typeof val === "string" || typeof val === "number") {
+              return <span className="icl">{StringLookup.get(val) ?? ""}</span>;
+            } else if (typeof val === "object" && "t" in val) {
+              if (isImageResponseData(val)) {
+                // Display the image
+                // NOTE: This will async load the image
+                return <MediaBox mediaUID={val.d} />;
+              } else {
+                // For now, we just display the doc ID...
+                <span className="icl">{val.d}</span>;
+              }
+            } else if ("type" in val && val.type === "eval") {
               return (
                 <Stack spacing={0}>
                   {(val.data as [string | JSX.Element, string][]).map(

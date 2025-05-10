@@ -32,6 +32,8 @@ import {
   IconPlus,
   IconPencil,
   IconTrash,
+  IconSearch,
+  IconImageInPicture,
 } from "@tabler/icons-react";
 import { Position } from "reactflow";
 import TemplateHooks from "./TemplateHooksComponent";
@@ -131,7 +133,7 @@ export const IMAGE_COLUMN: TabularDataColType = {
 };
 
 const defaultRows: TabularDataRowType = {
-  caption: "Caption",
+  caption: "",
 };
 
 const defaultColumns: TabularDataColType[] = [
@@ -214,15 +216,6 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
     setMetadataRows({});
     setCurrentRowIndex(0);
     setImageUrl(undefined);
-
-    // Update the data store
-    setDataPropsForNode(id, {
-      rows: [],
-      columns: [],
-    });
-
-    // Notify connected nodes
-    pingOutputNodes(id);
   }, [id, setDataPropsForNode, pingOutputNodes]);
 
   // called on the change of a textarea field
@@ -366,8 +359,10 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         rows: tableData,
         columns: tableColumns,
       });
+
+      pingOutputNodes(id);
     }, 300)();
-  }, [tableData, tableColumns, currentRowIndex, id, setDataPropsForNode]);
+  }, [tableData, tableColumns, id, pingOutputNodes, setDataPropsForNode]);
 
   // Used when user imports a .tsv file through the upload button
   // Arg `jsonl` is the converted JSON object from the .tsv file
@@ -467,11 +462,6 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
     setTableColumns([...tableColumns, ...new_columns]);
     setTableData([...tableData, ...new_rows]);
     setCurrentRowIndex(new_rows.length - 1);
-    setDataPropsForNode(id, {
-      rows: [...tableData, ...new_rows],
-      columns: [...tableColumns, ...new_columns],
-    });
-    pingOutputNodes(id);
   };
 
   // Import tabular data from a .tsv file
@@ -639,13 +629,8 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         },
       };
       setMetadataRows(newMetadata);
-
-      setDataPropsForNode(id, {
-        rows: updatedTableData,
-        columns: tableColumns,
-      });
     },
-    [tableColumns, tableData, id, setDataPropsForNode, metadataRows, showAlert],
+    [tableColumns, tableData, id, metadataRows, showAlert],
   );
 
   const handleOpenUploadModal = useCallback(() => {
@@ -903,17 +888,14 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
                     >
                       <IconPencil size={12} />
                     </ActionIcon>
-                    {tableColumns.filter((col) => col.key !== "image").length >
-                      1 && (
-                      <ActionIcon
-                        size="xs"
-                        variant="subtle"
-                        onClick={() => handleRemoveColumn(col.key)}
-                        style={{ color: "#666" }}
-                      >
-                        <IconX size={12} />
-                      </ActionIcon>
-                    )}
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => handleRemoveColumn(col.key)}
+                      style={{ color: "#666" }}
+                    >
+                      <IconX size={12} />
+                    </ActionIcon>
                   </div>
                   <div className="input-field">
                     <Textarea
@@ -1047,6 +1029,12 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         */}
         {tableData.length >= 1 ? (
           <InspectFooter
+            label={
+              <>
+                Inspect Images&nbsp;
+                <IconImageInPicture size="12pt" />
+              </>
+            }
             onClick={showResponseInspector}
             isDrawerOpen={showDrawer}
             showDrawerButton={true}
