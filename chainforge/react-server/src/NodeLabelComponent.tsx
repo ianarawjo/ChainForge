@@ -20,6 +20,7 @@ export interface NodeLabelProps {
   onSave?: () => void;
   editable?: boolean;
   status?: Status;
+  statusMessage?: string;
   isRunning?: boolean;
   customButtons?: React.ReactNode[];
   handleRunClick?: () => void;
@@ -42,6 +43,7 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
   onSave,
   editable,
   status,
+  statusMessage,
   isRunning,
   customButtons,
   handleRunClick,
@@ -89,11 +91,13 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
 
   useEffect(() => {
     if (status !== undefined) {
-      setStatusIndicator(<StatusIndicator status={status} />);
+      setStatusIndicator(
+        <StatusIndicator status={status} message={statusMessage} />,
+      );
     } else {
       setStatusIndicator(<></>);
     }
-  }, [status]);
+  }, [status, statusMessage]);
 
   useEffect(() => {
     if (handleRunClick !== undefined) {

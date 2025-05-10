@@ -546,7 +546,7 @@ export class MediaLookup {
     const mediaLookup = MediaLookup.getInstance();
     const isInLookup = mediaLookup.mediaUIDs.has(uid);
     if (!isInLookup) {
-      console.error(
+      console.warn(
         `File with UID ${uid} not found in media UIDs. Still proceeding to try to fetch....`,
       );
     }
@@ -559,21 +559,28 @@ export class MediaLookup {
 
     if (IS_RUNNING_LOCALLY) {
       // Fetch the file from the backend
-      const res = await fetch(`${FLASK_BASE_URL}media/${uid}`);
-      if (!res.ok) {
-        console.error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+      try {
+        const res = await fetch(`${FLASK_BASE_URL}media/${uid}`);
+        if (!res.ok) {
+          console.error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+          return undefined;
+        }
+
+        const blob = await res.blob();
+
+        // If the file was for some reason not listed in the media UIDs, add it now:
+        if (!isInLookup) mediaLookup.add(uid);
+
+        // Add to the temp cache
+        mediaLookup.addToTempCache(uid, blob);
+
+        return blob;
+      } catch (error) {
+        console.error(
+          `Error fetching file with UID ${uid}: ${(error as Error).message}`,
+        );
         return undefined;
       }
-
-      const blob = await res.blob();
-
-      // If the file was for some reason not listed in the media UIDs, add it now:
-      if (!isInLookup) mediaLookup.add(uid);
-
-      // Add to the temp cache
-      mediaLookup.addToTempCache(uid, blob);
-
-      return blob;
     } else {
       // Check if the file is in the cache
       const blob = mediaLookup.cache[uid];
@@ -634,11 +641,11 @@ export class MediaLookup {
    * @param uid The UID of the file
    * @returns An object URL string
    */
-  public static async getUrl(uid: string): Promise<string> {
+  public static async getUrl(uid: string): Promise<string | undefined> {
     const blob = await MediaLookup.get(uid);
     if (!blob) {
       console.error(`Blob not found for UID ${uid}`);
-      return "";
+      return undefined;
     }
     return URL.createObjectURL(blob);
   }

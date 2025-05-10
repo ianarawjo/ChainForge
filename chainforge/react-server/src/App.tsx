@@ -75,7 +75,7 @@ import { v4 as uuid } from "uuid";
 import axios from "axios";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
-import MultimediaNode from "./MultimediaNode";
+import MediaNode from "./MediaNode";
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
@@ -213,7 +213,7 @@ const nodeTypes = {
   upload: UploadNode,
   chunk: ChunkNode,
   retrieval: RetrievalNode,
-  multimedia: MultimediaNode,
+  media: MediaNode,
 };
 
 const nodeEmojis = {
@@ -235,7 +235,7 @@ const nodeEmojis = {
   upload: "📁",
   chunk: "📄",
   retrieval: "🔍",
-  multimedia: "📺",
+  media: "📺",
 };
 
 const edgeTypes = {
@@ -350,7 +350,7 @@ const App = () => {
       },
       {
         key: "textfields",
-        title: "TextFields Node",
+        title: "Text Fields Node",
         icon: nodeEmojis.textfields,
         tooltip:
           "Specify input text to prompt or chat nodes. You can also declare variables in brackets {} to chain TextFields together.",
@@ -373,11 +373,11 @@ const App = () => {
         onClick: () => addNode("csvNode", "csv"),
       },
       {
-        key: "multimedia",
-        title: "Multimedia Node",
-        icon: nodeEmojis.multimedia,
-        tooltip: "Add image data with corresponding tags.",
-        onClick: () => addNode("multimediaNode", "multimedia"),
+        key: "media",
+        title: "Media Node",
+        icon: nodeEmojis.media,
+        tooltip: "Add image data with corresponding metadata.",
+        onClick: () => addNode("media", "media"),
       },
       {
         key: "divider",

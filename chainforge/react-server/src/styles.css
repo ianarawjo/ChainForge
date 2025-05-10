@@ -1598,13 +1598,17 @@ html[data-mantine-color-scheme="dark"] .upload-node-list {
   width: 290px;
 }
 
-/* Classes relative to the multimedia Node */
-.multimedia-node {
+/* Classes relative to the Media Node */
+.media-node {
   width: 340px;
   max-width: 340px;
 }
 
-.multimedia-textfields-container {
+.media-node .node-header {
+  margin-bottom: 0px;
+}
+
+.media-textfields-container {
   min-width: 100%;
   width: 100%;
   overflow-y: auto;
@@ -1612,31 +1616,45 @@ html[data-mantine-color-scheme="dark"] .upload-node-list {
   display: block;
 }
 
-.multimedia-textfields-container
+.media-textfields-container
   .text-field-fixed
   .mantine-Textarea-wrapper
   textarea {
   width: 100%;
 }
 
-.multimedia-image-preview-container {
+.media-image-preview-container {
+  position: relative;
   width: 100%;
   margin: 0 auto;
 }
 
-.empty-state-box-multimedia-node {
-  height: 200px;
-  width: 200px;
+.num-images-overlay {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(255, 255, 255, 0.5);
+  color: black;
+  padding: 4px 8px;
+  font-size: 14px;
+  border-radius: 4px;
+  pointer-events: none; /* Makes the overlay click-through */
+}
+
+.empty-state-box-media-node {
+  height: 160px;
+  width: 260px;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: #f8f9fa;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
-  margin: 0 auto;
+  margin: 6px auto;
 }
 
-html[data-mantine-color-scheme="dark"] .empty-state-box-multimedia-node {
+html[data-mantine-color-scheme="dark"] .empty-state-box-media-node {
   background-color: #333;
   border-color: #444;
 }

@@ -24,6 +24,7 @@ export interface LLMResponseInspectorModalRef {
 
 export interface LLMResponseInspectorModalProps {
   jsonResponses: LLMResponse[];
+  customLLMFieldName?: string;
 }
 
 const LLMResponseInspectorModal = forwardRef<
@@ -99,6 +100,7 @@ const LLMResponseInspectorModal = forwardRef<
             jsonResponses={props.jsonResponses}
             isOpen={opened}
             wideFormat={true}
+            customLLMFieldName={props.customLLMFieldName}
           />
         </Suspense>
       </div>

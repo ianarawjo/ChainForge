@@ -4,7 +4,7 @@ import { Badge, Text } from "@mantine/core";
 import useStore from "./store";
 import { IconSettings, IconImageInPicture } from "@tabler/icons-react";
 import { extractTemplateVars } from "./backend/template";
-import { IMAGE_COLUMN } from "./MultimediaNode";
+import { IMAGE_COLUMN } from "./MediaNode";
 
 const SETTINGS_ICON = (
   <IconSettings
@@ -73,9 +73,9 @@ export default function TemplateHooks({
       return temp_var_names.map((name, idx) => {
         const is_settings_var = name.charAt(0) === "=";
         let color = is_settings_var ? "orange" : "indigo";
-        // check if we are on a MultimediaNode and if the name is 'Image'
+        // check if we are on a Media Node and if the name is 'Image'
         const is_image_var =
-          name === IMAGE_COLUMN.header && nodeId.startsWith("multimediaNode");
+          name === IMAGE_COLUMN.header && nodeId.startsWith("media");
         let badge_name = is_settings_var ? (
           <Text display="flex" align="center">
             {name.substring(1)} {SETTINGS_ICON}

@@ -21,6 +21,7 @@ import {
   ScrollArea,
   Flex,
   Stack,
+  Divider,
 } from "@mantine/core";
 import Papa from "papaparse";
 import { v4 as uuidv4 } from "uuid";
@@ -60,6 +61,7 @@ import LLMResponseInspectorModal, {
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { MediaLookup } from "./backend/cache";
 import { dataURLToBlob, DebounceRef, genDebounceFunc } from "./backend/utils";
+import { Status } from "./StatusIndicatorComponent";
 
 // This function serves to convert the `tableData` and `tableColumns` into objects that
 // the `LLMResponseInspectorModal` and `LLMResponseInspectorDrawer` support.
@@ -75,7 +77,7 @@ const __construct_items_in_json_responses = async (
         responses: [
           {
             t: "img",
-            d: await MediaLookup.getUrl(row.image as string),
+            d: (await MediaLookup.getUrl(row.image as string)) ?? "",
           },
         ],
         uid: String(row.__uid),
@@ -87,9 +89,9 @@ const __construct_items_in_json_responses = async (
           },
           {} as Record<string, any>,
         ),
-        llm: "image_preview",
+        llm: "Image",
         metavars: {
-          LLM_0: "image_preview",
+          LLM_0: "Image",
           __pt:
             "{" +
             tableColumns
@@ -114,15 +116,15 @@ export type metadataRowType = {
   // token_count: string;
 };
 
-export interface MultimediaNodeData {
+export interface MediaNodeData {
   title?: string;
   sample?: boolean;
   sampleNum?: number;
   rows?: TabularDataRowType[];
   columns?: TabularDataColType[];
 }
-export interface MultimediaNodeDataProps {
-  data: MultimediaNodeData;
+export interface MediaNodeDataProps {
+  data: MediaNodeData;
   id: string;
 }
 
@@ -144,7 +146,7 @@ const defaultColumns: TabularDataColType[] = [
   },
 ];
 
-const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
+const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
   // ----- State variables
   const [tableData, setTableData] = useState<TabularDataRowType[]>(
     data.rows ?? [],
@@ -208,6 +210,10 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   const debounceTimeoutRef: DebounceRef = useRef(null);
   const debounce: Func<Func> = genDebounceFunc(debounceTimeoutRef);
 
+  // Error status
+  const [status, setStatus] = useState(Status.NONE);
+  const [statusMessage, setStatusMessage] = useState("");
+
   // Add a handler for the "Remove ALL" button
   const handleRemoveAll = useCallback(() => {
     // Clear all data
@@ -252,7 +258,10 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       const uid = `col-${Date.now()}`;
       const new_col = {
         key: uid,
-        header: `New Field ${tableColumns.length + 1}`, // default name
+        header:
+          tableColumns.length === 1
+            ? "Caption"
+            : `Field ${tableColumns.length}`, // default name
       };
 
       // Insert the new column into the columns array
@@ -308,6 +317,34 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
     [tableColumns, tableData, pingOutputNodes],
   );
 
+  // Removes media
+  const handleRemoveMedia = useCallback(async () => {
+    const currentRow = tableData[currentRowIndex];
+    const imageUid = currentRow.image as string;
+
+    // Remove from MediaLookup
+    try {
+      MediaLookup.remove(imageUid);
+    } catch (error) {
+      console.error("Error removing image from MediaLookup:", error);
+      if (showAlert) {
+        showAlert(
+          `Failed to remove image from MediaLookup: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+      }
+    }
+
+    const newTableData = tableData.filter(
+      (_, index) => index !== currentRowIndex,
+    );
+    setTableData(newTableData);
+    setCurrentRowIndex(Math.min(currentRowIndex, newTableData.length - 1));
+    // if no more rows, reinitialize columns also
+    if (newTableData.length === 0) {
+      setTableColumns([]);
+    }
+  }, [tableData, currentRowIndex, showAlert]);
+
   // Opens a modal popup to let user rename a column
   const openRenameColumnModal = useCallback(
     (col: TabularDataColType) => {
@@ -345,7 +382,16 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         const url = await MediaLookup.getUrl(
           tableData[currentRowIndex].image as string,
         );
-        setImageUrl(url);
+        if (url === undefined) {
+          setStatus(Status.ERROR);
+          setStatusMessage(
+            "Server error: Could not fetch media from server. Please check the console log for more details.",
+          );
+        } else {
+          setImageUrl(url);
+          setStatus(Status.READY);
+          setStatusMessage("Media loaded and ready.");
+        }
       }
     };
     fetchImageUrl();
@@ -361,6 +407,19 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       });
 
       pingOutputNodes(id);
+
+      // Update the LLMResponseInspectorModal with the new data
+      const items_in_json_responses = __construct_items_in_json_responses(
+        tableData,
+        tableColumns,
+      );
+      items_in_json_responses
+        .then((resolvedResponses) => {
+          setJSONResponses(resolvedResponses);
+        })
+        .catch((error) => {
+          console.error("Error resolving JSON responses:", error);
+        });
     }, 300)();
   }, [tableData, tableColumns, id, pingOutputNodes, setDataPropsForNode]);
 
@@ -535,7 +594,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         const observer = new window.ResizeObserver(() => {
           if (!ref || !ref.current) return;
           // Depending if there is the < > Chevron buttons or not, the offset is not the same
-          const vertical_y_offset_hooks = 292;
+          const vertical_y_offset_hooks = 308;
           const new_hooks_y =
             ref.current.clientHeight + vertical_y_offset_hooks;
           if (past_hooks_y !== new_hooks_y) {
@@ -698,28 +757,19 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   }, [default_header]);
 
   const showResponseInspector = useCallback(() => {
-    const items_in_json_responses = __construct_items_in_json_responses(
-      tableData,
-      tableColumns,
-    );
-    items_in_json_responses
-      .then((resolvedResponses) => {
-        setJSONResponses(resolvedResponses);
-      })
-      .catch((error) => {
-        console.error("Error resolving JSON responses:", error);
-      });
     if (inspectModal && inspectModal.current && jsonResponses) {
       inspectModal.current?.trigger();
     }
   }, [inspectModal, jsonResponses]);
 
   return (
-    <BaseNode classNames="multimedia-node" nodeId={id}>
+    <BaseNode classNames="media-node" nodeId={id}>
       <NodeLabel
-        title={data.title || "Multimedia Node"}
+        title={data.title || "Media Node"}
         nodeId={id}
         icon={"📺"}
+        status={status}
+        statusMessage={statusMessage}
         customButtons={[
           <Tooltip
             label="More info on .tsv dataset loading"
@@ -797,11 +847,12 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
       <LLMResponseInspectorModal
         ref={inspectModal}
         jsonResponses={jsonResponses ?? []}
+        customLLMFieldName="Image"
       />
 
       {/* if data present, display a clickable Image  */}
       {tableData.length > 0 && tableData[currentRowIndex].image && (
-        <Flex align="center" justify="space-between" mt="sm" gap={3}>
+        <Flex align="center" justify="space-between" gap={3}>
           <ActionIcon
             onClick={handlePrevRow}
             disabled={tableData.length <= 1}
@@ -812,7 +863,7 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
             <IconChevronLeft size={32} />
           </ActionIcon>
           <Stack w="100%" spacing={3}>
-            <div className="multimedia-image-preview-container">
+            <div className="media-image-preview-container">
               <div onClick={handleImageClick} style={{ cursor: "pointer" }}>
                 <Tooltip
                   label="Click me for more details"
@@ -829,13 +880,46 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
                 </Tooltip>
               </div>
             </div>
-            <Text
-              size="sm"
-              weight={500}
-              style={{ minWidth: "60px", textAlign: "center" }}
-            >
-              {`${currentRowIndex + 1}/${tableData.length}`}
-            </Text>
+            <Box pos="relative" w="100%">
+              <Text
+                pos="absolute"
+                size="sm"
+                left="50%"
+                top="50%"
+                weight={500}
+                style={{
+                  minWidth: "60px",
+                  textAlign: "center",
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                {`${currentRowIndex + 1}/${tableData.length}`}
+              </Text>
+              <Flex justify="space-between" align="center">
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  color="gray"
+                  w="38%"
+                  leftIcon={<IconX size={12} />}
+                  onClick={handleRemoveMedia}
+                  style={{ color: "#666" }}
+                >
+                  Remove
+                </Button>
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  color="gray"
+                  w="38%"
+                  leftIcon={<IconPlus size={12} />}
+                  onClick={handleOpenUploadModal}
+                  style={{ color: "#666" }}
+                >
+                  Add
+                </Button>
+              </Flex>
+            </Box>
           </Stack>
           <ActionIcon
             onClick={handleNextRow}
@@ -849,6 +933,8 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
         </Flex>
       )}
 
+      {tableColumns.length > 1 && <Divider mt="xs" />}
+
       {/* 
         if data present, for each column, display a textarea filled with the adequate row data
          and a button to rename the column
@@ -859,8 +945,9 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
           <ScrollArea.Autosize
             mah={212}
             type="hover"
+            mt={8}
             viewportRef={viewport}
-            className="multimedia-textfields-container nowheel nodrag"
+            className="media-textfields-container nowheel nodrag"
           >
             {tableColumns
               .filter((col) => col.key !== "image")
@@ -920,10 +1007,23 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
 
         {/* If no data present, display a message */}
         {tableData.length === 0 && (
-          <div className="multimedia-textfields-container nowheel nodrag">
-            <Box className="empty-state-box-multimedia-node">
+          <div className="media-textfields-container nowheel nodrag">
+            <Box className="empty-state-box-media-node">
               <Text color="dimmed">No Media Uploaded</Text>
             </Box>
+            <Flex justify={"center"} align="center">
+              <Button
+                variant="subtle"
+                size="sm"
+                color="gray"
+                w="38%"
+                leftIcon={<IconPlus size={12} />}
+                onClick={handleOpenUploadModal}
+                style={{ color: "#666" }}
+              >
+                Add
+              </Button>
+            </Flex>
           </div>
         )}
 
@@ -933,87 +1033,22 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
               - a button to add a column
               - a button to remove the media
         */}
-        <div
-          style={{
-            gap: "8px",
-            marginTop: "10px",
-          }}
-        >
-          {tableData.length > 0 && (
+        {tableData.length > 0 && (
+          <Flex justify="center" h={0}>
             <Button
               variant="subtle"
               size="xs"
+              color="gray"
               leftIcon={<IconPlus size={14} />}
               onClick={() =>
                 handleInsertColumn(tableColumns[tableColumns.length - 1].key)
               }
               style={{ color: "#666" }}
             >
-              Add Field
+              Field
             </Button>
-          )}
-          <Button
-            variant="subtle"
-            size="xs"
-            leftIcon={<IconPlus size={14} />}
-            onClick={handleOpenUploadModal}
-            style={{ color: "#666" }}
-          >
-            Add Media
-          </Button>
-          {tableData.length > 0 && (
-            <>
-              <Button
-                variant="subtle"
-                size="xs"
-                leftIcon={<IconX size={14} />}
-                onClick={async () => {
-                  const currentRow = tableData[currentRowIndex];
-                  const imageUid = currentRow.image as string;
-
-                  // Remove from MediaLookup
-                  try {
-                    MediaLookup.remove(imageUid);
-                  } catch (error) {
-                    console.error(
-                      "Error removing image from MediaLookup:",
-                      error,
-                    );
-                    if (showAlert) {
-                      showAlert(
-                        `Failed to remove image from MediaLookup: ${error instanceof Error ? error.message : "Unknown error"}`,
-                      );
-                    }
-                  }
-
-                  const newTableData = tableData.filter(
-                    (_, index) => index !== currentRowIndex,
-                  );
-                  setTableData(newTableData);
-                  setCurrentRowIndex(
-                    Math.min(currentRowIndex, newTableData.length - 1),
-                  );
-                  // if no more rows, reinitialize columns also
-                  if (newTableData.length === 0) {
-                    setTableColumns([]);
-                  }
-                }}
-                style={{ color: "#666" }}
-              >
-                Remove Media
-              </Button>
-              <Button
-                variant="subtle"
-                size="xs"
-                leftIcon={<IconTrash size={14} />}
-                onClick={handleRemoveAll}
-                style={{ color: "#666" }}
-              >
-                Remove ALL
-              </Button>
-            </>
-          )}
-        </div>
+          </Flex>
+        )}
       </div>
 
       <div className="tabular-data-footer">
@@ -1039,15 +1074,6 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
             isDrawerOpen={showDrawer}
             showDrawerButton={true}
             onDrawerClick={() => {
-              const items_in_json_responses =
-                __construct_items_in_json_responses(tableData, tableColumns);
-              items_in_json_responses
-                .then((resolvedResponses) => {
-                  setJSONResponses(resolvedResponses);
-                })
-                .catch((error) => {
-                  console.error("Error resolving JSON responses:", error);
-                });
               setShowDrawer(!showDrawer);
               bringNodeToFront(id);
             }}
@@ -1065,4 +1091,4 @@ const MultimediaNode: React.FC<MultimediaNodeDataProps> = ({ data, id }) => {
   );
 };
 
-export default MultimediaNode;
+export default MediaNode;

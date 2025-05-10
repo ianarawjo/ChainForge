@@ -332,12 +332,14 @@ export interface LLMResponseInspectorProps {
   jsonResponses: LLMResponse[];
   isOpen: boolean;
   wideFormat?: boolean;
+  customLLMFieldName?: string;
 }
 
 const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   jsonResponses,
   isOpen,
   wideFormat,
+  customLLMFieldName,
 }) => {
   // Responses
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
@@ -519,7 +521,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           // in the future we can add special types of variables without name collisions
           ({ value: name, label: name }),
         )
-        .concat({ value: "$LLM", label: "LLM" });
+        .concat({ value: "$LLM", label: customLLMFieldName || "LLM" });
       if (contains_eval_res && viewFormat === "table")
         msvars.push({ value: "$EVAL_RES", label: "Eval results" });
       setMultiSelectVars(msvars);
@@ -1180,6 +1182,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     caseSensitive,
     filterBySearchValue,
     colorScheme,
+    customLLMFieldName,
   ]);
 
   // When the user clicks an item in the drop-down,

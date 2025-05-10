@@ -766,7 +766,7 @@ const useStore = create<StoreHandles>((set, get) => ({
     }
 
     // If the source node has tabular data, use that:
-    if (src_node.type === "table" || src_node.type === "multimedia") {
+    if (src_node.type === "table" || src_node.type === "media") {
       if (
         ("sel_rows" in src_node.data || "rows" in src_node.data) &&
         "columns" in src_node.data
@@ -811,7 +811,7 @@ const useStore = create<StoreHandles>((set, get) => ({
                   ).toString();
               });
               const key_name =
-                src_node.type === "multimedia" && sourceHandleKey === "Image"
+                src_node.type === "media" && sourceHandleKey === "Image"
                   ? "image"
                   : "text";
               return {

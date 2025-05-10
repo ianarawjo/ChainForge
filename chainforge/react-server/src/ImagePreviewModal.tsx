@@ -6,7 +6,7 @@ import React, {
 } from "react";
 import { Modal, Image, Text, Stack } from "@mantine/core";
 import { Dict } from "./backend/typing";
-import { metadataRowType } from "./MultimediaNode";
+import { metadataRowType } from "./MediaNode";
 
 export interface ImagePreviewModalRef {
   trigger: (url: string, data: metadataRowType) => void;
@@ -51,17 +51,17 @@ const ImagePreviewModal = forwardRef<
       const img = document.createElement("img");
       img.onload = () => {
         setImageInfo({
-          user_source: imageData.source,
+          user_source: imageData?.source,
           width: img.naturalWidth,
           height: img.naturalHeight,
-          format: imageData.coming_from,
-          size: imageData.size,
-          timestamp: new Date(parseInt(imageData.timestamp) * 1000).toString(),
+          format: imageData?.coming_from,
+          size: imageData?.size,
+          timestamp: new Date(parseInt(imageData?.timestamp) * 1000).toString(),
         });
       };
       img.src = imageUrl;
     }
-  }, [imageUrl]);
+  }, [imageUrl, imageData]);
 
   return (
     <Modal

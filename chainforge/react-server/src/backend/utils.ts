@@ -2478,7 +2478,7 @@ export function llmResponseDataToString(data: LLMResponseData): string {
   if (typeof data === "string") return data;
   else if (typeof data === "number")
     return StringLookup.get(data) ?? "(string lookup failed)";
-  else return data.d;
+  else return data?.d;
 }
 
 /**
