@@ -22,7 +22,6 @@ import {
   List,
   Loader,
   Tooltip,
-  ActionIcon,
   Flex,
   useMantineColorScheme,
 } from "@mantine/core";
@@ -64,9 +63,6 @@ import GlobalSettingsModal, {
 import ExampleFlowsModal, { ExampleFlowsModalRef } from "./ExampleFlowsModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
 import SimpleEvalNode from "./SimpleEvalNode";
-import UploadNode from "./UploadNode";
-import ChunkNode from "./ChunkNode";
-import RetrievalNode from "./RetrievalNode";
 import {
   getDefaultModelFormData,
   getDefaultModelSettings,
@@ -210,9 +206,6 @@ const nodeTypes = {
   join: JoinNode,
   split: SplitNode,
   processor: CodeEvaluatorNode,
-  upload: UploadNode,
-  chunk: ChunkNode,
-  retrieval: RetrievalNode,
   media: MediaNode,
 };
 
@@ -232,9 +225,6 @@ const nodeEmojis = {
   comment: "✏️",
   join: <IconArrowMerge size={16} />,
   split: <IconArrowsSplit size={16} />,
-  upload: "📁",
-  chunk: "📄",
-  retrieval: "🔍",
   media: "📺",
 };
 
@@ -553,27 +543,6 @@ const App = () => {
         tooltip:
           "Specify directories to load as local packages, so they can be imported in your Python evaluator nodes (add to sys path).",
         onClick: () => addNode("scriptNode", "script"),
-      },
-      {
-        key: "upload",
-        title: "Upload Node",
-        icon: nodeEmojis.upload,
-        tooltip: "Upload a file to the flow.",
-        onClick: () => addNode("upload"),
-      },
-      {
-        key: "chunk",
-        title: "Chunking Node",
-        icon: nodeEmojis.chunk,
-        tooltip: "Chunk text into smaller pieces.",
-        onClick: () => addNode("chunk"),
-      },
-      {
-        key: "retrieval",
-        title: "Retrieval Node",
-        icon: nodeEmojis.retrieval,
-        tooltip: "Retrieve text from a database.",
-        onClick: () => addNode("retrieval"),
       },
     ] as NestedMenuItemProps[];
 
