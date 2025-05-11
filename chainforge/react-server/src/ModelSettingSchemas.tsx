@@ -973,158 +973,6 @@ const PaLM2Settings: ModelSettingsDict = {
   },
 };
 
-const DalaiModelSettings: ModelSettingsDict = {
-  fullName: "Dalai-hosted local model (Alpaca, Llama)",
-  schema: {
-    type: "object",
-    required: ["shortname"],
-    properties: {
-      shortname: {
-        type: "string",
-        title: "Nickname",
-        description:
-          "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "Alpaca.7B",
-      },
-      model: {
-        type: "string",
-        title: "Model",
-        description:
-          "Select a Dalai-hosted model to query. For details on installing locally-run models via Dalai, check out https://cocktailpeanut.github.io/dalai/#/?id=_3-disk-space-requirements.",
-        enum: [
-          "alpaca.7B",
-          "alpaca.13B",
-          "llama.7B",
-          "llama.13B",
-          "llama.30B",
-          "llama.65B",
-        ],
-        default: "alpaca.7B",
-      },
-      server: {
-        type: "string",
-        title: "URL of Dalai server",
-        description:
-          "Enter the URL where the Dalai server is running (usually localhost).",
-        default: "http://localhost:4000",
-      },
-      temperature: {
-        type: "number",
-        title: "temperature",
-        description: "Controls the 'creativity' or randomness of the response.",
-        default: 0.5,
-        minimum: 0,
-        maximum: 1,
-        multipleOf: 0.01,
-      },
-      n_predict: {
-        type: "integer",
-        title: "n_predict",
-        description:
-          "Maximum number of tokens to include in the response. Must be greater than zero. Defaults to 128.",
-        default: 128,
-        minimum: 1,
-      },
-      threads: {
-        type: "integer",
-        title: "threads",
-        description:
-          "The number of threads to use on the local machine. Defaults to 4 in ChainForge, to support lower-end laptops. Set to higher the more powerful your machine.",
-        minimum: 1,
-        default: 4,
-      },
-      top_k: {
-        type: "integer",
-        title: "top_k",
-        description:
-          "Sets the maximum number of tokens to sample from on each step.",
-        minimum: 1,
-        default: 40,
-      },
-      top_p: {
-        type: "number",
-        title: "top_p",
-        description:
-          "Sets the maximum cumulative probability of tokens to sample from.",
-        default: 0.9,
-        minimum: 0,
-        maximum: 1,
-        multipleOf: 0.001,
-      },
-      repeat_last_n: {
-        type: "integer",
-        title: "repeat_last_n",
-        description:
-          "Use to control repetitions. When picking a new token, the model will avoid any of the tokens (~words) in the last n tokens, in a sliding window.",
-        minimum: 0,
-        default: 64,
-      },
-      repeat_penalty: {
-        type: "number",
-        title: "repeat_penalty",
-        description:
-          "Use to control repetitions. Penalizes words that have already appeared in the output, making them less likely to be generated again.",
-        minimum: 0,
-        default: 1.3,
-        multipleOf: 0.001,
-      },
-      seed: {
-        type: "integer",
-        title: "seed",
-        description:
-          "The seed to use when generating new responses. The default is -1 (random). Change to fixed value for deterministic outputs across different runs.",
-        minimum: -1,
-        default: -1,
-      },
-    },
-  },
-
-  uiSchema: {
-    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
-    shortname: {
-      "ui:autofocus": true,
-    },
-    model: {
-      "ui:help":
-        "NOTE: You must have installed the selected model and have Dalai be running and accessible on the local environment with which you are running the ChainForge server.",
-      "ui:widget": "datalist",
-    },
-    temperature: {
-      "ui:help": "Defaults to 0.5.",
-      "ui:widget": "range",
-    },
-    n_predict: {
-      "ui:help": "Defaults to 128.",
-    },
-    top_k: {
-      "ui:help": "Defaults to 40.",
-    },
-    top_p: {
-      "ui:help": "Defaults to 0.9.",
-      "ui:widget": "range",
-    },
-    seed: {
-      "ui:help": "Defaults to -1 (random).",
-    },
-    repeat_last_n: {
-      "ui:help": "Defaults to 64.",
-    },
-    repeat_penalty: {
-      "ui:help": "Defaults to 1.3.",
-    },
-    stop_sequences: {
-      "ui:widget": "textarea",
-      "ui:help":
-        "Defaults to no additional stop sequences (empty). Ignored for chat models.",
-    },
-    threads: {
-      "ui:help": "Defaults to 4.",
-    },
-  },
-
-  postprocessors: {},
-};
-
 const AzureOpenAISettings: ModelSettingsDict = {
   fullName: "Azure OpenAI Model",
   schema: {
@@ -2634,7 +2482,6 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "gpt-image-1": GPTImage1Settings,
   "claude-v1": ClaudeSettings,
   "palm2-bison": PaLM2Settings,
-  dalai: DalaiModelSettings,
   "azure-openai": AzureOpenAISettings,
   hf: HuggingFaceTextInferenceSettings,
   "luminous-base": AlephAlphaLuminousSettings,
@@ -2662,7 +2509,6 @@ export function baseModelToProvider(base_model: string): LLMProvider {
     "gpt-image-1": LLMProvider.OpenAI,
     "claude-v1": LLMProvider.Anthropic,
     "palm2-bison": LLMProvider.Google,
-    dalai: LLMProvider.Dalai,
     "azure-openai": LLMProvider.Azure_OpenAI,
     hf: LLMProvider.HuggingFace,
     "luminous-base": LLMProvider.Aleph_Alpha,
@@ -2692,7 +2538,6 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.OpenAI]: GPT4Settings,
     [LLMProvider.Anthropic]: ClaudeSettings,
     [LLMProvider.Google]: PaLM2Settings,
-    [LLMProvider.Dalai]: DalaiModelSettings,
     [LLMProvider.Azure_OpenAI]: AzureOpenAISettings,
     [LLMProvider.HuggingFace]: HuggingFaceTextInferenceSettings,
     [LLMProvider.Aleph_Alpha]: AlephAlphaLuminousSettings,

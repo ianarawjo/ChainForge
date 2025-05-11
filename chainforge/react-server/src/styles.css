@@ -27,7 +27,13 @@ hr {
 
 .grouped-handle {
   background: #555;
-  height: 15px !important;
+  height: 16px !important;
+}
+
+.react-flow__handle {
+  background: #555;
+  width: 8px;
+  height: 8px;
 }
 
 .small-standard-font {
@@ -651,6 +657,7 @@ html[data-mantine-color-scheme="dark"] .small-response {
   border: none;
   padding: 6px;
 }
+
 .small-response-metrics {
   font-size: 9pt;
   font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
@@ -1554,5 +1561,145 @@ html[data-mantine-color-scheme="dark"] .saved-flows-footer {
 }
 
 .icl {
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.upload-node {
+  width: 290px;
+}
+
+.upload-node-droparea {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  margin: 10px;
+  background-color: #f9f9f9;
+  cursor: pointer;
+}
+html[data-mantine-color-scheme="dark"] .upload-node-droparea {
+  background-color: #333;
+  border-color: #444;
+}
+
+.upload-node-list {
+  max-height: 200px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fafafa;
+}
+html[data-mantine-color-scheme="dark"] .upload-node-list {
+  background: #222;
+  border-color: #444;
+}
+
+.chunk-node {
+  width: 290px;
+}
+
+/* Classes relative to the Media Node */
+.media-node {
+  width: 340px;
+  max-width: 340px;
+}
+
+.media-node .node-header {
+  margin-bottom: 0px;
+}
+
+.media-textfields-container {
+  min-width: 100%;
+  width: 100%;
+  overflow-y: auto;
+  border: none;
+  display: block;
+}
+
+.media-textfields-container
+  .text-field-fixed
+  .mantine-Textarea-wrapper
+  textarea {
+  width: 100%;
+}
+
+.media-image-preview-container {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.num-images-overlay {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(255, 255, 255, 0.5);
+  color: black;
+  padding: 4px 8px;
+  font-size: 14px;
+  border-radius: 4px;
+  pointer-events: none; /* Makes the overlay click-through */
+}
+
+.empty-state-box-media-node {
+  height: 160px;
+  width: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin: 6px auto;
+  cursor: pointer;
+}
+
+html[data-mantine-color-scheme="dark"] .empty-state-box-media-node {
+  background-color: #333;
+  border-color: #444;
+}
+
+.carousel-nav-button {
+  font-size: 28px;
+  color: #666;
+  cursor: pointer;
+  width: 38px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.carousel-nav-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  transform: scale(1.05);
+}
+
+.carousel-nav-button:active {
+  transform: scale(0.95);
+}
+
+/* Dark Mode Overrides */
+html[data-mantine-color-scheme="dark"] .carousel-nav-button {
+  color: #bbb; /* Lighter color for dark mode */
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.1
+  ); /* Light background for dark mode */
+}
+
+html[data-mantine-color-scheme="dark"] .carousel-nav-button:hover {
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.2
+  ); /* Brighter hover background for dark mode */
 }

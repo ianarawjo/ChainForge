@@ -16,14 +16,12 @@ import ReactFlow, {
 } from "reactflow";
 import {
   Button,
-  Menu,
   LoadingOverlay,
   Text,
   Box,
   List,
   Loader,
   Tooltip,
-  ActionIcon,
   Flex,
   useMantineColorScheme,
 } from "@mantine/core";
@@ -63,7 +61,6 @@ import GlobalSettingsModal, {
   GlobalSettingsModalRef,
 } from "./GlobalSettingsModal";
 import ExampleFlowsModal, { ExampleFlowsModalRef } from "./ExampleFlowsModal";
-import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
 import SimpleEvalNode from "./SimpleEvalNode";
 import {
@@ -74,6 +71,7 @@ import { v4 as uuid } from "uuid";
 import axios from "axios";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
+import MediaNode from "./MediaNode";
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
@@ -86,7 +84,7 @@ import "lazysizes/plugins/attrchange/ls.attrchange";
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from "zustand/shallow";
 import useStore, { StoreHandles } from "./store";
-import StorageCache, { StringLookup } from "./backend/cache";
+import StorageCache, { MediaLookup, StringLookup } from "./backend/cache";
 import {
   APP_IS_RUNNING_LOCALLY,
   browserTabIsActive,
@@ -96,10 +94,12 @@ import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
 import {
   ensureUniqueFlowFilename,
   exportCache,
+  exportFlowBundle,
   fetchEnvironAPIKeys,
   fetchExampleFlow,
   fetchOpenAIEval,
   importCache,
+  importFlowBundle,
   saveFlowToLocalFilesystem,
 } from "./backend/backend";
 
@@ -206,6 +206,7 @@ const nodeTypes = {
   join: JoinNode,
   split: SplitNode,
   processor: CodeEvaluatorNode,
+  media: MediaNode,
 };
 
 const nodeEmojis = {
@@ -224,6 +225,7 @@ const nodeEmojis = {
   comment: "✏️",
   join: <IconArrowMerge size={16} />,
   split: <IconArrowsSplit size={16} />,
+  media: "📺",
 };
 
 const edgeTypes = {
@@ -338,7 +340,7 @@ const App = () => {
       },
       {
         key: "textfields",
-        title: "TextFields Node",
+        title: "Text Fields Node",
         icon: nodeEmojis.textfields,
         tooltip:
           "Specify input text to prompt or chat nodes. You can also declare variables in brackets {} to chain TextFields together.",
@@ -359,6 +361,13 @@ const App = () => {
         tooltip:
           "Specify inputs as a comma-separated list of items. Good for specifying lots of short text values. An alternative to TextFields node.",
         onClick: () => addNode("csvNode", "csv"),
+      },
+      {
+        key: "media",
+        title: "Media Node",
+        icon: nodeEmojis.media,
+        tooltip: "Add image data with corresponding metadata.",
+        onClick: () => addNode("media", "media"),
       },
       {
         key: "divider",
@@ -682,15 +691,23 @@ const App = () => {
           };
 
           // Save!
-          const flowFile = `${saveToLocalFilesystem ?? flowFileName}.cforge`;
+          const name = `${saveToLocalFilesystem ?? flowFileName}`;
+          const flowFile = `${name}.cforge`;
           if (saveToLocalFilesystem !== undefined)
+            // No need to export media files if we're saving locally
             return saveFlowToLocalFilesystem(
               flow_and_cache,
               flowFile,
               saveToLocalFilesystem !== "__autosave",
             );
-          // @ts-expect-error The exported RF instance is JSON compatible but TypeScript won't read it as such.
-          else downloadJSON(flow_and_cache, flowFile);
+          else if (MediaLookup.hasAnyMedia() && IS_RUNNING_LOCALLY)
+            // There are media files and we're running locally,
+            // so we need to export a self-contained .cfzip bundle instead
+            exportFlowBundle(flow_and_cache, name);
+          // No media files or we're on the browser, so
+          // we can export a .cforge file (JSON). Media files
+          // should be included in the cache data under __media.
+          else downloadJSON(flow_and_cache as any, flowFile);
         })
         .catch((err) => {
           if (onError) onError();
@@ -838,6 +855,7 @@ const App = () => {
       setEdges([]);
 
       StorageCache.clear();
+      MediaLookup.clear();
 
       // New flow filename
       if (name == null) name = `flow-${Date.now()}`;
@@ -935,6 +953,7 @@ const App = () => {
           // Support for loading old flows w/o cache data:
           loadFlow(flowJSON, rf);
           StringLookup.restoreFrom([]); // manually clear the string lookup table
+          MediaLookup.clear(); // manually clear the media lookup table
           return;
         }
 
@@ -968,7 +987,7 @@ const App = () => {
     // Create an input element with type "file" and accept only JSON files
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".cforge, .json";
+    input.accept = ".cforge, .json, .cfzip, .zip";
 
     // Handle file selection
     input.addEventListener(
@@ -984,33 +1003,59 @@ const App = () => {
           return;
         }
 
+        // We only support one file at a time
         const file = files[0];
-        const fileName = file.name?.replace(".cforge", "");
-        const reader = new window.FileReader();
 
-        // Handle file load event
-        reader.addEventListener("load", function () {
-          try {
-            if (typeof reader.result !== "string")
-              throw new Error(
-                "File could not be read: Unknown format or empty.",
+        if (file.name.endsWith(".cfzip") || file.name.endsWith(".zip")) {
+          // Read a ChainForge bundled zip file
+          importFlowBundle(file)
+            .then(({ flow, flowName }) => {
+              // NOTE: At this point, any media files have either been
+              // imported to the backend, or are in the MediaLookup cache.
+
+              // Import the flow JSON data to the front-end
+              importFlowFromJSON(flow);
+
+              // Set the name to the filename, for consistent saving
+              safeSetFlowFileName(flowName);
+            })
+            .catch((err) => {
+              handleError(
+                "Critical error encountered when importing ChainForge flow bundle:" +
+                  err.message,
               );
+            });
+        } else {
+          // Read a .cforge JSON file
+          const reader = new window.FileReader();
+          const fileName = file.name
+            ?.replace(".cforge", "")
+            .replace(".json", "");
 
-            // We try to parse the JSON response
-            const flow_and_cache = JSON.parse(reader.result);
+          // Handle file load event
+          reader.addEventListener("load", function () {
+            try {
+              if (typeof reader.result !== "string")
+                throw new Error(
+                  "File could not be read: Unknown format or empty.",
+                );
 
-            // Import it to React Flow and import cache data on the backend
-            importFlowFromJSON(flow_and_cache);
+              // We try to parse the JSON response
+              const flow_and_cache = JSON.parse(reader.result);
 
-            // Set the name to the filename, for consistent saving
-            safeSetFlowFileName(fileName);
-          } catch (error) {
-            handleError(error as Error);
-          }
-        });
+              // Import it to React Flow and import cache data on the backend
+              importFlowFromJSON(flow_and_cache);
 
-        // Read the selected file as text
-        reader.readAsText(file);
+              // Set the name to the filename, for consistent saving
+              safeSetFlowFileName(fileName);
+            } catch (error) {
+              handleError(error as Error);
+            }
+          });
+
+          // Read the selected file as text
+          reader.readAsText(file);
+        }
       },
     );
 

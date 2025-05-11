@@ -1,5 +1,16 @@
 import { Dict, JSONCompatible } from "./typing";
 import LZString from "lz-string";
+import {
+  APP_IS_RUNNING_LOCALLY,
+  base64ToBlob,
+  blobOrFileToDataURL,
+  dataURLToBlob,
+  FLASK_BASE_URL,
+} from "./utils";
+import { v4 as uuid } from "uuid";
+import Bottleneck from "bottleneck";
+
+const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 /**
  * Singleton JSON cache that functions like a local filesystem in a Python backend,
@@ -138,7 +149,9 @@ export default class StorageCache {
         // Replaces the current cache data with the loaded data
         StorageCache.getInstance().data = data;
         // Restores the current StringLookup table with the contents of the loaded data, if the __s key is present.
-        StringLookup.restoreFrom(data.__s);
+        if (data.__s) StringLookup.restoreFrom(data.__s);
+        // Restores the current MediaLookup table with the contents of the loaded data, if the __media key is present.
+        if (data.__media) MediaLookup.restoreFrom(data.__media);
       }
       console.log("loaded", data);
       return data;
@@ -314,5 +327,473 @@ export class StringLookup {
     table.indexToString = data.dictionary;
     table.stringToIndex = new Map(data.dictionary.map((str, i) => [str, i]));
     StringLookup.instance = table;
+  }
+}
+
+/** Global media lookup table for efficient storage and retrieval of media (images, PDFs, etc) with the Flask backend. */
+export class MediaLookup {
+  // eslint-disable-next-line no-use-before-define
+  private static instance: MediaLookup;
+
+  /**
+   * All media UIDs that are used in the currently loaded flow.
+   * This is used to keep track of the currently loaded media,
+   * and export all the relevant media for the flow when the user clicks "Export".
+   */
+  private mediaUIDs = new Set<string>();
+
+  // Use a cache if running locally, otherwise use the backend
+  private cache: Dict<Blob> = {};
+
+  // Temporary in-memory cache with size limit
+  private tempCache: {
+    items: Map<string, Blob>;
+    size: number;
+    accessOrder: string[];
+  } = {
+    items: new Map(),
+    size: 0,
+    accessOrder: [],
+  };
+
+  // Maximum size of the temporary cache in bytes (50MB)
+  private readonly MAX_TEMP_CACHE_SIZE = 50 * 1024 * 1024;
+
+  // A rate limiter for uploads
+  private static uploadLimiter = new Bottleneck({
+    maxConcurrent: 2, // Allow 3 concurrent uploads
+    minTime: 100, // Minimum 100ms between upload operations
+  });
+
+  // A rate limiter for media lookups
+  private static lookupLimiter = new Bottleneck({
+    maxConcurrent: 5, // Allow 5 concurrent lookups
+    minTime: 50, // Minimum 50ms between lookup operations
+  });
+
+  private constructor() {
+    // Initialize the singleton instance
+    this.mediaUIDs = new Set<string>();
+    this.cache = {};
+    this.tempCache = {
+      items: new Map(),
+      size: 0,
+      accessOrder: [],
+    };
+  }
+
+  /**
+   * Adds a blob to the temporary cache with size management.
+   * Removes least recently used items if needed to stay under size limit.
+   * @param uid The UID of the media
+   * @param blob The blob to cache
+   */
+  private addToTempCache(uid: string, blob: Blob): void {
+    // Skip if blob is too large on its own
+    if (blob.size > this.MAX_TEMP_CACHE_SIZE) {
+      return;
+    }
+
+    // Check if already in cache
+    if (this.tempCache.items.has(uid)) {
+      // Update access order (move to end)
+      this.tempCache.accessOrder = this.tempCache.accessOrder.filter(
+        (id) => id !== uid,
+      );
+      this.tempCache.accessOrder.push(uid);
+      return;
+    }
+
+    // Make room if needed
+    while (
+      this.tempCache.size + blob.size > this.MAX_TEMP_CACHE_SIZE &&
+      this.tempCache.accessOrder.length > 0
+    ) {
+      const oldestUid = this.tempCache.accessOrder.shift()!;
+      if (oldestUid === undefined) break; // Safety check. This should not happen, but just in case.
+      const oldestBlob = this.tempCache.items.get(oldestUid)!;
+      this.tempCache.size -= oldestBlob.size;
+      this.tempCache.items.delete(oldestUid);
+    }
+
+    // Add the new blob
+    this.tempCache.items.set(uid, blob);
+    this.tempCache.size += blob.size;
+    this.tempCache.accessOrder.push(uid);
+  }
+
+  /**
+   * Gets a blob from the temporary cache and updates its access order
+   * @param uid The UID of the media
+   * @returns The cached blob or undefined if not found
+   */
+  private getFromTempCache(uid: string): Blob | undefined {
+    const blob = this.tempCache.items.get(uid);
+    if (blob) {
+      // Update access order (move to end)
+      this.tempCache.accessOrder = this.tempCache.accessOrder.filter(
+        (id) => id !== uid,
+      );
+      this.tempCache.accessOrder.push(uid);
+    }
+    return blob;
+  }
+
+  /**
+   * Saves the current state of the media lookup table to localStorage.
+   */
+  public saveStateToStorageCache(): void {
+    const savedState = {
+      mediaUIDs: Array.from(this.mediaUIDs),
+      cache: this.cache,
+    };
+    StorageCache.store("__media", savedState);
+  }
+
+  public restoreStateFromStorageCache(): boolean {
+    const savedState = StorageCache.get("__media");
+    if (savedState) {
+      this.mediaUIDs = new Set(savedState.mediaUIDs);
+      this.cache = savedState.cache;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Adds a UID to the media UIDs set and optionally adds a Blob to the cache.
+   * Handles saving the state to localStorage.
+   * @param uid The UID of the media
+   * @param blob Optional. A Blob or File object to cache
+   */
+  private add(uid: string, blob?: Blob | File): void {
+    this.mediaUIDs.add(uid);
+
+    if (blob) this.cache[uid] = blob;
+
+    this.saveStateToStorageCache();
+  }
+
+  public static setCacheData(uid: string, blob: Blob | File): void {
+    const mediaLookup = MediaLookup.getInstance();
+    mediaLookup.mediaUIDs.add(uid);
+    mediaLookup.cache[uid] = blob;
+  }
+
+  static getInstance(): MediaLookup {
+    if (!MediaLookup.instance) {
+      MediaLookup.instance = new MediaLookup();
+    }
+    return MediaLookup.instance;
+  }
+
+  public static hasAnyMedia(): boolean {
+    const mediaLookup = MediaLookup.getInstance();
+    return (
+      mediaLookup.mediaUIDs.size > 0 ||
+      Object.keys(mediaLookup.cache).length > 0
+    );
+  }
+
+  /**
+   * Uploads a file to the backend and returns its UID.
+   * @param file A Blob or File object to upload
+   * @returns The UID assigned by the backend
+   */
+  public static async upload(file: File | Blob): Promise<string> {
+    if (IS_RUNNING_LOCALLY) {
+      // Use the limiter to throttle uploads
+      return MediaLookup.uploadLimiter.schedule(async () => {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch(`${FLASK_BASE_URL}upload`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
+
+        const json = await res.json();
+        const uid = json.uid;
+
+        if (!uid) throw new Error("Upload failed: No UID returned");
+
+        // Store the UID in the media UIDs set
+        MediaLookup.getInstance().add(uid);
+
+        return uid;
+      });
+    } else {
+      // Make a uid for the file, and use it to cache the file:
+      // NOTE: We keep the file name around, if there is one, just in case we need to recover it later.
+      const uid =
+        `cache__${uuid()}__cache` + ("name" in file ? `__${file.name}` : "");
+      MediaLookup.getInstance().add(uid, file);
+      return uid;
+    }
+  }
+
+  public static async uploadDataURL(dataURL: string): Promise<string> {
+    const blob = dataURLToBlob(dataURL);
+    const uid = await MediaLookup.upload(blob);
+    return uid;
+  }
+
+  /**
+   * Checks if a media UID exists in the lookup table.
+   * @param uid The UID to check
+   * @returns True if the UID exists, false otherwise
+   */
+  public static async has(uid: string): Promise<boolean> {
+    const mediaLookup = MediaLookup.getInstance();
+    const isInLookup = mediaLookup.mediaUIDs.has(uid);
+    if (isInLookup) return true;
+    else {
+      console.error(
+        `File with UID ${uid} not found in media UIDs. Still proceeding to try to fetch....`,
+      );
+    }
+    const res = await fetch(`${FLASK_BASE_URL}mediaExists/${uid}`);
+    if (res.ok) mediaLookup.add(uid); // Add to the mediaUIDs set if it exists
+    return res.ok;
+  }
+
+  /**
+   * Fetches the raw Blob from the backend using a UID.
+   * @param uid The UID of the file
+   * @returns Blob (image, PDF, etc.)
+   */
+  public static async get(uid: string): Promise<Blob | undefined> {
+    // Check if the UID is a data URL in disguise,
+    // in which case we convert it to a Blob and return it directly.
+    if (uid.startsWith("data:")) {
+      const blob = dataURLToBlob(uid);
+      return blob;
+    } else if (uid && uid.length > 512) {
+      // If the UID is too long, it might be a base64 string content.
+      // This can happen when loading files from older versions of ChainForge.
+      try {
+        return base64ToBlob(uid);
+      } catch (error) {
+        console.error(
+          `Error converting base64 string to Blob: ${(error as Error).message}`,
+        );
+        return undefined;
+      }
+    }
+
+    // Check if the file is in the mediaUIDs
+    const mediaLookup = MediaLookup.getInstance();
+    const isInLookup = mediaLookup.mediaUIDs.has(uid);
+    if (!isInLookup) {
+      console.warn(
+        `File with UID ${uid} not found in media UIDs. Still proceeding to try to fetch....`,
+      );
+    }
+
+    // Check if the file is in the temp cache first
+    const tempCachedBlob = mediaLookup.getFromTempCache(uid);
+    if (tempCachedBlob) {
+      return tempCachedBlob;
+    }
+
+    if (IS_RUNNING_LOCALLY && !uid.startsWith("cache__")) {
+      // Fetch the file from the backend
+      // NOTE: We use the limiter to throttle lookups, so we don't overload the server.
+      return MediaLookup.lookupLimiter.schedule(async () => {
+        try {
+          const res = await fetch(`${FLASK_BASE_URL}media/${uid}`);
+          if (!res.ok) {
+            console.error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+            return undefined;
+          }
+
+          const blob = await res.blob();
+
+          // If the file was for some reason not listed in the media UIDs, add it now:
+          if (!isInLookup) mediaLookup.add(uid);
+
+          // Add to the temp cache
+          mediaLookup.addToTempCache(uid, blob);
+
+          return blob;
+        } catch (error) {
+          console.error(
+            `Error fetching file with UID ${uid}: ${(error as Error).message}`,
+          );
+          return undefined;
+        }
+      });
+    } else {
+      // Check if the file is in the cache
+      const blob = mediaLookup.cache[uid];
+      if (blob) {
+        // If the file was for some reason not listed in the media UIDs, add it now:
+        if (!isInLookup) mediaLookup.add(uid);
+
+        return blob;
+      } else {
+        console.error(`File with UID ${uid} not found in cache.`);
+        return undefined;
+      }
+    }
+  }
+
+  /**
+   * Fetches the text content from the backend using a UID.
+   * @param uid The UID of the file (must be a doc)
+   * @returns Text content as a string
+   */
+  public static async getAsText(uid: string): Promise<string | undefined> {
+    // Check if the file is in the mediaUIDs
+    const mediaLookup = MediaLookup.getInstance();
+    const isInLookup = mediaLookup.mediaUIDs.has(uid);
+    if (!isInLookup) {
+      console.error(
+        `File with UID ${uid} not found in media UIDs. Still proceeding to try to fetch....`,
+      );
+    }
+
+    if (IS_RUNNING_LOCALLY) {
+      // Fetch the file from the backend
+      const res = await fetch(`${FLASK_BASE_URL}mediaToText/${uid}`);
+      if (!res.ok) {
+        throw new Error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+      }
+      const json = await res.json();
+      const text = json.text;
+
+      if (text === undefined)
+        throw new Error(`Fetch failed for UID ${uid}: No text returned`);
+
+      // If the file was for some reason not listed in the media UIDs, add it now:
+      if (!isInLookup) mediaLookup.add(uid);
+
+      return json.text;
+    } else {
+      // TODO: Implement this for the local cache
+      throw new Error(
+        `Text content not available for UID ${uid} in local cache.`,
+      );
+    }
+  }
+
+  /**
+   * Returns a usable object URL (e.g., for <img src=...>) for a given UID.
+   * Automatically revokes the previous URL for the same UID.
+   * @param uid The UID of the file
+   * @returns An object URL string
+   */
+  public static async getUrl(uid: string): Promise<string | undefined> {
+    const blob = await MediaLookup.get(uid);
+    if (!blob) {
+      console.error(`Blob not found for UID ${uid}`);
+      return undefined;
+    }
+    return URL.createObjectURL(blob);
+  }
+
+  /**
+   * Clears the media lookup table and its cache entirely.
+   */
+  public static clear(): void {
+    const mediaLookup = MediaLookup.getInstance();
+    mediaLookup.mediaUIDs.clear();
+    mediaLookup.cache = {};
+
+    // Clear the temp cache
+    mediaLookup.tempCache.items.clear();
+    mediaLookup.tempCache.size = 0;
+    mediaLookup.tempCache.accessOrder = [];
+
+    mediaLookup.saveStateToStorageCache();
+  }
+
+  /**
+   * Removes a specific UID from the media lookup table and its cache.
+   * @param uid The UID to remove
+   */
+  public static remove(uid: string): void {
+    const mediaLookup = MediaLookup.getInstance();
+    mediaLookup.mediaUIDs.delete(uid);
+    delete mediaLookup.cache[uid];
+
+    // Remove from temp cache if present
+    if (mediaLookup.tempCache.items.has(uid)) {
+      const blob = mediaLookup.tempCache.items.get(uid)!;
+      mediaLookup.tempCache.size -= blob.size;
+      mediaLookup.tempCache.items.delete(uid);
+      mediaLookup.tempCache.accessOrder =
+        mediaLookup.tempCache.accessOrder.filter((id) => id !== uid);
+    }
+
+    mediaLookup.saveStateToStorageCache();
+  }
+
+  /**
+   * Restores the media lookup table from a saved state.
+   * NOTE: This deliberately does not override the current mediaUIDs or cache.
+   * If you want to clear the current mediaUIDs or cache, use the clear() method first.
+   * @param savedState The saved state containing mediaUIDs and cache.
+   */
+  public static restoreFrom(savedState?: {
+    uids: string[];
+    cache?: Dict<string>;
+  }): void {
+    if (!savedState) return;
+
+    const mediaLookup = MediaLookup.getInstance();
+
+    if (Array.isArray(savedState.uids)) {
+      savedState.uids.forEach((uid) => {
+        mediaLookup.mediaUIDs.add(uid);
+      });
+    }
+
+    if (savedState.cache !== undefined) {
+      // Convert each data URL back to a Blob
+      for (const [key, base64String] of Object.entries(savedState.cache)) {
+        const blob = dataURLToBlob(base64String);
+        mediaLookup.cache[key] = blob;
+      }
+    }
+
+    mediaLookup.saveStateToStorageCache();
+  }
+
+  /**
+   * Serializes the media lookup table to a JSON-compatible object.
+   * @returns An object containing the mediaUIDs and cache.
+   */
+  public static async toJSON(): Promise<{
+    uids: string[];
+    cache?: Dict<string>;
+  }> {
+    const mediaLookup = MediaLookup.getInstance();
+
+    // Convert each Blob to a base64 string
+    const serializedCache: Dict<Promise<string>> = {};
+    for (const [key, blob] of Object.entries(mediaLookup.cache)) {
+      serializedCache[key] = blobOrFileToDataURL(blob);
+    }
+
+    // Wait for all the base64 strings to be generated
+    const serializedCacheEntries = await Promise.all(
+      Object.entries(serializedCache).map(async ([key, blobPromise]) => {
+        const base64String = await blobPromise;
+        return [key, base64String];
+      }),
+    );
+
+    // Convert the array of entries back to an object
+    const serializedBlobs: Dict<string> = Object.fromEntries(
+      serializedCacheEntries,
+    );
+
+    return {
+      uids: Array.from(mediaLookup.mediaUIDs),
+      cache: serializedBlobs,
+    };
   }
 }

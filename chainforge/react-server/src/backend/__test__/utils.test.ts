@@ -18,7 +18,6 @@ test("merge response objects", () => {
   const A: RawLLMResponseObject = {
     responses: ["x", "y", "z"],
     prompt: "this is a test",
-    query: {},
     llm: NativeLLM.OpenAI_ChatGPT,
     vars: { var1: "value1", var2: "value2" },
     metavars: { meta1: "meta1" },
@@ -27,7 +26,6 @@ test("merge response objects", () => {
   const B: RawLLMResponseObject = {
     responses: ["a", "b", "c"],
     prompt: "this is a test 2",
-    query: {},
     llm: NativeLLM.OpenAI_ChatGPT,
     vars: { varB1: "valueB1", varB2: "valueB2" },
     metavars: { metaB1: "metaB1" },

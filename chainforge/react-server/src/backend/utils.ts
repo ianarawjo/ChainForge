@@ -28,11 +28,14 @@ import {
   isImageResponseData,
   StringOrHash,
   PromptVarsDict,
+  MultiModalContentAnthropic,
+  MultiModalContentOpenAI,
+  MultiModalContentGemini,
+  PromptVarType,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
 
-/* LLM API SDKs */
 import {
   Configuration as OpenAIConfig,
   OpenAIApi,
@@ -43,13 +46,13 @@ import {
   OpenAIClient as AzureOpenAIClient,
   AzureKeyCredential,
 } from "@azure/openai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 import { UserForcedPrematureExit } from "./errors";
 import {
   fromModelId,
   ChatMessage as BedrockChatMessage,
 } from "@mirai73/bedrock-fm";
-import StorageCache, { StringLookup } from "./cache";
+import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import Compressor from "compressorjs";
 // import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
 
@@ -204,20 +207,148 @@ export function get_azure_openai_api_keys(): [
   return [AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT];
 }
 
+function construct_text_payload(
+  text: string,
+  variant: "openai" | "gemini" | "anthropic",
+): Dict {
+  switch (variant) {
+    case "openai":
+      return { type: "text", text: text };
+    case "gemini":
+      return { text: text };
+    case "anthropic":
+      return { type: "text", text: text };
+    default:
+      throw new Error(`Unknown variant: ${variant}`);
+  }
+}
+
+function construct_image_payload(
+  base64image: string,
+  variant: "openai" | "gemini" | "anthropic",
+):
+  | MultiModalContentAnthropic
+  | MultiModalContentOpenAI
+  | MultiModalContentGemini {
+  switch (variant) {
+    case "openai":
+      return {
+        type: "image_url",
+        image_url: {
+          url: base64image,
+          detail: "auto",
+        },
+      };
+    case "gemini": {
+      return {
+        inlineData: {
+          data: getBase64DataFromDataURL(base64image) ?? "",
+          mimeType: getMimeTypeFromDataURL(base64image) ?? "image/png",
+        },
+      };
+    }
+    case "anthropic":
+      return {
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: getMimeTypeFromDataURL(base64image) ?? "image/png",
+          data: getBase64DataFromDataURL(base64image) ?? "",
+        },
+      };
+    default:
+      throw new Error(`Unknown variant: ${variant}`);
+  }
+}
+
+async function imagesToBase64(images: string[]) {
+  if (images && images.length > 0) {
+    const base64_images: Array<string> = [];
+    for (const image of images) {
+      const imageBlob = await MediaLookup.get(image);
+      if (!imageBlob) {
+        // This should never happen, but just in case:
+        console.error(`Image not found in MediaLookup: ${image}`);
+        continue;
+      }
+      const base64_image = await blobOrFileToDataURL(imageBlob);
+      if (base64_image) base64_images.push(base64_image);
+    }
+    return base64_images;
+  }
+  return [];
+}
+
+async function resolve_images_in_user_messages(
+  messages: ChatHistory,
+  variant: "openai" | "gemini" | "anthropic" | "ollama",
+): Promise<Array<any>> {
+  const res = [];
+  for (const message of messages) {
+    if (message.role !== "user") {
+      res.push(message);
+      continue;
+    }
+
+    const prompt = message.content;
+    const images = message.images;
+
+    // Cast any images to base64 data URLs
+    const image_data_urls = await imagesToBase64(images ?? []);
+
+    if (variant === "ollama") {
+      // Resolving Image in user messages
+      if (images && images.length > 0) {
+        // These images should already be base64 encoded
+        const texts_in_prompt: Array<string> = [];
+
+        // Add the prompt text
+        texts_in_prompt.push(prompt);
+
+        res.push({
+          content: texts_in_prompt.join("\n"),
+          images: image_data_urls.map(getBase64DataFromDataURL), // base64 encoded images
+        });
+      } else {
+        res.push(message);
+      }
+    } else {
+      if (image_data_urls && image_data_urls.length > 0) {
+        const new_content = [];
+
+        for (const image of image_data_urls)
+          new_content.push(construct_image_payload(image, variant));
+
+        // Add the prompt text
+        new_content.push(construct_text_payload(prompt, variant));
+
+        res.push({ role: "user", content: new_content });
+      } else {
+        res.push(message);
+      }
+    }
+  }
+  return res;
+}
+
 /**
  * Construct an OpenAI format chat history for sending off to an OpenAI API call.
  * @param prompt The next prompt (user message) to append.
  * @param chat_history The prior turns of the chat, ending with the AI assistants' turn.
  * @param system_msg Optional; the system message to use if none is present in chat_history. (Ignored if chat_history already has a sys message.)
  */
-function construct_openai_chat_history(
+function construct_chat_history(
   prompt: string,
+  images: string[] | undefined,
   chat_history?: ChatHistory,
   system_msg?: string,
   system_role_name?: string,
 ): ChatHistory {
   const sys_role_name = system_role_name ?? "system";
   const prompt_msg: ChatMessage = { role: "user", content: prompt };
+  if (images && images.length > 0) {
+    prompt_msg.images = images;
+  }
   const sys_msg: ChatMessage[] =
     system_msg !== undefined
       ? [{ role: sys_role_name, content: system_msg }]
@@ -245,6 +376,7 @@ export async function call_chatgpt(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
   BASE_URL?: string,
   API_KEY?: string,
 ): Promise<[Dict, Dict]> {
@@ -302,7 +434,7 @@ export async function call_chatgpt(
 
   // Determine the system message and whether there's chat history to continue:
   const chat_history: ChatHistory | undefined = params?.chat_history;
-  let system_msg: string | undefined =
+  const system_msg: string | undefined =
     params?.system_msg !== undefined ? params.system_msg : undefined;
   delete params?.system_msg;
   delete params?.chat_history;
@@ -310,7 +442,7 @@ export async function call_chatgpt(
   // The o1 and later OpenAI models, for whatever reason, block the system message from being sent in the chat history.
   // The official API states that "developer" works, but it doesn't for some models, so until OpenAI fixes this
   // and fully supports system messages, we have to block them from being sent in the chat history.
-  if (model.startsWith("o")) system_msg = undefined;
+  // if (model.startsWith("o")) system_msg = undefined;
 
   const query: Dict = {
     model: modelname,
@@ -331,12 +463,18 @@ export async function call_chatgpt(
     openai_call = openai.createChatCompletion.bind(openai);
 
     // Carry over chat history, if present:
-    query.messages = construct_openai_chat_history(
+    query.messages = construct_chat_history(
       prompt,
+      images,
       chat_history,
       system_msg,
     );
   }
+
+  query.messages = await resolve_images_in_user_messages(
+    query.messages,
+    "openai",
+  );
 
   // Try to call OpenAI
   let response: Dict = {};
@@ -366,6 +504,7 @@ export async function call_deepseek(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!DEEPSEEK_API_KEY)
     throw new Error(
@@ -381,6 +520,7 @@ export async function call_deepseek(
     temperature,
     params,
     should_cancel,
+    images,
     "https://api.deepseek.com",
     DEEPSEEK_API_KEY,
   );
@@ -475,6 +615,7 @@ export async function call_azure_openai(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!AZURE_OPENAI_KEY)
     throw new Error(
@@ -544,7 +685,7 @@ export async function call_azure_openai(
     arg2 = [prompt];
   } else {
     openai_call = client.getChatCompletions.bind(client);
-    arg2 = construct_openai_chat_history(prompt, chat_history, system_msg);
+    arg2 = construct_chat_history(prompt, images, chat_history, system_msg);
   }
 
   let response: Dict = {};
@@ -585,6 +726,7 @@ export async function call_anthropic(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!ANTHROPIC_API_KEY)
     throw new Error(
@@ -677,8 +819,9 @@ export async function call_anthropic(
 
   if (use_messages_api) {
     query.max_tokens = max_tokens_to_sample; // this goes by a different name than text completions
-    query.messages = construct_openai_chat_history(
+    query.messages = construct_chat_history(
       prompt,
+      images,
       chat_history,
       undefined,
     );
@@ -689,6 +832,11 @@ export async function call_anthropic(
     query.max_tokens_to_sample = max_tokens_to_sample;
     query.prompt = wrapped_prompt;
   }
+
+  query.messages = await resolve_images_in_user_messages(
+    query.messages,
+    "anthropic",
+  );
 
   console.log(
     `Calling Anthropic model '${model}' with prompt '${prompt}' (n=${n}). Please be patient...`,
@@ -755,6 +903,7 @@ export async function call_google_ai(
   temperature = 0.7,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (
     model === NativeLLM.PaLM2_Chat_Bison ||
@@ -767,6 +916,7 @@ export async function call_google_ai(
       temperature,
       params,
       should_cancel,
+      images,
     );
   else
     return call_google_gemini(
@@ -776,6 +926,7 @@ export async function call_google_ai(
       temperature,
       params,
       should_cancel,
+      images,
     );
 }
 
@@ -790,6 +941,7 @@ export async function call_google_palm(
   temperature = 0.7,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!GOOGLE_PALM_API_KEY)
     throw new Error(
@@ -912,6 +1064,7 @@ export async function call_google_gemini(
   temperature = 0.7,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!GOOGLE_PALM_API_KEY)
     throw new Error(
@@ -1007,6 +1160,23 @@ export async function call_google_gemini(
   );
 
   const responses: Array<Dict> = [];
+  const prompt_parts: Array<Part> = [{ text: prompt }];
+  if (images && images.length > 0) {
+    const image_data_urls: string[] = await imagesToBase64(images);
+    for (const image of image_data_urls) {
+      prompt_parts.push({
+        inlineData: {
+          mimeType: getMimeTypeFromDataURL(image) ?? "image/png",
+          data: getBase64DataFromDataURL(image) ?? "",
+        },
+      });
+    }
+  }
+
+  // TODO: to finish
+  // if (prompt.includes(IMAGE_IDENTIFIER) && typeof prompt === "string") {
+  //   prompt = resolve_image_in_user_messages([{role : 'user', content : prompt}], 'gemini');
+  // }
 
   while (responses.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
@@ -1016,7 +1186,7 @@ export async function call_google_gemini(
       generationConfig: gen_Config,
     });
 
-    const chatResult = await chat.sendMessage(prompt);
+    const chatResult = await chat.sendMessage(prompt_parts);
     const chatResponse = await chatResult.response;
     const response = {
       text: chatResponse.text(),
@@ -1029,33 +1199,6 @@ export async function call_google_gemini(
   return [query, responses];
 }
 
-export async function call_dalai(
-  prompt: string,
-  model: LLM,
-  n = 1,
-  temperature = 0.7,
-  params?: Dict,
-  should_cancel?: () => boolean,
-): Promise<[Dict, Dict]> {
-  if (APP_IS_RUNNING_LOCALLY()) {
-    // Try to call Dalai server, through Flask:
-    const { query, response, error } = await call_flask_backend("callDalai", {
-      prompt,
-      model,
-      n,
-      temperature,
-      ...params,
-    });
-    if (error !== undefined) throw new Error(error);
-    return [query, response];
-  } else {
-    throw new Error(
-      "Cannot call Dalai: The ChainForge app does not appear to be running locally. You can only call Dalai-hosted models if" +
-        "you are running a server with the Dalai Node.js package and have installed ChainForge on your local machine.",
-    );
-  }
-}
-
 export async function call_huggingface(
   prompt: string,
   model: LLM,
@@ -1063,6 +1206,7 @@ export async function call_huggingface(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   // Whether we should notice a given param in 'params'
   const param_exists = (p: any) =>
@@ -1217,6 +1361,7 @@ export async function call_alephalpha(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!ALEPH_ALPHA_API_KEY)
     throw Error(
@@ -1242,8 +1387,9 @@ export async function call_alephalpha(
   };
 
   if (isChatModel) {
-    const chatHistory = construct_openai_chat_history(
+    const chatHistory = construct_chat_history(
       prompt,
+      images,
       params?.chat_history,
       params?.system_msg,
     );
@@ -1275,6 +1421,7 @@ export async function call_ollama_provider(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!params?.ollama_url)
     throw Error(
@@ -1311,23 +1458,42 @@ export async function call_ollama_provider(
     },
   };
 
+  let n_images = 0;
   // If the model type is explicitly or implicitly set to "chat", pass chat history instead:
   if (model_type === "chat" || /[-:](chat)/.test(ollama_model)) {
     // Construct chat history and pass to query payload
-    query.messages = construct_openai_chat_history(
+    query.messages = construct_chat_history(
       prompt,
+      images,
       chat_history,
       system_msg,
     );
     url += "chat";
+
+    query.messages = await resolve_images_in_user_messages(
+      query.messages,
+      "ollama",
+    );
+    n_images = query.messages.filter(
+      (msg: Dict) => msg.role === "user" && msg.images.length > 0,
+    ).length;
+    console.log(
+      "Resolved images in user messages: ",
+      query.messages,
+      query.messages.length,
+    );
   } else {
     // Text-only models
     query.prompt = prompt;
+    query.images = (await imagesToBase64(images ?? [])).map(
+      getBase64DataFromDataURL,
+    );
     url += "generate";
   }
 
+  console.log(query);
   console.log(
-    `Calling Ollama API at ${url} for model '${ollama_model}' with prompt '${prompt}' n=${n} times. Please be patient...`,
+    `Calling Ollama API at ${url} for model '${ollama_model}' with prompt '${query.prompt !== undefined ? query.prompt : query.messages[query.messages.length - 1].content}' n=${n} times. Contains n_img=${n_images} Please be patient...`,
   );
 
   // If there are structured outputs specified, convert to an object:
@@ -1408,6 +1574,7 @@ export async function call_bedrock(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (
     !AWS_ACCESS_KEY_ID ||
@@ -1464,8 +1631,9 @@ export async function call_bedrock(
         modelName.startsWith("mistral") ||
         modelName.startsWith("meta")
       ) {
-        const chat_history: ChatHistory = construct_openai_chat_history(
+        const chat_history: ChatHistory = construct_chat_history(
           prompt,
+          images,
           params?.chat_history,
           params?.system_msg,
         );
@@ -1500,6 +1668,7 @@ export async function call_together(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!TOGETHER_API_KEY)
     throw new Error(
@@ -1563,8 +1732,9 @@ export async function call_together(
   const together_call: any = together.createChatCompletion.bind(together);
 
   // Carry over chat history, if present:
-  query.messages = construct_openai_chat_history(
+  query.messages = construct_chat_history(
     prompt,
+    images,
     chat_history,
     system_msg,
   );
@@ -1594,6 +1764,7 @@ async function call_custom_provider(
   temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict[]]> {
   if (!APP_IS_RUNNING_LOCALLY())
     throw new Error(
@@ -1614,6 +1785,9 @@ async function call_custom_provider(
   const responses: Dict[] = [];
   const query = { prompt, model, temperature, ...params };
 
+  // Convert any images to base64
+  const base64_images = await (images ? imagesToBase64(images) : undefined);
+
   // Call the custom provider n times
   while (responses.length < n) {
     // Abort if the user canceled
@@ -1626,6 +1800,7 @@ async function call_custom_provider(
         prompt,
         model: submodel_name,
         temperature,
+        images: base64_images,
         ...params,
       },
     });
@@ -1649,6 +1824,7 @@ export async function call_llm(
   temperature: number,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   // Get the correct API call for the given LLM:
   let call_api: LLMAPICall | undefined;
@@ -1665,7 +1841,6 @@ export async function call_llm(
   } else if (llm_provider === LLMProvider.Azure_OpenAI)
     call_api = call_azure_openai;
   else if (llm_provider === LLMProvider.Google) call_api = call_google_ai;
-  else if (llm_provider === LLMProvider.Dalai) call_api = call_dalai;
   else if (llm_provider === LLMProvider.Anthropic) call_api = call_anthropic;
   else if (llm_provider === LLMProvider.HuggingFace)
     call_api = call_huggingface;
@@ -1679,7 +1854,7 @@ export async function call_llm(
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
     );
-  return call_api(prompt, llm, n, temperature, params, should_cancel);
+  return call_api(prompt, llm, n, temperature, params, should_cancel, images);
 }
 
 /**
@@ -1880,8 +2055,6 @@ export function extract_responses(
       return _extract_openai_responses(response);
     case LLMProvider.Google:
       return _extract_google_ai_responses(response as Dict, llm);
-    case LLMProvider.Dalai:
-      return [response.toString()];
     case LLMProvider.Anthropic:
       if (is_newer_anthropic_model(llm_name))
         return _extract_anthropic_chat_responses(response as Dict[]);
@@ -1933,7 +2106,6 @@ export function merge_response_objs(
   const res: RawLLMResponseObject = {
     responses: resp_obj_A.responses.concat(resp_obj_B.responses),
     prompt: resp_obj_B.prompt,
-    query: resp_obj_B.query,
     llm: resp_obj_B.llm,
     vars: resp_obj_B.vars ?? (resp_obj_B as any).info ?? {}, // backwards compatibility---vars used to be 'info'
     metavars: resp_obj_B.metavars ?? {},
@@ -2002,6 +2174,74 @@ export const extractSettingsVars = (vars?: PromptVarsDict) => {
   } else return {};
 };
 
+export const extractMediaVars = (vars?: PromptVarsDict) => {
+  if (vars === undefined) return {};
+
+  const media_vars: Dict<LLMResponseData[]> = {};
+  Object.entries(vars).forEach(([k, v]) => {
+    if (
+      Array.isArray(v) &&
+      v.length > 0 &&
+      v.some((i) => typeof i === "object" && "t" in i)
+    ) {
+      media_vars[k] = (v as PromptVarType[]).filter(
+        (i) => typeof i === "object" && "t" in i,
+      ) as LLMResponseData[];
+    } else if (typeof v === "object" && v !== null && "t" in v) {
+      media_vars[k] = [v];
+    }
+  });
+
+  return media_vars;
+};
+
+export const areEqualLLMResponseData = (
+  A: TemplateVarInfo | LLMResponseData | undefined,
+  B: TemplateVarInfo | LLMResponseData | undefined,
+): boolean => {
+  if (A === undefined || B === undefined) {
+    if (A === undefined && B === undefined) return true;
+    return false;
+  }
+  if (typeof A !== typeof B) return false;
+  if (typeof A === "string" || typeof A === "number") return A === B;
+  else if (typeof A === "object" && typeof B === "object") {
+    const keys_A = Object.keys(A);
+    const keys_B = Object.keys(B);
+    if (keys_A.length !== keys_B.length) return false;
+    for (const k of keys_A) {
+      // @ts-expect-error TS doesn't know that k is a key of A/B
+      if (!(k in B) || A[k] !== B[k]) return false;
+    }
+    return true;
+  }
+  return false;
+};
+
+const areEqualPromptVarsDictValues = (
+  A: LLMResponseData | PromptVarType[] | undefined,
+  B: LLMResponseData | PromptVarType[] | undefined,
+): boolean => {
+  if (A === undefined || B === undefined) {
+    if (A === undefined && B === undefined) return true;
+    return false;
+  }
+  if (
+    (Array.isArray(A) && !Array.isArray(B)) ||
+    (!Array.isArray(A) && Array.isArray(B))
+  )
+    return false;
+  else if (Array.isArray(A) && Array.isArray(B)) {
+    if (A.length !== B.length) return false;
+    for (let i = 0; i < A.length; i++) {
+      if (!areEqualLLMResponseData(A[i], B[i])) return false;
+    }
+    return true;
+  } else {
+    return areEqualLLMResponseData(A as LLMResponseData, B as LLMResponseData);
+  }
+};
+
 /**
  * Given two info vars dicts, detects whether any + all vars (keys) match values.
  */
@@ -2019,7 +2259,8 @@ export const areEqualVarsDicts = (
   else if (keys_A.length === 0) return true;
   const all_vars = new Set(keys_A.concat(keys_B));
   for (const v of all_vars) {
-    if (!(v in B) || !(v in A) || B[v] !== A[v]) return false;
+    if (!(v in B) || !(v in A) || !areEqualPromptVarsDictValues(A[v], B[v]))
+      return false;
   }
   return true;
 };
@@ -2252,7 +2493,7 @@ export function llmResponseDataToString(data: LLMResponseData): string {
   if (typeof data === "string") return data;
   else if (typeof data === "number")
     return StringLookup.get(data) ?? "(string lookup failed)";
-  else return data.d;
+  else return data?.d;
 }
 
 /**
@@ -2409,6 +2650,16 @@ export const blobToBase64 = (blob: Blob): Promise<string> => {
   });
 };
 
+export const base64ToBlob = (b64: string, type = "image/png"): Blob => {
+  const byteString = atob(b64);
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([ab], { type });
+};
+
 export const compressBase64Image = (b64: string): Promise<string> => {
   // Convert base64 to Blob. Compress asynchronously, then convert back to base64.
   return fetch(`data:image/png;base64,${b64}`)
@@ -2473,4 +2724,122 @@ export const ensureUniqueName = (_name: string, _prev_names: string[]) => {
     new_name = `${name} (${i})`;
   }
   return new_name;
+};
+
+/**
+ * Converts a Blob or File to a Data URL.
+ * @param input The Blob or File to convert.
+ * @returns A Promise that resolves with the Data URL string.
+ */
+export function blobOrFileToDataURL(input: Blob | File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result); // full data URL
+      } else {
+        throw new Error("Failed to convert Blob/File to Data URL.");
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(input);
+  });
+}
+
+/**
+ * Converts a Data URL to a Blob.
+ * @param dataURL The Data URL to convert.
+ * @returns A Blob object representing the data.
+ */
+export function dataURLToBlob(dataURL: string): Blob {
+  const [meta, base64] = dataURL.split(",");
+  const mime = meta.match(/:(.*?);/)?.[1] || "application/octet-stream";
+  const byteString = atob(base64);
+  const byteArray = new Uint8Array(byteString.length);
+  for (let i = 0; i < byteString.length; i++) {
+    byteArray[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([byteArray], { type: mime });
+}
+
+/**
+ * Extracts the MIME type from a Data URL.
+ * @param dataUrl The Data URL to extract the MIME type from.
+ * @returns The MIME type as a string, or null if not found.
+ */
+function getMimeTypeFromDataURL(dataUrl: string): string | null {
+  const match = dataUrl.match(/^data:([^;,]+)[;,]/);
+  return match ? match[1] : null;
+}
+
+function getBase64DataFromDataURL(dataUrl: string): string | null {
+  return dataUrl.substring(dataUrl.indexOf(",") + 1);
+}
+
+// This function takes a string as argument that represents either :
+//  - a local path
+//  - a URL
+//  - a base64 encoded string
+// and return ithe following infos about the image:
+//  - size : the size of the image in bytes
+//  - width : the width of the image in pixels
+//  - height : the height of the image in pixels
+//  - type : the type of the image (png, jpeg, ...)
+export const get_image_infos = (image: string): Dict<string> => {
+  const infos: Dict<string> = {
+    size: "",
+    width: "",
+    height: "",
+    type: "",
+  };
+
+  if (image.startsWith("data:image")) {
+    // Base64 image
+    const base64 = image.split(",")[1];
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([bytes.buffer], { type: "image/png" });
+    infos.size = blob.size.toString();
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.src = url;
+    infos.width = img.width.toString();
+    infos.height = img.height.toString();
+    URL.revokeObjectURL(url);
+  } else {
+    // URL or local path
+    const img = new Image();
+    img.src = image;
+    infos.width = img.width.toString();
+    infos.height = img.height.toString();
+  }
+
+  return infos;
+};
+
+export const __http_url_to_base64 = (url: string) => {
+  return new Promise<string>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.responseType = "arraybuffer";
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const base64String = btoa(
+          new Uint8Array(xhr.response).reduce(
+            (data, byte) => data + String.fromCharCode(byte),
+            "",
+          ),
+        );
+        resolve(base64String);
+      } else {
+        reject(new Error("Failed to load image"));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Failed to load image"));
+    xhr.send();
+  });
 };

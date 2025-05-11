@@ -8,7 +8,14 @@ import React, {
   useContext,
 } from "react";
 import { Handle, Position } from "reactflow";
-import { Group, NativeSelect, Progress, Text, Textarea } from "@mantine/core";
+import {
+  Group,
+  NativeSelect,
+  Progress,
+  Text,
+  Textarea,
+  Checkbox,
+} from "@mantine/core";
 import { IconRobot, IconSearch } from "@tabler/icons-react";
 import { v4 as uuid } from "uuid";
 import useStore, { initLLMProviders } from "./store";
@@ -68,6 +75,17 @@ const OUTPUT_FORMAT_PROMPTS = {
   [OutputFormat.Any]: "",
 };
 
+const OUTPUT_FORMAT_PROMPTS_REASONING = {
+  [OutputFormat.Bin]:
+    "First, explain your reasoning for the classification. Then, output your final answer in the following format on a new line: SCORE: true or SCORE: false",
+  [OutputFormat.Cat]:
+    "First, explain your reasoning for the categorization. Then, output your final answer in the following format on a new line: SCORE: your_category",
+  [OutputFormat.Num]:
+    "First, explain your reasoning for the numeric value. Then, output your final answer in the following format on a new line: SCORE: numeric_value",
+  [OutputFormat.Any]:
+    "First, explain your reasoning. Then, output your final answer in the following format on a new line: SCORE: your_answer",
+};
+
 // The default LLM annotator is GPT-4 at temperature 0.
 const DEFAULT_LLM_ITEM = (() => {
   const item = [initLLMProviders.find((i) => i.base_model === "gpt-4")].map(
@@ -108,6 +126,8 @@ export interface LLMEvaluatorComponentProps {
   onLLMGraderChange?: (newGrader: LLMSpec) => void;
   onFormatChange?: (newFormat: OutputFormat) => void;
   modelContainerBgColor?: string;
+  reasonBeforeScoring?: boolean;
+  onReasonBeforeScoringChange?: (newValue: boolean) => void;
 }
 
 /**
@@ -127,6 +147,8 @@ export const LLMEvaluatorComponent = forwardRef<
     onLLMGraderChange,
     onFormatChange,
     modelContainerBgColor,
+    reasonBeforeScoring,
+    onReasonBeforeScoringChange,
   },
   ref,
 ) {
@@ -134,6 +156,9 @@ export const LLMEvaluatorComponent = forwardRef<
   const [llmScorers, setLLMScorers] = useState([grader ?? DEFAULT_LLM_ITEM]);
   const [expectedFormat, setExpectedFormat] = useState<OutputFormat>(
     format ?? OutputFormat.Bin,
+  );
+  const [useReasoning, setUseReasoning] = useState<boolean>(
+    reasonBeforeScoring ?? false,
   );
   const apiKeys = useStore((state) => state.apiKeys);
 
@@ -170,14 +195,27 @@ export const LLMEvaluatorComponent = forwardRef<
     [setExpectedFormat, onFormatChange],
   );
 
+  const handleReasoningChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setUseReasoning(e.currentTarget.checked);
+      if (onReasonBeforeScoringChange)
+        onReasonBeforeScoringChange(e.currentTarget.checked);
+    },
+    [setUseReasoning, onReasonBeforeScoringChange],
+  );
+
   const getPromptTemplate = () => {
-    const formatting_instr = OUTPUT_FORMAT_PROMPTS[expectedFormat] ?? "";
+    // Choose the appropriate format instruction based on the reasoning checkbox
+    const formatting_instr = useReasoning
+      ? OUTPUT_FORMAT_PROMPTS_REASONING[expectedFormat] ?? ""
+      : OUTPUT_FORMAT_PROMPTS[expectedFormat] ?? "";
+
     return (
       "You are evaluating text that will be pasted below. " +
       promptText +
       " " +
-      formatting_instr +
-      "\n```\n{__input}\n```"
+      "\n```\n{__input}\n```\n\n" +
+      formatting_instr
     );
   };
 
@@ -225,6 +263,7 @@ export const LLMEvaluatorComponent = forwardRef<
           apiKeys ?? {},
           progress_listener,
           cancelId,
+          useReasoning,
         );
       })
       .then(function (res) {
@@ -254,6 +293,7 @@ export const LLMEvaluatorComponent = forwardRef<
     prompt: promptText,
     grader: llmScorers.length > 0 ? llmScorers[0] : undefined,
     format: expectedFormat,
+    reasonBeforeScoring: useReasoning,
   });
 
   // Define functions accessible from the parent component
@@ -301,6 +341,13 @@ export const LLMEvaluatorComponent = forwardRef<
         />
       </Group>
 
+      <Checkbox
+        label="Reason before scoring"
+        checked={useReasoning}
+        onChange={handleReasoningChange}
+        mb="sm"
+      />
+
       <LLMListContainer
         initLLMItems={llmScorers}
         description="Model to use as scorer:"
@@ -321,6 +368,7 @@ export interface LLMEvaluatorNodeProps {
     format: OutputFormat;
     title: string;
     refresh: boolean;
+    reasonBeforeScoring?: boolean;
   };
   id: string;
 }
@@ -458,6 +506,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
     showDrawer,
     showAlert,
     cancelId,
+    data.reasonBeforeScoring,
   ]);
 
   const handleStopClick = useCallback(() => {
@@ -532,6 +581,10 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
             setDataPropsForNode(id, { prompt });
             setStatus(Status.WARNING);
           }}
+          reasonBeforeScoring={data.reasonBeforeScoring}
+          onReasonBeforeScoringChange={(newValue) =>
+            setDataPropsForNode(id, { reasonBeforeScoring: newValue })
+          }
           onLLMGraderChange={(new_grader) =>
             setDataPropsForNode(id, { grader: new_grader })
           }

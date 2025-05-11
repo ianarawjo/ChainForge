@@ -1,15 +1,18 @@
-import React, { Suspense, useMemo, lazy } from "react";
+import React, { Suspense, useMemo, lazy, useEffect } from "react";
 import { Collapse, Flex, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { llmResponseDataToString, truncStr } from "./backend/utils";
+import {
+  blobOrFileToDataURL,
+  llmResponseDataToString,
+  truncStr,
+} from "./backend/utils";
 import {
   Dict,
   EvaluationScore,
   LLMResponse,
   LLMResponseData,
-  StringOrHash,
 } from "./backend/typing";
-import { StringLookup } from "./backend/cache";
+import { MediaLookup } from "./backend/cache";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -116,7 +119,6 @@ export const ResponseGroup: React.FC<ResponseGroupProps> = ({
   defaultState,
 }) => {
   const [opened, { toggle }] = useDisclosure(defaultState);
-
   return (
     <div>
       <div className="response-group-component-header" onClick={toggle}>
@@ -146,7 +148,7 @@ export const ResponseGroup: React.FC<ResponseGroupProps> = ({
  */
 interface ResponseBoxProps {
   children: React.ReactNode; // For components, HTML elements, text, etc.
-  vars?: Dict<StringOrHash>;
+  vars?: Dict<LLMResponseData>;
   truncLenForVars?: number;
   llmName?: string;
   boxColor?: string;
@@ -165,7 +167,7 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
     if (vars === undefined) return [];
     return Object.entries(vars).map(([varname, val]) => {
       const v = truncStr(
-        (StringLookup.get(val) ?? "").trim(),
+        llmResponseDataToString(val).trim(),
         truncLenForVars ?? 18,
       );
       return (
@@ -181,7 +183,7 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
     <div
       className="response-box"
       style={{
-        backgroundColor: boxColor ?? "white",
+        backgroundColor: boxColor ?? "transparent",
         width: width ?? "100%",
       }}
     >
@@ -249,13 +251,7 @@ export const genResponseTextsDisplay = (
     if (r in resp_special_type_map) {
       // Right now only images are supported as special types.
       // Load and display the image:
-      display = (
-        <img
-          className="lazyload"
-          data-src={`data:image/png;base64,${r}`}
-          style={{ maxWidth: "100%", width: "auto" }}
-        />
-      );
+      display = <MediaBox mediaUID={r} />;
     } else {
       display = customTextDisplay ? customTextDisplay(r) : r;
     }
@@ -308,4 +304,33 @@ export const genResponseTextsDisplay = (
       </div>
     );
   });
+};
+
+// Image response display
+interface MediaBoxProps {
+  mediaUID: string;
+}
+
+// Buffers the MediaLookup data to display,
+// since fetching the data is async.
+export const MediaBox: React.FC<MediaBoxProps> = ({ mediaUID }) => {
+  // Whenever the mediaUID changes, we need to re-fetch the image.
+  const [mediaStr, setMediaStr] = React.useState<string | null>(null);
+  useEffect(() => {
+    MediaLookup.get(mediaUID).then((blob) => {
+      if (blob) {
+        blobOrFileToDataURL(blob).then(setMediaStr);
+      }
+    });
+  }, [mediaUID]);
+
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <img
+        className="lazyload"
+        data-src={mediaStr ?? ""}
+        style={{ maxWidth: "100%", width: "auto" }}
+      />
+    </Suspense>
+  );
 };

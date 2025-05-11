@@ -491,7 +491,7 @@ export const LLMListContainer = forwardRef<
   return (
     <div className="llm-list-container nowheel" style={_bgStyle}>
       <div className="llm-list-backdrop" style={_bgStyle}>
-        {description || "Models to query:"}
+        {description || "Response Providers"}
         <div className="add-llm-model-btn nodrag">
           <NestedMenu
             items={menuItems}
