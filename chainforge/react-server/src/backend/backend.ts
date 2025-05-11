@@ -33,6 +33,7 @@ import {
   llmResponseDataToString,
   extendArray,
   extendArrayDict,
+  extractMediaVars,
 } from "./utils";
 import StorageCache, { MediaLookup, StringLookup } from "./cache";
 import { PromptPipeline } from "./query";
@@ -632,6 +633,7 @@ export async function countQueries(
         _all_prompt_perms.forEach((prompt) => {
           let prompt_str = prompt.toString();
           const settings_params = extractSettingsVars(prompt.fill_history);
+          const media_params = extractMediaVars(prompt.fill_history);
 
           add_to_num_responses_req(llm_key, n * chat_hists.length);
 
@@ -667,6 +669,10 @@ export async function countQueries(
                 areEqualVarsDicts(
                   settings_params,
                   extractSettingsVars(cached_resp.vars),
+                ) &&
+                areEqualVarsDicts(
+                  media_params,
+                  extractMediaVars(cached_resp.vars),
                 )
               ) {
                 // Match found. Note it and count response length:

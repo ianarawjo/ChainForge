@@ -41,7 +41,7 @@ cors = CORS(app, resources={r"/*": {"origins": "*"}})
 # The cache and examples files base directories
 FLOWS_DIR = user_data_dir("chainforge")  # platform-agnostic local storage that persists outside the package install location
 SETTINGS_FILENAME = "settings.json"
-CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
+# CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
 MEDIA_DIR = os.path.join(FLOWS_DIR, 'media')
 
@@ -558,7 +558,7 @@ def initCustomProvider():
                                     Do `from chainforge.providers import provider` and decorate your provider completion function with @provider."""})
 
     # Establish the custom provider script cache directory
-    provider_scripts_dir = os.path.join(CACHE_DIR, "provider_scripts")
+    provider_scripts_dir = os.path.join(FLOWS_DIR, "provider_scripts")
     if not os.path.isdir(provider_scripts_dir):
         # Create the directory
         try:
@@ -616,7 +616,7 @@ def loadCachedCustomProviders():
     """
         Initalizes all custom model provider(s) in the local provider_scripts directory.
     """
-    provider_scripts_dir = os.path.join(CACHE_DIR, "provider_scripts")
+    provider_scripts_dir = os.path.join(FLOWS_DIR, "provider_scripts")
     if not os.path.isdir(provider_scripts_dir):
         # No providers to load.
         return jsonify({'providers': []})
@@ -677,7 +677,7 @@ def removeCustomProvider():
 
     # Attempt to delete associated script from cache
     if script_id:
-        script_path = os.path.join(CACHE_DIR, "provider_scripts", f"{script_id}.py")
+        script_path = os.path.join(FLOWS_DIR, "provider_scripts", f"{script_id}.py")
         if os.path.isfile(script_path):
             os.remove(script_path)
 

@@ -657,6 +657,7 @@ html[data-mantine-color-scheme="dark"] .small-response {
   border: none;
   padding: 6px;
 }
+
 .small-response-metrics {
   font-size: 9pt;
   font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
@@ -1652,6 +1653,7 @@ html[data-mantine-color-scheme="dark"] .upload-node-list {
   border: 1px solid #e0e0e0;
   border-radius: 4px;
   margin: 6px auto;
+  cursor: pointer;
 }
 
 html[data-mantine-color-scheme="dark"] .empty-state-box-media-node {
@@ -1664,7 +1666,7 @@ html[data-mantine-color-scheme="dark"] .empty-state-box-media-node {
   color: #666;
   cursor: pointer;
   width: 38px;
-  height: 38px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;

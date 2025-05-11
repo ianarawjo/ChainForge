@@ -674,7 +674,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
         : [];
 
     const pulled_data_table = pulledInputsToTable(pulled_data["load-data"]);
-    const pulled_resps_table = responsesToTable(resps ?? []);
+    const pulled_resps_table = await responsesToTable(resps ?? []);
     const col_names = new Set<string>();
     pulled_data_table.forEach((row) => {
       Object.keys(row).forEach((key) => col_names.add(key));

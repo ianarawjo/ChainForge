@@ -21,7 +21,6 @@ import {
   areEqualVarsDicts,
   repairCachedResponses,
   compressBase64Image,
-  blobToBase64,
   extractMediaVars,
 } from "./utils";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
@@ -103,26 +102,40 @@ export class PromptPipeline {
     // Extract and format the responses into `LLMResponseData`
     const extracted_resps = extract_responses(response, llm, provider);
 
-    // Detect any images and downrez them if the user has approved of automatic compression.
-    // This saves a lot of performance and storage. We also need to disable storing the raw response here, to save space.
+    // Detect any images and:
+    // - Downrez them if the user has approved of automatic compression.
+    // - Intern them to the MediaLookup table.
+    //   This saves a lot of performance and storage.
     const contains_imgs = extracted_resps.some(isImageResponseData);
-    if (contains_imgs && this._imgCompr) {
+    if (contains_imgs) {
       for (const r of extracted_resps) {
         if (isImageResponseData(r)) {
-          try {
-            // Compress asynchronously, then convert back to base64
-            const b64_comp = await compressBase64Image(r.d);
+          // At this point, we have a base64 image string.
+          let img_data: string = r.d;
 
-            // DEBUG: Calculate compression ratio
-            // console.warn(
-            //   `Compressed image to ${(b64_comp.length / r.d.length) * 100}% of original b64 size`,
-            // );
+          // Compress the image if the user has approved of it.
+          if (this._imgCompr) {
+            try {
+              // Compress asynchronously, then convert back to base64
+              img_data = await compressBase64Image(r.d);
+              // DEBUG: Calculate compression ratio
+              // console.warn(`Compressed image to ${(b64_comp.length / r.d.length) * 100}% of original b64 size`);
+            } catch (e) {
+              // If compression fails, we just move on.
+              console.warn("Image compression attempt failed. Error info:", e);
+            }
+          }
 
-            // Swap data on original image for compressed
-            r.d = b64_comp;
-          } catch (e) {
-            // If compression fails, we just move on.
-            console.warn("Image compression attempt failed. Error info:", e);
+          // Intern the image to the MediaLookup table
+          const uid = await MediaLookup.uploadDataURL(
+            `data:image/png;base64,${img_data}`,
+          );
+          if (uid) {
+            r.d = uid; // Update the image data to the media UID, rather than the raw data.
+          } else {
+            console.warn("Failed to upload image to MediaLookup table.");
+            // Backup plan... may lead to unexpected behavior.
+            r.d = `data:image/png;base64,${r.d}`;
           }
         }
       }
@@ -131,7 +144,6 @@ export class PromptPipeline {
     // Create a response obj to represent the response
     let resp_obj: RawLLMResponseObject = {
       prompt: prompt.toString(),
-      query: query ?? {},
       uid: uuid(),
       responses: extracted_resps,
       llm,
@@ -298,7 +310,6 @@ export class PromptPipeline {
           // console.log(` - Found cache'd response for prompt ${prompt_str}. Using...`);
           const resp: RawLLMResponseObject = {
             prompt: cached_resp.prompt,
-            query: cached_resp.query,
             uid: cached_resp.uid ?? uuid(),
             responses: extracted_resps.slice(0, n),
             llm: cached_resp.llm || NativeLLM.OpenAI_ChatGPT,

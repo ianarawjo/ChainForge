@@ -73,8 +73,7 @@ const ImagePreviewModal = forwardRef<
       <Stack spacing="md" align="center">
         <div
           style={{
-            width: 600,
-            height: 600,
+            width: "100%",
             overflow: "hidden",
             display: "flex",
             alignItems: "center",
@@ -95,8 +94,7 @@ const ImagePreviewModal = forwardRef<
           <div
             style={{
               width: "100%",
-              maxWidth: "600px",
-              padding: "0px",
+              padding: "10px",
               borderRadius: "8px",
               border: "1px solid #e9ecef",
             }}

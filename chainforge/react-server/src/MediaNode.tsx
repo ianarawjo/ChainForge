@@ -77,7 +77,7 @@ const __construct_items_in_json_responses = async (
         responses: [
           {
             t: "img",
-            d: (await MediaLookup.getUrl(row.image as string)) ?? "",
+            d: row.image as string,
           },
         ],
         uid: String(row.__uid),
@@ -594,7 +594,7 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
         const observer = new window.ResizeObserver(() => {
           if (!ref || !ref.current) return;
           // Depending if there is the < > Chevron buttons or not, the offset is not the same
-          const vertical_y_offset_hooks = 308;
+          const vertical_y_offset_hooks = tableColumns.length > 1 ? 308 : 296;
           const new_hooks_y =
             ref.current.clientHeight + vertical_y_offset_hooks;
           if (past_hooks_y !== new_hooks_y) {
@@ -657,7 +657,6 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
       const uid_image_cached = await MediaLookup.upload(image_data);
 
       // Create new row with image UID and ensure it has a unique ID
-
       const rowWithImage: TabularDataRowType = {
         ...newRow,
         [imageColumnKey]: uid_image_cached,
@@ -848,6 +847,7 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
         ref={inspectModal}
         jsonResponses={jsonResponses ?? []}
         customLLMFieldName="Image"
+        disableBackgroundColor={true}
       />
 
       {/* if data present, display a clickable Image  */}
@@ -866,7 +866,9 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
             <div className="media-image-preview-container">
               <div onClick={handleImageClick} style={{ cursor: "pointer" }}>
                 <Tooltip
-                  label="Click me for more details"
+                  label="Click for more details"
+                  position="top"
+                  offset={-15}
                   withArrow
                   withinPortal
                 >
@@ -933,7 +935,7 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
         </Flex>
       )}
 
-      {tableColumns.length > 1 && <Divider mt="xs" />}
+      {tableColumns.length > 1 && <Divider mt={8} />}
 
       {/* 
         if data present, for each column, display a textarea filled with the adequate row data
@@ -1008,7 +1010,10 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
         {/* If no data present, display a message */}
         {tableData.length === 0 && (
           <div className="media-textfields-container nowheel nodrag">
-            <Box className="empty-state-box-media-node">
+            <Box
+              className="empty-state-box-media-node"
+              onClick={handleOpenUploadModal}
+            >
               <Text color="dimmed">No Media Uploaded</Text>
             </Box>
             <Flex justify={"center"} align="center">

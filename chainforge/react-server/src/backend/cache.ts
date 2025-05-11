@@ -2,11 +2,13 @@ import { Dict, JSONCompatible } from "./typing";
 import LZString from "lz-string";
 import {
   APP_IS_RUNNING_LOCALLY,
+  base64ToBlob,
   blobOrFileToDataURL,
   dataURLToBlob,
   FLASK_BASE_URL,
 } from "./utils";
 import { v4 as uuid } from "uuid";
+import Bottleneck from "bottleneck";
 
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
@@ -357,6 +359,12 @@ export class MediaLookup {
   // Maximum size of the temporary cache in bytes (50MB)
   private readonly MAX_TEMP_CACHE_SIZE = 50 * 1024 * 1024;
 
+  // A rate limiter for uploads
+  private static uploadLimiter = new Bottleneck({
+    maxConcurrent: 2, // Allow 3 concurrent uploads
+    minTime: 100, // Minimum 100ms between upload operations
+  });
+
   private constructor() {
     // Initialize the singleton instance
     this.mediaUIDs = new Set<string>();
@@ -488,25 +496,28 @@ export class MediaLookup {
    */
   public static async upload(file: File | Blob): Promise<string> {
     if (IS_RUNNING_LOCALLY) {
-      const formData = new FormData();
-      formData.append("file", file);
+      // Use the limiter to throttle uploads
+      return MediaLookup.uploadLimiter.schedule(async () => {
+        const formData = new FormData();
+        formData.append("file", file);
 
-      const res = await fetch(`${FLASK_BASE_URL}upload`, {
-        method: "POST",
-        body: formData,
+        const res = await fetch(`${FLASK_BASE_URL}upload`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
+
+        const json = await res.json();
+        const uid = json.uid;
+
+        if (!uid) throw new Error("Upload failed: No UID returned");
+
+        // Store the UID in the media UIDs set
+        MediaLookup.getInstance().add(uid);
+
+        return uid;
       });
-
-      if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
-
-      const json = await res.json();
-      const uid = json.uid;
-
-      if (!uid) throw new Error("Upload failed: No UID returned");
-
-      // Store the UID in the media UIDs set
-      MediaLookup.getInstance().add(uid);
-
-      return uid;
     } else {
       // Make a uid for the file, and use it to cache the file:
       // NOTE: We keep the file name around, if there is one, just in case we need to recover it later.
@@ -515,6 +526,12 @@ export class MediaLookup {
       MediaLookup.getInstance().add(uid, file);
       return uid;
     }
+  }
+
+  public static async uploadDataURL(dataURL: string): Promise<string> {
+    const blob = dataURLToBlob(dataURL);
+    const uid = await MediaLookup.upload(blob);
+    return uid;
   }
 
   /**
@@ -542,6 +559,24 @@ export class MediaLookup {
    * @returns Blob (image, PDF, etc.)
    */
   public static async get(uid: string): Promise<Blob | undefined> {
+    // Check if the UID is a data URL in disguise,
+    // in which case we convert it to a Blob and return it directly.
+    if (uid.startsWith("data:")) {
+      const blob = dataURLToBlob(uid);
+      return blob;
+    } else if (uid && uid.length > 512) {
+      // If the UID is too long, it might be a base64 string content.
+      // This can happen when loading files from older versions of ChainForge.
+      try {
+        return base64ToBlob(uid);
+      } catch (error) {
+        console.error(
+          `Error converting base64 string to Blob: ${(error as Error).message}`,
+        );
+        return undefined;
+      }
+    }
+
     // Check if the file is in the mediaUIDs
     const mediaLookup = MediaLookup.getInstance();
     const isInLookup = mediaLookup.mediaUIDs.has(uid);

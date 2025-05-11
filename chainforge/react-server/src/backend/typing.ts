@@ -246,7 +246,8 @@ export interface BaseLLMResponseObject {
 /** A JSON object describing an LLM response for the same prompt, with n responses (n>=1) */
 export interface RawLLMResponseObject extends BaseLLMResponseObject {
   // A snapshot of the exact query (payload) sent to the LLM's API
-  query: Dict;
+  // DEPRECATED: This is now deprecated since it wastes precious storage space.
+  // query: Dict;
   // The raw JSON response from the LLM
   // NOTE: This is now deprecated since it wastes precious storage space.
   // raw_response: Dict;

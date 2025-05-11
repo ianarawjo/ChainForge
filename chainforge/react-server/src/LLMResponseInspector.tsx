@@ -53,6 +53,8 @@ import {
   llmResponseDataToString,
   DebounceRef,
   genDebounceFunc,
+  blobOrFileToDataURL,
+  blobToBase64,
 } from "./backend/utils";
 import {
   MediaBox,
@@ -217,11 +219,23 @@ export const pulledInputsToTable = (data: string[] | TemplateVarInfo[]) => {
     .flat();
 };
 
-export const responsesToTable = (
+export const responsesToTable = async (
   jsonResponses: LLMResponse[],
   wrapVars?: boolean,
 ) => {
-  return jsonResponses
+  const _resp_to_string = async (resp: LLMResponseData) => {
+    if (isImageResponseData(resp)) {
+      // TODO: Find out a way to export images to excel.
+      // NOTE: base64 does not work because of the text size limit in excel.
+      //       We get the error: "Text length must not exceed 32767 characters"
+      return `media/${resp.d}`;
+      // const blob = await MediaLookup.get(resp.d);
+      // if (blob === undefined) return undefined;
+      // return await blobOrFileToDataURL(blob);
+    } else return llmResponseDataToString(resp);
+  };
+
+  const tableDataPromises = jsonResponses
     .map((res_obj, res_obj_idx) => {
       const llm = getLLMName(res_obj);
       const prompt = StringLookup.get(res_obj.prompt) ?? "";
@@ -232,20 +246,19 @@ export const responsesToTable = (
         note: getLabelForResponse(res_obj.uid, "note"),
       };
       const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
-      return res_obj.responses.map((r, r_idx) => {
+      return res_obj.responses.map(async (r, r_idx) => {
         const row: Dict<string | number | boolean> = {
           Method: llm,
           Prompt: prompt,
-          Response: llmResponseDataToString(r),
+          Response: (await _resp_to_string(r)) ?? "",
           "Batch Id": res_obj.uid ?? res_obj_idx,
         };
 
         // Add columns for vars
-        Object.entries(vars).forEach(([varname, val]) => {
-          // TODO: Decide how to export images in the future
+        for (const [varname, val] of Object.entries(vars)) {
           row[wrapVars ? `Var: ${varname}` : varname] =
-            llmResponseDataToString(val);
-        });
+            (await _resp_to_string(val)) ?? "";
+        }
 
         // Add column(s) for human ratings, if present
         if (ratings) {
@@ -276,16 +289,27 @@ export const responsesToTable = (
         }
 
         // Add columns for metavars, if present
-        Object.entries(metavars).forEach(([varname, val]) => {
-          if (!cleanMetavarsFilterFunc(varname)) return; // skip llm group metavars
+        for (const [varname, val] of Object.entries(metavars)) {
+          if (!cleanMetavarsFilterFunc(varname)) continue; // skip llm group metavars
           row[wrapVars ? `Metavar: ${varname}` : varname] =
-            llmResponseDataToString(val);
-        });
+            (await _resp_to_string(val)) ?? "";
+        }
 
         return row;
       });
     })
     .flat();
+
+  const tableData = await Promise.allSettled(tableDataPromises).then(
+    (resolvedTableData) => {
+      const filteredTableData = resolvedTableData.filter(
+        (result) => result.status === "fulfilled",
+      ) as PromiseFulfilledResult<any>[];
+      return filteredTableData.map((result) => result.value);
+    },
+  );
+
+  return tableData;
 };
 
 // Export the JSON responses to an excel file (downloads the file):
@@ -305,27 +329,19 @@ export const exportToExcel = (
     );
   }
 
-  // Check format of responses
-  // TODO: Support export of images in Excel sheets
-  if (
-    jsonResponses.some(
-      (r) => r.responses.length > 0 && isImageResponseData(r.responses[0]),
-    )
-  ) {
-    throw new Error(
-      "Images cannot be exported at this time. If you need this feature and you are a developer, please consider submitting a PR to our GitHub repository.",
-    );
-  }
-
   // We can construct the data as an array of JSON dicts, with keys as header names:
   // NOTE: We need to 'unwind' responses in each batch, since each res_obj can have N>1 responses.
   //       We will store every response text on a single row, but keep track of batches by creating a batch ID number.
-  const data = responsesToTable(jsonResponses, true);
-
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-  XLSX.writeFile(wb, filename);
+  responsesToTable(jsonResponses, true)
+    .then((data) => {
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      XLSX.writeFile(wb, filename as string);
+    })
+    .catch((e) => {
+      console.error("Failed to export responses to Excel. Data corrupted?", e);
+    });
 };
 
 export interface LLMResponseInspectorProps {
@@ -333,6 +349,7 @@ export interface LLMResponseInspectorProps {
   isOpen: boolean;
   wideFormat?: boolean;
   customLLMFieldName?: string;
+  disableBackgroundColor?: boolean;
 }
 
 const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
@@ -340,6 +357,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   isOpen,
   wideFormat,
   customLLMFieldName,
+  disableBackgroundColor,
 }) => {
   // Responses
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
@@ -590,8 +608,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         );
 
       // Functions to associate a color to each LLM in responses
-      const color_for_llm = (llm: string) =>
-        getColorForLLMAndSetIfNotFound(llm) + "99";
+      const color_for_llm = disableBackgroundColor
+        ? (c: string) => "transparent"
+        : (llm: string) => getColorForLLMAndSetIfNotFound(llm) + "99";
       const header_bg_colors =
         colorScheme === "light"
           ? ["#e0f4fa", "#c0def9", "#a9c0f9", "#a6b2ea"]
@@ -1183,6 +1202,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     filterBySearchValue,
     colorScheme,
     customLLMFieldName,
+    disableBackgroundColor,
   ]);
 
   // When the user clicks an item in the drop-down,

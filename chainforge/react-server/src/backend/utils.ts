@@ -91,24 +91,25 @@ let _APP_IS_RUNNING_LOCALLY: boolean | undefined;
  * @returns `true` if we think the app is running locally (on localhost or equivalent); `false` if not.
  */
 export function APP_IS_RUNNING_LOCALLY(): boolean {
-  if (_APP_IS_RUNNING_LOCALLY === undefined) {
-    // Calculate whether we're running the app locally or not, and save the result
-    try {
-      const location = window.location;
+  return false;
+  // if (_APP_IS_RUNNING_LOCALLY === undefined) {
+  //   // Calculate whether we're running the app locally or not, and save the result
+  //   try {
+  //     const location = window.location;
 
-      _APP_IS_RUNNING_LOCALLY =
-        location.hostname === "localhost" ||
-        location.hostname === "127.0.0.1" ||
-        location.hostname === "0.0.0.0" ||
-        location.hostname === "" || // @ts-expect-error undefined
-        window.__CF_HOSTNAME !== undefined;
-    } catch (e) {
-      // ReferenceError --window or location does not exist.
-      // We must not be running client-side in a browser, in this case (e.g., we are running a Node.js server)
-      _APP_IS_RUNNING_LOCALLY = false;
-    }
-  }
-  return _APP_IS_RUNNING_LOCALLY;
+  //     _APP_IS_RUNNING_LOCALLY =
+  //       location.hostname === "localhost" ||
+  //       location.hostname === "127.0.0.1" ||
+  //       location.hostname === "0.0.0.0" ||
+  //       location.hostname === "" || // @ts-expect-error undefined
+  //       window.__CF_HOSTNAME !== undefined;
+  //   } catch (e) {
+  //     // ReferenceError --window or location does not exist.
+  //     // We must not be running client-side in a browser, in this case (e.g., we are running a Node.js server)
+  //     _APP_IS_RUNNING_LOCALLY = false;
+  //   }
+  // }
+  // return _APP_IS_RUNNING_LOCALLY;
 }
 
 /**
@@ -261,6 +262,24 @@ function construct_image_payload(
   }
 }
 
+async function imagesToBase64(images: string[]) {
+  if (images && images.length > 0) {
+    const base64_images: Array<string> = [];
+    for (const image of images) {
+      const imageBlob = await MediaLookup.get(image);
+      if (!imageBlob) {
+        // This should never happen, but just in case:
+        console.error(`Image not found in MediaLookup: ${image}`);
+        continue;
+      }
+      const base64_image = await blobToBase64(imageBlob);
+      if (base64_image) base64_images.push(base64_image);
+    }
+    return base64_images;
+  }
+  return [];
+}
+
 async function resolve_images_in_user_messages(
   messages: ChatHistory,
   variant: "openai" | "gemini" | "anthropic" | "ollama",
@@ -276,20 +295,7 @@ async function resolve_images_in_user_messages(
     let images = message.images;
 
     // Cast any images to base64 strings
-    if (images && images.length > 0) {
-      const base64_images: Array<string> = [];
-      for (const image of images) {
-        const imageBlob = await MediaLookup.get(image);
-        if (!imageBlob) {
-          // This should never happen, but just in case:
-          console.error(`Image not found in MediaLookup: ${image}`);
-          continue;
-        }
-        const base64_image = await blobToBase64(imageBlob);
-        if (base64_image) base64_images.push(base64_image);
-      }
-      images = base64_images;
-    }
+    images = await imagesToBase64(images ?? []);
 
     if (variant === "ollama") {
       // Resolving Image in user messages
@@ -1773,6 +1779,9 @@ async function call_custom_provider(
   const responses: Dict[] = [];
   const query = { prompt, model, temperature, ...params };
 
+  // Convert any images to base64
+  const base64_images = await (images ? imagesToBase64(images) : undefined);
+
   // Call the custom provider n times
   while (responses.length < n) {
     // Abort if the user canceled
@@ -1785,6 +1794,7 @@ async function call_custom_provider(
         prompt,
         model: submodel_name,
         temperature,
+        images: base64_images,
         ...params,
       },
     });
@@ -2090,7 +2100,6 @@ export function merge_response_objs(
   const res: RawLLMResponseObject = {
     responses: resp_obj_A.responses.concat(resp_obj_B.responses),
     prompt: resp_obj_B.prompt,
-    query: resp_obj_B.query,
     llm: resp_obj_B.llm,
     vars: resp_obj_B.vars ?? (resp_obj_B as any).info ?? {}, // backwards compatibility---vars used to be 'info'
     metavars: resp_obj_B.metavars ?? {},
@@ -2633,6 +2642,16 @@ export const blobToBase64 = (blob: Blob): Promise<string> => {
     };
     reader.onerror = () => reject(new Error("Error reading file"));
   });
+};
+
+export const base64ToBlob = (b64: string, type = "image/png"): Blob => {
+  const byteString = atob(b64);
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([ab], { type });
 };
 
 export const compressBase64Image = (b64: string): Promise<string> => {

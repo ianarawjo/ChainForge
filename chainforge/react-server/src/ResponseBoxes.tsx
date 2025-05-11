@@ -2,7 +2,7 @@ import React, { Suspense, useMemo, lazy, useEffect } from "react";
 import { Collapse, Flex, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
-  blobToBase64,
+  blobOrFileToDataURL,
   llmResponseDataToString,
   truncStr,
 } from "./backend/utils";
@@ -183,7 +183,7 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
     <div
       className="response-box"
       style={{
-        backgroundColor: boxColor ?? "white",
+        backgroundColor: boxColor ?? "transparent",
         width: width ?? "100%",
       }}
     >
@@ -251,13 +251,7 @@ export const genResponseTextsDisplay = (
     if (r in resp_special_type_map) {
       // Right now only images are supported as special types.
       // Load and display the image:
-      display = (
-        <img
-          className="lazyload"
-          data-src={r.startsWith("blob:") ? r : `data:image/png;base64,${r}`}
-          style={{ maxWidth: "100%", width: "auto" }}
-        />
-      );
+      display = <MediaBox mediaUID={r} />;
     } else {
       display = customTextDisplay ? customTextDisplay(r) : r;
     }
@@ -325,7 +319,7 @@ export const MediaBox: React.FC<MediaBoxProps> = ({ mediaUID }) => {
   useEffect(() => {
     MediaLookup.get(mediaUID).then((blob) => {
       if (blob) {
-        blobToBase64(blob).then(setMediaStr);
+        blobOrFileToDataURL(blob).then(setMediaStr);
       }
     });
   }, [mediaUID]);
@@ -334,7 +328,7 @@ export const MediaBox: React.FC<MediaBoxProps> = ({ mediaUID }) => {
     <Suspense fallback={<div>Loading...</div>}>
       <img
         className="lazyload"
-        data-src={mediaStr ? `data:image/png;base64,${mediaStr}` : ""}
+        data-src={mediaStr ?? ""}
         style={{ maxWidth: "100%", width: "auto" }}
       />
     </Suspense>

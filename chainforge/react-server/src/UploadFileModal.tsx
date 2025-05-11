@@ -5,6 +5,7 @@ import React, {
   useState,
   useCallback,
   useContext,
+  useRef,
 } from "react";
 import {
   Modal,
@@ -74,6 +75,7 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
 
   return (
     <Dropzone
+      mt="sm"
       loading={isLoading}
       accept={["image/png", "image/jpeg"]} // TODO support all image file types of : import IMAGE_MIME_TYPE from "@mantine/dropzone";
       onDrop={(files) => {
@@ -174,6 +176,13 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
       },
     });
 
+    const handleSubmit = useCallback(() => {
+      if (onSubmit) onSubmit(fileLoaded[0]);
+      setFileLoaded([]); // clear the fileLoaded state
+      form.setValues({ value: "" }); // clear the form input
+      close();
+    }, [onSubmit, fileLoaded, close]);
+
     const handleRemoveFileLoaded = useCallback(() => {
       setFileLoaded([]);
       form.setValues({ value: "" });
@@ -216,9 +225,24 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
       }
     }, [form.values.value, handleError]);
 
-    useEffect(() => {
-      form.setValues({ value: "" });
-    }, []);
+    const handlePaste: React.ClipboardEventHandler<HTMLInputElement> = (
+      event,
+    ) => {
+      if (!event.clipboardData) return;
+
+      const items = Array.from(event.clipboardData.items);
+      const imageItem = items.find((item) => item.type.startsWith("image/"));
+
+      if (imageItem) {
+        const file = imageItem.getAsFile();
+        if (file)
+          blobOrFileToDataURL(file).then((b64_string) => {
+            const fileWithContent = file as FileWithContent;
+            fileWithContent.content = b64_string;
+            setFileLoaded([fileWithContent]);
+          });
+      }
+    };
 
     useImperativeHandle(ref, () => ({
       open,
@@ -242,21 +266,17 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
         }
       >
         <Box maw="auto" mx="auto">
-          <form
-            onSubmit={form.onSubmit(() => {
-              if (onSubmit) onSubmit(fileLoaded[0]);
-              close();
-            })}
-          >
+          <form onSubmit={form.onSubmit(handleSubmit)}>
             {fileLoaded.length === 0 && (
               <>
                 <Divider
                   my="l"
-                  label="Provide HTTP url of an image file"
+                  label="Provide HTTP URL of an image file, or paste an image"
                   labelPosition="center"
                 />
                 <TextInput
-                  label="Click on the fetch button to grab the image from the URL"
+                  onPaste={(e) => handlePaste(e)}
+                  label="Paste a URL to an image and click Fetch to grab it, or paste an image from the clipboard"
                   autoFocus={false}
                   placeholder="https://example.com/image.png"
                   mt="sm"
