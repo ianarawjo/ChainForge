@@ -350,6 +350,7 @@ export interface LLMResponseInspectorProps {
   wideFormat?: boolean;
   customLLMFieldName?: string;
   disableBackgroundColor?: boolean;
+  treatLLMFieldAsUnique?: boolean;
 }
 
 const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
@@ -358,6 +359,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   wideFormat,
   customLLMFieldName,
   disableBackgroundColor,
+  treatLLMFieldAsUnique,
 }) => {
   // Responses
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
@@ -769,12 +771,19 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           v === "LLM" ? getLLMName(r) : StringLookup.get(r.vars[v]) ?? "";
 
         // Then group responses by prompts. Each prompt will become a separate row of the table (will be treated as unique)
-        const responses_by_prompt = groupResponsesBy(responses, (r) =>
-          var_cols
+        const responses_by_prompt = groupResponsesBy(responses, (r) => {
+          const group = var_cols
             .map((v) => getVar(r, v))
             .map(llmResponseDataToString)
-            .join("|"),
-        )[0];
+            .join("|");
+          if (
+            treatLLMFieldAsUnique &&
+            tableColVar === "$LLM" &&
+            r.responses.length > 0
+          )
+            return group + "|" + llmResponseDataToString(r.responses[0]);
+          else return group;
+        })[0];
 
         const rows = Object.entries(responses_by_prompt).map(
           // eslint-disable-next-line

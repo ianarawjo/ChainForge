@@ -625,9 +625,9 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
 
   const uploadFileModal = useRef<UploadFileModalRef>(null);
 
-  const handleUploadFile = useCallback(
+  const handleUploadFiles = useCallback(
     async (
-      image_data: FileWithContent,
+      image_data: FileWithContent[],
       newRow: TabularDataRowType = defaultRows,
       newColumns: TabularDataColType[] = defaultColumns,
     ) => {
@@ -651,42 +651,39 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
       if (tableColumns.length === 0) {
         setTableColumns([...columns_to_add, ...newColumns]);
       }
-      //  -------
 
       //  ------- HANDLING NEW ROWS
-      const uid_image_cached = await MediaLookup.upload(image_data);
+      const new_rows: TabularDataRowType[] = [];
+      const new_metadata = { ...metadataRows };
+      for (const file of image_data) {
+        const uid_image = await MediaLookup.upload(file);
 
-      // Create new row with image UID and ensure it has a unique ID
-      const rowWithImage: TabularDataRowType = {
-        ...newRow,
-        [imageColumnKey]: uid_image_cached,
-        __uid: newRow.__uid || uuidv4(),
-      };
-      //  -------
+        // Create new row with image UID and ensure it has a unique ID
+        const rowWithImage: TabularDataRowType = {
+          ...newRow,
+          [imageColumnKey]: uid_image,
+          __uid: newRow.__uid || uuidv4(),
+        };
 
-      // Update table data
-      const updatedTableData = [...tableData, rowWithImage];
+        // Update table data
+        new_rows.push(rowWithImage);
+
+        // Update metadata for the new row
+        const coming_from: metadataRowType["coming_from"] =
+          file.name.startsWith("http") ? "Remote image" : "Local file Uploaded";
+
+        new_metadata[rowWithImage.__uid] = {
+          source: file.name,
+          coming_from: coming_from,
+          timestamp: file.lastModified?.toString(),
+          size: file.size?.toString(),
+        };
+      }
+
+      const updatedTableData = [...tableData, ...new_rows];
       setTableData(updatedTableData);
       setCurrentRowIndex(updatedTableData.length - 1);
-
-      // Update metadata for the new row
-      const coming_from: metadataRowType["coming_from"] =
-        image_data.name.startsWith("http")
-          ? "Remote image"
-          : "Local file Uploaded";
-
-      const timestamp = image_data.lastModified;
-
-      const newMetadata = {
-        ...metadataRows,
-        [rowWithImage.__uid]: {
-          source: image_data.name,
-          coming_from: coming_from,
-          timestamp: timestamp.toString(),
-          size: image_data.size.toString(),
-        },
-      };
-      setMetadataRows(newMetadata);
+      setMetadataRows(new_metadata);
     },
     [tableColumns, tableData, id, metadataRows, showAlert],
   );
@@ -841,13 +838,14 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
       <UploadFileModal
         ref={uploadFileModal}
         title="Upload Image : HTTP url or local file"
-        onSubmit={handleUploadFile}
+        onSubmit={handleUploadFiles}
       />
       <LLMResponseInspectorModal
         ref={inspectModal}
         jsonResponses={jsonResponses ?? []}
         customLLMFieldName="Image"
         disableBackgroundColor={true}
+        treatLLMFieldAsUnique={true}
       />
 
       {/* if data present, display a clickable Image  */}

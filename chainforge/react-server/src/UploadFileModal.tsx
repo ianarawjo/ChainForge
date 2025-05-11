@@ -41,26 +41,25 @@ import { FileWithContent } from "./backend/typing";
 const MAX_SIZE = 50;
 
 // Read a file as text and pass the text to a cb (callback) function
-const read_file = (
-  file: FileWithPath,
-  cb: (contents: string | ArrayBuffer | null, file: FileWithPath) => void,
-) => {
-  const reader = new window.FileReader();
-  reader.onload = function (event) {
-    const fileContent = event.target?.result;
-    cb(fileContent ?? null, file);
-  };
-  reader.onerror = function (event) {
-    console.error("Error reading file:", event);
-  };
-  reader.readAsDataURL(file);
+const read_file = (file: FileWithPath) => {
+  return new Promise((resolve, reject) => {
+    const reader = new window.FileReader();
+    reader.onload = function (event) {
+      const fileContent = event.target?.result;
+      resolve(fileContent ?? null);
+    };
+    reader.onerror = function (event) {
+      reject(new Error("Error reading file"));
+    };
+    reader.readAsDataURL(file);
+  });
 };
 
 // ====================================== File Dropzone Modal ======================================
 
 interface ImageFileDropzoneProps {
   onError: (err: string | Error) => void;
-  onDrop: (file: FileWithContent) => void;
+  onDrop: (files: FileWithContent[]) => void;
 }
 
 /** A Dropzone to load an image file.
@@ -73,33 +72,59 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
   const theme = useMantineTheme();
   const [isLoading, setIsLoading] = useState(false);
 
+  const handleDrop = useCallback(
+    (files: FileWithPath[]) => {
+      setIsLoading(true);
+
+      // Check file sizes are all under the max size
+      for (const file of files) {
+        if (file.size > MAX_SIZE * 1024 ** 2) {
+          onError(
+            new Error(
+              `File size exceeds ${MAX_SIZE} MB. Skipping file ${file.name}. Please select a smaller file.`,
+            ),
+          );
+          return;
+        }
+      }
+
+      // Read each file and pass the content to the onDrop callback
+      const readFilePromises = files.map(async (file) => {
+        const content = await read_file(file);
+        if (typeof content !== "string") {
+          console.error("File unreadable: Contents are not text. Skipping...");
+          return null;
+        } else {
+          (file as FileWithContent).content = content;
+          return file as FileWithContent;
+        }
+      });
+
+      // Wait for all files to be read
+      Promise.all(readFilePromises)
+        .then((filesWithContent) => {
+          onDrop(
+            filesWithContent.filter(
+              (file) => file !== null,
+            ) as FileWithContent[],
+          );
+          setIsLoading(false);
+        })
+        .catch((error) => {
+          console.error("Error reading files:", error);
+          onError(error);
+        });
+    },
+    [onError, onDrop],
+  );
+
   return (
     <Dropzone
       mt="sm"
       loading={isLoading}
       accept={["image/png", "image/jpeg"]} // TODO support all image file types of : import IMAGE_MIME_TYPE from "@mantine/dropzone";
-      onDrop={(files) => {
-        if (files.length === 1) {
-          setIsLoading(true);
-          read_file(
-            files[0],
-            (content: string | ArrayBuffer | null, file: FileWithContent) => {
-              if (typeof content !== "string") {
-                console.error("File unreadable: Contents are not text.");
-                return;
-              }
-              file.content = content;
-              onDrop(file as FileWithContent);
-              setIsLoading(false);
-            },
-          );
-        } else {
-          console.error(
-            "Too many files dropped. Only drop one file at a time.",
-          );
-        }
-      }}
-      onReject={(files) => console.log("rejected files", files)}
+      onDrop={handleDrop}
+      onReject={(files) => console.log("Rejected files:", files)}
       maxSize={MAX_SIZE * 1024 ** 2}
     >
       <Flex style={{ minHeight: rem(80), pointerEvents: "none" }}>
@@ -128,10 +153,10 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
 
           <Box ml="md">
             <Text size="md" lh={1.2} inline>
-              Drag image here or click to select file
+              Drag image(s) here or click to select file(s)
             </Text>
             <Text size="sm" color="dimmed" inline mt={7}>
-              {`Attach only one file at a time, each file should not exceed ${MAX_SIZE} MB`}
+              {`Each file should not exceed ${MAX_SIZE} MB`}
             </Text>
           </Box>
         </Center>
@@ -143,7 +168,7 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
 // ====================================== UploadFile Modal ======================================
 export interface UploadFileModalProps {
   title: string;
-  onSubmit?: (file: FileWithContent) => void;
+  onSubmit?: (files: FileWithContent[]) => void;
 }
 
 export interface UploadFileModalRef {
@@ -156,10 +181,10 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
   function UploadFileModal({ title, onSubmit }, ref) {
     const [opened, { open, close }] = useDisclosure(false);
 
-    const [fileLoaded, setFileLoaded] = useState<FileWithContent[]>([]);
+    const [filesLoaded, setFilesLoaded] = useState<FileWithContent[]>([]);
     const [isFetching, setIsFetching] = useState(false);
 
-    const previews = fileLoaded.map((file, index) => {
+    const previews = filesLoaded.map((file, index) => {
       const imageUrl = URL.createObjectURL(file);
       return (
         <Image
@@ -177,16 +202,16 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
     });
 
     const handleSubmit = useCallback(() => {
-      if (onSubmit) onSubmit(fileLoaded[0]);
-      setFileLoaded([]); // clear the fileLoaded state
+      if (onSubmit) onSubmit(filesLoaded);
+      setFilesLoaded([]); // clear the fileLoaded state
       form.setValues({ value: "" }); // clear the form input
       close();
-    }, [onSubmit, fileLoaded, close]);
+    }, [onSubmit, filesLoaded, close]);
 
     const handleRemoveFileLoaded = useCallback(() => {
-      setFileLoaded([]);
+      setFilesLoaded([]);
       form.setValues({ value: "" });
-    }, [setFileLoaded]);
+    }, [setFilesLoaded]);
 
     const showAlert = useContext(AlertModalContext);
     const handleError = useCallback(
@@ -217,7 +242,7 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
         const fileWithContent = file as FileWithContent;
         fileWithContent.content = b64_string;
 
-        setFileLoaded([fileWithContent]);
+        setFilesLoaded([fileWithContent]);
       } catch (error) {
         setFetchError((error as Error).message);
       } finally {
@@ -239,7 +264,7 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
           blobOrFileToDataURL(file).then((b64_string) => {
             const fileWithContent = file as FileWithContent;
             fileWithContent.content = b64_string;
-            setFileLoaded([fileWithContent]);
+            setFilesLoaded([fileWithContent]);
           });
       }
     };
@@ -267,7 +292,7 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
       >
         <Box maw="auto" mx="auto">
           <form onSubmit={form.onSubmit(handleSubmit)}>
-            {fileLoaded.length === 0 && (
+            {filesLoaded.length === 0 && (
               <>
                 <Divider
                   my="l"
@@ -304,10 +329,10 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
                 />
               </>
             )}
-            {fileLoaded.length > 0 ? (
-              fileLoaded.map((p) => (
+            {filesLoaded.length > 0 ? (
+              filesLoaded.map((p, idx) => (
                 <Card
-                  key="1"
+                  key={idx}
                   shadow="sm"
                   radius="sm"
                   pt="0px"
@@ -332,15 +357,18 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
             ) : (
               <ImageFileDropzone
                 onError={handleError}
-                onDrop={(file: FileWithContent) => {
-                  setFileLoaded([file]);
-                  console.log("File Loaded:", file);
-                  form.setValues({ value: file.content });
+                onDrop={(files: FileWithContent[]) => {
+                  setFilesLoaded(files);
+                  console.log("Files Loaded:", files);
+                  // form.setValues({ value: file.content });
                 }}
               />
             )}
 
-            <SimpleGrid cols={1} mt={previews.length > 0 ? "xl" : 0}>
+            <SimpleGrid
+              cols={Math.min(previews.length, 3)}
+              mt={previews.length > 0 ? "xl" : 0}
+            >
               {previews}
             </SimpleGrid>
 

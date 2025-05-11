@@ -26,6 +26,7 @@ export interface LLMResponseInspectorModalProps {
   jsonResponses: LLMResponse[];
   customLLMFieldName?: string;
   disableBackgroundColor?: boolean;
+  treatLLMFieldAsUnique?: boolean;
 }
 
 const LLMResponseInspectorModal = forwardRef<
@@ -103,6 +104,7 @@ const LLMResponseInspectorModal = forwardRef<
             wideFormat={true}
             customLLMFieldName={props.customLLMFieldName}
             disableBackgroundColor={props.disableBackgroundColor}
+            treatLLMFieldAsUnique={props.treatLLMFieldAsUnique}
           />
         </Suspense>
       </div>

@@ -91,25 +91,24 @@ let _APP_IS_RUNNING_LOCALLY: boolean | undefined;
  * @returns `true` if we think the app is running locally (on localhost or equivalent); `false` if not.
  */
 export function APP_IS_RUNNING_LOCALLY(): boolean {
-  return false;
-  // if (_APP_IS_RUNNING_LOCALLY === undefined) {
-  //   // Calculate whether we're running the app locally or not, and save the result
-  //   try {
-  //     const location = window.location;
+  if (_APP_IS_RUNNING_LOCALLY === undefined) {
+    // Calculate whether we're running the app locally or not, and save the result
+    try {
+      const location = window.location;
 
-  //     _APP_IS_RUNNING_LOCALLY =
-  //       location.hostname === "localhost" ||
-  //       location.hostname === "127.0.0.1" ||
-  //       location.hostname === "0.0.0.0" ||
-  //       location.hostname === "" || // @ts-expect-error undefined
-  //       window.__CF_HOSTNAME !== undefined;
-  //   } catch (e) {
-  //     // ReferenceError --window or location does not exist.
-  //     // We must not be running client-side in a browser, in this case (e.g., we are running a Node.js server)
-  //     _APP_IS_RUNNING_LOCALLY = false;
-  //   }
-  // }
-  // return _APP_IS_RUNNING_LOCALLY;
+      _APP_IS_RUNNING_LOCALLY =
+        location.hostname === "localhost" ||
+        location.hostname === "127.0.0.1" ||
+        location.hostname === "0.0.0.0" ||
+        location.hostname === "" || // @ts-expect-error undefined
+        window.__CF_HOSTNAME !== undefined;
+    } catch (e) {
+      // ReferenceError --window or location does not exist.
+      // We must not be running client-side in a browser, in this case (e.g., we are running a Node.js server)
+      _APP_IS_RUNNING_LOCALLY = false;
+    }
+  }
+  return _APP_IS_RUNNING_LOCALLY;
 }
 
 /**
