@@ -46,7 +46,7 @@ import {
   OpenAIClient as AzureOpenAIClient,
   AzureKeyCredential,
 } from "@azure/openai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 import { UserForcedPrematureExit } from "./errors";
 import {
   fromModelId,
@@ -235,15 +235,15 @@ function construct_image_payload(
       return {
         type: "image_url",
         image_url: {
-          url: `data:image/png;base64,${base64image}`,
+          url: base64image,
           detail: "auto",
         },
       };
     case "gemini": {
       return {
         inlineData: {
-          data: base64image,
-          mimeType: "image/png",
+          data: getBase64DataFromDataURL(base64image) ?? "",
+          mimeType: getMimeTypeFromDataURL(base64image) ?? "image/png",
         },
       };
     }
@@ -252,8 +252,8 @@ function construct_image_payload(
         type: "image",
         source: {
           type: "base64",
-          media_type: "image/png",
-          data: base64image,
+          media_type: getMimeTypeFromDataURL(base64image) ?? "image/png",
+          data: getBase64DataFromDataURL(base64image) ?? "",
         },
       };
     default:
@@ -271,7 +271,7 @@ async function imagesToBase64(images: string[]) {
         console.error(`Image not found in MediaLookup: ${image}`);
         continue;
       }
-      const base64_image = await blobToBase64(imageBlob);
+      const base64_image = await blobOrFileToDataURL(imageBlob);
       if (base64_image) base64_images.push(base64_image);
     }
     return base64_images;
@@ -291,16 +291,15 @@ async function resolve_images_in_user_messages(
     }
 
     const prompt = message.content;
-    let images = message.images;
+    const images = message.images;
 
-    // Cast any images to base64 strings
-    images = await imagesToBase64(images ?? []);
+    // Cast any images to base64 data URLs
+    const image_data_urls = await imagesToBase64(images ?? []);
 
     if (variant === "ollama") {
       // Resolving Image in user messages
       if (images && images.length > 0) {
         // These images should already be base64 encoded
-        const images_in_prompt: Array<string> = images;
         const texts_in_prompt: Array<string> = [];
 
         // Add the prompt text
@@ -308,18 +307,16 @@ async function resolve_images_in_user_messages(
 
         res.push({
           content: texts_in_prompt.join("\n"),
-          images: images_in_prompt.map(
-            (img: string) => `data:image/png;base64,${img}`,
-          ), // base64 encoded images
+          images: image_data_urls.map(getBase64DataFromDataURL), // base64 encoded images
         });
       } else {
         res.push(message);
       }
     } else {
-      if (images && images.length > 0) {
+      if (image_data_urls && image_data_urls.length > 0) {
         const new_content = [];
 
-        for (const image of images)
+        for (const image of image_data_urls)
           new_content.push(construct_image_payload(image, variant));
 
         // Add the prompt text
@@ -1163,6 +1160,18 @@ export async function call_google_gemini(
   );
 
   const responses: Array<Dict> = [];
+  const prompt_parts: Array<Part> = [{ text: prompt }];
+  if (images && images.length > 0) {
+    const image_data_urls: string[] = await imagesToBase64(images);
+    for (const image of image_data_urls) {
+      prompt_parts.push({
+        inlineData: {
+          mimeType: getMimeTypeFromDataURL(image) ?? "image/png",
+          data: getBase64DataFromDataURL(image) ?? "",
+        },
+      });
+    }
+  }
 
   // TODO: to finish
   // if (prompt.includes(IMAGE_IDENTIFIER) && typeof prompt === "string") {
@@ -1177,7 +1186,7 @@ export async function call_google_gemini(
       generationConfig: gen_Config,
     });
 
-    const chatResult = await chat.sendMessage(prompt);
+    const chatResult = await chat.sendMessage(prompt_parts);
     const chatResponse = await chatResult.response;
     const response = {
       text: chatResponse.text(),
@@ -1476,11 +1485,9 @@ export async function call_ollama_provider(
   } else {
     // Text-only models
     query.prompt = prompt;
-    if (images && images.length > 0) {
-      query.images = images.map(
-        (img: string) => `data:image/png;base64,${img}`,
-      );
-    }
+    query.images = (await imagesToBase64(images ?? [])).map(
+      getBase64DataFromDataURL,
+    );
     url += "generate";
   }
 
@@ -2753,6 +2760,20 @@ export function dataURLToBlob(dataURL: string): Blob {
     byteArray[i] = byteString.charCodeAt(i);
   }
   return new Blob([byteArray], { type: mime });
+}
+
+/**
+ * Extracts the MIME type from a Data URL.
+ * @param dataUrl The Data URL to extract the MIME type from.
+ * @returns The MIME type as a string, or null if not found.
+ */
+function getMimeTypeFromDataURL(dataUrl: string): string | null {
+  const match = dataUrl.match(/^data:([^;,]+)[;,]/);
+  return match ? match[1] : null;
+}
+
+function getBase64DataFromDataURL(dataUrl: string): string | null {
+  return dataUrl.substring(dataUrl.indexOf(",") + 1);
 }
 
 // This function takes a string as argument that represents either :

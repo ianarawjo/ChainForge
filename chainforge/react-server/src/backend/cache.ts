@@ -365,6 +365,12 @@ export class MediaLookup {
     minTime: 100, // Minimum 100ms between upload operations
   });
 
+  // A rate limiter for media lookups
+  private static lookupLimiter = new Bottleneck({
+    maxConcurrent: 5, // Allow 5 concurrent lookups
+    minTime: 50, // Minimum 50ms between lookup operations
+  });
+
   private constructor() {
     // Initialize the singleton instance
     this.mediaUIDs = new Set<string>();
@@ -594,28 +600,31 @@ export class MediaLookup {
 
     if (IS_RUNNING_LOCALLY) {
       // Fetch the file from the backend
-      try {
-        const res = await fetch(`${FLASK_BASE_URL}media/${uid}`);
-        if (!res.ok) {
-          console.error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+      // NOTE: We use the limiter to throttle lookups, so we don't overload the server.
+      return MediaLookup.lookupLimiter.schedule(async () => {
+        try {
+          const res = await fetch(`${FLASK_BASE_URL}media/${uid}`);
+          if (!res.ok) {
+            console.error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+            return undefined;
+          }
+
+          const blob = await res.blob();
+
+          // If the file was for some reason not listed in the media UIDs, add it now:
+          if (!isInLookup) mediaLookup.add(uid);
+
+          // Add to the temp cache
+          mediaLookup.addToTempCache(uid, blob);
+
+          return blob;
+        } catch (error) {
+          console.error(
+            `Error fetching file with UID ${uid}: ${(error as Error).message}`,
+          );
           return undefined;
         }
-
-        const blob = await res.blob();
-
-        // If the file was for some reason not listed in the media UIDs, add it now:
-        if (!isInLookup) mediaLookup.add(uid);
-
-        // Add to the temp cache
-        mediaLookup.addToTempCache(uid, blob);
-
-        return blob;
-      } catch (error) {
-        console.error(
-          `Error fetching file with UID ${uid}: ${(error as Error).message}`,
-        );
-        return undefined;
-      }
+      });
     } else {
       // Check if the file is in the cache
       const blob = mediaLookup.cache[uid];

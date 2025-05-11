@@ -38,7 +38,7 @@ import { blobOrFileToDataURL, FLASK_BASE_URL } from "./backend/utils";
 import { FileWithContent } from "./backend/typing";
 
 // This constant serves as the maximum size of the Image file that can be uploaded
-const MAX_SIZE = 50;
+const MAX_SIZE_MB = 50;
 
 // Read a file as text and pass the text to a cb (callback) function
 const read_file = (file: FileWithPath) => {
@@ -76,16 +76,15 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
     (files: FileWithPath[]) => {
       setIsLoading(true);
 
-      // Check file sizes are all under the max size
-      for (const file of files) {
-        if (file.size > MAX_SIZE * 1024 ** 2) {
-          onError(
-            new Error(
-              `File size exceeds ${MAX_SIZE} MB. Skipping file ${file.name}. Please select a smaller file.`,
-            ),
-          );
-          return;
-        }
+      // Check total size of all files is under the max size
+      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+      if (totalSize > MAX_SIZE_MB * 1024 ** 2) {
+        onError(
+          new Error(
+            `Total file size exceeds ${MAX_SIZE_MB} MB. Please select smaller files.`,
+          ),
+        );
+        return;
       }
 
       // Read each file and pass the content to the onDrop callback
@@ -125,7 +124,7 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
       accept={["image/png", "image/jpeg"]} // TODO support all image file types of : import IMAGE_MIME_TYPE from "@mantine/dropzone";
       onDrop={handleDrop}
       onReject={(files) => console.log("Rejected files:", files)}
-      maxSize={MAX_SIZE * 1024 ** 2}
+      maxSize={MAX_SIZE_MB * 1024 ** 2}
     >
       <Flex style={{ minHeight: rem(80), pointerEvents: "none" }}>
         <Center>
@@ -156,7 +155,7 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
               Drag image(s) here or click to select file(s)
             </Text>
             <Text size="sm" color="dimmed" inline mt={7}>
-              {`Each file should not exceed ${MAX_SIZE} MB`}
+              {`Each file should not exceed ${MAX_SIZE_MB} MB`}
             </Text>
           </Box>
         </Center>
