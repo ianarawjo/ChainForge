@@ -598,7 +598,7 @@ export class MediaLookup {
       return tempCachedBlob;
     }
 
-    if (IS_RUNNING_LOCALLY) {
+    if (IS_RUNNING_LOCALLY && !uid.startsWith("cache__")) {
       // Fetch the file from the backend
       // NOTE: We use the limiter to throttle lookups, so we don't overload the server.
       return MediaLookup.lookupLimiter.schedule(async () => {
