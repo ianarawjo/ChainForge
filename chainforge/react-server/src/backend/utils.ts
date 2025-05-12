@@ -1485,7 +1485,9 @@ export async function call_ollama_provider(
   } else {
     // Text-only models
     query.prompt = prompt;
-    query.images = (await imagesToBase64(images ?? [])).map(getBase64DataFromDataURL);
+    query.images = (await imagesToBase64(images ?? [])).map(
+      getBase64DataFromDataURL,
+    );
     url += "generate";
   }
 
@@ -2764,7 +2766,7 @@ export function dataURLToBlob(dataURL: string): Blob {
  * Extracts the MIME type from a Data URL.
  * @param dataUrl The Data URL to extract the MIME type from.
  * @returns The MIME type as a string, or null if not found.
-*/
+ */
 function getMimeTypeFromDataURL(dataUrl: string): string | null {
   const match = dataUrl.match(/^data:([^;,]+)[;,]/);
   return match ? match[1] : null;
@@ -2840,4 +2842,15 @@ export const __http_url_to_base64 = (url: string) => {
     xhr.onerror = () => reject(new Error("Failed to load image"));
     xhr.send();
   });
+};
+
+export const stripWrappingQuotes = (str: string) => {
+  if (
+    typeof str === "string" &&
+    str.length >= 2 &&
+    str.charAt(0) === '"' &&
+    str.charAt(str.length - 1) === '"'
+  )
+    return str.substring(1, str.length - 1);
+  else return str;
 };

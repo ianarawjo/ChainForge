@@ -20,11 +20,10 @@ import {
   LLMResponse,
   LLMResponseData,
 } from "./backend/typing";
-import StorageCache, { StringLookup } from "./backend/cache";
+import StorageCache, { MediaLookup } from "./backend/cache";
 import { IconCheck, IconChecks, IconX } from "@tabler/icons-react";
 import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
 import useStore from "./store";
-import { MediaLookup } from "./backend/cache";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
