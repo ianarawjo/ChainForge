@@ -1,3 +1,4 @@
+import { FileWithPath } from "@mantine/dropzone";
 import { LLM } from "./models";
 
 /** Raised when there is an error generating a single response from an LLM */
@@ -16,6 +17,26 @@ export interface Dict<T = any> {
 /** A string or a number representing the index to a hash table (`StringLookup`). */
 export type StringOrHash = string | number;
 
+export type ResponseUID = string;
+
+/** What kind of data can be each individual response from the model.
+ * string is basic text and number is a hash table index in the `StringLookup` table.
+ * The object type is used for images and documents ("media") that are accessed via the `MediaLookup` table.
+ * The `d` field is the unique ID in the `MediaLookup` table, NOT the raw data.
+ */
+export type LLMResponseData =
+  | {
+      t: "img" | "doc"; // type of Media
+      d: string; // the unique ID in the MediaLookup table, NOT the raw data
+    }
+  | StringOrHash;
+
+export function isImageResponseData(
+  r: LLMResponseData,
+): r is { t: "img"; d: string } {
+  return typeof r === "object" && r.t === "img" && typeof r.d === "string";
+}
+
 // Function types
 export type Func<T = void> = (...args: any[]) => T;
 
@@ -33,10 +54,57 @@ export interface OpenAIFunctionCall {
   description?: string;
 }
 
-/** OpenAI chat message format */
+// =================== Multimodal Chat Types ===================
+
+/** ------ Anthropic chat message format */
+
+export type ImageTypeAnthropic = string;
+// | "image/jpeg"
+// | "image/png"
+// | "image/gif"
+// | "image/webp";
+
+export type ImageContentAnthropic =
+  | { type: "base64"; media_type: ImageTypeAnthropic; data: string } // data: base64 encoded image
+  | { type: "url"; url: string }; // url: image url
+
+export type MultiModalContentAnthropic =
+  | { type: "text"; text?: string; source?: never }
+  | { type: "image"; source?: ImageContentAnthropic; text?: never };
+
+/** ------ OpenAI chat message format */
+
+export type ImageContentOpenAI = {
+  url: string; // base64 encoded image OR image http-url
+  detail?: "low" | "high" | "auto";
+};
+
+export type MultiModalContentOpenAI =
+  | { type: "text"; text?: string; image_url?: never }
+  | { type: "image_url"; image_url?: ImageContentOpenAI; text?: never };
+
+/** ------ Gemini chat message format */
+
+export type ImageContentGemini = {
+  mimeType: string;
+  // | "image/png"
+  // | "image/jpeg"
+  // | "image/webp"
+  // | "image/heic"
+  // | "image/heif";
+  data: string; // base64 encoded image OR image http-url
+};
+
+export type MultiModalContentGemini =
+  | { text: string }
+  | { inlineData: ImageContentGemini };
+
+// ===================
+
 export interface ChatMessage {
   role: string;
   content: string;
+  images?: string[]; // MediaLookup UIDs
   name?: string;
   function_call?: OpenAIFunctionCall;
 }
@@ -71,9 +139,10 @@ export interface HuggingFaceChatHistory {
 // Chat history with 'carried' variable metadata
 export interface ChatHistoryInfo {
   messages: ChatHistory;
-  fill_history: Dict<StringOrHash>;
-  metavars?: Dict<StringOrHash>;
+  fill_history: Dict<LLMResponseData>;
+  metavars?: Dict<LLMResponseData>;
   llm?: string;
+  uid?: ResponseUID;
 }
 
 export function isEqualChatHistory(
@@ -104,6 +173,7 @@ export interface LLMAPICall {
     temperature: number,
     params?: Dict,
     should_cancel?: () => boolean,
+    images?: string[],
   ): Promise<[Dict, Dict]>;
 }
 
@@ -157,24 +227,6 @@ export interface ModelSettingsDict {
   postprocessors: Dict<(val: string | number | boolean) => any>;
 }
 
-export type ResponseUID = string;
-
-/** What kind of data can be each individual response from the model.
- * string is basic text; but could be images or more data types in the future.
- */
-export type LLMResponseData =
-  | {
-      t: "img"; // type
-      d: string; // payload
-    }
-  | StringOrHash;
-
-export function isImageResponseData(
-  r: LLMResponseData,
-): r is { t: "img"; d: string } {
-  return typeof r === "object" && r.t === "img";
-}
-
 /** Standard properties that every LLM response object must have. */
 export interface BaseLLMResponseObject {
   /** A unique ID to refer to this response */
@@ -182,9 +234,9 @@ export interface BaseLLMResponseObject {
   /** The concrete prompt that led to this response. */
   prompt: StringOrHash;
   /** The variables fed into the prompt. */
-  vars: Dict<StringOrHash>;
+  vars: Dict<LLMResponseData>;
   /** Any associated metavariables. */
-  metavars: Dict<StringOrHash>;
+  metavars: Dict<LLMResponseData>;
   /** The LLM to query (usually a dict of settings) */
   llm: StringOrHash | LLMSpec;
   /** Optional: The chat history to pass the LLM */
@@ -194,7 +246,8 @@ export interface BaseLLMResponseObject {
 /** A JSON object describing an LLM response for the same prompt, with n responses (n>=1) */
 export interface RawLLMResponseObject extends BaseLLMResponseObject {
   // A snapshot of the exact query (payload) sent to the LLM's API
-  query: Dict;
+  // DEPRECATED: This is now deprecated since it wastes precious storage space.
+  // query: Dict;
   // The raw JSON response from the LLM
   // NOTE: This is now deprecated since it wastes precious storage space.
   // raw_response: Dict;
@@ -245,9 +298,9 @@ export type EvaluatedResponsesResults = {
  * Used to populate prompt templates and carry variables/metavariables along the chain. */
 export interface TemplateVarInfo {
   text?: StringOrHash;
-  image?: StringOrHash; // base-64 encoding
-  fill_history?: Dict<StringOrHash>;
-  metavars?: Dict<StringOrHash>;
+  image?: string; // MediaLookup UID or a base64 image (NOTE: It may currently only use the UID.)
+  fill_history?: Dict<LLMResponseData>;
+  metavars?: Dict<LLMResponseData>;
   associate_id?: StringOrHash;
   prompt?: StringOrHash;
   uid?: ResponseUID;
@@ -264,9 +317,9 @@ export type VarsContext = {
   metavars: string[];
 };
 
-export type PromptVarType = StringOrHash | TemplateVarInfo;
+export type PromptVarType = LLMResponseData | TemplateVarInfo;
 export type PromptVarsDict = {
-  [key: string]: PromptVarType[] | StringOrHash;
+  [key: string]: PromptVarType[] | LLMResponseData;
 };
 
 export type TabularDataRowType = Dict<StringOrHash>;
@@ -278,3 +331,7 @@ export type TabularDataColType = {
 export type PythonInterpreter = "flask" | "pyodide";
 
 export type RatingDict = Record<number, boolean | string | null | undefined>;
+
+export interface FileWithContent extends FileWithPath {
+  content?: string;
+}

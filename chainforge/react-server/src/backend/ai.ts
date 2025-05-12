@@ -444,7 +444,10 @@ ${prompt}: ?`;
     true,
   );
 
-  console.log("LLM said: ", result.responses[0].responses[0]);
+  console.log(
+    "LLM said: ",
+    llmResponseDataToString(result.responses[0].responses[0]),
+  );
 
   // Handle any errors in the response
   if (result.errors && Object.keys(result.errors).length > 0) {
@@ -634,7 +637,10 @@ export async function generateAndReplaceTable(
       throw new Error(Object.values(result.errors)[0].toString());
 
     console.log("LLM result: ", result);
-    console.log("LLM said: ", result.responses[0].responses[0]);
+    console.log(
+      "LLM said: ",
+      llmResponseDataToString(result.responses[0].responses[0]),
+    );
 
     const { cols: new_cols, rows: new_rows } = decodeTable(
       llmResponseDataToString(result.responses[0].responses[0]),

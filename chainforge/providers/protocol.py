@@ -1,5 +1,4 @@
-from typing import Protocol, Optional, Dict, Dict, List, Literal, Union, Any
-import time
+from typing import Protocol, Optional, Dict, List, Literal, Union, Any
 
 """
     OpenAI chat message format typing

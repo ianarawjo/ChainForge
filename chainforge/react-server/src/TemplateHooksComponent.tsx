@@ -2,10 +2,19 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Edge, Handle, Position, useUpdateNodeInternals } from "reactflow";
 import { Badge, Text } from "@mantine/core";
 import useStore from "./store";
-import { IconSettings } from "@tabler/icons-react";
+import { IconSettings, IconImageInPicture } from "@tabler/icons-react";
+import { extractTemplateVars } from "./backend/template";
+import { IMAGE_COLUMN } from "./MediaNode";
 
 const SETTINGS_ICON = (
   <IconSettings
+    size="14px"
+    style={{ paddingTop: "2px", marginLeft: "2px", marginRight: "0px" }}
+  />
+);
+
+const IMAGE_ICON = (
+  <IconImageInPicture
     size="14px"
     style={{ paddingTop: "2px", marginLeft: "2px", marginRight: "0px" }}
   />
@@ -20,23 +29,8 @@ export const extractBracketedSubstrings = (text: string) => {
    *  NOTE: We don't use Regex here for compatibility of browsers
    *  that don't support negative lookbehinds/aheads (e.g., Safari).
    */
-  let prev_c = "";
-  let group_start_idx = -1;
-  let capture_groups = [];
-  for (let i = 0; i < text.length; i += 1) {
-    const c = text[i];
-    if (prev_c !== "\\") {
-      // Skipped escaped chars
-      if (group_start_idx === -1 && c === "{") group_start_idx = i;
-      else if (group_start_idx > -1 && c === "}") {
-        if (group_start_idx + 1 < i)
-          // Skip {} empty braces
-          capture_groups.push(text.substring(group_start_idx + 1, i));
-        group_start_idx = -1;
-      }
-    }
-    prev_c = c;
-  }
+  let capture_groups: Array<string> = [];
+  for (const v of extractTemplateVars(text)) capture_groups.push(v);
 
   // Ignore any varnames that begin with the special character #:
   capture_groups = capture_groups.filter((s) => s.length === 0 || s[0] !== "#");
@@ -78,13 +72,25 @@ export default function TemplateHooks({
       const handle_type = pos === Position.Left ? "target" : "source";
       return temp_var_names.map((name, idx) => {
         const is_settings_var = name.charAt(0) === "=";
-        const badge_name = is_settings_var ? (
+        let color = is_settings_var ? "orange" : "indigo";
+        // check if we are on a Media Node and if the name is 'Image'
+        const is_image_var =
+          name === IMAGE_COLUMN.header && nodeId.startsWith("media");
+        let badge_name = is_settings_var ? (
           <Text display="flex" align="center">
             {name.substring(1)} {SETTINGS_ICON}
           </Text>
         ) : (
           name
         );
+        if (is_image_var) {
+          badge_name = (
+            <Text display="flex" align="center">
+              {name} {IMAGE_ICON}
+            </Text>
+          );
+          color = "yellow";
+        }
         const className = names_to_blink.includes(name)
           ? "hook-tag text-blink"
           : "hook-tag";
@@ -96,7 +102,7 @@ export default function TemplateHooks({
             style={{ display: "flex", justifyContent: pos }}
           >
             <Badge
-              color={is_settings_var ? "orange" : "indigo"}
+              color={color}
               size="md"
               radius="sm"
               style={{ textTransform: "none" }}
@@ -118,14 +124,6 @@ export default function TemplateHooks({
   );
 
   const [templateHooks, setTemplateHooks] = useState<React.ReactNode[]>([]);
-
-  // const blinkTemplateVars = (vars_to_blink) => {
-  //   setTemplateHooks(genTemplateHooks(vars, vars_to_blink));
-  //   setTimeout(() => {
-  //     // Set timeout to turn off blinking:
-  //     blinkTemplateVars([]);
-  //   }, 750 * 2);
-  // };
 
   useEffect(() => {
     // Determine if there's any handles that were deleted in temp_var_names,

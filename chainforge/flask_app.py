@@ -1,15 +1,20 @@
-import json, os, sys, asyncio, time, shutil
+import json, os, sys, asyncio, time, shutil, uuid, hashlib, tempfile, zipfile
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
+from typing import List, Literal
 from statistics import mean, median, stdev
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, after_this_request
 from flask_cors import CORS
-from chainforge.providers.dalai import call_dalai
 from chainforge.providers import ProviderRegistry
+from chainforge.security.password_utils import ensure_password
+from chainforge.security.secure_save import load_json_file, save_json_file
 import requests as py_requests
 from platformdirs import user_data_dir
+
+# RAG-specific imports
+from markitdown import MarkItDown
+
 
 """ =================
     SETUP AND GLOBALS
@@ -29,8 +34,14 @@ cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
 # The cache and examples files base directories
 FLOWS_DIR = user_data_dir("chainforge")  # platform-agnostic local storage that persists outside the package install location
-CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
+SETTINGS_FILENAME = "settings.json"
+# CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
+MEDIA_DIR = os.path.join(FLOWS_DIR, 'media')
+
+# Cryptography
+SECURE_MODE: Literal['off', 'settings', 'all'] = 'off'  # The mode of encryption to use for files
+FLOWS_DIR_PWD = None  # The password to use for encryption/decryption
 
 class MetricType(Enum):
     KeyValue = 0
@@ -519,29 +530,6 @@ def makeFetchCall():
         return jsonify({'error': err_msg})
 
 
-@app.route('/app/callDalai', methods=['POST'])
-async def callDalai():
-    """
-        Fetch response from a Dalai-hosted model (Alpaca or Llama).
-        Requires Python backend since depends on custom library code to extract response.
-
-        POST'd data should be a dict of keyword arguments to provide the call_dalai method.
-    """
-    # Verify post'd data
-    data = request.get_json()
-    if not set(data.keys()).issuperset({'prompt', 'model', 'server', 'n', 'temperature'}):
-        return jsonify({'error': 'POST data is improper format.'})
-
-    try:
-        query, response = await call_dalai(**data)
-    except Exception as e:
-        return jsonify({'error': str(e)})
-
-    ret = jsonify({'query': query, 'response': response})
-    ret.headers.add('Access-Control-Allow-Origin', '*')
-    return ret
-
-
 @app.route('/app/initCustomProvider', methods=['POST'])
 def initCustomProvider():
     """
@@ -564,7 +552,7 @@ def initCustomProvider():
                                     Do `from chainforge.providers import provider` and decorate your provider completion function with @provider."""})
 
     # Establish the custom provider script cache directory
-    provider_scripts_dir = os.path.join(CACHE_DIR, "provider_scripts")
+    provider_scripts_dir = os.path.join(FLOWS_DIR, "provider_scripts")
     if not os.path.isdir(provider_scripts_dir):
         # Create the directory
         try:
@@ -622,7 +610,7 @@ def loadCachedCustomProviders():
     """
         Initalizes all custom model provider(s) in the local provider_scripts directory.
     """
-    provider_scripts_dir = os.path.join(CACHE_DIR, "provider_scripts")
+    provider_scripts_dir = os.path.join(FLOWS_DIR, "provider_scripts")
     if not os.path.isdir(provider_scripts_dir):
         # No providers to load.
         return jsonify({'providers': []})
@@ -683,7 +671,7 @@ def removeCustomProvider():
 
     # Attempt to delete associated script from cache
     if script_id:
-        script_path = os.path.join(CACHE_DIR, "provider_scripts", f"{script_id}.py")
+        script_path = os.path.join(FLOWS_DIR, "provider_scripts", f"{script_id}.py")
         if os.path.isfile(script_path):
             os.remove(script_path)
 
@@ -737,7 +725,7 @@ def get_flows():
             "last_modified": datetime.fromtimestamp(os.path.getmtime(os.path.join(FLOWS_DIR, f))).isoformat()
         }
         for f in os.listdir(FLOWS_DIR) 
-        if f.endswith('.cforge') and f != "__autosave.cforge"  # ignore the special autosave file
+        if (f.endswith('.cforge') or f.endswith('.cforge.enc')) and "__autosave.cforge" not in f  # ignore the special autosave file
     ]
 
     # Sort the flow files by last modified date in descending order (most recent first)
@@ -750,12 +738,42 @@ def get_flows():
 
 @app.route('/api/flows/<filename>', methods=['GET'])
 def get_flow(filename):
+    file_is_pwd_protected = request.args.get("pwd_protected", False)
+    also_autosave = request.args.get('autosave', False)
+
+    if file_is_pwd_protected == "true" and SECURE_MODE != "all":
+        # The file is password protected, but the server is not in secure mode, we won't be able to load it
+        return jsonify({"error": "This flow is password protected, but the server is not in secure mode 'all'. Run ChainForge with --secure set to all to load this flow."}), 403
+
     """Return the content of a specific flow"""
     if not filename.endswith('.cforge'):
         filename += '.cforge'
     try:
-        with open(os.path.join(FLOWS_DIR, filename), 'r') as f:
-            return jsonify(json.load(f))
+        filepath = os.path.join(FLOWS_DIR, filename)
+        secure_mode = SECURE_MODE == "all"
+        data, true_filepath = load_json_file(
+            filepath_w_ext=filepath, 
+            secure=secure_mode,
+            password=FLOWS_DIR_PWD if secure_mode else None,
+        )
+
+        if data is None:
+            raise FileNotFoundError(f"Could not load flow data from {filepath}.")
+
+        # If we should also autosave, then attempt to override the autosave cache file:
+        if also_autosave == "true" and filename != "__autosave.cforge":
+            autosave_filepath = os.path.join(FLOWS_DIR, '__autosave.cforge')
+            true_autosave_filepath = autosave_filepath + ('.enc' if true_filepath.endswith('.enc') else '')
+            shutil.copy2(true_filepath, true_autosave_filepath)  # copy the file to __autosave
+
+            # Remove the other __autosave file if it exists
+            # :: Note: This is rather nuanced, but we need to do this if the user is loading both 
+            # :: encrypted and unencrypted flows in the same session. 
+            other_autosave_filepath = autosave_filepath + ('' if true_filepath.endswith('.enc') else '.enc')
+            if os.path.isfile(other_autosave_filepath):
+                os.remove(other_autosave_filepath)
+
+        return jsonify(data)
     except FileNotFoundError:
         return jsonify({"error": "Flow not found"}), 404
 
@@ -765,7 +783,7 @@ def get_flow_exists(filename):
     if not filename.endswith('.cforge'):
         filename += '.cforge'
     try:
-        is_file = os.path.isfile(os.path.join(FLOWS_DIR, filename))
+        is_file = os.path.isfile(os.path.join(FLOWS_DIR, filename)) or os.path.isfile(os.path.join(FLOWS_DIR, filename + ".enc"))
         return jsonify({"exists": is_file})
     except FileNotFoundError:
         return jsonify({"error": "Flow not found"}), 404
@@ -773,10 +791,22 @@ def get_flow_exists(filename):
 @app.route('/api/flows/<filename>', methods=['DELETE'])
 def delete_flow(filename):
     """Delete a flow"""
-    if not filename.endswith('.cforge'):
-        filename += '.cforge'
+    file_is_pwd_protected = request.args.get("pwd_protected", False)
+
+    # Compose the extension to the file
+    if file_is_pwd_protected != "true":
+        if not filename.endswith('.cforge'):
+            filename += '.cforge'
+    else:
+        if filename.endswith('.cforge'):
+            filename += '.enc'
+        else:
+            filename += '.cforge.enc'
+        
     try:
-        os.remove(os.path.join(FLOWS_DIR, filename))
+        # Delete the file
+        if os.path.isfile(os.path.join(FLOWS_DIR, filename)):
+            os.remove(os.path.join(FLOWS_DIR, filename))
         return jsonify({"message": f"Flow {filename} deleted successfully"})
     except FileNotFoundError:
         return jsonify({"error": "Flow not found"}), 404
@@ -785,6 +815,7 @@ def delete_flow(filename):
 def save_or_rename_flow(filename):
     """Save, rename, or duplicate a flow"""
     data = request.json
+    secure_mode = SECURE_MODE == "all"
 
     if not filename.endswith('.cforge'):
         filename += '.cforge'
@@ -796,13 +827,20 @@ def save_or_rename_flow(filename):
         
         try:
             filepath = os.path.join(FLOWS_DIR, filename)
-            with open(filepath, 'w') as f:
-                json.dump(flow_data, f)
+            success = save_json_file(
+                filepath_w_ext=filepath, 
+                data=flow_data, 
+                secure=secure_mode,
+                password=FLOWS_DIR_PWD if secure_mode else None,
+            )
+            if not success:
+                return jsonify({"error": "Failed to save flow."}), 500
 
             # If we should also autosave, then attempt to override the autosave cache file:
             if also_autosave:
-                autosave_filepath = os.path.join(FLOWS_DIR, '__autosave.cforge')
-                shutil.copy2(filepath, autosave_filepath)  # copy the file to __autosave
+                cur_filepath = filepath + ('.enc' if secure_mode else '')
+                autosave_filepath = os.path.join(FLOWS_DIR, '__autosave.cforge' + ('.enc' if secure_mode else ''))
+                shutil.copy2(cur_filepath, autosave_filepath)  # copy the file to __autosave
 
             return jsonify({"message": f"Flow '{filename}' saved!"})
         except FileNotFoundError:
@@ -811,15 +849,19 @@ def save_or_rename_flow(filename):
     elif data.get('newName'):
         # Rename flow
         new_name = data.get('newName')
+        old_path = os.path.join(FLOWS_DIR, filename) + ('.enc' if secure_mode else '')
         
         if not new_name.endswith('.cforge'):
             new_name += '.cforge'
+
+        if secure_mode:
+            new_name += '.enc'
 
         try:
             # Check for name clashes (if a flow already exists with the new name)
             if os.path.isfile(os.path.join(FLOWS_DIR, new_name)):
                 raise Exception("A flow with that name already exists.")
-            os.rename(os.path.join(FLOWS_DIR, filename), os.path.join(FLOWS_DIR, new_name))
+            os.rename(old_path, os.path.join(FLOWS_DIR, new_name))
             return jsonify({"message": f"Flow renamed from {filename} to {new_name}"})
         except Exception as error:
             return jsonify({"error": str(error)}), 404
@@ -827,19 +869,29 @@ def save_or_rename_flow(filename):
     elif data.get('duplicate'):
         # Duplicate flow
         try:
+            old_path = os.path.join(FLOWS_DIR, filename) + ('.enc' if secure_mode else '')
             # Check for name clashes (if a flow already exists with the new name)
             copy_name = _get_unique_flow_name(filename, "Copy of ") 
             # Copy the file to the new (safe) path, and copy metadata too:
-            shutil.copy2(os.path.join(FLOWS_DIR, filename), os.path.join(FLOWS_DIR, f"{copy_name}.cforge"))
+            shutil.copy2(old_path, os.path.join(FLOWS_DIR, f"{copy_name}.cforge" + ('.enc' if secure_mode else '')))
             # Return the new filename
             return jsonify({"copyName": copy_name})
         except Exception as error:
             return jsonify({"error": str(error)}), 404
 
 def _get_unique_flow_name(filename: str, prefix: str = None) -> str: 
+    secure_mode = SECURE_MODE == "all"
+
+    if not filename.endswith('.cforge'):
+        filename += '.cforge'
+
     base, ext = os.path.splitext(filename)
     if ext is None or len(ext) == 0: 
         ext = ".cforge"
+
+    if secure_mode:
+        ext += '.enc'
+
     unique_filename = base + ext
     if prefix is not None:
         unique_filename = prefix + unique_filename
@@ -852,7 +904,7 @@ def _get_unique_flow_name(filename: str, prefix: str = None) -> str:
             unique_filename = prefix + unique_filename
         i += 1
     
-    return unique_filename.replace(".cforge", "")
+    return unique_filename.replace(ext, "")
 
 @app.route('/api/getUniqueFlowFilename', methods=['PUT'])
 def get_unique_flow_name():
@@ -866,13 +918,461 @@ def get_unique_flow_name():
     except Exception as e:
         return jsonify({"error": str(e)}), 404
 
-def run_server(host="", port=8000, flows_dir=None):
-    global HOSTNAME, PORT, FLOWS_DIR
+
+""" 
+    PERSISTENT GLOBAL SETTINGS
+
+    ChainForge global settings are stored in a JSON file in the local disk.
+    This is used to persist settings across sessions.
+    The settings file 'settings.json' is stored in the same directory as the user's flows.
+"""
+@app.route('/api/getConfig/<name>', methods=['GET'])
+def get_settings(name):
+    """Return the requested config"""
+    filepath = os.path.join(FLOWS_DIR, f"{name}.json")
+    secure_mode = SECURE_MODE == "all" or (SECURE_MODE == "settings" and name == "settings")
+    settings, _ = load_json_file(
+        filepath_w_ext=filepath, 
+        secure=secure_mode,
+        password=FLOWS_DIR_PWD if secure_mode else None,
+    )
+    if settings is None:
+        settings = {}
+    return jsonify(settings)
+
+@app.route('/api/saveConfig/<name>', methods=['POST'])
+def save_settings(name):
+    """Save the current settings"""
+    data = request.json
+
+    # Check the type of data
+    if not isinstance(data, dict):
+        return jsonify({"error": "Settings must be a JSON object."}), 400
+
+    try:
+        filepath = os.path.join(FLOWS_DIR, f"{name}.json")
+        secure_mode = SECURE_MODE == "all" or (SECURE_MODE == "settings" and name == "settings")
+        success = save_json_file(
+            filepath_w_ext=filepath, 
+            data=data, 
+            secure=secure_mode,
+            password=FLOWS_DIR_PWD if secure_mode else None,
+        )
+        if not success:
+            return jsonify({"error": "Failed to save settings."}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"message": "Settings saved successfully!"})
+
+
+"""
+    Media File Storage and Retrieval
+    (Images, PDFs, Videos, etc.)
+"""
+def compute_file_hash(file_stream):
+    """Calculate SHA256 hash of a file-like object (does not reset pointer)."""
+    hash_obj = hashlib.sha256()
+    file_stream.seek(0)
+    while chunk := file_stream.read(8192):
+        hash_obj.update(chunk)
+    file_stream.seek(0)  # Reset for reuse
+    return hash_obj.hexdigest()
+
+def gen_unique_media_filename(ext, existing_filenames):
+    """Generate a new unique filename using UUID, retrying on rare clash."""
+    while True:
+        uid = str(uuid.uuid4()) + ext
+        if uid not in existing_filenames:
+            return uid
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    """Store a file to the backend and return a unique identifier (UID) for it."""
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+
+    # Compute hash of content to check for duplicates
+    file_hash = compute_file_hash(file.stream)
+
+    # Search for existing file by hash (filename format: hash + ext)
+    for fname in os.listdir(MEDIA_DIR):
+        if fname.startswith(file_hash):
+            return jsonify(uid=fname)  # Already exists
+
+    # Create new UID: hash + uuid + ext to prevent hash collision issues
+    uid = f"{file_hash}-{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(MEDIA_DIR, uid)
+
+    # Double-check: regenerate if clash (extremely unlikely)
+    existing = set(os.listdir(MEDIA_DIR))
+    while uid in existing:
+        uid = f"{file_hash}-{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(MEDIA_DIR, uid)
+
+    file.save(file_path)
+    return jsonify(uid=uid)
+
+@app.route('/media/<uid>')
+def get_media(uid):
+    """Retrieve a file from the media directory using its UID."""
+    return send_from_directory(MEDIA_DIR, uid, as_attachment=False)
+
+@app.route('/mediaExists/<uid>')
+def has_media(uid):
+    """Check if a file exists in the media directory using its UID."""
+    file_path = os.path.join(MEDIA_DIR, uid)
+    if os.path.isfile(file_path):
+        return jsonify({"exists": True})
+    else:
+        return jsonify({"exists": False}), 404
+
+@app.route('/mediaToText/<uid>', methods=['GET'])
+def media_to_text(uid):
+    """
+    Convert a media file to text using the appropriate method.
+    For currently supported formats, see function body.
+    """
+    file_path = os.path.join(MEDIA_DIR, uid)
+    if not os.path.isfile(file_path):
+        return jsonify({"error": "File not found"}), 404
+
+    try:
+        ext = os.path.splitext(file_path)[1].lower()
+
+        allowed_extensions = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".pptx"}
+        if ext == '.txt':
+            # Read text files directly
+            with open(file_path, 'rb') as f:
+                file_bytes = f.read()
+            text = file_bytes.decode("utf-8", errors="ignore")
+        elif ext in allowed_extensions:
+            # We use markitdown for all other file types
+            md = MarkItDown(enable_plugins=False)
+            result = md.convert(file_path)
+            text = result.text_content
+        else:
+            return jsonify({"error": f"Unsupported file type: {ext}. Allowed types: {', '.join(allowed_extensions)}"}), 400
+
+        return jsonify(text=text), 200
+    except Exception as e:
+        print(f"An error occurred during file processing for {uid}: {e}", file=sys.stderr)
+        # Optionally, log the full traceback here if needed for debugging
+        # import traceback
+        # traceback.print_exc()
+        return jsonify({"error": f"Failed to process file {uid}. Internal server error."}), 500
+
+@app.route('/api/exportFlowBundle', methods=['POST'])
+def export_flow_bundle():
+    """
+    Export a flow and all its associated media files as a zip bundle.
+    
+    Expected JSON body:
+    - flow: The flow as JSON data
+    - flowName: (Optional) The name to use for the zip file
+    
+    Returns a zip file containing the flow.json and a media folder with all referenced files.
+    """
+
+    # Create a temporary file that will be deleted after the response is sent
+    temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.cfzip')
+    temp_zip.close()
+    
+    try:
+        # Get the request data
+        try:
+            data = request.get_json()
+        except Exception as e:
+            return jsonify({"error": f"Failed to parse JSON payload: {str(e)}"}), 400
+
+        if not data or "flow" not in data:
+            return jsonify({"error": "No flow data provided. Ensure the request body contains a 'flow' key."}), 400
+        
+        flow_data = data["flow"]
+        flow_name = data.get("flowName", "flow_bundle")
+        # Sanitize the flow name for use as a filename
+        flow_name = "".join(c for c in flow_name if c.isalnum() or c in " _-").strip()
+        if not flow_name:
+            flow_name = "flow_bundle"
+        
+        # Extract media UIDs if they exist
+        media_uids = []
+        if "cache" in flow_data and "__media" in flow_data["cache"]:
+            media_data = flow_data["cache"]["__media"]
+            if isinstance(media_data, dict) and "uids" in media_data:
+                media_uids = media_data["uids"]
+        
+        # Create a temporary directory for the bundle contents
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create media subdirectory
+            media_dir = os.path.join(temp_dir, "media")
+            os.makedirs(media_dir, exist_ok=True)
+            
+            # Write the flow JSON to the temp directory
+            flow_path = os.path.join(temp_dir, "flow.json")
+            with open(flow_path, 'w', encoding='utf-8') as f:
+                json.dump(flow_data, f)
+            
+            # Copy each referenced media file to the media subdirectory
+            missing_files = []
+            for uid in media_uids:
+                src_file = os.path.join(MEDIA_DIR, uid)
+                if os.path.exists(src_file):
+                    dst_file = os.path.join(media_dir, uid)
+                    shutil.copy2(src_file, dst_file)
+                else:
+                    missing_files.append(uid)
+            
+            if missing_files:
+                print(f"Warning: {len(missing_files)} media files not found: {missing_files[:5]}...", file=sys.stderr)
+            
+            # Create the zip file
+            with zipfile.ZipFile(temp_zip.name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # Walk through the temp directory and add all files
+                for root, dirs, files in os.walk(temp_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        # Get relative path for the zip structure
+                        rel_path = os.path.relpath(file_path, temp_dir)
+                        zipf.write(file_path, rel_path)
+        
+        # Set up file cleanup after the response is sent
+        @after_this_request
+        def cleanup(response):
+            try:
+                os.unlink(temp_zip.name)
+            except Exception as e:
+                print(f"Error cleaning up temp zip file: {str(e)}", file=sys.stderr)
+            return response
+        
+        # Return the zip file as an attachment
+        return send_file(
+            temp_zip.name,
+            as_attachment=True,
+            download_name=f"{flow_name}.cfzip",
+            mimetype="application/zip"
+        )
+            
+    except Exception as e:
+        # Make sure to clean up the temp file if there's an error
+        try:
+            os.unlink(temp_zip.name)
+        except:
+            pass
+        
+        print(f"Error exporting flow bundle: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to export flow bundle: {str(e)}"}), 500
+
+@app.route('/api/importFlowBundle', methods=['POST'])
+def import_flow_bundle():
+    """
+    Import a flow bundle (.cfzip file) that contains a flow.json and associated media files.
+    
+    Extracts the flow.json and copies all media files to the local MEDIA_DIR.
+    
+    Returns:
+    - The flow JSON data
+    - The name of the flow
+    """
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+        
+    if not file.filename.endswith('.cfzip') and not file.filename.endswith('.zip'):
+        return jsonify({"error": "Invalid file format. Expected .cfzip or .zip file"}), 400
+    
+    # Create temporary directories for extraction
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Extract the zip file
+        zip_path = os.path.join(temp_dir, "bundle.zip")
+        file.save(zip_path)
+        
+        extract_dir = os.path.join(temp_dir, "extracted")
+        os.makedirs(extract_dir, exist_ok=True)
+        
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_dir)
+        
+        # Check if the expected structure exists
+        flow_path = os.path.join(extract_dir, "flow.json")
+        media_dir = os.path.join(extract_dir, "media")
+        
+        if not os.path.exists(flow_path):
+            return jsonify({"error": "Invalid bundle format. Missing flow.json file"}), 400
+            
+        # Load the flow data
+        with open(flow_path, 'r', encoding='utf-8') as f:
+            flow_data = json.load(f)
+            
+        # Get base name for the flow (without extension)
+        flow_name = os.path.splitext(os.path.basename(file.filename))[0]
+            
+        # Make sure the name doesn't clash with existing flows in FLOWS_DIR
+        flow_name = _get_unique_flow_name(flow_name)
+        
+        # Import bundled media files to MEDIA_DIR if they exist
+        if os.path.exists(media_dir) and os.path.isdir(media_dir):
+            os.makedirs(MEDIA_DIR, exist_ok=True)
+            
+            # Copy all media files
+            imported_media = []
+            for media_file in os.listdir(media_dir):
+                src_path = os.path.join(media_dir, media_file)
+                dst_path = os.path.join(MEDIA_DIR, media_file)
+                
+                if os.path.isfile(src_path):
+                    # Verify the media file's integrity
+                    try:
+                        verify_media_file_integrity(media_file)
+                    except Exception as e:
+                        print(f"Failed to verify media file integrity: {str(e)}. Skipping (this result in a corrupted flow import)...", file=sys.stderr)
+                        continue
+
+                    # Media file is valid, copy it to MEDIA_DIR
+                    # Check if file already exists to avoid duplicates
+                    if not os.path.exists(dst_path):
+                        shutil.copy2(src_path, dst_path)
+                    imported_media.append(media_file)
+            
+            print(f"Imported {len(imported_media)} media files from bundle.")
+            
+            # Update __media in flow data if needed
+            if "cache" in flow_data and "__media" in flow_data["cache"]:
+                # Ensure the UIDs in the flow match with what was imported
+                media_data = flow_data["cache"]["__media"]
+                if isinstance(media_data, dict) and "uids" in media_data:
+                    # Verify all referenced UIDs were actually imported
+                    missing_uids = [uid for uid in media_data["uids"] if uid not in imported_media]
+                    if missing_uids:
+                        print(f"Warning: {len(missing_uids)} referenced media files were not found in the bundle. Flow data may be corrupted.")
+        
+        # Save the flow to the FLOWS_DIR
+        secure_mode = SECURE_MODE == "all"
+        flow_path = os.path.join(FLOWS_DIR, f"{flow_name}.cforge")
+        success = save_json_file(
+            filepath_w_ext=flow_path,
+            data=flow_data,
+            secure=secure_mode,
+            password=FLOWS_DIR_PWD if secure_mode else None,
+        )
+        
+        if not success:
+            return jsonify({"error": "Failed to save imported flow"}), 500
+            
+        return jsonify({
+            "flow": flow_data,
+            "flowName": flow_name,
+        })
+        
+    except Exception as e:
+        print(f"Error importing flow bundle: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to import flow bundle: {str(e)}"}), 500
+    finally:
+        # Clean up temporary files
+        try:
+            shutil.rmtree(temp_dir)
+        except:
+            print(f"Warning: Failed to clean up temporary directory: {temp_dir}", file=sys.stderr)
+
+def verify_media_file_integrity(uid):
+    """
+    Verifies if a media file's content hash matches the hash in its filename.
+    Raises an error if the hash does not match. Passes if the file is valid.
+    
+    Args:
+        uid (str): The unique identifier (filename) of the media file
+        
+    Returns:
+        dict: Result containing 'valid' (boolean) and additional hash information
+    """
+    file_path = os.path.join(MEDIA_DIR, uid)
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File {file_path} does not exist.")
+    
+    # Extract hash from filename (everything before the first hyphen)
+    if '-' in uid:
+        expected_hash = uid.split('-')[0]
+    else:
+        raise ValueError(f"Invalid media file name format: {uid}. Expected format is <hash>-<uuid>.<ext>")
+    
+    # Compute actual hash of file content
+    with open(file_path, 'rb') as f:
+        actual_hash = compute_file_hash(f)
+    
+    if expected_hash != actual_hash:
+        raise ValueError(f"Hash mismatch: expected {expected_hash}, got {actual_hash}")
+
+
+@app.route('/api/proxyImage', methods=['GET'])
+def proxy_image():
+    """Proxy for fetching images to avoid CORS restrictions"""
+    url = request.args.get('url')
+    if not url:
+        return jsonify({"error": "URL parameter is required"}), 400
+    
+    try:
+        # Use Python requests to fetch the image
+        response = py_requests.get(url, stream=True)
+
+        if not response.ok:
+            return jsonify({"error": f"Failed to fetch image: {response.status_code} {response.reason}"}), response.status_code
+        
+        # Check if content is an image
+        content_type = response.headers.get('Content-Type', '')
+        if not content_type.startswith('image/'):
+            return jsonify({"error": "The URL does not point to an image"}), 400
+    
+        # Create a Flask response with the image content
+        flask_response = app.response_class(
+            response=response.raw,
+            status=response.status_code,
+            headers=dict(response.headers)
+        )
+        
+        return flask_response
+    
+    except Exception as e:
+        return jsonify({"error": f"Error fetching image: {str(e)}"}), 500
+
+      
+""" 
+    SPIN UP SERVER
+"""
+def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "settings", "all"] = "off"):
+    global HOSTNAME, PORT, FLOWS_DIR, MEDIA_DIR, SECURE_MODE, FLOWS_DIR_PWD
     HOSTNAME = host
     PORT = port
+    SECURE_MODE = secure
     if flows_dir:
+        # Set the flows directory to the specified path. 
+        # and create it if it doesn't exist.
         FLOWS_DIR = flows_dir
-    app.run(host=host, port=port)
+        MEDIA_DIR = os.path.join(flows_dir, "media")
+    
+    # Make sure the directories for local storage exist
+    os.makedirs(FLOWS_DIR, exist_ok=True)
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+
+    # Get the user password, if `secure` is set to "settings" or "all".
+    # :: Create a new password and salt if one doesn't exist, or uses the existing one.
+    if secure != "off":
+        password = ensure_password(
+            hash_filepath=os.path.join(FLOWS_DIR, "salt.bin"), 
+            create_new_msg="\nWelcome to ChainForge! We've noticed you are entering secure mode for the first time. Please enter a password to encrypt your flows and settings. Prepare to enter it again whenever you start ChainForge in secure mode.\n")
+        if not password:
+            print("❌ Password cannot be empty. Please provide a password.")
+            exit(1)
+        FLOWS_DIR_PWD = password
+
+    app.run(host=host, port=port, debug=False)
 
 if __name__ == '__main__':
     print("Run app.py instead.")

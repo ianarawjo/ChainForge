@@ -5,7 +5,15 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { Button, Flex, Popover, Stack, Textarea, Tooltip } from "@mantine/core";
+import {
+  Button,
+  Flex,
+  Popover,
+  Stack,
+  Textarea,
+  Tooltip,
+  useMantineColorScheme,
+} from "@mantine/core";
 import {
   IconCopy,
   IconMessage2,
@@ -49,16 +57,26 @@ interface ToolbarButtonProps {
   selected: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  theme: "dark" | "light";
 }
 
 const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
-  function ToolbarButton({ selected, onClick, children }, ref) {
+  function ToolbarButton({ selected, onClick, children, theme }, ref) {
     return (
       <Button
         ref={ref}
         p="0px 2px"
         size="xs"
-        color={selected ? "dark" : "gray"}
+        color={
+          theme === "light"
+            ? selected
+              ? "dark"
+              : "gray"
+            : selected
+              ? "white"
+              : "gray"
+        }
+        bg={theme === "dark" && selected ? "#0009" : "transparent"}
         onClick={onClick}
         variant="subtle"
         compact
@@ -82,6 +100,9 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
   innerIdxs,
   responseData,
 }) => {
+  // Color theme
+  const { colorScheme } = useMantineColorScheme();
+
   // The cache keys storing the ratings for this response object
   const gradeKey = getRatingKeyForResponse(uid, "grade");
   const noteKey = getRatingKeyForResponse(uid, "note");
@@ -168,6 +189,7 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
     <Flex justify="right" gap="0px">
       <ToolbarButton
         selected={grade === true}
+        theme={colorScheme}
         onClick={() => {
           // If the thumbs is already up, we remove the grade (set to undefined):
           const newGrade = grade === true ? undefined : true;
@@ -178,6 +200,7 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
       </ToolbarButton>
       <ToolbarButton
         selected={grade === false}
+        theme={colorScheme}
         onClick={() => {
           // If the thumbs is already down, we remove the grade (set to undefined):
           const newGrade = grade === false ? undefined : false;
@@ -193,6 +216,7 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
       >
         <ToolbarButton
           selected={copied}
+          theme={colorScheme}
           onClick={() => {
             if (responseData) {
               navigator.clipboard
@@ -226,6 +250,7 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
         <Popover.Target>
           <ToolbarButton
             selected={note !== undefined}
+            theme={colorScheme}
             onClick={() => setNotePopoverOpened((o) => !o)}
           >
             <IconMessage2 size={size} />

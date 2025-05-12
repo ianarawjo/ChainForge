@@ -29,6 +29,14 @@ export enum NativeLLM {
   OpenAI_GPT4_32k = "gpt-4-32k",
   OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
   OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
+  OpenAI_o1 = "o1",
+  OpenAI_o1_mini = "o1-mini",
+  OpenAI_o1_pro = "o1-pro",
+  OpenAI_o3_mini = "o3-mini",
+  OpenAI_GPT4_5_Prev = "gpt-4.5-preview",
+  OpenAI_GPT4_1 = "gpt-4.1",
+  OpenAI_GPT4_1_mini = "gpt-4.1-mini",
+  OpenAI_GPT4_1_nano = "gpt-4.1-nano",
 
   // OpenAI Text Completions (deprecated)
   OpenAI_Davinci003 = "text-davinci-003",
@@ -38,17 +46,10 @@ export enum NativeLLM {
   // OpenAI Image models
   OpenAI_DallE_2 = "dall-e-2",
   OpenAI_DallE_3 = "dall-e-3",
+  OpenAI_GPT_Image_1 = "gpt-image-1",
 
   // Azure OpenAI Endpoints
   Azure_OpenAI = "azure-openai",
-
-  // Dalai-served models (Alpaca and Llama)
-  Dalai_Alpaca_7B = "alpaca.7B",
-  Dalai_Alpaca_13B = "alpaca.13B",
-  Dalai_Llama_7B = "llama.7B",
-  Dalai_Llama_13B = "llama.13B",
-  Dalai_Llama_30B = "llama.30B",
-  Dalai_Llama_65B = "llama.65B",
 
   // Anthropic
   Claude_v3_opus_latest = "claude-3-opus-latest",
@@ -57,6 +58,8 @@ export enum NativeLLM {
   Claude_v3_5_sonnet_latest = "claude-3-5-sonnet-latest",
   Claude_v3_5_sonnet = "claude-3-5-sonnet-20240620",
   Claude_v3_5_haiku_latest = "claude-3-5-haiku-latest",
+  Claude_v3_7_sonnet_latest = "claude-3-7-sonnet-latest",
+  Claude_v3_7_sonnet_20250219 = "claude-3-7-sonnet-20250219",
   Claude_v3_haiku = "claude-3-haiku-20240307",
   Claude_v2_1 = "claude-2.1",
   Claude_v2 = "claude-2",
@@ -74,7 +77,9 @@ export enum NativeLLM {
   PaLM2_Text_Bison = "text-bison-001", // it's really models/text-bison-001, but that's confusing
   PaLM2_Chat_Bison = "chat-bison-001",
   GEMINI_PRO = "gemini-pro",
-  GEMINI_v2_flash = "gemini-2.0-flash-exp",
+  GEMINI_v2_5_pro_prev = "gemini-2.5-pro-preview-03-25",
+  GEMINI_v2_flash = "gemini-2.0-flash",
+  GEMINI_v2_flash_lite = "gemini-2.0-flash-lite",
   GEMINI_v1_5_flash = "gemini-1.5-flash",
   GEMINI_v1_5_flash_8B = "gemini-1.5-flash-8b",
   GEMINI_v1_5_pro = "gemini-1.5-pro",
@@ -175,7 +180,6 @@ export enum NativeLLM {
   Together_Qwen_Qwen2_5_72B_Turbo = "Qwen/Qwen2.5-72B-Instruct-Turbo",
   Together_Qwen_Qwen2_5_72B = "Qwen/Qwen2-72B-Instruct",
   Together_Qwen_Qwen2_VL_72B = "Qwen/Qwen2-VL-72B-Instruct",
-  Together_Qwen_Qwen2_5_32B_Coder = "Qwen/Qwen2.5-Coder-32B-Instruct",
   Together_mistralai_Mistral_7B_Instruct = "together/mistralai/Mistral-7B-Instruct-v0.1",
   Together_mistralai_Mistral_7B_Instruct_v0_2 = "together/mistralai/Mistral-7B-Instruct-v0.2",
   Together_mistralai_Mixtral8x7B_Instruct_46_7B = "together/mistralai/Mixtral-8x7B-Instruct-v0.1",
@@ -229,7 +233,6 @@ export function getEnumName(
 export enum LLMProvider {
   OpenAI = "openai",
   Azure_OpenAI = "azure",
-  Dalai = "dalai",
   Anthropic = "anthropic",
   Google = "google",
   HuggingFace = "hf",
@@ -252,7 +255,6 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   else if (llm_name?.startsWith("Azure")) return LLMProvider.Azure_OpenAI;
   else if (llm_name?.startsWith("PaLM2") || llm_name?.startsWith("GEMINI"))
     return LLMProvider.Google;
-  else if (llm_name?.startsWith("Dalai")) return LLMProvider.Dalai;
   else if (llm_name?.startsWith("HF_")) return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith("claude")) return LLMProvider.Anthropic;
   else if (llm_name?.startsWith("Aleph_Alpha")) return LLMProvider.Aleph_Alpha;

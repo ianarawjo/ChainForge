@@ -19,7 +19,6 @@ import {
 } from "../backend";
 import {
   getVarsAndMetavars,
-  hashtagTemplateVars,
   llmResponseDataToString,
   retryAsyncFunc,
 } from "../utils";

@@ -12,7 +12,6 @@ import { Modal, ModalBaseStylesNames, Styles } from "@mantine/core";
 
 const ALERT_MODAL_STYLE = {
   header: { backgroundColor: "#E52A2A", color: "white" },
-  root: { position: "relative", left: "-5%" },
 } as Styles<ModalBaseStylesNames>;
 
 export interface AlertModalRef {

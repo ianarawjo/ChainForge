@@ -1,3 +1,4 @@
+import { IconCheck, IconX } from "@tabler/icons-react";
 import React from "react";
 
 export enum Status {
@@ -9,10 +10,12 @@ export enum Status {
 }
 interface StatusIndicatorProps {
   status: Status;
+  message?: string;
 }
 
 export default function StatusIndicator({
   status,
+  message,
 }: StatusIndicatorProps): React.ReactElement {
   switch (status) {
     case Status.WARNING: // Display mustard 'warning' icon
@@ -20,23 +23,28 @@ export default function StatusIndicator({
         <div className="status-icon warning-status">
           &#9888;
           <span className="status-tooltip">
-            Something changed. Downstream results might be invalidated. Press
-            Play to rerun.
+            {message ||
+              `Something changed. Downstream results might be invalidated. Press 
+            Play to rerun.`}
           </span>
         </div>
       );
     case Status.READY: // Display green checkmark 'ready' icon
       return (
         <div className="status-icon ready-status">
-          &#10004;
-          <span className="status-tooltip">Responses collected and ready.</span>
+          <IconCheck size={20} stroke={3} style={{ marginBottom: "-4px" }} />
+          <span className="status-tooltip">
+            {message || "Responses collected and ready."}
+          </span>
         </div>
       );
     case Status.ERROR: // Display red 'error' icon
       return (
         <div className="status-icon error-status">
-          &#10006;
-          <span className="status-tooltip">Error collecting responses.</span>
+          <IconX size={20} stroke={3} style={{ marginBottom: "-4px" }} />
+          <span className="status-tooltip">
+            {message || "Error collecting responses."}
+          </span>
         </div>
       );
     case Status.LOADING: // Display animated 'loading' spinner icon

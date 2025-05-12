@@ -69,7 +69,6 @@ export const DragItem = styled.div`
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.12),
     0 1px 2px rgba(0, 0, 0, 0.24);
-  background: white;
   margin: 0 0 8px 0;
   display: grid;
   grid-gap: 20px;
@@ -109,13 +108,14 @@ const LLMListItem: React.FC<LLMListItemProps> = ({
       ref={provided.innerRef}
       // @ts-expect-error This property is used dynamically by the Draggable library.
       snapshot={snapshot}
+      className="llm-list-item"
       {...provided.draggableProps}
       {...provided.dragHandleProps}
     >
       <div>
         <CardHeader>
           {item.emoji}&nbsp;{item.name}
-          {temperature !== undefined ? (
+          {/* {temperature !== undefined ? (
             <Tooltip label={"temp = " + (temperature || "0")} withArrow>
               <TemperatureStatus style={{ color: tempColor }}>
                 &nbsp;
@@ -133,7 +133,7 @@ const LLMListItem: React.FC<LLMListItemProps> = ({
             </Tooltip>
           ) : (
             <></>
-          )}
+          )} */}
         </CardHeader>
         <LLMItemButtonGroup
           onClickTrash={() =>

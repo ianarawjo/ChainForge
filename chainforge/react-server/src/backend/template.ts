@@ -2,11 +2,72 @@ import { StringLookup } from "./cache";
 import { isEqual } from "./setUtils";
 import {
   Dict,
+  LLMResponseData,
   PromptVarsDict,
   PromptVarType,
   StringOrHash,
   TemplateVarInfo,
 } from "./typing";
+import { llmResponseDataToString } from "./utils";
+
+/**
+ * Given a template string, returns a generator that yields the template variables
+ * found in the string, one by one.
+ *
+ * > NOTE: This is the core function in ChainForge that extracts template variables from a string.
+ *
+ * @param template The template string to extract variables from
+ * @param sub_dict (Optional) A dictionary of substitutions to apply to the template string
+ * @returns A generator that yields the template variables found in the string --
+ *          OR -- if `sub_dict` is provided, replaces them with their corresponding values from the `sub_dict`
+ */
+export function* extractTemplateVars(
+  // The prompt template string
+  template: string,
+  // Replace option
+  sub_dict?: { [key: string]: string },
+) {
+  let prev_c = "";
+  let group_start_idx = -1;
+  for (let i = 0; i < template.length; i += 1) {
+    const c = template.charAt(i);
+    if (prev_c !== "\\") {
+      // Skip escaped braces
+      if (group_start_idx === -1 && c === "{")
+        // Identify the start of a capture {group}
+        group_start_idx = i;
+      else if (group_start_idx > -1 && c === "\n") {
+        // Break captured groups on newlines
+        group_start_idx = -1;
+      } else if (group_start_idx > -1 && c === "}") {
+        // Identify the end of a capture {group}
+        if (group_start_idx + 1 < i) {
+          // Ignore {} empty braces
+          // We identified a capture group. First check if its key is in the substitution dict:
+          const varname = template.substring(group_start_idx + 1, i);
+          if (!sub_dict) yield varname;
+          else if (varname in sub_dict) {
+            // Replace '{varname}' with the substitution value:
+            const replacement = sub_dict[varname];
+            let tail = template.substring(i + 1);
+            // Check if the varname is a special settings var (starts with =); if so, look for a newline after it:
+            if (varname.charAt(0) === "=" && /^[ \t]*\n/.test(tail))
+              tail = tail.substring(tail.indexOf("\n") + 1); // remove the whitespace and \n, to vanish the line
+            // Patch the string
+            template =
+              template.substring(0, group_start_idx) + replacement + tail;
+            // Reset the iterator to point to the very next character upon the start of the next loop:
+            i = group_start_idx + replacement.length - 1;
+          }
+        }
+        group_start_idx = -1;
+      }
+    }
+    prev_c = c;
+  }
+
+  if (sub_dict) return template;
+}
 
 function len(o: object | string | Array<any>): number {
   // Acts akin to Python's builtin 'len' method
@@ -71,43 +132,15 @@ export class StringTemplate {
    * This algorithm is O(N) complexity.
    */
   safe_substitute(sub_dict: { [key: string]: string }): string {
-    let template = this.val;
-    let prev_c = "";
-    let group_start_idx = -1;
-    for (let i = 0; i < template.length; i += 1) {
-      const c = template.charAt(i);
-      if (prev_c !== "\\") {
-        // Skip escaped braces
-        if (group_start_idx === -1 && c === "{")
-          // Identify the start of a capture {group}
-          group_start_idx = i;
-        else if (group_start_idx > -1 && c === "}") {
-          // Identify the end of a capture {group}
-          if (group_start_idx + 1 < i) {
-            // Ignore {} empty braces
-            // We identified a capture group. First check if its key is in the substitution dict:
-            const varname = template.substring(group_start_idx + 1, i);
-            if (varname in sub_dict) {
-              // Replace '{varname}' with the substitution value:
-              const replacement = sub_dict[varname];
-              let tail = template.substring(i + 1);
-              // Check if the varname is a special settings var (starts with =); if so, look for a newline after it:
-              if (varname.charAt(0) === "=" && /^[ \t]*\n/.test(tail))
-                tail = tail.substring(tail.indexOf("\n") + 1); // remove the whitespace and \n, to vanish the line
-              // Patch the string
-              template =
-                template.substring(0, group_start_idx) + replacement + tail;
-              // Reset the iterator to point to the very next character upon the start of the next loop:
-              i = group_start_idx + replacement.length - 1;
-            }
-            // Because this is safe_substitute, we don't do anything if varname was not in sub_dict.
-          }
-          group_start_idx = -1;
-        }
-      }
-      prev_c = c;
-    }
-    return template;
+    const template = this.val;
+
+    // Run the generator in 'replace' mode until it is done,
+    // and grab the final value (the template with all the replacements):
+    const generator = extractTemplateVars(template, sub_dict);
+    let item = generator.next();
+    while (!item.done) item = generator.next();
+
+    return item.value ?? template;
   }
 
   /**
@@ -116,33 +149,8 @@ export class StringTemplate {
    *   - has at least one varname in passed varnames
    */
   has_vars(varnames?: Array<string>): boolean {
-    const template = this.val;
-    let prev_c = "";
-    let group_start_idx = -1;
-    for (let i = 0; i < template.length; i += 1) {
-      const c = template.charAt(i);
-      if (prev_c !== "\\") {
-        // Skip escaped braces
-        if (group_start_idx === -1 && c === "{")
-          // Identify the start of a capture {group}
-          group_start_idx = i;
-        else if (group_start_idx > -1 && c === "}") {
-          // Identify the end of a capture {group}
-          if (group_start_idx + 1 < i) {
-            // Ignore {} empty braces
-            if (varnames !== undefined) {
-              if (varnames.includes(template.substring(group_start_idx + 1, i)))
-                return true;
-              // If varnames was specified but none matched this capture group, continue.
-            } else {
-              return true; // We identified a capture group.
-            }
-          }
-          group_start_idx = -1;
-        }
-      }
-      prev_c = c;
-    }
+    for (const v of extractTemplateVars(this.val))
+      if (varnames === undefined || varnames.includes(v)) return true;
     return false;
   }
 
@@ -153,27 +161,8 @@ export class StringTemplate {
    * then ["place", "food"] will be returned.
    */
   get_vars(): Array<string> {
-    const template = this.val;
     const varnames: Array<string> = [];
-    let prev_c = "";
-    let group_start_idx = -1;
-    for (let i = 0; i < template.length; i += 1) {
-      const c = template.charAt(i);
-      if (prev_c !== "\\") {
-        // Skip escaped braces
-        if (group_start_idx === -1 && c === "{")
-          // Identify the start of a capture {group}
-          group_start_idx = i;
-        else if (group_start_idx > -1 && c === "}") {
-          // Identify the end of a capture {group}
-          if (group_start_idx + 1 < i)
-            // Ignore {} empty braces
-            varnames.push(template.substring(group_start_idx + 1, i));
-          group_start_idx = -1;
-        }
-      }
-      prev_c = c;
-    }
+    for (const v of extractTemplateVars(this.val)) varnames.push(v);
     return varnames;
   }
 
@@ -201,8 +190,8 @@ export class PromptTemplate {
         print(partial_prompt)
     */
   template: string;
-  fill_history: Dict<StringOrHash>;
-  metavars: Dict<StringOrHash>;
+  fill_history: { [key: string]: any };
+  metavars: { [key: string]: any };
 
   constructor(templateStr: string) {
     /** 
@@ -268,8 +257,9 @@ export class PromptTemplate {
     */
   fill(paramDict: Dict<PromptVarType>): PromptTemplate {
     // Check for special 'past fill history' format:
-    let past_fill_history: Dict<StringOrHash> = {};
-    let past_metavars: Dict<StringOrHash> = {};
+    let past_fill_history = {};
+    let past_metavars = {};
+    const image_params: string[] = [];
     const some_key = Object.keys(paramDict).pop();
     const some_val = some_key ? paramDict[some_key] : undefined;
     if (len(paramDict) > 0 && isDict(some_val)) {
@@ -291,34 +281,57 @@ export class PromptTemplate {
       past_metavars = StringLookup.concretizeDict(past_metavars);
 
       // Recreate the param dict from just the 'text' property of the fill object
-      const newParamDict: Dict<StringOrHash> = {};
+      const newParamDict: Dict<PromptVarType> = {};
       Object.entries(paramDict).forEach(([param, obj]) => {
-        newParamDict[param] = (obj as TemplateVarInfo).text as StringOrHash;
+        obj = obj as TemplateVarInfo;
+        // Access `text` property of the object, if it exists, otherwise access `image` property
+        if (
+          obj.text !== undefined &&
+          (typeof obj.text === "string" || typeof obj.text === "number")
+        ) {
+          newParamDict[param] = obj.text as StringOrHash;
+        } else if (obj.image !== undefined && typeof obj.image === "string") {
+          // This is a special case for images.
+          image_params.push(param);
+          newParamDict[param] = {
+            t: "img",
+            d: obj.image,
+          };
+        }
       });
       paramDict = newParamDict;
     }
 
-    // Concretize the params
-    paramDict = StringLookup.concretizeDict(paramDict) as Dict<
-      string | TemplateVarInfo
-    >;
+    // Concretize the params (cast hashed numbers to strings)
+    paramDict = StringLookup.concretizeDict(paramDict) as Dict<PromptVarType>;
 
     // For 'settings' template vars of form {=system_msg}, we use the same logic of storing param
     // values as before -- the only difference is that, when it comes to the actual substitution of
     // the string, we *don't fill the template with anything* --it vanishes.
-    let params_wo_settings = paramDict as Dict<string>;
+    let params_wo_settings = paramDict;
     // To improve performance, we first check if there's a settings var present at all before deep cloning:
-    if (Object.keys(paramDict).some((key) => key?.charAt(0) === "=")) {
+    if (
+      image_params.length > 0 ||
+      Object.keys(paramDict).some((key) => key?.charAt(0) === "=")
+    ) {
       // A settings var is present; deep clone the param dict and replace it with the empty string:
       params_wo_settings = JSON.parse(JSON.stringify(paramDict));
       Object.keys(paramDict).forEach((key) => {
-        if (key?.charAt(0) === "=") params_wo_settings[key] = ""; // set settings params to empty
+        if (key?.charAt(0) === "=") params_wo_settings[key] = ""; // set settings params to empty, so they vanish from the prompt string
+      });
+
+      // We also need to remove any image params from the paramDict, since they are not strings:
+      image_params.forEach((param) => {
+        if (param in params_wo_settings) params_wo_settings[param] = ""; // set image params to empty, so they vanish from the prompt string
+        // Note that this means all "llmResponseData" image params should be converted to empty strings
       });
     }
 
     // Perform the fill on the main text
     const filled_pt = new PromptTemplate(
-      new StringTemplate(this.template).safe_substitute(params_wo_settings),
+      new StringTemplate(this.template).safe_substitute(
+        params_wo_settings as any,
+      ), // have to cast to any to avoid complex type error
     );
 
     // Deep copy prior fill history of this PromptTemplate from this version over to new one
@@ -330,7 +343,7 @@ export class PromptTemplate {
       if (!key.startsWith("=")) return;
       filled_pt.fill_history[key] = new StringTemplate(
         StringLookup.get(val) ?? "",
-      ).safe_substitute(params_wo_settings);
+      ).safe_substitute(params_wo_settings as any);
     });
 
     // Append any past history passed as vars:
@@ -348,7 +361,7 @@ export class PromptTemplate {
     });
 
     // Add the new fill history using the passed parameters that we just filled in
-    Object.entries(paramDict as Dict<string>).forEach(([key, val]) => {
+    Object.entries(paramDict as Dict<PromptVarType>).forEach(([key, val]) => {
       if (key in filled_pt.fill_history)
         console.log(
           `Warning: PromptTemplate already has fill history for key ${key}.`,
@@ -364,7 +377,7 @@ export class PromptTemplate {
    * Modifies the prompt template in place.
    * @param fill_history A fill history dict.
    */
-  fill_special_vars(fill_history: Dict<StringOrHash>): void {
+  fill_special_vars(fill_history: Dict<LLMResponseData>): void {
     // Special variables {#...} denotes filling a variable from a matching var in fill_history or metavars.
     // Find any special variables:
     const unfilled_vars = new StringTemplate(this.template).get_vars();
@@ -373,7 +386,8 @@ export class PromptTemplate {
       if (v.length > 0 && v[0] === "#") {
         // special template variables must begin with #
         const svar = v.substring(1);
-        if (svar in fill_history) special_vars_to_fill[v] = fill_history[svar];
+        if (svar in fill_history)
+          special_vars_to_fill[v] = llmResponseDataToString(fill_history[svar]);
         else
           console.warn(
             `Could not find a value to fill special var ${v} in prompt template.`,

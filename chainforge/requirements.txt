@@ -3,7 +3,8 @@ flask[async]
 flask_cors
 requests
 openai
-dalaipy==2.0.2
 urllib3==1.26.6
 mistune>=2.0
 platformdirs
+cryptography
+markitdown[pdf, docx, xlsx, xls, pptx]

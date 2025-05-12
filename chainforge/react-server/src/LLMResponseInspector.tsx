@@ -22,6 +22,8 @@ import {
   TextInput,
   Stack,
   LoadingOverlay,
+  Box,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { useToggle } from "@mantine/hooks";
 import {
@@ -29,6 +31,7 @@ import {
   IconLayoutList,
   IconLetterCaseToggle,
   IconFilter,
+  IconChartBar,
 } from "@tabler/icons-react";
 import {
   MantineReactTable,
@@ -50,9 +53,12 @@ import {
   llmResponseDataToString,
   DebounceRef,
   genDebounceFunc,
+  blobOrFileToDataURL,
+  blobToBase64,
 } from "./backend/utils";
 import {
   EvalResultDisplay,
+  MediaBox,
   ResponseBox,
   ResponseGroup,
   genResponseTextsDisplay,
@@ -64,9 +70,11 @@ import {
   EvaluationScore,
   LLMResponse,
   LLMResponseData,
+  TemplateVarInfo,
   isImageResponseData,
 } from "./backend/typing";
-import { StringLookup } from "./backend/cache";
+import { MediaLookup, StringLookup } from "./backend/cache";
+import { VisView } from "./VisNode";
 
 // Helper funcs
 const getLLMName = (resp_obj: LLMResponse) =>
@@ -165,39 +173,71 @@ function genSpansForHighlightedValue(
   );
 }
 
-// Export the JSON responses to an excel file (downloads the file):
-export const exportToExcel = (
+// Transform the JSON responses into a table
+export const pulledInputsToTable = (data: string[] | TemplateVarInfo[]) => {
+  // The data is the result of pullInputData. We need to transform it into a table.
+  return data
+    .map((info) => {
+      console.log(info);
+      if (typeof info === "string") return { text: info };
+      const llm = getLLMName({ llm: info.llm } as LLMResponse);
+      const prompt = StringLookup.get(info.prompt) ?? undefined;
+      const vars = info.fill_history ?? {};
+      const metavars = info.metavars ?? {};
+      const row: Dict<string | number> = {};
+      const uid =
+        info.uid ??
+        ("batch_id" in info ? (info.batch_id as string) : undefined);
+
+      if (info.llm !== undefined) row.Method = llm;
+      if (prompt !== undefined) row.Prompt = prompt;
+      if (info.text !== undefined) {
+        row[info.llm !== undefined ? "Response" : "text"] =
+          llmResponseDataToString(info.text);
+      }
+      if (uid) row["Batch Id"] = uid;
+
+      // Add columns for vars
+      Object.entries(vars).forEach(([varname, val]) => {
+        if (varname === undefined || varname.length === 0) return; // skip empty varnames
+        row[varname] = llmResponseDataToString(val);
+      });
+
+      // Add columns for metavars, if present
+      Object.entries(metavars).forEach(([varname, val]) => {
+        if (varname === undefined || varname.length === 0) return; // skip empty varnames
+        if (!cleanMetavarsFilterFunc(varname)) return; // skip llm group metavars
+        row[varname] = llmResponseDataToString(val);
+      });
+
+      // Add column for images, if present
+      if (info.image !== undefined) {
+        row[info.llm !== undefined ? "Image Response" : "image"] =
+          llmResponseDataToString(info.image);
+      }
+
+      return row;
+    })
+    .flat();
+};
+
+export const responsesToTable = async (
   jsonResponses: LLMResponse[],
-  filename?: string,
+  wrapVars?: boolean,
 ) => {
-  if (filename === undefined) filename = "responses.xlsx";
+  const _resp_to_string = async (resp: LLMResponseData) => {
+    if (isImageResponseData(resp)) {
+      // TODO: Find out a way to export images to excel.
+      // NOTE: base64 does not work because of the text size limit in excel.
+      //       We get the error: "Text length must not exceed 32767 characters"
+      return `media/${resp.d}`;
+      // const blob = await MediaLookup.get(resp.d);
+      // if (blob === undefined) return undefined;
+      // return await blobOrFileToDataURL(blob);
+    } else return llmResponseDataToString(resp);
+  };
 
-  // Check that there are responses to export:
-  if (
-    !jsonResponses ||
-    (Array.isArray(jsonResponses) && jsonResponses.length === 0)
-  ) {
-    throw new Error(
-      "No responses to export. Try connecting the inspector node to a prompt node or evaluator node.",
-    );
-  }
-
-  // Check format of responses
-  // TODO: Support export of images in Excel sheets
-  if (
-    jsonResponses.some(
-      (r) => r.responses.length > 0 && isImageResponseData(r.responses[0]),
-    )
-  ) {
-    throw new Error(
-      "Images cannot be exported to Excel at this time. If you need this feature and you are a developer, please consider submitting a PR to our GitHub repository.",
-    );
-  }
-
-  // We can construct the data as an array of JSON dicts, with keys as header names:
-  // NOTE: We need to 'unwind' responses in each batch, since each res_obj can have N>1 responses.
-  //       We will store every response text on a single row, but keep track of batches by creating a batch ID number.
-  const data = jsonResponses
+  const tableDataPromises = jsonResponses
     .map((res_obj, res_obj_idx) => {
       const llm = getLLMName(res_obj);
       const prompt = StringLookup.get(res_obj.prompt) ?? "";
@@ -208,18 +248,19 @@ export const exportToExcel = (
         note: getLabelForResponse(res_obj.uid, "note"),
       };
       const eval_res_items = res_obj.eval_res ? res_obj.eval_res.items : null;
-      return res_obj.responses.map((r, r_idx) => {
+      return res_obj.responses.map(async (r, r_idx) => {
         const row: Dict<string | number | boolean> = {
-          LLM: llm,
+          Method: llm,
           Prompt: prompt,
-          Response: llmResponseDataToString(r),
-          "Response Batch Id": res_obj.uid ?? res_obj_idx,
+          Response: (await _resp_to_string(r)) ?? "",
+          "Batch Id": res_obj.uid ?? res_obj_idx,
         };
 
         // Add columns for vars
-        Object.entries(vars).forEach(([varname, val]) => {
-          row[`Var: ${varname}`] = StringLookup.get(val) ?? "";
-        });
+        for (const [varname, val] of Object.entries(vars)) {
+          row[wrapVars ? `Var: ${varname}` : varname] =
+            (await _resp_to_string(val)) ?? "";
+        }
 
         // Add column(s) for human ratings, if present
         if (ratings) {
@@ -250,36 +291,84 @@ export const exportToExcel = (
         }
 
         // Add columns for metavars, if present
-        Object.entries(metavars).forEach(([varname, val]) => {
-          if (!cleanMetavarsFilterFunc(varname)) return; // skip llm group metavars
-          row[`Metavar: ${varname}`] = StringLookup.get(val) ?? "";
-        });
+        for (const [varname, val] of Object.entries(metavars)) {
+          if (!cleanMetavarsFilterFunc(varname)) continue; // skip llm group metavars
+          row[wrapVars ? `Metavar: ${varname}` : varname] =
+            (await _resp_to_string(val)) ?? "";
+        }
 
         return row;
       });
     })
     .flat();
 
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-  XLSX.writeFile(wb, filename);
+  const tableData = await Promise.allSettled(tableDataPromises).then(
+    (resolvedTableData) => {
+      const filteredTableData = resolvedTableData.filter(
+        (result) => result.status === "fulfilled",
+      ) as PromiseFulfilledResult<any>[];
+      return filteredTableData.map((result) => result.value);
+    },
+  );
+
+  return tableData;
+};
+
+// Export the JSON responses to an excel file (downloads the file):
+export const exportToExcel = (
+  jsonResponses: LLMResponse[],
+  filename?: string,
+) => {
+  if (filename === undefined) filename = "responses.xlsx";
+
+  // Check that there are responses to export:
+  if (
+    !jsonResponses ||
+    (Array.isArray(jsonResponses) && jsonResponses.length === 0)
+  ) {
+    throw new Error(
+      "No responses to export. Try connecting the inspector node to a prompt node or evaluator node.",
+    );
+  }
+
+  // We can construct the data as an array of JSON dicts, with keys as header names:
+  // NOTE: We need to 'unwind' responses in each batch, since each res_obj can have N>1 responses.
+  //       We will store every response text on a single row, but keep track of batches by creating a batch ID number.
+  responsesToTable(jsonResponses, true)
+    .then((data) => {
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      XLSX.writeFile(wb, filename as string);
+    })
+    .catch((e) => {
+      console.error("Failed to export responses to Excel. Data corrupted?", e);
+    });
 };
 
 export interface LLMResponseInspectorProps {
   jsonResponses: LLMResponse[];
   isOpen: boolean;
   wideFormat?: boolean;
+  customLLMFieldName?: string;
+  disableBackgroundColor?: boolean;
+  treatLLMFieldAsUnique?: boolean;
 }
 
 const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   jsonResponses,
   isOpen,
   wideFormat,
+  customLLMFieldName,
+  disableBackgroundColor,
+  treatLLMFieldAsUnique,
 }) => {
   // Responses
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
   const [receivedResponsesOnce, setReceivedResponsesOnce] = useState(false);
+
+  // Color scheme
+  const { colorScheme } = useMantineColorScheme();
 
   // Debounce isOpen changes, to avoid blocking the UI
   const [isOpenDelayed, setIsOpenDelayed] = useState(false);
@@ -338,6 +427,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     columnResizeMode: "onEnd",
     enableStickyHeader: true,
     initialState: { density: "md", pagination: { pageSize: 30, pageIndex: 0 } },
+    mantineTableHeadCellProps: () => ({
+      style: {
+        paddingTop: "0px",
+      },
+    }),
     renderToolbarInternalActions: ({ table }) => (
       <>
         {/* built-in buttons (must pass in table prop for them to work!) */}
@@ -449,7 +543,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           // in the future we can add special types of variables without name collisions
           ({ value: name, label: name }),
         )
-        .concat({ value: "$LLM", label: "LLM" });
+        .concat({ value: "$LLM", label: customLLMFieldName || "LLM" });
       if (contains_eval_res && viewFormat === "table")
         msvars.push({ value: "$EVAL_RES", label: "Eval results" });
       setMultiSelectVars(msvars);
@@ -469,10 +563,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           // Plot eval scores on columns
           setTableColVar("$EVAL_RES");
           return;
-        } else if (found_llms.length === 1 && found_vars.length > 1) {
-          setTableColVar(found_vars[0]);
-          return; // useEffect will replot with the new values
         }
+        // else if (found_llms.length === 1 && found_vars.length > 1) {
+        // setTableColVar(found_vars[0]);
+        // return; // useEffect will replot with the new values
+        // }
       }
 
       // If this is the first time receiving responses, set the multiSelectValue to whatever is the first:
@@ -517,18 +612,17 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         );
 
       // Functions to associate a color to each LLM in responses
-      const color_for_llm = (llm: string) =>
-        getColorForLLMAndSetIfNotFound(llm) + "99";
-      const header_bg_colors = ["#e0f4fa", "#c0def9", "#a9c0f9", "#a6b2ea"];
-      const response_box_colors = [
-        "#eee",
-        "#fff",
-        "#eee",
-        "#ddd",
-        "#eee",
-        "#ddd",
-        "#eee",
-      ];
+      const color_for_llm = disableBackgroundColor
+        ? (c: string) => "transparent"
+        : (llm: string) => getColorForLLMAndSetIfNotFound(llm) + "99";
+      const header_bg_colors =
+        colorScheme === "light"
+          ? ["#e0f4fa", "#c0def9", "#a9c0f9", "#a6b2ea"]
+          : ["#333", "#222", "#333", "#222"];
+      const response_box_colors =
+        colorScheme === "light"
+          ? ["#eee", "#fff", "#eee", "#ddd", "#eee", "#ddd", "#eee"]
+          : ["#222", "#111", "#222", "#111", "#222", "#111", "#222"];
       const rgroup_color = (depth: number) =>
         response_box_colors[depth % response_box_colors.length];
 
@@ -636,7 +730,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           var_cols = found_vars
             .filter((v) => v !== tableColVar)
             .concat(found_llms.length > 1 ? ["LLM"] : []); // only add LLM column if num LLMs > 1
-          getColVal = (r) => StringLookup.get(r.vars[tableColVar]) ?? "";
+          getColVal = (r) => llmResponseDataToString(r.vars[tableColVar]);
           colnames = var_cols;
           found_sel_var_vals = [];
         }
@@ -662,7 +756,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             responses.reduce((acc, res_obj) => {
               acc.add(
                 tableColVar in res_obj.vars
-                  ? StringLookup.get(res_obj.vars[tableColVar]) ?? ""
+                  ? llmResponseDataToString(res_obj.vars[tableColVar])
                   : "(unspecified)",
               );
               return acc;
@@ -679,9 +773,19 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           v === "LLM" ? getLLMName(r) : StringLookup.get(r.vars[v]) ?? "";
 
         // Then group responses by prompts. Each prompt will become a separate row of the table (will be treated as unique)
-        const responses_by_prompt = groupResponsesBy(responses, (r) =>
-          var_cols.map((v) => getVar(r, v)).join("|"),
-        )[0];
+        const responses_by_prompt = groupResponsesBy(responses, (r) => {
+          const group = var_cols
+            .map((v) => getVar(r, v))
+            .map(llmResponseDataToString)
+            .join("|");
+          if (
+            treatLLMFieldAsUnique &&
+            tableColVar === "$LLM" &&
+            r.responses.length > 0
+          )
+            return group + "|" + llmResponseDataToString(r.responses[0]);
+          else return group;
+        })[0];
 
         const rows = Object.entries(responses_by_prompt).map(
           // eslint-disable-next-line
@@ -768,8 +872,21 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               }
             });
 
+            // const serializeLLMResponseData = async (
+            //   val: LLMResponseData,
+            // ): Promise<string | undefined> => {
+            //   if (typeof val === "string" || typeof val === "number")
+            //     return StringLookup.get(val) ?? "(string lookup failed)";
+            //   else if (isImageResponseData(val)) {
+            //     return await MediaLookup.getUrl(val.d);
+            //   } else {
+            //     return await MediaLookup.getAsText(val.d);
+            //   }
+            // }
+
             const row: Dict<
               | string
+              | LLMResponseData
               | undefined
               | LLMResponse[]
               | LLMResponseData[]
@@ -785,11 +902,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             > = {};
             let vals_arr_start_idx = 0;
             var_cols_vals.forEach((v, i) => {
-              row[`c${i}`] = StringLookup.get(v);
+              row[`c${i}`] = v;
             });
             vals_arr_start_idx += var_cols_vals.length;
             metavar_cols_vals.forEach((v, i) => {
-              row[`c${i + vals_arr_start_idx}`] = StringLookup.get(v);
+              row[`c${i + vals_arr_start_idx}`] = v;
             });
             vals_arr_start_idx += metavar_cols_vals.length;
             sel_var_cols.forEach((v, i) => {
@@ -824,19 +941,24 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               colHasLLMResponses.add(cname);
             // Count the number of chars in the total text that will be displaced in this cell,
             // and add it to the count:
-            const numChars = hasLLMResps
-              ? val
-                  .map((r) =>
-                    (r as LLMResponse).responses
-                      .map(llmResponseDataToString)
-                      .join(""),
-                  )
-                  .join("").length
-              : typeof val === "string"
-                ? val.length
-                : (val.data as (string | JSX.Element)[][])
-                    .map((e) => e[1])
-                    .join("").length;
+            let numChars = 0;
+            if (hasLLMResps) {
+              numChars = val
+                .map((r) =>
+                  (r as LLMResponse).responses
+                    .map(llmResponseDataToString)
+                    .join(""),
+                )
+                .join("").length;
+            } else if (typeof val === "string" || typeof val === "number") {
+              numChars = StringLookup.get(val)?.length ?? 0;
+            } else if ("type" in val && val.type === "eval") {
+              numChars = (val.data as (string | JSX.Element)[][])
+                .map((e) => e[1])
+                .join("").length;
+            } else if (val !== undefined && "t" in val) {
+              numChars = llmResponseDataToString(val).length;
+            }
             colAvgNumChars[cname] += (numChars * 1.0) / numRows; // we apply the averaging here for speed
           });
         });
@@ -846,8 +968,16 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           accessorFn: (row) => {
             // Get the text for this row. Used when filtering or sorting.
             const val = row[`c${i}`];
-            if (typeof val === "string" || val === undefined) return val;
-            else if ("type" in val && val.type === "eval") {
+            if (
+              typeof val === "string" ||
+              typeof val === "number" ||
+              val === undefined
+            )
+              return StringLookup.get(val) ?? "";
+            else if (typeof val === "object" && "t" in val) {
+              // LLMResponseData -- image or doc
+              return llmResponseDataToString(val); // doc
+            } else if ("type" in val && val.type === "eval") {
               return (val.data as (string | JSX.Element)[][])
                 .map((e) => e[1])
                 .join("\n");
@@ -865,8 +995,18 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           ),
           Cell: ({ cell, row }: { cell: MRT_Cell; row: any }) => {
             const val = row.original[`c${i}`];
-            if (typeof val === "string") return val;
-            else if ("type" in val && val.type === "eval") {
+            if (typeof val === "string" || typeof val === "number") {
+              return <span className="icl">{StringLookup.get(val) ?? ""}</span>;
+            } else if (typeof val === "object" && "t" in val) {
+              if (isImageResponseData(val)) {
+                // Display the image
+                // NOTE: This will async load the image
+                return <MediaBox mediaUID={val.d} />;
+              } else {
+                // For now, we just display the doc ID...
+                <span className="icl">{val.d}</span>;
+              }
+            } else if ("type" in val && val.type === "eval") {
               return (
                 <Stack spacing={0}>
                   {(
@@ -1013,7 +1153,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               ? groupResponsesBy(resps, getLLMName)
               : groupResponsesBy(resps, (r) =>
                   group_name in r.vars
-                    ? StringLookup.get(r.vars[group_name])
+                    ? llmResponseDataToString(r.vars[group_name])
                     : null,
                 );
           const get_header =
@@ -1093,6 +1233,10 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         // Produce DIV elements grouped by selected vars
         const divs = groupByVars(responses, selected_vars, [], null);
         setResponseDivs(divs);
+      } else if (showEvalScoreOptions && viewFormat === "vis") {
+        // Plot view (only present if eval scores are present)
+        const visView = <VisView responses={responses} wideFormat />;
+        setResponseDivs(visView);
       }
     });
   };
@@ -1111,6 +1255,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     searchValue,
     caseSensitive,
     filterBySearchValue,
+    colorScheme,
+    customLLMFieldName,
+    disableBackgroundColor,
   ]);
 
   // When the user clicks an item in the drop-down,
@@ -1193,6 +1340,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       <Tabs
         value={viewFormat}
         onTabChange={(val) => {
+          if (viewFormat === val) return;
+          setResponseDivs([]);
+          setShowLoadingSpinner(true);
           setViewFormat(val ?? "hierarchy");
         }}
         styles={{ tabLabel: { fontSize: wideFormat ? "12pt" : "9pt" } }}
@@ -1212,10 +1362,21 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             />
             {wideFormat ? " Table View" : ""}
           </Tabs.Tab>
+          {showEvalScoreOptions && wideFormat ? (
+            <Tabs.Tab value="vis">
+              <IconChartBar
+                size="10pt"
+                style={{ marginBottom: wideFormat ? "0px" : "-4px" }}
+              />
+              {wideFormat ? " Vis View" : ""}
+            </Tabs.Tab>
+          ) : (
+            <></>
+          )}
         </Tabs.List>
 
         <Tabs.Panel value="hierarchy" pt="xs">
-          <Flex gap={sz} align="end" w="100%" mb={wideFormat ? "0px" : "xs"}>
+          <Flex gap={sz} align="end" w="100%" mb="xs">
             <MultiSelect
               ref={multiSelectRef}
               onChange={handleMultiSelectValueChange}
@@ -1242,12 +1403,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             />
           </Flex>
         </Tabs.Panel>
-        <Tabs.Panel value="table" pt="xs">
+        <Tabs.Panel value="table" pt="0px">
           <></>
         </Tabs.Panel>
       </Tabs>
 
-      <div className="nowheel nodrag" style={{ height: "800px" }}>
+      <div className="nowheel nodrag" style={{ minHeight: "800px" }}>
         {/* To get the overlay to operate just inside the div, use style={{position: "relative"}}. However it won't show the spinner in the right place. */}
         <LoadingOverlay
           visible={showLoadingSpinner || (isOpen && !isOpenDelayed)}

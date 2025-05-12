@@ -1,5 +1,6 @@
 import MarkdownIt from "markdown-it";
 import axios from "axios";
+import JSZip from "jszip";
 import { v4 as uuid } from "uuid";
 import {
   Dict,
@@ -18,6 +19,7 @@ import {
   PromptVarType,
   StringOrHash,
   ChatHistory,
+  JSONCompatible,
 } from "./typing";
 import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
 import {
@@ -33,8 +35,9 @@ import {
   extendArray,
   extendArrayDict,
   stripWrappingQuotes,
+  extractMediaVars,
 } from "./utils";
-import StorageCache, { StringLookup } from "./cache";
+import StorageCache, { MediaLookup, StringLookup } from "./cache";
 import { PromptPipeline } from "./query";
 import {
   PromptPermutationGenerator,
@@ -51,6 +54,10 @@ import { baseModelToProvider } from "../ModelSettingSchemas";
 //     SETUP AND GLOBALS
 //     =================
 // """
+const DEFAULT_JSON_HEADERS = {
+  "Content-Type": "application/json",
+  "Access-Control-Allow-Origin": "*",
+};
 
 enum MetricType {
   KeyValue = 0,
@@ -270,7 +277,8 @@ function filterVarsByLLM(vars: PromptVarsDict, llm_key: string): Dict {
       (v) =>
         typeof v === "string" ||
         typeof v === "number" ||
-        v?.llm === undefined ||
+        !("llm" in v) ||
+        v.llm === undefined ||
         typeof v.llm === "string" ||
         typeof v.llm === "number" ||
         v.llm.key === llm_key,
@@ -627,6 +635,7 @@ export async function countQueries(
         _all_prompt_perms.forEach((prompt) => {
           let prompt_str = prompt.toString();
           const settings_params = extractSettingsVars(prompt.fill_history);
+          const media_params = extractMediaVars(prompt.fill_history);
 
           add_to_num_responses_req(llm_key, n * chat_hists.length);
 
@@ -662,6 +671,10 @@ export async function countQueries(
                 areEqualVarsDicts(
                   settings_params,
                   extractSettingsVars(cached_resp.vars),
+                ) &&
+                areEqualVarsDicts(
+                  media_params,
+                  extractMediaVars(cached_resp.vars),
                 )
               ) {
                 // Match found. Note it and count response length:
@@ -702,10 +715,7 @@ interface LLMPrompterResults {
 export async function fetchEnvironAPIKeys(): Promise<Dict<string>> {
   return fetch(`${FLASK_BASE_URL}app/fetchEnvironAPIKeys`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
+    headers: DEFAULT_JSON_HEADERS,
     body: "",
   }).then((res) => res.json());
 }
@@ -769,7 +779,7 @@ export async function queryLLM(
   llm: string | (string | LLMSpec)[],
   n: number,
   prompt: string,
-  vars: Dict,
+  vars: PromptVarsDict,
   chat_histories?: ChatHistoryInfo[] | { [key: string]: ChatHistoryInfo[] },
   api_keys?: Dict,
   no_cache?: boolean,
@@ -976,12 +986,31 @@ export async function queryLLM(
   );
 
   // Reorder the responses to match the original vars dict ordering of keys and values
-  const vars_lookup: { [key: string]: Dict } = {}; // we create a lookup table for faster sort
+  const vars_lookup: { [key: string]: Dict<number> } = {}; // we create a lookup table for faster sort
+  const getStringForVarObj = (vobj: PromptVarType): string => {
+    if (typeof vobj === "string" || typeof vobj === "number") {
+      return StringLookup.get(vobj) ?? vobj.toString();
+    } else if (typeof vobj === "object" && vobj != null) {
+      // If the object has a 'text' property, use that as the key
+      if ("text" in vobj && vobj.text !== undefined) {
+        return StringLookup.get(vobj.text) ?? vobj.text.toString();
+      } else if ("image" in vobj && vobj.image !== undefined) {
+        // If the object has an 'image' property, use that as the key
+        return vobj.image;
+      } else if ("d" in vobj) {
+        // Otherwise, use the 'd' property as the key
+        return vobj.d;
+      } else {
+        console.error(`Invalid variable object: ${JSON.stringify(vobj)}`);
+      }
+    }
+    return "(unknown)";
+  };
   Object.entries(vars).forEach(([varname, vals]) => {
     vars_lookup[varname] = {};
-    vals.forEach((vobj: Dict | string, i: number) => {
-      const v = typeof vobj === "string" ? vobj : vobj?.text;
-      vars_lookup[varname][v] = i;
+    if (!Array.isArray(vals)) vals = [vals];
+    vals.forEach((vobj, i: number) => {
+      vars_lookup[varname][getStringForVarObj(vobj)] = i;
     });
   });
   const vars_entries = Object.entries(vars_lookup);
@@ -989,8 +1018,8 @@ export async function queryLLM(
     if (!a.vars || !b.vars) return 0;
     for (const [varname, vals] of vars_entries) {
       if (varname in a.vars && varname in b.vars) {
-        const a_idx = vals[a.vars[varname]];
-        const b_idx = vals[b.vars[varname]];
+        const a_idx = vals[getStringForVarObj(a.vars[varname])];
+        const b_idx = vals[getStringForVarObj(b.vars[varname])];
         if (a_idx > -1 && b_idx > -1 && a_idx !== b_idx) return a_idx - b_idx;
       }
     }
@@ -1295,6 +1324,7 @@ export async function evalWithLLM(
   progress_listener?: (progress: { [key: symbol]: any }) => void,
   cancel_id?: string | number,
   system_msg?: string,
+  useReasoning?: boolean,
 ): Promise<{ responses?: LLMResponse[]; errors: string[] }> {
   // Check format of response_ids
   if (!Array.isArray(response_ids)) response_ids = [response_ids];
@@ -1359,12 +1389,63 @@ export async function evalWithLLM(
 
     const err_vals: string[] = Object.values(errors).flat();
     if (err_vals.length > 0) all_errors = all_errors.concat(err_vals);
+    // If reasoning mode is enabled, extract the scores from the responses
+    if (useReasoning) {
+      responses.forEach((r: LLMResponse) => {
+        if (!r.responses || r.responses.length === 0) return;
+
+        // Process each response item within the LLMResponse
+        r.responses = r.responses.map((response_item) => {
+          // First, convert the response item (LLMResponseData) to a string
+          const response_str = llmResponseDataToString(response_item);
+
+          // Now apply the regex to the string representation
+          if (typeof response_str !== "string") {
+            // Should not happen if llmResponseDataToString works correctly, but handle defensively
+            console.warn(
+              "Response item did not convert to string:",
+              response_item,
+            );
+            return response_item; // Return original item if conversion failed
+          }
+
+          // console.log("Attempting to extract score from:", response_str); // Optional: for debugging
+
+          try {
+            // Extract the score from the SCORE: format
+            const match = response_str.match(
+              /score:\s*(\d+(?:\.\d+)?)(?:\s*)?$/i,
+            ); // Made decimal part optional
+            if (match && match[1]) {
+              const extracted_score = match[1].trim();
+              // console.log("match found:", extracted_score); // Optional: for debugging
+              // Return the extracted score string. This replaces the original
+              // response_item (which could be an object) in the r.responses array.
+              return extracted_score;
+            }
+            // If no match, return the original string (or potentially handle as error/default)
+            // console.log("No score match found in:", response_str); // Optional: for debugging
+            return response_str; // Return the full string if no score pattern found
+          } catch (e) {
+            console.warn("Failed during regex matching or processing:", e);
+            return response_str; // Return the full string in case of error
+          }
+        });
+      });
+    }
 
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
     responses.forEach((r: LLMResponse) => {
-      const __i = parseInt(StringLookup.get(r.metavars.__i) ?? "");
-      const __j = parseInt(StringLookup.get(r.metavars.__j) ?? "");
+      const __i = parseInt(StringLookup.get(r.metavars.__i as number) ?? "");
+      const __j = parseInt(StringLookup.get(r.metavars.__j as number) ?? "");
+      // Ensure indices are valid
+      if (isNaN(__i) || isNaN(__j) || __i < 0 || __i >= resp_objs.length) {
+        console.error(
+          `Invalid indices found in response metadata: __i=${__i}, __j=${__j}. Skipping response mapping.`,
+        );
+        return; // Skip this response
+      }
       const resp_obj = resp_objs[__i];
       if (resp_obj.eval_res !== undefined)
         resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
@@ -1529,11 +1610,18 @@ export async function exportCache(ids: string[]): Promise<Dict<Dict>> {
       cache_files[key] = load_from_cache(key);
     });
   }
+
   // Bundle up specific other state in StorageCache, which
   // includes things like human ratings for responses:
   const cache_state = StorageCache.getAllMatching(
     (key) => key.startsWith("r.") || key === "__s",
   );
+
+  // Export the MediaLookup table (NOTE: this only contains media file uids and,
+  // if running only on the front-end, cache'd media data)
+  const mediaCache = await MediaLookup.toJSON();
+  cache_state.__media = mediaCache;
+
   return { ...cache_files, ...cache_state };
 }
 
@@ -1553,8 +1641,13 @@ export async function importCache(files: {
     StorageCache.saveToLocalStorage("chainforge-state");
 
     // Write imported files to StorageCache
-    // Verify filenames, data, and access permissions to write to cache
     Object.entries(files).forEach(([filename, data]) => {
+      if (filename === "__media") {
+        // If the cache key is __media, we need to restore the MediaLookup table instead:
+        // NOTE: This will NOT override any existing media files in the MediaLookup table.
+        MediaLookup.restoreFrom(data as any);
+        return;
+      }
       StorageCache.store(filename, data);
     });
 
@@ -1565,6 +1658,149 @@ export async function importCache(files: {
   }
 
   console.log("Imported cache data and stored to cache.");
+}
+
+/**
+ * Export a flow and its media files as a bundle and download it
+ * @param flowData The flow JSON data
+ * @param flowName Optional name for the downloaded file
+ */
+export async function exportFlowBundle(
+  flowData: any,
+  flowName?: string,
+): Promise<void> {
+  try {
+    // Make a POST request to the export endpoint
+    const response = await fetch(`${FLASK_BASE_URL}api/exportFlowBundle`, {
+      method: "POST",
+      headers: DEFAULT_JSON_HEADERS,
+      body: JSON.stringify({
+        flow: flowData,
+        flowName: flowName || "flow_bundle",
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to export flow bundle: ${response.statusText}`);
+    }
+
+    // Get the blob from response (a zip file with .cfzip extension)
+    const blob = await response.blob();
+
+    // Create a download link and trigger the download
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.style.display = "none";
+    a.href = url;
+
+    // Use the filename from Content-Disposition if available, otherwise use flowName
+    const contentDisposition = response.headers.get("Content-Disposition");
+    const filenameMatch =
+      contentDisposition && contentDisposition.match(/filename="?([^"]+)"?/);
+    const filename = filenameMatch
+      ? filenameMatch[1]
+      : `${flowName || "flow_bundle"}.cfzip`;
+
+    // Download the file
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+
+    // Clean up
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    console.log(`Flow bundle exported successfully as ${filename}.`);
+  } catch (error) {
+    console.error("Error exporting flow bundle:", error);
+    throw error;
+  }
+}
+
+/**
+ * Import a flow bundle from a .cfzip file
+ * @param file The .cfzip file to import
+ * @returns Promise with the imported flow data and name
+ */
+export async function importFlowBundle(
+  file: File,
+): Promise<{ flow: any; flowName: string }> {
+  if (!file.name.endsWith(".cfzip") && !file.name.endsWith(".zip")) {
+    throw new Error("Invalid file format. Expected .cfzip or .zip");
+  }
+
+  if (APP_IS_RUNNING_LOCALLY()) {
+    // If running locally, use the Flask backend to import the flow bundle
+    try {
+      // Create form data with the file
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Make a POST request to the import endpoint, sending the file over
+      // and receiving just the JSON flow data in response
+      const response = await fetch(`${FLASK_BASE_URL}api/importFlowBundle`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error ||
+            `Failed to import flow bundle: ${response.statusText}`,
+        );
+      }
+
+      // Parse the response JSON
+      const result = await response.json();
+
+      console.log(`Flow bundle imported successfully: ${result.flowName}`);
+      return {
+        flow: result.flow,
+        flowName: result.flowName,
+      };
+    } catch (error) {
+      console.error("Error importing flow bundle:", error);
+      throw error;
+    }
+  } else {
+    // Try to unzip and import a flow bundle entirely in the front-end
+    const zip = await JSZip.loadAsync(file);
+
+    // Extract flow.json
+    const flowFile = zip.file("flow.json");
+    if (!flowFile) {
+      throw new Error("Missing flow.json in bundle");
+    }
+    const flowJsonText = await flowFile.async("text");
+    const flow = JSON.parse(flowJsonText);
+
+    // Extract media files (if present)
+    const mediaFiles = Object.keys(zip.files).filter(
+      (path) => path.startsWith("media/") && !zip.files[path].dir,
+    );
+
+    // Deliberately clear the media cache before importing
+    // NOTE: This will wipe all media cache data, so be careful!
+    MediaLookup.clear();
+
+    for (const path of mediaFiles) {
+      const fileBlob = await zip.file(path)!.async("blob");
+      const filename = path.substring("media/".length); // remove folder prefix
+      // Here we manually set the cache data for the media file
+      // NOTE: We aren't checking integrity of the media files here, so backend
+      // import is preferred if running locally.
+      MediaLookup.setCacheData(filename, fileBlob);
+    }
+
+    // Here we manually save the state to local storage, just in case
+    MediaLookup.getInstance().saveStateToStorageCache();
+
+    const flowName = file.name.replace(/\.(cfzip|zip)$/, "");
+
+    console.log(`Flow bundle imported successfully: ${flowName}`);
+    return { flow, flowName };
+  }
 }
 
 /**
@@ -1580,10 +1816,7 @@ export async function fetchExampleFlow(evalname: string): Promise<Dict> {
     // by querying the Flask server:
     return fetch(`${FLASK_BASE_URL}app/fetchExampleFlow`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers: DEFAULT_JSON_HEADERS,
       body: JSON.stringify({ name: evalname }),
     })
       .then(function (res) {
@@ -1621,10 +1854,7 @@ export async function fetchOpenAIEval(evalname: string): Promise<Dict> {
     // by querying the Flask server:
     return fetch(`${FLASK_BASE_URL}app/fetchOpenAIEval`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers: DEFAULT_JSON_HEADERS,
       body: JSON.stringify({ name: evalname }),
     })
       .then(function (res) {
@@ -1662,10 +1892,7 @@ export async function initCustomProvider(
   // by querying the Flask server:
   return fetch(`${FLASK_BASE_URL}app/initCustomProvider`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
+    headers: DEFAULT_JSON_HEADERS,
     body: JSON.stringify({ code }),
   })
     .then(function (res) {
@@ -1690,10 +1917,7 @@ export async function removeCustomProvider(name: string): Promise<boolean> {
   // by querying the Flask server:
   return fetch(`${FLASK_BASE_URL}app/removeCustomProvider`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
+    headers: DEFAULT_JSON_HEADERS,
     body: JSON.stringify({ name }),
   })
     .then(function (res) {
@@ -1717,10 +1941,7 @@ export async function loadCachedCustomProviders(): Promise<
 > {
   return fetch(`${FLASK_BASE_URL}app/loadCachedCustomProviders`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
+    headers: DEFAULT_JSON_HEADERS,
     body: "{}",
   })
     .then(function (res) {
@@ -1733,5 +1954,64 @@ export async function loadCachedCustomProviders(): Promise<
             "Could not load custom provider scripts: Error contacting backend.",
         );
       return json.providers as CustomLLMProviderSpec[];
+    });
+}
+
+export async function getGlobalConfig(
+  configFilename: string,
+): Promise<Dict<JSONCompatible>> {
+  return fetch(`${FLASK_BASE_URL}api/getConfig/${configFilename}`, {
+    method: "GET",
+    headers: DEFAULT_JSON_HEADERS,
+  })
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (json) {
+      if (typeof json !== "object") {
+        console.error(
+          `Error loading global ${configFilename}: JSON dict is unexpected return type.`,
+        );
+        return {};
+      }
+      return json as Dict<JSONCompatible>;
+    })
+    .catch((err) => {
+      console.error(
+        `Failure when trying to load global ${configFilename}: ` +
+          err.toString(),
+      );
+      // Soft fail
+      return {};
+    });
+}
+
+export async function saveGlobalConfig(
+  configFilename: string,
+  config: Dict<JSONCompatible>,
+): Promise<void> {
+  fetch(`${FLASK_BASE_URL}api/saveConfig/${configFilename}`, {
+    method: "POST",
+    headers: DEFAULT_JSON_HEADERS,
+    body: JSON.stringify(config),
+  })
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (json) {
+      if (json.error) {
+        console.error(
+          `Failure when trying to save global ${configFilename}: ` + json.error,
+        );
+        // Soft fail
+      }
+      console.log(`Saved global ${configFilename} to backend successfully.`);
+    })
+    .catch((err) => {
+      console.error(
+        `Failure when trying to save global ${configFilename}: ` +
+          err.toString(),
+      );
+      // Soft fail
     });
 }

@@ -24,6 +24,9 @@ export interface LLMResponseInspectorModalRef {
 
 export interface LLMResponseInspectorModalProps {
   jsonResponses: LLMResponse[];
+  customLLMFieldName?: string;
+  disableBackgroundColor?: boolean;
+  treatLLMFieldAsUnique?: boolean;
 }
 
 const LLMResponseInspectorModal = forwardRef<
@@ -46,18 +49,21 @@ const LLMResponseInspectorModal = forwardRef<
 
   return (
     <Modal
-      size="90%"
+      size="100%"
       keepMounted
       opened={opened}
       onClose={close}
       closeOnClickOutside={true}
-      style={{ position: "relative", left: "-5%" }}
       title={
         <div>
-          <span>Response Inspector</span>
           <button
             className="custom-button"
-            style={{ marginTop: "auto", marginRight: "14px", float: "right" }}
+            style={{
+              marginTop: "auto",
+              marginRight: "14px",
+              float: "right",
+              pointerEvents: "all",
+            }}
             onClick={() => {
               try {
                 exportToExcel(props.jsonResponses);
@@ -72,19 +78,33 @@ const LLMResponseInspectorModal = forwardRef<
         </div>
       }
       styles={{
-        title: { justifyContent: "space-between", width: "100%" },
-        header: { paddingBottom: "0px" },
+        title: {
+          justifyContent: "space-between",
+          width: "100%",
+          padding: "0px",
+        },
+        header: {
+          paddingBottom: "0px",
+          paddingTop: "12px",
+          marginBottom: "-24px",
+          backgroundColor: "transparent",
+          pointerEvents: "none",
+        },
+        close: { pointerEvents: "all" },
       }}
     >
       <div
         className="inspect-modal-response-container"
-        style={{ padding: "6px", overflow: "scroll" }}
+        style={{ padding: "0px", overflow: "scroll" }}
       >
         <Suspense fallback={<LoadingOverlay visible={true} />}>
           <LLMResponseInspector
             jsonResponses={props.jsonResponses}
             isOpen={opened}
             wideFormat={true}
+            customLLMFieldName={props.customLLMFieldName}
+            disableBackgroundColor={props.disableBackgroundColor}
+            treatLLMFieldAsUnique={props.treatLLMFieldAsUnique}
           />
         </Suspense>
       </div>

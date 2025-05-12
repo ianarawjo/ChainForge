@@ -27,7 +27,7 @@ const CommentNode: React.FC<CommentNodeProps> = ({ data, id }) => {
   };
 
   return (
-    <BaseNode nodeId={id} style={{ backgroundColor: "#eee" }}>
+    <BaseNode classNames="comment-node" nodeId={id}>
       <NodeLabel title={data.title || "Comment"} nodeId={id} icon={"✏️"} />
       <Textarea
         value={value}
