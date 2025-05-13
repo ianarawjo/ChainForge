@@ -812,6 +812,11 @@ export default class EvaluationFunctionExecutor {
         const report: EvalFunctionReport | undefined =
           this.computeAlignmentStats(evalFunction);
 
+        if (!report) {
+          console.warn("Could not compute alignment stats for an eval function. Skipping.");
+          continue;
+        }
+
         // Save the report for this function
         if (!evalFunctionReport.has(criteria)) {
           evalFunctionReport.set(criteria, []);
