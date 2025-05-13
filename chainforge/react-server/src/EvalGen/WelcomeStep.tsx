@@ -10,7 +10,7 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
     <Title order={2}>Welcome to the EvalGen Wizard</Title>
     <Text>
       This wizard will guide you through creating automated evaluators for LLM
-      responses that are aligned with your preferences. You`&apos;ll look at
+      responses that are aligned with your preferences. You&apos;ll look at
       data, define what you care about, apply those criteria to grade data, and
       refine your criteria as you see more outputs. EvalGen then generates
       automated evaluators that implement each criteria, chooses implementations
@@ -24,9 +24,10 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
       >
         empirical research at UIST 2024
       </Anchor>
-      , and is inspired by similar inductive processes in grounded theory and
-      heuristic evaluation. Currently, Evalgen:
+      , and is inspired by inductive processes in UX research (heuristic
+      evaluation and grounded theory).
     </Text>
+    <Text>Currently, Evalgen:</Text>
     <List>
       <List.Item>
         Only generates <b>assertions (pass/fail tests)</b>. Numeric and
@@ -42,15 +43,15 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
         be powerful enough to generate code. (By default, it is OpenAI.)
       </List.Item>
       <List.Item>
-        Should be run on the outputs of <b>already-run</b> Prompt Nodes (LLM
-        responses).
+        Should be run on the outputs of <b>already-run</b> Prompt Nodes
+        (you&apos;ve already collected some LLM responses).
       </List.Item>
-      <List.Item>
-        EvalGen will send off many requests during usage. 🔔{" "}
-        <b>By using Evalgen, you take full responsibility for credit usage.</b>
-      </List.Item>
+      <List.Item>EvalGen will send off many requests during usage.</List.Item>
     </List>
-    <Text>Currently, EvalGen does NOT:</Text>
+    <Text>
+      🔔 <b>By using Evalgen, you take full responsibility for credit usage.</b>{" "}
+      Currently, EvalGen does NOT:
+    </Text>
     <List>
       <List.Item>
         Work on imported spreadsheets of data (although if you are interested in
@@ -58,9 +59,10 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
       </List.Item>
       <List.Item>
         Generate code that uses third-party libraries. For safety, LLM-generated
-        Python code is run sandboxed in the browser with pyodide. (If your eval
-        criteria implementation must use a third-party library, we suggest you
-        use ChainForge’s genAI features on the specific eval node, outside this
+        Python code is run sandboxed in the browser with pyodide. Pyodide does
+        not have access to many libraries out-of-the-box. (If your eval criteria
+        implementation must use a third-party library, we suggest you use
+        ChainForge’s genAI features on the specific eval node, outside this
         wizard.)
       </List.Item>
     </List>
@@ -71,8 +73,7 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
     </ul> */}
     <Text>
       After EvalGen finishes, the chosen evaluators appear in the MultiEval
-      node. You can export evaluator details by right-clicking the node and
-      selecting Copy Eval Specs.
+      node.
     </Text>
     <Text>
       EvalGen is in Beta. To improve it, provide feedback on our Github Issues

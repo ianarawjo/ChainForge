@@ -1,3 +1,23 @@
+/**
+ * EvalGen 2.0
+ *
+ * Ian Arawjo, Shreya Shankar, J.D. Zamfirescu, Helen Weixu Chen
+ *
+ * This file and its directory concerns the front-end to evaluation generator, EvalGen.
+ * EvalGen supports users in generating eval funcs (here binary assertions) and aligning them with their preferences.
+ *
+ * Specifically, the modal lets users:
+ *  - make and refine criteria to grade on (on the left)
+ *  - grade responses (on the right)
+ *  - while in the backend, an LLM is generating candidate assertions and selected the ones most aligned with user grades
+ * As the user grades responses, they add/refine existing criteria.
+ * This modal presents a shared interface where criteria can be iterated on *alongside* grading.
+ * This is because of **criteria drift,** a phenomenon identified observing users in EvalGen 1.0 (unreleased).
+ *
+ * An AI (LLM call) can also suggest criteria based on the implicit context (inputs, such as the prompt)
+ * and user feedback during grading (written feedback about failing outputs whose failure couldn't be classified under the immediate criteria set.)
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   EvalCriteria,
@@ -262,11 +282,10 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
       opened={opened}
       onClose={onClose}
       // title="EvalGen Wizard"
-      size="90%"
+      size="95%"
       padding="md"
       // keepMounted
       // closeOnClickOutside={true}
-      style={{ position: "relative", left: "-5%" }}
       styles={{
         inner: {
           padding: "5%", // This creates space around the modal (10% total)

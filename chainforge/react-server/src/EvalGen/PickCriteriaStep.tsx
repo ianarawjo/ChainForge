@@ -122,8 +122,8 @@ export const CriteriaCard: React.FC<CriteriaCardProps> = function CriteriaCard({
   const reportAccuracyRing = useMemo(() => {
     if (!evalFuncReport) return undefined;
     return {
-      percent: Math.floor((evalFuncReport.alignment ?? 0) * 100),
-      color: accuracyToColor(evalFuncReport.alignment ?? 0),
+      percent: Math.floor((evalFuncReport.f1 ?? 0) * 100),
+      color: accuracyToColor(evalFuncReport.f1 ?? 0),
     };
   }, [evalFuncReport]);
 
@@ -503,6 +503,10 @@ const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
                 .then((crit) =>
                   setCriteria(crit ? criteria.concat(crit) : criteria),
                 )
+                .catch((err) => {
+                  console.error(err);
+                  setIsLoadingCriteria(0);
+                })
                 .finally(() => setIsLoadingCriteria(0));
             }}
           >

@@ -346,7 +346,7 @@ html[data-mantine-color-scheme="dark"] .multi-eval-node {
 
 .eval-vote-icons {
   display: none;
-  position: absolute;
+  position: relative;
   /* opacity: 0.3; */
   margin-left: 6px;
   margin-top: -6px;
@@ -354,7 +354,7 @@ html[data-mantine-color-scheme="dark"] .multi-eval-node {
 
 .eval-vote-chosen {
   display: inline-flex;
-  position: absolute;
+  position: relative;
   margin-left: 6px;
   margin-top: -6px;
 }
@@ -1524,7 +1524,6 @@ html[data-mantine-color-scheme="dark"] .chat-bubble textarea {
   column-gap: normal;
   -moz-column-gap: 100px; */
 }
-
 html[data-mantine-color-scheme="dark"] .react-flow__controls-button {
   background-color: #777 !important;
   color: #ddd;

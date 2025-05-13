@@ -8,6 +8,7 @@ import {
   Text,
   Textarea,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import GradingView from "./GradingView";
 import { IconThumbDown, IconThumbUp } from "@tabler/icons-react";
@@ -95,7 +96,7 @@ const FeedbackStep: React.FC<FeedbackStepProps> = ({
   }, [shownResponseIdx, responses]);
 
   return (
-    <Stack spacing="lg">
+    <Stack spacing="sm">
       <Title order={3}>Provide Feedback on Some Model Outputs</Title>
 
       <GradingView
@@ -107,31 +108,35 @@ const FeedbackStep: React.FC<FeedbackStepProps> = ({
         gotoPrevResponse={prevResponse}
       />
 
-      <Flex justify="center" gap="50px" mb="xl">
-        <Button
-          color={grade === true ? "gray" : "red"}
-          variant={grade !== false ? "outline" : "filled"}
-          onClick={() => {
-            setGrade(grade !== false ? false : null);
-          }}
-        >
-          <IconThumbDown />
-          &nbsp;Bad!
-        </Button>
-        <Button
-          color={grade === false ? "gray" : "green"}
-          variant={grade !== true ? "outline" : "filled"}
-          onClick={() => {
-            setGrade(grade !== true ? true : null);
-          }}
-        >
-          <IconThumbUp />
-          &nbsp;Good!
-        </Button>
+      <Flex justify="center" gap="50px">
+        <Tooltip label="This response is bad!" withinPortal withArrow>
+          <Button
+            color={grade === true ? "gray" : "red"}
+            variant={grade !== false ? "outline" : "filled"}
+            onClick={() => {
+              setGrade(grade !== false ? false : null);
+            }}
+          >
+            <IconThumbDown />
+            &nbsp;Bad!
+          </Button>
+        </Tooltip>
+        <Tooltip label="This response is good!" withinPortal withArrow>
+          <Button
+            color={grade === false ? "gray" : "green"}
+            variant={grade !== true ? "outline" : "filled"}
+            onClick={() => {
+              setGrade(grade !== true ? true : null);
+            }}
+          >
+            <IconThumbUp />
+            &nbsp;Good!
+          </Button>
+        </Tooltip>
       </Flex>
       <Center mb={100}>
         <Stack spacing="xs" w="80%">
-          <Text>What&apos;s the reason for your score?</Text>
+          <Text>What&apos;s the reason for your grade? Explain why:</Text>
           <Flex align="center" justify="space-around" gap="lg">
             <Textarea
               value={annotation}
@@ -148,7 +153,9 @@ const FeedbackStep: React.FC<FeedbackStepProps> = ({
             />
             <Button
               onClick={nextResponse}
-              disabled={grade === null || !annotation}
+              color="dark"
+              disabled={grade === null || (grade === false && !annotation)}
+              h={54}
             >
               Submit and Next
             </Button>

@@ -444,7 +444,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
           crit.shortname,
           "python",
           {
-            code: "def evaluate(r):\n\treturn len(r.text)", // to be populated once python code is implemented for the criteria
+            code: crit.criteria,
             sandbox: true,
           },
           false,
@@ -455,8 +455,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
           crit.shortname,
           "llm",
           {
-            // to be populated once LLM code is implemented for the criteria
-            prompt: "",
+            prompt: crit.criteria,
             format: "bin",
           },
           false,
@@ -467,7 +466,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
           crit.shortname,
           "javascript",
           {
-            code: "function evaluate(r) {\n\treturn r.text.length;\n}", // to be populated once javascript code is implemented for the criteria
+            code: crit.criteria,
           },
           false,
         );
@@ -726,7 +725,8 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   }, []);
   const handleEvalGenComplete = (evaluationData: EvalGenReport) => {
     console.log("Evaluation wizard completed with data:", evaluationData);
-    // Do something with the evaluation implementations
+    onFinalReportsReady(evaluationData);
+    setEvalGenOpened(false);
   };
 
   return (
@@ -940,8 +940,8 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
             ) : (
               <></>
             )} */}
-            <Menu.Divider />
-            {EVALUATOR_PRESETS.map((category, idx) => (
+            {/* <Menu.Divider /> */}
+            {/* {EVALUATOR_PRESETS.map((category, idx) => (
               <React.Fragment key={category.label}>
                 {idx > 0 && <Menu.Divider />}
                 <Menu.Label>{category.label}</Menu.Label>
@@ -968,7 +968,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
                   </Menu.Item>
                 ))}
               </React.Fragment>
-            ))}
+            ))} */}
           </Menu.Dropdown>
         </Menu>
       </div>
@@ -981,7 +981,12 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
             position="bottom"
             withArrow
           >
-            <Button onClick={openEvalGen} variant="outline" size="xs">
+            <Button
+              onClick={openEvalGen}
+              variant="filled"
+              color="violet"
+              size="xs"
+            >
               <IconSparkles size="11pt" />
               &nbsp;Generate evals with EvalGen
             </Button>

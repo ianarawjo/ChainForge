@@ -282,7 +282,7 @@ export default class EvaluationFunctionExecutor {
 
     const badExample = this.examples.find(
       (example) =>
-        this.perCriteriaGrades[criteria.uid]?.[example.uid] === false,
+        this.perCriteriaGrades[example.uid]?.[criteria.uid] === false,
     );
 
     await generateFunctionsForCriteria(
@@ -650,21 +650,12 @@ export default class EvaluationFunctionExecutor {
       return undefined;
     }
 
-    // Get a reference to the perCriteria grades for this eval function
-    const criteriaId = evalFunc.evalCriteria.uid;
-    if (!(criteriaId in this.perCriteriaGrades)) {
-      console.warn(
-        "No user grades found for this eval criteria. You must first grade some examples against this criteria (thumbs up/down) before we can compute alignment.",
-      );
-      return undefined;
-    }
-    // The perCriteriaGrades is a map of ResponseUID to boolean (user grade true/false)
-    // or undefined (no user grade for that example).
-    const userGradedExamples = this.perCriteriaGrades[criteriaId];
+    console.log(this.perCriteriaGrades, evalFunc.evalCriteria.uid);
 
-    // Now `evalFuncResults` is a Map<ResponseUID, EvalFunctionResult>.
-    // We can compute the alignment stats across all examples.
-    // First, create a report for this function
+    // Get the criteria ID for this eval function
+    const criteriaId = evalFunc.evalCriteria.uid;
+
+    // Create a report for this function
     const report: EvalFunctionReport = {
       evalFunction: evalFunc,
       true_pass: 0,
@@ -674,33 +665,53 @@ export default class EvaluationFunctionExecutor {
       skipped: 0,
     };
 
-    // Calculate alignment for this function based on the graded examples
-    Object.entries(userGradedExamples).forEach(([exampleId, grade]) => {
-      if (grade === undefined) return; // Skip if user provides no grade for this example
-      const result = results.get(exampleId);
-      const userGrade = grade
-        ? EvalFunctionResult.PASS
-        : EvalFunctionResult.FAIL;
+    // Check if we have any examples graded for this criteria
+    let hasGradedExamples = false;
+    for (const exampleId in this.perCriteriaGrades) {
+      if (this.perCriteriaGrades[exampleId]?.[criteriaId] !== undefined) {
+        hasGradedExamples = true;
+        break;
+      }
+    }
 
-      if (result !== undefined) {
-        // Handle true positives and true negatives
-        if (result === userGrade) {
-          if (result === EvalFunctionResult.PASS) {
-            report.true_pass++;
-          } else if (result === EvalFunctionResult.FAIL) {
-            report.true_fail++;
-          }
-        } else {
-          if (result === EvalFunctionResult.PASS) {
-            report.false_pass++;
-          } else if (result === EvalFunctionResult.FAIL) {
-            report.false_fail++;
+    if (!hasGradedExamples) {
+      console.warn(
+        "No user grades found for this eval criteria. You must first grade some examples against this criteria (thumbs up/down) before we can compute alignment.",
+      );
+      return undefined;
+    }
+
+    // Calculate alignment for this function based on the graded examples
+    Object.entries(this.perCriteriaGrades).forEach(
+      ([exampleId, criteriaGrades]) => {
+        const grade = criteriaGrades[criteriaId];
+        if (grade === undefined) return; // Skip if user provides no grade for this criteria
+        if (grade === undefined) return; // Skip if user provides no grade for this example
+        const result = results.get(exampleId);
+        const userGrade = grade
+          ? EvalFunctionResult.PASS
+          : EvalFunctionResult.FAIL;
+
+        if (result !== undefined) {
+          // Handle true positives and true negatives
+          if (result === userGrade) {
+            if (result === EvalFunctionResult.PASS) {
+              report.true_pass++;
+            } else if (result === EvalFunctionResult.FAIL) {
+              report.true_fail++;
+            }
           } else {
-            report.skipped++;
+            if (result === EvalFunctionResult.PASS) {
+              report.false_pass++;
+            } else if (result === EvalFunctionResult.FAIL) {
+              report.false_fail++;
+            } else {
+              report.skipped++;
+            }
           }
         }
-      }
-    });
+      },
+    );
 
     // Calculate alignment in different ways
     // NOTE: If a denominator during the calculate is 0, this will set the score to undefined.

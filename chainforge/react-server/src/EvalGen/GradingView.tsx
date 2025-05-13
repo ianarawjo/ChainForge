@@ -82,16 +82,25 @@ const GradingView: React.FC<GradingViewProps> = ({
         {/* Middle response box with chevron buttons < and > for going back and forward a response */}
         <Flex justify="center" align="center" mb="sm">
           {/* Go back to previous response */}
-          <Button variant="white" color="dark" onClick={gotoPrevResponse}>
-            <IconChevronLeft />
-          </Button>
+          <Tooltip label="To previous response" withArrow>
+            <Button
+              variant="filled"
+              color="dark"
+              onClick={gotoPrevResponse}
+              h={84}
+              p="10px 4px"
+              mr={4}
+            >
+              <IconChevronLeft />
+            </Button>
+          </Tooltip>
 
           {/* The response one is currently grading */}
           <div
             className="response-box"
             style={{
               backgroundColor: "#eee",
-              width: "80%",
+              width: "90%",
               maxHeight: "340px",
               overflowY: "scroll",
               borderColor: "black",
@@ -111,10 +120,12 @@ const GradingView: React.FC<GradingViewProps> = ({
           {/* Go forward to the next response */}
           <Tooltip label="To next response" withArrow>
             <Button
-              variant="white"
+              variant="filled"
               color="dark"
-              bg="transparent"
               onClick={gotoNextResponse}
+              h={84}
+              p="10px 4px"
+              ml={4}
             >
               <IconChevronRight />
             </Button>
@@ -126,7 +137,7 @@ const GradingView: React.FC<GradingViewProps> = ({
             style={{
               backgroundColor: "#fff",
               padding: "12px",
-              width: "31%",
+              width: "45%",
               borderRadius: "12px",
               borderWidth: "1px",
               borderStyle: "solid",
@@ -142,7 +153,7 @@ const GradingView: React.FC<GradingViewProps> = ({
             style={{
               backgroundColor: "#fff",
               padding: "12px",
-              width: "41%",
+              width: "45%",
               borderRadius: "2px",
             }}
           >

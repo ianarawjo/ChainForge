@@ -57,6 +57,8 @@ const ReportCardStep: React.FC<ReportCardStepProps> = ({
     return cards;
   }, [report]);
 
+  console.log(report);
+
   return (
     <Stack spacing="lg">
       <Text align="center" size="lg" pl="sm" mb="lg">
@@ -95,7 +97,7 @@ const ReportCardStep: React.FC<ReportCardStepProps> = ({
         </Group>
       </Flex>
 
-      <ScrollArea mih={300} h={500} mah={500}>
+      <ScrollArea mih={300} h={400} mah={400}>
         <SimpleGrid cols={3} spacing="sm" verticalSpacing="sm" mb="lg">
           {cards}
         </SimpleGrid>

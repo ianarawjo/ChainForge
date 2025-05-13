@@ -455,13 +455,15 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
                 backgroundColor: "#f0f0f0",
                 color: "#333",
                 fontFamily: "monospace",
+                fontSize: "8pt",
                 padding: "12px",
-                width: "calc(100% - 30px)",
+                lineHeight: "1.2",
+                width: "calc(100% - 10px)",
                 height: "200px",
                 overflowY: "auto",
                 borderRadius: "8px",
                 border: "1px solid #ddd",
-                marginRight: "20px", // Space on the right
+                marginRight: "10px", // Space on the right
               }}
               ref={(el) => {
                 if (el) {

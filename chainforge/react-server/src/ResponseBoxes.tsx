@@ -73,7 +73,7 @@ export const getEvalResultStr = (
       return [
         <Stack key={1} spacing={0}>
           {strs.map((s, i) => (
-            <span key={i}>s</span>
+            <div key={i}>{s[0]}</div>
           ))}
         </Stack>,
         joined_strs,
