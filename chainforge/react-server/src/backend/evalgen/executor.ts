@@ -813,7 +813,9 @@ export default class EvaluationFunctionExecutor {
           this.computeAlignmentStats(evalFunction);
 
         if (!report) {
-          console.warn("Could not compute alignment stats for an eval function. Skipping.");
+          console.warn(
+            "Could not compute alignment stats for an eval function. Skipping.",
+          );
           continue;
         }
 
