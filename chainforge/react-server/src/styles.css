@@ -353,14 +353,16 @@ html[data-mantine-color-scheme="dark"] .multi-eval-node {
 }
 
 .eval-vote-chosen {
-  display: inline-flex;
+  display: none; /* Disable eval the eval voting for initial EvalGen release */
+  /* display: inline-flex; */
   position: relative;
   margin-left: 6px;
   margin-top: -6px;
 }
 
 .eval-score:hover .eval-vote-icons {
-  display: inline-flex;
+  display: none; /* Disable eval the eval voting for initial EvalGen release */
+  /* display: inline-flex; */
   /* opacity: 1.0; */
 }
 

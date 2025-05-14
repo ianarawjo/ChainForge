@@ -27,7 +27,7 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
       , and is inspired by inductive processes in UX research (heuristic
       evaluation and grounded theory).
     </Text>
-    <Text>Currently, Evalgen:</Text>
+    <Text>Currently, Evalgen is in a public beta. It:</Text>
     <List>
       <List.Item>
         Only generates <b>assertions (pass/fail tests)</b>. Numeric and
@@ -38,9 +38,9 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
         screen. This is the chief difference from our paper.
       </List.Item>
       <List.Item>
-        Requires access to the GenAI features of ChainForge. Set up the Provider
-        you wish to use for this in your Global Settings view. The Provider must
-        be powerful enough to generate code. (By default, it is OpenAI.)
+        Requires access to the GenAI features of ChainForge, which (currently)
+        requires an OpenAI API key. (If you&apos;d like to use other models,
+        more general access to GenAI features is coming soon.)
       </List.Item>
       <List.Item>
         Should be run on the outputs of <b>already-run</b> Prompt Nodes
@@ -62,8 +62,8 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
         Python code is run sandboxed in the browser with pyodide. Pyodide does
         not have access to many libraries out-of-the-box. (If your eval criteria
         implementation must use a third-party library, we suggest you use
-        ChainForge’s genAI features on the specific eval node, outside this
-        wizard.)
+        ChainForge&apos;s genAI features on an individual code eval node,
+        outside this wizard.)
       </List.Item>
     </List>
     {/* <Text>We have captured the following about your context:</Text>
@@ -76,7 +76,7 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
       node.
     </Text>
     <Text>
-      EvalGen is in Beta. To improve it, provide feedback on our Github Issues
+      EvalGen is in beta. To improve it, provide feedback on our Github Issues
       or Discussion pages, or raise a Pull Request with the changes.
     </Text>
   </Stack>

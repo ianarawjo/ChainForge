@@ -285,26 +285,35 @@ export default class EvaluationFunctionExecutor {
         this.perCriteriaGrades[example.uid]?.[criteria.uid] === false,
     );
 
-    await generateFunctionsForCriteria(
-      criteria,
-      this.llms.large,
-      this.promptTemplate,
-      this.examples[Math.floor(Math.random() * this.examples.length)],
-      emitter,
-      badExample,
-      this.apiKeys,
-    );
+    try {
+      await generateFunctionsForCriteria(
+        criteria,
+        this.llms.large,
+        this.promptTemplate,
+        this.examples[Math.floor(Math.random() * this.examples.length)],
+        emitter,
+        badExample,
+        this.apiKeys,
+      );
+
+      console.log(`Generated functions for criteria: ${criteria.shortname}`);
+      console.log(
+        `Number of functions generated: ${functionExecutionPromises.length}`,
+      );
+      this.logFunction(
+        `Generated ${functionExecutionPromises.length} functions for criteria: ${criteria.shortname}`,
+      );
+    } catch (error) {
+      console.error(
+        `Error generating functions for criteria ${criteria.shortname}: ${error}`,
+      );
+      this.logFunction(
+        `Error generating functions for criteria ${criteria.shortname}: ${error}`,
+      );
+    }
 
     // Update LLM call count by 1
     this.updateNumLLMCalls(1, 0);
-
-    console.log(`Generated functions for criteria: ${criteria.shortname}`);
-    console.log(
-      `Number of functions generated: ${functionExecutionPromises.length}`,
-    );
-    this.logFunction(
-      `Generated ${functionExecutionPromises.length} functions for criteria: ${criteria.shortname}`,
-    );
 
     await Promise.all(functionExecutionPromises);
   }

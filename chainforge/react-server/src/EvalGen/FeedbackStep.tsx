@@ -96,7 +96,7 @@ const FeedbackStep: React.FC<FeedbackStepProps> = ({
   }, [shownResponseIdx, responses]);
 
   return (
-    <Stack spacing="sm">
+    <Stack spacing="sm" mb={200}>
       <Title order={3}>Provide Feedback on Some Model Outputs</Title>
 
       <GradingView

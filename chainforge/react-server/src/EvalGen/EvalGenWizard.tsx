@@ -253,6 +253,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
     return escapeBraces(prompts.values().next().value ?? "");
   };
 
+  const exportGradesAndNotes = useStore((store) => store.exportGradesAndNotes);
   async function genCriteriaFromContext(responses: LLMResponse[]) {
     // Get the context from the input responses
     const inputPromptTemplate =
@@ -263,11 +264,17 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
       return;
     }
 
+    // Get the user feedback on the responses, if any, from the global state
+    const feedback = exportGradesAndNotes(responses);
+
     // Attempt to generate criteria using an LLM
     return await generateLLMEvaluationCriteria(
       inputPromptTemplate,
       genAIModelNames.large,
       apiKeys,
+      undefined,
+      undefined,
+      feedback,
     );
   }
 
@@ -360,6 +367,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
           bottom: 106,
           padding: "10px",
           width: "95%",
+          pointerEvents: "none",
         }}
       >
         <Flex justify="space-between">
@@ -367,6 +375,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
             variant="default"
             onClick={handlePrevious}
             disabled={active === 0}
+            style={{ pointerEvents: "all" }}
           >
             &lt; Back
           </Button>
@@ -378,6 +387,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
               active === 4 ||
               (active === 3 && numResponsesGraded < minNumToGrade)
             }
+            style={{ pointerEvents: "all" }}
           >
             {active === 3
               ? numResponsesGraded >= minNumToGrade

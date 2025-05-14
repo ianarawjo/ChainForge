@@ -12,6 +12,7 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { StringLookup } from "../backend/cache";
+import { cleanEscapedBraces } from "../backend/template";
 
 const HeaderText = ({ children }: { children: ReactNode }) => {
   return (
@@ -40,7 +41,9 @@ const GradingView: React.FC<GradingViewProps> = ({
   const responseText = useMemo(
     () =>
       shownResponse && shownResponse.responses?.length > 0
-        ? llmResponseDataToString(shownResponse.responses[0])
+        ? cleanEscapedBraces(
+            llmResponseDataToString(shownResponse.responses[0]),
+          )
         : "",
     [shownResponse],
   );

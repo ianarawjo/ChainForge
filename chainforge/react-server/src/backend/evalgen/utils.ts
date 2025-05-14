@@ -29,6 +29,7 @@ import {
   buildContextPromptForVarsMetavars,
   buildGenEvalCodePrompt,
 } from "../../AiPopover";
+import { escapeBraces } from "../template";
 
 /**
  * Extracts substrings within "```" and "```" ticks. Excludes the ticks from return.
@@ -65,15 +66,34 @@ export async function generateLLMEvaluationCriteria(
   apiKeys?: Dict,
   promptTemplate?: string, // overrides prompt template used
   systemMsg?: string | null, // overrides default system message, if present. Use null to specify empty.
+  userFeedback?: { grade: boolean; note?: string; response: string }[], // user feedback to include in the prompt
 ): Promise<EvalCriteria[]> {
+  // Compose user feedback
+  let userFeedbackPrompt = "";
+  if (userFeedback) {
+    userFeedbackPrompt = `\n\n-----------------\nHere is some feedback on the LLM's responses to this prompt:`;
+    for (const feedback of userFeedback) {
+      userFeedbackPrompt += `\n\nFor the response: "${feedback.response}", the user gave the following feedback:`;
+      if (feedback.grade !== undefined) {
+        userFeedbackPrompt += `\nGrade: ${feedback.grade === true ? "Good" : "Bad"}`;
+      }
+      if (feedback.note !== undefined) {
+        userFeedbackPrompt += `\nExplanation for grade: "${feedback.note}"`;
+      }
+    }
+    userFeedbackPrompt += "\n-----------------\n";
+  }
+
   // Construct the detailed prompt for the LLM
   const detailedPrompt =
     promptTemplate ??
     `Here is my LLM prompt template:
   
   \`${prompt}\`
+
+    ${userFeedbackPrompt}
     
-    Based on the instructions in the prompt that need to be followed, I want to write assertions for my LLM pipeline to run on all pipeline responses. Give me a list of 2 or 3 distinct criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). At most 3 criteria should have eval_method as expert. The "criteria" should be short, and the "shortname" should be a very brief title for the criteria. Each evaluation criteria should test a concept that should evaluate to "true" in the ideal case.`;
+    Based on the instructions in the prompt that need to be followed, I want to write a list of assertions for my LLM pipeline to run on all pipeline responses. Give me a list of 3 distinct criteria to check for in LLM responses. Each item in the list should contain a string description of a criteria to check for, and whether it should be evaluated with code or by an expert if the criteria is difficult to evaluate. Your answer should be a JSON list of objects within \`\`\`json \`\`\` markers, where each object has the following three fields: "criteria", "shortname", and "eval_method" (code or expert). At most 3 criteria should have eval_method as expert. The "criteria" should be short, and the "shortname" should be a very brief title for the criteria. Each evaluation criteria should test a concept that should evaluate to "true" in the ideal case.`;
 
   // Query the LLM (below, we will try this up to 3 times)
   async function _query() {
@@ -381,10 +401,37 @@ function buildFunctionGenPrompt(
   }
 
   if (criteria.eval_method === "expert") {
-    return `Given the following prompt template for an LLM pipeline:\n\n ${promptTemplate}\n\n, your task is to devise a prompt for an expert to evaluate the pipeline's responses based on the following criteria: ${criteria.criteria}
+    const varsAndMetavars = getVarsAndMetavars([example]);
+    // Turn the vars and metavars into a string
+    const _composeVarsContext = (vars: string[]) => {
+      if (vars.length === 0) return "";
+      vars.map((v) => ` - "${v}": ${example.vars[v]}`).join("\n");
+    };
+    const varsAndMetavarsContext =
+      _composeVarsContext(varsAndMetavars.vars) +
+      "\n" +
+      _composeVarsContext(varsAndMetavars.metavars);
+    const varsAndMetavarsContextPrompt =
+      varsAndMetavarsContext.length > 2
+        ? `\n\nIn your prompts, it may be useful to refer to metadata associated with the LLM output, such as when you are comparing to a ground truth. For instance, consider a situation where the user has a prompt template with a variable {writing_style} —'poem', 'text message', or 'formal letter' —and they want to validate that the LLM's output was really in that style. You would produce a prompt template like:
+
+"Respond with 'yes' if the text below is in the style of a {writing_style}, 'no' if not. Only reply with the classification, nothing else."
+
+The template indicates that the same {writing_style} variable used upstream in the LLM pipeline, should be used in your evaluation prompt.
+
+If you want to refer to the value of an input variable, you **must** use template braces like {variable}.
+
+Here are the variables you have access to (keys), and example values for one output: 
+${varsAndMetavarsContext}`
+        : "";
+
+    return escapeBraces(`Given the following prompt template for an LLM pipeline:\n\n ${promptTemplate}\n\nYour task is to devise a prompt for an expert to evaluate the pipeline's responses based on the following criteria: "${criteria.criteria}"
     ${badExampleSection}
-    You will devise 3 prompts for the evaluation criterion to see which has the best accuracy. Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate entire criteria (don't miss anything in the criteria). Try different variations/wordings in the prompts. Return your prompts in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
-    `;
+    You will devise 3 prompts for the evaluation criterion to see which has the best accuracy. Each prompt you generate should be a short question that an expert can answer with a "yes" or "no" to evaluate entire criteria (don't miss anything in the criteria). Try different variations/wordings in the prompts. ${varsAndMetavarsContextPrompt}
+    
+    Return your prompts in a JSON list of strings within \`\`\`json \`\`\` markers. Each string should be a question for the expert to answer, and each question should be contained on its own line.
+    ---
+    `);
   } else {
     const prompt = `Given the following prompt template for an LLM pipeline:\n\n ${promptTemplate}\n\n, your task is to devise multiple Python assertions to evaluate LLM responses based on the criteria "${criteria.shortname}". 
     ${badExampleSection}
@@ -392,7 +439,7 @@ function buildFunctionGenPrompt(
     ${buildGenEvalCodePrompt("python", buildContextPromptForVarsMetavars(getVarsAndMetavars([example])), criteria.criteria, true)}
     Be creative in your implementations. Our goal is to explore diverse approaches to evaluate LLM responses effectively. Try to avoid using third-party libraries for code-based evaluation methods. Include the full implementation of each function in separate "\`\`\`python" blocks. Each function should return only True or False.`;
 
-    return prompt;
+    return escapeBraces(prompt); // Escape braces in the prompt
   }
 }
 

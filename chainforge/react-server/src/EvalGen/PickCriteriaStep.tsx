@@ -512,7 +512,7 @@ const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
           >
             <IconRepeat />
             <IconSparkles />
-            &nbsp;Suggest more
+            &nbsp;Suggest criteria
           </Button>
         </Flex>
 

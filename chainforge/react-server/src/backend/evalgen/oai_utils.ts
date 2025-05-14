@@ -1,7 +1,7 @@
 // import { env as process_env } from "process";
 import { EventEmitter } from "events";
 // import { AzureKeyCredential, OpenAIClient } from "@azure/openai";
-import { llmResponseDataToString } from "../utils";
+import { hashtagTemplateVars, llmResponseDataToString } from "../utils";
 import { simpleQueryLLM } from "../backend";
 import { Dict, LLMSpec } from "../typing";
 import { extractMdBlocks } from "./utils";
@@ -52,8 +52,11 @@ export class EvalGenAssertionEmitter extends EventEmitter {
       // Verify format:
       if (prompts.every((p) => typeof p === "string")) {
         // If these are all strings, we are good to go--
+        // We must be careful to first hashtag all template variables in the prompt
+        // before emitting them, so that they are not interpreted as template variables.
+        const hashtagged_prompts = prompts.map((p) => hashtagTemplateVars(p));
         // Emit all the LLM eval prompt candidates in one burst
-        prompts.forEach(emit_prompt);
+        hashtagged_prompts.forEach(emit_prompt);
       } else {
         console.error(
           "Unexpected output type after JSON parsing: At least generated LLM eval prompt is not a string.",
