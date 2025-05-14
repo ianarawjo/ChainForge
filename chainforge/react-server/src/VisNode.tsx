@@ -571,6 +571,21 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             ? responses[0].eval_res.dtype
             : "Numeric";
 
+        let sel_typeof_eval_res = typeof_eval_res;
+        if (typeof_eval_res.includes("KeyValue")) {
+          const first_item = responses[0].eval_res?.items?.[0];
+          if (typeof first_item === "object") {
+            const val = first_item[selectedEvalResVar];
+            if (typeof val === "boolean") {
+              sel_typeof_eval_res = "Boolean";
+            } else if (typeof val === "number") {
+              sel_typeof_eval_res = "Numeric";
+            } else if (typeof val === "string") {
+              sel_typeof_eval_res = "Categorical";
+            }
+          }
+        }
+
         // If categorical type, check if all binary:
         if (typeof_eval_res === "Categorical") {
           const is_all_bools = responses.reduce(
@@ -745,7 +760,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         ) => {
           let names = new Set<string>();
           const plotting_categorical_vars =
-            group_type === "var" && typeof_eval_res === "Categorical";
+            group_type === "var" && sel_typeof_eval_res === "Categorical";
 
           // When we're plotting vars, we want the stacked bar colors to be the *categories*,
           // and the x_items to be the names of vars, so that the left axis is a vertical list of varnames.
@@ -793,8 +808,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   getColorForLLMAndSetIfNotFound(get_llm(responses[0]));
 
             if (
-              typeof_eval_res === "Boolean" ||
-              typeof_eval_res === "Categorical"
+              sel_typeof_eval_res === "Boolean" ||
+              sel_typeof_eval_res === "Categorical"
             ) {
               // Plot a histogram for categorical or boolean data.
               spec.push({
@@ -916,7 +931,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               });
             }
 
-            if (typeof_eval_res === "Boolean") {
+            if (sel_typeof_eval_res === "Boolean") {
               // Plot a histogram for boolean (true/false) categorical data.
               spec.push({
                 type: "histogram",
@@ -957,7 +972,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                     ? "Sum of '" + selectedEvalResVar + "'"
                     : "Sum of scores";
 
-                if (typeof_eval_res === "Numeric") {
+                if (sel_typeof_eval_res === "Numeric") {
                   // To make error bars work, we need to sum the numbers, instead of relying
                   // upon the stacked bar chart:
                   let sum_x_items: number[] = [];
@@ -1140,12 +1155,12 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         if (varnames.length === 0) {
           // No variables means they used a single prompt (no template) to generate responses
           // (Users are likely evaluating differences in responses between LLMs)
-          if (typeof_eval_res === "Boolean") plot_accuracy(get_llm, "llm");
+          if (sel_typeof_eval_res === "Boolean") plot_accuracy(get_llm, "llm");
           else plot_simple_boxplot(get_llm, "llm");
         } else if (varnames.length === 1) {
           // 1 var; numeric eval
           if (llm_names.length === 1) {
-            if (typeof_eval_res === "Boolean")
+            if (sel_typeof_eval_res === "Boolean")
               // Accuracy plot per value of the selected variable:
               plot_accuracy((r) => get_var_and_trim(r, varnames[0]), "var");
             else {
