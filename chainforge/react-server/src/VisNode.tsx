@@ -601,6 +601,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           );
           if (is_all_bools) {
             typeof_eval_res = "Boolean";
+            sel_typeof_eval_res = "Boolean";
             setDisableGraphTypeOption(true);
           }
         } else {
