@@ -16,7 +16,7 @@ This module contains types and prompts for criteria generation, function generat
 
 ### OAI Utils
 
-This module contains utilities for interacting with the Azure OpenAI API and streaming partial results (e.g., each evaluation criteria as it is generated).
+This module contains utilities for interacting with the OpenAI API.
 
 ### Executor
 
