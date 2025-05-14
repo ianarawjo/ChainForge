@@ -263,6 +263,7 @@ export const LLMEvaluatorComponent = forwardRef<
           apiKeys ?? {},
           progress_listener,
           cancelId,
+          undefined,
           useReasoning,
         );
       })

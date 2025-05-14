@@ -57,6 +57,7 @@ import {
   blobToBase64,
 } from "./backend/utils";
 import {
+  EvalResultDisplay,
   MediaBox,
   ResponseBox,
   ResponseGroup,
@@ -66,6 +67,7 @@ import {
 import { getLabelForResponse } from "./ResponseRatingToolbar";
 import {
   Dict,
+  EvaluationScore,
   LLMResponse,
   LLMResponseData,
   TemplateVarInfo,
@@ -799,24 +801,46 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               const val = resp_objs[0].metavars[v];
               return val !== undefined ? val : "(unspecified)";
             });
-            let eval_cols_vals: [string | JSX.Element, string][][] = [];
+            let eval_cols_vals: [
+              string | JSX.Element,
+              string,
+              string,
+              EvaluationScore | undefined,
+            ][][] = [];
             if (eval_res_cols && eval_res_cols.length > 0) {
               // We can assume that there's only one response object, since to
               // if eval_res_cols is set, there must be only one LLM.
               eval_cols_vals = eval_res_cols.map((metric_name, metric_idx) => {
                 const items = resp_objs[0].eval_res?.items;
-                if (!items) return [["(no result)", "(no result)"]];
+                const uid = resp_objs[0].uid;
+                if (!items)
+                  return [["(no result)", "(no result)", uid, undefined]];
                 return items.map((item) => {
-                  if (item === undefined) return ["(undefined)", "(undefined)"];
+                  if (item === undefined)
+                    return ["(undefined)", "(undefined)", uid, item];
                   if (
                     typeof item !== "object" &&
                     metric_idx === 0 &&
                     metric_name === "Score"
                   )
-                    return getEvalResultStr(item, true);
+                    return [...getEvalResultStr(item, true), uid, item] as [
+                      string | JSX.Element,
+                      string,
+                      string,
+                      EvaluationScore,
+                    ];
                   else if (typeof item === "object" && metric_name in item)
-                    return getEvalResultStr(item[metric_name], true);
-                  else return ["(unspecified)", "(unspecified)"];
+                    return [
+                      ...getEvalResultStr(item[metric_name], true),
+                      uid,
+                      item[metric_name],
+                    ] as [
+                      string | JSX.Element,
+                      string,
+                      string,
+                      EvaluationScore,
+                    ];
+                  else return ["(unspecified)", "(unspecified)", uid, item];
                 }); // treat n>1 resps per prompt as multi-line results in the column
               });
             }
@@ -866,7 +890,15 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               | undefined
               | LLMResponse[]
               | LLMResponseData[]
-              | { type: "eval"; data: (string | JSX.Element)[][] }
+              | {
+                  type: "eval";
+                  data: (
+                    | string
+                    | JSX.Element
+                    | EvaluationScore
+                    | undefined
+                  )[][];
+                }
             > = {};
             let vals_arr_start_idx = 0;
             var_cols_vals.forEach((v, i) => {
@@ -977,11 +1009,22 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             } else if ("type" in val && val.type === "eval") {
               return (
                 <Stack spacing={0}>
-                  {(val.data as [string | JSX.Element, string][]).map(
-                    (e, i) => (
-                      <div key={i}>{e[0]}</div>
-                    ),
-                  )}
+                  {(
+                    val.data as [
+                      string | JSX.Element,
+                      string,
+                      string,
+                      EvaluationScore | undefined,
+                    ][]
+                  ).map((e, i) => (
+                    <EvalResultDisplay
+                      uid={e[2]}
+                      evalRes={e[3]}
+                      evalResIdx={i}
+                      evalResultDivOrStr={e[0]}
+                      key={i}
+                    />
+                  ))}
                 </Stack>
               );
             } else
@@ -1086,7 +1129,10 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               <div
                 key={"l" + leaf_id}
                 className={className}
-                style={{ backgroundColor: rgroup_color(eatenvars.length) }}
+                style={{
+                  backgroundColor: rgroup_color(eatenvars.length),
+                  position: "relative",
+                }}
               >
                 <ResponseGroup
                   header={header}

@@ -331,6 +331,41 @@ html[data-mantine-color-scheme="dark"] .multi-eval-node {
   cursor: zoom-in;
 }
 
+.eval-score {
+  /* background-color: #eee; */
+  /* padding: 8px; */
+}
+
+.eval-vote-icon {
+  color: #999;
+}
+
+.eval-vote-icon:hover {
+  color: #333;
+}
+
+.eval-vote-icons {
+  display: none;
+  position: relative;
+  /* opacity: 0.3; */
+  margin-left: 6px;
+  margin-top: -6px;
+}
+
+.eval-vote-chosen {
+  display: none; /* Disable eval the eval voting for initial EvalGen release */
+  /* display: inline-flex; */
+  position: relative;
+  margin-left: 6px;
+  margin-top: -6px;
+}
+
+.eval-score:hover .eval-vote-icons {
+  display: none; /* Disable eval the eval voting for initial EvalGen release */
+  /* display: inline-flex; */
+  /* opacity: 1.0; */
+}
+
 html[data-mantine-color-scheme="dark"] .eval-inspect-response-footer {
   background-color: #333;
   color: #ccc;
@@ -1460,6 +1495,37 @@ html[data-mantine-color-scheme="dark"] .chat-bubble textarea {
   margin: 0;
 }
 
+.gradeContainer {
+  position: relative;
+  overflow: visible;
+  /* width: 20px; */
+}
+
+.gradeUpCount {
+  position: absolute;
+  right: 0px;
+  top: -3px;
+  font-size: x-small;
+}
+
+.gradeDownCount {
+  position: absolute;
+  right: 0px;
+  bottom: 0px;
+  font-size: x-small;
+}
+
+.criteriaButtons {
+  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  padding-left: 50px;
+  padding-right: 50px;
+  /* gap: 100px;
+  padding: 10px;
+  column-gap: normal;
+  -moz-column-gap: 100px; */
+}
 html[data-mantine-color-scheme="dark"] .react-flow__controls-button {
   background-color: #777 !important;
   color: #ddd;

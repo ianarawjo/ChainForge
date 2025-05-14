@@ -54,6 +54,7 @@ import {
 } from "@mirai73/bedrock-fm";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import Compressor from "compressorjs";
+import { Annotations } from "plotly.js";
 // import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
@@ -2004,14 +2005,14 @@ function _extract_anthropic_chat_responses(
 function _extract_anthropic_text_responses(
   response: Array<Dict>,
 ): Array<string> {
-  return response.map((r: Dict) => r.completion.trim());
+  return response.map((r: Dict) => r.completion?.trim());
 }
 
 /**
  * Extracts the text part of a HuggingFace text completion.
  */
 function _extract_huggingface_responses(response: Array<Dict>): Array<string> {
-  return response.map((r: Dict) => r.generated_text.trim());
+  return response.map((r: Dict) => r.generated_text?.trim());
 }
 
 /**
@@ -2027,7 +2028,7 @@ function _extract_alephalpha_responses(response: Dict): Array<string> {
 function _extract_ollama_responses(
   response: Array<Dict>,
 ): Array<LLMResponseData> {
-  return response.map((r: any) => r.generated_text.trim());
+  return response.map((r: any) => r.generated_text?.trim());
 }
 
 /**
@@ -2843,3 +2844,87 @@ export const __http_url_to_base64 = (url: string) => {
     xhr.send();
   });
 };
+
+export const stripWrappingQuotes = (str: string) => {
+  if (
+    typeof str === "string" &&
+    str.length >= 2 &&
+    str.charAt(0) === '"' &&
+    str.charAt(str.length - 1) === '"'
+  )
+    return str.substring(1, str.length - 1);
+  else return str;
+};
+
+export const accuracyToColor = (acc: number) => {
+  if (acc > 0.9) return "green";
+  else if (acc > 0.7) return "yellow";
+  else if (acc > 0.5) return "orange";
+  else return "red";
+};
+
+export const cmatrixTextAnnotations = (
+  x: string[],
+  y: string[],
+  z: number[][],
+) => {
+  const annotations = [];
+  const midVal = Math.max(...z.flat());
+  for (let i = 0; i < y.length; i++) {
+    for (let j = 0; j < x.length; j++) {
+      annotations.push({
+        xref: "x1",
+        yref: "y1",
+        x: x[j],
+        y: y[i],
+        text: z[i][j].toString(),
+        font: {
+          // family: "monospace",
+          // size: 12,
+          color: z[i][j] < midVal ? "white" : "black",
+        },
+        showarrow: false,
+      });
+    }
+  }
+  return annotations as Partial<Annotations>[];
+};
+
+/**
+ * Adds a hashtag prefix to template variables in a string.
+ * Converts unescaped templates of the form {template} to {#template}.
+ * Ignores escaped braces like \{ and \}.
+ *
+ * @param input - The input string containing templates
+ * @returns The string with templates converted to hashtagged form
+ */
+export function hashtagTemplateVars(input: string): string {
+  let result = "";
+  let i = 0;
+
+  while (i < input.length) {
+    // Check for escaped braces
+    if (
+      input[i] === "\\" &&
+      i + 1 < input.length &&
+      (input[i + 1] === "{" || input[i + 1] === "}")
+    ) {
+      // Add the escape character and the brace
+      result += input[i] + input[i + 1];
+      i += 2;
+    }
+    // Check for opening brace of a template (that isn't already hashtagged)
+    else if (input[i] === "{" && i + 1 < input.length && input[i + 1] !== "#") {
+      // Add the opening brace and the hashtag
+      result += "{#";
+      i++;
+    }
+    // Regular character
+    else {
+      result += input[i];
+      i++;
+    }
+  }
+
+  return result;
+}
