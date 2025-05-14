@@ -706,15 +706,13 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
           }
         });
       });
+
       const finalResponses = Object.values(merged_res_objs_by_uid);
-      console.log("Output length:", finalResponses.length);
-      console.log("MultiEval Output:", finalResponses[0]?.eval_res?.items[0]);
       // We now have a dict of the form { uid: LLMResponse }
       // We need return only the values of this dict:
       setLastResponses(finalResponses);
       setLastRunSuccess(true);
       setDataPropsForNode(id, { output: finalResponses });
-      console.log("Setting output");
       StorageCache.store(`${id}.json`, finalResponses);
       pingOutputNodes(id);
       setStatus(Status.READY);
