@@ -59,7 +59,7 @@ import { GatheringResponsesRingProgress } from "./LLMItemButtonGroup";
 import { Dict, LLMResponse, QueryProgress } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
-import { EvalGenReport } from "./backend/evalgen/typing";
+import { EvalFunctionSetReport, EvalGenReport } from "./backend/evalgen/typing";
 import EvalGenWizard from "./EvalGen/EvalGenWizard";
 import StorageCache from "./backend/cache";
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
@@ -370,12 +370,13 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
       type: EvaluatorContainerDesc["type"],
       state: Dict,
       initiallyOpen = true,
+      uid?: string,
     ) => {
       setEvaluators(
         // evaluators.concat({ name, uid: uuid(), type, state, justAdded: true }),
         (e) => [
           ...e,
-          { name, uid: uuid(), type, state, justAdded: initiallyOpen },
+          { name, uid: uid ?? uuid(), type, state, justAdded: initiallyOpen },
         ],
       );
     },
@@ -432,49 +433,74 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   //   evalGenModalRef.current?.trigger(resps, onFinalReportsReady);
   // };
 
-  const onFinalReportsReady = (reports: EvalGenReport) => {
-    // Placeholder for process the final reports returned from EvalGenModel
-    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!! final reports", reports);
-    for (const crit of reports.criteria) {
-      // setTimeout(() => {
-      // console.log("crit", crit);
-      if (crit.eval_method === "code") {
-        // Python
-        addEvaluator(
-          crit.shortname,
-          "python",
-          {
-            code: crit.criteria,
-            sandbox: true,
-          },
-          false,
+  const onFinalReportsReady = useCallback(
+    (report: EvalFunctionSetReport) => {
+      // Turn the criteria in the final report into evaluators
+
+      for (const selectedFunc of report.selectedEvalFunctions) {
+        const crit = selectedFunc.evalCriteria;
+
+        // Find corresponding report in allEvalFunctionReports map from criteria to list
+        const evalFuncReports = report.allEvalFunctionReports.get(crit);
+        const evalFuncReport = evalFuncReports?.find(
+          (rep) => rep.evalFunction === selectedFunc,
         );
-      } else if (crit.eval_method === "expert") {
-        // LLM
-        addEvaluator(
-          crit.shortname,
-          "llm",
-          {
-            prompt: crit.criteria,
-            format: "bin",
-          },
-          false,
-        );
-      } else {
-        // JavaScript
-        addEvaluator(
-          crit.shortname,
-          "javascript",
-          {
-            code: crit.criteria,
-          },
-          false,
-        );
+
+        if (!evalFuncReport) {
+          console.error(
+            "EvalGen: That's strange. No report found for selected function. Skipping...",
+            selectedFunc,
+          );
+          continue;
+        }
+
+        // Extract the code from the selected function
+        const code = evalFuncReport?.evalFunction.code;
+        // Get the functions that were not selected for this criteria
+        // const otherFuncs = evalFuncReports?.filter(
+        //   (rep) => rep.evalFunction !== selectedFunc,
+        // );
+
+        if (crit.eval_method === "code") {
+          // Python
+          addEvaluator(
+            crit.shortname,
+            "python",
+            {
+              code: code.trim(),
+              sandbox: true,
+            },
+            false,
+            crit.uid,
+          );
+        } else if (crit.eval_method === "expert") {
+          // LLM
+          addEvaluator(
+            crit.shortname,
+            "llm",
+            {
+              prompt: code,
+              format: "bin",
+            },
+            false,
+            crit.uid,
+          );
+        } else {
+          // JavaScript
+          addEvaluator(
+            crit.shortname,
+            "javascript",
+            {
+              code: code.trim(),
+            },
+            false,
+            crit.uid,
+          );
+        }
       }
-      // }, kkk * 5000);
-      // kkk++;
-    }
-  };
+    },
+    [addEvaluator],
+  );
 
   const handleError = useCallback(
     (err: Error | string) => {
@@ -723,11 +749,14 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
     setPulledInputs(handlePullInputs());
     setEvalGenOpened(true);
   }, []);
-  const handleEvalGenComplete = (evaluationData: EvalGenReport) => {
-    console.log("Evaluation wizard completed with data:", evaluationData);
-    onFinalReportsReady(evaluationData);
-    setEvalGenOpened(false);
-  };
+  const handleEvalGenComplete = useCallback(
+    (evaluationData: EvalFunctionSetReport) => {
+      console.log("Evaluation wizard completed with data:", evaluationData);
+      onFinalReportsReady(evaluationData);
+      setEvalGenOpened(false);
+    },
+    [onFinalReportsReady],
+  );
 
   return (
     <BaseNode classNames="evaluator-node multi-eval-node" nodeId={id}>
@@ -929,17 +958,13 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
             >
               LLM
             </Menu.Item>
-            {/* {AI_SUPPORT_ENABLED ? <Menu.Divider /> : <></>} */}
-            {/* {AI_SUPPORT_ENABLED ? (
-              <Menu.Item
-                icon={<IconSparkles size="14px" />}
-                onClick={onClickPickCriteria}
-              >
-                Let an AI decide!
-              </Menu.Item>
-            ) : (
-              <></>
-            )} */}
+            <Menu.Divider />
+            <Menu.Item
+              icon={<IconSparkles size="11pt" />}
+              onClick={openEvalGen}
+            >
+              Generate with EvalGen
+            </Menu.Item>
             {/* <Menu.Divider /> */}
             {/* {EVALUATOR_PRESETS.map((category, idx) => (
               <React.Fragment key={category.label}>

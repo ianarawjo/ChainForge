@@ -127,6 +127,23 @@ const castEvalScoreToNum = (score: EvaluationScore): number => {
   else return 0; // unknown, soft fail
 };
 
+const findEvalResKeys = (resps: LLMResponse[]): Set<string> => {
+  const eval_res_keys = new Set<string>();
+  resps.forEach((resp_obj) => {
+    if (resp_obj.eval_res && resp_obj.eval_res.items) {
+      resp_obj.eval_res.items.forEach((item) => {
+        if (typeof item === "object") {
+          Object.keys(item).forEach((k) => eval_res_keys.add(k));
+        } else {
+          // If the item is not an object, we can assume it's a single value
+          eval_res_keys.add("score");
+        }
+      });
+    }
+  });
+  return eval_res_keys;
+};
+
 /**
  *  UTIL FUNCTIONS FOR VIS PLOTS
  */
@@ -250,6 +267,8 @@ interface VisNodeData {
   selected_vars: string[] | string;
   llm_groups?: { value: string; label: string }[];
   selected_llm_group?: string;
+  eval_res_vars?: string[];
+  selected_eval_res_var?: string;
   input: string;
   refresh: boolean;
   title: string;
@@ -324,6 +343,24 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         : "LLM (default)",
     );
 
+    // The x-axis, which are the names of eval results (if a dictionary)
+    const [evalResVars, setEvalResVars] = useState<string[]>(
+      data?.eval_res_vars ?? ["score"],
+    );
+    const [selectedEvalResVar, setSelectedEvalResVar] = useState(
+      data?.selected_eval_res_var ?? "score",
+    );
+    const handleChangeSelectedEvalResVar = useCallback(
+      (new_val: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedEvalResVar(new_val.target.value);
+        if (id)
+          setDataPropsForNode(id, {
+            selected_eval_res_var: new_val.target.value,
+          });
+      },
+      [id, setDataPropsForNode],
+    );
+
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
     // However, when prompts are chained together, the original LLM info is stored in metavars as a key.
     // LLM groups allow you to plot against the original LLMs, even though a 'scorer' LLM might come after.
@@ -333,13 +370,14 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const [selectedLLMGroup, setSelectedLLMGroup] = useState(
       data?.selected_llm_group ?? "LLM",
     );
-    const handleChangeLLMGroup = (
-      new_val: React.ChangeEvent<HTMLSelectElement>,
-    ) => {
-      setSelectedLLMGroup(new_val.target.value);
-      if (id)
-        setDataPropsForNode(id, { selected_llm_group: new_val.target.value });
-    };
+    const handleChangeLLMGroup = useCallback(
+      (new_val: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedLLMGroup(new_val.target.value);
+        if (id)
+          setDataPropsForNode(id, { selected_llm_group: new_val.target.value });
+      },
+      [id, setDataPropsForNode],
+    );
 
     // When the user clicks an item in the drop-down,
     // we want to autoclose the multiselect drop-down:
@@ -375,6 +413,15 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       varnames = Array.from(varnames);
       metavars = Array.from(metavars);
 
+      // Find all keys in eval results
+      const eval_res_keys = findEvalResKeys(resps);
+      if (eval_res_keys.size === 0) {
+        eval_res_keys.add("score"); // default to 'score' if no keys found
+      } else if (selectedEvalResVar === "score") {
+        // We need to set the default eval res var to the first one in the list
+        setSelectedEvalResVar(eval_res_keys.values().next().value as string);
+      }
+
       // Get all vars for the y-axis dropdown, merging metavars and vars into one list,
       // and excluding any special 'LLM group' metavars:
       const msvars = [{ value: "LLM (default)", label: "LLM (default)" }]
@@ -401,18 +448,22 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       if (
         !multiSelectVars ||
         !multiSelectValue ||
+        !evalResVars ||
         !areSetsEqual(
           new Set(msvars.map((o) => o.value)),
           new Set(multiSelectVars.map((o) => o.value)),
-        )
+        ) ||
+        !areSetsEqual(new Set(evalResVars), eval_res_keys)
       ) {
         setMultiSelectValue("LLM (default)");
         setMultiSelectVars(msvars);
+        setEvalResVars(Array.from(eval_res_keys));
         if (id)
           setDataPropsForNode(id, {
             vars: msvars,
             selected_vars: [],
             llm_groups: available_llm_groups,
+            eval_res_vars: Array.from(eval_res_keys),
           });
       }
     };
@@ -552,14 +603,14 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             max_num_results_per_prompt = res_obj.eval_res.items.length;
         });
 
-        let plot_legend: React.ReactNode | null = null;
+        const plot_legend: React.ReactNode | null = null;
         let metric_axes_labels: string[] = [];
         let num_metrics = 1;
         if (
           typeof_eval_res.includes("KeyValue") &&
-          responses[0].eval_res !== undefined
+          responses.some((r) => r.eval_res !== undefined)
         ) {
-          metric_axes_labels = Object.keys(responses[0].eval_res.items[0]);
+          metric_axes_labels = Array.from(findEvalResKeys(responses));
           num_metrics = metric_axes_labels.length;
         }
 
@@ -590,9 +641,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           if (typeof_eval_res.includes("KeyValue"))
             return eval_res_obj.items.map(
               (item) =>
-                (item as Dict<boolean | number | string>)[
-                  metric_axes_labels[0]
-                ],
+                (item as Dict<boolean | number | string>)[selectedEvalResVar],
             );
           return eval_res_obj.items;
         };
@@ -680,7 +729,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
           if (metric_axes_labels.length > 0)
             layout.xaxis = {
-              title: { font: { size: 12 }, text: metric_axes_labels[0] },
+              title: { font: { size: 12 }, text: selectedEvalResVar },
               ...layout.xaxis,
             };
           else
@@ -792,8 +841,12 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   d.histfunc = "sum";
                   d.y = new Array(x_items.length).fill(shortnames[name]);
                   d.textposition = "none"; // hide the text which appears within each bar
+                  const xaxis_title =
+                    metric_axes_labels.length > 0
+                      ? "Sum of '" + selectedEvalResVar + "'"
+                      : "Sum of scores";
                   layout.xaxis = {
-                    title: { font: { size: 12 }, text: "Sum of scores" },
+                    title: { font: { size: 12 }, text: xaxis_title },
                     ...layout.xaxis,
                   };
 
@@ -829,7 +882,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
           if (metric_axes_labels.length > 0)
             layout.xaxis = {
-              title: { font: { size: 12 }, text: metric_axes_labels[0] },
+              title: { font: { size: 12 }, text: selectedEvalResVar },
               ...layout.xaxis,
             };
         };
@@ -899,7 +952,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               if (graphType.key === "bar") {
                 d.type = "bar";
                 d.textposition = "none"; // hide the text which appears within each bar
-                xaxis_title = "Sum of scores";
+                xaxis_title =
+                  metric_axes_labels.length > 0
+                    ? "Sum of '" + selectedEvalResVar + "'"
+                    : "Sum of scores";
 
                 if (typeof_eval_res === "Numeric") {
                   // To make error bars work, we need to sum the numbers, instead of relying
@@ -945,10 +1001,6 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           });
           layout.boxmode = "group";
           layout.bargap = 0.5;
-          // layout.yaxis = {
-          //   tickfont: { size: 10 },
-          //   ...layout.yaxis,
-          // };
 
           // Set the left margin to fit the yticks labels
           layout.margin.l = calcLeftPaddingForYLabels(
@@ -957,177 +1009,205 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
           if (metric_axes_labels.length > 0)
             layout.xaxis = {
-              title: { font: { size: 12 }, text: metric_axes_labels[0] },
+              title: { font: { size: 12 }, text: selectedEvalResVar },
               ...layout.xaxis,
             };
         };
 
-        if (num_metrics > 1) {
-          // For 2 or more metrics, display a parallel coordinates plot.
-          // :: For instance, if evaluator produces { height: 32, weight: 120 } plot responses with 2 metrics, 'height' and 'weight'
-          if (varnames.length === 1) {
-            const unique_vals = getUniqueKeysInResponses(
-              responses,
-              (resp_obj) => get_var(resp_obj, varnames[0]),
-            );
-            // const response_txts = responses.map(res_obj => res_obj.responses).flat();
+        // PARALLEL COORDINATES PLOT -- Disabled for now.
+        // May be re-enabled in the future.
+        // if (num_metrics > 1) {
+        //   // For 2 or more metrics, display a parallel coordinates plot.
+        //   // :: For instance, if evaluator produces { height: 32, weight: 120 } plot responses with 2 metrics, 'height' and 'weight'
+        //   if (varnames.length === 1) {
+        //     const unique_vals = getUniqueKeysInResponses(
+        //       responses,
+        //       (resp_obj) => get_var(resp_obj, varnames[0]),
+        //     );
+        //     // const response_txts = responses.map(res_obj => res_obj.responses).flat();
 
-            const group_colors = varcolors;
-            const unselected_line_color = "#ddd";
-            const spec_colors = responses
-              .map((resp_obj) => {
-                const idx = unique_vals.indexOf(get_var(resp_obj, varnames[0]));
-                return resp_obj.eval_res
-                  ? Array(resp_obj.eval_res.items.length).fill(idx)
-                  : [];
-              })
-              .flat();
+        //     const group_colors = varcolors;
+        //     const unselected_line_color = "#ddd";
+        //     const spec_colors = responses
+        //       .map((resp_obj) => {
+        //         const idx = unique_vals.indexOf(get_var(resp_obj, varnames[0]));
+        //         return resp_obj.eval_res
+        //           ? Array(resp_obj.eval_res.items.length).fill(idx)
+        //           : [];
+        //       })
+        //       .flat();
 
-            const colorscale: [number, string][] = [];
-            for (let i = 0; i < unique_vals.length; i++) {
-              if (
-                !selectedLegendItems ||
-                selectedLegendItems.indexOf(unique_vals[i]) > -1
-              )
-                colorscale.push([
-                  i / (unique_vals.length - 1),
-                  group_colors[i % group_colors.length],
-                ]);
-              else
-                colorscale.push([
-                  i / (unique_vals.length - 1),
-                  unselected_line_color,
-                ]);
+        //     const colorscale: [number, string][] = [];
+        //     for (let i = 0; i < unique_vals.length; i++) {
+        //       if (
+        //         !selectedLegendItems ||
+        //         selectedLegendItems.indexOf(unique_vals[i]) > -1
+        //       )
+        //         colorscale.push([
+        //           i / (unique_vals.length - 1),
+        //           group_colors[i % group_colors.length],
+        //         ]);
+        //       else
+        //         colorscale.push([
+        //           i / (unique_vals.length - 1),
+        //           unselected_line_color,
+        //         ]);
+        //     }
+
+        //     const dimensions: Dict = [];
+        //     metric_axes_labels.forEach((metric) => {
+        //       const evals = extractEvalResultsForMetric(metric, responses);
+        //       dimensions.push({
+        //         range: evals.every((e) => typeof e === "number")
+        //           ? [
+        //               Math.min(...(evals as number[])),
+        //               Math.max(...(evals as number[])),
+        //             ]
+        //           : undefined,
+        //         label: metric,
+        //         values: evals,
+        //       });
+        //     });
+
+        //     spec.push({
+        //       type: "parcoords",
+        //       pad: [10, 10, 10, 10],
+        //       line: {
+        //         color: spec_colors,
+        //         colorscale,
+        //       },
+        //       dimensions,
+        //     });
+        //     layout.margin = { l: 40, r: 40, b: 40, t: 50, pad: 0 };
+        //     layout.paper_bgcolor = "white";
+        //     layout.font = { color: "black" };
+        //     layout.selectedpoints = [];
+
+        //     // There's no built-in legend for parallel coords, unfortunately, so we need to construct our own:
+        //     const legend_labels: Dict<string> = {};
+        //     unique_vals.forEach((v, idx) => {
+        //       if (!selectedLegendItems || selectedLegendItems.indexOf(v) > -1)
+        //         legend_labels[v] = group_colors[idx % group_colors.length];
+        //       else legend_labels[v] = unselected_line_color;
+        //     });
+        //     const onClickLegendItem = (label: string) => {
+        //       if (
+        //         selectedLegendItems &&
+        //         selectedLegendItems.length === 1 &&
+        //         selectedLegendItems[0] === label
+        //       )
+        //         setSelectedLegendItems(null); // Clicking twice on a legend item deselects it and displays all
+        //       else setSelectedLegendItems([label]);
+        //     };
+        //     plot_legend = (
+        //       <PlotLegend
+        //         labels={legend_labels}
+        //         onClickLabel={onClickLegendItem}
+        //       />
+        //     );
+
+        //     // Tried to support Plotly hover events here, but looks like
+        //     // currently there are unsupported for parcoords: https://github.com/plotly/plotly.js/issues/3012
+        //     // onHover = (e) => {
+        //     //     console.log(e.curveNumber);
+        //     //     // const curveIdx = e.curveNumber;
+        //     //     // if (curveIdx < response_txts.length) {
+        //     //     //     if (!selectedLegendItems || selectedLegendItems.indexOf(unique_vals[spec_colors[curveIdx]]) > -1)
+        //     //     //         console.log(response_txts[curveIdx]);
+        //     //     // }
+        //     // };
+        //   } else {
+        //     setSelectedLegendItems(null);
+        //     const error_text =
+        //       "Plotting evaluations with more than one metric and more than one prompt parameter is currently unsupported.";
+        //     setPlaceholderText(
+        //       <p
+        //         style={{
+        //           maxWidth: "220px",
+        //           backgroundColor: "#f0aaaa",
+        //           padding: "10px",
+        //           fontSize: "10pt",
+        //         }}
+        //       >
+        //         {error_text}
+        //       </p>,
+        //     );
+        //     console.error(error_text);
+        //   }
+        // } else {
+
+        // A single metric --use plots like grouped box-and-whiskers, 3d scatterplot
+        if (varnames.length === 0) {
+          // No variables means they used a single prompt (no template) to generate responses
+          // (Users are likely evaluating differences in responses between LLMs)
+          if (typeof_eval_res === "Boolean") plot_accuracy(get_llm, "llm");
+          else plot_simple_boxplot(get_llm, "llm");
+        } else if (varnames.length === 1) {
+          // 1 var; numeric eval
+          if (llm_names.length === 1) {
+            if (typeof_eval_res === "Boolean")
+              // Accuracy plot per value of the selected variable:
+              plot_accuracy((r) => get_var_and_trim(r, varnames[0]), "var");
+            else {
+              // Simple box plot, as there is only a single LLM in the response
+              plot_simple_boxplot(
+                (r) => get_var_and_trim(r, varnames[0]),
+                "var",
+              );
             }
-
-            const dimensions: Dict = [];
-            metric_axes_labels.forEach((metric) => {
-              const evals = extractEvalResultsForMetric(metric, responses);
-              dimensions.push({
-                range: evals.every((e) => typeof e === "number")
-                  ? [
-                      Math.min(...(evals as number[])),
-                      Math.max(...(evals as number[])),
-                    ]
-                  : undefined,
-                label: metric,
-                values: evals,
-              });
-            });
-
-            spec.push({
-              type: "parcoords",
-              pad: [10, 10, 10, 10],
-              line: {
-                color: spec_colors,
-                colorscale,
-              },
-              dimensions,
-            });
-            layout.margin = { l: 40, r: 40, b: 40, t: 50, pad: 0 };
-            layout.paper_bgcolor = "white";
-            layout.font = { color: "black" };
-            layout.selectedpoints = [];
-
-            // There's no built-in legend for parallel coords, unfortunately, so we need to construct our own:
-            const legend_labels: Dict<string> = {};
-            unique_vals.forEach((v, idx) => {
-              if (!selectedLegendItems || selectedLegendItems.indexOf(v) > -1)
-                legend_labels[v] = group_colors[idx % group_colors.length];
-              else legend_labels[v] = unselected_line_color;
-            });
-            const onClickLegendItem = (label: string) => {
-              if (
-                selectedLegendItems &&
-                selectedLegendItems.length === 1 &&
-                selectedLegendItems[0] === label
-              )
-                setSelectedLegendItems(null); // Clicking twice on a legend item deselects it and displays all
-              else setSelectedLegendItems([label]);
-            };
-            plot_legend = (
-              <PlotLegend
-                labels={legend_labels}
-                onClickLabel={onClickLegendItem}
-              />
-            );
-
-            // Tried to support Plotly hover events here, but looks like
-            // currently there are unsupported for parcoords: https://github.com/plotly/plotly.js/issues/3012
-            // onHover = (e) => {
-            //     console.log(e.curveNumber);
-            //     // const curveIdx = e.curveNumber;
-            //     // if (curveIdx < response_txts.length) {
-            //     //     if (!selectedLegendItems || selectedLegendItems.indexOf(unique_vals[spec_colors[curveIdx]]) > -1)
-            //     //         console.log(response_txts[curveIdx]);
-            //     // }
-            // };
           } else {
-            setSelectedLegendItems(null);
-            const error_text =
-              "Plotting evaluations with more than one metric and more than one prompt parameter is currently unsupported.";
-            setPlaceholderText(
-              <p
-                style={{
-                  maxWidth: "220px",
-                  backgroundColor: "#f0aaaa",
-                  padding: "10px",
-                  fontSize: "10pt",
-                }}
-              >
-                {error_text}
-              </p>,
-            );
-            console.error(error_text);
+            // There are multiple LLMs in the response; do a grouped box plot by LLM.
+            // Note that 'name' is now the LLM, and 'x' stores the value of the var:
+            plot_grouped_boxplot((r) => get_var_and_trim(r, varnames[0]));
           }
-        } else {
-          // A single metric --use plots like grouped box-and-whiskers, 3d scatterplot
-          if (varnames.length === 0) {
-            // No variables means they used a single prompt (no template) to generate responses
-            // (Users are likely evaluating differences in responses between LLMs)
-            if (typeof_eval_res === "Boolean") plot_accuracy(get_llm, "llm");
-            else plot_simple_boxplot(get_llm, "llm");
-          } else if (varnames.length === 1) {
-            // 1 var; numeric eval
-            if (llm_names.length === 1) {
-              if (typeof_eval_res === "Boolean")
-                // Accuracy plot per value of the selected variable:
-                plot_accuracy((r) => get_var_and_trim(r, varnames[0]), "var");
-              else {
-                // Simple box plot, as there is only a single LLM in the response
-                plot_simple_boxplot(
-                  (r) => get_var_and_trim(r, varnames[0]),
-                  "var",
-                );
-              }
-            } else {
-              // There are multiple LLMs in the response; do a grouped box plot by LLM.
-              // Note that 'name' is now the LLM, and 'x' stores the value of the var:
-              plot_grouped_boxplot((r) => get_var_and_trim(r, varnames[0]));
-            }
-          } else if (varnames.length === 2) {
-            // Input is 2 vars; numeric eval
-            // Display a 3D scatterplot with 2 dimensions:
+        } else if (varnames.length === 2) {
+          // Input is 2 vars; numeric eval
+          // Display a 3D scatterplot with 2 dimensions:
 
-            const names_0 = new Set(
-              responses.map((r) => get_var_and_trim(r, varnames[0])),
-            );
-            const shortnames_0 = genUniqueShortnames(names_0);
-            const names_1 = new Set(
-              responses.map((r) => get_var_and_trim(r, varnames[1])),
-            );
-            const shortnames_1 = genUniqueShortnames(names_1);
+          const names_0 = new Set(
+            responses.map((r) => get_var_and_trim(r, varnames[0])),
+          );
+          const shortnames_0 = genUniqueShortnames(names_0);
+          const names_1 = new Set(
+            responses.map((r) => get_var_and_trim(r, varnames[1])),
+          );
+          const shortnames_1 = genUniqueShortnames(names_1);
 
-            if (llm_names.length === 1) {
-              spec = {
+          if (llm_names.length === 1) {
+            spec = {
+              type: "scatter3d",
+              x: responses
+                .map((r) => get_var(r, varnames[0], true))
+                .map((s) => shortnames_0[s]),
+              y: responses
+                .map((r) => get_var(r, varnames[1], true))
+                .map((s) => shortnames_1[s]),
+              z: responses.map(
+                (r) =>
+                  get_items(r.eval_res).reduce(
+                    (acc: number, val) =>
+                      acc + (typeof val === "number" ? val : 0),
+                    0,
+                  ) / (r.eval_res?.items.length ?? 1),
+              ), // calculates mean
+              mode: "markers",
+              marker: {
+                color: getColorForLLMAndSetIfNotFound(llm_names[0]),
+              },
+            };
+          } else {
+            spec = [];
+            llm_names.forEach((llm) => {
+              const resps = responses.filter((r) => get_llm(r) === llm);
+              spec.push({
                 type: "scatter3d",
-                x: responses
+                x: resps
                   .map((r) => get_var(r, varnames[0], true))
                   .map((s) => shortnames_0[s]),
-                y: responses
+                y: resps
                   .map((r) => get_var(r, varnames[1], true))
                   .map((s) => shortnames_1[s]),
-                z: responses.map(
+                z: resps.map(
                   (r) =>
                     get_items(r.eval_res).reduce(
                       (acc: number, val) =>
@@ -1137,37 +1217,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 ), // calculates mean
                 mode: "markers",
                 marker: {
-                  color: getColorForLLMAndSetIfNotFound(llm_names[0]),
+                  color: getColorForLLMAndSetIfNotFound(llm),
                 },
-              };
-            } else {
-              spec = [];
-              llm_names.forEach((llm) => {
-                const resps = responses.filter((r) => get_llm(r) === llm);
-                spec.push({
-                  type: "scatter3d",
-                  x: resps
-                    .map((r) => get_var(r, varnames[0], true))
-                    .map((s) => shortnames_0[s]),
-                  y: resps
-                    .map((r) => get_var(r, varnames[1], true))
-                    .map((s) => shortnames_1[s]),
-                  z: resps.map(
-                    (r) =>
-                      get_items(r.eval_res).reduce(
-                        (acc: number, val) =>
-                          acc + (typeof val === "number" ? val : 0),
-                        0,
-                      ) / (r.eval_res?.items.length ?? 1),
-                  ), // calculates mean
-                  mode: "markers",
-                  marker: {
-                    color: getColorForLLMAndSetIfNotFound(llm),
-                  },
-                  name: llm,
-                });
+                name: llm,
               });
-            }
+            });
           }
         }
 
@@ -1184,6 +1238,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     }, [
       multiSelectVars,
       multiSelectValue,
+      evalResVars,
+      selectedEvalResVar,
       selectedLLMGroup,
       responses,
       selectedLegendItems,
@@ -1254,9 +1310,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             <span style={smallTextStyle}>x-axis:</span>
             <NativeSelect
               className="nodrag nowheel"
-              data={["score"]}
+              data={evalResVars}
               size="xs"
-              value={"score"}
+              value={selectedEvalResVar}
+              onChange={handleChangeSelectedEvalResVar}
               miw="80px"
             />
           </div>

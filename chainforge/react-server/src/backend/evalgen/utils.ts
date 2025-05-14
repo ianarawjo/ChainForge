@@ -40,11 +40,14 @@ export function extractMdBlocks(
   blockName: string,
 ): string[] | undefined {
   const regex = new RegExp(`\`\`\`${blockName}(.*?)\`\`\``, "gs");
-  const matches = mdText.match(regex);
-  if (matches)
-    return matches.map((s) => s.replace("```json", "").replace("```", ""));
+  const matches = [];
+  let match: RegExpExecArray | null;
 
-  console.error("No JSON found in output.");
+  while ((match = regex.exec(mdText)) !== null) matches.push(match[1]);
+
+  if (matches.length > 0) return matches;
+
+  console.error("No md blocks found for name:", blockName);
   return undefined;
 }
 

@@ -48,7 +48,7 @@ import { getAIFeaturesModels } from "../backend/ai";
 interface EvalGenWizardProps {
   opened: boolean;
   onClose: () => void;
-  onComplete: (result: EvalGenReport) => void;
+  onComplete: (result: EvalFunctionSetReport) => void;
   responses: LLMResponse[];
 }
 
@@ -231,15 +231,9 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
     setActive((current) => Math.max(0, current - 1));
   }, []);
 
-  const handleComplete = () => {
+  const handleComplete = (evalFuncReport: EvalFunctionSetReport) => {
     // Return final data to the caller
-    onComplete({
-      criteria: criteria,
-      failureCoverage: 0,
-      falseFailureRate: 0,
-      // grades: gradingData,
-      // alignmentScores: {} // TODO: Include actual alignment scores
-    });
+    onComplete(evalFuncReport);
     onClose();
   };
 
