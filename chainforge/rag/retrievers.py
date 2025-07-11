@@ -1,5 +1,5 @@
 import math, os, heapq
-from typing import List
+from typing import List, Any, Tuple, Dict
 import numpy as np
 from chainforge.rag.simple_preprocess import simple_preprocess
 from chainforge.rag.vector_stores import LocalVectorStore
@@ -19,168 +19,233 @@ class RetrievalMethodRegistry:
     def get_handler(cls, method_name):
         return cls._methods.get(method_name)
 
+def normalize_query(raw_q: Any) -> Tuple[Dict[str, Any], str]:
+    """
+    Turn any raw_q (dict or other) into:
+      1) a normalized query-object dict
+      2) the canonical text string to use
+    """
+    if isinstance(raw_q, dict):
+        q_obj = raw_q
+    else:
+        q_obj = {"text": str(raw_q)}
+
+    text = str(
+        q_obj.get("text")
+        or q_obj.get("query")
+        or q_obj.get("prompt", "")
+    )
+    return q_obj, text
+
 @RetrievalMethodRegistry.register("bm25")
-def handle_bm25(chunk_objs, query_objs, settings):
+def handle_bm25(chunk_objs: List[Dict], query_objs: List[Any], settings: Dict[str, Any]) -> List[Dict]:
     from rank_bm25 import BM25Okapi
-
-    top_k = settings.get("top_k", 5)
-    k1 = settings.get("bm25_k1", 1.5)
-    b = settings.get("bm25_b", 0.75)
-    # Extract text from objects
-    chunk_texts = [chunk.get("text", "") for chunk in chunk_objs]
-
-    # Preprocess corpus once
-    tokenized_corpus = [simple_preprocess(doc) for doc in chunk_texts]
+    """Retrieve top-k chunks for each query using BM25."""
+    # Build BM25 index
+    docs = [str(c.get("text", "")) for c in chunk_objs]
+    tokenized_corpus = [simple_preprocess(doc) for doc in docs]
+    k1 = float(settings.get("bm25_k1", 1.5))
+    b = float(settings.get("bm25_b", 0.75))
     bm25 = BM25Okapi(tokenized_corpus, k1=k1, b=b)
-    results = []
-    for query_obj in query_objs:
-        tokenized_query = simple_preprocess(query_obj.get("text", ""))
-        raw_scores = bm25.get_scores(tokenized_query)
-        # Normalize scores
-        max_score = max(raw_scores) if raw_scores.any() and max(raw_scores) > 0 else 1
-        normalized_scores = [score / max_score for score in raw_scores]
-        
-        # Build result objects with all the necessary metadata
-        retrieved = []
-        scored_chunks = sorted(zip(chunk_objs, normalized_scores), key=lambda x: x[1], reverse=True)
-        
-        for chunk, similarity in scored_chunks[:top_k]:
-            retrieved.append({
-                "text": chunk.get("text", ""),
-                "similarity": float(similarity),
-                "docTitle": chunk.get("docTitle", ""),
-                "chunkId": chunk.get("chunkId", ""),
+
+    top_k = int(settings.get("top_k", 5))
+    results: List[Dict] = []
+
+    for raw_q in query_objs:
+        # Normalize and extract text
+        q_obj, query_text = normalize_query(raw_q)
+        # Tokenize for scoring
+        tokens = simple_preprocess(query_text)
+
+        # Score & normalize
+        scores = bm25.get_scores(tokens)
+        if scores.size == 0:
+            results.append({"query_object": q_obj, "retrieved_chunks": []})
+            continue
+
+        max_score = float(scores.max()) or 1.0
+        normalized = (scores / max_score).tolist()
+
+        # Pick top-k & build hits
+        top_idxs = sorted(
+            range(len(normalized)),
+            key=lambda i: normalized[i],
+            reverse=True
+        )[:top_k]
+
+        hits = []
+        for idx in top_idxs:
+            c = chunk_objs[idx]
+            hits.append({
+                "text":       c.get("text", ""),
+                "similarity": normalized[idx],
+                "docTitle":   c.get("docTitle", ""),
+                "chunkId":    c.get("chunkId", ""),
             })
-        
-        results.append({'query_object': query_obj, 'retrieved_chunks': retrieved})
-    
+
+        results.append({
+            "query_object":     q_obj,
+            "retrieved_chunks": hits
+        })
+
     return results
 
-@RetrievalMethodRegistry.register("tfidf")
-def handle_tfidf(chunk_objs, query_objs, settings):
-    from sklearn.feature_extraction.text import TfidfVectorizer
 
-    top_k = settings.get("top_k", 5)
-    max_features = settings.get("max_features", 500)
-    
-    # Extract text from chunk objects
-    chunk_texts = [chunk.get("text", "") for chunk in chunk_objs]
-    # Create and fit vectorizer once for all queries
+@RetrievalMethodRegistry.register("tfidf")
+def handle_tfidf(chunk_objs: List[Dict], query_objs: List[Any], settings: Dict[str, Any]) -> List[Dict]:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    """Retrieve top-k chunks for each query using TF-IDF cosine similarity."""
+    # Safely cast settings
+    top_k = int(settings.get("top_k", 5))
+    max_features = int(settings.get("max_features", 500))
+
+    # Prepare the corpus texts
+    docs = [str(c.get("text", "")) for c in chunk_objs]
+
+    # Fit the TF-IDF vectorizer
     vectorizer = TfidfVectorizer(stop_words="english", max_features=max_features)
-    tfidf_matrix = vectorizer.fit_transform(chunk_texts)
-    
-    results = []
-    for query_obj in query_objs:
-        query_vec = vectorizer.transform([query_obj.get("text", "")])
+    tfidf_matrix = vectorizer.fit_transform(docs)
+
+    results: List[Dict] = []
+    for raw_q in query_objs:
+        # Normalize and extract text
+        q_obj, query_text = normalize_query(raw_q)
+
+        # Transform query into vector
+        query_vec = vectorizer.transform([query_text])
+
+        # Compute raw similarities
         sims = (tfidf_matrix * query_vec.T).toarray().flatten()
-        
-        # Normalize scores
-        max_sim = sims.max() if sims.size > 0 and sims.max() > 0 else 1
-        normalized_sims = sims / max_sim
-        
-        # Build result objects
-        retrieved = []
-        ranked_idx = normalized_sims.argsort()[::-1][:top_k]
-        
-        for i in ranked_idx:
-            chunk = chunk_objs[i]
-            retrieved.append({
-                "text": chunk.get("text", ""),
-                "similarity": float(normalized_sims[i]),
-                "docTitle": chunk.get("docTitle", ""),
-                "chunkId": chunk.get("chunkId", ""),
+        max_sim = float(sims.max()) if sims.size and sims.max() > 0 else 1.0
+        normalized = sims / max_sim
+
+        # Pick top-k indices
+        top_idxs = sorted(
+            range(len(normalized)),
+            key=lambda i: normalized[i],
+            reverse=True
+        )[:top_k]
+
+        # Build hits
+        hits = []
+        for idx in top_idxs:
+            c = chunk_objs[idx]
+            hits.append({
+                "text":       c.get("text", ""),
+                "similarity": float(normalized[idx]),
+                "docTitle":   c.get("docTitle", ""),
+                "chunkId":    c.get("chunkId", ""),
             })
-        
-        results.append({'query_object': query_obj, 'retrieved_chunks': retrieved})
-    
+
+        results.append({
+            "query_object":     q_obj,
+            "retrieved_chunks": hits
+        })
+
     return results
 
 @RetrievalMethodRegistry.register("boolean")
-def handle_boolean(chunk_objs, query_objs, settings):
+def handle_boolean(chunk_objs: List[Dict], query_objs: List[Any], settings: Dict[str, Any]) -> List[Dict]:
+    """Retrieve chunks by boolean overlap (minimum token matches)."""
+    # Cast settings
+    top_k = int(settings.get("top_k", 5))
+    required_match_count = int(settings.get("required_match_count", 1))
 
-    top_k = settings.get("top_k", 5)
-    required_match_count = settings.get("required_match_count", 1)
-    
-    # Extract text from chunk objects
-    chunk_texts = [chunk.get("text", "") for chunk in chunk_objs]
-    
-    results = []
-    for query_obj in query_objs:
-        q_tokens = set(simple_preprocess(query_obj.get("text", "")))
+    # Pre-tokenize chunks
+    chunk_texts = [str(c.get("text", "")) for c in chunk_objs]
+    tokenized_chunks = [set(simple_preprocess(text)) for text in chunk_texts]
+
+    results: List[Dict] = []
+    for raw_q in query_objs:
+        # Normalize and extract text
+        q_obj, query_text = normalize_query(raw_q)
+
+        # Tokenize the query
+        q_tokens = set(simple_preprocess(query_text))
+
+        # If not enough tokens, no hits
         if len(q_tokens) < required_match_count:
-            # Not enough tokens in query to match the required count
-            results.append({'query_object': query_obj, 'retrieved_chunks': []})
+            results.append({"query_object": q_obj, "retrieved_chunks": []})
             continue
-            
-        scored = []
-        for i, c in enumerate(chunk_texts):
-            c_tokens = set(simple_preprocess(c))
-            matches = len(q_tokens.intersection(c_tokens))
+
+        scored: List[Tuple[int, float]] = []
+        for idx, c_tokens in enumerate(tokenized_chunks):
+            matches = len(q_tokens & c_tokens)
             if matches >= required_match_count:
-                score = matches / (len(c_tokens) + 1e-9)  # Normalize by document length
-                scored.append((i, score))
-                
-        # Sort by score
+                score = matches / (len(c_tokens) or 1)
+                scored.append((idx, score))
+
+        # Sort & take top_k
         scored.sort(key=lambda x: x[1], reverse=True)
-        
-        # Normalize scores
-        retrieved = []
+
+        # Build retrieved_chunks
+        retrieved: List[Dict] = []
         if scored:
-            max_score = scored[0][1]
-            for i, score in scored[:top_k]:
-                chunk = chunk_objs[i]
-                normalized_score = score / max_score if max_score > 0 else 0
+            top_score = scored[0][1] or 1.0
+            for idx, raw_score in scored[:top_k]:
+                c = chunk_objs[idx]
+                norm_score = raw_score / top_score
                 retrieved.append({
-                    "text": chunk.get("text", ""),
-                    "similarity": float(normalized_score),
-                    "docTitle": chunk.get("docTitle", ""),
-                    "chunkId": chunk.get("chunkId", ""),
+                    "text":       c.get("text", ""),
+                    "similarity": float(norm_score),
+                    "docTitle":   c.get("docTitle", ""),
+                    "chunkId":    c.get("chunkId", ""),
                 })
-        
-        results.append({'query_object': query_obj, 'retrieved_chunks': retrieved})
-    
+
+        results.append({
+            "query_object":     q_obj,
+            "retrieved_chunks": retrieved
+        })
+
     return results
 
-@RetrievalMethodRegistry.register("overlap")
-def handle_keyword_overlap(chunk_objs, query_objs, settings):
 
-    top_k = settings.get("top_k", 5)
-    
-    # Extract text from chunk objects
-    chunk_texts = [chunk.get("text", "") for chunk in chunk_objs]
-    
-    results = {}
-    for query_obj in query_objs:
-        q_tokens = set(simple_preprocess(query_obj.get("text", "")))
-        scored = []
-        
-        for i, c in enumerate(chunk_texts):
-            c_tokens = set(simple_preprocess(c))
-            overlap = len(q_tokens.intersection(c_tokens))
-            scored.append((i, overlap))
-            
-        # Sort by overlap count
+@RetrievalMethodRegistry.register("overlap")
+def handle_keyword_overlap(chunk_objs: List[Dict], query_objs: List[Any], settings: Dict[str, Any]) -> List[Dict]:
+    """Retrieve chunks by keyword overlap (raw token count)."""
+    # Settings
+    top_k = int(settings.get("top_k", 5))
+
+    # Pre-tokenize chunks
+    docs = [str(c.get("text", "")) for c in chunk_objs]
+    tokenized_chunks = [set(simple_preprocess(doc)) for doc in docs]
+
+    results: List[Dict] = []
+    for raw_q in query_objs:
+        # Normalize and extract text
+        q_obj, query_text = normalize_query(raw_q)
+
+        # Tokenize the query
+        q_tokens = set(simple_preprocess(query_text))
+
+        # Score by overlap count
+        scored: List[Tuple[int, int]] = []
+        for idx, c_tokens in enumerate(tokenized_chunks):
+            overlap = len(q_tokens & c_tokens)
+            scored.append((idx, overlap))
+
+        # Sort descending
         scored.sort(key=lambda x: x[1], reverse=True)
-        
-        # Normalize scores
-        retrieved = []
-        if scored and scored[0][1] > 0:  # Ensure max score > 0
-            max_score = scored[0][1]
-            for i, score in scored[:top_k]:
-                chunk = chunk_objs[i]
-                normalized_score = score / max_score
+
+        # Build retrieved list
+        retrieved: List[Dict] = []
+        if scored and scored[0][1] > 0:
+            max_overlap = scored[0][1]
+            for idx, raw_score in scored[:top_k]:
+                c = chunk_objs[idx]
+                norm_score = raw_score / max_overlap
                 retrieved.append({
-                    "text": chunk.get("text", ""),
-                    "similarity": float(normalized_score),
-                    "docTitle": chunk.get("docTitle", ""),
-                    "chunkId": chunk.get("chunkId", ""),
+                    "text":       c.get("text", ""),
+                    "similarity": float(norm_score),
+                    "docTitle":   c.get("docTitle", ""),
+                    "chunkId":    c.get("chunkId", ""),
                 })
-        else:
-            # No overlaps found
-            retrieved = []
-        
-        results.append({'query_object': query_obj, 'retrieved_chunks': retrieved})
-    
+
+        results.append({
+            "query_object":     q_obj,
+            "retrieved_chunks": retrieved
+        })
+
     return results
 
 # Helper functions for similarity calculations
