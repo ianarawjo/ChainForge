@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useMemo,
   useContext,
+  useLayoutEffect,
 } from "react";
 import { Handle, Position } from "reactflow";
 import { v4 as uuid } from "uuid";
@@ -85,6 +86,8 @@ import {
 import { StringLookup } from "./backend/cache";
 import { union } from "./backend/setUtils";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
+import { useMarkerLogic } from "./backend/useSelectionText";
+import MarkerPopover from "./DraggablePopover";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -94,6 +97,7 @@ const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   while (metakeys.has(`LLM_${i}`)) i += 1;
   return `LLM_${i}`;
 };
+
 const bucketChatHistoryInfosByLLM = (chat_hist_infos: ChatHistoryInfo[]) => {
   const chats_by_llm: Dict<ChatHistoryInfo[]> = {};
   chat_hist_infos.forEach((chat_hist_info) => {
@@ -103,6 +107,7 @@ const bucketChatHistoryInfosByLLM = (chat_hist_infos: ChatHistoryInfo[]) => {
   });
   return chats_by_llm;
 };
+
 const getRootPromptFor = (
   promptTexts: string | string[],
   varNameForRootTemplate: string,
@@ -352,6 +357,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       else return <IconMessageCircle size={16} />;
     } else return node_type === "chat" ? "🗣" : "💬";
   }, [node_type, colorScheme]);
+
   const node_default_title = useMemo(
     () => (node_type === "chat" ? "Chat Turn" : "Prompt Node"),
     [node_type],
@@ -391,6 +397,34 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const [numGenerationsLastRun, setNumGenerationsLastRun] = useState<number>(
     data.n ?? 1,
   );
+
+  useLayoutEffect(() => {
+
+    // Grab the exact string we’re showing:
+    const text =
+      typeof promptText === "string"
+        ? promptText
+        : promptText[idxPromptVariantShown] || "";
+
+    // Extract all of the {…} pieces and trim them
+    const rawVars = extractBracketedSubstrings(text);
+    const newVars = rawVars.map((v) => v.trim()).filter((v) => v !== "");
+
+    // Only fire if the set really changed
+    if (!setsAreEqual(new Set(newVars), new Set(templateVars))) {
+      setTemplateVars(newVars);
+      setDataPropsForNode(id, { vars: newVars, prompt: text });
+      pingOutputNodes(id);
+    }
+  }, [
+    promptText,
+    idxPromptVariantShown,
+    edges,
+    templateVars,
+    id,
+    setDataPropsForNode,
+    pingOutputNodes,
+  ]);
 
   // The LLM items container
   const llmListContainer = useRef<LLMListContainerRef>(null);
@@ -434,6 +468,9 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   // Debounce helpers
   const debounceTimeoutRef = useRef(null);
   const debounce = genDebounceFunc(debounceTimeoutRef);
+
+  // Node reference for positioning the marker popover
+  const nodeRef = useRef<HTMLDivElement>(null);
 
   const triggerAlert = useCallback(
     (msg: string) => {
@@ -515,8 +552,18 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     }
   }, [templateVars, id, pullInputData, updateShowContToggle]);
 
+  // this state to track when marker operations are in progress
+  const [markerOperationInProgress, setMarkerOperationInProgress] =
+    useState(false);
+
   const refreshTemplateHooks = useCallback(
     (text: string | string[]) => {
+      //  template refresh if marker operation is in progress
+      if (markerOperationInProgress) {
+        console.log("Skipping template refresh - marker operation in progress");
+        return;
+      }
+
       const texts = typeof text === "string" ? [text] : text;
 
       // Get all template vars in the prompt(s)
@@ -540,39 +587,168 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         setTemplateVars(Array.from(found_template_vars));
       }
     },
-    [setTemplateVars, templateVars, pullInputData, id],
+    [
+      setTemplateVars,
+      templateVars,
+      pullInputData,
+      id,
+      updateShowContToggle,
+      markerOperationInProgress,
+    ],
   );
 
+  const [internalPromptText, setInternalPromptText] = useState<
+    string | string[]
+  >(data.prompt ?? "");
+
+  const markerLogic = useMarkerLogic({
+    nodeId: id,
+    isPromptNode: true,
+    fieldValues: useMemo(() => {
+      const currentText =
+        typeof promptText === "string"
+          ? promptText
+          : promptText[idxPromptVariantShown] || "";
+
+      return { prompt: currentText };
+    }, [promptText, idxPromptVariantShown]),
+    templateVars,
+    onFieldChange: useCallback(
+      (fieldId: string, value: string) => {
+        if (fieldId === "prompt") {
+          // Set marker operation flag
+          setMarkerOperationInProgress(true);
+
+          // Update state immediately
+          if (typeof promptText === "string") {
+            setPromptText(value);
+            setInternalPromptText(value);
+          } else {
+            const newPrompts = [...promptText];
+            newPrompts[idxPromptVariantShown] = value;
+            setPromptText(newPrompts);
+            setInternalPromptText(newPrompts);
+          }
+
+          // Debounce the persistence but clear the marker flag after a longer delay
+          debounce((finalValue: string) => {
+            const finalPrompts =
+              typeof promptText === "string"
+                ? finalValue
+                : (() => {
+                    const prompts = Array.isArray(promptText)
+                      ? [...promptText]
+                      : [promptText as string];
+                    prompts[idxPromptVariantShown] = finalValue;
+                    return prompts;
+                  })();
+
+            setDataPropsForNode(id, { prompt: finalPrompts });
+
+            // Clear marker operation flag after a delay to allow operations to complete
+            setTimeout(() => {
+              setMarkerOperationInProgress(false);
+              // Now safe to refresh template hooks
+              refreshTemplateHooks(finalPrompts);
+            }, 1000);
+            if (promptTextOnLastRun !== null && status !== Status.WARNING) {
+              setStatus(Status.WARNING);
+            }
+          }, 300)(value);
+        }
+      },
+      [
+        promptText,
+        idxPromptVariantShown,
+        promptTextOnLastRun,
+        status,
+        debounce,
+        id,
+        refreshTemplateHooks,
+        setDataPropsForNode,
+        setMarkerOperationInProgress,
+      ],
+    ),
+
+    onTemplateVarsChange: useCallback(
+      (vars: string[]) => {
+        setTemplateVars(vars);
+        setDataPropsForNode(id, { vars });
+      },
+      [id, setDataPropsForNode],
+    ),
+
+    onDataUpdate: useCallback(
+      (data: any) => {
+        setDataPropsForNode(id, data);
+      },
+      [id, setDataPropsForNode],
+    ),
+
+    findNodeByParam: useCallback(
+      (nodeId: string, param: string) => {
+        const connectedEdges = edges.filter(
+          (e) => e.target === nodeId && e.targetHandle === param,
+        );
+        if (connectedEdges.length === 0) return undefined;
+
+        const sourceNodeId = connectedEdges[0].source;
+        const nodes = useStore.getState().nodes;
+        return nodes.find((n) => n.id === sourceNodeId);
+      },
+      [edges],
+    ),
+  });
+
+  const contextPopover = useMemo(() => {
+    if (!markerLogic.textSelection) return null;
+
+    return (
+      <MarkerPopover
+        anchor={{
+          x: markerLogic.textSelection.anchorX,
+          y: markerLogic.textSelection.anchorY,
+        }}
+        preview={markerLogic.selectionPreview}
+        context={markerLogic.contextDraft}
+        setContext={markerLogic.setContextDraft}
+        variants={markerLogic.numVariants}
+        setVariants={markerLogic.setNumVariants}
+        onGenerate={() => {
+          console.log("Generate button clicked in PromptNode");
+          markerLogic.handleGenerate();
+        }}
+        loading={markerLogic.suggestionsLoading}
+      />
+    );
+  }, [
+    markerLogic.textSelection,
+    markerLogic.selectionPreview,
+    markerLogic.contextDraft,
+    markerLogic.setContextDraft,
+    markerLogic.numVariants,
+    markerLogic.setNumVariants,
+    markerLogic.handleGenerate,
+    markerLogic.suggestionsLoading,
+  ]);
+
   const handleInputChange = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const value = event.target.value as string;
-      const updateStatus =
-        promptTextOnLastRun !== null &&
-        status !== Status.WARNING &&
-        value !== promptTextOnLastRun;
-
-      // Debounce the global state change to happen only after 500ms, as it forces a costly rerender:
-      debounce((_value: string, _updateStatus, _idxPromptVariantShown) => {
-        setPromptText((prompts) => {
-          if (typeof prompts === "string") prompts = _value;
-          else prompts[_idxPromptVariantShown] = _value;
-          setDataPropsForNode(id, { prompt: prompts });
-          refreshTemplateHooks(prompts);
-          return prompts;
-        });
-        if (_updateStatus) setStatus(Status.WARNING);
-      }, 300)(value, updateStatus, idxPromptVariantShown);
-
-      // Debounce refreshing the template hooks so we don't annoy the user
-      // debounce((_value) => refreshTemplateHooks(_value), 500)(value);
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const val = e.currentTarget.value;
+      setPromptText(val);
+      if (!markerOperationInProgress) {
+        debounce((final) => {
+          setDataPropsForNode(id, { prompt: final });
+          refreshTemplateHooks(final);
+        }, 300)(val);
+      }
     },
     [
-      idxPromptVariantShown,
-      promptTextOnLastRun,
-      status,
-      refreshTemplateHooks,
+      markerOperationInProgress,
+      debounce,
+      id,
       setDataPropsForNode,
-      debounceTimeoutRef,
+      refreshTemplateHooks,
     ],
   );
 
@@ -600,6 +776,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     () => data.refreshLLMList,
     [data.refreshLLMList],
   );
+
   useEffect(() => {
     if (refresh === true) {
       setDataPropsForNode(id, { refresh: false });
@@ -1348,6 +1525,7 @@ Soft failing by replacing undefined with empty strings.`,
   };
 
   const [hooksY, setHooksY] = useState(138);
+
   const setRef = useCallback(
     (elem: HTMLDivElement | HTMLTextAreaElement | null) => {
       if (!elem) return;
@@ -1374,6 +1552,7 @@ Soft failing by replacing undefined with empty strings.`,
   );
 
   const deleteVariantConfirmModal = useRef<AreYouSureModalRef>(null);
+
   const handleAddPromptVariant = useCallback(() => {
     // Pushes a new prompt variant, updating the prompts list and duplicating the current shown prompt
     const prompts = typeof promptText === "string" ? [promptText] : promptText;
@@ -1429,6 +1608,7 @@ Soft failing by replacing undefined with empty strings.`,
       });
       return [...prompts];
     });
+
     setPromptVariantLabel((prev) => {
       if (prev.length <= 1) return prev; // cannot remove the last one
       prev.splice(idxPromptVariantShown, 1); // remove the indexed variant
@@ -1568,6 +1748,8 @@ Soft failing by replacing undefined with empty strings.`,
       </Flex>
     );
   }, [
+    node_type,
+    promptText,
     idxPromptVariantShown,
     promptVariantLabel,
     promptText,
@@ -1595,218 +1777,235 @@ Soft failing by replacing undefined with empty strings.`,
     [id],
   );
 
+  const currentTextareaValue = useMemo(() => {
+    if (typeof promptText === "string") {
+      return promptText;
+    } else {
+      return promptText[idxPromptVariantShown] || "";
+    }
+  }, [promptText, idxPromptVariantShown]);
   return (
-    <BaseNode
-      classNames="prompt-node"
-      nodeId={id}
-      contextMenuExts={customContextMenuItems}
-    >
-      <NodeLabel
-        title={data.title || node_default_title}
+    <div ref={nodeRef} className="prompt-node-wrapper">
+      <BaseNode
+        classNames="prompt-node"
         nodeId={id}
-        onEdit={hideStatusIndicator}
-        icon={node_icon}
-        status={status}
-        isRunning={status === "loading"}
-        handleRunClick={handleRunClick}
-        handleStopClick={handleStopClick}
-        handleRunHover={handleRunHover}
-        runButtonTooltip={runTooltip}
-        customButtons={[
-          <PromptListPopover
-            key="prompt-previews"
-            promptInfos={promptPreviews}
-            promptTemplates={promptText}
-            onHover={handlePreviewHover}
-            onClick={openInfoModal}
-            theme={colorScheme}
-          />,
-        ]}
-      />
-      <LLMResponseInspectorModal
-        ref={inspectModal}
-        jsonResponses={jsonResponses ?? []}
-      />
-      <PromptListModal
-        promptPreviews={promptPreviews}
-        promptTemplates={promptText}
-        infoModalOpened={infoModalOpened}
-        closeInfoModal={closeInfoModal}
-        theme={colorScheme}
-      />
-      <AreYouSureModal
-        ref={deleteVariantConfirmModal}
-        title="Delete prompt variant"
-        message="Are you sure you want to delete this prompt variant? This action is irreversible."
-        color="red"
-        onConfirm={handleRemovePromptVariant}
-      />
-
-      {node_type === "chat" ? (
-        <div ref={setRef}>
-          <ChatHistoryView
-            bgColors={["#ccc", "#ceeaf5b1"]}
-            messages={[
-              "(Past conversation)",
-              <Textarea
-                key={0}
-                className="prompt-field-fixed nodrag nowheel"
-                minRows={4}
-                defaultValue={
-                  typeof data.prompt === "string"
-                    ? data.prompt
-                    : data.prompt[data.idxPromptVariantShown ?? 0]
-                }
-                onChange={handleInputChange}
-                miw={230}
-                styles={{
-                  input: { background: "transparent", borderWidth: "0px" },
-                }}
-              />,
-            ]}
-          />
-          <Handle
-            type="target"
-            position={Position.Left}
-            id="__past_chats"
-            style={{ top: "82px", background: "#555" }}
-          />
-        </div>
-      ) : (
-        <Textarea
-          ref={setRef}
-          // autosize
-          className="prompt-field-fixed nodrag nowheel"
-          minRows={5}
-          maxRows={12}
-          defaultValue={
-            typeof data.prompt === "string"
-              ? data.prompt
-              : data.prompt && data.prompt[data.idxPromptVariantShown ?? 0]
-          }
-          onChange={handleInputChange}
-          // value={typeof promptText === "string" ? promptText : promptText[idxPromptVariantShown]}
-        />
-      )}
-
-      {promptVariantControls}
-
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="prompt"
-        className="grouped-handle"
-        style={{ top: "50%" }}
-      />
-
-      <Box mih={14}>
-        <TemplateHooks
-          vars={templateVars}
+        contextMenuExts={customContextMenuItems}
+      >
+        {contextPopover}
+        <NodeLabel
+          title={data.title || node_default_title}
           nodeId={id}
-          startY={hooksY}
-          position={Position.Left}
-          ignoreHandles={["__past_chats"]}
+          onEdit={hideStatusIndicator}
+          icon={node_icon}
+          status={status}
+          isRunning={status === "loading"}
+          handleRunClick={handleRunClick}
+          handleStopClick={handleStopClick}
+          handleRunHover={handleRunHover}
+          runButtonTooltip={runTooltip}
+          customButtons={[
+            <PromptListPopover
+              key="prompt-previews"
+              promptInfos={promptPreviews}
+              promptTemplates={promptText}
+              onHover={handlePreviewHover}
+              onClick={openInfoModal}
+              theme={colorScheme}
+            />,
+          ]}
         />
-      </Box>
 
-      <hr />
-      <div>
-        <div style={{ marginBottom: "10px", padding: "4px" }}>
-          <Flex align="center">
-            <label htmlFor="num-generations" style={{ fontSize: "10pt" }}>
-              Num responses per prompt:&nbsp;
-            </label>
-            <NumberInput
-              min={1}
-              max={999}
-              defaultValue={data.n || 1}
-              onChange={handleNumGenChange}
-              classNames={{ input: "nodrag" }}
-              size="xs"
-              ml="4px"
-              w="25%"
+        <LLMResponseInspectorModal
+          ref={inspectModal}
+          jsonResponses={jsonResponses ?? []}
+        />
+
+        <PromptListModal
+          promptPreviews={promptPreviews}
+          promptTemplates={promptText}
+          infoModalOpened={infoModalOpened}
+          closeInfoModal={closeInfoModal}
+          theme={colorScheme}
+        />
+
+        <AreYouSureModal
+          ref={deleteVariantConfirmModal}
+          title="Delete prompt variant"
+          message="Are you sure you want to delete this prompt variant? This action is irreversible."
+          color="red"
+          onConfirm={handleRemovePromptVariant}
+        />
+
+        {node_type === "chat" ? (
+          <div ref={setRef}>
+            <ChatHistoryView
+              bgColors={["#ccc", "#ceeaf5b1"]}
+              messages={[
+                "(Past conversation)",
+                <Textarea
+                  id="prompt"
+                  name="prompt"
+                  value={currentTextareaValue}
+                  key={0}
+                  className="prompt-field-fixed nodrag nowheel"
+                  minRows={4}
+                  defaultValue={
+                    typeof data.prompt === "string"
+                      ? data.prompt
+                      : data.prompt[data.idxPromptVariantShown ?? 0]
+                  }
+                  onChange={handleInputChange}
+                  onMouseUp={(e) => {
+                    markerLogic.handleMouseUp(e, nodeRef);
+                  }}
+                  miw={230}
+                  styles={{
+                    input: { background: "transparent", borderWidth: "0px" },
+                  }}
+                />,
+              ]}
             />
-          </Flex>
-        </div>
-
-        {showContToggle ? (
-          <div>
-            <Switch
-              label={
-                contWithPriorLLMs
-                  ? "Continue with prior LLM(s)"
-                  : "Continue with new LLMs:"
-              }
-              defaultChecked={true}
-              checked={contWithPriorLLMs}
-              disabled={contToggleDisabled}
-              onChange={(event) => {
-                setStatus(Status.WARNING);
-                setContWithPriorLLMs(event.currentTarget.checked);
-                setDataPropsForNode(id, {
-                  contChat: event.currentTarget.checked,
-                });
-              }}
-              color="cyan"
-              size="xs"
-              mb={contWithPriorLLMs ? "4px" : "10px"}
+            <Handle
+              type="target"
+              position={Position.Left}
+              id="__past_chats"
+              style={{ top: "82px", background: "#555" }}
             />
           </div>
         ) : (
-          <></>
-        )}
-
-        {!contWithPriorLLMs || !showContToggle ? (
-          <LLMListContainer
-            ref={llmListContainer}
-            initLLMItems={data.llms}
-            onItemsChange={onLLMListItemsChange}
-          />
-        ) : (
-          <></>
-        )}
-
-        {progress !== undefined ? (
-          <Progress
-            animate={progressAnimated}
-            sections={[
-              {
-                value: progress.success,
-                color: "blue",
-                tooltip: "API call succeeded",
-              },
-              {
-                value: progress.error,
-                color: "red",
-                tooltip: "Error collecting response",
-              },
-            ]}
-          />
-        ) : (
-          <></>
-        )}
-
-        {jsonResponses && jsonResponses.length > 0 && status !== "loading" ? (
-          <InspectFooter
-            onClick={showResponseInspector}
-            isDrawerOpen={showDrawer}
-            showDrawerButton={true}
-            onDrawerClick={() => {
-              setShowDrawer(!showDrawer);
-              setUninspectedResponses(false);
-              bringNodeToFront(id);
+          <Textarea
+            id="prompt"
+            name="prompt"
+            ref={setRef}
+            className="prompt-field-fixed nodrag nowheel"
+            minRows={5}
+            maxRows={12}
+            value={currentTextareaValue}
+            defaultValue={
+              typeof data.prompt === "string"
+                ? data.prompt
+                : data.prompt && data.prompt[data.idxPromptVariantShown ?? 0]
+            }
+            onChange={handleInputChange}
+            onMouseUp={(e) => {
+              markerLogic.handleMouseUp(e, nodeRef);
             }}
           />
-        ) : (
-          <></>
         )}
-      </div>
 
-      <LLMResponseInspectorDrawer
-        jsonResponses={jsonResponses ?? []}
-        showDrawer={showDrawer}
-      />
-    </BaseNode>
+        {promptVariantControls}
+
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="prompt"
+          className="grouped-handle"
+          style={{ top: "50%" }}
+        />
+
+        <Box mih={14}>
+          <TemplateHooks
+            vars={templateVars}
+            nodeId={id}
+            startY={hooksY}
+            position={Position.Left}
+            ignoreHandles={["__past_chats"]}
+          />
+        </Box>
+
+        <hr />
+        <div>
+          <div style={{ marginBottom: "10px", padding: "4px" }}>
+            <Flex align="center">
+              <label htmlFor="num-generations" style={{ fontSize: "10pt" }}>
+                Num responses per prompt:&nbsp;
+              </label>
+              <NumberInput
+                min={1}
+                max={999}
+                defaultValue={data.n || 1}
+                onChange={handleNumGenChange}
+                classNames={{ input: "nodrag" }}
+                size="xs"
+                ml="4px"
+                w="25%"
+              />
+            </Flex>
+          </div>
+
+          {showContToggle && (
+            <div>
+              <Switch
+                label={
+                  contWithPriorLLMs
+                    ? "Continue with prior LLM(s)"
+                    : "Continue with new LLMs:"
+                }
+                defaultChecked={true}
+                checked={contWithPriorLLMs}
+                disabled={contToggleDisabled}
+                onChange={(event) => {
+                  setStatus(Status.WARNING);
+                  setContWithPriorLLMs(event.currentTarget.checked);
+                  setDataPropsForNode(id, {
+                    contChat: event.currentTarget.checked,
+                  });
+                }}
+                color="cyan"
+                size="xs"
+                mb={contWithPriorLLMs ? "4px" : "10px"}
+              />
+            </div>
+          )}
+
+          {(!contWithPriorLLMs || !showContToggle) && (
+            <LLMListContainer
+              ref={llmListContainer}
+              initLLMItems={data.llms}
+              onItemsChange={onLLMListItemsChange}
+            />
+          )}
+
+          {progress !== undefined && (
+            <Progress
+              animate={progressAnimated}
+              sections={[
+                {
+                  value: progress.success,
+                  color: "blue",
+                  tooltip: "API call succeeded",
+                },
+                {
+                  value: progress.error,
+                  color: "red",
+                  tooltip: "Error collecting response",
+                },
+              ]}
+            />
+          )}
+
+          {jsonResponses &&
+            jsonResponses.length > 0 &&
+            status !== "loading" && (
+              <InspectFooter
+                onClick={showResponseInspector}
+                isDrawerOpen={showDrawer}
+                showDrawerButton={true}
+                onDrawerClick={() => {
+                  setShowDrawer(!showDrawer);
+                  setUninspectedResponses(false);
+                  bringNodeToFront(id);
+                }}
+              />
+            )}
+        </div>
+
+        <LLMResponseInspectorDrawer
+          jsonResponses={jsonResponses ?? []}
+          showDrawer={showDrawer}
+        />
+      </BaseNode>
+    </div>
   );
 };
 

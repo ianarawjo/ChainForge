@@ -1,5 +1,5 @@
 // Interfaces and utility functions
-// TODO: Use ChainForge's openai utils (I tried but got errors)
+// TODO: UseMarkersFromText.ts ChainForge's openai utils (I tried but got errors)
 // import { AzureOpenAIStreamer } from "./oai_utils";
 import { EventEmitter } from "events";
 import {
@@ -65,7 +65,7 @@ export async function generateLLMEvaluationCriteria(
   llm: string | LLMSpec,
   apiKeys?: Dict,
   promptTemplate?: string, // overrides prompt template used
-  systemMsg?: string | null, // overrides default system message, if present. Use null to specify empty.
+  systemMsg?: string | null, // overrides default system message, if present. UseMarkersFromText.ts null to specify empty.
   userFeedback?: { grade: boolean; note?: string; response: string }[], // user feedback to include in the prompt
 ): Promise<EvalCriteria[]> {
   // Compose user feedback

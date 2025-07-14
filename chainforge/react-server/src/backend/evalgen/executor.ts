@@ -52,7 +52,7 @@ import { EventEmitter } from "events";
  *
  * 3. Continue with Other Computations and Interactive Grading:
  *    You can proceed with other tasks (i.e., grading) immediately after
- *    starting the background computation. Use `getNextExampleToScore`
+ *    starting the background computation. UseMarkersFromText.ts `getNextExampleToScore`
  *    to determine which example to grade next and `setGradeForExample`
  *    to assign grades to specific examples. This interactive grading will
  *    help in filtering out incorrect evaluation functions.

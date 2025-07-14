@@ -69,7 +69,7 @@ const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
     {/* <Text>We have captured the following about your context:</Text>
     <ul>
       <li>…</li>
-      <li>[x] Use this info when helping me think of evaluation criteria</li>
+      <li>[x] UseMarkersFromText.ts this info when helping me think of evaluation criteria</li>
     </ul> */}
     <Text>
       After EvalGen finishes, the chosen evaluators appear in the MultiEval

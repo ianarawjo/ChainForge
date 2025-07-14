@@ -165,7 +165,7 @@ export const CriteriaCard: React.FC<CriteriaCardProps> = function CriteriaCard({
         onKeyUp={(e) => e.preventDefault()}
         className="checkcard"
       >
-        <Tooltip label={checked ? "Don't use this" : "Use this"} withArrow>
+        <Tooltip label={checked ? "Don't use this" : "UseMarkersFromText.ts this"} withArrow>
           <Checkbox
             checked={checked}
             onChange={() => setCheckedAndRealign(!checked)}
