@@ -24,6 +24,7 @@ import {
   Tooltip,
   Flex,
   useMantineColorScheme,
+  Menu,
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useContextMenu } from "mantine-contextmenu";
@@ -226,6 +227,8 @@ const nodeEmojis = {
   join: <IconArrowMerge size={16} />,
   split: <IconArrowsSplit size={16} />,
   media: "📺",
+  exportCforge: "💾",
+  exportWandB: "📊",
 };
 
 const edgeTypes = {
@@ -330,6 +333,26 @@ const App = () => {
   // Context menu for "Add Node +" list
   const { hideContextMenu } = useContextMenu();
 
+  const exportMenuItems = useMemo(() => {
+    // All initial nodes available in ChainForge
+    const initNodes = [
+      {
+        key: "cforge",
+        title: ".cforge File",
+        icon: nodeEmojis.exportCforge,
+        tooltip: "Export to .cforge file",
+        onClick: () => exportFlow(),
+      },
+      {
+        key: "wandb",
+        title: "Weave W&B",
+        icon: nodeEmojis.exportWandB,
+        tooltip: "Export to weights and biases weave platform",
+        onClick: () => handleExportToWandB(),
+      },
+    ] as NestedMenuItemProps[];
+    return initNodes;
+  }, []);
   // Add Nodes list
   const addNodesMenuItems = useMemo(() => {
     // All initial nodes available in ChainForge
@@ -1477,6 +1500,12 @@ const App = () => {
     );
   }, [flowFileName, importFlowFromJSON, showAlert, setFlowFileNameAndCache]);
 
+  // Export to Weights & Biases handler (stub for now)
+  const handleExportToWandB = useCallback(() => {
+    // TODO: Implement actual export logic to Weights & Biases
+    alert("Export to Weights & Biases is not yet implemented.");
+  }, []);
+
   if (!IS_ACCEPTED_BROWSER) {
     return (
       <Box maw={600} mx="auto" mt="40px">
@@ -1562,17 +1591,21 @@ const App = () => {
                 </Button>
               )}
             />
-            <Button
-              onClick={() => exportFlow()}
-              size="sm"
-              variant="outline"
-              color={colorScheme === "light" ? "blue" : "gray"}
-              bg={colorScheme === "light" ? "#eee" : "#222"}
-              compact
-              mr="xs"
-            >
-              Export
-            </Button>
+            <NestedMenu
+              items={exportMenuItems}
+              button={(toggleMenu) => (
+                <Button
+                  size="sm"
+                  variant={colorScheme === "light" ? "gradient" : "filled"}
+                  color={colorScheme === "light" ? "blue" : "gray"}
+                  compact
+                  mr="sm"
+                  onClick={toggleMenu}
+                >
+                  Export
+                </Button>
+              )}
+            />
             <Button
               onClick={importFlowFromFile}
               size="sm"
