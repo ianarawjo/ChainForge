@@ -1569,7 +1569,7 @@ def retrieve():
                                 "chunkLibrary": chunk.get("chunkLibrary", ""),
                                 "chunkMethod": chunk_method,  # Include chunking method in metavars
                             },
-                            "llm": method_name
+                            "llm": chunk.get("llm", "(none)"),  # Use chunk's LLM if available
                         }
                         
                         flat_results.append(response_obj)
@@ -1647,7 +1647,7 @@ def retrieve():
                                     "chunkMethod": chunk_method,  # Include chunking method in metavars
                                     "embeddingModel": model_name,
                                 },
-                                "llm": method_name
+                                "llm": chunk.get("llm", "(none)"),  # Use chunk's LLM if available
                             }
                             
                             flat_results.append(response_obj)

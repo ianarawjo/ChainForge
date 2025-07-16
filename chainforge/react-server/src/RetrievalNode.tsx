@@ -143,6 +143,8 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         throw new Error("Input 'queries' is missing or empty.");
       }
 
+      console.log("Chunks:", inputData.chunks);
+
       // Make the API request
       const response = await fetch(`${FLASK_BASE_URL}/retrieve`, {
         method: "POST",
@@ -185,16 +187,15 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       // Process each result to organize by method
       retrievalResults.forEach((result: any) => {
         // Extract method info using nullish coalescing for safety
-        const methodId =
-          result.metavars?.methodId ??
-          "unknown_method";
+        const methodId = result.metavars?.methodId ?? "unknown_method";
 
         if (!resultsByMethod[methodId]) {
           resultsByMethod[methodId] = {
             retrieved: {},
             metavars: {
               retrievalMethod: result.vars?.retrievalMethod ?? "Unknown Method",
-              retrievalMethodSignature: result.metavars?.retrievalMethodSignature,
+              retrievalMethodSignature:
+                result.metavars?.retrievalMethodSignature,
               embeddingModel: result.metavars?.embeddingModel,
             },
           };
