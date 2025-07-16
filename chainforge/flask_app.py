@@ -1546,33 +1546,28 @@ def retrieve():
                         response_obj = {
                             "text": chunk["text"],
                             "prompt": query_object['text'],
+                            "eval_res": {
+                                "items": [{
+                                    "similarity": chunk["similarity"],
+                                    "rank": i + 1,
+                                }],
+                                "dtype": "KeyValue_Mixed",
+                            },
                             "vars": {
-                                "query": query_object['text'],
                                 **query_object.get("vars", {}),  # Include original query vars
-                                "chunkMethod": chunk_method,  # Add chunking method to vars for grouping
-                                "similarity": str(chunk["similarity"]),
+                                **query_object.get("fill_history", {}),  # Include original query fill_history, if any
+                                "query": query_object['text'],
+                                "retrievalMethod": method_name,
                             },
                             "metavars": {
                                 **query_object.get("metavars", {}),  # Include original query metavars
-                                "method": method_name,
-                                "baseMethod": base_method,
-                                "chunkMethod": chunk_method,  # Include chunking method in metavars
+                                "methodId": method_id,
+                                "retrievalMethodSignature": base_method,
                                 "signature": chunk_method + "-" + method_name,
                                 "docTitle": chunk.get("docTitle", ""),
                                 "chunkId": chunk.get("chunkId", ""),
-                                "rank": i + 1
-                            },
-                            "fill_history": {
-                                **query_object.get("fill_history", {}),  # Include original query fill_history
-                                "retrievalMethod": method_name,
-                                "query": query_object['text'],
-                                "baseMethod": base_method,
-                                "methodId": method_id,
-                                "chunkMethod": chunk_method,
-                                "similarity": chunk["similarity"],
-                                "docTitle": chunk.get("docTitle", ""),
-                                "chunkId": chunk.get("chunkId", ""),
-                                "chunkLibrary": chunk.get("chunkLibrary", "")
+                                "chunkLibrary": chunk.get("chunkLibrary", ""),
+                                "chunkMethod": chunk_method,  # Include chunking method in metavars
                             },
                             "llm": method_name
                         }
@@ -1604,7 +1599,7 @@ def retrieve():
             # Process each method with the same embeddings
             for method in methods:
                 method_id = method.get("id")
-                base_method = method.get("baseMethod")
+                base_method = method.get("retrievalMethodSignature")
                 method_name = method.get("methodName")
 
                 # A safe database path to use to store on local disk, if necessary
@@ -1628,35 +1623,29 @@ def retrieve():
                             response_obj = {
                                 "text": chunk["text"],
                                 "prompt": query_object['text'],
+                                "eval_res": {
+                                    "items": [{
+                                        "similarity": chunk["similarity"],
+                                        "rank": i + 1,
+                                    }],
+                                    "dtype": "KeyValue_Mixed",
+                                },
                                 "vars": {
-                                    "query": query_object['text'],
                                     **query_object.get("vars", {}),  # Include original query vars
-                                    "chunkMethod": chunk_method,  # Add chunking method to vars for grouping
-                                    "similarity": str(chunk["similarity"]),
+                                    **query_object.get("fill_history", {}),  # Include original query fill_history, if any
+                                    "query": query_object['text'],
+                                    "retrievalMethod": method_name,
                                 },
                                 "metavars": {
                                     **query_object.get("metavars", {}),  # Include original query metavars
-                                    "method": method_name,
-                                    "baseMethod": base_method,
-                                    "chunkMethod": chunk_method,
-                                    "signature": chunk_method + "-" + method_name,
-                                    "embeddingModel": model_name,
-                                    "docTitle": chunk.get("docTitle", ""),
-                                    "chunkId": chunk.get("chunkId", ""),
-                                    "rank": i + 1
-                                },
-                                "fill_history": {
-                                    **query_object.get("fill_history", {}),  # Include original query fill_history
-                                    "retrievalMethod": method_name,
-                                    "query": query_object['text'],
-                                    "baseMethod": base_method,
                                     "methodId": method_id,
-                                    "embeddingModel": model_name,
-                                    "chunkMethod": chunk_method,
-                                    "similarity": chunk["similarity"],
+                                    "retrievalMethodSignature": base_method,
+                                    "signature": chunk_method + "-" + method_name,
                                     "docTitle": chunk.get("docTitle", ""),
                                     "chunkId": chunk.get("chunkId", ""),
-                                    "chunkLibrary": chunk.get("chunkLibrary", "")
+                                    "chunkLibrary": chunk.get("chunkLibrary", ""),
+                                    "chunkMethod": chunk_method,  # Include chunking method in metavars
+                                    "embeddingModel": model_name,
                                 },
                                 "llm": method_name
                             }

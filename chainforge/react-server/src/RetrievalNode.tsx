@@ -161,6 +161,8 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       // The response is now a flat array of objects
       const retrievalResults = await response.json();
 
+      console.warn("Retrieval results:", retrievalResults);
+
       // Convert to proper LLMResponse objects
       const llmResponses: LLMResponse[] = retrievalResults.map(
         (result: any) => ({
@@ -169,6 +171,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
           vars: result.vars || {},
           metavars: result.metavars || {},
           responses: [result.text],
+          eval_res: result.eval_res || [],
           llm: result.llm || "retrieval",
         }),
       );
@@ -183,18 +186,16 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       retrievalResults.forEach((result: any) => {
         // Extract method info using nullish coalescing for safety
         const methodId =
-          result.fill_history?.methodId ??
           result.metavars?.methodId ??
           "unknown_method";
-        const methodName = result.metavars?.method ?? "Unknown Method";
 
         if (!resultsByMethod[methodId]) {
           resultsByMethod[methodId] = {
             retrieved: {},
             metavars: {
-              method: methodName,
-              baseMethod: result.metavars?.baseMethod,
-              embeddingModel: result.fill_history?.embeddingModel,
+              retrievalMethod: result.vars?.retrievalMethod ?? "Unknown Method",
+              retrievalMethodSignature: result.metavars?.retrievalMethodSignature,
+              embeddingModel: result.metavars?.embeddingModel,
             },
           };
         }
@@ -208,7 +209,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         // Add this result to the appropriate query group
         resultsByMethod[methodId].retrieved[query].push({
           text: result.text,
-          similarity: result.metavars?.similarity,
+          similarity: result.eval_res?.items[0]?.similarity,
           docTitle: result.metavars?.docTitle,
           chunkId: result.metavars?.chunkId,
         });
@@ -221,7 +222,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         (result: any) => ({
           text: result.text,
           prompt: result.prompt,
-          fill_history: result.fill_history || {},
+          fill_history: result.vars || {},
           metavars: result.metavars || {},
           llm: result.llm, // Should we call this 'method' instead?
           uid: result.uid || `chunk-${Date.now()}-${Math.random()}`,
