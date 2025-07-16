@@ -1061,6 +1061,36 @@ def media_to_text(uid):
         # traceback.print_exc()
         return jsonify({"error": f"Failed to process file {uid}. Internal server error."}), 500
 
+@app.route('/api/exportToWandB', methods=['POST'])
+def export_to_wandb():
+    """Export a ChainForge flow to Weights & Biases."""
+    try:
+        data = request.json
+        flow_data = data.get('flowData')
+        api_key = data.get('apiKey')
+        project_name = data.get('projectName')
+
+        if not flow_data or not api_key or not project_name:
+            return jsonify({'error': 'Missing flowData, apiKey, or projectName'}), 400
+
+        # TODO: Implement actual Weights & Biases export logic here
+        # For now, just log and return success
+        print(f"Received request to export to WandB project: {project_name}")
+        print(f"Flow data size: {len(json.dumps(flow_data))} bytes")
+        print(f"The api_key for wandb: {api_key}")
+        # You would typically use the wandb library here, e.g.:
+        # import wandb
+        # wandb.login(key=api_key)
+        # run = wandb.init(project=project_name, config=flow_data.get('config'))
+        # wandb.log({'chainforge_flow': flow_data})
+        # run.finish()
+
+        return jsonify({'message': 'Export request received. WandB integration coming soon!'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
 @app.route('/api/exportFlowBundle', methods=['POST'])
 def export_flow_bundle():
     """

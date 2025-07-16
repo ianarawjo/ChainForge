@@ -2015,3 +2015,24 @@ export async function saveGlobalConfig(
       // Soft fail
     });
 }
+
+export async function exportToWandB(
+  flowData: Dict,
+  apiKey: string,
+  projectName: string,
+): Promise<void> {
+  try {
+    const response = await axios.post(`${FLASK_BASE_URL}api/exportToWandB`, {
+      flowData,
+      apiKey,
+      projectName,
+    });
+    if (response.data.error) {
+      throw new Error(response.data.error);
+    }
+  } catch (error) {
+    throw new Error(
+      `Error exporting to Weights & Biases: ${(error as Error).message}`,
+    );
+  }
+}

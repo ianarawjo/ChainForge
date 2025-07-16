@@ -118,6 +118,7 @@ import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 import RequestClarificationModal, {
   RequestClarificationModalProps,
 } from "./RequestClarificationModal";
+import { useExportToWandB } from "./components/ExportToWandB"; // Import the new hook
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -333,6 +334,26 @@ const App = () => {
   // Context menu for "Add Node +" list
   const { hideContextMenu } = useContextMenu();
 
+  const handleError = useCallback(
+    (err: Error | string) => {
+      const msg = typeof err === "string" ? err : err.message;
+      setIsLoading(false);
+      setWaitingForShare(false);
+      if (showAlert) showAlert(msg);
+      console.error(msg);
+    },
+    [showAlert],
+  );
+
+  // Use the custom hook for Weights & Biases export
+  const { handleExportToWandB: callExportToWandBFunc, ProjectNameModal } =
+    useExportToWandB({
+      showAlert: showAlert || (() => {}), // Ensure showAlert is a function
+      rfInstance,
+      nodes,
+      handleError,
+    });
+
   const exportMenuItems = useMemo(() => {
     // All initial nodes available in ChainForge
     const initNodes = [
@@ -348,11 +369,11 @@ const App = () => {
         title: "Weave W&B",
         icon: nodeEmojis.exportWandB,
         tooltip: "Export to weights and biases weave platform",
-        onClick: () => handleExportToWandB(),
+        onClick: () => callExportToWandBFunc(), // Corrected call
       },
     ] as NestedMenuItemProps[];
     return initNodes;
-  }, []);
+  }, [callExportToWandBFunc]);
   // Add Nodes list
   const addNodesMenuItems = useMemo(() => {
     // All initial nodes available in ChainForge
@@ -652,17 +673,6 @@ const App = () => {
   const onClickSettings = () => {
     if (settingsModal && settingsModal.current) settingsModal.current.trigger();
   };
-
-  const handleError = useCallback(
-    (err: Error | string) => {
-      const msg = typeof err === "string" ? err : err.message;
-      setIsLoading(false);
-      setWaitingForShare(false);
-      if (showAlert) showAlert(msg);
-      console.error(msg);
-    },
-    [showAlert],
-  );
 
   /**
    * SAVING / LOADING, IMPORT / EXPORT (from JSON)
@@ -1556,6 +1566,7 @@ const App = () => {
           ref={examplesModal}
           handleOnSelect={onSelectExampleFlow}
         />
+        {ProjectNameModal}
         {flowSidebar}
 
         {/* <Modal title={'Welcome to ChainForge'} size='400px' opened={welcomeModalOpened} onClose={closeWelcomeModal} yOffset={'6vh'} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
