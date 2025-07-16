@@ -47,9 +47,6 @@ export const useExportToWandB = ({
 
       try {
         await callExportToWandBBackend(cforge_data, apiKeys.WandB, projectName);
-        if (showAlert) {
-          showAlert("Flow successfully exported to Weights & Biases!");
-        }
       } catch (error) {
         handleError(error as Error);
       }

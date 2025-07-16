@@ -14,6 +14,7 @@ from platformdirs import user_data_dir
 
 # RAG-specific imports
 from markitdown import MarkItDown
+from chainforge.providers.wandb import export_to_weave
 
 
 """ =================
@@ -1078,14 +1079,8 @@ def export_to_wandb():
         print(f"Received request to export to WandB project: {project_name}")
         print(f"Flow data size: {len(json.dumps(flow_data))} bytes")
         print(f"The api_key for wandb: {api_key}")
-        # You would typically use the wandb library here, e.g.:
-        # import wandb
-        # wandb.login(key=api_key)
-        # run = wandb.init(project=project_name, config=flow_data.get('config'))
-        # wandb.log({'chainforge_flow': flow_data})
-        # run.finish()
-
-        return jsonify({'message': 'Export request received. WandB integration coming soon!'}), 200
+        response = export_to_weave(flow_data, project_name, api_key)
+        return jsonify(response)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
