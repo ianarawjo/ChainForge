@@ -35,7 +35,6 @@ def resolve_string_references(data_item, string_cache):
 
 def log_to_weave(data, cforge_filename="test1"):
     """Log the .cforge file data to Weave using EvaluationLogger"""
-
     cache = data.get('cache', {})
     string_cache = cache.get('__s', []) # Get the string cache
     
@@ -52,8 +51,7 @@ def log_to_weave(data, cforge_filename="test1"):
         eval_results = cache.get(eval_key, [])
 
         if not eval_results:
-            print(f"No evaluation results found for {eval_key} in cache.")
-            continue
+            raise Exception("No evaluation results found in cache. Please run the evaluators.")
 
         # Determine model and dataset names dynamically from the first evaluation result
         first_eval_result = eval_results[0]
@@ -133,6 +131,6 @@ def export_to_weave(data, project_name, api_key=""):
         weave.init(project_name)
         log_to_weave(data)
 
-        return {"success": True, "message": "Successfully exported to Weights & Biases"}
+        return {"success": True, "message": "Successfully exported to W&B Weave"}
     except Exception as e:
-        return {"success": False, "message": f"Error exporting to Weights & Biases: {str(e)}"} 
+        return {"success": False, "message": f"Error exporting to W&B Weave: {str(e)}"} 

@@ -1065,19 +1065,23 @@ def media_to_text(uid):
 @app.route('/api/exportToWandB', methods=['POST'])
 def export_to_wandb():
     try:
-        data = request.get_json()
+
+        data = request.json
+
         if not data:
             return jsonify({"success": False, "message": "No JSON payload received."}), 400
 
-        flow_data = data.get("flow", {})
-        project_name = data.get("projectName", "my-chainforge-test-project")
-        api_key = data.get("apiKey", "")
-        
+        flow_data = data.get('flowData')
+        api_key = data.get('apiKey')
+        project_name = data.get('projectName')
         # Ensure that flow_data is not empty before proceeding
         if not flow_data:
             return jsonify({"success": False, "message": "No flow data provided in the request."}), 400
 
+        print(api_key, project_name)
+
         response = export_to_weave(flow_data, project_name, api_key)
+        print(response)
         return jsonify(response)
 
     except Exception as e:

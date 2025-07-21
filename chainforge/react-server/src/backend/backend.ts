@@ -2020,7 +2020,7 @@ export async function exportToWandB(
   flowData: Dict,
   apiKey: string,
   projectName: string,
-): Promise<void> {
+): Promise<{ success: boolean; message: string }> {
   try {
     const response = await axios.post(`${FLASK_BASE_URL}api/exportToWandB`, {
       flowData,
@@ -2028,11 +2028,16 @@ export async function exportToWandB(
       projectName,
     });
     if (response.data.error) {
-      throw new Error(response.data.error);
+      return { success: false, message: response.data.error };
     }
+    return {
+      success: true,
+      message: response.data.message || "Export successful",
+    };
   } catch (error) {
-    throw new Error(
-      `Error exporting to Weights & Biases: ${(error as Error).message}`,
-    );
+    return {
+      success: false,
+      message: `Error exporting to Weights & Biases: ${(error as Error).message}`,
+    };
   }
 }
