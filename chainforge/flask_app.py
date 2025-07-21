@@ -14,7 +14,7 @@ from platformdirs import user_data_dir
 
 # RAG-specific imports
 from markitdown import MarkItDown
-from chainforge.providers.wandb import export_to_weave
+from chainforge.providers.cf_to_weave import export_to_weave
 
 
 """ =================
@@ -1064,25 +1064,26 @@ def media_to_text(uid):
 
 @app.route('/api/exportToWandB', methods=['POST'])
 def export_to_wandb():
-    """Export a ChainForge flow to Weights & Biases."""
     try:
-        data = request.json
-        flow_data = data.get('flowData')
-        api_key = data.get('apiKey')
-        project_name = data.get('projectName')
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "No JSON payload received."}), 400
 
-        if not flow_data or not api_key or not project_name:
-            return jsonify({'error': 'Missing flowData, apiKey, or projectName'}), 400
+        flow_data = data.get("flow", {})
+        project_name = data.get("projectName", "my-chainforge-test-project")
+        api_key = data.get("apiKey", "")
+        
+        # Ensure that flow_data is not empty before proceeding
+        if not flow_data:
+            return jsonify({"success": False, "message": "No flow data provided in the request."}), 400
 
-        # TODO: Implement actual Weights & Biases export logic here
-        # For now, just log and return success
-        print(f"Received request to export to WandB project: {project_name}")
-        print(f"Flow data size: {len(json.dumps(flow_data))} bytes")
-        print(f"The api_key for wandb: {api_key}")
         response = export_to_weave(flow_data, project_name, api_key)
         return jsonify(response)
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        # Catch any unexpected errors and return a consistent error message
+        print(f"Error in /api/exportToWandB: {e}", file=sys.stderr)
+        return jsonify({"success": False, "message": f"An unexpected error occurred: {str(e)}"}), 500
 
 
 

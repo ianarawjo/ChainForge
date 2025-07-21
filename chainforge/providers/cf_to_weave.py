@@ -1,0 +1,138 @@
+
+import os
+import json
+import re
+from pprint import pprint
+from datetime import datetime
+import hashlib
+
+import weave
+from weave import EvaluationLogger
+
+def sanitize_name(name):
+    """Sanitize a name to be valid for Weave (alphanumeric and underscores only)"""
+    # Replace hyphens and other invalid chars with underscores
+    sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+    # Ensure it starts with a letter or underscore
+    if sanitized and not sanitized[0].isalpha() and sanitized[0] != '_':
+        sanitized = 'model_' + sanitized
+    return sanitized
+
+def resolve_string_references(data_item, string_cache):
+    """Recursively resolves integer references in data_item using the string_cache."""
+    if isinstance(data_item, int):
+        # Try to fetch the string from __s using index, otherwise return the integer itself
+        try:
+            return string_cache[data_item]
+        except (IndexError, TypeError):
+            return data_item
+    elif isinstance(data_item, dict):
+        return {k: resolve_string_references(v, string_cache) for k, v in data_item.items()}
+    elif isinstance(data_item, list):
+        return [resolve_string_references(elem, string_cache) for elem in data_item]
+    else:
+        return data_item
+
+def log_to_weave(data, cforge_filename="test1"):
+    """Log the .cforge file data to Weave using EvaluationLogger"""
+
+    cache = data.get('cache', {})
+    string_cache = cache.get('__s', []) # Get the string cache
+    
+    # Use regex to find all evaluation keys in cache
+    eval_keys = [key for key in cache.keys() if re.search(r'Eval', key, re.IGNORECASE) and key.endswith('.json')]
+    
+    if not eval_keys:
+        raise Exception("The cforge flow cannot be exported to weave because there are no evaluation nodes found.")
+
+    print(f"Found {len(eval_keys)} evaluation keys: {eval_keys}")
+
+    # Loop through each evaluation key
+    for eval_key in eval_keys:
+        eval_results = cache.get(eval_key, [])
+
+        if not eval_results:
+            print(f"No evaluation results found for {eval_key} in cache.")
+            continue
+
+        # Determine model and dataset names dynamically from the first evaluation result
+        first_eval_result = eval_results[0]
+        llm_info = first_eval_result.get('llm', {})
+        
+        # Handle case where llm_info can be either a string or dict
+        if isinstance(llm_info, str):
+            raw_model_name = llm_info
+        elif isinstance(llm_info, dict):
+            raw_model_name = llm_info.get('name', 'unknown_model')
+        else:
+            raw_model_name = 'unknown_model'
+            
+        model_name = sanitize_name(raw_model_name)  # Sanitize the model name
+        dataset_name = f"chainforge_{cforge_filename}"
+        
+        raw_eval_logger_name = eval_key.replace('.json', '')
+        eval_logger_name = sanitize_name(raw_eval_logger_name)  # Sanitize the eval logger name
+
+        print(f"Processing evaluation: {eval_logger_name}")
+        print(f"Model name: {raw_model_name} -> {model_name}")
+        print(f"Eval Logger name: {raw_eval_logger_name} -> {eval_logger_name}")
+
+        # Initialize EvaluationLogger
+        eval_logger = EvaluationLogger(
+            model=model_name,
+            dataset=dataset_name,
+            name=eval_logger_name
+        )
+
+        # Iterate through evaluation results and log each prediction
+        for eval_result in eval_results:
+            raw_inputs = eval_result.get('vars', {})
+            raw_outputs = eval_result.get('responses', [''])[0] # Take the first response
+            score = eval_result.get('eval_res', {}).get('items', [None])[0] # Take the first score
+            
+            # Resolve string references for inputs and outputs
+            resolved_inputs = resolve_string_references(raw_inputs, string_cache)
+            # Ensure inputs is explicitly a dictionary
+            if isinstance(resolved_inputs, dict):
+                inputs = resolved_inputs
+            else:
+                # This case should ideally not happen if 'vars' is always a dict
+                print(f"Warning: Resolved inputs for {eval_key} is not a dictionary. Converting to empty dict.")
+                inputs = {}
+
+            outputs = resolve_string_references(raw_outputs, string_cache)
+
+            # Log the prediction input and output
+            pred_logger = eval_logger.log_prediction(
+                inputs=inputs,
+                output=outputs
+            )
+
+            # Log the score if available
+            if score is not None:
+                pred_logger.log_score(
+                    scorer=eval_logger_name, 
+                    score=score
+                )
+            
+            pred_logger.finish()
+
+        # Log a summary for the evaluation run
+        eval_logger.log_summary({
+            "total_evaluations": len(eval_results),
+            "evaluation_type": eval_logger_name
+        })
+
+        print(f"Successfully logged {len(eval_results)} evaluations for '{eval_logger_name}' to Weave")
+
+def export_to_weave(data, project_name, api_key=""):
+    try:
+        # Set wandb api key
+        os.environ['WANDB_API_KEY'] = api_key
+        # Initialize Weave
+        weave.init(project_name)
+        log_to_weave(data)
+
+        return {"success": True, "message": "Successfully exported to Weights & Biases"}
+    except Exception as e:
+        return {"success": False, "message": f"Error exporting to Weights & Biases: {str(e)}"} 

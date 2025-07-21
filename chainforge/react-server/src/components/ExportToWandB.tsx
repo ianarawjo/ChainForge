@@ -46,9 +46,14 @@ export const useExportToWandB = ({
       if (!cforge_data) return;
 
       try {
-        await callExportToWandBBackend(cforge_data, apiKeys.WandB, projectName);
+        const response = await callExportToWandBBackend(cforge_data, apiKeys.WandB, projectName);
+        if (response.success) {
+          showAlert(`Success: ${response.message}`);
+        } else {
+          showAlert(`Error: ${response.message}`);
+        }
       } catch (error) {
-        handleError(error as Error);
+        showAlert(`An unexpected error occurred: ${(error as Error).message}`);
       }
     },
     [apiKeys.WandB, showAlert, rfInstance, nodes, exportCache, handleError],
