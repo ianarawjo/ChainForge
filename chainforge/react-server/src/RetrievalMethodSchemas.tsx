@@ -598,6 +598,182 @@ export const ClusteredEmbeddingSchema: ModelSettingsDict = {
 };
 
 /**
+ * LanceDB Vectorstore
+ */
+export const LANCEDBSchema: ModelSettingsDict = {
+  fullName: "LanceDB Vectorstore",
+  description:
+    "Persistent vector storage using LanceDB for efficient local similarity search.",
+  schema: {
+    type: "object",
+    required: [
+      "top_k",
+      "distance_metric",
+      "dbPath",
+      "tableName",
+      "search_method"
+    ],
+    properties: {
+      shortName: {
+        type: "string",
+        default: "LanceDB Vectorstore",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+      },
+      top_k: {
+        type: "number",
+        default: 10,
+        title: "Top K Results",
+        description:
+          "The number of top matching results to retrieve from the LanceDB index.",
+      },
+      distance_metric: {
+        type: "string",
+        default: "l2",
+        title: "Distance Metric",
+        enum: ["l2", "cosine", "dot"],
+        description:
+          "Select the similarity measure used in LanceDB: L2 (Euclidean), Cosine, or Dot Product.",
+      },
+      dbPath: {
+        type: "string",
+        default: "",
+        title: "LanceDB Path",
+        description:
+          "The file path where the LanceDB database will be saved or loaded from.",
+      },
+      tableName: {
+        type: "string",
+        default: "embeddings",
+        title: "Table Name",
+        description:
+          "Name of the table to use for vector storage within the LanceDB database.",
+      },
+      search_method: {
+        type: "string",
+        default: "similarity",
+        title: "Search Method",
+        enum: ["similarity", "mmr", "hybrid"],
+        description:
+          "Choose the search method: standard similarity, Maximum Marginal Relevance (mmr), or hybrid (vector + keyword).",
+      },
+      lambda_param: {
+        type: "number",
+        default: 0.5,
+        minimum: 0,
+        maximum: 1,
+        step: 0.01,
+        title: "MMR Lambda Parameter",
+        description:
+          "Balance between relevance and diversity for MMR search (only used if search_method is 'mmr').",
+      },
+      keyword: {
+        type: "string",
+        default: "",
+        title: "Hybrid Search Keyword",
+        description:
+          "Keyword to use for hybrid search (only used if search_method is 'hybrid').",
+      },
+      blend: {
+        type: "number",
+        default: 0.5,
+        minimum: 0,
+        maximum: 1,
+        step: 0.01,
+        title: "Hybrid Blend Parameter",
+        description:
+          "Balance between vector and keyword scores for hybrid search (only used if search_method is 'hybrid').",
+      },
+      filters: {
+        type: "string",
+        default: "",
+        title: "LanceDB Filters",
+        description:
+          "Optional LanceDB filter expression to restrict the search.",
+      },
+    },
+  },
+  uiSchema: {
+    shortName: {
+      "ui:widget": "text",
+      "ui:options": {
+        placeholder: "Custom name for your retrieval method",
+      },
+    },
+    top_k: {
+      "ui:widget": "range",
+      "ui:options": {
+        min: 1,
+        max: 20,
+        step: 1,
+      },
+    },
+    distance_metric: {
+      "ui:widget": "select",
+      "ui:options": {
+        enumOptions: [
+          { label: "L2 (Euclidean Distance)", value: "l2" },
+          { label: "Cosine Similarity", value: "cosine" },
+          { label: "Dot Product", value: "dot" },
+        ],
+      },
+    },
+    dbPath: {
+      "ui:widget": "text",
+      "ui:options": {
+        placeholder: "Enter the path to the LanceDB database",
+      },
+    },
+    tableName: {
+      "ui:widget": "text",
+      "ui:options": {
+        placeholder: "Table name (default: embeddings)",
+      },
+    },
+    search_method: {
+      "ui:widget": "select",
+      "ui:options": {
+        enumOptions: [
+          { label: "Similarity", value: "similarity" },
+          { label: "Maximum Marginal Relevance (MMR)", value: "mmr" },
+          { label: "Hybrid (vector + keyword)", value: "hybrid" },
+        ],
+      },
+    },
+    lambda_param: {
+      "ui:widget": "range",
+      "ui:options": {
+        min: 0,
+        max: 1,
+        step: 0.01,
+      },
+    },
+    keyword: {
+      "ui:widget": "text",
+      "ui:options": {
+        placeholder: "Keyword for hybrid search",
+      },
+    },
+    blend: {
+      "ui:widget": "range",
+      "ui:options": {
+        min: 0,
+        max: 1,
+        step: 0.01,
+      },
+    },
+    filters: {
+      "ui:widget": "text",
+      "ui:options": {
+        placeholder: "Optional LanceDB filter expression",
+      },
+    },
+  },
+  postprocessors: {},
+};
+
+/**
  * FAISS Vectorstore
  */
 export const FAISSSchema: ModelSettingsDict = {
@@ -726,7 +902,8 @@ export const RetrievalMethodSchemas: {
   manhattan: ManhattanDistanceSchema,
   euclidean: EuclideanDistanceSchema,
   clustered: ClusteredEmbeddingSchema,
-  faiss: FAISSSchema,
+  faiss_vector_store: FAISSSchema,
+  lancedb_vector_store: LANCEDBSchema,
 };
 
 // Method groupings for the menu
@@ -809,10 +986,18 @@ export const retrievalMethodGroups = [
     label: "Vectorstores",
     items: [
       {
-        baseMethod: "faiss",
+        baseMethod: "faiss_vector_store",
         methodName: "FAISS Vectorstore",
         library: "FAISS",
         emoji: "💾",
+        group: "Vectorstores",
+        needsEmbeddingModel: true,
+      },
+      {
+        baseMethod: "lancedb_vector_store",
+        methodName: "LanceDB Vectorstore",
+        library: "LanceDB",
+        emoji: "🗄️",
         group: "Vectorstores",
         needsEmbeddingModel: true,
       },
