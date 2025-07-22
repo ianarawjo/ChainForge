@@ -22,6 +22,11 @@ export const embeddingProviders = [
     ],
   },
   {
+    label: "🔷 Azure OpenAI Embeddings",
+    value: "azure-openai",
+    models: [],
+  },
+  {
     label: "💬 Cohere Embeddings",
     value: "cohere",
     models: [
@@ -618,14 +623,14 @@ export const FAISSSchema: ModelSettingsDict = {
       },
       top_k: {
         type: "number",
-        default: 5,
+        default: 10,
         title: "Top K Results",
         description:
           "The number of top matching results to retrieve from the FAISS index.",
       },
       similarity_threshold: {
         type: "number",
-        default: 50,
+        default: 0,
         title: "Similarity Threshold (%)",
         minimum: 0,
         maximum: 100,
@@ -709,278 +714,6 @@ export const FAISSSchema: ModelSettingsDict = {
   postprocessors: {},
 };
 
-/**
- * Pinecone Vectorstore
- */
-export const PineconeSchema: ModelSettingsDict = {
-  fullName: "Pinecone Vectorstore",
-  description:
-    "Persistent vector storage using Pinecone for scalable and efficient similarity search.",
-  schema: {
-    type: "object",
-    required: [
-      "top_k",
-      "similarity_threshold",
-      "pineconeMode",
-      "pineconeIndex",
-      "pineconeApiKey",
-      "pineconeEnvironment",
-      "metric",
-      "shortName",
-    ],
-    properties: {
-      shortName: {
-        type: "string",
-        default: "Pinecone Vectorstore",
-        title: "Nickname",
-        description:
-          "Unique identifier to appear in ChainForge. Keep it short.",
-      },
-      top_k: {
-        type: "number",
-        default: 5,
-        title: "Top K Results",
-        description: "Number of top similar results to retrieve from Pinecone.",
-      },
-      similarity_threshold: {
-        type: "number",
-        default: 50,
-        title: "Similarity Threshold (%)",
-        minimum: 0,
-        maximum: 100,
-        step: 1,
-        description:
-          "Minimum similarity percentage (0-100) required for a result to be considered relevant.",
-      },
-      pineconeMode: {
-        type: "string",
-        default: "create",
-        title: "Pinecone Mode",
-        enum: ["create", "load"],
-        description:
-          "Select whether to create a new Pinecone index or load an existing one. - ⚠️ Warning: Using 'create' will overwrite an existing vector store with the same name.",
-      },
-      pineconeIndex: {
-        type: "string",
-        default: "default-index",
-        title: "Pinecone Index Name",
-        description: "The name of the Pinecone index where vectors are stored.",
-      },
-      pineconeApiKey: {
-        type: "string",
-        default: "",
-        title: "Pinecone API Key",
-        description: "Your Pinecone API Key to access the vector database.",
-      },
-      pineconeEnvironment: {
-        type: "string",
-        default: "us-east-1",
-        title: "Pinecone Environment",
-        description:
-          "The Pinecone region where your index is hosted (e.g., 'us-west1-gcp').",
-      },
-      metric: {
-        type: "string",
-        default: "cosine",
-        title: "Distance Metric",
-        enum: ["cosine", "l2", "dotproduct"],
-        description:
-          "Select the similarity measure used for retrieval: Cosine, Euclidean, or Dot Product.",
-      },
-      namespace: {
-        type: "string",
-        default: "",
-        title: "Namespace",
-        description:
-          "Optional: Use namespaces to separate different sets of vectors in the same index.",
-      },
-    },
-  },
-  uiSchema: {
-    shortName: {
-      "ui:widget": "text",
-      "ui:options": {
-        placeholder: "Custom name for your retrieval method",
-      },
-    },
-    top_k: {
-      "ui:widget": "range",
-      "ui:options": {
-        min: 1,
-        max: 20,
-        step: 1,
-      },
-    },
-    similarity_threshold: {
-      "ui:widget": "range",
-      "ui:options": {
-        min: 0,
-        max: 100,
-        step: 1,
-      },
-    },
-    pineconeMode: {
-      "ui:widget": "select",
-      "ui:options": {
-        enumOptions: [
-          { label: "Create a new Pinecone index", value: "create" },
-          { label: "Load an existing Pinecone index", value: "load" },
-          { label: "Use an existing Pinecone index", value: "use" },
-        ],
-      },
-    },
-    pineconeIndex: {
-      "ui:widget": "text",
-      "ui:options": {
-        placeholder: "Enter the Pinecone index name",
-      },
-    },
-    pineconeApiKey: {
-      "ui:widget": "password",
-      "ui:options": {
-        placeholder: "Enter your Pinecone API Key",
-      },
-    },
-    pineconeEnvironment: {
-      "ui:widget": "text",
-      "ui:options": {
-        placeholder: "Enter Pinecone region (e.g., us-west1-gcp)",
-      },
-    },
-    metric: {
-      "ui:widget": "select",
-      "ui:options": {
-        enumOptions: [
-          { label: "Cosine Similarity", value: "cosine" },
-          { label: "Euclidean Distance", value: "l2" },
-          { label: "Dot Product", value: "dotproduct" },
-        ],
-      },
-    },
-    namespace: {
-      "ui:widget": "text",
-      "ui:options": {
-        placeholder:
-          "Optional: Specify a namespace (leave empty if not needed)",
-      },
-    },
-  },
-  postprocessors: {},
-};
-
-/**
- * ChromaDB Vectorstore
- *
- */
-export const ChromaDBSchema: ModelSettingsDict = {
-  fullName: "ChromaDB Vectorstore",
-  description: "Persistent or in-memory vector storage using ChromaDB",
-  schema: {
-    type: "object",
-    required: ["top_k", "similarity_threshold", "chromaMode"],
-    properties: {
-      shortName: {
-        type: "string",
-        default: "ChromaDB Vectorstore",
-        title: "Nickname",
-        description:
-          "Unique identifier to appear in ChainForge. Keep it short.",
-      },
-      top_k: {
-        type: "number",
-        default: 5,
-        title: "Top K Results",
-        description:
-          "The number of closest matches to retrieve during a query.",
-      },
-      similarity_threshold: {
-        type: "number",
-        default: 50,
-        title: "Similarity Threshold (%)",
-        minimum: 0,
-        maximum: 100,
-        step: 1,
-        description:
-          "Minimum similarity percentage (0-100) required for a result to be considered relevant.",
-      },
-      chromaMode: {
-        type: "string",
-        default: "memory",
-        title: "ChromaDB Mode",
-        enum: ["memory", "persistent"],
-        description:
-          "Defines whether ChromaDB operates in memory mode (non-persistent) or **persistent mode (data is saved).",
-      },
-      chromaPersistDir: {
-        type: "string",
-        default: "",
-        title: "Persistence Directory (if persistent mode)",
-        description:
-          "Directory path where ChromaDB will store vectors when using persistent mode.",
-      },
-      chromaCollection: {
-        type: "string",
-        default: "default_collection",
-        title: "Collection Name",
-        description:
-          "Name of the ChromaDB collection where vectors will be stored and retrieved.",
-      },
-      metric: {
-        type: "string",
-        default: "cosine",
-        title: "Distance Metric",
-        enum: ["cosine", "l2", "ip"],
-        description:
-          "Select the similarity measure used for retrieval:\n- Cosine Similarity: Measures the angle between vectors.\n- Euclidean Distance (L2): Measures absolute distance.\n- Dot Product (IP): Measures vector projection.",
-      },
-    },
-  },
-  uiSchema: {
-    shortName: {
-      "ui:widget": "text",
-      "ui:options": {
-        placeholder: "Custom name for your retrieval method",
-      },
-    },
-    top_k: {
-      "ui:widget": "range",
-      "ui:options": {
-        min: 1,
-        max: 20,
-        step: 1,
-      },
-    },
-    similarity_threshold: {
-      "ui:widget": "range",
-      "ui:options": {
-        min: 0,
-        max: 100,
-        step: 1,
-      },
-    },
-    chromaMode: {
-      "ui:widget": "select",
-    },
-    chromaPersistDir: {
-      "ui:widget": "text",
-    },
-    chromaCollection: {
-      "ui:widget": "text",
-    },
-    metric: {
-      "ui:widget": "select",
-      "ui:options": {
-        enumOptions: [
-          { label: "Cosine Similarity", value: "cosine" },
-          { label: "Euclidean Distance", value: "l2" },
-          { label: "Dot Product", value: "ip" },
-        ],
-      },
-    },
-  },
-  postprocessors: {},
-};
-
 // Combined schema object for all retrieval methods
 export const RetrievalMethodSchemas: {
   [baseMethod: string]: ModelSettingsDict;
@@ -994,8 +727,6 @@ export const RetrievalMethodSchemas: {
   euclidean: EuclideanDistanceSchema,
   clustered: ClusteredEmbeddingSchema,
   faiss: FAISSSchema,
-  pinecone: PineconeSchema,
-  chromadb: ChromaDBSchema,
 };
 
 // Method groupings for the menu
@@ -1082,22 +813,6 @@ export const retrievalMethodGroups = [
         methodName: "FAISS Vectorstore",
         library: "FAISS",
         emoji: "💾",
-        group: "Vectorstores",
-        needsEmbeddingModel: true,
-      },
-      {
-        baseMethod: "pinecone",
-        methodName: "Pinecone Vectorstore",
-        library: "Pinecone",
-        emoji: "🌲",
-        group: "Vectorstores",
-        needsEmbeddingModel: true,
-      },
-      {
-        baseMethod: "chromadb",
-        methodName: "ChromaDB Vectorstore",
-        library: "ChromaDB",
-        emoji: "🧠",
         group: "Vectorstores",
         needsEmbeddingModel: true,
       },

@@ -488,6 +488,150 @@ def handle_local_vector_store(chunk_objs, chunk_embeddings, query_objs, query_em
 
     return results
 
-# Pinecone 
 
-# ChromaDB
+@RetrievalMethodRegistry.register("faiss")
+def handle_faiss(
+    chunk_objs: List[Dict[str, Any]],
+    chunk_embeddings: List[List[float]],
+    query_objs: List[Dict[str, Any]],
+    query_embeddings: List[List[float]],
+    settings: Dict[str, Any],
+    db_path: str
+) -> List[Dict[str, Any]]:
+    """
+    Retrieve chunks using FAISS with L2 (Euclidean) or IP (Inner Product) metric.
+    """
+    import faiss
+    from langchain_community.vectorstores import FAISS
+    from langchain_community.docstore.in_memory import InMemoryDocstore
+    from langchain_core.documents import Document
+    from langchain_core.embeddings import Embeddings
+
+    class DummyEmbeddings(Embeddings):
+        """Dummy embedding class for pre-computed embeddings."""
+        def __init__(self, dimension: int):
+            if not isinstance(dimension, int) or dimension <= 0:
+                raise ValueError("Dimension must be a positive integer")
+            self.dimension = dimension
+            self._zero_vector = [0.0] * self.dimension
+
+        def embed_documents(self, texts: List[str]) -> List[List[float]]:
+            return [self._zero_vector for _ in texts]
+
+        def embed_query(self, text: str) -> List[float]:
+            return self._zero_vector
+
+    # --- Settings extraction and validation ---
+    top_k = int(settings.get("top_k", 5))
+    metric = settings.get("metric", "l2").lower()
+    if metric not in {"l2", "ip"}:
+        metric = "l2"
+    faiss_mode = settings.get("faissMode", "create").lower()
+    faiss_path = settings.get("faissPath", "")
+    try:
+        similarity_threshold = float(settings.get("similarity_threshold", 0)) / 100.0
+        similarity_threshold = max(0.0, min(1.0, similarity_threshold))
+    except Exception:
+        similarity_threshold = 0.0
+
+    # --- Input validation ---
+    if not chunk_objs or not chunk_embeddings or not query_objs or not query_embeddings:
+        return [{'query_object': q_obj, 'retrieved_chunks': []} for q_obj in query_objs]
+
+    try:
+        dimension = len(chunk_embeddings[0])
+        query_dimension = len(query_embeddings[0])
+        if dimension != query_dimension:
+            raise ValueError("Embedding dimension mismatch")
+    except Exception:
+        return [{'query_object': q_obj, 'retrieved_chunks': []} for q_obj in query_objs]
+
+    chunk_embeddings_np = np.array(chunk_embeddings, dtype='float32')
+    query_embeddings_np = np.array(query_embeddings, dtype='float32')
+    dummy_embeddings = DummyEmbeddings(dimension=dimension)
+
+    # --- FAISS index initialization ---
+    try:
+        if faiss_mode == "load":
+            index_file = os.path.join(faiss_path, "index.faiss")
+            pkl_file = os.path.join(faiss_path, "index.pkl")
+            if not (os.path.exists(index_file) and os.path.exists(pkl_file)):
+                return [{'query_object': q_obj, 'retrieved_chunks': []} for q_obj in query_objs]
+            vector_store = FAISS.load_local(
+                folder_path=faiss_path,
+                embeddings=dummy_embeddings,
+                index_name="index",
+                allow_dangerous_deserialization=True
+            )
+            loaded_dim = vector_store.index.d
+            if loaded_dim != dimension:
+                return [{'query_object': q_obj, 'retrieved_chunks': []} for q_obj in query_objs]
+            search_metric_type = vector_store.index.metric_type
+        elif faiss_mode == "create":
+            texts = [chunk.get("text", "") for chunk in chunk_objs]
+            metadatas = [
+                {"docTitle": chunk.get("docTitle", ""), "chunkId": chunk.get("chunkId", str(i))}
+                for i, chunk in enumerate(chunk_objs)
+            ]
+            if metric == "ip":
+                faiss.normalize_L2(chunk_embeddings_np)
+                index = faiss.IndexFlatIP(dimension)
+            else:
+                index = faiss.IndexFlatL2(dimension)
+            docstore = InMemoryDocstore({
+                str(i): Document(page_content=texts[i], metadata=metadatas[i]) for i in range(len(texts))
+            })
+            index_to_docstore_id = {i: str(i) for i in range(len(texts))}
+            index.add(chunk_embeddings_np)
+            vector_store = FAISS(
+                embedding_function=dummy_embeddings,
+                index=index,
+                docstore=docstore,
+                index_to_docstore_id=index_to_docstore_id
+            )
+            if faiss_path:
+                os.makedirs(faiss_path, exist_ok=True)
+                vector_store.save_local(folder_path=faiss_path, index_name="index")
+            search_metric_type = index.metric_type
+        else:
+            return [{'query_object': q_obj, 'retrieved_chunks': []} for q_obj in query_objs]
+    except Exception:
+        return [{'query_object': q_obj, 'retrieved_chunks': []} for q_obj in query_objs]
+
+    # --- Metric type interpretation ---
+    if search_metric_type == faiss.METRIC_L2:
+        search_metric = "l2"
+    elif search_metric_type == faiss.METRIC_INNER_PRODUCT:
+        search_metric = "ip"
+    else:
+        search_metric = "l2"
+
+    # --- Retrieval ---
+    results = []
+    for query_obj, q_embedding in zip(query_objs, query_embeddings_np):
+        retrieved = []
+        try:
+            query_vec = q_embedding.reshape(1, -1).astype('float32')
+            if search_metric == "ip":
+                faiss.normalize_L2(query_vec)
+            search_results = vector_store.similarity_search_with_score_by_vector(
+                embedding=query_vec[0], k=top_k
+            )
+            for doc, score in search_results:
+                if search_metric == "l2":
+                    similarity_score = 1.0 / (1.0 + max(0.0, float(score)))
+                else:  # IP (cosine similarity)
+                    similarity_score = max(0.0, min(1.0, float(score)))
+                if similarity_score >= similarity_threshold:
+                    retrieved.append({
+                        "text": doc.page_content,
+                        "similarity": round(similarity_score, 6),
+                        "docTitle": doc.metadata.get("docTitle", ""),
+                        "chunkId": doc.metadata.get("chunkId", ""),
+                    })
+            retrieved.sort(key=lambda x: x["similarity"], reverse=True)
+        except Exception:
+            retrieved = []
+        results.append({'query_object': query_obj, 'retrieved_chunks': retrieved})
+
+    return results
