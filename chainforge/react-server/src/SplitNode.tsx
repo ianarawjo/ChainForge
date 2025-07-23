@@ -41,6 +41,7 @@ const formattingOptions = [
   { value: ",", label: "commas (,)" },
   { value: "code", label: "code blocks" },
   { value: "paragraph", label: "paragraphs (md)" },
+  { value: ";", label: "semicon (;)" },
 ];
 
 /** Flattens markdown AST as dict to text (string) */
@@ -68,6 +69,11 @@ export const splitText = (
   else if (format === ",")
     return processCSV(s)
       .map((s) => _escapeBraces(s))
+      .filter((s) => s.length > 0);
+  else if (format === ";")
+    return s
+      .split(";")
+      .map((s) => _escapeBraces(s.trim()))
       .filter((s) => s.length > 0);
 
   // Other formatting rules require markdown parsing:
