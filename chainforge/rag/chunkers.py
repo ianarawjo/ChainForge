@@ -373,7 +373,7 @@ def chonkie_sdpm(text: str, **kwargs: Any) -> List[str]:
     # Advanced parameters
     similarity_window = int(kwargs.get("similarity_window", 1))
     min_sentences = int(kwargs.get("min_sentences", 1))
-    min_chunk_size = kwargs.get("min_chunk_size", 2)  # Default is 2 for SDPM
+    min_chunk_size = int(kwargs.get("min_chunk_size", 2))  # Default is 2 for SDPM
     min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 12))
     threshold_step = float(kwargs.get("threshold_step", 0.01))
     
