@@ -474,7 +474,7 @@ def chonkie_late(text: str, **kwargs: Any) -> List[str]:
 
 @ChunkingMethodRegistry.register("chonkie_neural")
 def chonkie_neural(text: str, **kwargs: Any) -> List[str]:
-    from chonkie import NeuralChunker
+    from chainforge.rag.custom_chunkers.neural_chunker_with_local_files import NeuralChunker
 
     # Basic parameters
     model = kwargs.get("model", "mirth/chonky_modernbert_base_1")
