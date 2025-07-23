@@ -16,7 +16,7 @@ from platformdirs import user_data_dir
 from chainforge.rag.chunkers import ChunkingMethodRegistry
 from chainforge.rag.retrievers import RetrievalMethodRegistry
 from chainforge.rag.embeddings import EmbeddingMethodRegistry
-from markitdown import MarkItDown
+# from markitdown import MarkItDown
 # import pymupdf
 # from docx import Document
 

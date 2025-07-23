@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import lancedb
 import hashlib, pickle
+import faiss
 
 
 class VectorStore(ABC):
@@ -136,7 +137,7 @@ class VectorStore(ABC):
         pass
 
 
-class LocalVectorStore(VectorStore):
+class LancedbVectorStore(VectorStore):
     """
     Vector store implementation using LanceDB for local vector storage.
     
@@ -600,3 +601,228 @@ class LocalVectorStore(VectorStore):
             print(f"Error clearing vector store: {e}")
             return False
 
+
+class FaissVectorStore(VectorStore):
+    """
+    Vector store implementation using FAISS for local vector storage.
+    Stores embeddings in a FAISS index and keeps texts/metadata in a sidecar file.
+    """
+
+    def __init__(self,
+                 db_path: str = "faissdb",
+                 embedding_func: Optional[callable] = None,
+                 index_name: str = "index",
+                 metric: str = "l2"):
+        """
+        Args:
+            db_path: Directory where FAISS index and metadata are stored
+            embedding_func: Optional function to generate embeddings
+            index_name: Name of the FAISS index file (without extension)
+            metric: 'l2' or 'ip' (inner product/cosine)
+        """
+
+        os.makedirs(db_path, exist_ok=True)
+        self.db_path = db_path
+        self.index_name = index_name
+        self.metric = metric.lower()
+        self.index_file = os.path.join(db_path, f"{index_name}.faiss")
+        self.meta_file = os.path.join(db_path, f"{index_name}_meta.pkl")
+        self.embedding_func = embedding_func
+
+        self.index = None
+        self.id_to_meta = {}  # id -> dict with text, metadata, vector index
+        self.ids = []         # list of ids in FAISS order
+
+        self._load()
+
+        super().__init__(embedding_func)
+
+    def _generate_id(self, text: str) -> str:
+        return hashlib.sha256(text.encode('utf-8')).hexdigest()
+
+    def _save(self):
+        if self.index is not None:
+            faiss.write_index(self.index, self.index_file)
+        with open(self.meta_file, "wb") as f:
+            pickle.dump({"id_to_meta": self.id_to_meta, "ids": self.ids}, f)
+
+    def _load(self):
+        if os.path.exists(self.index_file) and os.path.exists(self.meta_file):
+            self.index = faiss.read_index(self.index_file)
+            with open(self.meta_file, "rb") as f:
+                data = pickle.load(f)
+                self.id_to_meta = data.get("id_to_meta", {})
+                self.ids = data.get("ids", [])
+        else:
+            self.index = None
+            self.id_to_meta = {}
+            self.ids = []
+
+    def add(self, texts: List[str], embeddings: Optional[List[List[float]]] = None,
+            metadata: Optional[List[Dict[str, Any]]] = None) -> List[str]:
+        if not texts:
+            raise ValueError("No texts provided to add")
+        if metadata is None:
+            metadata = [{} for _ in range(len(texts))]
+        elif len(metadata) != len(texts):
+            raise ValueError("Number of metadata items must match number of texts")
+
+        doc_ids = [self._generate_id(text) for text in texts]
+
+        # Remove already existing IDs
+        new_texts, new_embeddings, new_metadata, new_doc_ids = [], [], [], []
+        for i, doc_id in enumerate(doc_ids):
+            if doc_id not in self.id_to_meta:
+                new_texts.append(texts[i])
+                new_metadata.append(metadata[i])
+                new_doc_ids.append(doc_id)
+                if embeddings is not None:
+                    new_embeddings.append(embeddings[i])
+
+        if not new_texts:
+            return doc_ids
+
+        # Compute embeddings if not provided
+        if embeddings is None:
+            if self.embedding_func is None:
+                raise ValueError("No embedding function provided and no embeddings given")
+            new_embeddings = self.embedding_func(new_texts)
+        if len(new_embeddings) != len(new_texts):
+            raise ValueError("Number of embeddings and texts must match")
+
+        # Prepare FAISS index
+        dim = len(new_embeddings[0])
+        if self.index is None:
+            if self.metric == "ip":
+                self.index = faiss.IndexFlatIP(dim)
+            else:
+                self.index = faiss.IndexFlatL2(dim)
+
+        # Add to FAISS
+        new_embeddings_np = np.array(new_embeddings).astype("float32")
+        if self.metric == "ip":
+            faiss.normalize_L2(new_embeddings_np)
+        self.index.add(new_embeddings_np)
+
+        # Update meta
+        start_idx = len(self.ids)
+        for i, doc_id in enumerate(new_doc_ids):
+            self.ids.append(doc_id)
+            self.id_to_meta[doc_id] = {
+                "text": new_texts[i],
+                "metadata": pickle.dumps(new_metadata[i]),
+                "vector_index": start_idx + i
+            }
+
+        self._save()
+        return doc_ids
+
+    def search(self, query: Union[str, List[float]], k: int = 5, **kwargs) -> List[Dict[str, Any]]:
+        if self.index is None or not self.ids:
+            return []
+
+        # Prepare query embedding
+        if isinstance(query, str):
+            if self.embedding_func is None:
+                raise ValueError("Embedding function not provided for string query")
+            query_emb = self.embedding_func([query])[0]
+        else:
+            query_emb = query
+
+        query_emb = np.array(query_emb, dtype="float32").reshape(1, -1)
+        if self.metric == "ip":
+            faiss.normalize_L2(query_emb)
+
+        D, I = self.index.search(query_emb, min(k, len(self.ids)))
+        results = []
+        for idx, dist in zip(I[0], D[0]):
+            if idx < 0 or idx >= len(self.ids):
+                continue
+            doc_id = self.ids[idx]
+            meta = self.id_to_meta[doc_id]
+            similarity = 1.0 / (1.0 + dist) if self.metric == "l2" else float(dist)
+            results.append({
+                "id": doc_id,
+                "text": meta["text"],
+                "similarity": similarity,
+                "metadata": pickle.loads(meta["metadata"])
+            })
+        results.sort(key=lambda x: x["similarity"], reverse=True)
+        return results
+
+    def get(self, doc_id: str) -> Optional[Dict[str, Any]]:
+        meta = self.id_to_meta.get(doc_id)
+        if meta is None:
+            return None
+        return {
+            "id": doc_id,
+            "text": meta["text"],
+            "embedding": None,  # Embedding not stored directly
+            "metadata": pickle.loads(meta["metadata"])
+        }
+
+    def delete(self, doc_ids: List[str]) -> bool:
+        if not doc_ids or self.index is None:
+            return True
+        # Remove from meta and ids
+        indices_to_remove = [self.ids.index(doc_id) for doc_id in doc_ids if doc_id in self.ids]
+        if not indices_to_remove:
+            return True
+        # Remove from FAISS by rebuilding index (FAISS does not support delete)
+        keep_indices = [i for i in range(len(self.ids)) if i not in indices_to_remove]
+        if not keep_indices:
+            self.index = None
+            self.ids = []
+            self.id_to_meta = {}
+            self._save()
+            return True
+        embeddings = self.index.reconstruct_n(0, len(self.ids))
+        new_embeddings = np.array([embeddings[i] for i in keep_indices]).astype("float32")
+        if self.metric == "ip":
+            faiss.normalize_L2(new_embeddings)
+            self.index = faiss.IndexFlatIP(new_embeddings.shape[1])
+        else:
+            self.index = faiss.IndexFlatL2(new_embeddings.shape[1])
+        self.index.add(new_embeddings)
+        # Update ids and meta
+        new_ids = [self.ids[i] for i in keep_indices]
+        new_id_to_meta = {doc_id: self.id_to_meta[doc_id] for doc_id in new_ids}
+        # Update vector_index in meta
+        for i, doc_id in enumerate(new_ids):
+            new_id_to_meta[doc_id]["vector_index"] = i
+        self.ids = new_ids
+        self.id_to_meta = new_id_to_meta
+        self._save()
+        return True
+
+    def update(self, doc_id: str, text: Optional[str] = None,
+               embedding: Optional[List[float]] = None,
+               metadata: Optional[Dict[str, Any]] = None) -> bool:
+        # Remove and re-add
+        current = self.get(doc_id)
+        if current is None:
+            return False
+        self.delete([doc_id])
+        new_text = text if text is not None else current["text"]
+        new_embedding = embedding if embedding is not None else None
+        new_metadata = metadata if metadata is not None else current["metadata"]
+        self.add([new_text], embeddings=[new_embedding] if new_embedding is not None else None,
+                 metadata=[new_metadata])
+        return True
+
+    def get_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
+        all_ids = self.ids[offset:offset + limit if limit is not None else None]
+        return [self.get(doc_id) for doc_id in all_ids]
+
+    def count(self) -> int:
+        return len(self.ids)
+
+    def clear(self) -> bool:
+        self.index = None
+        self.ids = []
+        self.id_to_meta = {}
+        if os.path.exists(self.index_file):
+            os.remove(self.index_file)
+        if os.path.exists(self.meta_file):
+            os.remove(self.meta_file)
+        return True
