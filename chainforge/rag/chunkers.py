@@ -411,7 +411,6 @@ def chonkie_sdpm(text: str, **kwargs: Any) -> List[str]:
         min_characters_per_sentence=min_characters_per_sentence,
         threshold_step=threshold_step,
         delim=delim,
-        include_delim=include_delim,
         skip_window=skip_window,
     )
 
