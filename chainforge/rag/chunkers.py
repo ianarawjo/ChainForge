@@ -200,10 +200,9 @@ def chonkie_token(text: str, **kwargs: Any) -> List[str]:
         tokenizer=tokenizer,  # Supports string identifiers
         chunk_size=chunk_size,    # Maximum tokens per chunk
         chunk_overlap=chunk_overlap,  # Overlap between chunks
-        return_type="texts",
     )
 
-    texts = chunker.chunk(text)
+    texts = [t.text for t in chunker.chunk(text)]
     return texts if texts else [text]
 
 @ChunkingMethodRegistry.register("chonkie_sentence")
@@ -237,10 +236,9 @@ def chonkie_sentence(text: str, **kwargs: Any) -> List[str]:
         min_characters_per_sentence=min_characters_per_sentence,
         delim=delim,  # Custom delimiters
         include_delim=include_delim,  # Include delimiters in the chunk
-        return_type="texts",
     )
 
-    texts = chunker.chunk(text)
+    texts = [t.text for t in chunker.chunk(text)]
     return texts if texts else [text]
 
 @ChunkingMethodRegistry.register("chonkie_recursive")
@@ -290,10 +288,9 @@ def chonkie_recursive(text: str, **kwargs: Any) -> List[str]:
         chunk_size=chunk_size,
         rules=rules,
         min_characters_per_chunk=min_characters_per_chunk,
-        return_type="texts",
     )
 
-    texts = chunker.chunk(text)
+    texts = [t.text for t in chunker.chunk(text)]
     return texts if texts else [text]
 
 @ChunkingMethodRegistry.register("chonkie_semantic")
@@ -303,6 +300,9 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
 
     # Basic parameters
     embedding_model = kwargs.get("embedding_model", "minishlab/potion-base-8M")
+    embedding_path = kwargs.get("embedding_local_path", '')
+    if embedding_path != '':
+        embedding_model = embedding_path
     chunk_size = int(kwargs.get("chunk_size", 512))
     threshold = kwargs.get("threshold", "auto")
     mode = kwargs.get("mode", "window")
@@ -350,11 +350,10 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
         min_characters_per_sentence=min_characters_per_sentence,
         threshold_step=threshold_step,
         delim=delim,
-        return_type="texts",  # Always return as texts to match other handlers
         **({} if min_chunk_size == 0 else {'min_chunk_size': min_chunk_size})
     )
 
-    texts = chunker.chunk(text)
+    texts = [t.text for t in chunker.chunk(text)]
     return texts if texts else [text]
 
 @ChunkingMethodRegistry.register("chonkie_sdpm")
@@ -364,6 +363,9 @@ def chonkie_sdpm(text: str, **kwargs: Any) -> List[str]:
 
     # Basic parameters
     embedding_model = kwargs.get("embedding_model", "minishlab/potion-base-8M")
+    embedding_path = kwargs.get("embedding_local_path", '')
+    if embedding_path != '':
+        embedding_model = embedding_path
     chunk_size = int(kwargs.get("chunk_size", 512))
     threshold = kwargs.get("threshold", "auto")
     mode = kwargs.get("mode", "window")
@@ -371,7 +373,7 @@ def chonkie_sdpm(text: str, **kwargs: Any) -> List[str]:
     # Advanced parameters
     similarity_window = int(kwargs.get("similarity_window", 1))
     min_sentences = int(kwargs.get("min_sentences", 1))
-    min_chunk_size = kwargs.get("min_chunk_size", 2)  # Default is 2 for SDPM
+    min_chunk_size = int(kwargs.get("min_chunk_size", 2))  # Default is 2 for SDPM
     min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 12))
     threshold_step = float(kwargs.get("threshold_step", 0.01))
     
@@ -409,12 +411,10 @@ def chonkie_sdpm(text: str, **kwargs: Any) -> List[str]:
         min_characters_per_sentence=min_characters_per_sentence,
         threshold_step=threshold_step,
         delim=delim,
-        include_delim=include_delim,
         skip_window=skip_window,
-        return_type="texts",
     )
 
-    texts = chunker.chunk(text)
+    texts = [t.text for t in chunker.chunk(text)]
     return texts if texts else [text]
 
 @ChunkingMethodRegistry.register("chonkie_late")
@@ -424,6 +424,9 @@ def chonkie_late(text: str, **kwargs: Any) -> List[str]:
 
     # Basic parameters
     embedding_model = kwargs.get("embedding_model", "sentence-transformers/all-MiniLM-L6-v2")
+    embedding_path = kwargs.get("embedding_local_path", '')
+    if embedding_path != '':
+        embedding_model = embedding_path
     chunk_size = int(kwargs.get("chunk_size", 512))
     min_characters_per_chunk = int(kwargs.get("min_characters_per_chunk", 24))
 
@@ -471,10 +474,13 @@ def chonkie_late(text: str, **kwargs: Any) -> List[str]:
 
 @ChunkingMethodRegistry.register("chonkie_neural")
 def chonkie_neural(text: str, **kwargs: Any) -> List[str]:
-    from chonkie import NeuralChunker
+    from chainforge.rag.custom_chunkers.neural_chunker_with_local_files import NeuralChunker
 
     # Basic parameters
     model = kwargs.get("model", "mirth/chonky_modernbert_base_1")
+    model_path = kwargs.get("model_local_path", '')
+    if model_path != '':
+        model = model_path
     device = kwargs.get("device", None)  # None will auto-detect the best available device
     min_characters_per_chunk = int(kwargs.get("min_characters_per_chunk", 10))
     

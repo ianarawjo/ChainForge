@@ -2,7 +2,8 @@ import math, os, heapq
 from typing import List, Any, Tuple, Dict
 import numpy as np
 from chainforge.rag.simple_preprocess import simple_preprocess
-from chainforge.rag.vector_stores import LocalVectorStore
+from chainforge.rag.vector_stores import LancedbVectorStore, FaissVectorStore
+
 
 # Define a registry for retrieval methods
 class RetrievalMethodRegistry:
@@ -439,8 +440,8 @@ def handle_clustered(chunk_objs, chunk_embeddings, query_objs, query_embeddings,
     return results
 
 
-@RetrievalMethodRegistry.register("local_vector_store")
-def handle_local_vector_store(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path):
+@RetrievalMethodRegistry.register("lancedb_vector_store")
+def handle_lancedb_vector_store(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path):
     """
     Retrieve chunks using a local vector store with LanceDB.
     """
@@ -458,7 +459,7 @@ def handle_local_vector_store(chunk_objs, chunk_embeddings, query_objs, query_em
         raise Exception("Error: query_objs or query_embeddings are empty.")
 
     # Create a local vector store (loading an existing one from disk if it exists)
-    vector_store = LocalVectorStore(
+    vector_store = LancedbVectorStore(
         db_path=db_path,
         embedding_func=None,
     )
@@ -488,6 +489,32 @@ def handle_local_vector_store(chunk_objs, chunk_embeddings, query_objs, query_em
 
     return results
 
-# Pinecone 
 
-# ChromaDB
+@RetrievalMethodRegistry.register("faiss_vector_store")
+def handle_faiss_vector_store(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path):
+    top_k = settings.get("top_k", 5)
+    metric = settings.get("metric", "l2")
+    vector_store = FaissVectorStore(
+        db_path=db_path,
+        embedding_func=None,
+        index_name="index",
+        metric=metric
+    )
+    # Ajout des documents (si besoin)
+    vector_store.add(
+        texts=[chunk.get("text", "") for chunk in chunk_objs],
+        embeddings=chunk_embeddings,
+        metadata=[{
+            "fill_history": chunk.get("fill_history", {}),
+            "metadata": chunk.get("metadata", {}),
+        } for chunk in chunk_objs],
+    )
+    # Recherche pour chaque requête
+    results = []
+    for query_obj, query_emb in zip(query_objs, query_embeddings):
+        res = vector_store.search(
+            query=query_emb if query_emb is not None else query_obj.get("text", ""),
+            k=top_k,
+        )
+        results.append({'query_object': query_obj, 'retrieved_chunks': res})
+    return results

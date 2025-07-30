@@ -167,7 +167,7 @@ export const ResponseBox: React.FC<ResponseBoxProps> = ({
     if (vars === undefined) return [];
     return Object.entries(vars).map(([varname, val]) => {
       const v = truncStr(
-        llmResponseDataToString(val).trim(),
+        (llmResponseDataToString(val) ?? '').trim(),
         truncLenForVars ?? 18,
       );
       return (

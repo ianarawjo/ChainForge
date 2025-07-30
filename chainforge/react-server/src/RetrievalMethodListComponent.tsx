@@ -72,20 +72,40 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       (p) => p.value === methodItem.embeddingProvider,
     );
     if (provider) {
-      // Clone the schema to avoid modifying the original
-      finalSchema = {
-        ...schema.schema,
-        properties: {
-          ...schema.schema.properties,
-          // Add the embedding model property with enum options from the selected provider
-          embeddingModel: {
-            type: "string",
-            title: "Embedding Model",
-            enum: provider.models,
-            default: provider.models[0],
+      if (provider.models && provider.models.length > 0) {
+        // Clone the schema to avoid modifying the original
+        finalSchema = {
+          ...schema.schema,
+          properties: {
+            ...schema.schema.properties,
+            // Add the embedding model property with enum options from the selected provider
+            embeddingModel: {
+              type: "string",
+              title: "Embedding Model",
+              enum: provider.models,
+              default: provider.models[0],
+            },
+            embeddingLocalPath: {
+              type: "string",
+              title: "Local path form embedding model (not required)",
+              description:
+                "Required only if you prefer to use local files instead of downloading the model automatically.",
+            },
           },
-        },
-      };
+        };
+      } else {
+        finalSchema = {
+          ...schema.schema,
+          properties: {
+            ...schema.schema.properties,
+            embeddingLocalPath: {
+              type: "string",
+              title: "Embedding Model Name",
+              description: "Specify the name of the embedding model to use.",
+            },
+          },
+        };
+      }
     }
   }
 

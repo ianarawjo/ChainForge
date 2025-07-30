@@ -10,21 +10,21 @@ export const OverlappingLangChainSchema: ModelSettingsDict = {
     type: "object",
     required: ["chunk_size", "chunk_overlap"],
     properties: {
-      chunk_size: { type: "number", default: 300, title: "Chunk Size" },
-      chunk_overlap: { type: "number", default: 50, title: "Overlap" },
+      chunk_size: { type: "number", default: 2000, title: "Chunk Size" },
+      chunk_overlap: { type: "number", default: 300, title: "Overlap" },
     },
   },
   uiSchema: {
     chunk_size: {
-      "ui:widget": "range", // HTML range input
+      "ui:widget": "updown", // HTML range input
       "ui:options": {
         min: 100,
-        max: 2000,
+        max: 5000,
         step: 50,
       },
     },
     chunk_overlap: {
-      "ui:widget": "range",
+      "ui:widget": "updown",
       "ui:options": {
         min: 0,
         max: 500,
@@ -102,10 +102,10 @@ export const OverlappingHuggingfaceTokenizerSchema: ModelSettingsDict = {
       "ui:widget": "select", // display as a dropdown
     },
     chunk_size: {
-      "ui:widget": "range",
+      "ui:widget": "updown",
       "ui:options": {
         min: 100,
-        max: 2000,
+        max: 5000,
         step: 50,
       },
     },
@@ -244,10 +244,10 @@ export const HybridRecursiveGensimSchema: ModelSettingsDict = {
   },
   uiSchema: {
     max_words: {
-      "ui:widget": "range",
+      "ui:widget": "updown",
       "ui:options": {
         min: 50,
-        max: 2000,
+        max: 5000,
         step: 50,
       },
     },
@@ -331,7 +331,7 @@ export const HybridRecursiveBERTopicSchema: ModelSettingsDict = {
       },
     },
     chunk_size: {
-      "ui:widget": "range",
+      "ui:widget": "updown",
       "ui:options": {
         min: 50,
         max: 2000,
@@ -518,6 +518,13 @@ export const ChonkieSemanticSchema: ModelSettingsDict = {
         description:
           "Model to use for embeddings. See Chonkie docs for options.",
       },
+       embedding_local_path: {
+        type: "string",
+        default: "",
+        title: "Embedding Local Path",
+        description:
+          "Local path for model to use for embeddings (only needed if cant download through Chonkie).",
+      },
       chunk_size: {
         type: "number",
         default: 512,
@@ -622,6 +629,13 @@ export const ChonkieSDPMSchema: ModelSettingsDict = {
         title: "Embedding Model",
         description:
           "Model to use for embeddings. See Chonkie docs for options.",
+      },
+      embedding_local_path: {
+        type: "string",
+        default: "",
+        title: "Embedding Local Path",
+        description:
+          "Local path for model to use for embeddings (only needed if cant download through Chonkie).",
       },
       chunk_size: {
         type: "number",
@@ -740,6 +754,13 @@ export const ChonkieLateSchema: ModelSettingsDict = {
         description:
           "Model to use for embeddings. See Chonkie docs for options.",
       },
+      embedding_local_path: {
+        type: "string",
+        default: "",
+        title: "Embedding Local Path",
+        description:
+          "Local path for model to use for embeddings (only needed if cant download through Chonkie).",
+      },
       chunk_size: {
         type: "number",
         default: 512,
@@ -791,6 +812,13 @@ export const ChonkieNeuralSchema: ModelSettingsDict = {
         default: "mirth/chonky_modernbert_base_1",
         title: "Model",
         description: "Neural chunking model to use",
+      },
+       model_local_path: {
+        type: "string",
+        default: "",
+        title: "Model Local Path",
+        description:
+          "Local path for model to use (only needed if cant download through Chonkie).",
       },
       min_characters_per_chunk: {
         type: "number",
