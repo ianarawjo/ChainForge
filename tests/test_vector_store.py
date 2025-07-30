@@ -2,7 +2,7 @@ import pytest
 import tempfile
 import os
 import numpy as np
-from chainforge.rag.vector_stores import LocalVectorStore
+from chainforge.rag.vector_stores import LancedbVectorStore
 
 class TestLocalVectorStore:
      
@@ -47,7 +47,7 @@ class TestLocalVectorStore:
         temp_dir = tmp_path / 'chainforge_test'
         temp_dir.mkdir(exist_ok=True)
         db_path = os.path.join(temp_dir, 'test_vector_store.db')
-        store = LocalVectorStore(db_path=db_path, embedding_func=dummy_embedder)
+        store = LancedbVectorStore(db_path=db_path, embedding_func=dummy_embedder)
         yield store
         # Cleanup
         # if os.path.exists(db_path):

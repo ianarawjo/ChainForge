@@ -16,7 +16,7 @@ from platformdirs import user_data_dir
 from chainforge.rag.chunkers import ChunkingMethodRegistry
 from chainforge.rag.retrievers import RetrievalMethodRegistry
 from chainforge.rag.embeddings import EmbeddingMethodRegistry
-# from markitdown import MarkItDown
+from markitdown import MarkItDown
 # import pymupdf
 # from docx import Document
 
@@ -478,9 +478,24 @@ def fetchOpenAIEval():
 
 @app.route('/app/fetchEnvironAPIKeys', methods=['POST'])
 def fetchEnvironAPIKeys():
-    import requests
-    keys = requests.get(f"http://{HOSTNAME}:{PORT}/api/getConfig/settings").json()
-    ret = jsonify(keys)
+    keymap = {
+        'OPENAI_API_KEY': 'OpenAI', 
+        'OPENAI_BASE_URL': 'OpenAI_BaseURL',
+        'ANTHROPIC_API_KEY': 'Anthropic', 
+        'PALM_API_KEY': 'Google', 
+        'HUGGINGFACE_API_KEY': 'HuggingFace',
+        'AZURE_OPENAI_KEY': 'Azure_OpenAI', 
+        'AZURE_OPENAI_ENDPOINT': 'Azure_OpenAI_Endpoint',
+        'ALEPH_ALPHA_API_KEY': 'AlephAlpha',
+        'AWS_ACCESS_KEY_ID': 'AWS_Access_Key_ID',
+        'AWS_SECRET_ACCESS_KEY': 'AWS_Secret_Access_Key',
+        'AWS_REGION': 'AWS_Region', 
+        'AWS_SESSION_TOKEN': 'AWS_Session_Token',
+        'TOGETHER_API_KEY': 'Together',
+        'DEEPSEEK_API_KEY': 'DeepSeek',
+    }
+    d = { alias: os.environ.get(key) for key, alias in keymap.items() }
+    ret = jsonify(d)
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
@@ -1447,6 +1462,7 @@ def retrieve():
     methods = data.get("methods", [])
     chunks = data.get("chunks", [])
     queries = data.get("queries", [])
+    api_keys = data.get("api_keys", [])
 
     queries = [{'text': q} if isinstance(q, str) else q for q in queries]
 
@@ -1579,8 +1595,8 @@ def retrieve():
                 
                 # Compute embeddings once for all methods using this model
                 chunk_texts = [c["text"] for c in chunk_group]
-                chunk_embeddings = embedder_func(chunk_texts, model_name, model_path)
-                query_embeddings = embedder_func([query.get("text", "") for query in queries], model_name, model_path)
+                chunk_embeddings = embedder_func(chunk_texts, model_name, model_path, api_keys)
+                query_embeddings = embedder_func([query.get("text", "") for query in queries], model_name, model_path, api_keys)
                 
             except Exception as e:
                 # Skip this embedder if there's an error
@@ -1590,7 +1606,7 @@ def retrieve():
             # Process each method with the same embeddings
             for method in methods:
                 method_id = method.get("id")
-                base_method = method.get("retrievalMethodSignature")
+                base_method = method.get("baseMethod")
                 method_name = method.get("methodName")
 
                 # A safe database path to use to store on local disk, if necessary

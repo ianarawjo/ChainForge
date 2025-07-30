@@ -1,16 +1,26 @@
 import os
 
+"""
+NOTE: The following API key names are passed in from the ChainForge settings:
 
-def get_keys(keys_name: list):
-    import requests
-    from chainforge.flask_app import HOSTNAME, PORT
+OpenAI: "",
+OpenAI_BaseURL: "",
+Anthropic: "",
+Google: "",
+Azure_OpenAI: "",
+Azure_OpenAI_Endpoint: "",
+HuggingFace: "",
+AlephAlpha: "",
+AlephAlpha_BaseURL: "",
+Ollama_BaseURL: "",
+AWS_Access_Key_ID: "",
+AWS_Secret_Access_Key: "",
+AWS_Session_Token: "",
+AWS_Region: "us-east-1",
+AmazonBedrock: JSON.stringify({ credentials: {}, region: "us-east-1" }),
+Together: "",
 
-    # get credential
-    keys = requests.get(f"http://{HOSTNAME}:{PORT}/api/getConfig/settings").json()
-
-    # return keys
-    return {key: keys.get(key) for key in keys_name}
-
+"""
 
 class EmbeddingMethodRegistry:
     _models = {}
@@ -33,7 +43,8 @@ class EmbeddingMethodRegistry:
 
 
 @EmbeddingMethodRegistry.register("huggingface")
-def huggingface_embedder(texts, model_name="sentence-transformers/all-mpnet-base-v2", path=None):
+def huggingface_embedder(texts, model_name="sentence-transformers/all-mpnet-base-v2", path=None, 
+                         api_keys=None):
     """
     Generate embeddings using HuggingFace Transformers.
     
@@ -82,7 +93,7 @@ def huggingface_embedder(texts, model_name="sentence-transformers/all-mpnet-base
 
 
 @EmbeddingMethodRegistry.register("openai")
-def openai_embedder(texts, model_name="text-embedding-ada-002", path=None):
+def openai_embedder(texts, model_name="text-embedding-ada-002", path=None, api_keys=None):
     """
     Generate embeddings using OpenAI Embeddings.
     
@@ -95,16 +106,17 @@ def openai_embedder(texts, model_name="text-embedding-ada-002", path=None):
         List of embeddings for each text
     """
     try:
-        import openai
+        from openai import OpenAI
+        client = OpenAI()
+
         print(f"Using OpenAI model: {model_name} for {len(texts)} texts")
 
-        # Récupération de la clé API OpenAI
-        keys = get_keys(["OpenAI"])
-        openai_api_key = keys.get("OpenAI")
+        # Get the OpenAI API key from environment or settings
+        openai_api_key = api_keys and api_keys.get("OpenAI") or os.environ.get("OPENAI_API_KEY")
         if not openai_api_key:
-            raise ValueError("Clé OpenAI manquante.")
+            raise ValueError("Missing OpenAI key.")
 
-        openai.api_key = openai_api_key
+        client.api_key = openai_api_key
 
         embeddings = []
         # Process in batches of 16 to stay within rate limits
@@ -114,8 +126,8 @@ def openai_embedder(texts, model_name="text-embedding-ada-002", path=None):
             batch_embeddings = []
 
             for t in batch_texts:
-                resp = openai.Embedding.create(input=t, model=model_name)
-                emb = resp["data"][0]["embedding"]
+                resp = client.embeddings.create(input=t, model=model_name)
+                emb = resp.data[0].embedding
                 batch_embeddings.append(emb)
 
             embeddings.extend(batch_embeddings)
@@ -127,7 +139,7 @@ def openai_embedder(texts, model_name="text-embedding-ada-002", path=None):
 
 
 @EmbeddingMethodRegistry.register("cohere")
-def cohere_embedder(texts, model_name="embed-english-v2.0", path=None):
+def cohere_embedder(texts, model_name="embed-english-v2.0", path=None, api_keys=None):
     """
     Generate embeddings using Cohere Embeddings.
     
@@ -144,11 +156,7 @@ def cohere_embedder(texts, model_name="embed-english-v2.0", path=None):
         print(f"Using Cohere model: {model_name} for {len(texts)} texts")
 
         # Get API key from environment or settings
-        api_key = os.environ.get("COHERE_API_KEY")
-        if not api_key:
-            from flask import current_app
-            api_key = current_app.config.get("COHERE_API_KEY")
-
+        api_key = api_keys and api_keys.get("Cohere") or os.environ.get("COHERE_API_KEY")
         if not api_key:
             raise ValueError("Cohere API key not found in environment or app config")
 
@@ -169,7 +177,7 @@ def cohere_embedder(texts, model_name="embed-english-v2.0", path=None):
 
 
 @EmbeddingMethodRegistry.register("sentence-transformers")
-def sentence_transformers_embedder(texts, model_name="all-MiniLM-L6-v2", path=None):
+def sentence_transformers_embedder(texts, model_name="all-MiniLM-L6-v2", path=None, api_keys=None):
     """
     Generate embeddings using Sentence Transformers.
     
@@ -205,7 +213,7 @@ def sentence_transformers_embedder(texts, model_name="all-MiniLM-L6-v2", path=No
 
 
 @EmbeddingMethodRegistry.register("azure-openai")
-def azure_openai_embedder(texts, model_name="text-embedding-ada-002", deployment_name=None):
+def azure_openai_embedder(texts, model_name="text-embedding-ada-002", deployment_name=None, api_keys=None):
     """
     Generate embeddings using Azure OpenAI Embeddings.
 
@@ -221,12 +229,13 @@ def azure_openai_embedder(texts, model_name="text-embedding-ada-002", deployment
         from openai import AzureOpenAI
         print(f"Using Azure OpenAI model: {model_name} for {len(texts)} texts")
 
-        keys = get_keys(["Azure_OpenAI", "Azure_OpenAI_Endpoint"])
-        azure_api_key = keys.get("Azure_OpenAI")
-        azure_endpoint = keys.get("Azure_OpenAI_Endpoint")
+        azure_api_key = api_keys and api_keys.get("Azure_OpenAI") or os.environ.get("AZURE_OPENAI_API_KEY")
+        azure_endpoint = api_keys and api_keys.get("Azure_OpenAI_Endpoint") or os.environ.get("AZURE_OPENAI_ENDPOINT")
 
-        if not azure_api_key or not azure_endpoint:
-            raise ValueError("Clé ou endpoint Azure OpenAI manquant.")
+        if not azure_api_key:
+            raise ValueError("API key for Azure OpenAI is missing.")
+        if not azure_endpoint:
+            raise ValueError("Endpoint for Azure OpenAI is missing.")
 
         client = AzureOpenAI(
             api_key=azure_api_key,

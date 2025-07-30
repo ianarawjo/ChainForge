@@ -65,6 +65,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
   const pullInputData = useStore((s) => s.pullInputData);
   const setDataPropsForNode = useStore((s) => s.setDataPropsForNode);
   const pingOutputNodes = useStore((s) => s.pingOutputNodes);
+  const apiKeys = useStore((s) => s.apiKeys);
 
   // Context
   const showAlert = useContext(AlertModalContext);
@@ -153,6 +154,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
           methods: formattedMethods,
           chunks: inputData.chunks,
           queries: inputData.queries,
+          api_keys: apiKeys,
         }),
       });
 
@@ -252,6 +254,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
     setDataPropsForNode,
     pingOutputNodes,
     showAlert,
+    apiKeys,
   ]);
 
   // Update stored data when methods change

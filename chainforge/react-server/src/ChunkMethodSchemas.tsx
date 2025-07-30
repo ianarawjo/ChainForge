@@ -518,7 +518,7 @@ export const ChonkieSemanticSchema: ModelSettingsDict = {
         description:
           "Model to use for embeddings. See Chonkie docs for options.",
       },
-       embedding_local_path: {
+      embedding_local_path: {
         type: "string",
         default: "",
         title: "Embedding Local Path",
@@ -813,7 +813,7 @@ export const ChonkieNeuralSchema: ModelSettingsDict = {
         title: "Model",
         description: "Neural chunking model to use",
       },
-       model_local_path: {
+      model_local_path: {
         type: "string",
         default: "",
         title: "Model Local Path",

@@ -611,7 +611,7 @@ export const LANCEDBSchema: ModelSettingsDict = {
       "distance_metric",
       "dbPath",
       "tableName",
-      "search_method"
+      "search_method",
     ],
     properties: {
       shortName: {
@@ -983,22 +983,24 @@ export const retrievalMethodGroups = [
     ],
   },
   {
-    label: "Vectorstores",
+    label: "Vector Stores",
     items: [
-      {
-        baseMethod: "faiss_vector_store",
-        methodName: "FAISS Vectorstore",
-        library: "FAISS",
-        emoji: "💾",
-        group: "Vectorstores",
-        needsEmbeddingModel: true,
-      },
       {
         baseMethod: "lancedb_vector_store",
         methodName: "LanceDB Vectorstore",
         library: "LanceDB",
         emoji: "🗄️",
-        group: "Vectorstores",
+        group: "Vector Stores",
+        needsEmbeddingModel: true,
+      },
+      // Requires FAISS to be installed, which is not always available by default,
+      // since it requires 'swig' to be installed which can only be done outside pip.
+      {
+        baseMethod: "faiss_vector_store",
+        methodName: "FAISS Vectorstore",
+        library: "FAISS",
+        emoji: "💾",
+        group: "Vector Stores",
         needsEmbeddingModel: true,
       },
     ],

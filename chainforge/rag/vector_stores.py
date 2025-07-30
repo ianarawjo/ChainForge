@@ -5,7 +5,14 @@ import numpy as np
 import pandas as pd
 import lancedb
 import hashlib, pickle
-import faiss
+
+# Faiss requires 'swig' to be installed, and the 'faiss-cpu' package (or 'faiss-gpu', built from source).
+# Swig is only installable via homebrew on macOS, which makes this dependency difficult to support 
+# by default. To be safe we soft-fail if it's not installed.
+try:
+    import faiss
+except ImportError:
+    faiss = None
 
 
 class VectorStore(ABC):
@@ -620,6 +627,9 @@ class FaissVectorStore(VectorStore):
             index_name: Name of the FAISS index file (without extension)
             metric: 'l2' or 'ip' (inner product/cosine)
         """
+
+        if faiss is None:
+            raise ImportError("Faiss is not installed. Please install 'faiss-cpu' or 'faiss-gpu' if you would like to use Faiss vector store methods. You may need to install 'swig' as well; on MacOS this can be done with 'brew install swig'.")
 
         os.makedirs(db_path, exist_ok=True)
         self.db_path = db_path
