@@ -219,6 +219,9 @@ def azure_openai_embedder(texts, model_name="text-embedding-ada-002", deployment
     """
     try:
         from openai import AzureOpenAI
+        import concurrent.futures
+        from tqdm import tqdm
+
         print(f"Using Azure OpenAI model: {model_name} for {len(texts)} texts")
 
         keys = get_keys(["Azure_OpenAI", "Azure_OpenAI_Endpoint"])
@@ -226,7 +229,7 @@ def azure_openai_embedder(texts, model_name="text-embedding-ada-002", deployment
         azure_endpoint = keys.get("Azure_OpenAI_Endpoint")
 
         if not azure_api_key or not azure_endpoint:
-            raise ValueError("Clé ou endpoint Azure OpenAI manquant.")
+            raise ValueError("Azure OpenAI key or endpoint missing.")
 
         client = AzureOpenAI(
             api_key=azure_api_key,
@@ -235,21 +238,23 @@ def azure_openai_embedder(texts, model_name="text-embedding-ada-002", deployment
         )
 
         embeddings = []
-        # Process in batches of 16 to stay within rate limits
         batch_size = 16
-        for i in range(0, len(texts), batch_size):
-            batch_texts = texts[i:i + batch_size]
-            batch_embeddings = []
 
-            for t in batch_texts:
-                resp = client.embeddings.create(
-                    input=t,
-                    model=deployment_name
-                )
-                emb = resp.data[0].embedding
-                batch_embeddings.append(emb)
+        def get_embedding(t):
+            resp = client.embeddings.create(
+                input=t,
+                model=deployment_name
+            )
+            return resp.data[0].embedding
 
-            embeddings.extend(batch_embeddings)
+        # Initialisation de tqdm pour le nombre total de textes
+        with tqdm(total=len(texts), desc="Generation of embeddings using Azure OpenAI") as pbar:
+            for i in range(0, len(texts), batch_size):
+                batch_texts = texts[i:i + batch_size]
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    batch_embeddings = list(executor.map(get_embedding, batch_texts))
+                embeddings.extend(batch_embeddings)
+                pbar.update(len(batch_texts))
 
         return embeddings
     except Exception as e:

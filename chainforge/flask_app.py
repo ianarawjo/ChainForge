@@ -16,7 +16,7 @@ from platformdirs import user_data_dir
 from chainforge.rag.chunkers import ChunkingMethodRegistry
 from chainforge.rag.retrievers import RetrievalMethodRegistry
 from chainforge.rag.embeddings import EmbeddingMethodRegistry
-# from markitdown import MarkItDown
+from markitdown import MarkItDown
 # import pymupdf
 # from docx import Document
 
@@ -478,9 +478,24 @@ def fetchOpenAIEval():
 
 @app.route('/app/fetchEnvironAPIKeys', methods=['POST'])
 def fetchEnvironAPIKeys():
-    import requests
-    keys = requests.get(f"http://{HOSTNAME}:{PORT}/api/getConfig/settings").json()
-    ret = jsonify(keys)
+    keymap = {
+        'OPENAI_API_KEY': 'OpenAI',
+        'OPENAI_BASE_URL': 'OpenAI_BaseURL',
+        'ANTHROPIC_API_KEY': 'Anthropic',
+        'PALM_API_KEY': 'Google',
+        'HUGGINGFACE_API_KEY': 'HuggingFace',
+        'AZURE_OPENAI_KEY': 'Azure_OpenAI',
+        'AZURE_OPENAI_ENDPOINT': 'Azure_OpenAI_Endpoint',
+        'ALEPH_ALPHA_API_KEY': 'AlephAlpha',
+        'AWS_ACCESS_KEY_ID': 'AWS_Access_Key_ID',
+        'AWS_SECRET_ACCESS_KEY': 'AWS_Secret_Access_Key',
+        'AWS_REGION': 'AWS_Region',
+        'AWS_SESSION_TOKEN': 'AWS_Session_Token',
+        'TOGETHER_API_KEY': 'Together',
+        'DEEPSEEK_API_KEY': 'DeepSeek',
+    }
+    d = { alias: os.environ.get(key) for key, alias in keymap.items() }
+    ret = jsonify(d)
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
@@ -870,6 +885,7 @@ def save_or_rename_flow(filename):
         except Exception as error:
             return jsonify({"error": str(error)}), 404
 
+
 def _get_unique_flow_name(filename: str, prefix: str = None) -> str: 
     secure_mode = SECURE_MODE == "all"
 
@@ -1038,7 +1054,7 @@ def media_to_text(uid):
             text = file_bytes.decode("utf-8", errors="ignore")
         elif ext in allowed_extensions:
             # We use markitdown for all other file types
-            md = MarkItDown(enable_plugins=False)
+            md = MarkItDown()
             result = md.convert(file_path)
             text = result.text_content
         else:
