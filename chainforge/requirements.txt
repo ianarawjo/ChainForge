@@ -1,7 +1,7 @@
 flask>=2.2.3
 flask[async]
 flask_cors
-grpcio==1.44.0
+grpcio
 numpy<2.0
 requests
 openai
@@ -28,3 +28,6 @@ chonkie>=1.0
 model2vec>=0.5.0  # required by chonkie
 pyarrow>=14.0,<=16.0.0
 lancedb<=0.18.0
+pandas
+accelerate
+tqdm

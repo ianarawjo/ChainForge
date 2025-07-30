@@ -885,6 +885,7 @@ def save_or_rename_flow(filename):
         except Exception as error:
             return jsonify({"error": str(error)}), 404
 
+
 def _get_unique_flow_name(filename: str, prefix: str = None) -> str: 
     secure_mode = SECURE_MODE == "all"
 
@@ -1053,7 +1054,7 @@ def media_to_text(uid):
             text = file_bytes.decode("utf-8", errors="ignore")
         elif ext in allowed_extensions:
             # We use markitdown for all other file types
-            md = MarkItDown(enable_plugins=False)
+            md = MarkItDown()
             result = md.convert(file_path)
             text = result.text_content
         else:

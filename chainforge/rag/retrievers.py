@@ -266,7 +266,7 @@ def euclidean_distance(vec1, vec2):
     return math.sqrt(sum((a - b) ** 2 for a, b in zip(vec1, vec2)))
 
 @RetrievalMethodRegistry.register("cosine")
-def handle_cosine_similarity(chunks, chunk_embeddings, query_objs, query_embeddings, settings):
+def handle_cosine_similarity(chunks, chunk_embeddings, query_objs, query_embeddings, settings, db_path):
     """
     Retrieve chunks using cosine similarity between embeddings.
     
@@ -306,7 +306,7 @@ def handle_cosine_similarity(chunks, chunk_embeddings, query_objs, query_embeddi
     return results
 
 @RetrievalMethodRegistry.register("manhattan")
-def handle_manhattan(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings):
+def handle_manhattan(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path):
     """
     Retrieve chunks using Manhattan distance between embeddings.
     """
@@ -344,7 +344,7 @@ def handle_manhattan(chunk_objs, chunk_embeddings, query_objs, query_embeddings,
     return results
 
 @RetrievalMethodRegistry.register("euclidean")
-def handle_euclidean(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings):
+def handle_euclidean(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path):
     """
     Retrieve chunks using Euclidean distance between embeddings.
     """
@@ -379,7 +379,7 @@ def handle_euclidean(chunk_objs, chunk_embeddings, query_objs, query_embeddings,
     return results
 
 @RetrievalMethodRegistry.register("clustered")
-def handle_clustered(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings):
+def handle_clustered(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path):
     """
     Retrieve chunks using a combination of query similarity and cluster similarity.
     """
