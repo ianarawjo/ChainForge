@@ -117,6 +117,7 @@ import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 import RequestClarificationModal, {
   RequestClarificationModalProps,
 } from "./RequestClarificationModal";
+import { jsontoYml } from "./backend/jsonToYml";
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -666,6 +667,17 @@ const App = () => {
     document.body.removeChild(downloadLink);
     URL.revokeObjectURL(downloadLink.href);
   };
+
+  const exportYml = useCallback(
+    async (flowData?: unknown) => {
+      if (!rfInstance && !flowData) return;
+      // We first get the data of the flow, if we haven't already
+      const flow = flowData ?? rfInstance?.toObject();
+      if (!flow) return;
+      await jsontoYml(JSON.stringify(flow), flowFileName);
+    },
+    [rfInstance, flowFileName],
+  );
 
   // Export flow to JSON
   const exportFlow = useCallback(
@@ -1572,6 +1584,17 @@ const App = () => {
               mr="xs"
             >
               Export
+            </Button>
+            <Button
+              onClick={() => exportYml()}
+              size="sm"
+              variant="outline"
+              color={colorScheme === "light" ? "blue" : "gray"}
+              bg={colorScheme === "light" ? "#eee" : "#222"}
+              compact
+              mr="xs"
+            >
+              Export YML
             </Button>
             <Button
               onClick={importFlowFromFile}
