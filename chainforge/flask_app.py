@@ -1343,6 +1343,13 @@ def chunk():
     # Construct the identifier used in the registry
     handler = ChunkingMethodRegistry.get_handler(base_method)
 
+    # if it wasn't a built‑in chunker, see if it's a custom provider
+    if not handler and base_method.startswith("__custom/"):
+        provider_name = base_method[len("__custom/"):]
+        entry = ProviderRegistry.get(provider_name)
+        if entry and entry.get("func"):
+            handler = entry["func"]
+
     if not handler:
         return jsonify({"error": f"Unsupported chunking method: {base_method}"}), 400
 
@@ -1475,6 +1482,26 @@ def retrieve():
         return jsonify({"error": "No chunks provided"}), 400
     if not queries:
         return jsonify({"error": "No queries provided"}), 400
+    
+    resolved_handlers = {}
+    for method in methods:
+        base_method = method.get("baseMethod")
+        
+        # 1) Try built‑in lookup
+        handler = RetrievalMethodRegistry.get_handler(base_method)
+
+        # 2) Fallback to any custom provider
+        if not handler and base_method.startswith("__custom/"):
+            provider_name = base_method[len("__custom/"):]
+            entry = ProviderRegistry.get(provider_name)
+            if entry and entry.get("func"):
+                handler = entry["func"]
+
+        if not handler:
+            return jsonify({"error": f"Unknown retrieval method: {base_method}"}), 400
+
+        # cache it for later use
+        resolved_handlers[base_method] = handler
     def find_query_metadata(query_text, queries):
         for q in queries:
             if isinstance(q, dict) and q.get("text") == query_text:
@@ -1535,7 +1562,7 @@ def retrieve():
             method_name = method.get("methodName")
             
             try:
-                handler = RetrievalMethodRegistry.get_handler(base_method)
+                handler = resolved_handlers.get(base_method)
                 if not handler:
                     raise ValueError(f"Unknown method: {base_method}")
                 
@@ -1619,7 +1646,7 @@ def retrieve():
                 db_path = os.path.join(MEDIA_DIR, method_id + ".db")
                 
                 try:
-                    handler = RetrievalMethodRegistry.get_handler(base_method)
+                    handler = resolved_handlers.get(base_method)
                     if not handler:
                         raise ValueError(f"Unknown method: {base_method}")
                     
