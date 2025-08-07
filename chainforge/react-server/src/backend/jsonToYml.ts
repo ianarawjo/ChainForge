@@ -3,7 +3,7 @@ import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
 function cleanText(text: string): string {
-  return text.replace(/\s*\n\s*/g, " ").trim();
+  return '"' + text.replace(/\s*\n\s*/g, " ").trim() + '"';
 }
 
 export async function jsontoYml(
@@ -99,7 +99,7 @@ export async function jsontoYml(
             processor: {
               type: "javascript",
               name: node.id,
-              file: `${node.id}.js`,
+              file: `../files/${node.id}.js`,
             },
           };
           // Create the javascript file
@@ -111,7 +111,7 @@ export async function jsontoYml(
             processor: {
               type: "python",
               name: node.id,
-              file: `${node.id}.py`,
+              file: `../files/${node.id}.py`,
             },
           };
           // Create the python file
