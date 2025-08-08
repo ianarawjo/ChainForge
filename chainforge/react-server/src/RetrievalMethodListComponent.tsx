@@ -32,6 +32,7 @@ import {
   retrievalMethodGroups,
   embeddingProviders,
 } from "./RetrievalMethodSchemas";
+import useStore from "./store";
 
 // Individual retrieval method item interface
 export interface RetrievalMethodSpec {
@@ -298,6 +299,7 @@ export const RetrievalMethodListContainer = forwardRef<
   );
 
   const [menuOpened, setMenuOpened] = useState(false);
+  const customRetrievers = useStore((s) => s.customRetrievers || []);
 
   return (
     <div style={{ border: "1px dashed #ccc", borderRadius: 6, padding: 8 }}>
@@ -381,6 +383,24 @@ export const RetrievalMethodListContainer = forwardRef<
                 )}
               </React.Fragment>
             ))}
+            {customRetrievers.length > 0 && (
+              <>
+                <Divider my="xs" />
+                <Menu.Label>Custom Providers</Menu.Label>
+                {customRetrievers.map((prov) => (
+                  <Menu.Item
+                    key={prov.key}
+                    icon={prov.emoji ? <Text>{prov.emoji}</Text> : undefined}
+                    onClick={() => {
+                      addMethod(prov);
+                      setMenuOpened(false);
+                    }}
+                  >
+                    {prov.methodName}
+                  </Menu.Item>
+                ))}
+              </>
+            )}
           </Menu.Dropdown>
         </Menu>
       </Group>

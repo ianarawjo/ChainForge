@@ -36,6 +36,43 @@ class CustomProviderProtocol(Protocol):
         """
         pass
 
+class CustomChunkerProtocol(Protocol):
+
+#    A Callable protocol to implement for custom chunker provider completions..
+
+    def __call__(self, text: str) -> List[str]:
+        """
+          Define a call to your custom chunker.
+
+          Parameters:
+           - `text`: A string of source text (e.g., a document or article) to be split into smaller segments.
+          
+          Returns:
+           - A list of string chunks (typically paragraphs or sections) derived from the input text.
+        """
+        pass
+
+class CustomRetrieverProtocol(Protocol):
+
+#    A Callable protocol to implement for custom retriever provider completions.
+
+    def __call__(self,
+                 chunks: List[Dict[str, Any]],
+                 queries: List[Union[str, Dict[str, Any]]],
+                 settings: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+          Define a call to your custom retriever.
+
+          Parameters:
+           - `chunks`: A list of document fragments (e.g., from a chunker) with metadata for context retrieval.
+           - `queries`: A list of user queries or prompts, optionally with additional metadata.
+           - `settings`: Dictionary of retrieval settings, such as similarity threshold or scoring method.
+          
+          Returns:
+           - A list of retrieved chunks with associated metadata, typically ranked by relevance to each query.
+        """
+        pass
+
 
 """
     A registry for custom providers
@@ -49,7 +86,7 @@ class _ProviderRegistry:
     def set_curr_script_id(self, id: str):
         self._curr_script_id = id
 
-    def register(self, cls: CustomProviderProtocol, name: str, **kwargs):
+    def register(self, cls: Union[CustomChunkerProtocol, CustomRetrieverProtocol], name: str, **kwargs):
         if name is None or isinstance(name, str) is False or len(name) == 0:
             raise Exception("Cannot register custom model provider: No name given. Name must be a string and unique.")
         self._last_updated[name] = self._registry[name]["script_id"] if name in self._registry else None
@@ -82,7 +119,8 @@ def provider(name: str = 'Custom Provider',
              emoji: str = '✨', 
              models: Optional[List[str]] = None, 
              rate_limit: Union[int, Literal["sequential"]] = "sequential",
-             settings_schema: Optional[Dict] = None):
+             settings_schema: Optional[Dict] = None,
+             category: str = "model"):
     """
       A decorator for registering custom LLM provider methods or classes (Callables)
       that conform to `CustomProviderProtocol`.
@@ -120,7 +158,7 @@ def provider(name: str = 'Custom Provider',
             you can try other widget types, but the CSS may not display property. 
 
     """
-    def dec(cls: CustomProviderProtocol):
-        ProviderRegistry.register(cls, name=name, emoji=emoji, models=models, rate_limit=rate_limit, settings_schema=settings_schema)
+    def dec(cls: Union[CustomChunkerProtocol, CustomRetrieverProtocol]):
+        ProviderRegistry.register(cls, name=name, emoji=emoji, models=models, rate_limit=rate_limit, settings_schema=settings_schema, category=category,)
         return cls
     return dec

@@ -2606,11 +2606,13 @@ export const setCustomProvider = (
   models?: string[],
   rate_limit?: number | string,
   settings_schema?: CustomLLMProviderSpec["settings_schema"],
+  category?: string,
 ) => {
   if (typeof emoji === "string" && (emoji.length === 0 || emoji.length > 2))
     throw new Error(`Emoji for a custom provider must have a character.`);
 
   const new_provider: Dict<JSONCompatible> = { name };
+  new_provider.category = category || "model";
   new_provider.emoji = emoji || "✨";
 
   // Each LLM *model* must have a unique name. To avoid name collisions, for custom providers,
@@ -2709,6 +2711,7 @@ export const setCustomProviders = (providers: CustomLLMProviderSpec[]) => {
       p.models,
       p.rate_limit,
       p.settings_schema,
+      p.category,
     );
 };
 

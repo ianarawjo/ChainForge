@@ -33,6 +33,8 @@ import { NativeLLM } from "./backend/models";
 import { StringLookup } from "./backend/cache";
 import { saveGlobalConfig } from "./backend/backend";
 import { remove } from "jszip";
+import { ChunkMethodSpec } from "./ChunkMethodListComponent";
+import type { RetrievalMethodSpec } from "./RetrievalMethodListComponent";
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // Initial project settings
@@ -425,6 +427,14 @@ export interface StoreHandles {
   AvailableLLMs: LLMSpec[];
   setAvailableLLMs: (specs: LLMSpec[]) => void;
 
+  // Custom chunkers loaded via the Custom Providers dropzone
+  customChunkers: ChunkMethodSpec[];
+  setCustomChunkers: (chunkers: ChunkMethodSpec[]) => void;
+
+  // Custom retrievers loaded via the Custom Providers dropzone
+  customRetrievers: RetrievalMethodSpec[];
+  setCustomRetrievers: (retrievers: RetrievalMethodSpec[]) => void;
+
   // API keys to LLM providers
   apiKeys: Dict<string>;
   setAPIKeys: (apiKeys: Dict<string>) => void;
@@ -511,6 +521,16 @@ const useStore = create<StoreHandles>((set, get) => ({
   AvailableLLMs: [...initLLMProviders],
   setAvailableLLMs: (llmProviderList) => {
     set({ AvailableLLMs: llmProviderList });
+  },
+
+  customChunkers: [],
+  setCustomChunkers: (chunkers) => {
+    set({ customChunkers: chunkers });
+  },
+
+  customRetrievers: [],
+  setCustomRetrievers: (retrievers) => {
+    set({ customRetrievers: retrievers });
   },
 
   aiFeaturesProvider: "OpenAI",

@@ -25,6 +25,7 @@ import validator from "@rjsf/validator-ajv8";
 import { v4 as uuid } from "uuid";
 import { ChunkMethodSchemas, ChunkMethodGroups } from "./ChunkMethodSchemas";
 import { transformDict, truncStr } from "./backend/utils";
+import useStore from "./store";
 
 export interface ChunkMethodSpec {
   key: string;
@@ -236,6 +237,8 @@ const ChunkMethodListContainer = forwardRef<
   );
 
   const [menuOpened, setMenuOpened] = useState(false);
+  // Pull in any dropped‑in chunkers
+  const customChunkers = useStore((s) => s.customChunkers);
 
   return (
     <div style={{ padding: 4 }}>
@@ -281,6 +284,25 @@ const ChunkMethodListContainer = forwardRef<
                 {groupIdx < ChunkMethodGroups.length - 1 && <Divider my="xs" />}
               </React.Fragment>
             ))}
+            {/* ── Custom chunkers ── */}
+            {customChunkers.length > 0 && (
+              <>
+                <Divider my="xs" />
+                <Menu.Label>Custom chunkers</Menu.Label>
+                {customChunkers.map((item) => (
+                  <Menu.Item
+                    key={item.baseMethod}
+                    icon={item.emoji ? <Text>{item.emoji}</Text> : undefined}
+                    onClick={() => {
+                      addMethod(item);
+                      setMenuOpened(false);
+                    }}
+                  >
+                    {item.name}
+                  </Menu.Item>
+                ))}
+              </>
+            )}
           </Menu.Dropdown>
         </Menu>
       </Group>
