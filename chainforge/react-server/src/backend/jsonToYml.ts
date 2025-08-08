@@ -32,17 +32,29 @@ export async function jsontoYml(
             temp: llm.temp,
           };
           for (const key of Object.keys(llm.settings)) {
-            if (key !== "response_format") {
+            if (key !== "response_format" && llm.settings[key]) {
+              if (
+                (key === "tools" || key === "stop") &&
+                llm.settings[key].length === 0
+              ) {
+                continue;
+              }
               yml_llm[key] = llm.settings[key];
             }
           }
           llms.push(yml_llm);
         }
+        let iterations: number;
+        if (isNaN(Number(node.data.n))) {
+          iterations = 1;
+        } else {
+          iterations = Number(node.data.n);
+        }
         const yml_node = {
           template: {
             name: node.id,
             value: node.data.prompt,
-            iterations: node.data.n,
+            iterations,
             llms,
           },
         };
