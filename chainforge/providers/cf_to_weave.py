@@ -5,9 +5,12 @@ import re
 from pprint import pprint
 from datetime import datetime
 import hashlib
+import base64
+from io import BytesIO
 
 import weave
 from weave import EvaluationLogger
+from PIL import Image
 
 def sanitize_name(name):
     """Sanitize a name to be valid for Weave (alphanumeric and underscores only)"""
@@ -18,8 +21,8 @@ def sanitize_name(name):
         sanitized = 'model_' + sanitized
     return sanitized
 
-def resolve_string_references(data_item, string_cache):
-    """Recursively resolves integer references in data_item using the string_cache."""
+def resolve_string_references(data_item, string_cache, media_cache=None):
+    """Recursively resolves integer references in data_item using the string_cache and converts image objects to PIL Images."""
     if isinstance(data_item, int):
         # Try to fetch the string from __s using index, otherwise return the integer itself
         try:
@@ -27,9 +30,31 @@ def resolve_string_references(data_item, string_cache):
         except (IndexError, TypeError):
             return data_item
     elif isinstance(data_item, dict):
-        return {k: resolve_string_references(v, string_cache) for k, v in data_item.items()}
+        # Check if this is an image object
+        if data_item.get("t") == "img" and "d" in data_item and media_cache:
+            image_cache_id = data_item["d"]
+            if image_cache_id in media_cache:
+                # Extract base64 data from data URI
+                base64_data = media_cache[image_cache_id]
+                if base64_data.startswith("data:image"):
+                    # Remove the data URI prefix (e.g., "data:image/jpeg;base64,")
+                    header, encoded = base64_data.split(',', 1)
+                    # Decode base64 to bytes
+                    image_bytes = base64.b64decode(encoded)
+                    # Create PIL Image from bytes
+                    pil_image = Image.open(BytesIO(image_bytes))
+                    return pil_image
+                else:
+                    # If not a data URI, return the original data
+                    return base64_data
+            else:
+                # If image not found in cache, return the original object
+                return data_item
+        else:
+            # Regular dictionary processing
+            return {k: resolve_string_references(v, string_cache, media_cache) for k, v in data_item.items()}
     elif isinstance(data_item, list):
-        return [resolve_string_references(elem, string_cache) for elem in data_item]
+        return [resolve_string_references(elem, string_cache, media_cache) for elem in data_item]
     else:
         return data_item
 
@@ -37,6 +62,7 @@ def log_to_weave(data, cforge_filename="test1"):
     """Log the .cforge file data to Weave using EvaluationLogger"""
     cache = data.get('cache', {})
     string_cache = cache.get('__s', []) # Get the string cache
+    media_cache = cache.get('__media', {}).get('cache', {}) # Get the media cache
     
     # Use regex to find all evaluation keys in cache
     eval_keys = [key for key in cache.keys() if re.search(r'Eval', key, re.IGNORECASE) and key.endswith('.json')]
@@ -88,8 +114,8 @@ def log_to_weave(data, cforge_filename="test1"):
             raw_outputs = eval_result.get('responses', [''])[0] # Take the first response
             score = eval_result.get('eval_res', {}).get('items', [None])[0] # Take the first score
             
-            # Resolve string references for inputs and outputs
-            resolved_inputs = resolve_string_references(raw_inputs, string_cache)
+            # Resolve string references for inputs and outputs, now including media cache
+            resolved_inputs = resolve_string_references(raw_inputs, string_cache, media_cache)
             # Ensure inputs is explicitly a dictionary
             if isinstance(resolved_inputs, dict):
                 inputs = resolved_inputs
@@ -98,7 +124,7 @@ def log_to_weave(data, cforge_filename="test1"):
                 print(f"Warning: Resolved inputs for {eval_key} is not a dictionary. Converting to empty dict.")
                 inputs = {}
 
-            outputs = resolve_string_references(raw_outputs, string_cache)
+            outputs = resolve_string_references(raw_outputs, string_cache, media_cache)
 
             # Log the prediction input and output
             pred_logger = eval_logger.log_prediction(
