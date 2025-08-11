@@ -204,6 +204,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         AWS_Region: "us-east-1",
         AmazonBedrock: JSON.stringify({ credentials: {}, region: "us-east-1" }),
         Together: "",
+        WandB: "", // Added Weights & Biases API key
       },
 
       validate: {
@@ -559,6 +560,13 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   label="Together API Key"
                   placeholder="Paste your Together API key here"
                   {...form.getInputProps("Together")}
+                />
+                <br />
+
+                <TextInput
+                  label="Weights & Biases API Key"
+                  placeholder="Paste your Weights & Biases (wandb) API key here"
+                  {...form.getInputProps("WandB")}
                 />
                 <br />
 

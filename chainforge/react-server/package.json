@@ -135,6 +135,8 @@
   },
   "devDependencies": {
     "@craco/craco": "^7.1.0",
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.31.0",
     "@types/lodash": "^4.17.0",
     "@types/papaparse": "^5.3.14",
     "@types/react-beautiful-dnd": "^13.1.8",

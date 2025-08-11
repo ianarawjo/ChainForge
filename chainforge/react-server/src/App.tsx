@@ -24,6 +24,7 @@ import {
   Tooltip,
   Flex,
   useMantineColorScheme,
+  Menu,
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useContextMenu } from "mantine-contextmenu";
@@ -117,6 +118,7 @@ import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 import RequestClarificationModal, {
   RequestClarificationModalProps,
 } from "./RequestClarificationModal";
+import { useExportToWandB } from "./components/ExportToWandB"; // Import the new hook
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -226,6 +228,14 @@ const nodeEmojis = {
   join: <IconArrowMerge size={16} />,
   split: <IconArrowsSplit size={16} />,
   media: "📺",
+  exportCforge: "💾",
+  exportWandB: (
+    <img
+      src="wandb-logo.png"
+      alt="W&B"
+      style={{ width: "16px", height: "16px", objectFit: "contain" }}
+    />
+  ),
 };
 
 const edgeTypes = {
@@ -330,6 +340,57 @@ const App = () => {
   // Context menu for "Add Node +" list
   const { hideContextMenu } = useContextMenu();
 
+  const handleError = useCallback(
+    (err: Error | string) => {
+      const msg = typeof err === "string" ? err : err.message;
+      setIsLoading(false);
+      setWaitingForShare(false);
+      if (showAlert) showAlert(msg);
+      console.error(msg);
+    },
+    [showAlert],
+  );
+
+  // Use the custom hook for Weights & Biases export
+  const { handleExportToWandB: callExportToWandBFunc, ProjectNameModal } =
+    useExportToWandB({
+      showAlert: showAlert || (() => {}), // Ensure showAlert is a function
+      rfInstance,
+      nodes,
+      handleError,
+    });
+
+  const exportMenuItems = useMemo(() => {
+    // All initial nodes available in ChainForge
+    const initNodes = [
+      {
+        // Menu.Label
+        key: "To File",
+      },
+      {
+        key: "cforge",
+        title: ".cforge",
+        icon: nodeEmojis.exportCforge,
+        tooltip: "Export to .cforge file",
+        onClick: () => exportFlow(),
+      },
+      {
+        key: "divider",
+      },
+      {
+        // Menu.Label
+        key: "Platforms",
+      },
+      {
+        key: "wandb",
+        title: "W&B Weave",
+        icon: nodeEmojis.exportWandB,
+        tooltip: "Export to weights and biases weave platform",
+        onClick: () => callExportToWandBFunc(), // Corrected call
+      },
+    ] as NestedMenuItemProps[];
+    return initNodes;
+  }, [callExportToWandBFunc]);
   // Add Nodes list
   const addNodesMenuItems = useMemo(() => {
     // All initial nodes available in ChainForge
@@ -629,17 +690,6 @@ const App = () => {
   const onClickSettings = () => {
     if (settingsModal && settingsModal.current) settingsModal.current.trigger();
   };
-
-  const handleError = useCallback(
-    (err: Error | string) => {
-      const msg = typeof err === "string" ? err : err.message;
-      setIsLoading(false);
-      setWaitingForShare(false);
-      if (showAlert) showAlert(msg);
-      console.error(msg);
-    },
-    [showAlert],
-  );
 
   /**
    * SAVING / LOADING, IMPORT / EXPORT (from JSON)
@@ -1477,6 +1527,12 @@ const App = () => {
     );
   }, [flowFileName, importFlowFromJSON, showAlert, setFlowFileNameAndCache]);
 
+  // Export to Weights & Biases handler (stub for now)
+  const handleExportToWandB = useCallback(() => {
+    // TODO: Implement actual export logic to Weights & Biases
+    alert("Export to Weights & Biases is not yet implemented.");
+  }, []);
+
   if (!IS_ACCEPTED_BROWSER) {
     return (
       <Box maw={600} mx="auto" mt="40px">
@@ -1527,6 +1583,7 @@ const App = () => {
           ref={examplesModal}
           handleOnSelect={onSelectExampleFlow}
         />
+        {ProjectNameModal}
         {flowSidebar}
 
         {/* <Modal title={'Welcome to ChainForge'} size='400px' opened={welcomeModalOpened} onClose={closeWelcomeModal} yOffset={'6vh'} styles={{header: {backgroundColor: '#FFD700'}, root: {position: 'relative', left: '-80px'}}}>
@@ -1562,17 +1619,21 @@ const App = () => {
                 </Button>
               )}
             />
-            <Button
-              onClick={() => exportFlow()}
-              size="sm"
-              variant="outline"
-              color={colorScheme === "light" ? "blue" : "gray"}
-              bg={colorScheme === "light" ? "#eee" : "#222"}
-              compact
-              mr="xs"
-            >
-              Export
-            </Button>
+            <NestedMenu
+              items={exportMenuItems}
+              button={(toggleMenu) => (
+                <Button
+                  size="sm"
+                  variant={colorScheme === "light" ? "gradient" : "filled"}
+                  color={colorScheme === "light" ? "blue" : "gray"}
+                  compact
+                  mr="sm"
+                  onClick={toggleMenu}
+                >
+                  Export
+                </Button>
+              )}
+            />
             <Button
               onClick={importFlowFromFile}
               size="sm"

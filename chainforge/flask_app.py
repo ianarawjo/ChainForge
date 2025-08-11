@@ -14,6 +14,7 @@ from platformdirs import user_data_dir
 
 # RAG-specific imports
 from markitdown import MarkItDown
+from chainforge.providers.cf_to_weave import export_to_weave
 
 
 """ =================
@@ -1061,6 +1062,35 @@ def media_to_text(uid):
         # traceback.print_exc()
         return jsonify({"error": f"Failed to process file {uid}. Internal server error."}), 500
 
+@app.route('/api/exportToWandB', methods=['POST'])
+def export_to_wandb():
+    try:
+
+        data = request.json
+
+        if not data:
+            return jsonify({"success": False, "message": "No JSON payload received."}), 400
+
+        flow_data = data.get('flowData')
+        api_key = data.get('apiKey')
+        project_name = data.get('projectName')
+        # Ensure that flow_data is not empty before proceeding
+        if not flow_data:
+            return jsonify({"success": False, "message": "No flow data provided in the request."}), 400
+
+        print(api_key, project_name)
+
+        response = export_to_weave(flow_data, project_name, api_key)
+        print(response)
+        return jsonify(response)
+
+    except Exception as e:
+        # Catch any unexpected errors and return a consistent error message
+        print(f"Error in /api/exportToWandB: {e}", file=sys.stderr)
+        return jsonify({"success": False, "message": f"An unexpected error occurred: {str(e)}"}), 500
+
+
+
 @app.route('/api/exportFlowBundle', methods=['POST'])
 def export_flow_bundle():
     """
@@ -1310,6 +1340,12 @@ def verify_media_file_integrity(uid):
     if expected_hash != actual_hash:
         raise ValueError(f"Hash mismatch: expected {expected_hash}, got {actual_hash}")
 
+
+@app.route('/<path:filename>')
+def serve_public_file(filename):
+    """Serve files from the public directory"""
+    public_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'public')
+    return send_from_directory(public_dir, filename)
 
 @app.route('/api/proxyImage', methods=['GET'])
 def proxy_image():
