@@ -1341,6 +1341,12 @@ def verify_media_file_integrity(uid):
         raise ValueError(f"Hash mismatch: expected {expected_hash}, got {actual_hash}")
 
 
+@app.route('/<path:filename>')
+def serve_public_file(filename):
+    """Serve files from the public directory"""
+    public_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'public')
+    return send_from_directory(public_dir, filename)
+
 @app.route('/api/proxyImage', methods=['GET'])
 def proxy_image():
     """Proxy for fetching images to avoid CORS restrictions"""

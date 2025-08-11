@@ -229,7 +229,13 @@ const nodeEmojis = {
   split: <IconArrowsSplit size={16} />,
   media: "📺",
   exportCforge: "💾",
-  exportWandB: "📊",
+  exportWandB: (
+    <img
+      src="wandb-logo.png"
+      alt="W&B"
+      style={{ width: "16px", height: "16px", objectFit: "contain" }}
+    />
+  ),
 };
 
 const edgeTypes = {
@@ -358,15 +364,26 @@ const App = () => {
     // All initial nodes available in ChainForge
     const initNodes = [
       {
+        // Menu.Label
+        key: "To File",
+      },
+      {
         key: "cforge",
-        title: ".cforge File",
+        title: ".cforge",
         icon: nodeEmojis.exportCforge,
         tooltip: "Export to .cforge file",
         onClick: () => exportFlow(),
       },
       {
+        key: "divider",
+      },
+      {
+        // Menu.Label
+        key: "Platforms",
+      },
+      {
         key: "wandb",
-        title: "Weave W&B",
+        title: "W&B Weave",
         icon: nodeEmojis.exportWandB,
         tooltip: "Export to weights and biases weave platform",
         onClick: () => callExportToWandBFunc(), // Corrected call
