@@ -18,6 +18,7 @@ import {
   LLMResponseData,
   PromptVarType,
   StringOrHash,
+  ChatHistory,
   JSONCompatible,
 } from "./typing";
 import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
@@ -33,6 +34,7 @@ import {
   llmResponseDataToString,
   extendArray,
   extendArrayDict,
+  stripWrappingQuotes,
   extractMediaVars,
 } from "./utils";
 import StorageCache, { MediaLookup, StringLookup } from "./cache";
@@ -1328,42 +1330,46 @@ export async function executepy(
  *
  * @param id a unique ID to refer to this information. Used when cache'ing evaluation results.
  * @param llm the LLM to query (as an LLM specification dict)
- * @param root_prompt the prompt template to use as the scoring function. Should include exactly one template var, {input}, where input responses will be put.
+ * @param root_prompt the prompt template to use as the scoring function. Should include exactly one template var, {__input}, where input responses will be put.
  * @param response_ids the cache'd response to run on, which must be a unique ID or list of unique IDs of cache'd data
  * @param api_keys optional. any api keys to set before running the LLM
  */
 export async function evalWithLLM(
   id: string,
-  llm: LLMSpec,
+  llm: string | LLMSpec,
   root_prompt: string,
-  response_ids: string | string[],
+  response_ids: string | string[] | LLMResponse[],
   api_keys?: Dict,
   progress_listener?: (progress: { [key: symbol]: any }) => void,
   cancel_id?: string | number,
+  system_msg?: string,
   useReasoning?: boolean,
 ): Promise<{ responses?: LLMResponse[]; errors: string[] }> {
   // Check format of response_ids
   if (!Array.isArray(response_ids)) response_ids = [response_ids];
-  response_ids = response_ids as Array<string>;
+  if (response_ids.length === 0) return { responses: [], errors: [] };
+
+  const load_resps_from_cache = typeof response_ids[0] === "string";
+  const system_message: ChatHistoryInfo[] | undefined = system_msg
+    ? [
+        {
+          messages: [{ role: "system", content: system_msg }],
+          fill_history: {},
+        },
+      ]
+    : undefined;
 
   if (api_keys !== undefined) set_api_keys(api_keys);
 
   // Load all responses with the given ID:
   let all_evald_responses: LLMResponse[] = [];
   let all_errors: string[] = [];
-  for (const cache_id of response_ids) {
-    const fname = `${cache_id}.json`;
-    if (!StorageCache.has(fname))
-      throw new Error(`Did not find cache file for id ${cache_id}`);
 
-    // Load the raw responses from the cache + clone them all:
-    const resp_objs = (load_cache_responses(fname) as LLMResponse[]).map((r) =>
-      JSON.parse(JSON.stringify(r)),
-    ) as LLMResponse[];
-
-    if (resp_objs.length === 0) continue;
-
-    console.log(resp_objs);
+  const _runOverResponses = async (
+    resp_objs: LLMResponse[],
+    cache_id?: string,
+  ) => {
+    console.log("Running LLM evaluator over response objects:", resp_objs);
 
     // We need to keep track of the index of each response in the response object.
     // We can generate var dicts with metadata to store the indices:
@@ -1387,16 +1393,16 @@ export async function evalWithLLM(
 
     // Now run all inputs through the LLM grader!:
     const { responses, errors } = await queryLLM(
-      `eval-${id}-${cache_id}`,
+      `eval-${id}-${cache_id ?? "provided"}`,
       [llm],
       1,
       root_prompt,
       { __input: inputs },
-      undefined,
+      system_message, // if there's a sys_message, we pass it in chat history format
       undefined,
       undefined,
       progress_listener,
-      false,
+      !cache_id, // if there's no cache_id, we don't want to cache the responses
       cancel_id,
     );
 
@@ -1471,7 +1477,34 @@ export async function evalWithLLM(
       }
     });
 
-    all_evald_responses = all_evald_responses.concat(resp_objs);
+    return resp_objs;
+  };
+
+  // Run over cache'd response data
+  if (load_resps_from_cache) {
+    for (const cache_id of response_ids) {
+      const fname = `${cache_id}.json`;
+      if (!StorageCache.has(fname))
+        throw new Error(`Did not find cache file for id ${cache_id}`);
+
+      // Load the raw responses from the cache + clone them all:
+      const resp_objs = (load_cache_responses(fname) as LLMResponse[]).map(
+        (r) => JSON.parse(JSON.stringify(r)),
+      ) as LLMResponse[];
+      if (resp_objs.length === 0) continue;
+
+      const evald_resp_objs = await _runOverResponses(
+        resp_objs,
+        cache_id as string,
+      );
+
+      all_evald_responses = all_evald_responses.concat(evald_resp_objs);
+    }
+  } else {
+    // Run over provided response objects
+    const resp_objs = response_ids as LLMResponse[];
+    const evald_resp_objs = await _runOverResponses(resp_objs); // no cache
+    all_evald_responses = all_evald_responses.concat(evald_resp_objs);
   }
 
   // Do additional processing to check if all evaluations are
@@ -1481,7 +1514,9 @@ export async function evalWithLLM(
     if (!resp_obj.eval_res) continue;
     for (const score of resp_obj.eval_res.items) {
       if (score !== undefined)
-        all_eval_res.add(score.toString().trim().toLowerCase());
+        all_eval_res.add(
+          stripWrappingQuotes(score.toString().trim().toLowerCase()),
+        );
     }
   }
 
@@ -1521,7 +1556,8 @@ export async function evalWithLLM(
   }
 
   // Store the evaluated responses in a new cache json:
-  StorageCache.store(`${id}.json`, all_evald_responses);
+  if (load_resps_from_cache)
+    StorageCache.store(`${id}.json`, all_evald_responses);
 
   return { responses: all_evald_responses, errors: all_errors };
 }

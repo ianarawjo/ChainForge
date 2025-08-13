@@ -16,6 +16,7 @@ import {
   deepcopy,
   transformDict,
   APP_IS_RUNNING_LOCALLY,
+  llmResponseDataToString,
 } from "./backend/utils";
 import { DuplicateVariableNameError } from "./backend/errors";
 import {
@@ -27,6 +28,7 @@ import {
   TabularDataColType,
   TabularDataRowType,
   JSONCompatible,
+  LLMResponse,
 } from "./backend/typing";
 import { TogetherChatSettings } from "./ModelSettingSchemas";
 import { NativeLLM } from "./backend/models";
@@ -472,6 +474,9 @@ export interface StoreHandles {
   state: Dict;
   setState: (key: string, val: any) => void;
   importState: (state: Dict) => void;
+  exportGradesAndNotes: (
+    responses: LLMResponse[],
+  ) => { grade: boolean; note?: string; response: string }[];
 
   // The color to represent a specific LLM, to be globally consistent
   llmColors: Dict<string>;
@@ -683,6 +688,25 @@ const useStore = create<StoreHandles>((set, get) => ({
       ...st,
       state,
     }));
+  },
+  exportGradesAndNotes: (responses: LLMResponse[]) => {
+    const state = get().state;
+    const res: { grade: boolean; note?: string; response: string }[] = [];
+    responses.forEach((r) => {
+      const uid = r.uid;
+      if (r.uid === undefined || r.responses?.length === 0) return;
+      const gradeKey = `r.${uid}.grade`;
+      const noteKey = `r.${uid}.note`;
+      const grade = state[gradeKey];
+      const note = state[noteKey];
+      if (grade === undefined) return;
+      res.push({
+        grade: grade?.[0],
+        note: note?.[0],
+        response: llmResponseDataToString(r.responses[0]),
+      }); // TODO: support multiple responses when n>1
+    });
+    return res;
   },
 
   // Keep track of LLM colors, to ensure color consistency across various plots and displays

@@ -1189,7 +1189,10 @@ Soft failing by replacing undefined with empty strings.`,
                   o.metavars = resp_obj.metavars ?? {};
 
                   // Add a metavar for the prompt *template* in this PromptNode
-                  // o.metavars.__pt = prompt_template;
+                  o.metavars.__pt =
+                    typeof prompt_template === "string"
+                      ? prompt_template
+                      : prompt_template[0];
 
                   // Carry over any chat history
                   if (resp_obj.chat_history)

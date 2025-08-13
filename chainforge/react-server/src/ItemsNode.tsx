@@ -12,7 +12,12 @@ import NodeLabel from "./NodeLabelComponent";
 import { IconForms, IconTransform } from "@tabler/icons-react";
 import { Handle, Node, Position } from "reactflow";
 import BaseNode from "./BaseNode";
-import { DebounceRef, genDebounceFunc, processCSV } from "./backend/utils";
+import {
+  DebounceRef,
+  genDebounceFunc,
+  processCSV,
+  stripWrappingQuotes,
+} from "./backend/utils";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import { cleanEscapedBraces, escapeBraces } from "./backend/template";
 import { TextFieldsNodeProps } from "./TextFieldsNode";
@@ -22,16 +27,6 @@ const wrapInQuotesIfContainsComma = (str: string) =>
   str.includes(",") ? `"${str}"` : str;
 export const makeSafeForCSLFormat = (str: string) =>
   wrapInQuotesIfContainsComma(replaceDoubleQuotesWithSingle(str));
-const stripWrappingQuotes = (str: string) => {
-  if (
-    typeof str === "string" &&
-    str.length >= 2 &&
-    str.charAt(0) === '"' &&
-    str.charAt(str.length - 1) === '"'
-  )
-    return str.substring(1, str.length - 1);
-  else return str;
-};
 export const prepareItemsNodeData = (text: string) => ({
   text,
   fields: processCSV(text).map(stripWrappingQuotes).map(escapeBraces),
