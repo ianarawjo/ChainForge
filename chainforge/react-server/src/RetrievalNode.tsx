@@ -176,7 +176,8 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
           metavars: result.metavars || {},
           responses: [result.text],
           eval_res: result.eval_res || [],
-          llm: result.llm || "retrieval",
+          llm: result.vars.retrievalMethod || "Unknown", // We are abusing 'llm' to store the retrieval method
+          // llm: result.llm || "Unknown Method",
         }),
       );
 
@@ -346,6 +347,9 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         <LLMResponseInspectorModal
           ref={inspectorModalRef}
           jsonResponses={jsonResponses}
+          customLLMFieldName="Retrieval Method"
+          ignoreAndHideLLMField={true}
+          ignoreAndHideEvalResField={true}
         />
       </React.Suspense>
       <AreYouSureModal
