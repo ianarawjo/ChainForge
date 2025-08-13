@@ -57,6 +57,7 @@
     "dayjs": "^1.11.8",
     "emoji-mart": "^5.5.2",
     "emoji-picker-react": "^4.4.9",
+    "file-saver": "^2.0.5",
     "google-auth-library": "^8.8.0",
     "https-browserify": "^1.0.0",
     "jstat": "^1.9.6",
@@ -135,6 +136,8 @@
   },
   "devDependencies": {
     "@craco/craco": "^7.1.0",
+    "@types/file-saver": "^2.0.7",
+    "@types/js-yaml": "^4.0.9",
     "@types/lodash": "^4.17.0",
     "@types/papaparse": "^5.3.14",
     "@types/react-beautiful-dnd": "^13.1.8",
