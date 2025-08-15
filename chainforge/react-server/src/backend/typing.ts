@@ -335,3 +335,70 @@ export type RatingDict = Record<number, boolean | string | null | undefined>;
 export interface FileWithContent extends FileWithPath {
   content?: string;
 }
+
+// Typing for the LLM provider dictionnary fecthed from the models.dev website
+// that is stored in the `LLMsInfos` variable in the Zustand store
+
+export type Modality = "text" | "image" | "audio" | "video" | "pdf";
+
+export interface Modalities {
+  input: Modality[];
+  output: Modality[];
+}
+
+export interface Cost {
+  input: number;
+  output: number;
+  cache_read?: number;
+  cache_write?: number;
+}
+
+export interface Limit {
+  context: number;
+  output: number;
+}
+
+export interface Model {
+  id: string;
+  name: string;
+  attachment: boolean;
+  reasoning: boolean;
+  temperature: boolean;
+  tool_call: boolean;
+  knowledge?: string;
+  release_date: string;
+  last_updated: string;
+  modalities: Modalities;
+  open_weights: boolean;
+  cost?: Cost;
+  limit: Limit;
+}
+
+export type CapabilityOllama =
+  | "completion"
+  | "tools"
+  | "thinking"
+  | "embedding"
+  | "vision";
+
+export interface ModelOllama {
+  name: string;
+  format: string;
+  families: string[];
+  parameter_size: string;
+  quantization_level: string;
+  size: string;
+  capabilities?: CapabilityOllama[];
+}
+
+export interface LLMProvider {
+  id: string;
+  env: string[];
+  npm: string;
+  name: string;
+  doc: string;
+  api?: string;
+  models: Record<string, Model | ModelOllama>;
+}
+
+export type ModelDotDevInfos = Record<string, LLMProvider>;

@@ -29,6 +29,7 @@ import {
   TabularDataRowType,
   JSONCompatible,
   LLMResponse,
+  ModelDotDevInfos,
 } from "./backend/typing";
 import { TogetherChatSettings } from "./ModelSettingSchemas";
 import { NativeLLM } from "./backend/models";
@@ -503,6 +504,11 @@ export interface StoreHandles {
     _targetHandles: string[],
     node_id: string,
   ) => Dict<string[] | TemplateVarInfo[]>;
+
+  // Store infos about LLMs providers models
+  // fetched from `models.dev` website.
+  LLMsProvidersInfos: ModelDotDevInfos;
+  setLLMsProvidersInfos: (infos: ModelDotDevInfos) => void;
 }
 
 // A global store of variables, used for maintaining state
@@ -510,6 +516,12 @@ export interface StoreHandles {
 const useStore = create<StoreHandles>((set, get) => ({
   nodes: [],
   edges: [],
+
+  // models.dev LLM providers infos
+  LLMsProvidersInfos: {},
+  setLLMsProvidersInfos: (infos) => {
+    set({ LLMsProvidersInfos: infos });
+  },
 
   // Available LLMs in ChainForge, in the format expected by LLMListItems.
   AvailableLLMs: [...initLLMProviders],

@@ -2,6 +2,7 @@ import React, { ReactNode, useMemo, useState } from "react";
 import { Menu, Tooltip, Popover, ActionIcon } from "@mantine/core";
 import { IconChevronRight, IconTrash } from "@tabler/icons-react";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
+import ReactMarkdown from "react-markdown";
 
 const NESTED_MENU_STYLE = {
   dropdown: { padding: "0px !important" },
@@ -19,9 +20,9 @@ export const MenuTooltip = ({
   else
     return (
       <Tooltip
-        label={label}
+        label={<ReactMarkdown>{label}</ReactMarkdown>}
         position="right"
-        width={200}
+        width={400}
         multiline
         withArrow
         arrowSize={10}
