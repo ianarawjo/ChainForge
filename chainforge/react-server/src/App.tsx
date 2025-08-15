@@ -50,6 +50,7 @@ import PromptNode from "./PromptNode";
 import CodeEvaluatorNode from "./CodeEvaluatorNode";
 import VisNode from "./VisNode";
 import InspectNode from "./InspectorNode";
+import SelectVarsNode from "./SelectVarsNode";
 import ScriptNode from "./ScriptNode";
 import { AlertModalContext } from "./AlertModal";
 import ItemsNode from "./ItemsNode";
@@ -195,6 +196,7 @@ const INITIAL_LLM = () => {
 const nodeTypes = {
   textfields: TextFieldsNode, // Register the custom node
   prompt: PromptNode,
+  selectvars: SelectVarsNode,
   chat: PromptNode,
   simpleval: SimpleEvalNode,
   evaluator: CodeEvaluatorNode,
@@ -573,6 +575,13 @@ const App = () => {
         icon: nodeEmojis.retrieval,
         tooltip: "Retrieve text from a database.",
         onClick: () => addNode("retrieval"),
+      },
+      {
+        key: "selectvars",
+        title: "Filter Variables Node",
+        icon: <IconCheckbox size={16} />,
+        tooltip: "Filter which variables and metavariables to keep for the next steps.",
+        onClick: () => addNode("selectVarsNode", "selectvars"),
       },
     ] as NestedMenuItemProps[];
 

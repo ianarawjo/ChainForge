@@ -34,6 +34,7 @@ PORT = 8000
 BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'public')
 STATIC_DIR = os.path.join(BUILD_DIR, 'static')
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024 # 2Go
 
 # Set up CORS for specific routes
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
@@ -1054,9 +1055,9 @@ def media_to_text(uid):
             text = file_bytes.decode("utf-8", errors="ignore")
         elif ext in allowed_extensions:
             # We use markitdown for all other file types
-            md = MarkItDown(enable_plugins=False)
+            md = MarkItDown()
             result = md.convert(file_path)
-            text = result.text_content
+            text = result.text_content.replace('{',']').replace('}',']')
         else:
             return jsonify({"error": f"Unsupported file type: {ext}. Allowed types: {', '.join(allowed_extensions)}"}), 400
 
