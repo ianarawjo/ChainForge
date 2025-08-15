@@ -43,6 +43,7 @@ import {
   Dict,
   JSONCompatible,
   LLMSpec,
+  ModelOllama,
 } from "./backend/typing";
 import {
   getGlobalConfig,
@@ -302,10 +303,54 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
               console.log("Ollama models available:", models_available);
               console.log("Loaded Ollama model list from backend.");
+
+              // Populate model informations for Ollama models
+              // This is used to display the model information in the UI Prompt Node
+              const modelsInfos: Record<string, ModelOllama> = {};
+              data.models.forEach((model_obj: Dict) => {
+                modelsInfos[model_obj.name] = {
+                  name: model_obj.name,
+                  format: model_obj.details.format,
+                  families: model_obj.details.families,
+                  parameter_size: model_obj.details.parameter_size,
+                  quantization_level: model_obj.details.quantization_level,
+                  size: (model_obj.size / 1000 ** 3).toFixed(2) + " GB",
+                };
+
+                fetch(
+                  new Request(`${Ollama_BaseURL}/api/show`, {
+                    method: "POST",
+                    body: '{"model": "' + model_obj.name + '"}',
+                  }),
+                )
+                  .then((response) => {
+                    if (!response.ok) {
+                      throw new Error(
+                        `Failed to fetch model details on ${Ollama_BaseURL}/api/show`,
+                      );
+                    }
+                    return response.json();
+                  })
+                  .then((modelDetails: Dict) => {
+                    modelsInfos[model_obj.name].capabilities =
+                      modelDetails.capabilities;
+                  });
+              });
+              LLMsProvidersInfos.ollama = {
+                id: "ollama",
+                name: "Ollama",
+                env: [],
+                npm: "",
+                doc: "https://ollama.com/search",
+                models: modelsInfos,
+              };
+              setLLMsProvidersInfos(LLMsProvidersInfos);
             })
             .catch((error) => {
               console.error("Error trying to fetch Ollama models", error);
             });
+
+          fetch(`${Ollama_BaseURL}/api/`);
         });
     }, [form, settings]);
 
@@ -362,6 +407,10 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     const setFavorites = useStore((state) => state.setFavorites);
     const nodes = useStore((state) => state.nodes);
     const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+    const LLMsProvidersInfos = useStore((state) => state.LLMsProvidersInfos);
+    const setLLMsProvidersInfos = useStore(
+      (state) => state.setLLMsProvidersInfos,
+    );
 
     const showAlert = useContext(AlertModalContext);
 
