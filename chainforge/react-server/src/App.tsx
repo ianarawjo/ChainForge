@@ -121,6 +121,7 @@ import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 import RequestClarificationModal, {
   RequestClarificationModalProps,
 } from "./RequestClarificationModal";
+import { xorBy } from "lodash";
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -140,6 +141,15 @@ const SAVE_FLOW_FILENAME_TO_BROWSER_CACHE = (name: string) => {
   StorageCache.saveToLocalStorage("chainforge-cur-file", {
     flowFileName: name,
   });
+};
+
+// Get center of ReactFlow viewport
+const getViewportCenter = (rfInstance: ReactFlowInstance | null) => {
+  const { centerX, centerY } = getWindowCenter();
+  if (rfInstance === null) return { x: centerX, y: centerY };
+  // Support Zoom
+  const { x, y, zoom } = rfInstance.getViewport();
+  return { x: -(x / zoom) + centerX / zoom, y: -(y / zoom) + centerY / zoom };
 };
 
 const selector = (state: StoreHandles) => ({
@@ -340,6 +350,29 @@ const App = () => {
 
   // Context menu for "Add Node +" list
   const { hideContextMenu } = useContextMenu();
+
+  // Add a node to the flow
+  const addNode = useCallback(
+    (
+      id: string,
+      type?: string,
+      data?: Dict,
+      offsetX?: number,
+      offsetY?: number,
+    ) => {
+      const { x, y } = getViewportCenter(rfInstance);
+      addNodeToStore({
+        id: `${id}-` + uuid(),
+        type: type ?? id,
+        data: data ?? {},
+        position: {
+          x: x - 200 + (offsetX || 0),
+          y: y - 100 + (offsetY || 0),
+        },
+      });
+    },
+    [addNodeToStore, rfInstance],
+  );
 
   // Add Nodes list
   const addNodesMenuItems = useMemo(() => {
@@ -619,38 +652,7 @@ const App = () => {
     // <Menu.Divider />
 
     return initNodes;
-  }, [favorites]);
-
-  // Helper
-  const getViewportCenter = useCallback(() => {
-    const { centerX, centerY } = getWindowCenter();
-    if (rfInstance === null) return { x: centerX, y: centerY };
-    // Support Zoom
-    const { x, y, zoom } = rfInstance.getViewport();
-    return { x: -(x / zoom) + centerX / zoom, y: -(y / zoom) + centerY / zoom };
-  }, [rfInstance]);
-
-  const addNode = useCallback(
-    (
-      id: string,
-      type?: string,
-      data?: Dict,
-      offsetX?: number,
-      offsetY?: number,
-    ) => {
-      const { x, y } = getViewportCenter();
-      addNodeToStore({
-        id: `${id}-` + uuid(),
-        type: type ?? id,
-        data: data ?? {},
-        position: {
-          x: x - 200 + (offsetX || 0),
-          y: y - 100 + (offsetY || 0),
-        },
-      });
-    },
-    [addNodeToStore, getViewportCenter],
-  );
+  }, [favorites, addNode]);
 
   // Add a node from a user's saved favorite
   const addNodeFromFavorite = useCallback(
