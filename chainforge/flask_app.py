@@ -4,8 +4,8 @@ from enum import Enum
 from typing import List, Literal
 from statistics import mean, median, stdev
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, after_this_request
-from flask_cors import CORS
+from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, after_this_request, abort
+from flask_cors import CORS, cross_origin
 from chainforge.providers import ProviderRegistry
 from chainforge.security.password_utils import ensure_password
 from chainforge.security.secure_save import load_json_file, save_json_file
@@ -19,6 +19,9 @@ from chainforge.rag.embeddings import EmbeddingMethodRegistry
 from markitdown import MarkItDown
 # import pymupdf
 # from docx import Document
+import os
+from pathlib import Path
+from werkzeug.exceptions import NotFound
 
 
 
@@ -48,6 +51,9 @@ MEDIA_DIR = os.path.join(FLOWS_DIR, 'media')
 # Cryptography
 SECURE_MODE: Literal['off', 'settings', 'all'] = 'off'  # The mode of encryption to use for files
 FLOWS_DIR_PWD = None  # The password to use for encryption/decryption
+# Custom extension for RAG example flow
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+EXAMPLES_DIR = os.path.normpath(os.path.join(PROJECT_ROOT, "examples"))
 
 class MetricType(Enum):
     KeyValue = 0
@@ -407,6 +413,27 @@ def fetchExampleFlow():
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
+@app.get("/example_flows/<path:filename>")
+@cross_origin()
+def serve_example_flow(filename: str):
+    # Validate extension (case-insensitive)
+    ext = Path(filename).suffix.lower()
+    if ext not in {".zip", ".cfzip"}:
+        abort(400, description="Only .cfzip or .zip allowed.")
+
+    # Log without leaking server paths in responses
+    app.logger.info("[examples] request filename=%s", filename)
+
+    try:
+        return send_from_directory(
+            EXAMPLES_DIR,
+            filename,
+            mimetype="application/zip",   # forces correct type for .zip/.cfzip
+            as_attachment=False,
+            max_age=0,
+        )
+    except NotFound:
+        abort(404, description="File not found.")
 
 @app.route('/app/fetchOpenAIEval', methods=['POST'])
 def fetchOpenAIEval():
@@ -1046,7 +1073,7 @@ def media_to_text(uid):
     try:
         ext = os.path.splitext(file_path)[1].lower()
 
-        allowed_extensions = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".pptx"}
+        allowed_extensions = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".pptx", ".md"}
         if ext == '.txt':
             # Read text files directly
             with open(file_path, 'rb') as f:

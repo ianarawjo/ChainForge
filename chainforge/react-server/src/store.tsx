@@ -534,8 +534,30 @@ const useStore = create<StoreHandles>((set, get) => ({
   },
 
   customRetrievers: [],
-  setCustomRetrievers: (retrievers) => {
-    set({ customRetrievers: retrievers });
+  setCustomRetrievers: (retrievers: any[]) => {
+    const items = (retrievers ?? [])
+      .filter((p) => (p?.category ?? "retriever") === "retriever")
+      .map((p) => {
+        const name =
+          p?.name ?? p?.methodName ?? p?.library ?? "Custom Provider";
+        const baseMethod = `__custom/${name}`; // enforce canonical
+
+        return {
+          // whitelist normalized store shape
+          key: p?.key ?? uuid(),
+          methodName: name,
+          library: name,
+          baseMethod,
+          emoji: p?.emoji ?? "✨",
+          needsEmbeddingModel: !!p?.needs_embedding_model,
+          models: Array.isArray(p?.models) ? p.models : [],
+          settings_schema: p?.settings_schema ?? undefined,
+          default_settings: p?.default_settings ?? undefined,
+          source: "custom" as const,
+        };
+      });
+
+    set({ customRetrievers: items as any });
   },
 
   aiFeaturesProvider: "OpenAI",
