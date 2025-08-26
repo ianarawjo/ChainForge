@@ -8,12 +8,10 @@ from chainforge.providers import provider
     rate_limit="sequential",
     settings_schema={
         "settings": {
-            "top_k": {
-                "type": "integer",
-                "title": "Top‑K",
-                "default": 5,
-                "minimum": 1
-            }
+            "top_k": {"type": "integer", "title": "Top K", "default": 5, "minimum": 1}
+        },
+        "ui": {
+            "top_k": {"ui:widget": "range"},
         }
     },
     category="retriever"
@@ -23,31 +21,36 @@ def LevenshteinRetriever(
     queries: List[Union[str, Dict[str, Any]]],
     settings: Dict[str, Any]
 ) -> List[Dict[str, Any]]:
-    """
-    For each query (which may be a str or a dict), compute Levenshtein
-    distance against each chunk, returning the top‑K matches.
-    """
-    # Simple DP edit‑distance
+    """Return top-K chunks per query using plain Levenshtein distance."""
+
     def lev(a: str, b: str) -> int:
         m, n = len(a), len(b)
         dp = [[0]*(n+1) for _ in range(m+1)]
         for i in range(m+1): dp[i][0] = i
         for j in range(n+1): dp[0][j] = j
         for i in range(1, m+1):
+            ai = a[i-1]
             for j in range(1, n+1):
-                cost = 0 if a[i-1]==b[j-1] else 1
+                cost = 0 if ai == b[j-1] else 1
                 dp[i][j] = min(
-                    dp[i-1][j] + 1,
-                    dp[i][j-1] + 1,
-                    dp[i-1][j-1] + cost
+                    dp[i-1][j] + 1,      # deletion
+                    dp[i][j-1] + 1,      # insertion
+                    dp[i-1][j-1] + cost  # substitution
                 )
         return dp[m][n]
 
-    top_k = settings.get("top_k", 5)
+    # 1) Coerce & clamp Top-K
+    try:
+        top_k = int(settings.get("top_k", 5))
+    except (TypeError, ValueError):
+        top_k = 5
+    if top_k < 1:
+        top_k = 1
+
     results: List[Dict[str, Any]] = []
 
     for q in queries:
-        # normalize query into a dict with a "text" field
+        # normalize to dict with a "text" field, preserving extra keys
         if isinstance(q, dict):
             prompt = q.get("text") or q.get("query") or ""
             query_obj = {**q, "text": prompt}
@@ -55,22 +58,22 @@ def LevenshteinRetriever(
             prompt = str(q)
             query_obj = {"text": prompt}
 
-        low = prompt.lower()
+        q_low = prompt.lower()
+
         # score each chunk
         scored: List[tuple] = []
         for chunk in chunks:
             text = chunk.get("text", "")
-            dist = lev(low, text.lower())
+            dist = lev(q_low, text.lower())
             scored.append((chunk, dist))
 
-        # pick top_k by smallest distance
-        scored.sort(key=lambda x: x[1])
+        # 2) Stable sort: primary by distance, secondary by chunkId (optional)
+        scored.sort(key=lambda x: (x[1], str(x[0].get("chunkId", ""))))
         top = scored[:top_k]
 
-        # build retrieved_chunks
         retrieved = []
-        for rank, (chunk, dist) in enumerate(top, start=1):
-            max_len = max(len(prompt), len(chunk.get("text","")), 1)
+        for _, (chunk, dist) in enumerate(top, start=1):
+            max_len = max(len(prompt), len(chunk.get("text", "")), 1)
             sim = 1 - dist / max_len
             retrieved.append({
                 "text":         chunk.get("text", ""),

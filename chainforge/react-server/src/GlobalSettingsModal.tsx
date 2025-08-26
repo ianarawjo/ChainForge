@@ -91,6 +91,24 @@ const read_file = (
   reader.readAsText(file);
 };
 
+// Normalize backend providers to the store shape for *retrievers* (preserves schema)
+function toCustomRetrieverSpecs(providers: any[]) {
+  return (providers || [])
+    .filter((p: any) => p.category === "retriever")
+    .map((p: any) => ({
+      key: `__custom/${p.name}`,
+      baseMethod: `__custom/${p.name}`,
+      methodName: p.name,
+      library: p.name,
+      emoji: p.emoji ?? "✨",
+      // optional; safe default
+      needsEmbeddingModel: !!p.needs_embedding_model,
+      // keep schema + defaults
+      settings_schema: p.settings_schema ?? undefined,
+      default_settings: p.default_settings ?? undefined,
+    }));
+}
+
 interface CustomProviderScriptDropzoneProps {
   onError: (err: string | Error) => void;
   onSetProviders: (providers: CustomLLMProviderSpec[]) => void;
@@ -142,32 +160,7 @@ const CustomProviderScriptDropzone: React.FC<
                       settings: {},
                     })),
                 );
-                setCustomRetrievers(
-                  providers
-                    .filter((p) => p.category === "retriever")
-                    .map((p) => ({
-                      key: `__custom/${p.name}`,
-                      baseMethod: `__custom/${p.name}`,
-                      methodName: p.name,
-                      library: p.name,
-                      emoji: p.emoji,
-                      needsEmbeddingModel: false,
-                    })),
-                );
-                const modelSpecs = providers
-                  .filter((p) => p.category === "model")
-                  .map((p) => ({
-                    key: `__custom/${p.name}`, // unique key for this model
-                    name: p.name, // display name
-                    emoji: p.emoji, // optional icon
-                    base_model: `__custom/${p.name}`, // what the backend will see
-                    model: `__custom/${p.name}`, // same here
-                    temp: 1,
-                    settings: {}, // no extra UI params
-                  }));
-
-                // Replace (or merge with) your existing Prompt‑node list
-                setAvailableLLMs([...initLLMProviders, ...modelSpecs]);
+                setCustomRetrievers(toCustomRetrieverSpecs(providers));
               })
               .catch((err) => {
                 setIsLoading(false);
@@ -458,19 +451,9 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 })),
             );
             setCustomRetrievers(
-              customProviders
-                // first drop the one they just removed
-                .filter((p) => p.name !== name)
-                // then keep only retrievers
-                .filter((p) => p.category === "retriever")
-                .map((p) => ({
-                  key: `__custom/${p.name}`,
-                  baseMethod: `__custom/${p.name}`,
-                  methodName: p.name,
-                  library: p.name,
-                  emoji: p.emoji,
-                  needsEmbeddingModel: false,
-                })),
+              toCustomRetrieverSpecs(
+                customProviders.filter((p) => p.name !== name),
+              ),
             );
             refreshLLMProviderLists();
           })
@@ -494,6 +477,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
             // Success; pass custom providers list to store:
             setCustomProviders(providers);
             setLocalCustomProviders(providers);
+            setCustomRetrievers(toCustomRetrieverSpecs(providers));
           })
           .catch(console.error);
       }

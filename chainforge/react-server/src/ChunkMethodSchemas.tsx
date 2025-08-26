@@ -114,6 +114,19 @@ export const OverlappingHuggingfaceTokenizerSchema: ModelSettingsDict = {
 };
 
 /**
+ * Markdown chunker
+ */
+
+export const MarkdownHeaderSchema: ModelSettingsDict = {
+  fullName: "Markdown (by headings)",
+  description:
+    "Splits markdown text at #/##/### headings; each section keeps its heading.",
+  schema: { type: "object", required: [], properties: {} },
+  uiSchema: {},
+  postprocessors: {},
+};
+
+/**
  * Syntax-based spaCy
  */
 export const SyntaxSpacySchema: ModelSettingsDict = {
@@ -851,6 +864,7 @@ export const ChunkMethodSchemas: { [baseMethod: string]: ModelSettingsDict } = {
   overlapping_langchain: OverlappingLangChainSchema,
   overlapping_openai_tiktoken: OverlappingOpenAITiktokenSchema,
   overlapping_huggingface_tokenizers: OverlappingHuggingfaceTokenizerSchema,
+  markdown_header: MarkdownHeaderSchema,
   syntax_spacy: SyntaxSpacySchema,
   syntax_texttiling: SyntaxTextTilingSchema,
   hybrid_texttiling_spacy: HybridTextTilingSpacySchema,
@@ -941,6 +955,12 @@ export const ChunkMethodGroups = [
   {
     label: "Syntax-Based Chunking",
     items: [
+      {
+        baseMethod: "markdown_header",
+        methodType: "Markdown",
+        name: "Markdown (by headings)",
+        emoji: "📝",
+      },
       {
         baseMethod: "syntax_spacy",
         methodType: "Syntax-Based Chunking",

@@ -45,7 +45,8 @@ COHERE_SETTINGS_SCHEMA = {
 
 # Our custom model provider for Cohere's text generation API.
 @provider(name="Cohere",
-          emoji="🖇", 
+          emoji="🖇",
+          category="model", 
           models=['command', 'command-nightly', 'command-light', 'command-light-nightly'],
           rate_limit="sequential", # enter "sequential" for blocking; an integer N > 0 means N is the max mumber of requests per minute. 
           settings_schema=COHERE_SETTINGS_SCHEMA)

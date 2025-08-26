@@ -2546,8 +2546,12 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.DeepSeek]: DeepSeekSettings,
   };
 
-  if (llm_provider === LLMProvider.Custom) return ModelSettings[llm_name];
-  else if (llm_provider && llm_provider in provider_to_settings_schema)
+  if (llm_provider === LLMProvider.Custom) {
+    return (
+      ModelSettings[llm_name] ??
+      ModelSettings[llm_name?.endsWith("/") ? llm_name : `${llm_name}/`]
+    );
+  } else if (llm_provider && llm_provider in provider_to_settings_schema)
     return provider_to_settings_schema[llm_provider];
   else if (llm_provider === LLMProvider.Bedrock) {
     return ModelSettings[llm_name.split("-")[0]];
@@ -2610,6 +2614,7 @@ export const setCustomProvider = (
 ) => {
   if (typeof emoji === "string" && (emoji.length === 0 || emoji.length > 2))
     throw new Error(`Emoji for a custom provider must have a character.`);
+  if ((category ?? "model") !== "model") return;
 
   const new_provider: Dict<JSONCompatible> = { name };
   new_provider.category = category || "model";
@@ -2618,11 +2623,12 @@ export const setCustomProvider = (
   // Each LLM *model* must have a unique name. To avoid name collisions, for custom providers,
   // the full LLM model name is a path, __custom/<provider_name>/<submodel name>
   // If there's no submodel, it's just __custom/<provider_name>.
-  const base_model = `__custom/${name}/`;
+  const base_model = `__custom/${name}`; // no trailing slash
   new_provider.base_model = base_model;
   new_provider.model =
-    base_model +
-    (Array.isArray(models) && models.length > 0 ? `${models[0]}` : "");
+    Array.isArray(models) && models.length > 0
+      ? `${base_model}/${models[0]}`
+      : base_model;
 
   // Build the settings form schema for this new custom provider
   const compiled_schema: ModelSettingsDict = {
@@ -2648,6 +2654,16 @@ export const setCustomProvider = (
     },
     postprocessors: {},
   };
+
+  const canon = (id: string) => id.replace(/\/+$/, "");
+
+  ModelSettings[canon(base_model)] = compiled_schema;
+
+  if (typeof rate_limit === "number" && rate_limit > 0) {
+    RATE_LIMIT_BY_MODEL[canon(base_model)] = rate_limit;
+  } else {
+    MAX_CONCURRENT[canon(base_model)] = 1;
+  }
 
   // Add a models selector if there's multiple models
   if (Array.isArray(models) && models.length > 0) {
@@ -2704,17 +2720,19 @@ export const setCustomProvider = (
 };
 
 export const setCustomProviders = (providers: CustomLLMProviderSpec[]) => {
-  for (const p of providers)
-    setCustomProvider(
-      p.name,
-      p.emoji,
-      p.models,
-      p.rate_limit,
-      p.settings_schema,
-      p.category,
+  (providers || [])
+    .filter((p) => (p?.category ?? "model") === "model")
+    .forEach((p) =>
+      setCustomProvider(
+        p.name,
+        p.emoji,
+        p.models,
+        p.rate_limit,
+        p.settings_schema,
+        p.category,
+      ),
     );
 };
-
 export const getTemperatureSpecForModel = (modelName: string) => {
   if (modelName in ModelSettings) {
     const temperature_property =

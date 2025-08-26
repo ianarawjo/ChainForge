@@ -126,6 +126,26 @@ def overlapping_huggingface_tokenizers(text: str, **kwargs: Any) -> List[str]:
 
     return result if result else [text]
 
+# --- Markdown headings chunker ---
+@ChunkingMethodRegistry.register("markdown_header")
+def markdown_header(text: str, **kwargs) -> list[str]:
+    """
+    Splits markdown into sections at each ATX heading (levels 1–6),
+    keeping the heading with its section.
+    """
+    import re
+    if text is None:
+        return [""]
+
+    # normalize CRLF
+    text = text.replace("\r\n", "\n")
+
+    # split at lines that start with 1–6 '#' followed by a space; keep the heading (lookahead)
+    sections = re.split(r"(?m)(?=^#{1,6}\s+)", text)
+    chunks = [sec.strip() for sec in sections if sec and sec.strip()]
+    return chunks if chunks else [text]
+
+
 @ChunkingMethodRegistry.register("syntax_spacy")
 def syntax_spacy(text: str, **kwargs: Any) -> List[str]:
     # SpaCy for sentence splitting and NLP objects

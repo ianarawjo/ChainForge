@@ -1,4 +1,5 @@
-from typing import Protocol, Optional, Dict, List, Literal, Union, Any
+from typing import Protocol, Optional, Dict, List, Literal, Union, Any, TypedDict
+import inspect
 
 """
     OpenAI chat message format typing
@@ -11,6 +12,14 @@ class ChatMessage(Dict):
     function_call: Optional[Dict]
 
 ChatHistory = List[ChatMessage]
+
+class SettingsSchema(TypedDict, total=False):
+    # react-jsonschema-form contract:
+    # "settings" = JSON-Schema *properties* object, "ui" = uiSchema
+    settings: Dict[str, Any]
+    ui: Dict[str, Any]
+
+Category = Literal["model", "retriever", "chunker"]
 
 
 class CustomProviderProtocol(Protocol):
@@ -73,54 +82,81 @@ class CustomRetrieverProtocol(Protocol):
         """
         pass
 
+class ProviderEntry(TypedDict, total=False):
+    name: str
+    func: Any
+    script_id: str
+    emoji: str
+    models: Optional[List[str]]
+    rate_limit: Union[int, Literal["sequential"]]
+    settings_schema: Optional[SettingsSchema]
+    category: Category
 
 """
     A registry for custom providers
 """
 class _ProviderRegistry:
     def __init__(self):
-        self._registry = {}
+        self._registry: Dict[str, ProviderEntry] = {}   # TYPED
         self._curr_script_id = '0'
-        self._last_updated = {}
+        self._last_updated: Dict[str, Optional[str]] = {}
     
     def set_curr_script_id(self, id: str):
         self._curr_script_id = id
 
-    def register(self, cls: Union[CustomChunkerProtocol, CustomRetrieverProtocol], name: str, **kwargs):
-        if name is None or isinstance(name, str) is False or len(name) == 0:
-            raise Exception("Cannot register custom model provider: No name given. Name must be a string and unique.")
+    def register(self, cls_or_fn: Any, name: str, **kwargs):
+        if not name or not isinstance(name, str):
+            raise Exception("Cannot register custom provider: Name must be a non-empty string.")
         self._last_updated[name] = self._registry[name]["script_id"] if name in self._registry else None
-        self._registry[name] = { "name": name, "func": cls, "script_id": self._curr_script_id, **kwargs }
+        self._registry[name] = {
+            "name": name,
+            "func": cls_or_fn,
+            "script_id": self._curr_script_id,
+            **kwargs
+        }
 
-    def get(self, name):
+    def get(self, name: str) -> Optional[ProviderEntry]:
         return self._registry.get(name)
 
-    def get_all(self):
+    def get_all(self) -> List[ProviderEntry]:
         return list(self._registry.values())
 
-    def has(self, name):
+    def get_all_by_category(self, category: Category) -> List[ProviderEntry]:
+        return [e for e in self._registry.values() if e.get("category") == category]
+
+    def has(self, name: str) -> bool:
         return name in self._registry
     
-    def remove(self, name):
+    def remove(self, name: str):
         if self.has(name):
             del self._registry[name]
     
     def watch_next_registered(self):
         self._last_updated = {}
     
-    def last_registered(self):
+    def last_registered(self) -> Dict[str, Optional[str]]:
         return {k: v for k, v in self._last_updated.items()}
 
 
 # Global instance of the registry.
 ProviderRegistry = _ProviderRegistry()
 
+def _ensure_params(fn: Any, required: List[str]) -> None:
+    try:
+        params = list(inspect.signature(fn).parameters)
+    except (TypeError, ValueError):
+        # skip strict check
+        return
+    missing = [p for p in required if p not in params]
+    if missing:
+        raise TypeError(f"{getattr(fn, '__name__', fn)} must define params: {', '.join(required)}")
+
 def provider(name: str = 'Custom Provider', 
              emoji: str = '✨', 
              models: Optional[List[str]] = None, 
              rate_limit: Union[int, Literal["sequential"]] = "sequential",
-             settings_schema: Optional[Dict] = None,
-             category: str = "model"):
+             settings_schema: Optional[SettingsSchema] = None,
+             category: Category = "model"):
     """
       A decorator for registering custom LLM provider methods or classes (Callables)
       that conform to `CustomProviderProtocol`.
@@ -156,9 +192,31 @@ def provider(name: str = 'Custom Provider',
 
             NOTE: Only `textarea`, `range`, and enum, and text input UI widgets are properly supported from `react-jsonschema-form`; 
             you can try other widget types, but the CSS may not display property. 
+        - category: "model" | "retriever" | "chunker"
+            Callable shapes:
+            - category == "model":
+                (prompt, model, chat_history, **kwargs) -> str
+            - category == "retriever":
+                (chunks, queries, settings) -> List[...]
+            - category == "chunker":
+                (text) -> List[str]
 
     """
-    def dec(cls: Union[CustomChunkerProtocol, CustomRetrieverProtocol]):
-        ProviderRegistry.register(cls, name=name, emoji=emoji, models=models, rate_limit=rate_limit, settings_schema=settings_schema, category=category,)
+    def dec(cls: Union[CustomProviderProtocol, CustomChunkerProtocol, CustomRetrieverProtocol]):
+        # Allow functions OR classes-with-__call__
+        fn = cls() if inspect.isclass(cls) else cls
+
+        # Friendly signature check
+        if category == "retriever":
+            _ensure_params(fn, ["chunks", "queries", "settings"])
+        elif category == "chunker":
+            _ensure_params(fn, ["text"])
+        # (we skip strict check for "model" to allow flexible kwargs)
+
+        ProviderRegistry.register(
+            fn, name=name, emoji=emoji, models=models,
+            rate_limit=rate_limit, settings_schema=settings_schema,
+            category=category,
+        )
         return cls
     return dec

@@ -34,7 +34,7 @@ import {
 } from "./RetrievalMethodSchemas";
 import useStore from "./store";
 
-// Individual retrieval method item interface
+/** One retrieval method row */
 export interface RetrievalMethodSpec {
   key: string;
   baseMethod: string;
@@ -44,9 +44,12 @@ export interface RetrievalMethodSpec {
   needsEmbeddingModel?: boolean;
   embeddingProvider?: string;
   settings?: Record<string, any>;
+  source?: "builtin" | "custom";
+  /** For customs (normalized in store) */
+  settingsSchema?: { settings?: Record<string, any>; ui?: Record<string, any> };
 }
 
-// Settings modal for individual retrieval methods
+/** Settings modal */
 interface SettingsModalProps {
   opened: boolean;
   onClose: () => void;
@@ -60,26 +63,65 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   methodItem,
   onSettingsUpdate,
 }) => {
-  const schema = RetrievalMethodSchemas[methodItem.baseMethod];
-  if (!schema) return null;
+  const builtin = RetrievalMethodSchemas[methodItem.baseMethod];
 
-  // If this method needs embedding models, modify the schema to include
-  // the appropriate embedding model options based on the selected provider
-  let finalSchema = schema.schema;
-  const finalUiSchema = schema.uiSchema;
+  // With normalized store data, a single custom check suffices.
+  const isCustom = methodItem.source === "custom";
 
-  if (methodItem.needsEmbeddingModel && methodItem.embeddingProvider) {
+  // Prefer custom schema if present; otherwise built-in schema.
+  const customSchema = methodItem.settingsSchema
+    ? {
+        schema: {
+          type: "object",
+          properties: methodItem.settingsSchema.settings ?? {},
+        },
+        uiSchema: methodItem.settingsSchema.ui ?? {},
+      }
+    : null;
+
+  let finalSchema = (customSchema?.schema ?? builtin?.schema) as
+    | RJSFSchema
+    | undefined;
+  const finalUiSchema = (customSchema?.uiSchema ?? builtin?.uiSchema) as
+    | UiSchema
+    | undefined;
+
+  // Ensure customs always have a Nickname field
+  if (isCustom) {
+    const props = (finalSchema?.properties ?? {}) as Record<string, any>;
+    if (!("shortName" in props)) {
+      finalSchema = {
+        type: "object",
+        properties: {
+          shortName: {
+            type: "string",
+            title: "Nickname",
+            default: methodItem.settings?.shortName ?? methodItem.methodName,
+            description:
+              "Unique identifier to appear in ChainForge. Keep it short.",
+          },
+          ...props,
+        },
+      } as RJSFSchema;
+    }
+  }
+
+  // Built-ins: optionally augment with embedding model picker
+  if (
+    !isCustom &&
+    methodItem.needsEmbeddingModel &&
+    methodItem.embeddingProvider &&
+    builtin
+  ) {
     const provider = embeddingProviders.find(
       (p) => p.value === methodItem.embeddingProvider,
     );
     if (provider) {
       if (provider.models && provider.models.length > 0) {
-        // Clone the schema to avoid modifying the original
         finalSchema = {
-          ...schema.schema,
+          ...(finalSchema as any),
           properties: {
-            ...schema.schema.properties,
-            // Add the embedding model property with enum options from the selected provider
+            ...(finalSchema?.properties ?? {}),
             embeddingModel: {
               type: "string",
               title: "Embedding Model",
@@ -88,49 +130,69 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             },
             embeddingLocalPath: {
               type: "string",
-              title: "Local path form embedding model (not required)",
+              title: "Local path for embedding model (optional)",
               description:
-                "Required only if you prefer to use local files instead of downloading the model automatically.",
+                "Only needed if you prefer local files instead of downloading the model automatically.",
             },
           },
-        };
+        } as RJSFSchema;
       } else {
         finalSchema = {
-          ...schema.schema,
+          ...(finalSchema as any),
           properties: {
-            ...schema.schema.properties,
+            ...(finalSchema?.properties ?? {}),
             embeddingLocalPath: {
               type: "string",
               title: "Embedding Model Name",
               description: "Specify the name of the embedding model to use.",
             },
           },
-        };
+        } as RJSFSchema;
       }
     }
+  }
+
+  const hasProps =
+    !!finalSchema && Object.keys(finalSchema.properties ?? {}).length > 0;
+  if (!hasProps) {
+    return (
+      <Modal
+        opened={opened}
+        onClose={onClose}
+        title={`Settings: ${methodItem.methodName}`}
+        size="lg"
+      >
+        <div style={{ padding: 8, fontSize: 14, opacity: 0.8 }}>
+          This method has no configurable settings.
+        </div>
+      </Modal>
+    );
   }
 
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      title={`Settings: ${methodItem.methodName}${methodItem.embeddingProvider ? ` (${methodItem.embeddingProvider})` : ""}`}
+      title={`Settings: ${methodItem.methodName}${
+        methodItem.embeddingProvider ? ` (${methodItem.embeddingProvider})` : ""
+      }`}
       size="lg"
     >
       <Form<any, RJSFSchema, any>
         schema={finalSchema as RJSFSchema}
-        uiSchema={finalUiSchema as UiSchema}
+        uiSchema={(finalUiSchema || {}) as UiSchema}
         validator={validator}
         formData={methodItem.settings}
         onChange={(e) => onSettingsUpdate(e.formData)}
       >
+        {/* live update via onChange */}
         <Button type="submit" style={{ display: "none" }} />
       </Form>
     </Modal>
   );
 };
 
-// Individual retrieval method list item
+/** One row in the list */
 interface RetrievalMethodListItemProps {
   methodItem: RetrievalMethodSpec;
   onRemove: (key: string) => void;
@@ -168,7 +230,11 @@ const RetrievalMethodListItem: React.FC<RetrievalMethodListItemProps> = ({
             size="sm"
             variant="subtle"
             color="blue"
-            onClick={() => open()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              open();
+            }}
           >
             <IconSettings size={14} />
           </ActionIcon>
@@ -187,7 +253,7 @@ const RetrievalMethodListItem: React.FC<RetrievalMethodListItemProps> = ({
   );
 };
 
-// Main container component
+/** Main container */
 export interface RetrievalMethodListContainerProps {
   initMethodItems?: RetrievalMethodSpec[];
   onItemsChange?: (
@@ -237,43 +303,51 @@ export const RetrievalMethodListContainer = forwardRef<
     [methodItems, notifyItemsChanged],
   );
 
+  function defaultsFromCustomSchema(s?: { settings?: Record<string, any> }) {
+    const props = s?.settings || {};
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(props)) {
+      if (v && typeof v === "object" && "default" in (v as any)) {
+        out[k] = (v as any).default;
+      }
+    }
+    return out;
+  }
+
   const addMethod = useCallback(
     (
       m: Omit<RetrievalMethodSpec, "key" | "settings">,
       embeddingProviderValue?: string,
     ) => {
-      // Find the provider with this value to get its label and models
+      const isCustom = m.source === "custom";
+
+      // Find selected embedding provider (built-ins only)
       const provider = embeddingProviderValue
         ? embeddingProviders.find((p) => p.value === embeddingProviderValue)
         : undefined;
 
-      // Get the schema for this method to access default values
-      const methodSchema = RetrievalMethodSchemas[m.baseMethod];
+      let defaultSettings: Record<string, any> = {};
 
-      // Initialize settings with default values from schema
-      let defaultSettings = {} as Record<string, any>;
-
-      // Extract default values from schema if available
-      if (methodSchema?.schema?.properties) {
-        const schemaProps = methodSchema.schema.properties;
-        defaultSettings = Object.entries(schemaProps).reduce(
-          (acc, [key, prop]) => {
-            if ("default" in prop) {
-              acc[key] = prop.default;
-            }
-            return acc;
-          },
-          {} as Record<string, any>,
-        );
-      }
-
-      // If this is an embedding-based method, set the default embedding model
-      if (
-        m.needsEmbeddingModel &&
-        provider?.models &&
-        provider.models.length > 0
-      ) {
-        defaultSettings.embeddingModel = provider.models[0];
+      if (isCustom) {
+        // Pull defaults from normalized custom schema
+        defaultSettings = defaultsFromCustomSchema(m.settingsSchema);
+        if (!("shortName" in defaultSettings))
+          defaultSettings.shortName = m.methodName;
+      } else {
+        const methodSchema = RetrievalMethodSchemas[m.baseMethod];
+        if (methodSchema?.schema?.properties) {
+          const schemaProps = methodSchema.schema.properties;
+          defaultSettings = Object.entries(schemaProps).reduce(
+            (acc, [key, prop]) => {
+              if ("default" in prop) acc[key] = (prop as any).default;
+              return acc;
+            },
+            {} as Record<string, any>,
+          );
+        }
+        if (m.needsEmbeddingModel && provider?.models?.length) {
+          defaultSettings.embeddingModel = provider.models[0];
+        }
       }
 
       const newItem: RetrievalMethodSpec = {
@@ -284,11 +358,11 @@ export const RetrievalMethodListContainer = forwardRef<
         emoji: m.emoji,
         needsEmbeddingModel: m.needsEmbeddingModel,
         ...(m.needsEmbeddingModel && embeddingProviderValue
-          ? {
-              embeddingProvider: provider?.value || "",
-            }
+          ? { embeddingProvider: provider?.value || "" }
           : {}),
-        settings: defaultSettings, // Use initialized default settings
+        source: isCustom ? "custom" : "builtin",
+        settingsSchema: isCustom ? m.settingsSchema : undefined,
+        settings: defaultSettings,
       };
 
       const newItems = [...methodItems, newItem];
@@ -299,6 +373,8 @@ export const RetrievalMethodListContainer = forwardRef<
   );
 
   const [menuOpened, setMenuOpened] = useState(false);
+
+  // Thanks to the unified store normalizer, these are already consistent.
   const customRetrievers = useStore((s) => s.customRetrievers || []);
 
   return (
@@ -329,7 +405,7 @@ export const RetrievalMethodListContainer = forwardRef<
               <React.Fragment key={group.label}>
                 <Menu.Label>{group.label}</Menu.Label>
                 {group.items.map((item) => {
-                  // For methods that need embedding models, show a nested menu
+                  // Embedding-required methods: nested submenu to pick provider
                   if (item.needsEmbeddingModel) {
                     return (
                       <Menu
@@ -364,7 +440,7 @@ export const RetrievalMethodListContainer = forwardRef<
                     );
                   }
 
-                  // For methods that don't need embeddings, keep the original behavior
+                  // Methods that don't need embeddings
                   return (
                     <Menu.Item
                       key={item.baseMethod}
@@ -383,6 +459,7 @@ export const RetrievalMethodListContainer = forwardRef<
                 )}
               </React.Fragment>
             ))}
+
             {customRetrievers.length > 0 && (
               <>
                 <Divider my="xs" />
@@ -392,7 +469,17 @@ export const RetrievalMethodListContainer = forwardRef<
                     key={prov.key}
                     icon={prov.emoji ? <Text>{prov.emoji}</Text> : undefined}
                     onClick={() => {
-                      addMethod(prov);
+                      // The store already guarantees a full, normalized spec-like shape.
+                      addMethod({
+                        baseMethod: prov.baseMethod,
+                        methodName: prov.methodName,
+                        library: prov.library,
+                        emoji: prov.emoji,
+                        needsEmbeddingModel: prov.needsEmbeddingModel,
+                        source: "custom",
+                        settingsSchema:
+                          prov.settingsSchema ?? (prov as any).settings_schema, // tolerate legacy flows just in case
+                      } as any);
                       setMenuOpened(false);
                     }}
                   >
