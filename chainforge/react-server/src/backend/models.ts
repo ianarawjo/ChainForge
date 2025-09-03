@@ -77,6 +77,9 @@ export enum NativeLLM {
   PaLM2_Text_Bison = "text-bison-001", // it's really models/text-bison-001, but that's confusing
   PaLM2_Chat_Bison = "chat-bison-001",
   GEMINI_PRO = "gemini-pro",
+  GEMINI_v2_5_pro = "gemini-2.5-pro",
+  GEMINI_v2_5_flash = "gemini-2.5-flash",
+  GEMINI_v2_5_flash_lite = "gemini-2.5-flash-lite",
   GEMINI_v2_5_pro_prev = "gemini-2.5-pro-preview-03-25",
   GEMINI_v2_flash = "gemini-2.0-flash",
   GEMINI_v2_flash_lite = "gemini-2.0-flash-lite",
@@ -293,6 +296,9 @@ export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
   [NativeLLM.PaLM2_Text_Bison]: 60, // max 60 requests per minute as of Mar 2023
   [NativeLLM.PaLM2_Chat_Bison]: 60,
   [NativeLLM.GEMINI_PRO]: 60,
+  [NativeLLM.GEMINI_v2_5_pro]: 150,
+  [NativeLLM.GEMINI_v2_5_flash]: 1000,
+  [NativeLLM.GEMINI_v2_5_flash_lite]: 4000,
   [NativeLLM.Bedrock_Jurassic_Mid]: 400,
   [NativeLLM.Bedrock_Jurassic_Ultra]: 25,
   [NativeLLM.Bedrock_Titan_Light]: 800,

@@ -833,7 +833,7 @@ const ClaudeSettings: ModelSettingsDict = {
   },
 };
 
-const PaLM2Settings: ModelSettingsDict = {
+const Gemini25Settings: ModelSettingsDict = {
   fullName: "Google AI Models (Gemini)",
   schema: {
     type: "object",
@@ -850,30 +850,29 @@ const PaLM2Settings: ModelSettingsDict = {
         type: "string",
         title: "Model",
         description:
-          "Select a PaLM model to query. For more details on the differences, see the Google PaLM API documentation.",
+          "Select a Gemini model to query. For more details on the differences, see the Google Gemini API documentation.",
         enum: [
-          "gemini-2.5-pro-preview-03-25",
+          "gemini-2.5-pro",
+          "gemini-2.5-flash",
+          "gemini-2.5-flash-lite",
           "gemini-2.0-flash",
           "gemini-2.0-flash-lite",
-          "gemini-1.5-flash",
-          "gemini-1.5-flash-8b",
-          "gemini-1.5-pro",
-          "gemini-1.0-pro",
-          "gemini-pro",
-          "text-bison-001",
-          "chat-bison-001",
+          "gemini-embedding-001",
+          "text-embedding-005",
+          "text-embedding-004",
+          "text-multilingual-embedding-002",
         ],
-        default: "gemini-1.5-flash",
+        default: "gemini-2.5-flash",
         shortname_map: {
-          "text-bison-001": "PaLM2-text",
-          "chat-bison-001": "PaLM2-chat",
-          "gemini-pro": "Gemini 1.0",
-          "gemini-2.5-pro-preview-03-25": "Gemini 2.5",
+          "gemini-2.5-pro": "Gemini 2.5 Pro",
+          "gemini-2.5-flash": "Gemini 2.5 Flash",
+          "gemini-2.5-flash-lite": "Gemini 2.5 Flash Lite",
           "gemini-2.0-flash": "Gemini 2.0 Flash",
-          "gemini-1.5-pro": "Gemini 1.5",
-          "gemini-1.0-pro": "Gemini 1.0",
-          "gemini-1.5-flash": "Gemini Flash",
-          "gemini-1.5-flash-8b": "Gemini Flash 8B",
+          "gemini-2.0-flash-lite": "Gemini 2.0 Flash Lite",
+          "gemini-embedding-001": "gemini-embedding-001",
+          "text-embedding-005": "text-embedding-005",
+          "text-embedding-004": "text-embedding-004",
+          "text-multilingual-embedding-002": "text-multilingual-embedding-002",
         },
       },
       system_msg: {
@@ -888,9 +887,9 @@ const PaLM2Settings: ModelSettingsDict = {
         title: "temperature",
         description:
           "Controls the randomness of the output. Must be positive. Typical values are in the range: [0.0, 1.0]. Higher values produce a more random and varied response. A temperature of zero will be deterministic. (ChainForge only allows a max 1.0 temperature for PaLM).",
-        default: 0.5,
+        default: 0.7,
         minimum: 0,
-        maximum: 1,
+        maximum: 2,
         multipleOf: 0.01,
       },
       top_k: {
@@ -935,14 +934,14 @@ const PaLM2Settings: ModelSettingsDict = {
       "ui:autofocus": true,
     },
     model: {
-      "ui:help": "Defaults to gemini-pro.",
+      "ui:help": "Defaults to gemini-2.5-flash.",
       "ui:widget": "datalist",
     },
     system_msg: {
       "ui:widget": "textarea",
     },
     temperature: {
-      "ui:help": "Defaults to 0.5.",
+      "ui:help": "Defaults to 0.7.",
       "ui:widget": "range",
     },
     max_output_tokens: {
@@ -2481,7 +2480,7 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "dall-e": DalleSettings,
   "gpt-image-1": GPTImage1Settings,
   "claude-v1": ClaudeSettings,
-  "palm2-bison": PaLM2Settings,
+  "gemini-2.5": Gemini25Settings,
   "azure-openai": AzureOpenAISettings,
   hf: HuggingFaceTextInferenceSettings,
   "luminous-base": AlephAlphaLuminousSettings,
@@ -2508,7 +2507,7 @@ export function baseModelToProvider(base_model: string): LLMProvider {
     "dall-e": LLMProvider.OpenAI,
     "gpt-image-1": LLMProvider.OpenAI,
     "claude-v1": LLMProvider.Anthropic,
-    "palm2-bison": LLMProvider.Google,
+    "gemini-2.5": LLMProvider.Google,
     "azure-openai": LLMProvider.Azure_OpenAI,
     hf: LLMProvider.HuggingFace,
     "luminous-base": LLMProvider.Aleph_Alpha,
@@ -2537,7 +2536,7 @@ export function getSettingsSchemaForLLM(
   } = {
     [LLMProvider.OpenAI]: GPT4Settings,
     [LLMProvider.Anthropic]: ClaudeSettings,
-    [LLMProvider.Google]: PaLM2Settings,
+    [LLMProvider.Google]: Gemini25Settings,
     [LLMProvider.Azure_OpenAI]: AzureOpenAISettings,
     [LLMProvider.HuggingFace]: HuggingFaceTextInferenceSettings,
     [LLMProvider.Aleph_Alpha]: AlephAlphaLuminousSettings,

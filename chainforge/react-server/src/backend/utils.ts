@@ -46,7 +46,11 @@ import {
   OpenAIClient as AzureOpenAIClient,
   AzureKeyCredential,
 } from "@azure/openai";
-import { GoogleGenerativeAI, Part } from "@google/generative-ai";
+import {
+  GenerateContentConfig,
+  GoogleGenAI,
+  PartListUnion,
+} from "@google/genai";
 import { UserForcedPrematureExit } from "./errors";
 import {
   fromModelId,
@@ -1072,21 +1076,18 @@ export async function call_google_gemini(
       "Could not find an API key for Google Gemini models. Double-check that your API key is set in Settings or in your local environment.",
     );
 
-  // Required non-standard params
   const max_output_tokens = params?.max_output_tokens || 1000;
   const chat_history: ChatHistory = params?.chat_history;
   const system_msg = params?.system_msg;
   delete params?.chat_history;
   delete params?.system_msg;
 
-  const genAI = new GoogleGenerativeAI(GOOGLE_PALM_API_KEY);
-  const gemini_model = genAI.getGenerativeModel({
-    model: model.toString(),
-    systemInstruction:
-      typeof system_msg === "string" && chat_history === undefined
-        ? system_msg
-        : undefined,
-  });
+  const gemini_client = new GoogleGenAI({ apiKey: GOOGLE_PALM_API_KEY });
+
+  const gemini_config: GenerateContentConfig = {
+    candidateCount: 1,
+    systemInstruction: system_msg,
+  };
 
   const query: Dict = {
     model: `models/${model}`,
@@ -1098,7 +1099,7 @@ export async function call_google_gemini(
 
   // For some reason Google needs to be special and have its API params be different names --camel or snake-case
   // --depending on if it's the Python or Node JS API. ChainForge needs a consistent name, so we must convert snake to camel:
-  const casemap = {
+  const casemap:  Record<string, keyof GenerateContentConfig> = {
     safety_settings: "safetySettings",
     stop_sequences: "stopSequences",
     candidate_count: "candidateCount",
@@ -1107,53 +1108,43 @@ export async function call_google_gemini(
     top_k: "topK",
   };
 
-  const gen_Config: Dict = { candidateCount: 1 };
-
   Object.entries(casemap).forEach(([key, val]) => {
     if (key in query) {
-      gen_Config[val] = query[key];
+      gemini_config[val] = query[key];
       query[val] = query[key];
       delete query[key];
     }
   });
 
-  // Gemini only supports candidate_count of 1
-  gen_Config.candidateCount = 1;
+  gemini_config.candidateCount = 1; // Gemini only supports 1 candidate
 
-  // By default for topK is none, and topP is 1.0
-  if ("topK" in gen_Config && gen_Config.topK === -1) {
-    delete gen_Config.topK;
+  // -1 is not a sensible value, so assume default is intended
+  if ("topK" in gemini_config && gemini_config.topK === -1) {
+    delete gemini_config.topK;
   }
-  if ("topP" in gen_Config && gen_Config.topP === -1) {
-    gen_Config.topP = 1.0;
+  if ("topP" in gemini_config && gemini_config.topP === -1) {
+    gemini_config.topP = 1.0;
   }
 
-  const gemini_chat_context: GeminiChatContext = { history: [] };
+  const gemini_chat_history: GeminiChatContext = { history: [] };
+
+  const openai_gemini_role_map: Record<string, "user" | "model"> = {
+    user: "user",
+    assistant: "model",
+    system: "model",
+  };
 
   // Chat completions
   if (chat_history !== undefined && chat_history.length > 0) {
-    // Carry over any chat history, converting OpenAI formatted chat history to Google PaLM:
-
-    const gemini_messages: GeminiChatMessage[] = [];
+    // Carry over any chat history, converting OpenAI formatted chat history to Gemini:
     for (const chat_msg of chat_history) {
-      if (chat_msg.role === "system") {
-        // Carry the system message over as PaLM's chat 'context':
-        gemini_messages.push({
-          role: "model",
-          parts: [{ text: chat_msg.content }],
-        });
-      } else if (chat_msg.role === "user") {
-        gemini_messages.push({
-          role: "user",
-          parts: [{ text: chat_msg.content }],
-        });
-      } else
-        gemini_messages.push({
-          role: "model",
-          parts: [{ text: chat_msg.content }],
-        });
+      if (chat_msg.role === "system") continue; // Skip system messages as gemini uses systemInstruction provided in config.
+      const prompt_part: GeminiChatMessage = {
+        role: openai_gemini_role_map[chat_msg.role],
+        parts: [{ text: chat_msg.content }],
+      };
+      gemini_chat_history.history.push(prompt_part);
     }
-    gemini_chat_context.history = gemini_messages;
   }
 
   console.log(
@@ -1161,7 +1152,7 @@ export async function call_google_gemini(
   );
 
   const responses: Array<Dict> = [];
-  const prompt_parts: Array<Part> = [{ text: prompt }];
+  const prompt_parts: PartListUnion = [{ text: prompt }];
   if (images && images.length > 0) {
     const image_data_urls: string[] = await imagesToBase64(images);
     for (const image of image_data_urls) {
@@ -1174,27 +1165,22 @@ export async function call_google_gemini(
     }
   }
 
-  // TODO: to finish
-  // if (prompt.includes(IMAGE_IDENTIFIER) && typeof prompt === "string") {
-  //   prompt = resolve_image_in_user_messages([{role : 'user', content : prompt}], 'gemini');
-  // }
-
   while (responses.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
-    const chat = gemini_model.startChat({
-      history: gemini_chat_context.history,
-      generationConfig: gen_Config,
+    const chat = gemini_client.chats.create({
+      model,
+      history: gemini_chat_history.history,
+      config: gemini_config,
     });
 
-    const chatResult = await chat.sendMessage(prompt_parts);
-    const chatResponse = await chatResult.response;
-    const response = {
-      text: chatResponse.text(),
-      candidates: chatResponse.candidates,
-      promptFeedback: chatResponse.promptFeedback,
-    };
-    responses.push(response);
+    const chat_response = await chat.sendMessage({ message: prompt_parts });
+
+    responses.push({
+      text: chat_response.text,
+      candidates: chat_response.candidates,
+      promptFeedback: chat_response.promptFeedback,
+    });
   }
 
   return [query, responses];
