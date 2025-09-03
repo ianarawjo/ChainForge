@@ -94,6 +94,6 @@ test("basic prompt pipeline with anthropic", async () => {
   await prompt_model(NativeLLM.Claude_v1, LLMProvider.Anthropic);
 }, 40000);
 
-test("basic prompt pipeline with google palm2", async () => {
-  await prompt_model(NativeLLM.PaLM2_Chat_Bison, LLMProvider.Google);
+test("basic prompt pipeline with google gemini 2.5 flash", async () => {
+  await prompt_model(NativeLLM.GEMINI_v2_5_flash, LLMProvider.Google);
 }, 40000);

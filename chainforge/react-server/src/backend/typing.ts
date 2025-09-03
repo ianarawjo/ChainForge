@@ -110,17 +110,6 @@ export interface ChatMessage {
 }
 export type ChatHistory = ChatMessage[];
 
-/** Google PaLM chat message format */
-export interface PaLMChatMessage {
-  author: string; // usually, 0=user and 1=AI
-  content: string;
-}
-export interface PaLMChatContext {
-  messages: PaLMChatMessage[];
-  context?: string;
-  examples?: Dict[];
-}
-
 export interface GeminiChatMessage {
   role: string;
   parts: [{ text: string }];

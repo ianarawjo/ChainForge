@@ -886,7 +886,7 @@ const Gemini25Settings: ModelSettingsDict = {
         type: "number",
         title: "temperature",
         description:
-          "Controls the randomness of the output. Must be positive. Typical values are in the range: [0.0, 1.0]. Higher values produce a more random and varied response. A temperature of zero will be deterministic. (ChainForge only allows a max 1.0 temperature for PaLM).",
+          "Controls the randomness of the output. Must be positive. Typical values are in the range: [0.0, 1.0]. Higher values produce a more random and varied response. A temperature of zero will be deterministic.",
         default: 0.7,
         minimum: 0,
         maximum: 2,
@@ -896,7 +896,7 @@ const Gemini25Settings: ModelSettingsDict = {
         type: "integer",
         title: "top_k",
         description:
-          "Sets the maximum number of tokens to sample from on each step. (The PaLM API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
+          "Sets the maximum number of tokens to sample from on each step. (The Gemini API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
         minimum: -1,
         default: -1,
       },
@@ -904,7 +904,7 @@ const Gemini25Settings: ModelSettingsDict = {
         type: "number",
         title: "top_p",
         description:
-          "Sets the maximum cumulative probability of tokens to sample from. (The PaLM API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
+          "Sets the maximum cumulative probability of tokens to sample from. (The Gemini API uses combined nucleus and top-k sampling.) Set to -1 to use the default value.",
         default: -1,
         minimum: -1,
         maximum: 1,
