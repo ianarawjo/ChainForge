@@ -6,7 +6,6 @@ import React, {
   useContext,
 } from "react";
 import {
-  Badge,
   Button,
   Flex,
   Menu,
@@ -15,7 +14,7 @@ import {
   Text,
   Tooltip,
 } from "@mantine/core";
-import EditableTable from "./EditableTable";
+import TanStackEditableTable from "./TanStackEditableTable";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { v4 as uuidv4 } from "uuid";
@@ -23,8 +22,6 @@ import {
   IconX,
   IconArrowBarToUp,
   IconArrowBarToDown,
-  IconLoader,
-  IconSquareArrowRight,
   IconArrowBarUp,
 } from "@tabler/icons-react";
 import TemplateHooks from "./TemplateHooksComponent";
@@ -294,36 +291,6 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
     [tableData, tableColumns, selectedRow],
   );
 
-  // Opens a context window inside the table
-  // Currently only opens if a row cell textarea was right-clicked.
-  // TODO: Improve this to work on other parts of the table too (e.g., column headers and between rows)
-  const handleOpenTableContextMenu: React.MouseEventHandler<HTMLDivElement> = (
-    e: React.MouseEvent<HTMLDivElement>,
-  ) => {
-    e.preventDefault();
-
-    const target = e.target as HTMLDivElement;
-    if (target.localName === "p") {
-      // Some really sketchy stuff to get the row index....
-      // :: We've clicked on an 'input' element. We know that there is a 'td' element 1 level up, and a 'tr' 2 levels up.
-      const grandparent = target.parentNode?.parentNode;
-      const rowIndex = (grandparent as HTMLTableRowElement)?.rowIndex;
-      const cellIndex = (grandparent as HTMLTableCellElement)?.cellIndex;
-      if (rowIndex !== undefined) {
-        // A cell of the table was right-clicked on
-        setSelectedRow(rowIndex);
-        setContextMenuPos({
-          left: e.pageX,
-          top: e.pageY,
-        });
-        setContextMenuOpened(true);
-      } else if (cellIndex !== undefined) {
-        // A column header was right-clicked on
-        setSelectedRow(undefined);
-      }
-    }
-  };
-
   // Import list of JSON data to the table
   // NOTE: JSON objects should be in row format, with keys
   //       as the header names. The internal keys of the columns will use uids to be unique.
@@ -396,7 +363,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
             case "xlsx":
               // Parse data using XLSX
               {
-                const wb = XLSX.read(reader.result, { type: "binary" });
+                const wb = XLSX.read(reader.result, { type: "array" });
                 // Extract the first worksheet
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
@@ -428,7 +395,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
 
       // Read the selected file using the appropriate reader
       if (extension === "xlsx" || extension === "xls")
-        reader.readAsBinaryString(file);
+        reader.readAsArrayBuffer(file);
       else reader.readAsText(file);
     });
 
@@ -489,10 +456,6 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   );
 
   const [isLoading, setIsLoading] = useState(false);
-
-  const [rowValues, setRowValues] = useState<string[]>(
-    tableData.map((row) => StringLookup.get(row.value) ?? ""),
-  );
 
   // Function to add new columns to the right of the existing columns (with optional row values)
   const addColumns = (
@@ -620,111 +583,236 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
 
     setTableColumns(updatedColumns); // Replace table columns
     setTableData(updatedRows); // Replace table rows
-    setRowValues(updatedRows.map((row) => JSON.stringify(row))); // Update row values
   };
+
+  // Handler for inserting rows (compatible with TanStackEditableTable)
+  const handleInsertRowAtIndex = useCallback(
+    (rowIndex: number, offset: 0 | -1) => {
+      const insertIdx = rowIndex + offset + 1; // Adjust for 0-based indexing
+
+      // Creates a blank row with the same columns as the table
+      const blank_row: TabularDataRowType = { __uid: uuidv4() };
+      tableColumns.forEach((o) => {
+        blank_row[o.key] = "";
+      });
+
+      // Adds the row to the table at the requested position
+      const new_rows = tableData
+        .slice(0, insertIdx)
+        .concat([blank_row], tableData.slice(insertIdx));
+
+      // Save state
+      setTableData([...new_rows]);
+      pingOutputNodes(id);
+    },
+    [tableData, tableColumns, pingOutputNodes, id],
+  );
+
+  // Handler for removing rows by index (compatible with TanStackEditableTable)
+  const handleRemoveRowAtIndex = useCallback(
+    (rowIndex: number) => {
+      if (rowIndex < 0 || rowIndex >= tableData.length) {
+        console.warn("Invalid row index for removal.");
+        return;
+      }
+
+      // Remove the selected row
+      const newTableData = tableData.filter((_, index) => index !== rowIndex);
+
+      // Save state
+      setTableData([...newTableData]);
+      pingOutputNodes(id);
+    },
+    [tableData, pingOutputNodes, id],
+  );
+
+  // Handler for clearing the entire dataset
+  const handleClearDataset = useCallback(() => {
+    // Reset to default state with default columns and one empty row
+    const resetColumns = [...defaultColumns].map((col) => ({ ...col }));
+    const blank_row: TabularDataRowType = { __uid: uuidv4() };
+    resetColumns.forEach((col) => {
+      blank_row[col.key] = "";
+    });
+
+    setTableColumns(resetColumns);
+    setTableData([blank_row]);
+    pingOutputNodes(id);
+  }, [pingOutputNodes, id]);
 
   // Pulls data from input nodes into the table
   const pullInputData = useStore((state) => state.pullInputData);
   const handlePullDataIn = async () => {
-    // There are two ways in CF to pull data, unfortunately:
-    // pulling via "input data", which includes things like text fields, and
-    // pulling via "nodes", which fetches the cache'd LLM outputs from another node.
-    // We need to consider both since we don't know what nodes the user will attach.
-    const pulled_data = pullInputData(["load-data"], id);
+    try {
+      // There are two ways in CF to pull data, unfortunately:
+      // pulling via "input data", which includes things like text fields, and
+      // pulling via "nodes", which fetches the cache'd LLM outputs from another node.
+      // We need to consider both since we don't know what nodes the user will attach.
+      const pulled_data = pullInputData(["load-data"], id);
 
-    if (Object.keys(pulled_data).length > 1) {
-      // If there's more than one key pulled, this likely means
-      // we are pulling prompt templates from the input nodes.
-      const other_vars = transformDict(pulled_data, (k) => k !== "load-data");
-      pulled_data["load-data"] = (
-        await Promise.all(
-          pulled_data["load-data"].map(async (info) => {
-            // Skip LLM responses
-            if (typeof info !== "string" && info.llm !== undefined) return info;
-            // Get the text version of the info object
-            const text =
-              typeof info === "string" ? info : StringLookup.get(info.text);
-            if (!text) return info;
-            // Generate the prompts for the text
-            const texts = await generatePrompts(text, other_vars);
-            return texts.map(
-              (t) =>
-                ({
-                  text: t.toString(),
-                  fill_history: {
-                    ...t.fill_history,
-                    Input: text,
-                  },
-                  metavars: t.metavars,
-                }) as TemplateVarInfo,
-            );
-          }),
-        )
-      ).flat() as TemplateVarInfo[];
-    }
+      // Ensure pulled_data has the expected structure
+      if (!pulled_data || !pulled_data["load-data"]) {
+        console.warn("No load-data found in pulled data");
+        return;
+      }
 
-    // Grab the input node ids
-    // Get the ids from the connected input nodes:
-    const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
-    const resps =
-      input_node_ids.length > 0
-        ? await grabResponses(input_node_ids).catch(() => {
-            // Surpress the error.
-          })
-        : [];
+      // Ensure load-data is an array
+      if (!Array.isArray(pulled_data["load-data"])) {
+        console.warn("load-data is not an array:", pulled_data["load-data"]);
+        return;
+      }
 
-    const pulled_data_table = pulledInputsToTable(pulled_data["load-data"]);
-    const pulled_resps_table = await responsesToTable(resps ?? []);
-    const col_names = new Set<string>();
-    pulled_data_table.forEach((row) => {
-      Object.keys(row).forEach((key) => col_names.add(key));
-    });
-    pulled_resps_table.forEach((row) => {
-      Object.keys(row).forEach((key) => col_names.add(key));
-    });
-    const new_table_columns = Array.from(col_names).map((col) => ({
-      key: col,
-      header: col,
-    }));
+      if (Object.keys(pulled_data).length > 1) {
+        // If there's more than one key pulled, this likely means
+        // we are pulling prompt templates from the input nodes.
+        const other_vars = transformDict(pulled_data, (k) => k !== "load-data");
+        pulled_data["load-data"] = (
+          await Promise.all(
+            pulled_data["load-data"].map(async (info) => {
+              try {
+                // Skip LLM responses
+                if (typeof info !== "string" && info.llm !== undefined)
+                  return info;
+                // Get the text version of the info object
+                const text =
+                  typeof info === "string" ? info : StringLookup.get(info.text);
+                if (!text) return info;
+                // Generate the prompts for the text
+                const texts = await generatePrompts(text, other_vars);
+                return texts.map(
+                  (t) =>
+                    ({
+                      text: t.toString(),
+                      fill_history: {
+                        ...t.fill_history,
+                        Input: text,
+                      },
+                      metavars: t.metavars,
+                    }) as TemplateVarInfo,
+                );
+              } catch (error) {
+                console.warn("Error processing info item:", error);
+                return info; // Return original item on error
+              }
+            }),
+          )
+        ).flat() as TemplateVarInfo[];
+      }
 
-    // Merge the tables, removing duplicates
-    const uids_in_table = new Set<string>();
-    pulled_resps_table.forEach((row) => {
-      if (typeof row["Batch Id"] === "string")
-        uids_in_table.add(row["Batch Id"]);
-      // ...also convert boolean values to strings, while we're at it
-      Object.keys(row).forEach((key) => {
-        if (typeof row[key] === "boolean") {
-          row[key] = row[key].toString();
+      // Grab the input node ids
+      // Get the ids from the connected input nodes:
+      const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
+      const resps =
+        input_node_ids.length > 0
+          ? await grabResponses(input_node_ids).catch((error) => {
+              console.warn("Error grabbing responses:", error);
+              return [];
+            })
+          : [];
+
+      const pulled_data_table = pulledInputsToTable(
+        pulled_data["load-data"] || [],
+      );
+      const pulled_resps_table = await responsesToTable(resps ?? []);
+
+      // Ensure both are arrays
+      if (!Array.isArray(pulled_data_table)) {
+        console.warn("pulled_data_table is not an array:", pulled_data_table);
+        return;
+      }
+
+      if (!Array.isArray(pulled_resps_table)) {
+        console.warn("pulled_resps_table is not an array:", pulled_resps_table);
+        return;
+      }
+
+      const col_names = new Set<string>();
+
+      // Safe iteration over pulled_data_table
+      pulled_data_table.forEach((row) => {
+        if (row && typeof row === "object") {
+          Object.keys(row).forEach((key) => col_names.add(key));
         }
       });
-    });
-    const dedup_pulled_data_table = pulled_data_table.filter(
-      (row) =>
-        !(typeof row["Batch Id"] === "string") ||
-        !uids_in_table.has(row["Batch Id"]),
-    );
 
-    const new_table = [
-      ...dedup_pulled_data_table,
-      ...pulled_resps_table,
-    ] as Dict<StringOrHash>[];
+      // Safe iteration over pulled_resps_table
+      pulled_resps_table.forEach((row) => {
+        if (row && typeof row === "object") {
+          Object.keys(row).forEach((key) => col_names.add(key));
+        }
+      });
 
-    // Remove 'Batch Id's from the table, if it exists
-    // NOTE: We do this since the Batch Ids are likely not useful for the user.
-    new_table.forEach((row) => {
-      if (typeof row["Batch Id"] === "string") {
-        delete row["Batch Id"];
+      const new_table_columns = Array.from(col_names).map((col) => ({
+        key: col,
+        header: col,
+      }));
+
+      // Merge the tables, removing duplicates
+      const uids_in_table = new Set<string>();
+      pulled_resps_table.forEach((row) => {
+        if (row && typeof row === "object") {
+          if (typeof row["Batch Id"] === "string")
+            uids_in_table.add(row["Batch Id"]);
+          // ...also convert boolean values to strings, while we're at it
+          Object.keys(row).forEach((key) => {
+            if (typeof row[key] === "boolean") {
+              row[key] = row[key].toString();
+            }
+          });
+        }
+      });
+
+      const dedup_pulled_data_table = pulled_data_table.filter((row) => {
+        if (!row || typeof row !== "object") return false;
+        return (
+          !(typeof row["Batch Id"] === "string") ||
+          !uids_in_table.has(row["Batch Id"])
+        );
+      });
+
+      const new_table = [
+        ...dedup_pulled_data_table,
+        ...pulled_resps_table,
+      ] as Dict<StringOrHash>[];
+
+      // Remove 'Batch Id's from the table, if it exists
+      // NOTE: We do this since the Batch Ids are likely not useful for the user.
+      new_table.forEach((row) => {
+        if (
+          row &&
+          typeof row === "object" &&
+          typeof row["Batch Id"] === "string"
+        ) {
+          delete row["Batch Id"];
+        }
+      });
+
+      const col_batch_id_idx = new_table_columns.findIndex(
+        (col) => col.key === "Batch Id",
+      );
+      if (col_batch_id_idx !== -1) {
+        new_table_columns.splice(col_batch_id_idx, 1);
       }
-    });
-    const col_batch_id_idx = new_table_columns.findIndex(
-      (col) => col.key === "Batch Id",
-    );
-    if (col_batch_id_idx !== -1) {
-      new_table_columns.splice(col_batch_id_idx, 1);
-    }
 
-    replaceTable(new_table_columns, new_table);
+      // Only replace table if we have valid data
+      if (new_table_columns.length > 0) {
+        replaceTable(new_table_columns, new_table);
+      } else {
+        console.warn("No valid columns found in pulled data");
+        if (showAlert) {
+          showAlert(
+            "No valid data found to load. Please check your connected nodes.",
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error in handlePullDataIn:", error);
+      if (showAlert) {
+        showAlert(
+          `Error loading data: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+      }
+    }
   };
 
   return (
@@ -805,23 +893,22 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
         ref={setRef}
         className="tabular-data-container nowheel nodrag"
         onPointerDown={() => setContextMenuOpened(false)}
-        onContextMenu={handleOpenTableContextMenu}
       >
-        <EditableTable
+        <TanStackEditableTable
           rows={tableData}
           columns={tableColumns}
           handleSaveCell={handleSaveCell}
           handleRemoveColumn={handleRemoveColumn}
           handleInsertColumn={handleInsertColumn}
           handleRenameColumn={openRenameColumnModal}
+          handleAddRow={handleAddRow}
+          handleInsertRow={handleInsertRowAtIndex}
+          handleRemoveRow={handleRemoveRowAtIndex}
+          handleClearDataset={handleClearDataset}
         />
       </div>
 
       <div className="tabular-data-footer">
-        <div className="add-table-row-btn">
-          <button onClick={handleAddRow}>+ Add row</button>
-        </div>
-
         <TemplateHooks
           vars={tableColumns.map((col) => col.header)}
           nodeId={id}
