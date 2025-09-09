@@ -6,7 +6,6 @@ import React, {
   useContext,
 } from "react";
 import {
-  Badge,
   Button,
   Flex,
   Menu,
@@ -23,8 +22,6 @@ import {
   IconX,
   IconArrowBarToUp,
   IconArrowBarToDown,
-  IconLoader,
-  IconSquareArrowRight,
   IconArrowBarUp,
 } from "@tabler/icons-react";
 import TemplateHooks from "./TemplateHooksComponent";
@@ -294,36 +291,6 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
     [tableData, tableColumns, selectedRow],
   );
 
-  // Opens a context window inside the table
-  // Currently only opens if a row cell textarea was right-clicked.
-  // TODO: Improve this to work on other parts of the table too (e.g., column headers and between rows)
-  const handleOpenTableContextMenu: React.MouseEventHandler<HTMLDivElement> = (
-    e: React.MouseEvent<HTMLDivElement>,
-  ) => {
-    e.preventDefault();
-
-    const target = e.target as HTMLDivElement;
-    if (target.localName === "p") {
-      // Some really sketchy stuff to get the row index....
-      // :: We've clicked on an 'input' element. We know that there is a 'td' element 1 level up, and a 'tr' 2 levels up.
-      const grandparent = target.parentNode?.parentNode;
-      const rowIndex = (grandparent as HTMLTableRowElement)?.rowIndex;
-      const cellIndex = (grandparent as HTMLTableCellElement)?.cellIndex;
-      if (rowIndex !== undefined) {
-        // A cell of the table was right-clicked on
-        setSelectedRow(rowIndex);
-        setContextMenuPos({
-          left: e.pageX,
-          top: e.pageY,
-        });
-        setContextMenuOpened(true);
-      } else if (cellIndex !== undefined) {
-        // A column header was right-clicked on
-        setSelectedRow(undefined);
-      }
-    }
-  };
-
   // Import list of JSON data to the table
   // NOTE: JSON objects should be in row format, with keys
   //       as the header names. The internal keys of the columns will use uids to be unique.
@@ -396,7 +363,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
             case "xlsx":
               // Parse data using XLSX
               {
-                const wb = XLSX.read(reader.result, { type: "binary" });
+                const wb = XLSX.read(reader.result, { type: "array" });
                 // Extract the first worksheet
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
@@ -428,7 +395,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
 
       // Read the selected file using the appropriate reader
       if (extension === "xlsx" || extension === "xls")
-        reader.readAsBinaryString(file);
+        reader.readAsArrayBuffer(file);
       else reader.readAsText(file);
     });
 
@@ -489,10 +456,6 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   );
 
   const [isLoading, setIsLoading] = useState(false);
-
-  const [rowValues, setRowValues] = useState<string[]>(
-    tableData.map((row) => StringLookup.get(row.value) ?? ""),
-  );
 
   // Function to add new columns to the right of the existing columns (with optional row values)
   const addColumns = (
@@ -620,7 +583,6 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
 
     setTableColumns(updatedColumns); // Replace table columns
     setTableData(updatedRows); // Replace table rows
-    setRowValues(updatedRows.map((row) => JSON.stringify(row))); // Update row values
   };
 
   // Handler for inserting rows (compatible with TanStackEditableTable)
