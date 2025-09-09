@@ -666,118 +666,191 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
 
   // Handler for clearing the entire dataset
   const handleClearDataset = useCallback(() => {
-    // Reset to default state with one empty row
+    // Reset to default state with default columns and one empty row
+    const resetColumns = [...defaultColumns].map((col) => ({ ...col }));
     const blank_row: TabularDataRowType = { __uid: uuidv4() };
-    tableColumns.forEach((col) => {
+    resetColumns.forEach((col) => {
       blank_row[col.key] = "";
     });
 
+    setTableColumns(resetColumns);
     setTableData([blank_row]);
     pingOutputNodes(id);
-  }, [tableColumns, pingOutputNodes, id]);
+  }, [pingOutputNodes, id]);
 
   // Pulls data from input nodes into the table
   const pullInputData = useStore((state) => state.pullInputData);
   const handlePullDataIn = async () => {
-    // There are two ways in CF to pull data, unfortunately:
-    // pulling via "input data", which includes things like text fields, and
-    // pulling via "nodes", which fetches the cache'd LLM outputs from another node.
-    // We need to consider both since we don't know what nodes the user will attach.
-    const pulled_data = pullInputData(["load-data"], id);
+    try {
+      // There are two ways in CF to pull data, unfortunately:
+      // pulling via "input data", which includes things like text fields, and
+      // pulling via "nodes", which fetches the cache'd LLM outputs from another node.
+      // We need to consider both since we don't know what nodes the user will attach.
+      const pulled_data = pullInputData(["load-data"], id);
 
-    if (Object.keys(pulled_data).length > 1) {
-      // If there's more than one key pulled, this likely means
-      // we are pulling prompt templates from the input nodes.
-      const other_vars = transformDict(pulled_data, (k) => k !== "load-data");
-      pulled_data["load-data"] = (
-        await Promise.all(
-          pulled_data["load-data"].map(async (info) => {
-            // Skip LLM responses
-            if (typeof info !== "string" && info.llm !== undefined) return info;
-            // Get the text version of the info object
-            const text =
-              typeof info === "string" ? info : StringLookup.get(info.text);
-            if (!text) return info;
-            // Generate the prompts for the text
-            const texts = await generatePrompts(text, other_vars);
-            return texts.map(
-              (t) =>
-                ({
-                  text: t.toString(),
-                  fill_history: {
-                    ...t.fill_history,
-                    Input: text,
-                  },
-                  metavars: t.metavars,
-                }) as TemplateVarInfo,
-            );
-          }),
-        )
-      ).flat() as TemplateVarInfo[];
-    }
+      // Ensure pulled_data has the expected structure
+      if (!pulled_data || !pulled_data["load-data"]) {
+        console.warn("No load-data found in pulled data");
+        return;
+      }
 
-    // Grab the input node ids
-    // Get the ids from the connected input nodes:
-    const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
-    const resps =
-      input_node_ids.length > 0
-        ? await grabResponses(input_node_ids).catch(() => {
-            // Surpress the error.
-          })
-        : [];
+      // Ensure load-data is an array
+      if (!Array.isArray(pulled_data["load-data"])) {
+        console.warn("load-data is not an array:", pulled_data["load-data"]);
+        return;
+      }
 
-    const pulled_data_table = pulledInputsToTable(pulled_data["load-data"]);
-    const pulled_resps_table = await responsesToTable(resps ?? []);
-    const col_names = new Set<string>();
-    pulled_data_table.forEach((row) => {
-      Object.keys(row).forEach((key) => col_names.add(key));
-    });
-    pulled_resps_table.forEach((row) => {
-      Object.keys(row).forEach((key) => col_names.add(key));
-    });
-    const new_table_columns = Array.from(col_names).map((col) => ({
-      key: col,
-      header: col,
-    }));
+      if (Object.keys(pulled_data).length > 1) {
+        // If there's more than one key pulled, this likely means
+        // we are pulling prompt templates from the input nodes.
+        const other_vars = transformDict(pulled_data, (k) => k !== "load-data");
+        pulled_data["load-data"] = (
+          await Promise.all(
+            pulled_data["load-data"].map(async (info) => {
+              try {
+                // Skip LLM responses
+                if (typeof info !== "string" && info.llm !== undefined)
+                  return info;
+                // Get the text version of the info object
+                const text =
+                  typeof info === "string" ? info : StringLookup.get(info.text);
+                if (!text) return info;
+                // Generate the prompts for the text
+                const texts = await generatePrompts(text, other_vars);
+                return texts.map(
+                  (t) =>
+                    ({
+                      text: t.toString(),
+                      fill_history: {
+                        ...t.fill_history,
+                        Input: text,
+                      },
+                      metavars: t.metavars,
+                    }) as TemplateVarInfo,
+                );
+              } catch (error) {
+                console.warn("Error processing info item:", error);
+                return info; // Return original item on error
+              }
+            }),
+          )
+        ).flat() as TemplateVarInfo[];
+      }
 
-    // Merge the tables, removing duplicates
-    const uids_in_table = new Set<string>();
-    pulled_resps_table.forEach((row) => {
-      if (typeof row["Batch Id"] === "string")
-        uids_in_table.add(row["Batch Id"]);
-      // ...also convert boolean values to strings, while we're at it
-      Object.keys(row).forEach((key) => {
-        if (typeof row[key] === "boolean") {
-          row[key] = row[key].toString();
+      // Grab the input node ids
+      // Get the ids from the connected input nodes:
+      const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
+      const resps =
+        input_node_ids.length > 0
+          ? await grabResponses(input_node_ids).catch((error) => {
+              console.warn("Error grabbing responses:", error);
+              return [];
+            })
+          : [];
+
+      const pulled_data_table = pulledInputsToTable(
+        pulled_data["load-data"] || [],
+      );
+      const pulled_resps_table = await responsesToTable(resps ?? []);
+
+      // Ensure both are arrays
+      if (!Array.isArray(pulled_data_table)) {
+        console.warn("pulled_data_table is not an array:", pulled_data_table);
+        return;
+      }
+
+      if (!Array.isArray(pulled_resps_table)) {
+        console.warn("pulled_resps_table is not an array:", pulled_resps_table);
+        return;
+      }
+
+      const col_names = new Set<string>();
+
+      // Safe iteration over pulled_data_table
+      pulled_data_table.forEach((row) => {
+        if (row && typeof row === "object") {
+          Object.keys(row).forEach((key) => col_names.add(key));
         }
       });
-    });
-    const dedup_pulled_data_table = pulled_data_table.filter(
-      (row) =>
-        !(typeof row["Batch Id"] === "string") ||
-        !uids_in_table.has(row["Batch Id"]),
-    );
 
-    const new_table = [
-      ...dedup_pulled_data_table,
-      ...pulled_resps_table,
-    ] as Dict<StringOrHash>[];
+      // Safe iteration over pulled_resps_table
+      pulled_resps_table.forEach((row) => {
+        if (row && typeof row === "object") {
+          Object.keys(row).forEach((key) => col_names.add(key));
+        }
+      });
 
-    // Remove 'Batch Id's from the table, if it exists
-    // NOTE: We do this since the Batch Ids are likely not useful for the user.
-    new_table.forEach((row) => {
-      if (typeof row["Batch Id"] === "string") {
-        delete row["Batch Id"];
+      const new_table_columns = Array.from(col_names).map((col) => ({
+        key: col,
+        header: col,
+      }));
+
+      // Merge the tables, removing duplicates
+      const uids_in_table = new Set<string>();
+      pulled_resps_table.forEach((row) => {
+        if (row && typeof row === "object") {
+          if (typeof row["Batch Id"] === "string")
+            uids_in_table.add(row["Batch Id"]);
+          // ...also convert boolean values to strings, while we're at it
+          Object.keys(row).forEach((key) => {
+            if (typeof row[key] === "boolean") {
+              row[key] = row[key].toString();
+            }
+          });
+        }
+      });
+
+      const dedup_pulled_data_table = pulled_data_table.filter((row) => {
+        if (!row || typeof row !== "object") return false;
+        return (
+          !(typeof row["Batch Id"] === "string") ||
+          !uids_in_table.has(row["Batch Id"])
+        );
+      });
+
+      const new_table = [
+        ...dedup_pulled_data_table,
+        ...pulled_resps_table,
+      ] as Dict<StringOrHash>[];
+
+      // Remove 'Batch Id's from the table, if it exists
+      // NOTE: We do this since the Batch Ids are likely not useful for the user.
+      new_table.forEach((row) => {
+        if (
+          row &&
+          typeof row === "object" &&
+          typeof row["Batch Id"] === "string"
+        ) {
+          delete row["Batch Id"];
+        }
+      });
+
+      const col_batch_id_idx = new_table_columns.findIndex(
+        (col) => col.key === "Batch Id",
+      );
+      if (col_batch_id_idx !== -1) {
+        new_table_columns.splice(col_batch_id_idx, 1);
       }
-    });
-    const col_batch_id_idx = new_table_columns.findIndex(
-      (col) => col.key === "Batch Id",
-    );
-    if (col_batch_id_idx !== -1) {
-      new_table_columns.splice(col_batch_id_idx, 1);
-    }
 
-    replaceTable(new_table_columns, new_table);
+      // Only replace table if we have valid data
+      if (new_table_columns.length > 0) {
+        replaceTable(new_table_columns, new_table);
+      } else {
+        console.warn("No valid columns found in pulled data");
+        if (showAlert) {
+          showAlert(
+            "No valid data found to load. Please check your connected nodes.",
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error in handlePullDataIn:", error);
+      if (showAlert) {
+        showAlert(
+          `Error loading data: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+      }
+    }
   };
 
   return (
