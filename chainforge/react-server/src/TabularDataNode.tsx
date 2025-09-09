@@ -15,7 +15,7 @@ import {
   Text,
   Tooltip,
 } from "@mantine/core";
-import EditableTable from "./EditableTable";
+import TanStackEditableTable from "./TanStackEditableTable";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { v4 as uuidv4 } from "uuid";
@@ -623,6 +623,59 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
     setRowValues(updatedRows.map((row) => JSON.stringify(row))); // Update row values
   };
 
+  // Handler for inserting rows (compatible with TanStackEditableTable)
+  const handleInsertRowAtIndex = useCallback(
+    (rowIndex: number, offset: 0 | -1) => {
+      const insertIdx = rowIndex + offset + 1; // Adjust for 0-based indexing
+
+      // Creates a blank row with the same columns as the table
+      const blank_row: TabularDataRowType = { __uid: uuidv4() };
+      tableColumns.forEach((o) => {
+        blank_row[o.key] = "";
+      });
+
+      // Adds the row to the table at the requested position
+      const new_rows = tableData
+        .slice(0, insertIdx)
+        .concat([blank_row], tableData.slice(insertIdx));
+
+      // Save state
+      setTableData([...new_rows]);
+      pingOutputNodes(id);
+    },
+    [tableData, tableColumns, pingOutputNodes, id],
+  );
+
+  // Handler for removing rows by index (compatible with TanStackEditableTable)
+  const handleRemoveRowAtIndex = useCallback(
+    (rowIndex: number) => {
+      if (rowIndex < 0 || rowIndex >= tableData.length) {
+        console.warn("Invalid row index for removal.");
+        return;
+      }
+
+      // Remove the selected row
+      const newTableData = tableData.filter((_, index) => index !== rowIndex);
+
+      // Save state
+      setTableData([...newTableData]);
+      pingOutputNodes(id);
+    },
+    [tableData, pingOutputNodes, id],
+  );
+
+  // Handler for clearing the entire dataset
+  const handleClearDataset = useCallback(() => {
+    // Reset to default state with one empty row
+    const blank_row: TabularDataRowType = { __uid: uuidv4() };
+    tableColumns.forEach((col) => {
+      blank_row[col.key] = "";
+    });
+
+    setTableData([blank_row]);
+    pingOutputNodes(id);
+  }, [tableColumns, pingOutputNodes, id]);
+
   // Pulls data from input nodes into the table
   const pullInputData = useStore((state) => state.pullInputData);
   const handlePullDataIn = async () => {
@@ -805,23 +858,22 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
         ref={setRef}
         className="tabular-data-container nowheel nodrag"
         onPointerDown={() => setContextMenuOpened(false)}
-        onContextMenu={handleOpenTableContextMenu}
       >
-        <EditableTable
+        <TanStackEditableTable
           rows={tableData}
           columns={tableColumns}
           handleSaveCell={handleSaveCell}
           handleRemoveColumn={handleRemoveColumn}
           handleInsertColumn={handleInsertColumn}
           handleRenameColumn={openRenameColumnModal}
+          handleAddRow={handleAddRow}
+          handleInsertRow={handleInsertRowAtIndex}
+          handleRemoveRow={handleRemoveRowAtIndex}
+          handleClearDataset={handleClearDataset}
         />
       </div>
 
       <div className="tabular-data-footer">
-        <div className="add-table-row-btn">
-          <button onClick={handleAddRow}>+ Add row</button>
-        </div>
-
         <TemplateHooks
           vars={tableColumns.map((col) => col.header)}
           nodeId={id}
