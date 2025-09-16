@@ -5,7 +5,6 @@ import {
   call_alephalpha,
   call_anthropic,
   call_chatgpt,
-  call_google_palm,
   extract_responses,
   merge_response_objs,
 } from "../utils";
@@ -116,48 +115,6 @@ test("anthropic models", async () => {
   expect(typeof resps[0]).toBe("string");
 }, 20000);
 
-test("google palm2 models", async () => {
-  // Call Google's PaLM Chat API with a basic question
-  let [query, response] = await call_google_palm(
-    "Who invented modern playing cards?",
-    NativeLLM.PaLM2_Chat_Bison,
-    3,
-    0.7,
-  );
-  expect(response.candidates).toHaveLength(3);
-  expect(query).toHaveProperty("candidateCount");
-
-  // Extract responses, check their type
-  let resps = extract_responses(
-    response,
-    NativeLLM.PaLM2_Chat_Bison,
-    LLMProvider.Google,
-  );
-  expect(resps).toHaveLength(3);
-  expect(typeof resps[0]).toBe("string");
-  console.log(JSON.stringify(resps));
-
-  // Call Google's PaLM Text Completions API with a basic question
-  [query, response] = await call_google_palm(
-    "Who invented modern playing cards? The answer ",
-    NativeLLM.PaLM2_Text_Bison,
-    3,
-    0.7,
-  );
-  expect(response.candidates).toHaveLength(3);
-  expect(query).toHaveProperty("maxOutputTokens");
-
-  // Extract responses, check their type
-  resps = extract_responses(
-    response,
-    NativeLLM.PaLM2_Chat_Bison,
-    LLMProvider.Google,
-  );
-  expect(resps).toHaveLength(3);
-  expect(typeof resps[0]).toBe("string");
-  console.log(JSON.stringify(resps));
-}, 40000);
-
 test("aleph alpha model", async () => {
   let [query, response] = await call_alephalpha(
     "Who invented modern playing cards?",
@@ -177,7 +134,6 @@ test("aleph alpha model", async () => {
   expect(typeof resps[0]).toBe("string");
   console.log(JSON.stringify(resps));
 
-  // Call Google's PaLM Text Completions API with a basic question
   // eslint-disable-next-line
   [query, response] = await call_alephalpha(
     "Who invented modern playing cards? The answer ",

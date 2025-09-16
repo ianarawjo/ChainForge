@@ -68,7 +68,7 @@ test("call three LLMs with a single prompt", async () => {
   const llms = [
     NativeLLM.OpenAI_ChatGPT,
     NativeLLM.Claude_v1,
-    NativeLLM.PaLM2_Chat_Bison,
+    NativeLLM.GEMINI_v2_5_flash,
   ];
   const n = 1;
   const progress_listener = (progress: { [key: symbol]: any }) => {

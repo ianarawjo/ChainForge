@@ -537,7 +537,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 <br />
                 <TextInput
                   label="Google AI API Key (Gemini)"
-                  placeholder="Paste your Google Gemini/PaLM API key here"
+                  placeholder="Paste your Google Gemini API key here"
                   {...form.getInputProps("Google")}
                 />
                 <br />
