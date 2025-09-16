@@ -102,9 +102,9 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "🤖",
     items: [
       {
-        name: "GPT-4o",
-        emoji: "🤖",
-        model: "gpt-4o",
+        name: "GPT-4o-mini",
+        emoji: "🔬",
+        model: "gpt-4o-mini",
         base_model: "gpt-4",
         temp: 1.0,
       },
@@ -123,9 +123,9 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         temp: 0.0,
       },
       {
-        name: "GPT4o-mini",
-        emoji: "🔬",
-        model: "gpt-4o-mini",
+        name: "GPT-4o",
+        emoji: "🤖",
+        model: "gpt-4o",
         base_model: "gpt-4",
         temp: 1.0,
       },

@@ -91,7 +91,7 @@ const ChatGPTSettings: ModelSettingsDict = {
           "text-davinci-002",
           "code-davinci-002",
         ],
-        default: "gpt-3.5-turbo",
+        default: "gpt-4o-mini",
       },
       system_msg: {
         type: "string",
@@ -318,18 +318,18 @@ const GPT4Settings: ModelSettingsDict = {
         title: "Nickname",
         description:
           "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "GPT-4o",
+        default: "GPT-4o-mini",
       },
       model: {
         ...ChatGPTSettings.schema.properties.model,
-        default: "gpt-4o",
+        default: "gpt-4o-mini",
       },
     },
   },
   uiSchema: {
     ...ChatGPTSettings.uiSchema,
     model: {
-      "ui:help": "Defaults to gpt-4o.",
+      "ui:help": "Defaults to gpt-4o-mini.",
       "ui:widget": "datalist",
     },
   },
