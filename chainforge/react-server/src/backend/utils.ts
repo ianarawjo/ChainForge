@@ -936,7 +936,7 @@ export async function call_google_ai(
 
   // For some reason Google needs to be special and have its API params be different names --camel or snake-case
   // --depending on if it's the Python or Node JS API. ChainForge needs a consistent name, so we must convert snake to camel:
-  const casemap:  Record<string, keyof GenerateContentConfig> = {
+  const casemap: Record<string, keyof GenerateContentConfig> = {
     safety_settings: "safetySettings",
     stop_sequences: "stopSequences",
     candidate_count: "candidateCount",
@@ -948,7 +948,7 @@ export async function call_google_ai(
   Object.entries(casemap).forEach(([key, val]) => {
     if (key in query) {
       gemini_config[val] = query[key];
-      query[val] = query[key];
+      query[val as string | number] = query[key];
       delete query[key];
     }
   });
@@ -975,7 +975,17 @@ export async function call_google_ai(
   if (chat_history !== undefined && chat_history.length > 0) {
     // Carry over any chat history, converting OpenAI formatted chat history to Gemini:
     for (const chat_msg of chat_history) {
-      if (chat_msg.role === "system") continue; // Skip system messages as gemini uses systemInstruction provided in config.
+      // Carry over system message to systemInstruction instead, on Gemini's config
+      // NOTE: This will override any systemInstruction already present in gemini_config.
+      // If the user is passing a chat history, it means they are using a Chat Turn node.
+      if (chat_msg.role === "system") {
+        if (system_msg !== undefined) {
+          console.warn(
+            "Warning: Both a system message and a chat history with a system message were provided to Google Gemini (typically, this occurs when a system message is defined in a Prompt Node and passed into a later Chat Turn node). The system message in the chat history will override the standalone system message.",
+          );
+        }
+        gemini_config.systemInstruction = chat_msg.content;
+      }
       const prompt_part: GeminiChatMessage = {
         role: openai_gemini_role_map[chat_msg.role],
         parts: [{ text: chat_msg.content }],
@@ -1765,7 +1775,7 @@ function _extract_google_ai_responses(
   response: Dict,
   llm: LLM | string,
 ): Array<string> {
-    return _extract_gemini_responses(response as Array<Dict>);
+  return _extract_gemini_responses(response as Array<Dict>);
 }
 
 /**
