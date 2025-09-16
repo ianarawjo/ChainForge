@@ -27,7 +27,11 @@ import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
 import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
-import { deepcopy, ensureUniqueName } from "./backend/utils";
+import {
+  deepcopy,
+  ensureUniqueName,
+  getModelsDotDevInfos,
+} from "./backend/utils";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
@@ -299,6 +303,9 @@ export const LLMListContainer = forwardRef<
     forceUpdate();
   };
 
+  // Get the LLMs infos from the store, which is fetched from `models.dev` website.
+  const LLMsInfos = useStore((state) => state.LLMsProvidersInfos);
+
   // Selecting LLM models to prompt
   const [llmItems, setLLMItems] = useState(
     initLLMItems ||
@@ -453,7 +460,7 @@ export const LLMListContainer = forwardRef<
         };
       } else {
         initModels.add(item.base_model);
-        return {
+        const res: NestedMenuItemProps = {
           key: item.key ?? item.model,
           title: `${item.emoji} ${item.name}`,
           onClick: () => handleSelectModel(item),
@@ -466,6 +473,11 @@ export const LLMListContainer = forwardRef<
                 }
               : undefined,
         };
+        // if `LLMsInfos` is not empty dict, add tooltip
+        if (LLMsInfos && Object.keys(LLMsInfos).length > 0) {
+          res.tooltip = getModelsDotDevInfos(item, LLMsInfos);
+        }
+        return res;
       }
     };
     const res = initLLMProviderMenu.map((i) => convert(i));

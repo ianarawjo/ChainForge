@@ -32,6 +32,11 @@ import {
   MultiModalContentOpenAI,
   MultiModalContentGemini,
   PromptVarType,
+  ModelDotDevInfos,
+  Model,
+  Modality,
+  ModelOllama,
+  CapabilityOllama,
 } from "./typing";
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
@@ -267,13 +272,24 @@ async function imagesToBase64(images: string[]) {
     const base64_images: Array<string> = [];
     for (const image of images) {
       const imageBlob = await MediaLookup.get(image);
+
       if (!imageBlob) {
         // This should never happen, but just in case:
         console.error(`Image not found in MediaLookup: ${image}`);
         continue;
       }
-      const base64_image = await blobOrFileToDataURL(imageBlob);
-      if (base64_image) base64_images.push(base64_image);
+
+      // Check if the blob is of type image/jpeg, if not, create a new blob with the correct type
+      let processedBlob = imageBlob;
+      if (!imageBlob.type.startsWith("image/")) {
+        console.log(`Converting blob from ${imageBlob.type} to image/png`);
+        processedBlob = new Blob([imageBlob], { type: "image/png" });
+      }
+
+      const base64_image = await blobOrFileToDataURL(processedBlob);
+      if (base64_image) {
+        base64_images.push(base64_image);
+      }
     }
     return base64_images;
   }
@@ -2927,4 +2943,195 @@ export function hashtagTemplateVars(input: string): string {
   }
 
   return result;
+}
+
+/**
+ * Given a LLM item and a dictionary of modelsDotDevInfos, returns the
+ * corresponding ModelDotDevInfo object for the LLM's model, or null if not found.
+ * @param llm_item The LLM item to look up.
+ * @param modelsDotDevInfos The dictionary of ModelDotDevInfos.
+ * @returns The ModelDotDevInfo object for the LLM's model, or null if not found.
+ */
+export function getModelsDotDevInfos(
+  llm_item: LLMSpec,
+  modelsDotDevInfos: ModelDotDevInfos,
+): string {
+  // Determine the provider for the LLM item based on its base_model
+  let providerModelsDotDev: string | null = null;
+
+  if (
+    llm_item.base_model.startsWith("gpt-") ||
+    llm_item.base_model.startsWith("dall-e")
+  ) {
+    providerModelsDotDev = "openai";
+  } else if (llm_item.base_model.startsWith("claude-")) {
+    providerModelsDotDev = "anthropic";
+  } else if (llm_item.base_model.startsWith("palm2-bison")) {
+    providerModelsDotDev = "google";
+  } else if (llm_item.base_model.startsWith("deepseek")) {
+    providerModelsDotDev = "deepseek";
+  } else if (llm_item.base_model.startsWith("br.")) {
+    providerModelsDotDev = "amazon-bedrock";
+  } else if (llm_item.base_model.startsWith("ollama")) {
+    providerModelsDotDev = "ollama";
+    llm_item.model = llm_item.name;
+  }
+
+  if (
+    providerModelsDotDev === null ||
+    modelsDotDevInfos[providerModelsDotDev] === undefined
+  ) {
+    // If we don't know the provider, or the provider is not in models.dev, return
+    console.log(
+      `The models.dev dict info does not contain any PROVIDER info for LLM ${[llm_item.base_model, llm_item.model]}.`,
+    );
+    return `No provider in [models.dev](https://models.dev) for LLM **${llm_item.model} (${llm_item.base_model})**`;
+  }
+
+  // Anthropic uses aliases for their model names, so we need to map them.
+  if (providerModelsDotDev === "anthropic") {
+    const anthropic_alias_map: { [key: string]: string } = {
+      "claude-opus-4-0": "claude-opus-4-20250514",
+      "claude-sonnet-4-0": "claude-sonnet-4-20250514",
+      "claude-3-7-sonnet-latest": "claude-3-7-sonnet-20250219",
+      "claude-3-5-sonnet-latest": "claude-3-5-sonnet-20241022",
+      "claude-3-5-haiku-latest": "claude-3-5-haiku-20241022",
+      "claude-3-opus-latest": "claude-3-opus-20240229",
+    };
+    if (llm_item.model in anthropic_alias_map) {
+      llm_item.model = anthropic_alias_map[llm_item.model];
+    }
+  }
+  // At this point, we have the providerModelsDotDev filled in.
+  // Now we make sure that the provider contains info the model `llm_item.model`.
+  if (!modelsDotDevInfos[providerModelsDotDev].models[llm_item.model]) {
+    console.log(
+      `The models.dev dict info does not contain any MODEL info for LLM ${[
+        llm_item.base_model,
+        llm_item.model,
+      ]} for PROVIDER ${providerModelsDotDev}.`,
+    );
+    return `For provider **${providerModelsDotDev}** in [models.dev](https://models.dev), no model info for LLM **${llm_item.model} (${llm_item.base_model})**`;
+  }
+
+  return prettifyModelInfo(
+    modelsDotDevInfos[providerModelsDotDev].models[llm_item.model],
+    providerModelsDotDev === "ollama",
+  );
+}
+
+/**
+ * Converts a ModelDotDevInfos.models.Model object to a string representation.
+ * in order to be displayed in a tooltip and with some great formatting (like emojis).
+ *
+ * @param modelInfo The ModelDotDevInfos.models.Model object to convert.
+ * @returns A string representation of the model info.
+ */
+export function prettifyModelInfo(
+  modelInfo: Model | ModelOllama,
+  is_ollama: boolean,
+): string {
+  if (!is_ollama) {
+    const {
+      name,
+      id,
+      attachment,
+      reasoning,
+      temperature,
+      tool_call,
+      knowledge,
+      release_date,
+      last_updated,
+      modalities,
+      open_weights,
+      cost,
+      limit,
+    } = modelInfo as Model;
+
+    const modalityToEmoji: { [key in Modality]: string } = {
+      text: "📝",
+      image: "🖼️",
+      audio: "🔊",
+      video: "🎥",
+      pdf: "📄",
+    };
+
+    const formatModalities = (m: Modality[]) =>
+      m.map((mod) => `${modalityToEmoji[mod]} ${mod}`).join(", ") || "N/A";
+
+    let result = `**${name}** (${id})\n\n`;
+
+    result += `**Features**\n`;
+    result += `- 🧠 Reasoning: ${reasoning ? "✅" : "❌"}\n`;
+    result += `- 📎 Attachments: ${attachment ? "✅" : "❌"}\n`;
+    result += `- 🌡️ Temperature Control: ${temperature ? "✅" : "❌"}\n`;
+    result += `- 🛠️ Tool Call: ${tool_call ? "✅" : "❌"}\n`;
+    result += `- ⚖️ Open Weights: ${open_weights ? "✅" : "❌"}\n\n`;
+
+    result += `**Modalities**\n`;
+    result += `- 📥 Input: ${formatModalities(modalities.input)}\n`;
+    result += `- 📤 Output: ${formatModalities(modalities.output)}\n\n`;
+
+    result += `**Limits**\n`;
+    result += `- 🔄 Context Window: ${limit.context.toLocaleString()} tokens\n`;
+    result += `- ➡️ Max Output: ${limit.output.toLocaleString()} tokens\n\n`;
+
+    if (knowledge) {
+      result += `**Knowledge Cutoff**\n`;
+      result += `- 📅 ${knowledge}\n\n`;
+    }
+
+    result += `**Dates**\n`;
+    result += `- 🚀 Release: ${release_date}\n`;
+    result += `- 🔄 Last Updated: ${last_updated}\n\n`;
+
+    if (cost) {
+      result += `**Cost (per 1M tokens, ~750,000 words)**\n`;
+      result += `- 💵 Input: $${cost.input.toFixed(2)}\n`;
+      result += `- 💵 Output: $${cost.output.toFixed(2)}\n`;
+    }
+
+    return result.trim();
+  } else {
+    const {
+      name,
+      format,
+      families,
+      parameter_size,
+      quantization_level,
+      size,
+      capabilities,
+    } = modelInfo as ModelOllama;
+
+    let result = `**${name}**\n\n`;
+
+    result += `**📝 Details**\n`;
+    result += `- 💾 Size: ${size}\n`;
+    result += `- 📦 Format: ${format}\n`;
+    if (families && families.length > 0) {
+      result += `- 👨‍👩‍👧‍👦 Families: ${families.join(", ")}\n`;
+    }
+    result += `\n`;
+
+    result += `**⚙️ Model Specs**\n`;
+    result += `- 🧠 Parameters: ${parameter_size}\n`;
+    result += `- 📉 Quantization: ${quantization_level}\n\n`;
+
+    if (capabilities && capabilities.length > 0) {
+      const capabilityToEmoji: { [key in CapabilityOllama]: string } = {
+        completion: "✍️",
+        tools: "🛠️",
+        thinking: "🤔",
+        embedding: "🔗",
+        vision: "👁️",
+      };
+      const formatCapabilities = (caps: CapabilityOllama[]) =>
+        caps.map((cap) => `${capabilityToEmoji[cap]} ${cap}`).join(", ");
+
+      result += `**✨ Capabilities**\n`;
+      result += `- ${formatCapabilities(capabilities)}\n`;
+    }
+
+    return result.trim();
+  }
 }

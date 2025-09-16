@@ -1342,6 +1342,44 @@ def proxy_image():
     except Exception as e:
         return jsonify({"error": f"Error fetching image: {str(e)}"}), 500
 
+@app.route('/api/getModelsDotDev', methods=['GET'])
+def get_models_dot_dev():
+    """
+    Called at Initialization/Creation of a Prompt Node
+    
+    Fetches the list of models from the models.dev API.
+    Returns a JSON response with the model names and their details.
+    and save the json file to the local disk in the FLOWS_DIR.
+    """
+    MODELS_DOT_DEV_FILE = os.path.join(FLOWS_DIR, "models_dot_dev.json")
+    
+    # If the models.dev file already exists, return its content
+    if os.path.isfile(MODELS_DOT_DEV_FILE):
+        try:
+            with open(MODELS_DOT_DEV_FILE, 'r', encoding='utf-8') as f:
+                models_data = json.load(f)
+            print(f"Returning cached models from {MODELS_DOT_DEV_FILE}")
+            return jsonify(models_data)
+        except Exception as e:
+            return jsonify({"error": f"Error reading cached models file: {str(e)}"}), 500
+        
+    # If the file does not exist, fetch it from the API    
+    try:
+        # Fetch the models from the API
+        response = py_requests.get("https://models.dev/api.json")
+        if response.status_code != 200:
+            return jsonify({"error": f"Failed to fetch models: {response.status_code} {response.reason}"}), response.status_code
+
+        # Parse the JSON response
+        models_data = response.json()
+        
+        with open(MODELS_DOT_DEV_FILE, 'w', encoding='utf-8') as f:
+            json.dump(models_data, f, indent=2, ensure_ascii=False)
+
+        return jsonify(models_data)
+
+    except Exception as e:
+        return jsonify({"error": f"Error fetching models: {str(e)}"}), 500
       
 """ 
     SPIN UP SERVER
