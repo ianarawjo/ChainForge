@@ -1,3 +1,4 @@
+import shutil
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Union
 import os
@@ -23,14 +24,30 @@ class VectorStore(ABC):
     should follow, allowing for easy swapping between different backends while
     maintaining the same API.
     """
-    def __init__(self, embedding_func: Optional[callable] = None):
+    def __init__(self, embedding_func: Optional[callable], db_path, db_mode):
         """
         Initialize the vector store.
 
         Args:
             embedding_func: Optional function to generate embeddings
+            db_path: path for DB
+            db_mode: if want to create or load db
         """
         self.embedding_func = embedding_func
+
+        if db_mode == "create" and db_path is not None:
+            # Supprimer le contenu du dossier db_path
+            if os.path.exists(db_path):
+                # Supprime tout le contenu du dossier, mais garde le dossier lui-même
+                for filename in os.listdir(db_path):
+                    file_path = os.path.join(db_path, filename)
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+            else:
+                # Crée le dossier s'il n'existe pas
+                os.makedirs(db_path, exist_ok=True)
 
     @abstractmethod
     def add(self, texts: List[str], embeddings: Optional[List[List[float]]] = None,
@@ -156,7 +173,8 @@ class LancedbVectorStore(VectorStore):
     def __init__(self, 
                  db_path: str = "lancedb",
                  embedding_func: Optional[callable] = None, 
-                 table_name: str = "embeddings"):
+                 table_name: str = "embeddings",
+                 db_mode: str = "create"):
         """
         Initialize LanceDB vector store.
         
@@ -164,8 +182,8 @@ class LancedbVectorStore(VectorStore):
             uri: Path where LanceDB will store the database on disk
             table_name: Name of the table to use for vector storage
         """
+        super().__init__(embedding_func, db_path, db_mode)
         # Create directory if it doesn't exist
-        os.makedirs(db_path, exist_ok=True)
         
         # Connect to the database
         self.db = lancedb.connect(db_path)
@@ -177,8 +195,7 @@ class LancedbVectorStore(VectorStore):
         if table_name in table_names:
             self.table = self.db.open_table(table_name)
         
-        super().__init__(embedding_func)
-    
+
     def _generate_id(self, text: str) -> str:
         """Generate SHA256 hash of text to use as document ID"""
         return hashlib.sha256(text.encode('utf-8')).hexdigest()
@@ -619,7 +636,8 @@ class FaissVectorStore(VectorStore):
                  db_path: str = "faissdb",
                  embedding_func: Optional[callable] = None,
                  index_name: str = "index",
-                 metric: str = "l2"):
+                 metric: str = "l2",
+                 db_mode: str = "create"):
         """
         Args:
             db_path: Directory where FAISS index and metadata are stored
@@ -627,25 +645,22 @@ class FaissVectorStore(VectorStore):
             index_name: Name of the FAISS index file (without extension)
             metric: 'l2' or 'ip' (inner product/cosine)
         """
+        super().__init__(embedding_func, db_path, db_mode)
 
         if faiss is None:
             raise ImportError("Faiss is not installed. Please install 'faiss-cpu' or 'faiss-gpu' if you would like to use Faiss vector store methods. You may need to install 'swig' as well; on MacOS this can be done with 'brew install swig'.")
 
-        os.makedirs(db_path, exist_ok=True)
         self.db_path = db_path
         self.index_name = index_name
         self.metric = metric.lower()
         self.index_file = os.path.join(db_path, f"{index_name}.faiss")
         self.meta_file = os.path.join(db_path, f"{index_name}_meta.pkl")
-        self.embedding_func = embedding_func
 
         self.index = None
         self.id_to_meta = {}  # id -> dict with text, metadata, vector index
         self.ids = []         # list of ids in FAISS order
 
         self._load()
-
-        super().__init__(embedding_func)
 
     def _generate_id(self, text: str) -> str:
         return hashlib.sha256(text.encode('utf-8')).hexdigest()
@@ -731,7 +746,12 @@ class FaissVectorStore(VectorStore):
         if self.index is None or not self.ids:
             return []
 
-        # Prepare query embedding
+        similarity_threshold = kwargs.get('similarity_threshold')
+        # Conversion du seuil en proportion si fourni
+        if similarity_threshold is not None:
+            similarity_threshold = float(similarity_threshold) / 100.0
+
+        # Préparation de l'embedding de la requête
         if isinstance(query, str):
             if self.embedding_func is None:
                 raise ValueError("Embedding function not provided for string query")
@@ -751,6 +771,9 @@ class FaissVectorStore(VectorStore):
             doc_id = self.ids[idx]
             meta = self.id_to_meta[doc_id]
             similarity = 1.0 / (1.0 + dist) if self.metric == "l2" else float(dist)
+            # Filtrage par similarité si le seuil est défini
+            if similarity_threshold is not None and similarity < similarity_threshold:
+                continue
             results.append({
                 "id": doc_id,
                 "text": meta["text"],
