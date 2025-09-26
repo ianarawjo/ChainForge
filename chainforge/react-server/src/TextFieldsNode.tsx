@@ -7,7 +7,7 @@ import React, {
   MouseEventHandler,
 } from "react";
 import { Handle, Node, Position } from "reactflow";
-import { Textarea, Tooltip, Skeleton, ScrollArea } from "@mantine/core";
+import { Textarea, Tooltip, Skeleton, ScrollArea, Loader } from "@mantine/core";
 import {
   IconTextPlus,
   IconEye,
@@ -29,6 +29,8 @@ import {
   makeSafeForCSLFormat,
   prepareItemsNodeData,
 } from "./ItemsNode";
+import { useMarkerLogic } from "./backend/useSelectionText";
+import MarkerPopover from "./DraggablePopover";
 
 // Helper funcs
 const union = (setA: Set<any>, setB: Set<any>) => {
@@ -57,7 +59,9 @@ export interface TextFieldsNodeProps {
 }
 
 const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
-  const [templateVars, setTemplateVars] = useState(data.vars || []);
+  const [templateVars, setTemplateVars] = useState(
+    Array.isArray(data.vars) ? data.vars : [],
+  );
   const duplicateNode = useStore((state) => state.duplicateNode);
   const addNode = useStore((state) => state.addNode);
   const removeNode = useStore((state) => state.removeNode);
@@ -73,6 +77,39 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   const [fieldVisibility, setFieldVisibility] = useState<Dict<boolean>>(
     data.fields_visibility || {},
   );
+  useEffect(() => {
+    if (data.fields) {
+      setTextfieldsValues(data.fields);
+    }
+    if (data.fields_visibility) {
+      setFieldVisibility(data.fields_visibility);
+    }
+  }, [data.fields, data.fields_visibility]);
+
+  const nodeRef = useRef<HTMLDivElement>(null);
+
+  const markerLogic = useMarkerLogic({
+    nodeId: id,
+    isPromptNode: false,
+    fieldValues: textfieldsValues,
+    templateVars,
+    onFieldChange: (fieldId: string, value: string) => {
+      handleTextFieldChange(fieldId, value, true);
+    },
+    onTemplateVarsChange: setTemplateVars,
+    onDataUpdate: (data: any) => {
+      setDataPropsForNode(id, data);
+      pingOutputNodes(id);
+    },
+    findNodeByParam: (tfNodeId: string, param: string) => {
+      const rf = useStore.getState();
+      const edge = rf.edges.find(
+        (e: any) => e.target === tfNodeId && e.targetHandle === param,
+      );
+      if (!edge) return undefined;
+      return (rf.nodes as Node[]).find((n) => n.id === edge.source);
+    },
+  });
 
   // For when textfields exceed the TextFields Node max height,
   // when we add a new field, this gives us a way to scroll to the bottom. Better UX.
@@ -85,7 +122,12 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
 
   // Whether the text fields should be in a loading state
   const [isLoading, setIsLoading] = useState(false);
+  // Whether we are waiting for LLM to generate the prompts
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
+  useEffect(() => {
+    setSuggestionsLoading(aiSuggestionsManager.areSuggestionsLoading());
+  });
   const [aiSuggestionsManager] = useState(
     new AISuggestionsManager(
       () => aiFeaturesProvider,
@@ -222,39 +264,6 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     [templateVars],
   );
 
-  // Save the state of a textfield when it changes and update hooks
-  const handleTextFieldChange = useCallback(
-    (field_id: string, val: string, shouldDebounce: boolean) => {
-      // Update the value of the controlled Textarea component
-      const new_fields = { ...textfieldsValues };
-      new_fields[field_id] = val;
-      setTextfieldsValues(new_fields);
-
-      // Update the data for the ReactFlow node
-      const new_data = updateTemplateVars({ fields: new_fields });
-      if (new_data.vars) setTemplateVars(new_data.vars);
-
-      // Debounce the global state change to happen only after 300ms, as it forces a costly rerender:
-      debounce(
-        (_id: string, _new_data: TextFieldsNodeData) => {
-          setDataPropsForNode(_id, _new_data as Dict);
-          pingOutputNodes(_id);
-        },
-        shouldDebounce ? 300 : 1,
-      )(id, new_data);
-    },
-    [
-      textfieldsValues,
-      setTextfieldsValues,
-      templateVars,
-      updateTemplateVars,
-      setTemplateVars,
-      pingOutputNodes,
-      setDataPropsForNode,
-      id,
-    ],
-  );
-
   // Dynamically update the textareas and position of the template hooks
   const ref = useRef<HTMLDivElement | null>(null);
   const [hooksY, setHooksY] = useState(120);
@@ -367,6 +376,258 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     }
   }
 
+  const [textSelection, setTextSelection] = useState<{
+    start: number;
+    end: number;
+    id: string;
+    anchorX: number;
+    anchorY: number;
+  } | null>(null);
+
+  const [contextDraft, setContextDraft] = useState("");
+
+  const [markerSet, setMarkerSet] = useState<Set<string>>(
+    new Set(Array.isArray(data.vars) ? data.vars : []),
+  );
+
+  const clean = (s: string) =>
+    s.replace(/[{}]/g, "").replace(/\s+/g, " ").trim();
+
+  const [markerList, setMarkerList] = useState<string[]>(
+    (Array.isArray(data.vars) ? data.vars : []).map(clean),
+  );
+
+  const stripLooseBraces = (txt: string) => txt.replace(/[{}]/g, "").trim();
+
+  const [paramContexts, setParamContexts] = useState<Record<string, string>>(
+    {},
+  );
+
+  const detectParameter = useCallback(
+    (textSelection: any, textfieldsValues: any, markerSet: Set<string>) => {
+      if (!textSelection) return null;
+
+      const { start, end, id: fieldId } = textSelection;
+      const full = textfieldsValues[fieldId] ?? "";
+      const slice = full.slice(start, end);
+      const raw = stripLooseBraces(slice).trim();
+
+      let param: string | null = null;
+
+      // Case 1: Exact match with a bracketed parameter like "{ice}"
+      const inside = extractBracketedSubstrings(slice);
+      if (inside.length === 1 && `{${inside[0]}}` === slice) {
+        param = inside[0];
+      }
+      // Case 2: Raw text matches a known marker like "ice"
+      else if (markerSet.has(raw)) {
+        param = raw;
+      }
+      // Case 3: Selection is inside a larger bracketed parameter
+      else {
+        const allBracketedParams = extractBracketedSubstrings(full) || [];
+
+        for (const bracketedParam of allBracketedParams) {
+          const bracketedSpan = `{${bracketedParam}}`;
+          let searchStart = 0;
+          let bracketedIndex = full.indexOf(bracketedSpan, searchStart);
+
+          while (bracketedIndex !== -1) {
+            const bracketedStart = bracketedIndex;
+            const bracketedEnd = bracketedIndex + bracketedSpan.length;
+
+            if (start >= bracketedStart && end <= bracketedEnd) {
+              if (slice !== bracketedSpan) {
+                param = bracketedParam;
+                break;
+              }
+            }
+
+            searchStart = bracketedIndex + 1;
+            bracketedIndex = full.indexOf(bracketedSpan, searchStart);
+          }
+
+          if (param) break;
+        }
+      }
+
+      return param;
+    },
+    [],
+  );
+
+  const [currentLoadedParam, setCurrentLoadedParam] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!textSelection) {
+      // Only reset when selection is completely cleared
+      setCurrentLoadedParam(null);
+      setContextDraft("");
+      return;
+    }
+
+    const detectedParam = detectParameter(
+      textSelection,
+      textfieldsValues,
+      markerSet,
+    );
+
+    const selectedText = textfieldsValues[textSelection.id]
+      ?.slice(textSelection.start, textSelection.end)
+      ?.trim();
+    const potentialParam = selectedText?.replace(/[{}]/g, "").trim();
+
+    const workingParam = detectedParam || potentialParam;
+
+    // Only update context when we're working with a different parameter
+    if (workingParam !== currentLoadedParam) {
+      setCurrentLoadedParam(workingParam);
+
+      if (workingParam) {
+        // Load saved context for this parameter
+        const savedContext = paramContexts[workingParam] || "";
+        setContextDraft(savedContext);
+       } else {
+        setContextDraft("");
+      }
+    }
+    // IMPORTANT: If workingParam === currentLoadedParam, don't touch contextDraft at all
+    // This prevents clearing the context while the user is typing
+  }, [
+    textSelection,
+    textfieldsValues,
+    markerSet,
+    currentLoadedParam,
+    paramContexts,
+    detectParameter,
+  ]);
+
+  const contextPopover = markerLogic.textSelection && (
+    <MarkerPopover
+      anchor={{
+        x: markerLogic.textSelection.anchorX,
+        y: markerLogic.textSelection.anchorY,
+      }}
+      preview={markerLogic.selectionPreview}
+      context={markerLogic.contextDraft}
+      setContext={markerLogic.setContextDraft}
+      variants={markerLogic.numVariants}
+      setVariants={markerLogic.setNumVariants}
+      onGenerate={markerLogic.handleGenerate}
+      loading={markerLogic.suggestionsLoading}
+      nodeType="textfields"
+    />
+  );
+
+  useEffect(() => {
+    const unsub = useStore.subscribe((state: any, prevState: any) => {
+      // Only run cleanup if nodes were actually removed (not added)
+      const prevNodeIds = new Set(prevState.nodes?.map((n: any) => n.id) || []);
+      const currentNodeIds = new Set(state.nodes?.map((n: any) => n.id) || []);
+
+      const me = state.nodes.find((n: any) => n.id === id);
+      if (!me || me.type !== "textfields") {
+        return;
+      }
+
+      const removedNodeIds = Array.from(prevNodeIds).filter(
+        (nodeId) => !currentNodeIds.has(nodeId),
+      );
+
+      // Skip cleanup if nodes are being added (which happens during splits)
+      const addedNodeIds = Array.from(currentNodeIds).filter(
+        (nodeId) => !prevNodeIds.has(nodeId),
+      );
+
+      if (removedNodeIds.length > 0 && addedNodeIds.length === 0) {
+        // Use a longer delay and re-extract markers from current text
+        setTimeout(() => {
+          const currentState = useStore.getState();
+          const currentNode = currentState.nodes.find((n: any) => n.id === id);
+          if (!currentNode) return;
+
+          const currentTextFields = currentNode.data?.fields || {};
+
+          // Re-extract markers using the same logic as updateTemplateVars
+          let all_found_vars = new Set<string>();
+          Object.values(currentTextFields).forEach((fieldText) => {
+            const found_vars = extractBracketedSubstrings(fieldText as string);
+            if (found_vars && found_vars.length > 0) {
+              found_vars.forEach((v) => all_found_vars.add(v));
+            }
+          });
+
+          const actualMarkers = Array.from(all_found_vars);
+          const actualMarkerSet = new Set(actualMarkers);
+
+          // Only update if our local state is out of sync with actual markers
+          if (!setsAreEqual(actualMarkerSet, markerSet)) {
+            setMarkerSet(actualMarkerSet);
+            setMarkerList(actualMarkers);
+            setTemplateVars(actualMarkers);
+            setDataPropsForNode(id, {
+              vars: actualMarkers,
+              fields: currentTextFields,
+            });
+            pingOutputNodes(id);
+
+            const removedMarkers = Array.from(markerSet).filter(
+              (marker) => !actualMarkerSet.has(marker),
+            );
+
+            if (removedMarkers.length > 0) {
+              setParamContexts((prevContexts) => {
+                const newContexts = { ...prevContexts };
+                removedMarkers.forEach((marker) => {
+                  delete newContexts[marker];
+                });
+                return newContexts;
+              });
+            }
+          }
+        }, 800);
+      }
+    });
+
+    return () => unsub();
+  }, [markerSet, id, setDataPropsForNode, pingOutputNodes]);
+
+  const handleTextFieldChange = useCallback(
+    (field_id: string, val: string, shouldDebounce: boolean) => {
+      const new_fields = { ...textfieldsValues };
+      new_fields[field_id] = val;
+      setTextfieldsValues(new_fields);
+
+      const new_data = updateTemplateVars({ fields: new_fields });
+
+      if (
+        new_data.vars &&
+        !setsAreEqual(new Set(new_data.vars), new Set(templateVars))
+      ) {
+        setTemplateVars(new_data.vars);
+      }
+
+      debounce(
+        (_id: string, _new_data: any) => {
+          setDataPropsForNode(_id, _new_data);
+          pingOutputNodes(_id);
+        },
+        shouldDebounce ? 300 : 1,
+      )(id, new_data);
+    },
+    [
+      textfieldsValues,
+      templateVars,
+      updateTemplateVars,
+      setDataPropsForNode,
+      pingOutputNodes,
+      debounce,
+      id,
+    ],
+  );
+
   // Cache the rendering of the text fields.
   const textFields = useMemo(
     () =>
@@ -391,6 +652,7 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
               onKeyDown={(event) =>
                 handleTextAreaKeyDown(event, placeholder, i)
               }
+              onMouseUp={(e) => markerLogic.handleMouseUp(e, nodeRef)}
             />
             {Object.keys(textfieldsValues).length > 1 ? (
               <div style={{ display: "flex", flexDirection: "column" }}>
@@ -481,54 +743,71 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   );
 
   return (
-    <BaseNode
-      classNames="text-fields-node"
-      nodeId={id}
-      contextMenuExts={customContextMenuItems}
-    >
-      <NodeLabel
-        title={data.title ?? "TextFields Node"}
-        nodeId={id}
-        icon={<IconTextPlus size="16px" />}
-        customButtons={
-          flags.aiSupport
-            ? [
-                <AIGenReplaceItemsPopover
-                  key="ai-popover"
-                  values={textfieldsValues}
-                  onAddValues={addMultipleFields}
-                  onReplaceValues={replaceFields}
-                  areValuesLoading={isLoading}
-                  setValuesLoading={setIsLoading}
-                />,
-              ]
-            : []
-        }
-      />
-      <Skeleton visible={isLoading}>
-        <div ref={setRef} className="nodrag nowheel">
-          <ScrollArea.Autosize mah={580} type="hover" viewportRef={viewport}>
-            {textFields}
-          </ScrollArea.Autosize>
-        </div>
-      </Skeleton>
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="output"
-        className="grouped-handle"
-        style={{ top: "50%" }}
-      />
-      <TemplateHooks
-        vars={templateVars}
-        nodeId={id}
-        startY={hooksY}
-        position={Position.Left}
-      />
-      <div className="add-text-field-btn">
-        <button onClick={handleAddField}>+</button>
+    <>
+      <div ref={nodeRef}>
+        <BaseNode
+          classNames="text-fields-node"
+          nodeId={id}
+          contextMenuExts={customContextMenuItems}
+        >
+          {contextPopover}
+          <NodeLabel
+            title={data.title ?? "TextFields Node"}
+            nodeId={id}
+            icon={<IconTextPlus size="16px" />}
+            customButtons={[
+              ...(flags.aiSupport
+                ? [
+                    <AIGenReplaceItemsPopover
+                      key="ai-popover"
+                      values={textfieldsValues}
+                      onAddValues={addMultipleFields}
+                      onReplaceValues={replaceFields}
+                      areValuesLoading={isLoading}
+                      setValuesLoading={setIsLoading}
+                    />,
+                  ]
+                : []),
+              suggestionsLoading && (
+                <Loader
+                  key="suggestions-loader"
+                  size="xs"
+                  variant="dots"
+                  style={{ marginLeft: 6, marginRight: 6 }}
+                />
+              ),
+            ]}
+          />
+          <Skeleton visible={isLoading}>
+            <div ref={setRef} className="nodrag nowheel">
+              <ScrollArea.Autosize
+                mah={580}
+                type="hover"
+                viewportRef={viewport}
+              >
+                {textFields}
+              </ScrollArea.Autosize>
+            </div>
+          </Skeleton>
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="output"
+            className="grouped-handle"
+            style={{ top: "50%" }}
+          />
+          <TemplateHooks
+            vars={templateVars}
+            nodeId={id}
+            startY={hooksY}
+            position={Position.Left}
+          />
+          <div className="add-text-field-btn">
+            <button onClick={handleAddField}>+</button>
+          </div>
+        </BaseNode>
       </div>
-    </BaseNode>
+    </>
   );
 };
 

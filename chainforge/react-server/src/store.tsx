@@ -36,6 +36,19 @@ import { StringLookup } from "./backend/cache";
 import { saveGlobalConfig } from "./backend/backend";
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
+export interface SelectionContext {
+  fieldId: string;
+  start: number;
+  end: number;
+  anchorX: number;
+  anchorY: number;
+}
+
+interface SelectionSlice {
+  textSelection: SelectionContext | null;
+  setTextSelection(sel: SelectionContext | null): void;
+}
+
 // Initial project settings
 const initialAPIKeys = {};
 const initialFlags = { aiSupport: true };
@@ -418,6 +431,7 @@ export interface StoreHandles {
   // Helper functions for nodes and edges
   getNode: (id: string) => Node | undefined;
   addNode: (newnode: Node) => void;
+  addEdge: (edge: Edge | Connection) => void;
   removeNode: (id: string) => void;
   deselectAllNodes: () => void;
   bringNodeToFront: (id: string) => void;
@@ -429,6 +443,10 @@ export interface StoreHandles {
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection | Edge) => void;
 
+  nodeContexts: Record<string, string>;
+  setNodeContext: (nodeId: string, context: string) => void;
+  setNodeTitle: (nodeId: string, newTitle: string) => void;
+  deleteNodeByTitle: (title: string) => void;
   // The LLM providers available in the drop-down list
   AvailableLLMs: LLMSpec[];
   setAvailableLLMs: (specs: LLMSpec[]) => void;
@@ -511,13 +529,14 @@ export interface StoreHandles {
     node_id: string,
   ) => Dict<string[] | TemplateVarInfo[]>;
 }
-
+type FullStore = StoreHandles & SelectionSlice;
 // A global store of variables, used for maintaining state
 // across ChainForge and ReactFlow components.
-const useStore = create<StoreHandles>((set, get) => ({
+const useStore = create<FullStore>((set, get) => ({
   nodes: [],
   edges: [],
-
+  textSelection: null,
+  setTextSelection: (sel) => set({ textSelection: sel }),
   // Available LLMs in ChainForge, in the format expected by LLMListItems.
   AvailableLLMs: [...initLLMProviders],
   setAvailableLLMs: (llmProviderList) => {
@@ -527,6 +546,24 @@ const useStore = create<StoreHandles>((set, get) => ({
   aiFeaturesProvider: "OpenAI",
   setAIFeaturesProvider: (llmProvider) => {
     set({ aiFeaturesProvider: llmProvider });
+  },
+  nodeContexts: {} as Record<string, string>,
+  setNodeContext: (nodeId: string, context: string) => {
+    set((state) => ({
+      nodeContexts: { ...state.nodeContexts, [nodeId]: context },
+    }));
+  },
+  setNodeTitle: (nodeId: string, newTitle: string) =>
+    set((state) => {
+      const node = state.nodes.find((n) => n.id === nodeId);
+      if (node) node.data = { ...node.data, title: newTitle };
+      return { nodes: state.nodes.map((n) => (n.id === nodeId ? node! : n)) };
+    }),
+  deleteNodeByTitle: (title: string) => {
+    const st = useStore.getState();
+    Object.values(st.nodes).forEach((n: any) => {
+      if (n.data?.title === title) st.removeNode?.(n.id);
+    });
   },
 
   // Keeping track of LLM API keys
@@ -1015,11 +1052,25 @@ const useStore = create<StoreHandles>((set, get) => ({
       nodes: get().nodes.concat(newnode),
     });
   },
-  removeNode: (id) => {
-    set({
-      nodes: get().nodes.filter((n) => n.id !== id),
+  removeNode: (nodeId: string) => {
+    const node = get().nodes.find((n) => n.id === nodeId);
+    set((state) => {
+      // remove from nodes
+      return { nodes: state.nodes.filter((n) => n.id !== nodeId) };
     });
+    if (node?.type === "textfields") {
+    } else {
+      const param = node?.data?.title || node?.id;
+      const listeners = (get() as any)._listeners;
+      if (listeners && Array.isArray(listeners)) {
+        listeners.forEach(
+          (l: (event: string, nodeId: string, param: string) => void) =>
+            l("nodeRemoved", nodeId, param),
+        );
+      }
+    }
   },
+
   deselectAllNodes: () => {
     // Deselect all nodes
     set({
@@ -1059,6 +1110,10 @@ const useStore = create<StoreHandles>((set, get) => ({
       nodes: newnodes,
     });
   },
+  addEdge: (edge) =>
+    set((state) => ({
+      edges: addEdge(edge, state.edges),
+    })),
   setEdges: (newedges) => {
     set({
       edges: newedges,
