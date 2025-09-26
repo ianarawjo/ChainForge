@@ -1371,7 +1371,7 @@ html[data-mantine-color-scheme="dark"] .ai-button:active {
 /* Chat history bubbles */
 .chat-bubble {
   --r: 15px; /* the radius */
-  --t: 25px; /* the size of the tail */
+  --t: 10px; /* the size of the tail */
 
   max-width: 80%;
   padding: calc(2 * var(--r) / 3);
@@ -1405,6 +1405,9 @@ html[data-mantine-color-scheme="dark"] .chat-bubble textarea {
   border-right: var(--t) solid #0000;
   margin-left: var(--t);
   place-self: end;
+}
+.chat-msg-right textarea {
+  max-width: 88%;
 }
 .chat-history {
   margin: 0;

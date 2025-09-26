@@ -106,10 +106,12 @@ import {
 // Device / Browser detection
 import {
   isMobile,
+  isTablet,
   isChrome,
   isFirefox,
   isEdgeChromium,
   isChromium,
+  isMobileSafari,
 } from "react-device-detect";
 import MultiEvalNode from "./MultiEvalNode";
 import FlowSidebar from "./FlowSidebar";
@@ -117,7 +119,6 @@ import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 import RequestClarificationModal, {
   RequestClarificationModalProps,
 } from "./RequestClarificationModal";
-import { xorBy } from "lodash";
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -125,7 +126,7 @@ const IS_ACCEPTED_BROWSER =
     isEdgeChromium ||
     isFirefox ||
     (navigator as any)?.brave !== undefined) &&
-  !isMobile;
+  (!isMobile || (isTablet && !isMobileSafari));
 
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
@@ -185,13 +186,13 @@ const INITIAL_LLM = () => {
     // Prefer OpenAI for majority of local users.
     const chatgpt = {
       key: uuid(),
-      name: "GPT3.5",
+      name: "GPT-4o-mini",
       emoji: "🤖",
-      model: "gpt-3.5-turbo",
-      base_model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
+      base_model: "gpt-4",
       temp: 1.0,
-      settings: getDefaultModelSettings("gpt-3.5-turbo"),
-      formData: getDefaultModelFormData("gpt-3.5-turbo"),
+      settings: getDefaultModelSettings("gpt-4"),
+      formData: getDefaultModelFormData("gpt-4"),
     } satisfies LLMSpec;
     chatgpt.formData.shortname = chatgpt.name;
     chatgpt.formData.model = chatgpt.model;

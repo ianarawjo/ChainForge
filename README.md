@@ -68,7 +68,7 @@ Now you can open the browser of your choice and open `http://127.0.0.1:8000`.
 
 - OpenAI
 - Anthropic
-- Google (Gemini, PaLM2)
+- Google Gemini
 - DeepSeek
 - HuggingFace (Inference and Endpoints)
 - Together.ai
