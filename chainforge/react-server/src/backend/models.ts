@@ -37,6 +37,11 @@ export enum NativeLLM {
   OpenAI_GPT4_1 = "gpt-4.1",
   OpenAI_GPT4_1_mini = "gpt-4.1-mini",
   OpenAI_GPT4_1_nano = "gpt-4.1-nano",
+  OpenAI_o3 = "o3",
+  OpenAI_GPT5 = "gpt-5",
+  OpenAI_GPT5_mini = "gpt-5-mini",
+  OpenAI_GPT5_nano = "gpt-5-nano",
+  OpenAI_GPT5_Chat = "gpt-5-chat-latest",
 
   // OpenAI Text Completions (deprecated)
   OpenAI_Davinci003 = "text-davinci-003",
@@ -47,6 +52,7 @@ export enum NativeLLM {
   OpenAI_DallE_2 = "dall-e-2",
   OpenAI_DallE_3 = "dall-e-3",
   OpenAI_GPT_Image_1 = "gpt-image-1",
+  OpenAI_GPT_Image_1_mini = "gpt-image-1-mini",
 
   // Azure OpenAI Endpoints
   Azure_OpenAI = "azure-openai",
@@ -74,16 +80,14 @@ export enum NativeLLM {
   Claude_v1_instant = "claude-instant-v1",
 
   // Google models
-  PaLM2_Text_Bison = "text-bison-001", // it's really models/text-bison-001, but that's confusing
-  PaLM2_Chat_Bison = "chat-bison-001",
-  GEMINI_PRO = "gemini-pro",
-  GEMINI_v2_5_pro_prev = "gemini-2.5-pro-preview-03-25",
+  GEMINI_v2_5_pro = "gemini-2.5-pro",
+  GEMINI_v2_5_flash = "gemini-2.5-flash",
+  GEMINI_v2_5_flash_lite = "gemini-2.5-flash-lite",
   GEMINI_v2_flash = "gemini-2.0-flash",
   GEMINI_v2_flash_lite = "gemini-2.0-flash-lite",
   GEMINI_v1_5_flash = "gemini-1.5-flash",
   GEMINI_v1_5_flash_8B = "gemini-1.5-flash-8b",
   GEMINI_v1_5_pro = "gemini-1.5-pro",
-  GEMINI_v1_pro = "gemini-1.0-pro",
 
   // DeepSeek
   DeepSeek_Chat = "deepseek-chat",
@@ -253,8 +257,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   const llm_name = getEnumName(NativeLLM, llm.toString());
   if (llm_name?.startsWith("OpenAI")) return LLMProvider.OpenAI;
   else if (llm_name?.startsWith("Azure")) return LLMProvider.Azure_OpenAI;
-  else if (llm_name?.startsWith("PaLM2") || llm_name?.startsWith("GEMINI"))
-    return LLMProvider.Google;
+  else if (llm_name?.startsWith("GEMINI")) return LLMProvider.Google;
   else if (llm_name?.startsWith("HF_")) return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith("claude")) return LLMProvider.Anthropic;
   else if (llm_name?.startsWith("Aleph_Alpha")) return LLMProvider.Aleph_Alpha;
@@ -290,9 +293,9 @@ export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
   [NativeLLM.OpenAI_DallE_2]: 10, // Should be 5 images per minute (1 img per every 10 seconds); here, we've been a bit lenient with it.
   [NativeLLM.OpenAI_DallE_3]: 10, // This differs per tier, see https://platform.openai.com/docs/guides/rate-limits/usage-tiers?context=tier-one
   [NativeLLM.Azure_OpenAI]: 500, // conservative
-  [NativeLLM.PaLM2_Text_Bison]: 60, // max 60 requests per minute as of Mar 2023
-  [NativeLLM.PaLM2_Chat_Bison]: 60,
-  [NativeLLM.GEMINI_PRO]: 60,
+  [NativeLLM.GEMINI_v2_5_pro]: 150,
+  [NativeLLM.GEMINI_v2_5_flash]: 1000,
+  [NativeLLM.GEMINI_v2_5_flash_lite]: 4000,
   [NativeLLM.Bedrock_Jurassic_Mid]: 400,
   [NativeLLM.Bedrock_Jurassic_Ultra]: 25,
   [NativeLLM.Bedrock_Titan_Light]: 800,

@@ -1,6 +1,7 @@
 # ⛓️🛠️ ChainForge 
 
 **An open-source visual environment for battle-testing prompts to LLMs.** [![Mentioned in Awesome Chainforge](https://awesome.re/mentioned-badge.svg)](https://github.com/loloMD/awesome_chainforge)
+[![Discord](https://img.shields.io/discord/1405689845245804628?label=discord&logo=discord&color=7289da)](https://discord.gg/DNpuumFx)
 
 <img width="1517" alt="banner" src="https://github.com/ianarawjo/ChainForge/assets/5251713/570879ef-ef8a-4e00-b37c-b49bc3c1a370">
 
@@ -67,7 +68,7 @@ Now you can open the browser of your choice and open `http://127.0.0.1:8000`.
 
 - OpenAI
 - Anthropic
-- Google (Gemini, PaLM2)
+- Google Gemini
 - DeepSeek
 - HuggingFace (Inference and Endpoints)
 - Together.ai
