@@ -432,6 +432,19 @@ export async function call_chatgpt(
   if (params?.tools === undefined && params?.parallel_tool_calls !== undefined)
     delete params?.parallel_tool_calls;
 
+  // Pass in o3 and GPT-5+ only parameters, removing them if the
+  // model name does not correspond to those models:
+  // NOTE: Chat Completions passes reasoning_effort instead of a dictionary for 'reasoning'.
+  if (params?.reasoning_effort !== undefined) {
+    if (!(modelname.startsWith("o3") || modelname.startsWith("gpt-5")))
+      delete params?.reasoning_effort;
+  }
+  if (params?.verbosity !== undefined) {
+    // Only pass verbosity for o3 and GPT-5+ models
+    if (!(modelname.startsWith("o3") || modelname.startsWith("gpt-5")))
+      delete params?.verbosity;
+  }
+
   if (!BASE_URL)
     console.log(`Querying OpenAI model '${model}' with prompt '${prompt}'...`);
 
@@ -1012,6 +1025,8 @@ export async function call_google_ai(
     }
   }
 
+  let num_retries = 0;
+  const max_retries = 3;
   while (responses.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
@@ -1022,6 +1037,21 @@ export async function call_google_ai(
     });
 
     const chat_response = await chat.sendMessage({ message: prompt_parts });
+
+    // NOTE: Sometimes, Google's API returns empty responses.
+    // I'm not sure why this happens. In this case, we just retry until we get a non-empty response.
+    if (!chat_response?.text) {
+      if (num_retries >= max_retries) {
+        throw new Error(
+          "Maximum retries reached: Google Gemini is returning empty text responses. This happens occasionally due to ongoing issues with Google's API and the fix is unknown.",
+        );
+      }
+      num_retries += 1;
+      console.warn(
+        "Received empty response from Google Gemini; retrying once more...",
+      );
+      continue;
+    }
 
     responses.push({
       text: chat_response.text,
@@ -1782,6 +1812,7 @@ function _extract_google_ai_responses(
  * Extracts the text part of a 'EnhancedGenerateContentResponse' object from Google Gemini `sendChat` or `chat`.
  */
 function _extract_gemini_responses(completions: Array<Dict>): Array<string> {
+  console.log("Extracting Gemini responses from: ", completions);
   return completions.map((c: Dict) => c.text);
 }
 

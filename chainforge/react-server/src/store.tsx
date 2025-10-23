@@ -102,6 +102,27 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "🤖",
     items: [
       {
+        name: "GPT-5",
+        emoji: "🚀",
+        model: "gpt-5",
+        base_model: "gpt-4",
+        temp: 1.0,
+      },
+      {
+        name: "GPT-5-mini",
+        emoji: "🔬",
+        model: "gpt-5-mini",
+        base_model: "gpt-4",
+        temp: 1.0,
+      },
+      {
+        name: "GPT-5-nano",
+        emoji: "🪲",
+        model: "gpt-5-nano",
+        base_model: "gpt-4",
+        temp: 1.0,
+      },
+      {
         name: "GPT-4o-mini",
         emoji: "🔬",
         model: "gpt-4o-mini",
@@ -130,9 +151,9 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         temp: 1.0,
       },
       {
-        name: "o1",
+        name: "o3",
         emoji: "⭕",
-        model: "o1",
+        model: "o3",
         base_model: "gpt-4",
         temp: 1.0,
       },
@@ -140,6 +161,13 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         name: "o3-mini",
         emoji: "⭕",
         model: "o3-mini",
+        base_model: "gpt-4",
+        temp: 1.0,
+      },
+      {
+        name: "o1",
+        emoji: "⭕",
+        model: "o1",
         base_model: "gpt-4",
         temp: 1.0,
       },

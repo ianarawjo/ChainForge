@@ -62,7 +62,6 @@ const RequestClarificationModal: React.FC<RequestClarificationModalProps> = ({
       withCloseButton={false}
       title={title}
       centered
-      style={{ position: "relative", left: "-4%" }}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <TextInput

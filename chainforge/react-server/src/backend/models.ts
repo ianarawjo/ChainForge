@@ -37,6 +37,11 @@ export enum NativeLLM {
   OpenAI_GPT4_1 = "gpt-4.1",
   OpenAI_GPT4_1_mini = "gpt-4.1-mini",
   OpenAI_GPT4_1_nano = "gpt-4.1-nano",
+  OpenAI_o3 = "o3",
+  OpenAI_GPT5 = "gpt-5",
+  OpenAI_GPT5_mini = "gpt-5-mini",
+  OpenAI_GPT5_nano = "gpt-5-nano",
+  OpenAI_GPT5_Chat = "gpt-5-chat-latest",
 
   // OpenAI Text Completions (deprecated)
   OpenAI_Davinci003 = "text-davinci-003",
@@ -47,6 +52,7 @@ export enum NativeLLM {
   OpenAI_DallE_2 = "dall-e-2",
   OpenAI_DallE_3 = "dall-e-3",
   OpenAI_GPT_Image_1 = "gpt-image-1",
+  OpenAI_GPT_Image_1_mini = "gpt-image-1-mini",
 
   // Azure OpenAI Endpoints
   Azure_OpenAI = "azure-openai",
