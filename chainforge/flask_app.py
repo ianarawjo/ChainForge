@@ -1,4 +1,4 @@
-import json, os, sys, asyncio, time, shutil, io, uuid, hashlib, tempfile, zipfile
+import json, os, sys, asyncio, time, shutil, uuid, hashlib, tempfile, zipfile
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Literal
@@ -17,10 +17,6 @@ from chainforge.rag.chunkers import ChunkingMethodRegistry
 from chainforge.rag.retrievers import RetrievalMethodRegistry
 from chainforge.rag.embeddings import EmbeddingMethodRegistry
 from markitdown import MarkItDown
-# import pymupdf
-# from docx import Document
-
-
 
 """ =================
     SETUP AND GLOBALS
@@ -31,10 +27,9 @@ from markitdown import MarkItDown
 HOSTNAME = "localhost"
 PORT = 8000
 # SESSION_TOKEN = secrets.token_hex(32)
-BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'public')
+BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
 STATIC_DIR = os.path.join(BUILD_DIR, 'static')
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
-app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024 # 2Go
 
 # Set up CORS for specific routes
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
@@ -886,7 +881,6 @@ def save_or_rename_flow(filename):
         except Exception as error:
             return jsonify({"error": str(error)}), 404
 
-
 def _get_unique_flow_name(filename: str, prefix: str = None) -> str: 
     secure_mode = SECURE_MODE == "all"
 
@@ -1055,9 +1049,9 @@ def media_to_text(uid):
             text = file_bytes.decode("utf-8", errors="ignore")
         elif ext in allowed_extensions:
             # We use markitdown for all other file types
-            md = MarkItDown()
+            md = MarkItDown(enable_plugins=False)
             result = md.convert(file_path)
-            text = result.text_content.replace('{',']').replace('}',']')
+            text = result.text_content
         else:
             return jsonify({"error": f"Unsupported file type: {ext}. Allowed types: {', '.join(allowed_extensions)}"}), 400
 
@@ -1392,8 +1386,6 @@ def chunk():
         # Return a generic error to the client
         return jsonify({"error": "An internal error occurred during text processing."}), 500
 
-
-
 # === Retrieval Endpoint===
 @app.route("/retrieve", methods=["POST"])
 def retrieve():
@@ -1727,7 +1719,7 @@ def proxy_image():
     except Exception as e:
         return jsonify({"error": f"Error fetching image: {str(e)}"}), 500
 
-      
+
 """ 
     SPIN UP SERVER
 """
