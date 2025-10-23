@@ -27,6 +27,8 @@ export interface LLMResponseInspectorModalProps {
   customLLMFieldName?: string;
   disableBackgroundColor?: boolean;
   treatLLMFieldAsUnique?: boolean;
+  ignoreAndHideLLMField?: boolean; // If true, LLM field will not be shown in the table view
+  ignoreAndHideEvalResField?: boolean; // If true, "Eval Res" column option will not be shown in the table view
 }
 
 const LLMResponseInspectorModal = forwardRef<
@@ -105,6 +107,8 @@ const LLMResponseInspectorModal = forwardRef<
             customLLMFieldName={props.customLLMFieldName}
             disableBackgroundColor={props.disableBackgroundColor}
             treatLLMFieldAsUnique={props.treatLLMFieldAsUnique}
+            ignoreAndHideLLMField={props.ignoreAndHideLLMField}
+            ignoreAndHideEvalResField={props.ignoreAndHideEvalResField}
           />
         </Suspense>
       </div>

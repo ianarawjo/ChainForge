@@ -1,11 +1,11 @@
-import json, os, sys, asyncio, time, shutil, uuid, hashlib, tempfile, zipfile
+import json, os, sys, asyncio, time, shutil, io, uuid, hashlib, tempfile, zipfile
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Literal
 from statistics import mean, median, stdev
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, after_this_request
-from flask_cors import CORS
+from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, after_this_request, abort
+from flask_cors import CORS, cross_origin
 from chainforge.providers import ProviderRegistry
 from chainforge.security.password_utils import ensure_password
 from chainforge.security.secure_save import load_json_file, save_json_file
@@ -13,7 +13,16 @@ import requests as py_requests
 from platformdirs import user_data_dir
 
 # RAG-specific imports
+from chainforge.rag.chunkers import ChunkingMethodRegistry
+from chainforge.rag.retrievers import RetrievalMethodRegistry
+from chainforge.rag.embeddings import EmbeddingMethodRegistry
 from markitdown import MarkItDown
+
+# import pymupdf
+# from docx import Document
+import os
+from pathlib import Path
+from werkzeug.exceptions import NotFound
 
 
 """ =================
@@ -25,15 +34,17 @@ from markitdown import MarkItDown
 HOSTNAME = "localhost"
 PORT = 8000
 # SESSION_TOKEN = secrets.token_hex(32)
-BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
+BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'public')
 STATIC_DIR = os.path.join(BUILD_DIR, 'static')
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024  # 2Go
 
 # Set up CORS for specific routes
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
 # The cache and examples files base directories
-FLOWS_DIR = user_data_dir("chainforge")  # platform-agnostic local storage that persists outside the package install location
+FLOWS_DIR = user_data_dir(
+    "chainforge")  # platform-agnostic local storage that persists outside the package install location
 SETTINGS_FILENAME = "settings.json"
 # CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'cache')
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'examples')
@@ -42,6 +53,10 @@ MEDIA_DIR = os.path.join(FLOWS_DIR, 'media')
 # Cryptography
 SECURE_MODE: Literal['off', 'settings', 'all'] = 'off'  # The mode of encryption to use for files
 FLOWS_DIR_PWD = None  # The password to use for encryption/decryption
+# Custom extension for RAG example flow
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+EXAMPLES_DIR = os.path.normpath(os.path.join(PROJECT_ROOT, "examples"))
+
 
 class MetricType(Enum):
     KeyValue = 0
@@ -62,6 +77,8 @@ class MetricType(Enum):
 
 HIJACKED_PRINT_LOG_FILE = None
 ORIGINAL_PRINT_METHOD = None
+
+
 def HIJACK_PYTHON_PRINT() -> None:
     # Hijacks Python's print function, so that we can log 
     # the outputs when the evaluator is run:
@@ -74,22 +91,24 @@ def HIJACK_PYTHON_PRINT() -> None:
 
     # Create a wrapper over the original print method, and save the original print
     ORIGINAL_PRINT_METHOD = print
+
     def hijacked_print(*args, **kwargs):
         if 'file' in kwargs:
             # We don't want to override any library that's using print to a file.
             ORIGINAL_PRINT_METHOD(*args, **kwargs)
         else:
             ORIGINAL_PRINT_METHOD(*args, **kwargs, file=HIJACKED_PRINT_LOG_FILE)
-    
+
     # Replace the original print function with the custom print function
     builtins.print = hijacked_print
+
 
 def REVERT_PYTHON_PRINT() -> List[str]:
     # Reverts back to original Python print method 
     # NOTE: Call this after hijack, and make sure you've caught all exceptions!
     import builtins
     global ORIGINAL_PRINT_METHOD, HIJACKED_PRINT_LOG_FILE
-    
+
     logs = []
     if HIJACKED_PRINT_LOG_FILE is not None:
         # Read the log file 
@@ -106,6 +125,7 @@ def REVERT_PYTHON_PRINT() -> List[str]:
         logs = []
     return logs
 
+
 @dataclass
 class ResponseInfo:
     """Stores info about a single LLM response. Passed to evaluator functions."""
@@ -117,11 +137,12 @@ class ResponseInfo:
 
     def __str__(self):
         return self.text
-    
+
     def asMarkdownAST(self):
         import mistune
         md_ast_parser = mistune.create_markdown(renderer='ast')
         return md_ast_parser(self.text)
+
 
 def check_typeof_vals(arr: list) -> MetricType:
     if len(arr) == 0: return MetricType.Empty
@@ -142,14 +163,14 @@ def check_typeof_vals(arr: list) -> MetricType:
         else:
             # Mix of types beyond basic ones
             return MetricType.Unknown
-    
+
     def typeof_dict_vals(d):
         dict_val_type = typeof_set(set((type(v) for v in d.values())))
-        if dict_val_type == MetricType.Numeric: 
+        if dict_val_type == MetricType.Numeric:
             return MetricType.KeyValue_Numeric
-        elif dict_val_type == MetricType.Categorical: 
+        elif dict_val_type == MetricType.Categorical:
             return MetricType.KeyValue_Categorical
-        else: 
+        else:
             return MetricType.KeyValue_Mixed
 
     # Checks type of all values in 'arr' and returns the type
@@ -157,11 +178,12 @@ def check_typeof_vals(arr: list) -> MetricType:
     if val_type == MetricType.KeyValue:
         # This is a 'KeyValue' pair type. We need to find the more specific type of the values in the dict.
         # First, we check that all dicts have the exact same keys
-        for i in range(len(arr)-1):
-            d, e = arr[i], arr[i+1]
+        for i in range(len(arr) - 1):
+            d, e = arr[i], arr[i + 1]
             if set(d.keys()) != set(e.keys()):
-                raise Exception('The keys and size of dicts for evaluation results must be consistent across evaluations.')
-        
+                raise Exception(
+                    'The keys and size of dicts for evaluation results must be consistent across evaluations.')
+
         # Then, we check the consistency of the type of dict values:
         first_dict_val_type = typeof_dict_vals(arr[0])
         for d in arr[1:]:
@@ -172,24 +194,25 @@ def check_typeof_vals(arr: list) -> MetricType:
     else:
         return val_type
 
+
 def run_over_responses(process_func, responses: list, scope: str, process_type: str) -> list:
     for resp_obj in responses:
         res = resp_obj['responses']
         if scope == 'response':
             # Run process func over every individual response text
             proc = [process_func(
-                        ResponseInfo(
-                            text=r,
-                            prompt=resp_obj['prompt'],
-                            var=resp_obj['vars'],
-                            meta=resp_obj['metavars'] if 'metavars' in resp_obj else {},
-                            llm=resp_obj['llm'])
-                    ) for r in res]
+                ResponseInfo(
+                    text=r,
+                    prompt=resp_obj['prompt'],
+                    var=resp_obj['vars'],
+                    meta=resp_obj['metavars'] if 'metavars' in resp_obj else {},
+                    llm=resp_obj['llm'])
+            ) for r in res]
 
             if process_type == 'processor':
                 # Response text was just transformed, not evaluated
                 resp_obj['responses'] = proc
-            else: 
+            else:
                 # Responses were evaluated/scored
                 # Check the type of evaluation results
                 # NOTE: We assume this is consistent across all evaluations, but it may not be.
@@ -206,26 +229,27 @@ def run_over_responses(process_func, responses: list, scope: str, process_type: 
                         'dtype': eval_res_type.name,
                     }
                 elif eval_res_type in (MetricType.Unknown, MetricType.Empty):
-                    raise Exception('Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.')
+                    raise Exception(
+                        'Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.')
                 else:
                     # Categorical, KeyValue, etc, we just store the items:
-                    resp_obj['eval_res'] = { 
+                    resp_obj['eval_res'] = {
                         'items': proc,
                         'dtype': eval_res_type.name,
                     }
-        else:  
+        else:
             # Run process func over the entire response batch
             proc = process_func([
-                    ResponseInfo(text=r,
-                                 prompt=resp_obj['prompt'],
-                                 var=resp_obj['vars'],
-                                 llm=resp_obj['llm'])
-                   for r in res])
-            
+                ResponseInfo(text=r,
+                             prompt=resp_obj['prompt'],
+                             var=resp_obj['vars'],
+                             llm=resp_obj['llm'])
+                for r in res])
+
             if process_type == 'processor':
                 # Response text was just transformed, not evaluated
                 resp_obj['responses'] = proc
-            else: 
+            else:
                 # Responses were evaluated/scored
                 ev_type = check_typeof_vals([proc])
                 if ev_type == MetricType.Numeric:
@@ -238,11 +262,12 @@ def run_over_responses(process_func, responses: list, scope: str, process_type: 
                         'type': ev_type.name,
                     }
                 else:
-                    resp_obj['eval_res'] = { 
+                    resp_obj['eval_res'] = {
                         'items': [proc],
                         'type': ev_type.name,
                     }
     return responses
+
 
 async def make_sync_call_async(sync_method, *args, **params):
     """
@@ -254,11 +279,13 @@ async def make_sync_call_async(sync_method, *args, **params):
     if len(params) > 0:
         def partial_sync_meth(*a):
             return sync_method(*a, **params)
+
         method = partial_sync_meth
     return await loop.run_in_executor(None, method, *args)
 
+
 def exclude_key(d, key_to_exclude):
-        return {k: v for k, v in d.items() if k != key_to_exclude}
+    return {k: v for k, v in d.items() if k != key_to_exclude}
 
 
 """ ===================
@@ -266,17 +293,20 @@ def exclude_key(d, key_to_exclude):
     ===================
 """
 
+
 # Serve React app (static; no hot reloading)
 @app.route("/")
 def index():
     # Get the index.html HTML code
     html_str = render_template("index.html")
-    
+
     # Inject global JS variables __CF_HOSTNAME and __CF_PORT at the top so that the application knows 
     # that it's running from a Flask server, and what the hostname and port of that server is:
-    html_str = html_str[:60] + f'<script>window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT};</script>' + html_str[60:]
+    html_str = html_str[
+               :60] + f'<script>window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT};</script>' + html_str[60:]
 
     return html_str
+
 
 @app.route('/app/executepy', methods=['POST'])
 def executepy():
@@ -310,7 +340,8 @@ def executepy():
 
     # Check format of responses:
     responses = data['responses']
-    if (isinstance(responses, str) or not isinstance(responses, list)) or (len(responses) > 0 and any([not isinstance(r, dict) for r in responses])):
+    if (isinstance(responses, str) or not isinstance(responses, list)) or (
+            len(responses) > 0 and any([not isinstance(r, dict) for r in responses])):
         return jsonify({'error': 'POST data responses is improper format.'})
 
     # Add the path to any scripts to the path:
@@ -346,12 +377,13 @@ def executepy():
             process  # noqa
     except Exception as e:
         return jsonify({'error': f'Could not compile evaluator code. Error message:\n{str(e)}'})
-    
+
     evald_responses = []
     logs = []
     try:
         HIJACK_PYTHON_PRINT()
-        evald_responses = run_over_responses(evaluate if process_type == 'evaluator' else process, responses, scope=data['scope'], process_type=process_type)  # noqa
+        evald_responses = run_over_responses(evaluate if process_type == 'evaluator' else process, responses,
+                                             scope=data['scope'], process_type=process_type)  # noqa
         logs = REVERT_PYTHON_PRINT()
     except Exception as e:
         logs = REVERT_PYTHON_PRINT()
@@ -396,11 +428,32 @@ def fetchExampleFlow():
             filedata = json.load(f)
     except Exception as e:
         return jsonify({'error': f"Error parsing example flow at {filepath}: {str(e)}"})
-    
+
     ret = jsonify({'data': filedata})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
+@app.get("/example_flows/<path:filename>")
+@cross_origin()
+def serve_example_flow(filename: str):
+    # Validate extension (case-insensitive)
+    ext = Path(filename).suffix.lower()
+    if ext not in {".zip", ".cfzip"}:
+        abort(400, description="Only .cfzip or .zip allowed.")
+
+    # Log without leaking server paths in responses
+    app.logger.info("[examples] request filename=%s", filename)
+
+    try:
+        return send_from_directory(
+            EXAMPLES_DIR,
+            filename,
+            mimetype="application/zip",   # forces correct type for .zip/.cfzip
+            as_attachment=False,
+            max_age=0,
+        )
+    except NotFound:
+        abort(404, description="File not found.")
 
 @app.route('/app/fetchOpenAIEval', methods=['POST'])
 def fetchOpenAIEval():
@@ -447,7 +500,8 @@ def fetchOpenAIEval():
         try:
             os.mkdir(oaievals_cache_dir)
         except Exception as e:
-            return jsonify({'error': f"Error creating a new directory 'oaievals' at filepath {oaievals_cache_dir}: {str(e)}"})
+            return jsonify(
+                {'error': f"Error creating a new directory 'oaievals' at filepath {oaievals_cache_dir}: {str(e)}"})
 
     # Download the preconverted OpenAI eval from the GitHub main branch for ChainForge
     _url = f"https://raw.githubusercontent.com/ianarawjo/ChainForge/main/chainforge/oaievals/{evalname}.cforge"
@@ -463,7 +517,8 @@ def fetchOpenAIEval():
             json.dump(filedata, f)
     else:
         print("Error:", response.status_code)
-        return jsonify({'error': f"Error downloading OpenAI evals flow from {_url}: status code {response.status_code}"})
+        return jsonify(
+            {'error': f"Error downloading OpenAI evals flow from {_url}: status code {response.status_code}"})
 
     ret = jsonify({'data': filedata})
     ret.headers.add('Access-Control-Allow-Origin', '*')
@@ -473,22 +528,22 @@ def fetchOpenAIEval():
 @app.route('/app/fetchEnvironAPIKeys', methods=['POST'])
 def fetchEnvironAPIKeys():
     keymap = {
-        'OPENAI_API_KEY': 'OpenAI', 
+        'OPENAI_API_KEY': 'OpenAI',
         'OPENAI_BASE_URL': 'OpenAI_BaseURL',
-        'ANTHROPIC_API_KEY': 'Anthropic', 
-        'PALM_API_KEY': 'Google', 
+        'ANTHROPIC_API_KEY': 'Anthropic',
+        'PALM_API_KEY': 'Google',
         'HUGGINGFACE_API_KEY': 'HuggingFace',
-        'AZURE_OPENAI_KEY': 'Azure_OpenAI', 
+        'AZURE_OPENAI_KEY': 'Azure_OpenAI',
         'AZURE_OPENAI_ENDPOINT': 'Azure_OpenAI_Endpoint',
         'ALEPH_ALPHA_API_KEY': 'AlephAlpha',
         'AWS_ACCESS_KEY_ID': 'AWS_Access_Key_ID',
         'AWS_SECRET_ACCESS_KEY': 'AWS_Secret_Access_Key',
-        'AWS_REGION': 'AWS_Region', 
+        'AWS_REGION': 'AWS_Region',
         'AWS_SESSION_TOKEN': 'AWS_Session_Token',
         'TOGETHER_API_KEY': 'Together',
         'DEEPSEEK_API_KEY': 'DeepSeek',
     }
-    d = { alias: os.environ.get(key) for key, alias in keymap.items() }
+    d = {alias: os.environ.get(key) for key, alias in keymap.items()}
     ret = jsonify(d)
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
@@ -558,10 +613,11 @@ def initCustomProvider():
         try:
             os.makedirs(provider_scripts_dir, exist_ok=True)
         except Exception as e:
-            return jsonify({'error': f"Error creating a new directory 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
+            return jsonify({
+                               'error': f"Error creating a new directory 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
 
     # For keeping track of what script registered providers came from
-    script_id = str(round(time.time()*1000))
+    script_id = str(round(time.time() * 1000))
     ProviderRegistry.set_curr_script_id(script_id)
     ProviderRegistry.watch_next_registered()
 
@@ -576,7 +632,8 @@ def initCustomProvider():
     # Check whether anything was updated, and what
     new_registries = ProviderRegistry.last_registered()
     if len(new_registries) == 0:  # Determine whether there's at least one custom provider.
-        return jsonify({'error': 'Did not detect any custom providers added to the registry. Make sure you are registering your provider with @provider correctly.'})
+        return jsonify({
+                           'error': 'Did not detect any custom providers added to the registry. Make sure you are registering your provider with @provider correctly.'})
 
     # At least one provider was registered; detect if it had a past script id and remove those file(s) from the cache
     if any((v is not None for v in new_registries.values())):
@@ -588,7 +645,8 @@ def initCustomProvider():
                 if os.path.isfile(past_script_path):
                     os.remove(past_script_path)
             except Exception as e:
-                return jsonify({'error': f"Error removing cache'd custom provider script at filepath {past_script_path}: {str(e)}"})
+                return jsonify({
+                                   'error': f"Error removing cache'd custom provider script at filepath {past_script_path}: {str(e)}"})
 
     # Get the names and specs of all currently registered CustomModelProviders,
     # and pass that info to the front-end (excluding the func):
@@ -599,7 +657,8 @@ def initCustomProvider():
         with open(os.path.join(provider_scripts_dir, f"{script_id}.py"), 'w') as f:
             f.write(data['code'])
     except Exception as e:
-        return jsonify({'error': f"Error saving script 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
+        return jsonify(
+            {'error': f"Error saving script 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
 
     # Return all loaded providers
     return jsonify({'providers': registered_providers})
@@ -620,12 +679,12 @@ def loadCachedCustomProviders():
             file_path = os.path.join(provider_scripts_dir, file_name)
             if os.path.isfile(file_path) and os.path.splitext(file_path)[1] == '.py':
                 # For keeping track of what script registered providers came from
-                ProviderRegistry.set_curr_script_id(os.path.splitext(file_name)[0])  
+                ProviderRegistry.set_curr_script_id(os.path.splitext(file_name)[0])
 
                 # Read the Python script
                 with open(file_path, 'r') as f:
                     code = f.read()
-                
+
                 # Try to execute it in the global context
                 try:
                     exec(code, globals(), None)
@@ -659,10 +718,10 @@ def removeCustomProvider():
     name = data.get('name')
     if name is None:
         return jsonify({'error': 'POST data is improper format.'})
-    
+
     if not ProviderRegistry.has(name):
         return jsonify({'error': f'Could not find a custom provider named "{name}"'})
-    
+
     # Get the script id associated with the provider we're about to remove
     script_id = ProviderRegistry.get(name).get('script_id')
 
@@ -693,7 +752,7 @@ async def callCustomProvider():
     data = request.get_json()
     if not set(data.keys()).issuperset({'name', 'params'}):
         return jsonify({'error': 'POST data is improper format.'})
-    
+
     # Load the name of the provider
     name = data['name']
     params = data['params']
@@ -701,8 +760,9 @@ async def callCustomProvider():
     # Double-check that the custom provider exists in the registry, and (if passed) a model with that name exists
     provider_spec = ProviderRegistry.get(name)
     if provider_spec is None:
-        return jsonify({'error': f'Could not find provider named {name}. Perhaps you need to import a custom provider script?'})
-    
+        return jsonify(
+            {'error': f'Could not find provider named {name}. Perhaps you need to import a custom provider script?'})
+
     # Call + await the custom provider function, passing in the JSON payload as kwargs
     try:
         response = await make_sync_call_async(provider_spec.get('func'), **params)
@@ -712,9 +772,12 @@ async def callCustomProvider():
     # Return the response
     return jsonify({'response': response})
 
+
 """ 
     LOCALLY SAVED FLOWS
 """
+
+
 @app.route('/api/flows', methods=['GET'])
 def get_flows():
     """Return a list of all saved flows. If the directory does not exist, try to create it."""
@@ -724,8 +787,9 @@ def get_flows():
             "name": f,
             "last_modified": datetime.fromtimestamp(os.path.getmtime(os.path.join(FLOWS_DIR, f))).isoformat()
         }
-        for f in os.listdir(FLOWS_DIR) 
-        if (f.endswith('.cforge') or f.endswith('.cforge.enc')) and "__autosave.cforge" not in f  # ignore the special autosave file
+        for f in os.listdir(FLOWS_DIR)
+        if (f.endswith('.cforge') or f.endswith('.cforge.enc')) and "__autosave.cforge" not in f
+        # ignore the special autosave file
     ]
 
     # Sort the flow files by last modified date in descending order (most recent first)
@@ -736,6 +800,7 @@ def get_flows():
         "flows": flows
     })
 
+
 @app.route('/api/flows/<filename>', methods=['GET'])
 def get_flow(filename):
     file_is_pwd_protected = request.args.get("pwd_protected", False)
@@ -743,7 +808,8 @@ def get_flow(filename):
 
     if file_is_pwd_protected == "true" and SECURE_MODE != "all":
         # The file is password protected, but the server is not in secure mode, we won't be able to load it
-        return jsonify({"error": "This flow is password protected, but the server is not in secure mode 'all'. Run ChainForge with --secure set to all to load this flow."}), 403
+        return jsonify({
+                           "error": "This flow is password protected, but the server is not in secure mode 'all'. Run ChainForge with --secure set to all to load this flow."}), 403
 
     """Return the content of a specific flow"""
     if not filename.endswith('.cforge'):
@@ -752,7 +818,7 @@ def get_flow(filename):
         filepath = os.path.join(FLOWS_DIR, filename)
         secure_mode = SECURE_MODE == "all"
         data, true_filepath = load_json_file(
-            filepath_w_ext=filepath, 
+            filepath_w_ext=filepath,
             secure=secure_mode,
             password=FLOWS_DIR_PWD if secure_mode else None,
         )
@@ -777,16 +843,19 @@ def get_flow(filename):
     except FileNotFoundError:
         return jsonify({"error": "Flow not found"}), 404
 
+
 @app.route('/api/flowExists/<filename>', methods=['GET'])
 def get_flow_exists(filename):
     """Return the content of a specific flow"""
     if not filename.endswith('.cforge'):
         filename += '.cforge'
     try:
-        is_file = os.path.isfile(os.path.join(FLOWS_DIR, filename)) or os.path.isfile(os.path.join(FLOWS_DIR, filename + ".enc"))
+        is_file = os.path.isfile(os.path.join(FLOWS_DIR, filename)) or os.path.isfile(
+            os.path.join(FLOWS_DIR, filename + ".enc"))
         return jsonify({"exists": is_file})
     except FileNotFoundError:
         return jsonify({"error": "Flow not found"}), 404
+
 
 @app.route('/api/flows/<filename>', methods=['DELETE'])
 def delete_flow(filename):
@@ -802,7 +871,7 @@ def delete_flow(filename):
             filename += '.enc'
         else:
             filename += '.cforge.enc'
-        
+
     try:
         # Delete the file
         if os.path.isfile(os.path.join(FLOWS_DIR, filename)):
@@ -810,6 +879,7 @@ def delete_flow(filename):
         return jsonify({"message": f"Flow {filename} deleted successfully"})
     except FileNotFoundError:
         return jsonify({"error": "Flow not found"}), 404
+
 
 @app.route('/api/flows/<filename>', methods=['PUT'])
 def save_or_rename_flow(filename):
@@ -824,12 +894,12 @@ def save_or_rename_flow(filename):
         # Save flow (overwriting any existing flow file with the same name)
         flow_data = data.get('flow')
         also_autosave = data.get('alsoAutosave')
-        
+
         try:
             filepath = os.path.join(FLOWS_DIR, filename)
             success = save_json_file(
-                filepath_w_ext=filepath, 
-                data=flow_data, 
+                filepath_w_ext=filepath,
+                data=flow_data,
                 secure=secure_mode,
                 password=FLOWS_DIR_PWD if secure_mode else None,
             )
@@ -844,13 +914,14 @@ def save_or_rename_flow(filename):
 
             return jsonify({"message": f"Flow '{filename}' saved!"})
         except FileNotFoundError:
-            return jsonify({"error": f"Could not save flow '{filename}' to local filesystem. See terminal for more details."}), 404
+            return jsonify(
+                {"error": f"Could not save flow '{filename}' to local filesystem. See terminal for more details."}), 404
 
     elif data.get('newName'):
         # Rename flow
         new_name = data.get('newName')
         old_path = os.path.join(FLOWS_DIR, filename) + ('.enc' if secure_mode else '')
-        
+
         if not new_name.endswith('.cforge'):
             new_name += '.cforge'
 
@@ -865,13 +936,13 @@ def save_or_rename_flow(filename):
             return jsonify({"message": f"Flow renamed from {filename} to {new_name}"})
         except Exception as error:
             return jsonify({"error": str(error)}), 404
-    
+
     elif data.get('duplicate'):
         # Duplicate flow
         try:
             old_path = os.path.join(FLOWS_DIR, filename) + ('.enc' if secure_mode else '')
             # Check for name clashes (if a flow already exists with the new name)
-            copy_name = _get_unique_flow_name(filename, "Copy of ") 
+            copy_name = _get_unique_flow_name(filename, "Copy of ")
             # Copy the file to the new (safe) path, and copy metadata too:
             shutil.copy2(old_path, os.path.join(FLOWS_DIR, f"{copy_name}.cforge" + ('.enc' if secure_mode else '')))
             # Return the new filename
@@ -879,14 +950,15 @@ def save_or_rename_flow(filename):
         except Exception as error:
             return jsonify({"error": str(error)}), 404
 
-def _get_unique_flow_name(filename: str, prefix: str = None) -> str: 
+
+def _get_unique_flow_name(filename: str, prefix: str = None) -> str:
     secure_mode = SECURE_MODE == "all"
 
     if not filename.endswith('.cforge'):
         filename += '.cforge'
 
     base, ext = os.path.splitext(filename)
-    if ext is None or len(ext) == 0: 
+    if ext is None or len(ext) == 0:
         ext = ".cforge"
 
     if secure_mode:
@@ -903,15 +975,16 @@ def _get_unique_flow_name(filename: str, prefix: str = None) -> str:
         if prefix is not None:
             unique_filename = prefix + unique_filename
         i += 1
-    
+
     return unique_filename.replace(ext, "")
+
 
 @app.route('/api/getUniqueFlowFilename', methods=['PUT'])
 def get_unique_flow_name():
     """Return a non-name-clashing filename to store in the local disk."""
     data = request.json
     filename = data.get("name")
-    
+
     try:
         new_name = _get_unique_flow_name(filename)
         return jsonify(new_name)
@@ -926,19 +999,22 @@ def get_unique_flow_name():
     This is used to persist settings across sessions.
     The settings file 'settings.json' is stored in the same directory as the user's flows.
 """
+
+
 @app.route('/api/getConfig/<name>', methods=['GET'])
 def get_settings(name):
     """Return the requested config"""
     filepath = os.path.join(FLOWS_DIR, f"{name}.json")
     secure_mode = SECURE_MODE == "all" or (SECURE_MODE == "settings" and name == "settings")
     settings, _ = load_json_file(
-        filepath_w_ext=filepath, 
+        filepath_w_ext=filepath,
         secure=secure_mode,
         password=FLOWS_DIR_PWD if secure_mode else None,
     )
     if settings is None:
         settings = {}
     return jsonify(settings)
+
 
 @app.route('/api/saveConfig/<name>', methods=['POST'])
 def save_settings(name):
@@ -953,8 +1029,8 @@ def save_settings(name):
         filepath = os.path.join(FLOWS_DIR, f"{name}.json")
         secure_mode = SECURE_MODE == "all" or (SECURE_MODE == "settings" and name == "settings")
         success = save_json_file(
-            filepath_w_ext=filepath, 
-            data=data, 
+            filepath_w_ext=filepath,
+            data=data,
             secure=secure_mode,
             password=FLOWS_DIR_PWD if secure_mode else None,
         )
@@ -969,6 +1045,8 @@ def save_settings(name):
     Media File Storage and Retrieval
     (Images, PDFs, Videos, etc.)
 """
+
+
 def compute_file_hash(file_stream):
     """Calculate SHA256 hash of a file-like object (does not reset pointer)."""
     hash_obj = hashlib.sha256()
@@ -978,12 +1056,14 @@ def compute_file_hash(file_stream):
     file_stream.seek(0)  # Reset for reuse
     return hash_obj.hexdigest()
 
+
 def gen_unique_media_filename(ext, existing_filenames):
     """Generate a new unique filename using UUID, retrying on rare clash."""
     while True:
         uid = str(uuid.uuid4()) + ext
         if uid not in existing_filenames:
             return uid
+
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -1012,10 +1092,12 @@ def upload():
     file.save(file_path)
     return jsonify(uid=uid)
 
+
 @app.route('/media/<uid>')
 def get_media(uid):
     """Retrieve a file from the media directory using its UID."""
     return send_from_directory(MEDIA_DIR, uid, as_attachment=False)
+
 
 @app.route('/mediaExists/<uid>')
 def has_media(uid):
@@ -1025,6 +1107,7 @@ def has_media(uid):
         return jsonify({"exists": True})
     else:
         return jsonify({"exists": False}), 404
+
 
 @app.route('/mediaToText/<uid>', methods=['GET'])
 def media_to_text(uid):
@@ -1039,7 +1122,7 @@ def media_to_text(uid):
     try:
         ext = os.path.splitext(file_path)[1].lower()
 
-        allowed_extensions = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".pptx"}
+        allowed_extensions = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".pptx", ".md"}
         if ext == '.txt':
             # Read text files directly
             with open(file_path, 'rb') as f:
@@ -1047,11 +1130,12 @@ def media_to_text(uid):
             text = file_bytes.decode("utf-8", errors="ignore")
         elif ext in allowed_extensions:
             # We use markitdown for all other file types
-            md = MarkItDown(enable_plugins=False)
+            md = MarkItDown()
             result = md.convert(file_path)
-            text = result.text_content
+            text = result.text_content.replace('{', ']').replace('}', ']')
         else:
-            return jsonify({"error": f"Unsupported file type: {ext}. Allowed types: {', '.join(allowed_extensions)}"}), 400
+            return jsonify(
+                {"error": f"Unsupported file type: {ext}. Allowed types: {', '.join(allowed_extensions)}"}), 400
 
         return jsonify(text=text), 200
     except Exception as e:
@@ -1060,6 +1144,7 @@ def media_to_text(uid):
         # import traceback
         # traceback.print_exc()
         return jsonify({"error": f"Failed to process file {uid}. Internal server error."}), 500
+
 
 @app.route('/api/exportFlowBundle', methods=['POST'])
 def export_flow_bundle():
@@ -1076,7 +1161,7 @@ def export_flow_bundle():
     # Create a temporary file that will be deleted after the response is sent
     temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.cfzip')
     temp_zip.close()
-    
+
     try:
         # Get the request data
         try:
@@ -1086,32 +1171,32 @@ def export_flow_bundle():
 
         if not data or "flow" not in data:
             return jsonify({"error": "No flow data provided. Ensure the request body contains a 'flow' key."}), 400
-        
+
         flow_data = data["flow"]
         flow_name = data.get("flowName", "flow_bundle")
         # Sanitize the flow name for use as a filename
         flow_name = "".join(c for c in flow_name if c.isalnum() or c in " _-").strip()
         if not flow_name:
             flow_name = "flow_bundle"
-        
+
         # Extract media UIDs if they exist
         media_uids = []
         if "cache" in flow_data and "__media" in flow_data["cache"]:
             media_data = flow_data["cache"]["__media"]
             if isinstance(media_data, dict) and "uids" in media_data:
                 media_uids = media_data["uids"]
-        
+
         # Create a temporary directory for the bundle contents
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create media subdirectory
             media_dir = os.path.join(temp_dir, "media")
             os.makedirs(media_dir, exist_ok=True)
-            
+
             # Write the flow JSON to the temp directory
             flow_path = os.path.join(temp_dir, "flow.json")
             with open(flow_path, 'w', encoding='utf-8') as f:
                 json.dump(flow_data, f)
-            
+
             # Copy each referenced media file to the media subdirectory
             missing_files = []
             for uid in media_uids:
@@ -1121,10 +1206,10 @@ def export_flow_bundle():
                     shutil.copy2(src_file, dst_file)
                 else:
                     missing_files.append(uid)
-            
+
             if missing_files:
                 print(f"Warning: {len(missing_files)} media files not found: {missing_files[:5]}...", file=sys.stderr)
-            
+
             # Create the zip file
             with zipfile.ZipFile(temp_zip.name, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 # Walk through the temp directory and add all files
@@ -1134,7 +1219,7 @@ def export_flow_bundle():
                         # Get relative path for the zip structure
                         rel_path = os.path.relpath(file_path, temp_dir)
                         zipf.write(file_path, rel_path)
-        
+
         # Set up file cleanup after the response is sent
         @after_this_request
         def cleanup(response):
@@ -1143,7 +1228,7 @@ def export_flow_bundle():
             except Exception as e:
                 print(f"Error cleaning up temp zip file: {str(e)}", file=sys.stderr)
             return response
-        
+
         # Return the zip file as an attachment
         return send_file(
             temp_zip.name,
@@ -1151,18 +1236,19 @@ def export_flow_bundle():
             download_name=f"{flow_name}.cfzip",
             mimetype="application/zip"
         )
-            
+
     except Exception as e:
         # Make sure to clean up the temp file if there's an error
         try:
             os.unlink(temp_zip.name)
         except:
             pass
-        
+
         print(f"Error exporting flow bundle: {str(e)}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"Failed to export flow bundle: {str(e)}"}), 500
+
 
 @app.route('/api/importFlowBundle', methods=['POST'])
 def import_flow_bundle():
@@ -1177,61 +1263,63 @@ def import_flow_bundle():
     """
     if 'file' not in request.files:
         return jsonify({"error": "No file provided"}), 400
-    
+
     file = request.files['file']
-    
+
     if file.filename == '':
         return jsonify({"error": "No file selected"}), 400
-        
+
     if not file.filename.endswith('.cfzip') and not file.filename.endswith('.zip'):
         return jsonify({"error": "Invalid file format. Expected .cfzip or .zip file"}), 400
-    
+
     # Create temporary directories for extraction
     temp_dir = tempfile.mkdtemp()
     try:
         # Extract the zip file
         zip_path = os.path.join(temp_dir, "bundle.zip")
         file.save(zip_path)
-        
+
         extract_dir = os.path.join(temp_dir, "extracted")
         os.makedirs(extract_dir, exist_ok=True)
-        
+
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(extract_dir)
-        
+
         # Check if the expected structure exists
         flow_path = os.path.join(extract_dir, "flow.json")
         media_dir = os.path.join(extract_dir, "media")
-        
+
         if not os.path.exists(flow_path):
             return jsonify({"error": "Invalid bundle format. Missing flow.json file"}), 400
-            
+
         # Load the flow data
         with open(flow_path, 'r', encoding='utf-8') as f:
             flow_data = json.load(f)
-            
+
         # Get base name for the flow (without extension)
         flow_name = os.path.splitext(os.path.basename(file.filename))[0]
-            
+
         # Make sure the name doesn't clash with existing flows in FLOWS_DIR
         flow_name = _get_unique_flow_name(flow_name)
-        
+
         # Import bundled media files to MEDIA_DIR if they exist
         if os.path.exists(media_dir) and os.path.isdir(media_dir):
             os.makedirs(MEDIA_DIR, exist_ok=True)
-            
+
             # Copy all media files
             imported_media = []
             for media_file in os.listdir(media_dir):
                 src_path = os.path.join(media_dir, media_file)
                 dst_path = os.path.join(MEDIA_DIR, media_file)
-                
+
                 if os.path.isfile(src_path):
                     # Verify the media file's integrity
                     try:
                         verify_media_file_integrity(media_file)
                     except Exception as e:
-                        print(f"Failed to verify media file integrity: {str(e)}. Skipping (this result in a corrupted flow import)...", file=sys.stderr)
+                        print(
+                            f"Failed to verify media file integrity: {str(e)}. Skipping (this result in a corrupted flow import)...",
+                            file=sys.stderr)
                         continue
 
                     # Media file is valid, copy it to MEDIA_DIR
@@ -1239,9 +1327,9 @@ def import_flow_bundle():
                     if not os.path.exists(dst_path):
                         shutil.copy2(src_path, dst_path)
                     imported_media.append(media_file)
-            
+
             print(f"Imported {len(imported_media)} media files from bundle.")
-            
+
             # Update __media in flow data if needed
             if "cache" in flow_data and "__media" in flow_data["cache"]:
                 # Ensure the UIDs in the flow match with what was imported
@@ -1250,8 +1338,9 @@ def import_flow_bundle():
                     # Verify all referenced UIDs were actually imported
                     missing_uids = [uid for uid in media_data["uids"] if uid not in imported_media]
                     if missing_uids:
-                        print(f"Warning: {len(missing_uids)} referenced media files were not found in the bundle. Flow data may be corrupted.")
-        
+                        print(
+                            f"Warning: {len(missing_uids)} referenced media files were not found in the bundle. Flow data may be corrupted.")
+
         # Save the flow to the FLOWS_DIR
         secure_mode = SECURE_MODE == "all"
         flow_path = os.path.join(FLOWS_DIR, f"{flow_name}.cforge")
@@ -1261,15 +1350,15 @@ def import_flow_bundle():
             secure=secure_mode,
             password=FLOWS_DIR_PWD if secure_mode else None,
         )
-        
+
         if not success:
             return jsonify({"error": "Failed to save imported flow"}), 500
-            
+
         return jsonify({
             "flow": flow_data,
             "flowName": flow_name,
         })
-        
+
     except Exception as e:
         print(f"Error importing flow bundle: {str(e)}", file=sys.stderr)
         import traceback
@@ -1281,6 +1370,7 @@ def import_flow_bundle():
             shutil.rmtree(temp_dir)
         except:
             print(f"Warning: Failed to clean up temporary directory: {temp_dir}", file=sys.stderr)
+
 
 def verify_media_file_integrity(uid):
     """
@@ -1296,19 +1386,409 @@ def verify_media_file_integrity(uid):
     file_path = os.path.join(MEDIA_DIR, uid)
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File {file_path} does not exist.")
-    
+
     # Extract hash from filename (everything before the first hyphen)
     if '-' in uid:
         expected_hash = uid.split('-')[0]
     else:
         raise ValueError(f"Invalid media file name format: {uid}. Expected format is <hash>-<uuid>.<ext>")
-    
+
     # Compute actual hash of file content
     with open(file_path, 'rb') as f:
         actual_hash = compute_file_hash(f)
-    
+
     if expected_hash != actual_hash:
         raise ValueError(f"Hash mismatch: expected {expected_hash}, got {actual_hash}")
+
+
+"""
+    RAGForge Endpoints and Functions
+"""
+
+
+# Chunking Endpoint
+@app.route("/chunk", methods=["POST"])
+def chunk():
+    """
+    Handles text processing requests, specifically chunking.
+    Uses a registry to dispatch to the correct chunking function.
+    Expects form data with 'methodName', 'library', 'text', and optional settings.
+    """
+    if not request.form:
+        return jsonify({"error": "Request must be form data"}), 400
+
+    base_method = request.form.get("baseMethod")
+    text = request.form.get("text")
+
+    if not base_method:
+        return jsonify({"error": "Missing 'baseMethod' in form data"}), 400
+    if text is None:  # Allow empty string but not missing key
+        return jsonify({"error": "Missing 'text' in form data"}), 400
+
+    # Construct the identifier used in the registry
+    handler = ChunkingMethodRegistry.get_handler(base_method)
+
+    # if it wasn't a built‑in chunker, see if it's a custom provider
+    if not handler and base_method.startswith("__custom/"):
+        provider_name = base_method[len("__custom/"):]
+        entry = ProviderRegistry.get(provider_name)
+        if entry and entry.get("func"):
+            handler = entry["func"]
+
+    if not handler:
+        return jsonify({"error": f"Unsupported chunking method: {base_method}"}), 400
+
+    # Extract additional settings from form data, converting types carefully
+    settings = {}
+    known_int_params = {"chunk_size", "chunk_overlap", "n_topics", "min_topic_size", "top_k", "max_features"}
+    known_float_params = {"bm25_k1", "bm25_b"}
+    known_bool_params = {"keep_separator"}
+
+    for key, value in request.form.items():
+        if key not in ["baseMethod", "text"]:
+            try:
+                if key in known_int_params:
+                    settings[key] = int(value)
+                elif key in known_float_params:
+                    settings[key] = float(value)
+                elif key in known_bool_params:
+                    # Handle boolean conversion robustly
+                    settings[key] = value.lower() in ['true', '1', 't', 'y', 'yes']
+                else:
+                    settings[key] = value  # Keep as string if type unknown
+            except (ValueError, TypeError):
+                print(
+                    f"Warning: Could not convert setting '{key}' with value '{value}' to expected type. Using raw value.",
+                    file=sys.stderr)
+                settings[key] = value  # Fallback to string if conversion fails
+
+    try:
+        # Call the registered handler function
+        chunks = handler(text, **settings)
+        return jsonify({"chunks": chunks}), 200
+    except ValueError as ve:  # Catch specific config/setup errors
+        print(f"Configuration or setup error during chunking ({base_method}): {ve}", file=sys.stderr)
+        return jsonify({"error": f"Setup error: {ve}"}), 400  # Bad Request
+    except ImportError as ie:
+        print(f"Import error during chunking ({base_method}): {ie}", file=sys.stderr)
+        return jsonify({"error": f"Missing library dependency: {ie.name}"}), 500  # Internal Server Error
+    except Exception as e:
+        # Log the full error for server-side debugging
+        print(f"Unexpected error during chunking ({base_method}): {e}", file=sys.stderr)
+        # Return a generic error to the client
+        return jsonify({"error": "An internal error occurred during text processing."}), 500
+
+
+# === Retrieval Endpoint===
+@app.route("/retrieve", methods=["POST"])
+def retrieve():
+    """
+    Process multiple retrieval methods against provided chunks and queries.
+
+    For each combination of (retriever, chunker, query), there is always one result object.
+    If no chunk is retrieved, an object with empty text is returned.
+    """
+    from collections import defaultdict
+
+    data = request.json
+    methods = data.get("methods", [])
+    chunks = data.get("chunks", [])
+    queries = data.get("queries", [])
+    api_keys = data.get("api_keys", [])
+    queries = [{'text': q} if isinstance(q, str) else q for q in queries]
+
+    # Validate inputs
+    if not methods:
+        return jsonify({"error": "No retrieval methods provided"}), 400
+    if not queries:
+        return jsonify({"error": "No queries provided"}), 400
+
+    resolved_handlers = {}
+    for method in methods:
+        base_method = method.get("baseMethod")
+        handler = RetrievalMethodRegistry.get_handler(base_method)
+        if not handler and base_method.startswith("__custom/"):
+            provider_name = base_method[len("__custom/"):]
+            entry = ProviderRegistry.get(provider_name)
+            if entry and entry.get("func"):
+                handler = entry["func"]
+        if not handler:
+            return jsonify({"error": f"Unknown retrieval method: {base_method}"}), 400
+        resolved_handlers[base_method] = handler
+
+    # Group chunks by chunking method
+    chunks_by_method = {}
+    for chunk in chunks:
+        chunk_method = chunk.get("fill_history", {}).get("chunkMethod", "unknown")
+        if chunk_method not in chunks_by_method:
+            chunks_by_method[chunk_method] = []
+        chunks_by_method[chunk_method].append({
+            "text": chunk.get("text", ""),
+            "docTitle": chunk.get("metavars", {}).get("docTitle", ""),
+            "chunkId": chunk.get("metavars", {}).get("chunkId", ""),
+            "chunkMethod": chunk_method,
+            "chunkLibrary": chunk.get("metavars", {}).get("chunkLibrary", "")
+        })
+    unkown_chunker_name = "unknown chuncker (prebuilt database)"
+    if not chunks:
+        chunks_by_method = {unkown_chunker_name: []}
+        chunks_by_method[unkown_chunker_name].append({
+            "text": '',
+            "chunkMethod": unkown_chunker_name,
+            "chunkLibrary": ""
+        })
+
+    # Group retrieval methods by embedding model
+    embedding_methods = {}
+    keyword_methods = []
+    for method in methods:
+        embedding_provider = method.get("embeddingProvider", None)
+        if embedding_provider:
+            embedding_model = method.get("settings", {}).get("embeddingModel", "default")
+            full_embedder = f"{embedding_provider}#{embedding_model}"
+            if full_embedder not in embedding_methods:
+                embedding_methods[full_embedder] = []
+            embedding_methods[full_embedder].append(method)
+        else:
+            keyword_methods.append(method)
+
+    flat_results = []
+
+    # For each chunking method
+    for chunk_method, chunk_group in chunks_by_method.items():
+        if not chunk_group:
+            continue
+        chunk_group = [c for c in chunk_group if c['chunkMethod'] != unkown_chunker_name]
+
+        # For each keyword retriever
+        for method in keyword_methods:
+            method_id = method.get("id")
+            base_method = method.get("baseMethod")
+            method_name = method.get("methodName")
+
+            # Map (query_idx) -> list of retrieved chunk_idx
+            found_results = set()
+
+            try:
+                handler = resolved_handlers.get(base_method)
+                if not handler:
+                    raise ValueError(f"Unknown method: {base_method}")
+
+                retrieved = handler(chunk_group, queries, method.get("settings", {}))
+
+                # Build a mapping: (query_idx, chunk_idx) -> True if result exists
+                for resp in retrieved:
+                    query_object = resp.get("query_object", "")
+                    retrieved_chunks = resp.get("retrieved_chunks", [])
+                    query_text = query_object['text']
+                    try:
+                        query_idx = next(i for i, q in enumerate(queries) if q.get('text', '') == query_text)
+                    except StopIteration:
+                        query_idx = None
+
+                    for i, chunk in enumerate(retrieved_chunks):
+                        try:
+                            chunk_idx = next(j for j, c in enumerate(chunk_group) if c['text'] == chunk['text'])
+                        except StopIteration:
+                            chunk_idx = None
+
+                        found_results.add((query_idx, chunk_idx))
+
+                        response_obj = {
+                            "text": chunk["text"],
+                            "prompt": query_object['text'],
+                            "eval_res": {
+                                "items": [{
+                                    "similarity": chunk["similarity"],
+                                    "rank": i + 1,
+                                }],
+                                "dtype": "KeyValue_Mixed",
+                            },
+                            "vars": {
+                                **query_object.get("vars", {}),
+                                **query_object.get("fill_history", {}),
+                                "query": query_object['text'],
+                                "retrievalMethod": method_name,
+                            },
+                            "metavars": {
+                                **query_object.get("metavars", {}),
+                                "methodId": method_id,
+                                "retrievalMethodSignature": base_method,
+                                "signature": chunk_method + "-" + method_name,
+                                "docTitle": chunk.get("docTitle", ""),
+                                "chunkId": chunk.get("chunkId", ""),
+                                "chunkLibrary": chunk.get("chunkLibrary", ""),
+                                "chunkMethod": chunk_method,
+                            },
+                            "llm": chunk.get("llm", "(none)"),
+                        }
+                        flat_results.append(response_obj)
+
+                # For each (query, chunk) combination, ensure there is one result
+                for query_idx, query in enumerate(queries):
+                    for chunk_idx, chunk in enumerate(chunk_group):
+                        if (query_idx, chunk_idx) not in found_results:
+                            response_obj = {
+                                "text": "",
+                                "prompt": query.get('text', ''),
+                                "eval_res": {
+                                    "items": [],
+                                    "dtype": "KeyValue_Mixed",
+                                },
+                                "vars": {
+                                    **query.get("vars", {}),
+                                    **query.get("fill_history", {}),
+                                    "query": query.get('text', ''),
+                                    "retrievalMethod": method_name,
+                                },
+                                "metavars": {
+                                    **query.get("metavars", {}),
+                                    "methodId": method_id,
+                                    "retrievalMethodSignature": base_method,
+                                    "signature": chunk_method + "-" + method_name,
+                                    "docTitle": chunk.get("docTitle", ""),
+                                    "chunkId": chunk.get("chunkId", ""),
+                                    "chunkLibrary": chunk.get("chunkLibrary", ""),
+                                    "chunkMethod": chunk_method,
+                                },
+                                "llm": "(none)",
+                            }
+                            flat_results.append(response_obj)
+            except Exception as e:
+                print(f"Error with {method_name} on {chunk_method}: {str(e)}")
+                continue
+
+        # For each embedding retriever
+        for embedder, methods in embedding_methods.items():
+            try:
+                provider, model_name = embedder.split("#", 1)
+                embedder_func = EmbeddingMethodRegistry.get_embedder(provider)
+                model_path = next((m['settings'].get('embeddingLocalPath') for m in methods if
+                                   m['settings'].get('embeddingLocalPath')), None)
+                if not embedder_func:
+                    raise ValueError(f"Unknown embedding model: {model_name}")
+
+                chunk_texts = [c["text"] for c in chunk_group]
+                chunk_embeddings = embedder_func(chunk_texts, model_name, model_path, api_keys)
+                query_embeddings = embedder_func([query.get("text", "") for query in queries], model_name, model_path,
+                                                 api_keys)
+
+            except Exception as e:
+                print(f"Embedding error with {embedder} on {chunk_method}: {str(e)}")
+                continue
+
+            for method in methods:
+                method_id = method.get("id")
+                base_method = method.get("baseMethod")
+                try:
+                    method_name = method['settings']['shortName']
+                except:
+                    method_name = method.get("methodName")
+                db_path = os.path.join(MEDIA_DIR, method_id + ".db")
+
+                found_results = set()
+
+                try:
+                    handler = resolved_handlers.get(base_method)
+                    if not handler:
+                        raise ValueError(f"Unknown method: {base_method}")
+
+                    retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings,
+                                        method.get("settings", {}), db_path)
+
+                    for resp in retrieved:
+                        query_object = resp.get("query_object", "")
+                        retrieved_chunks = resp.get("retrieved_chunks", None)
+                        query_text = query_object['text']
+                        try:
+                            query_idx = next(i for i, q in enumerate(queries) if q.get('text', '') == query_text)
+                        except StopIteration:
+                            query_idx = None
+
+                        for i, chunk in enumerate(retrieved_chunks):
+                            try:
+                                chunk_idx = next(j for j, c in enumerate(chunk_group) if c['text'] == chunk['text'])
+                            except StopIteration:
+                                chunk_idx = 0
+
+                            found_results.add((query_idx, chunk_idx))
+
+                            response_obj = {
+                                "text": chunk["text"],
+                                "prompt": query_object['text'],
+                                "eval_res": {
+                                    "items": [{
+                                        "similarity": chunk["similarity"],
+                                        "rank": i + 1,
+                                    }],
+                                    "dtype": "KeyValue_Mixed",
+                                },
+                                "vars": {
+                                    **query_object.get("vars", {}),
+                                    **query_object.get("fill_history", {}),
+                                    "query": query_object['text'],
+                                    "retrievalMethod": method_name,
+                                },
+                                "metavars": {
+                                    **query_object.get("metavars", {}),
+                                    "methodId": method_id,
+                                    "retrievalMethodSignature": base_method,
+                                    "signature": chunk_method + "-" + method_name,
+                                    "docTitle": chunk.get("docTitle", ""),
+                                    "chunkId": chunk.get("chunkId", ""),
+                                    "chunkLibrary": chunk.get("chunkLibrary", ""),
+                                    "chunkMethod": chunk_method,
+                                    "embeddingModel": model_name,
+                                },
+                                "llm": chunk.get("llm", "(none)"),
+                            }
+                            flat_results.append(response_obj)
+
+                    # For each (query, chunk) combination, ensure there is one result
+                    for query_idx, query in enumerate(queries):
+                        if len(chunk_group) == 0:
+                            chunk_group_tmp = [{
+                                "chunkMethod": unkown_chunker_name,
+                            }]
+                        else:
+                            chunk_group_tmp = chunk_group
+                        for chunk_idx, chunk in enumerate(chunk_group_tmp):
+                            if (query_idx, chunk_idx) not in found_results:
+                                response_obj = {
+                                    "text": "",
+                                    "prompt": query.get('text', ''),
+                                    "eval_res": {
+                                        "items": [{
+                                            "similarity": 0,
+                                            "rank": 1,
+                                        }],
+                                        "dtype": "KeyValue_Mixed",
+                                    },
+                                    "vars": {
+                                        **query.get("vars", {}),
+                                        **query.get("fill_history", {}),
+                                        "query": query.get('text', ''),
+                                        "retrievalMethod": method_name,
+                                    },
+                                    "metavars": {
+                                        **query.get("metavars", {}),
+                                        "methodId": method_id,
+                                        "retrievalMethodSignature": base_method,
+                                        "signature": chunk_method + "-" + method_name,
+                                        "docTitle": chunk.get("docTitle", ""),
+                                        "chunkId": chunk.get("chunkId", ""),
+                                        "chunkLibrary": chunk.get("chunkLibrary", ""),
+                                        "chunkMethod": chunk_method,
+                                        "embeddingModel": model_name,
+                                    },
+                                    "llm": "(none)",
+                                }
+                                flat_results.append(response_obj)
+                except Exception as e:
+                    print(f"Error with {method_name} on {chunk_method}: {str(e)}")
+                    continue
+
+    return jsonify(flat_results), 200
 
 
 @app.route('/api/proxyImage', methods=['GET'])
@@ -1317,35 +1797,38 @@ def proxy_image():
     url = request.args.get('url')
     if not url:
         return jsonify({"error": "URL parameter is required"}), 400
-    
+
     try:
         # Use Python requests to fetch the image
         response = py_requests.get(url, stream=True)
 
         if not response.ok:
-            return jsonify({"error": f"Failed to fetch image: {response.status_code} {response.reason}"}), response.status_code
-        
+            return jsonify(
+                {"error": f"Failed to fetch image: {response.status_code} {response.reason}"}), response.status_code
+
         # Check if content is an image
         content_type = response.headers.get('Content-Type', '')
         if not content_type.startswith('image/'):
             return jsonify({"error": "The URL does not point to an image"}), 400
-    
+
         # Create a Flask response with the image content
         flask_response = app.response_class(
             response=response.raw,
             status=response.status_code,
             headers=dict(response.headers)
         )
-        
+
         return flask_response
-    
+
     except Exception as e:
         return jsonify({"error": f"Error fetching image: {str(e)}"}), 500
 
-      
+
 """ 
     SPIN UP SERVER
 """
+
+
 def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "settings", "all"] = "off"):
     global HOSTNAME, PORT, FLOWS_DIR, MEDIA_DIR, SECURE_MODE, FLOWS_DIR_PWD
     HOSTNAME = host
@@ -1356,7 +1839,7 @@ def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "setti
         # and create it if it doesn't exist.
         FLOWS_DIR = flows_dir
         MEDIA_DIR = os.path.join(flows_dir, "media")
-    
+
     # Make sure the directories for local storage exist
     os.makedirs(FLOWS_DIR, exist_ok=True)
     os.makedirs(MEDIA_DIR, exist_ok=True)
@@ -1365,7 +1848,7 @@ def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "setti
     # :: Create a new password and salt if one doesn't exist, or uses the existing one.
     if secure != "off":
         password = ensure_password(
-            hash_filepath=os.path.join(FLOWS_DIR, "salt.bin"), 
+            hash_filepath=os.path.join(FLOWS_DIR, "salt.bin"),
             create_new_msg="\nWelcome to ChainForge! We've noticed you are entering secure mode for the first time. Please enter a password to encrypt your flows and settings. Prepare to enter it again whenever you start ChainForge in secure mode.\n")
         if not password:
             print("❌ Password cannot be empty. Please provide a password.")
@@ -1373,6 +1856,7 @@ def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "setti
         FLOWS_DIR_PWD = password
 
     app.run(host=host, port=port, debug=False)
+
 
 if __name__ == '__main__':
     print("Run app.py instead.")

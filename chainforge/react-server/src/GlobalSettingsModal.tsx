@@ -34,7 +34,7 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { Dropzone, FileWithPath } from "@mantine/dropzone";
-import useStore, { initLLMProviderMenu } from "./store";
+import useStore, { initLLMProviderMenu, initLLMProviders } from "./store";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 import { setCustomProviders } from "./ModelSettingSchemas";
 import { getAIFeaturesModelProviders } from "./backend/ai";
@@ -91,6 +91,24 @@ const read_file = (
   reader.readAsText(file);
 };
 
+// Normalize backend providers to the store shape for *retrievers* (preserves schema)
+function toCustomRetrieverSpecs(providers: any[]) {
+  return (providers || [])
+    .filter((p: any) => p.category === "retriever")
+    .map((p: any) => ({
+      key: `__custom/${p.name}`,
+      baseMethod: `__custom/${p.name}`,
+      methodName: p.name,
+      library: p.name,
+      emoji: p.emoji ?? "✨",
+      // optional; safe default
+      needsEmbeddingModel: !!p.needs_embedding_model,
+      // keep schema + defaults
+      settings_schema: p.settings_schema ?? undefined,
+      default_settings: p.default_settings ?? undefined,
+    }));
+}
+
 interface CustomProviderScriptDropzoneProps {
   onError: (err: string | Error) => void;
   onSetProviders: (providers: CustomLLMProviderSpec[]) => void;
@@ -104,6 +122,9 @@ const CustomProviderScriptDropzone: React.FC<
 > = ({ onError, onSetProviders }) => {
   const theme = useMantineTheme();
   const [isLoading, setIsLoading] = useState(false);
+  const setCustomChunkers = useStore((state) => state.setCustomChunkers);
+  const setCustomRetrievers = useStore((s) => s.setCustomRetrievers);
+  const setAvailableLLMs = useStore((s) => s.setAvailableLLMs);
 
   return (
     <Dropzone
@@ -125,6 +146,21 @@ const CustomProviderScriptDropzone: React.FC<
                 console.log(providers);
                 setCustomProviders(providers);
                 onSetProviders(providers);
+
+                // PUSH ANY chunker‑category providers into the global store
+                setCustomChunkers(
+                  providers
+                    .filter((p) => p.category === "chunker")
+                    .map((p) => ({
+                      key: `__custom/${p.name}`,
+                      baseMethod: `__custom/${p.name}`,
+                      methodType: "chunker",
+                      name: p.name,
+                      emoji: p.emoji,
+                      settings: {},
+                    })),
+                );
+                setCustomRetrievers(toCustomRetrieverSpecs(providers));
               })
               .catch((err) => {
                 setIsLoading(false);
@@ -373,6 +409,9 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       [showAlert],
     );
 
+    const setCustomChunkers = useStore((s) => s.setCustomChunkers);
+    const setCustomRetrievers = useStore((s) => s.setCustomRetrievers);
+
     const [customProviders, setLocalCustomProviders] = useState<
       CustomLLMProviderSpec[]
     >([]);
@@ -398,6 +437,24 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
             setLocalCustomProviders(
               customProviders.filter((p) => p.name !== name),
             );
+            setCustomChunkers(
+              customProviders
+                .filter((p) => p.name !== name) // remaining providers
+                .filter((p) => p.category === "chunker") // only chunkers
+                .map((p) => ({
+                  key: `__custom/${p.name}`,
+                  baseMethod: `__custom/${p.name}`,
+                  methodType: "chunker",
+                  name: p.name,
+                  emoji: p.emoji,
+                  settings: {},
+                })),
+            );
+            setCustomRetrievers(
+              toCustomRetrieverSpecs(
+                customProviders.filter((p) => p.name !== name),
+              ),
+            );
             refreshLLMProviderLists();
           })
           .catch(handleError);
@@ -420,6 +477,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
             // Success; pass custom providers list to store:
             setCustomProviders(providers);
             setLocalCustomProviders(providers);
+            setCustomRetrievers(toCustomRetrieverSpecs(providers));
           })
           .catch(console.error);
       }
@@ -734,40 +792,53 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                     see the documentation.
                   </a>
                 </Text>
-                {customProviders.map((p) => (
-                  <Card
-                    key={p.name}
-                    shadow="sm"
-                    radius="sm"
-                    pt="0px"
-                    pb="4px"
-                    mb="md"
-                    withBorder
-                  >
-                    <Group position="apart">
-                      <Group position="left" mt="md" mb="xs">
-                        <Text w="10px">{p.emoji}</Text>
-                        <Text weight={500}>{p.name}</Text>
-                        {p.settings_schema ? (
-                          <Badge color="blue" variant="light">
-                            has settings
-                          </Badge>
-                        ) : (
-                          <></>
-                        )}
-                      </Group>
-                      <Button
-                        onClick={() => handleRemoveCustomProvider(p.name)}
-                        color="red"
-                        p="0px"
-                        mt="4px"
-                        variant="subtle"
-                      >
-                        <IconX />
-                      </Button>
-                    </Group>
-                  </Card>
-                ))}
+                {["chunker", "retriever", "model"]
+                  .filter((cat) =>
+                    customProviders.some((p) => p.category === cat),
+                  )
+                  .map((cat) => (
+                    <React.Fragment key={cat}>
+                      <Text weight={600} mt="md" mb="xs">
+                        {cat[0].toUpperCase() + cat.slice(1)}
+                      </Text>
+                      {customProviders
+                        .filter((p) => p.category === cat)
+                        .map((p) => (
+                          <Card
+                            key={p.name}
+                            shadow="sm"
+                            radius="sm"
+                            pt="0px"
+                            pb="4px"
+                            mb="md"
+                            withBorder
+                          >
+                            <Group position="apart">
+                              <Group position="left" mt="md" mb="xs">
+                                <Text w="10px">{p.emoji}</Text>
+                                <Text weight={500}>{p.name}</Text>
+                                {p.settings_schema && (
+                                  <Badge color="blue" variant="light">
+                                    has settings
+                                  </Badge>
+                                )}
+                              </Group>
+                              <Button
+                                onClick={() =>
+                                  handleRemoveCustomProvider(p.name)
+                                }
+                                color="red"
+                                p="0px"
+                                mt="4px"
+                                variant="subtle"
+                              >
+                                <IconX />
+                              </Button>
+                            </Group>
+                          </Card>
+                        ))}
+                    </React.Fragment>
+                  ))}
                 <CustomProviderScriptDropzone
                   onError={handleError}
                   onSetProviders={(ps: CustomLLMProviderSpec[]) => {

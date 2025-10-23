@@ -34,6 +34,9 @@ import { TogetherChatSettings } from "./ModelSettingSchemas";
 import { NativeLLM } from "./backend/models";
 import { StringLookup } from "./backend/cache";
 import { saveGlobalConfig } from "./backend/backend";
+import { remove } from "jszip";
+import { ChunkMethodSpec } from "./ChunkMethodListComponent";
+import type { RetrievalMethodSpec } from "./RetrievalMethodListComponent";
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // Initial project settings
@@ -83,18 +86,9 @@ export const colorPalettes = {
 };
 
 const refreshableOutputNodeTypes = new Set([
-  "evaluator",
-  "processor",
-  "prompt",
-  "inspect",
-  "vis",
-  "llmeval",
-  "textfields",
-  "chat",
-  "simpleval",
-  "join",
-  "split",
+  "evaluator","processor","prompt","inspect","vis","llmeval","textfields","chat","simpleval","join","split", "selectvars"
 ]);
+
 
 export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
   {
@@ -461,6 +455,14 @@ export interface StoreHandles {
   AvailableLLMs: LLMSpec[];
   setAvailableLLMs: (specs: LLMSpec[]) => void;
 
+  // Custom chunkers loaded via the Custom Providers dropzone
+  customChunkers: ChunkMethodSpec[];
+  setCustomChunkers: (chunkers: ChunkMethodSpec[]) => void;
+
+  // Custom retrievers loaded via the Custom Providers dropzone
+  customRetrievers: RetrievalMethodSpec[];
+  setCustomRetrievers: (retrievers: RetrievalMethodSpec[]) => void;
+
   // API keys to LLM providers
   apiKeys: Dict<string>;
   setAPIKeys: (apiKeys: Dict<string>) => void;
@@ -550,6 +552,38 @@ const useStore = create<StoreHandles>((set, get) => ({
   AvailableLLMs: [...initLLMProviders],
   setAvailableLLMs: (llmProviderList) => {
     set({ AvailableLLMs: llmProviderList });
+  },
+
+  customChunkers: [],
+  setCustomChunkers: (chunkers) => {
+    set({ customChunkers: chunkers });
+  },
+
+  customRetrievers: [],
+  setCustomRetrievers: (retrievers: any[]) => {
+    const items = (retrievers ?? [])
+      .filter((p) => (p?.category ?? "retriever") === "retriever")
+      .map((p) => {
+        const name =
+          p?.name ?? p?.methodName ?? p?.library ?? "Custom Provider";
+        const baseMethod = `__custom/${name}`; // enforce canonical
+
+        return {
+          // whitelist normalized store shape
+          key: p?.key ?? uuid(),
+          methodName: name,
+          library: name,
+          baseMethod,
+          emoji: p?.emoji ?? "✨",
+          needsEmbeddingModel: !!p?.needs_embedding_model,
+          models: Array.isArray(p?.models) ? p.models : [],
+          settings_schema: p?.settings_schema ?? undefined,
+          default_settings: p?.default_settings ?? undefined,
+          source: "custom" as const,
+        };
+      });
+
+    set({ customRetrievers: items as any });
   },
 
   aiFeaturesProvider: "OpenAI",

@@ -353,6 +353,8 @@ export interface LLMResponseInspectorProps {
   customLLMFieldName?: string;
   disableBackgroundColor?: boolean;
   treatLLMFieldAsUnique?: boolean;
+  ignoreAndHideLLMField?: boolean; // If true, LLM field will not be shown in the table view
+  ignoreAndHideEvalResField?: boolean; // If true, "Eval Res" column option will not be shown in the table view
 }
 
 const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
@@ -362,6 +364,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   customLLMFieldName,
   disableBackgroundColor,
   treatLLMFieldAsUnique,
+  ignoreAndHideLLMField,
+  ignoreAndHideEvalResField,
 }) => {
   // Responses
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
@@ -537,37 +541,41 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       setShowEvalScoreOptions(contains_eval_res);
 
       // Set the variables accessible in the MultiSelect for 'group by'
-      const msvars = found_vars
+      let msvars = found_vars
         .map((name: string) =>
           // We add a $ prefix to mark this as a prompt parameter, and so
           // in the future we can add special types of variables without name collisions
           ({ value: name, label: name }),
         )
         .concat({ value: "$LLM", label: customLLMFieldName || "LLM" });
-      if (contains_eval_res && viewFormat === "table")
+
+      if (ignoreAndHideLLMField) {
+        // If we are ignoring the LLM field, we need to remove it from the msvars
+        msvars = msvars.filter((v) => v.value !== "$LLM");
+      }
+
+      if (
+        contains_eval_res &&
+        viewFormat === "table" &&
+        !ignoreAndHideEvalResField
+      )
         msvars.push({ value: "$EVAL_RES", label: "Eval results" });
+
       setMultiSelectVars(msvars);
 
       // If only one LLM is present, and user hasn't manually selected one to plot,
       // and there's more than one prompt variable as input, default to plotting the
       // eval scores, or the first found prompt variable as columns instead:
       if (
+        !ignoreAndHideEvalResField &&
         viewFormat === "table" &&
         !userSelectedTableCol &&
-        tableColVar === "$LLM"
+        tableColVar === "$LLM" &&
+        (contains_multi_evals || (found_llms.length === 1 && contains_eval_res))
       ) {
-        if (
-          contains_multi_evals ||
-          (found_llms.length === 1 && contains_eval_res)
-        ) {
-          // Plot eval scores on columns
-          setTableColVar("$EVAL_RES");
-          return;
-        }
-        // else if (found_llms.length === 1 && found_vars.length > 1) {
-        // setTableColVar(found_vars[0]);
-        // return; // useEffect will replot with the new values
-        // }
+        // Plot eval scores on columns
+        setTableColVar("$EVAL_RES");
+        return;
       }
 
       // If this is the first time receiving responses, set the multiSelectValue to whatever is the first:
@@ -747,9 +755,6 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           getColVal = () => "_";
           found_sel_var_vals = ["_"];
           responses.sort((a, b) => getLLMName(a).localeCompare(getLLMName(b)));
-          // } else {
-          //   colnames = colnames.concat(eval_res_cols);
-          // }
         } else if (tableColVar !== "$LLM") {
           // Get the unique values for the selected variable
           found_sel_var_vals = Array.from(
@@ -773,6 +778,13 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           v === "LLM" ? getLLMName(r) : StringLookup.get(r.vars[v]) ?? "";
 
         // Then group responses by prompts. Each prompt will become a separate row of the table (will be treated as unique)
+        if (ignoreAndHideLLMField) {
+          // If we are ignoring the LLM field, we need to remove it from the var_cols
+          var_cols = var_cols.filter((v) => v !== "LLM");
+          // Also, we need to remove the LLM column from the colnames
+          colnames = colnames.filter((c) => c !== "LLM");
+        }
+
         const responses_by_prompt = groupResponsesBy(responses, (r) => {
           const group = var_cols
             .map((v) => getVar(r, v))
@@ -808,7 +820,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               EvaluationScore | undefined,
             ][][] = [];
             if (eval_res_cols && eval_res_cols.length > 0) {
-              // We can assume that there's only one response object, since to
+              // We can assume that there's only one response object, since
               // if eval_res_cols is set, there must be only one LLM.
               eval_cols_vals = eval_res_cols.map((metric_name, metric_idx) => {
                 const items = resp_objs[0].eval_res?.items;

@@ -24,6 +24,11 @@ self.onmessage = async function (event) {
   try {
     await self.pyodide.loadPackagesFromImports(python);
     let results = await self.pyodide.runPythonAsync(python);
+    // Conversion si possible
+    if (results && typeof results.toJs === "function") {
+      results = results.toJs({ dict_converter: Object.fromEntries });
+    }
+    console.log("About to postMessage:", results);
     self.postMessage({ results, id });
   } catch (error) {
     self.postMessage({ error: error.message, id });
