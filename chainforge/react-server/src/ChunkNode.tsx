@@ -25,6 +25,7 @@ import ChunkMethodListContainer, {
 import { TemplateVarInfo, LLMResponse } from "./backend/typing";
 import { StringLookup } from "./backend/cache";
 import { FLASK_BASE_URL } from "./backend/utils";
+import { v4 as uuid } from "uuid";
 
 interface ChunkNodeProps {
   data: {
@@ -162,7 +163,7 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
             const libSafe = name.replace(/\W+/g, "_");
 
             chunks.forEach((cText, index) => {
-              const cId = `${methodSafe}_${index}_${libSafe}`;
+              const cId = uuid(); // `${methodSafe}_${index}_${libSafe}`;
 
               // Create the chunk object
               const chunkVar: TemplateVarInfo = {
@@ -189,6 +190,7 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
                 uid: cId,
                 prompt: `Doc: ${docTitle} | Chunk ID: ${truncateString(cId, 25)}`,
                 vars: {
+                  // chunkMethod: `${method.methodType} (${method.name})`,
                   chunkId: index.toString(),
                   docTitle,
                   // chunkLibrary: name,
@@ -296,6 +298,7 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
       <LLMResponseInspectorModal
         ref={inspectorRef}
         jsonResponses={jsonResponses}
+        customLLMFieldName="Chunk Method"
       />
 
       <Handle
