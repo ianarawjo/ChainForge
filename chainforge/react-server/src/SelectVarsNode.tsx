@@ -1,7 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Handle, Position } from "reactflow";
 import { v4 as uuid } from "uuid";
-import { Box, Button, Checkbox, Flex, Group, ScrollArea, Text } from "@mantine/core";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Flex,
+  Group,
+  ScrollArea,
+  Text,
+} from "@mantine/core";
 import { IconFilter } from "@tabler/icons-react";
 
 import useStore from "./store";
@@ -9,8 +17,17 @@ import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 
 import { generatePrompts } from "./backend/backend";
-import { extractLLMLookup, tagMetadataWithLLM, removeLLMTagFromMetadata } from "./backend/utils";
-import { Dict, JSONCompatible, TemplateVarInfo, LLMResponsesByVarDict } from "./backend/typing";
+import {
+  extractLLMLookup,
+  tagMetadataWithLLM,
+  removeLLMTagFromMetadata,
+} from "./backend/utils";
+import {
+  Dict,
+  JSONCompatible,
+  TemplateVarInfo,
+  LLMResponsesByVarDict,
+} from "./backend/typing";
 
 const ALWAYS_INCLUDED_KEYS = ["__pt", "id", "signature"];
 
@@ -56,7 +73,9 @@ const SelectVarsNode: React.FC<SelectVarsNodeProps> = ({ data, id }) => {
   const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
   const [inputItems, setInputItems] = useState<any[]>([]);
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
-  const [selectedKeys, setSelectedKeys] = useState<string[]>(data.selectedKeys ?? []);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>(
+    data.selectedKeys ?? [],
+  );
 
   // Toujours inclure les clés spéciales
   const selectedSet = useMemo(
@@ -85,11 +104,14 @@ const SelectVarsNode: React.FC<SelectVarsNodeProps> = ({ data, id }) => {
     const llm_lookup = extractLLMLookup(input_data);
     input_data = tagMetadataWithLLM(input_data);
 
-    generatePrompts("{__input}", input_data as Dict<(TemplateVarInfo | string)[]>)
+    generatePrompts(
+      "{__input}",
+      input_data as Dict<(TemplateVarInfo | string)[]>,
+    )
       .then((promptTemplates) => {
         const resp_objs = promptTemplates.map((p: any) => {
           const sourceVars =
-            ("fill_history" in p && p.fill_history) ? p.fill_history : p.vars;
+            "fill_history" in p && p.fill_history ? p.fill_history : p.vars;
           const normalized = toPlainObject(sourceVars);
 
           const obj: any = {
@@ -130,7 +152,9 @@ const SelectVarsNode: React.FC<SelectVarsNodeProps> = ({ data, id }) => {
         if ((selectedKeys ?? []).length === 0) {
           handleSetAndSave(nextAvailable, setSelectedKeys, "selectedKeys");
         } else {
-          const merged = Array.from(new Set([...(selectedKeys ?? []), ...nextAvailable]));
+          const merged = Array.from(
+            new Set([...(selectedKeys ?? []), ...nextAvailable]),
+          );
           if (merged.length !== (selectedKeys ?? []).length) {
             handleSetAndSave(merged, setSelectedKeys, "selectedKeys");
           }
@@ -205,8 +229,10 @@ const SelectVarsNode: React.FC<SelectVarsNodeProps> = ({ data, id }) => {
     handleSetAndSave(next, setSelectedKeys, "selectedKeys");
   };
 
-  const selectAll = () => handleSetAndSave(availableKeys, setSelectedKeys, "selectedKeys");
-  const unselectAll = () => handleSetAndSave<string[]>([], setSelectedKeys, "selectedKeys");
+  const selectAll = () =>
+    handleSetAndSave(availableKeys, setSelectedKeys, "selectedKeys");
+  const unselectAll = () =>
+    handleSetAndSave<string[]>([], setSelectedKeys, "selectedKeys");
 
   return (
     <BaseNode classNames="select-vars-node" nodeId={id}>
@@ -247,7 +273,10 @@ const SelectVarsNode: React.FC<SelectVarsNodeProps> = ({ data, id }) => {
           </Group>
         </Group>
 
-        <ScrollArea.Autosize mah={220} className="select-vars-node-list nopan nowheel">
+        <ScrollArea.Autosize
+          mah={220}
+          className="select-vars-node-list nopan nowheel"
+        >
           {availableKeys.length === 0 ? (
             <Text size="sm" color="dimmed">
               No variables found in input.
@@ -255,7 +284,12 @@ const SelectVarsNode: React.FC<SelectVarsNodeProps> = ({ data, id }) => {
           ) : (
             <Flex direction="column" gap="xs">
               {availableKeys.map((k) => (
-                <Checkbox key={k} label={k} checked={selectedSet.has(k)} onChange={() => toggleKey(k)} />
+                <Checkbox
+                  key={k}
+                  label={k}
+                  checked={selectedSet.has(k)}
+                  onChange={() => toggleKey(k)}
+                />
               ))}
             </Flex>
           )}

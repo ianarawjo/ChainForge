@@ -86,9 +86,19 @@ export const colorPalettes = {
 };
 
 const refreshableOutputNodeTypes = new Set([
-  "evaluator","processor","prompt","inspect","vis","llmeval","textfields","chat","simpleval","join","split", "selectvars"
+  "evaluator",
+  "processor",
+  "prompt",
+  "inspect",
+  "vis",
+  "llmeval",
+  "textfields",
+  "chat",
+  "simpleval",
+  "join",
+  "split",
+  "selectvars",
 ]);
-
 
 export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
   {

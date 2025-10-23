@@ -615,7 +615,8 @@ const App = () => {
         key: "selectvars",
         title: "Filter Variables Node",
         icon: <IconCheckbox size={16} />,
-        tooltip: "Filter which variables and metavariables to keep for the next steps.",
+        tooltip:
+          "Filter which variables and metavariables to keep for the next steps.",
         onClick: () => addNode("selectVarsNode", "selectvars"),
       },
     ] as NestedMenuItemProps[];
