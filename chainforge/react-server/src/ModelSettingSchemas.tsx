@@ -55,6 +55,12 @@ const ChatGPTSettings: ModelSettingsDict = {
         description:
           "Select an OpenAI model to query. For more details on the differences, see the OpenAI API documentation.",
         enum: [
+          "gpt-5",
+          "gpt-5-mini",
+          "gpt-5-nano",
+          "gpt-5-chat-latest",
+          "o3",
+          "o3-mini",
           "gpt-4.1",
           "gpt-4.1-mini",
           "gpt-4.1-nano",
@@ -64,7 +70,6 @@ const ChatGPTSettings: ModelSettingsDict = {
           "o1",
           "o1-mini",
           "o1-pro",
-          "o3-mini",
           "gpt-4.5-preview",
           "gpt-3.5-turbo",
           "gpt-4o-2024-05-13",
@@ -105,11 +110,27 @@ const ChatGPTSettings: ModelSettingsDict = {
         type: "number",
         title: "temperature",
         description:
-          "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+          "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. NOTE: GPT-5 models will ignore this parameter.",
         default: 1,
         minimum: 0,
         maximum: 2,
         multipleOf: 0.01,
+      },
+      reasoning_effort: {
+        type: "string",
+        title: "reasoning.effort",
+        description:
+          "A parameter specific to o1+ and GPT-5+ models that controls the amount of reasoning effort the model expends when generating a response. NOTE: Currently, only GPT-5 supports the 'minimal' option.",
+        enum: ["minimal", "low", "medium", "high"],
+        default: "medium", // TODO: Add reasoning.summary option to visualize reasoning tokens in UI.
+      },
+      verbosity: {
+        type: "string",
+        title: "verbosity",
+        description:
+          "A parameter specific to GPT-5+ models that determines how many output tokens are generated. Lowering the number of tokens reduces overall latency.",
+        enum: ["low", "medium", "high"],
+        default: "medium",
       },
       response_format: {
         type: "string",
@@ -547,7 +568,7 @@ const GPTImage1Settings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select an OpenAI image model to query in the GPT Image series.",
-        enum: ["gpt-image-1"],
+        enum: ["gpt-image-1", "gpt-image-1-mini"],
         default: "gpt-image-1",
       },
       size: {

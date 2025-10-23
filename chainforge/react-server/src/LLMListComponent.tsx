@@ -31,8 +31,10 @@ import { deepcopy, ensureUniqueName } from "./backend/utils";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
-// Defaults to ChatGPT (GPT3.5) when running locally, and HF-hosted falcon-7b for online version since it's free.
-const DEFAULT_INIT_LLMS = [initLLMProviders[0]];
+// Defaults to a cheap non-reasoning OpenAI model.
+const DEFAULT_INIT_LLMS = [
+  initLLMProviders.find((m) => m.model === "gpt-4o-mini")!,
+];
 
 // Helper funcs
 /** Get position CSS style below and left-aligned to the input element */
