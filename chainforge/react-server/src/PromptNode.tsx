@@ -60,6 +60,7 @@ import {
   truncStr,
   genDebounceFunc,
   ensureUniqueName,
+  FLASK_BASE_URL,
 } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import CancelTracker from "./backend/canceler";
@@ -370,6 +371,10 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   // API Keys (set by user in popup GlobalSettingsModal)
   const apiKeys = useStore((state) => state.apiKeys);
 
+  const LLMsProvidersInfos = useStore((state) => state.LLMsProvidersInfos);
+  const setLLMsProvidersInfos = useStore(
+    (state) => state.setLLMsProvidersInfos,
+  );
   const [jsonResponses, setJSONResponses] = useState<LLMResponse[] | null>(
     null,
   );
@@ -578,6 +583,24 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
   // On initialization
   useEffect(() => {
+    // Fetch models from the models.dev API
+    fetch(`${FLASK_BASE_URL}api/getModelsDotDev`)
+      .then((res) => {
+        return res.json();
+      })
+      .then((data) => {
+        console.log("Fetched models from models.dev:", data);
+        if (data && !data.error) {
+          setLLMsProvidersInfos({
+            ...data,
+            ...LLMsProvidersInfos,
+          });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
     refreshTemplateHooks(promptText);
 
     // Attempt to grab cache'd responses
