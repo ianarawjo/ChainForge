@@ -1158,6 +1158,47 @@ const App = () => {
     ],
   );
 
+  // Fetch a .cfzip/.zip from a URL and import it (bypass cache + sanity check)
+  const importFlowZipFromURL = useCallback(
+    async (url: string) => {
+      // avoid 304/empty-body caching issues
+      let res = await fetch(url, { cache: "no-store" });
+      if (res.status === 304) {
+        const bust = url.includes("?") ? "&" : "?";
+        res = await fetch(url + bust + "t=" + Date.now(), {
+          cache: "no-store",
+        });
+      }
+      if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+
+      const blob = await res.blob();
+
+      const head = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      const looksZip =
+        head[0] === 80 && head[1] === 75 && head[2] === 3 && head[3] === 4;
+      if (!looksZip) {
+        const txt = await blob.text();
+        console.error("Expected .zip bytes, got:", txt.slice(0, 200));
+        throw new Error(
+          "Fetched content is not a zip (likely HTML from routing/caching).",
+        );
+      }
+
+      const urlName =
+        new URL(url, window.location.origin).pathname.split("/").pop() ||
+        "example.cfzip";
+      const fileName = /\.(cf)?zip$/i.test(urlName)
+        ? urlName
+        : `${urlName}.cfzip`;
+      const file = new File([blob], fileName, { type: "application/zip" });
+
+      const { flow, flowName } = await importFlowBundle(file);
+      importFlowFromJSON(flow);
+      await safeSetFlowFileName(flowName);
+    },
+    [importFlowFromJSON, safeSetFlowFileName],
+  );
+
   // Load flow from examples modal
   const onSelectExampleFlow = (name: string, example_category?: string) => {
     // Trigger the 'loading' modal
@@ -1167,6 +1208,14 @@ const App = () => {
     if (example_category === "openai-eval") {
       importFlowFromOpenAIEval(name);
       setFlowFileNameAndCache(`flow-${Date.now()}`);
+      return;
+    }
+    if (example_category === "bundle" || /\.(cf)?zip$/i.test(name)) {
+      const base = FLASK_BASE_URL.replace(/\/$/, "");
+      const url = name.startsWith("http")
+        ? name
+        : `${base}/example_flows/${name}`;
+      importFlowZipFromURL(url).catch(handleError);
       return;
     }
 

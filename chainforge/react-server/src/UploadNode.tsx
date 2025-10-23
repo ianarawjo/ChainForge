@@ -166,7 +166,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
         <input
           type="file"
           multiple
-          accept=".pdf,.docx,.txt"
+          accept=".pdf,.docx,.txt,.md"
           ref={fileInputRef}
           style={{ display: "none" }}
           onChange={handleFileInputChange}
