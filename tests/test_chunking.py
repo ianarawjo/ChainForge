@@ -97,20 +97,13 @@ class TestChonkieChunking:
     assert isinstance(chunks, list)
     assert len(chunks) > 0
 
-  # Late and Neural chunkers may pose problems because 
-  # their dependencies require numpy>=2.0 yet other libraries 
+  # Late and chunker may pose problems because 
+  # its dependencies require numpy>=2.0 yet other libraries 
   # require numpy<2.0.
   def test_chonkie_late(self):
     chunker = chonkie_late
     if chunker is None or not callable(chunker):
       pytest.skip("chonkie_late chunker not fully implemented")
-    chunks = chunker(self.dummy_document)
-    assert isinstance(chunks, list)
-  
-  def test_chonkie_neural(self):
-    chunker = chonkie_neural
-    if chunker is None or not callable(chunker):
-      pytest.skip("chonkie_neural chunker not fully implemented")
     chunks = chunker(self.dummy_document)
     assert isinstance(chunks, list)
 
