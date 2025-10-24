@@ -97,7 +97,7 @@ class TestChonkieChunking:
     assert isinstance(chunks, list)
     assert len(chunks) > 0
 
-  # Late and chunker may pose problems because 
+  # Late chunker may pose problems because 
   # its dependencies require numpy>=2.0 yet other libraries 
   # require numpy<2.0.
   def test_chonkie_late(self):

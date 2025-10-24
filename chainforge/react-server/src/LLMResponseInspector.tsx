@@ -729,18 +729,17 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           eval_res_cols: string[];
         let metavar_cols: string[] = []; // found_metavars; -- Disabling this functionality for now, since it is usually annoying.
         if (tableColVar === "$LLM") {
-          metavar_cols = found_metavars.filter((v) => v === "chunkMethod");
           var_cols = found_vars;
           getColVal = getLLMName;
           found_sel_var_vals = found_llms;
           colnames = var_cols.concat(metavar_cols).concat(found_llms);
         } else {
-          metavar_cols = found_metavars.filter((v) => v === "chunkMethod");
+          metavar_cols = [];
           var_cols = found_vars
             .filter((v) => v !== tableColVar)
             .concat(found_llms.length > 1 ? ["LLM"] : []); // only add LLM column if num LLMs > 1
           getColVal = (r) => llmResponseDataToString(r.vars[tableColVar]);
-          colnames = metavar_cols.concat(var_cols);
+          colnames = var_cols;
           found_sel_var_vals = [];
         }
 
