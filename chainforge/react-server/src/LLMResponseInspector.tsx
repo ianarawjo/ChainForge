@@ -1067,7 +1067,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               };
             else
               return {
-                style: { lineHeight: 1.2, ...fz },
+                style: {
+                  lineHeight: 1.2,
+                  verticalAlign: "top",
+                  textAlign: "left",
+                  ...fz,
+                },
               };
           })(),
         })) as MRT_ColumnDef<any>[];

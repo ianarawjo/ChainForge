@@ -245,9 +245,9 @@ const nodeEmojis = {
   comment: "✏️",
   join: <IconArrowMerge size={16} />,
   split: <IconArrowsSplit size={16} />,
-  upload: "📁",
-  chunk: "📄",
-  retrieval: "🔍",
+  upload: "📂",
+  chunk: "🧩",
+  retrieval: "🎯",
   media: "📺",
 };
 
@@ -573,6 +573,36 @@ const App = () => {
       },
       {
         // Menu.Label
+        key: "RAG",
+      },
+      {
+        key: "upload",
+        title: "Upload Docs Node",
+        icon: nodeEmojis.upload,
+        tooltip: "Upload documents to the flow, such as text files or PDFs.",
+        onClick: () => addNode("upload"),
+      },
+      {
+        key: "chunk",
+        title: "Chunking Node",
+        icon: nodeEmojis.chunk,
+        tooltip:
+          "Chunk texts into smaller pieces. Compare different chunking methods. Typically used after the Upload Node.",
+        onClick: () => addNode("chunk"),
+      },
+      {
+        key: "retrieval",
+        title: "Retrieval Node",
+        icon: nodeEmojis.retrieval,
+        tooltip:
+          "Given chunks and queries, retrieve relevant chunks for the given query. Compare retrieval methods across queries. Retrieval methods include both classical methods like BM25, and vector stores.",
+        onClick: () => addNode("retrieval"),
+      },
+      {
+        key: "divider",
+      },
+      {
+        // Menu.Label
         key: "Misc",
       },
       {
@@ -589,27 +619,6 @@ const App = () => {
         tooltip:
           "Specify directories to load as local packages, so they can be imported in your Python evaluator nodes (add to sys path).",
         onClick: () => addNode("scriptNode", "script"),
-      },
-      {
-        key: "upload",
-        title: "Upload Node",
-        icon: nodeEmojis.upload,
-        tooltip: "Upload a file to the flow.",
-        onClick: () => addNode("upload"),
-      },
-      {
-        key: "chunk",
-        title: "Chunking Node",
-        icon: nodeEmojis.chunk,
-        tooltip: "Chunk text into smaller pieces.",
-        onClick: () => addNode("chunk"),
-      },
-      {
-        key: "retrieval",
-        title: "Retrieval Node",
-        icon: nodeEmojis.retrieval,
-        tooltip: "Retrieve text from a database.",
-        onClick: () => addNode("retrieval"),
       },
       {
         key: "selectvars",

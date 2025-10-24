@@ -59,7 +59,7 @@ const badgeWrapperStyle: React.CSSProperties = {
 
 const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
   const nodeDefaultTitle = "Retrieval Node";
-  const nodeIcon = "🔍";
+  const nodeIcon = "🎯";
 
   // Store hooks
   const pullInputData = useStore((s) => s.pullInputData);

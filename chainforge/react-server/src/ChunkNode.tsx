@@ -38,7 +38,7 @@ interface ChunkNodeProps {
 
 const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
   const nodeDefaultTitle = "Chunk Node";
-  const nodeIcon = "📄";
+  const nodeIcon = "🧩";
 
   const pullInputData = useStore((s) => s.pullInputData);
   const setDataPropsForNode = useStore((s) => s.setDataPropsForNode);

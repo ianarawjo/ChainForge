@@ -890,6 +890,49 @@ export const FAISSSchema: ModelSettingsDict = {
   postprocessors: {},
 };
 
+// Add rank fusion methods
+export const rankFusionMethods = [
+  {
+    value: "reciprocal_rank_fusion",
+    label: "Reciprocal Rank Fusion (RRF)",
+    description: "Combines rankings using reciprocal rank formula",
+    schema: {
+      type: "object",
+      properties: {
+        k: {
+          type: "number",
+          title: "K Parameter",
+          default: 60,
+          description: "Parameter for RRF formula (higher = more democratic)",
+        },
+        weights: {
+          type: "array",
+          title: "Method Weights",
+          items: { type: "number" },
+          description:
+            "Optional weights for each method (leave empty for equal weights)",
+        },
+      },
+    },
+  },
+  {
+    value: "weighted_average",
+    label: "Weighted Average",
+    description: "Simple weighted average of scores",
+    schema: {
+      type: "object",
+      properties: {
+        normalize_scores: {
+          type: "boolean",
+          title: "Normalize Scores",
+          default: true,
+          description: "Normalize scores before combining",
+        },
+      },
+    },
+  },
+];
+
 // Combined schema object for all retrieval methods
 export const RetrievalMethodSchemas: {
   [baseMethod: string]: ModelSettingsDict;

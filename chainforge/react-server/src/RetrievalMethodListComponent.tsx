@@ -4,6 +4,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useCallback,
+  useMemo,
 } from "react";
 import {
   Menu,
@@ -15,6 +16,8 @@ import {
   Modal,
   Divider,
   Box,
+  Badge,
+  Stack,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -22,6 +25,9 @@ import {
   IconTrash,
   IconSettings,
   IconChevronRight,
+  IconLink,
+  IconUnlink,
+  IconGitMerge,
 } from "@tabler/icons-react";
 import Form from "@rjsf/core";
 import { RJSFSchema, UiSchema } from "@rjsf/utils";
@@ -31,10 +37,20 @@ import {
   RetrievalMethodSchemas,
   retrievalMethodGroups,
   embeddingProviders,
+  rankFusionMethods,
 } from "./RetrievalMethodSchemas";
 import useStore from "./store";
 
-/** One retrieval method row */
+/** Linked group of methods with fusion settings */
+export interface LinkedMethodGroup {
+  id: string;
+  methodKeys: string[];
+  fusionMethod: string;
+  fusionSettings: Record<string, any>;
+  groupName?: string;
+}
+
+/** Enhanced method spec to track group membership */
 export interface RetrievalMethodSpec {
   key: string;
   baseMethod: string;
@@ -45,8 +61,8 @@ export interface RetrievalMethodSpec {
   embeddingProvider?: string;
   settings?: Record<string, any>;
   source?: "builtin" | "custom";
-  /** For customs (normalized in store) */
   settingsSchema?: { settings?: Record<string, any>; ui?: Record<string, any> };
+  groupId?: string; // Links to a LinkedMethodGroup
 }
 
 /** Settings modal */
@@ -192,6 +208,124 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   );
 };
 
+/** Fusion Settings Modal */
+interface FusionSettingsModalProps {
+  opened: boolean;
+  onClose: () => void;
+  group: LinkedMethodGroup;
+  onSettingsUpdate: (settings: any) => void;
+  onFusionMethodChange: (
+    groupId: string,
+    fusionMethod: string,
+    defaultSettings: any,
+  ) => void;
+  methodItems: RetrievalMethodSpec[];
+}
+
+const FusionSettingsModal: React.FC<FusionSettingsModalProps> = ({
+  opened,
+  onClose,
+  group,
+  onSettingsUpdate,
+  onFusionMethodChange,
+  methodItems,
+}) => {
+  const fusionMethod = useMemo(
+    () => rankFusionMethods.find((m) => m.value === group.fusionMethod),
+    [group?.fusionMethod],
+  );
+
+  const groupMethods = useMemo(
+    () => methodItems.filter((m) => group.methodKeys.includes(m.key)),
+    [methodItems, group?.methodKeys],
+  );
+
+  const handleFusionMethodChange = (newMethod: string) => {
+    const selectedMethod = rankFusionMethods.find((m) => m.value === newMethod);
+    if (!selectedMethod) return;
+
+    // Extract default settings from the new method's schema
+    const defaultSettings: Record<string, any> = {};
+    if (selectedMethod.schema?.properties) {
+      Object.entries(selectedMethod.schema.properties).forEach(
+        ([key, prop]) => {
+          if (prop && typeof prop === "object" && "default" in prop) {
+            defaultSettings[key] = (prop as any).default;
+          }
+        },
+      );
+    }
+
+    onFusionMethodChange(group.id, newMethod, defaultSettings);
+  };
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={`Rank Fusion Settings`}
+      size="lg"
+    >
+      <Stack spacing="md">
+        <Box>
+          <Text size="sm" weight={500} mb="xs">
+            Linked Methods:&nbsp;
+            {groupMethods.map((method) => (
+              <Badge key={method.key} variant="light" mr="xs">
+                {method.emoji} {method.settings?.shortName || method.methodName}
+              </Badge>
+            ))}
+          </Text>
+        </Box>
+
+        <Box>
+          <Text size="sm" weight={500} mb="xs">
+            Fusion Method:
+          </Text>
+          <select
+            value={group.fusionMethod}
+            onChange={(e) => handleFusionMethodChange(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "8px",
+              borderRadius: "4px",
+              border: "1px solid #ccc",
+              fontSize: "14px",
+            }}
+          >
+            {rankFusionMethods.map((method) => (
+              <option key={method.value} value={method.value}>
+                {method.label}
+              </option>
+            ))}
+          </select>
+          {fusionMethod?.description && (
+            <Text size="xs" color="dimmed" mt="xs">
+              {fusionMethod.description}
+            </Text>
+          )}
+        </Box>
+
+        {fusionMethod?.schema && (
+          <Box>
+            <Text size="sm" weight={500} mb="xs">
+              Settings:
+            </Text>
+            <Form<any, RJSFSchema, any>
+              schema={fusionMethod.schema as any}
+              validator={validator}
+              formData={group.fusionSettings}
+              onChange={(e) => onSettingsUpdate(e.formData)}
+            >
+              <Button type="submit" style={{ display: "none" }} />
+            </Form>
+          </Box>
+        )}
+      </Stack>
+    </Modal>
+  );
+};
+
 /** One row in the list */
 interface RetrievalMethodListItemProps {
   methodItem: RetrievalMethodSpec;
@@ -199,15 +333,44 @@ interface RetrievalMethodListItemProps {
   onSettingsUpdate: (key: string, settings: any) => void;
 }
 
-const RetrievalMethodListItem: React.FC<RetrievalMethodListItemProps> = ({
+const RetrievalMethodListItem: React.FC<
+  RetrievalMethodListItemProps & {
+    isLinked?: boolean;
+    isFirstInGroup?: boolean;
+    isLastInGroup?: boolean;
+    onLink?: () => void;
+    onUnlink?: () => void;
+    onFusionSettings?: () => void;
+  }
+> = ({
   methodItem,
   onRemove,
   onSettingsUpdate,
+  isLinked = false,
+  isFirstInGroup = false,
+  isLastInGroup = false,
+  onLink,
+  onUnlink,
+  onFusionSettings,
 }) => {
   const [opened, { open, close }] = useDisclosure(false);
 
   return (
-    <Card withBorder mb="xs" padding="xs">
+    <Card
+      withBorder
+      mb={isLinked && !isLastInGroup ? 2 : "xs"}
+      padding="xs"
+      style={{
+        borderLeft: isLinked ? "4px solid #228be6" : undefined,
+        borderRadius: isLinked
+          ? isFirstInGroup
+            ? "6px 6px 0 0"
+            : isLastInGroup
+              ? "0 0 6px 6px"
+              : "0"
+          : 6,
+      }}
+    >
       <Group position="apart" noWrap>
         <Box style={{ flex: 1 }}>
           <Group spacing="xs" noWrap>
@@ -215,9 +378,47 @@ const RetrievalMethodListItem: React.FC<RetrievalMethodListItemProps> = ({
               {methodItem.emoji && `${methodItem.emoji} `}
               {methodItem.settings?.shortName?.trim() || methodItem.methodName}
             </Text>
+            {isLinked && (
+              <Badge size="xs" color="blue">
+                Linked
+              </Badge>
+            )}
           </Group>
         </Box>
         <Group spacing={4} noWrap>
+          {isFirstInGroup && (
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              color="blue"
+              onClick={onFusionSettings}
+              title="Fusion Settings"
+            >
+              <IconGitMerge size={14} />
+            </ActionIcon>
+          )}
+          {!isLinked && onLink && (
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              color="green"
+              onClick={onLink}
+              title="Link with next method"
+            >
+              <IconLink size={14} />
+            </ActionIcon>
+          )}
+          {isLinked && onUnlink && (
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              color="orange"
+              onClick={onUnlink}
+              title="Unlink methods"
+            >
+              <IconUnlink size={14} />
+            </ActionIcon>
+          )}
           <ActionIcon
             size="sm"
             variant="subtle"
@@ -269,6 +470,9 @@ export const RetrievalMethodListContainer = forwardRef<
   const [methodItems, setMethodItems] = useState<RetrievalMethodSpec[]>(
     props.initMethodItems || [],
   );
+  const [linkedGroups, setLinkedGroups] = useState<LinkedMethodGroup[]>([]);
+  const [fusionModalGroup, setFusionModalGroup] =
+    useState<LinkedMethodGroup | null>(null);
   const oldItemsRef = useRef<RetrievalMethodSpec[]>(methodItems);
 
   useImperativeHandle(ref, () => ({
@@ -376,6 +580,86 @@ export const RetrievalMethodListContainer = forwardRef<
 
   // Thanks to the unified store normalizer, these are already consistent.
   const customRetrievers = useStore((s) => s.customRetrievers || []);
+
+  const handleLinkMethods = useCallback(
+    (methodKey: string) => {
+      const currentIndex = methodItems.findIndex((m) => m.key === methodKey);
+      if (currentIndex === -1 || currentIndex === methodItems.length - 1)
+        return;
+
+      const nextMethod = methodItems[currentIndex + 1];
+      if (nextMethod.groupId) return; // Already linked
+
+      const newGroupId = uuid();
+      const newGroup: LinkedMethodGroup = {
+        id: newGroupId,
+        methodKeys: [methodKey, nextMethod.key],
+        fusionMethod: "reciprocal_rank_fusion",
+        fusionSettings: { k: 60 },
+      };
+
+      setLinkedGroups((prev) => [...prev, newGroup]);
+
+      const newItems = methodItems.map((m) =>
+        m.key === methodKey || m.key === nextMethod.key
+          ? { ...m, groupId: newGroupId }
+          : m,
+      );
+      setMethodItems(newItems);
+      notifyItemsChanged(newItems);
+    },
+    [methodItems, notifyItemsChanged],
+  );
+
+  const handleUnlinkMethods = useCallback(
+    (groupId: string) => {
+      setLinkedGroups((prev) => prev.filter((g) => g.id !== groupId));
+
+      const newItems = methodItems.map((m) =>
+        m.groupId === groupId ? { ...m, groupId: undefined } : m,
+      );
+      setMethodItems(newItems);
+      notifyItemsChanged(newItems);
+    },
+    [methodItems, notifyItemsChanged],
+  );
+
+  const handleFusionSettingsUpdate = useCallback(
+    (groupId: string, settings: any) => {
+      setLinkedGroups((prev) =>
+        prev.map((g) =>
+          g.id === groupId ? { ...g, fusionSettings: settings } : g,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleFusionMethodChange = useCallback(
+    (groupId: string, fusionMethod: string, defaultSettings: any) => {
+      setLinkedGroups((prev) =>
+        prev.map((g) =>
+          g.id === groupId
+            ? {
+                ...g,
+                fusionMethod,
+                fusionSettings: defaultSettings,
+              }
+            : g,
+        ),
+      );
+      setFusionModalGroup((prev) =>
+        prev
+          ? {
+              ...prev,
+              fusionMethod,
+              fusionSettings: defaultSettings,
+            }
+          : null,
+      );
+    },
+    [methodItems],
+  );
 
   return (
     <div style={{ border: "1px dashed #ccc", borderRadius: 6, padding: 8 }}>
@@ -497,14 +781,46 @@ export const RetrievalMethodListContainer = forwardRef<
           No retrieval methods selected.
         </Text>
       ) : (
-        methodItems.map((item) => (
-          <RetrievalMethodListItem
-            key={item.key}
-            methodItem={item}
-            onRemove={handleRemoveMethod}
-            onSettingsUpdate={handleSettingsUpdate}
-          />
-        ))
+        methodItems.map((item, index) => {
+          const group = linkedGroups.find((g) => g.id === item.groupId);
+          const isLinked = !!group;
+          const isFirstInGroup = isLinked && group.methodKeys[0] === item.key;
+          const isLastInGroup =
+            isLinked &&
+            group.methodKeys[group.methodKeys.length - 1] === item.key;
+
+          return (
+            <RetrievalMethodListItem
+              key={item.key}
+              methodItem={item}
+              onRemove={handleRemoveMethod}
+              onSettingsUpdate={handleSettingsUpdate}
+              isLinked={isLinked}
+              isFirstInGroup={isFirstInGroup}
+              isLastInGroup={isLastInGroup}
+              onLink={() => handleLinkMethods(item.key)}
+              onUnlink={group ? () => handleUnlinkMethods(group.id) : undefined}
+              onFusionSettings={
+                isFirstInGroup && group
+                  ? () => setFusionModalGroup(group)
+                  : undefined
+              }
+            />
+          );
+        })
+      )}
+
+      {fusionModalGroup && (
+        <FusionSettingsModal
+          opened={!!fusionModalGroup}
+          onClose={() => setFusionModalGroup(null)}
+          group={fusionModalGroup}
+          methodItems={methodItems}
+          onSettingsUpdate={(settings) =>
+            handleFusionSettingsUpdate(fusionModalGroup.id, settings)
+          }
+          onFusionMethodChange={handleFusionMethodChange}
+        />
       )}
     </div>
   );
