@@ -25,7 +25,32 @@ import validator from "@rjsf/validator-ajv8";
 import { v4 as uuid } from "uuid";
 import { ChunkMethodSchemas, ChunkMethodGroups } from "./ChunkMethodSchemas";
 import { transformDict, truncStr } from "./backend/utils";
+import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
+import styled from "styled-components";
+import LLMItemButtonGroup from "./LLMItemButtonGroup";
 import useStore from "./store";
+
+const CardHeader = styled.div`
+  font-weight: 500;
+  font-size: 10pt;
+  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  text-align: start;
+  float: left;
+  margin-top: 1px;
+`;
+
+const DragItem = styled.div`
+  padding: 6px;
+  border-radius: 6px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.24);
+  margin: 0 0 8px 0;
+  display: grid;
+  grid-gap: 20px;
+  flex-direction: column;
+`;
 
 export interface ChunkMethodSpec {
   key: string;
@@ -82,55 +107,19 @@ const ChunkMethodListItem: React.FC<{
   const [settingsModalOpen, { open, close }] = useDisclosure(false);
 
   return (
-    <Card shadow="sm" p="3px 6px" withBorder mt="xs">
-      <Flex justify="space-between" align="center">
-        <div>
-          <Text
-            size="sm"
-            fz="10pt"
-            weight={600}
-            style={{ overflowX: "hidden" }}
-          >
-            {methodItem.emoji ? methodItem.emoji + " " : ""}
-            {methodItem.name}
-          </Text>
-          {methodItem.settings &&
-            Object.entries(
-              transformDict(methodItem.settings, (k) => k !== "shortname"),
-            ).map(([key, value]) =>
-              value ? (
-                <Text
-                  key={key}
-                  size={10}
-                  ml="lg"
-                  lh={1.2}
-                  color="dimmed"
-                >{`${key}: ${truncStr(value, 112)}`}</Text>
-              ) : (
-                <></>
-              ),
-            )}
-          {/* {fullName || description || ""} */}
-        </div>
-        <Flex gap={2}>
-          <ActionIcon
-            color="red"
-            variant="subtle"
-            onClick={() => onRemove(methodItem.key)}
-            title="Remove this method"
-          >
-            <IconTrash size={16} />
-          </ActionIcon>
-          <ActionIcon
-            variant="light"
-            color="blue"
-            onClick={open}
-            title="Open Settings"
-          >
-            <IconSettings size={16} />
-          </ActionIcon>
-        </Flex>
-      </Flex>
+    <DragItem className="llm-list-item">
+      <div>
+        <CardHeader>
+          {methodItem.emoji ? methodItem.emoji + " " : ""}
+          {methodItem.name}
+        </CardHeader>
+
+        <LLMItemButtonGroup
+          onClickTrash={() => onRemove(methodItem.key)}
+          onClickSettings={open} // from useDisclosure(false)
+          hideTrashIcon={false}
+        />
+      </div>
 
       <Modal
         opened={settingsModalOpen}
@@ -167,7 +156,7 @@ const ChunkMethodListItem: React.FC<{
           </Text>
         )}
       </Modal>
-    </Card>
+    </DragItem>
   );
 };
 
@@ -236,92 +225,78 @@ const ChunkMethodListContainer = forwardRef<
     [methodItems, notifyItemsChanged],
   );
 
-  const [menuOpened, setMenuOpened] = useState(false);
   // Pull in any dropped‑in chunkers
   const customChunkers = useStore((s) => s.customChunkers);
 
+  const addMenuItems: NestedMenuItemProps[] = useMemo(() => {
+    // Built-in groups as top-level submenus
+    const builtInGroups: NestedMenuItemProps[] = ChunkMethodGroups.map(
+      (group) => ({
+        key: `group-${group.label}`,
+        title: group.label,
+        items: group.items.map((m) => ({
+          key: `method-${m.baseMethod}`,
+          title: m.name,
+          icon: m.emoji ? <Text>{m.emoji}</Text> : undefined,
+          onClick: () => addMethod(m),
+        })),
+      }),
+    );
+
+    // Custom chunkers as another top-level submenu (if any)
+    const customGroup: NestedMenuItemProps[] =
+      customChunkers.length > 0
+        ? [
+            {
+              key: "group-custom",
+              title: "Custom chunkers",
+              items: customChunkers.map((item) => ({
+                key: `custom-${item.baseMethod}`,
+                title: item.name,
+                icon: item.emoji ? <Text>{item.emoji}</Text> : undefined,
+                onClick: () => addMethod(item),
+              })),
+            },
+          ]
+        : [];
+
+    return [...builtInGroups, ...customGroup];
+  }, [ChunkMethodGroups, customChunkers, addMethod]);
+
   return (
-    <div style={{ padding: 4 }}>
-      <Group position="apart" mb="0">
-        <Text weight={500} size="sm">
-          Chunking Methods
-        </Text>
+    <div className="llm-list-container nowheel">
+      <div className="llm-list-backdrop">
+        <span>Chunking Methods</span>
 
-        <Menu
-          opened={menuOpened}
-          onChange={setMenuOpened}
-          position="right-start"
-          withinPortal
-          withArrow
-        >
-          <Menu.Target>
-            <Button
-              size="xs"
-              variant="light"
-              rightIcon={<IconPlus size={14} />}
-              onClick={() => setMenuOpened((o) => !o)}
-            >
-              Add
-            </Button>
-          </Menu.Target>
-          <Menu.Dropdown>
-            {ChunkMethodGroups.map((group, groupIdx) => (
-              <React.Fragment key={group.label}>
-                <Menu.Label>{group.label}</Menu.Label>
-                {group.items.map((item) => (
-                  <Menu.Item
-                    key={item.baseMethod}
-                    icon={item.emoji ? <Text>{item.emoji}</Text> : undefined}
-                    onClick={() => {
-                      addMethod(item);
-                      setMenuOpened(false);
-                    }}
-                  >
-                    {item.name}
-                  </Menu.Item>
-                ))}
-
-                {groupIdx < ChunkMethodGroups.length - 1 && <Divider my="xs" />}
-              </React.Fragment>
-            ))}
-            {/* ── Custom chunkers ── */}
-            {customChunkers.length > 0 && (
-              <>
-                <Divider my="xs" />
-                <Menu.Label>Custom chunkers</Menu.Label>
-                {customChunkers.map((item) => (
-                  <Menu.Item
-                    key={item.baseMethod}
-                    icon={item.emoji ? <Text>{item.emoji}</Text> : undefined}
-                    onClick={() => {
-                      addMethod(item);
-                      setMenuOpened(false);
-                    }}
-                  >
-                    {item.name}
-                  </Menu.Item>
-                ))}
-              </>
-            )}
-          </Menu.Dropdown>
-        </Menu>
-      </Group>
+        <div className="add-llm-model-btn nodrag">
+          <NestedMenu
+            items={addMenuItems}
+            button={(toggle) => <button onClick={toggle}>Add +</button>}
+          />
+        </div>
+      </div>
 
       {methodItems.length === 0 ? (
-        <Text size="xs" color="dimmed">
-          No chunk methods selected.
-        </Text>
+        <div className="nodrag">
+          <Text size="xs" color="dimmed">
+            No chunk methods selected.
+          </Text>
+        </div>
       ) : (
-        <ScrollArea.Autosize mah={500} className="nopan nowheel">
-          {methodItems.map((item) => (
-            <ChunkMethodListItem
-              key={item.key}
-              methodItem={item}
-              onRemove={handleRemoveMethod}
-              onSettingsUpdate={handleSettingsUpdate}
-            />
-          ))}
-        </ScrollArea.Autosize>
+        <div className="nodrag">
+          <div className="list nowheel nodrag">
+            <ScrollArea.Autosize mah={500} className="nopan nowheel">
+              {methodItems.map((item) => (
+                <ChunkMethodListItem
+                  key={item.key}
+                  methodItem={item}
+                  onRemove={handleRemoveMethod}
+                  onSettingsUpdate={handleSettingsUpdate}
+                />
+              ))}
+            </ScrollArea.Autosize>
+          </div>
+        </div>
       )}
     </div>
   );
