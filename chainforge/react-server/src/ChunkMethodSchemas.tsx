@@ -118,7 +118,7 @@ export const OverlappingHuggingfaceTokenizerSchema: ModelSettingsDict = {
  */
 
 export const MarkdownHeaderSchema: ModelSettingsDict = {
-  fullName: "Markdown (by headings)",
+  fullName: "Markdown Chunker",
   description:
     "Splits markdown text at #/##/### headings; each section keeps its heading.",
   schema: { type: "object", required: [], properties: {} },
@@ -809,57 +809,6 @@ export const ChonkieLateSchema: ModelSettingsDict = {
   postprocessors: {},
 };
 
-/**
- * Chonkie Neural Chunker
- */
-export const ChonkieNeuralSchema: ModelSettingsDict = {
-  fullName: "Chonkie Neural Chunker",
-  description:
-    "Chunk text using neural network-based segmentation via Chonkie library.",
-  schema: {
-    type: "object",
-    required: ["model", "min_characters_per_chunk"],
-    properties: {
-      model: {
-        type: "string",
-        default: "mirth/chonky_modernbert_base_1",
-        title: "Model",
-        description: "Neural chunking model to use",
-      },
-      model_local_path: {
-        type: "string",
-        default: "",
-        title: "Model Local Path",
-        description:
-          "Local path for model to use (only needed if cant download through Chonkie).",
-      },
-      min_characters_per_chunk: {
-        type: "number",
-        default: 10,
-        title: "Min characters per chunk",
-      },
-      device: {
-        type: "string",
-        default: "",
-        title: "Device",
-        description:
-          "Device to use for chunking (e.g., 'cpu', 'cuda', 'mps'). Chonkie will try to auto-detect the best available device if not specified.",
-      },
-    },
-  },
-  uiSchema: {},
-  postprocessors: {
-    device: (value: string | number | boolean): string | null => {
-      if (typeof value !== "string") return null;
-      if (value.trim() === "") {
-        return null;
-      } else {
-        return value;
-      }
-    },
-  },
-};
-
 export const ChunkMethodSchemas: { [baseMethod: string]: ModelSettingsDict } = {
   overlapping_langchain: OverlappingLangChainSchema,
   overlapping_openai_tiktoken: OverlappingOpenAITiktokenSchema,
@@ -878,7 +827,6 @@ export const ChunkMethodSchemas: { [baseMethod: string]: ModelSettingsDict } = {
   chonkie_semantic: ChonkieSemanticSchema,
   chonkie_sdpm: ChonkieSDPMSchema,
   chonkie_late: ChonkieLateSchema,
-  chonkie_neural: ChonkieNeuralSchema,
 };
 
 export const ChunkMethodGroups = [
@@ -921,12 +869,6 @@ export const ChunkMethodGroups = [
         name: "Late Chunker",
         emoji: "⏳",
       },
-      {
-        baseMethod: "chonkie_neural",
-        methodType: "Chonkie",
-        name: "Neural Chunker",
-        emoji: "🧠",
-      },
     ],
   },
   {
@@ -958,7 +900,7 @@ export const ChunkMethodGroups = [
       {
         baseMethod: "markdown_header",
         methodType: "Markdown",
-        name: "Markdown (by headings)",
+        name: "Markdown Chunker",
         emoji: "📝",
       },
       {
@@ -970,7 +912,7 @@ export const ChunkMethodGroups = [
       {
         baseMethod: "syntax_texttiling",
         methodType: "Syntax-Based Chunking",
-        name: "TextTilingTokenizer",
+        name: "Stopword Chunker",
         emoji: "📑",
       },
     ],

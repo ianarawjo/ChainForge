@@ -173,37 +173,26 @@ def syntax_spacy(text: str, **kwargs: Any) -> List[str]:
     sents = [s.text.strip() for s in doc.sents if s.text.strip()]
     return sents if sents else [text]
 
+# TextTiling method
+_SIMPLE_EN_STOPWORDS = {
+    "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", 
+    "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", 
+    "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", 
+    "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", 
+    "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", 
+    "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", 
+    "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both",
+    "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", 
+    "s", "t", "can", "will", "just", "don", "should", "now"
+}
 @ChunkingMethodRegistry.register("syntax_texttiling")
-def syntax_texttiling(text: str, **kwargs: Any) -> List[str]:
-    try:
-        # Ensure necessary NLTK data is downloaded (punkt is often needed)
-        import nltk
-        from nltk.tokenize import TextTilingTokenizer
-    except ImportError:
-        print("NLTK not found or TextTilingTokenizer unavailable.", file=sys.stderr)
-        raise ValueError("NLTK TextTilingTokenizer unavailable.")
+def syntax_texttiling(text: str) -> List[str]:
+    from nltk.tokenize import TextTilingTokenizer
 
-    # Check if the 'punkt' tokenizer is available
-    try:
-        nltk.data.find('tokenizers/punkt')
-    except nltk.downloader.DownloadError:
-        print("NLTK 'punkt' data not found. Attempting download...", file=sys.stderr)
-        nltk.download('punkt', quiet=True)
-
-    # Check if the 'stopwords' corpus is available
-    try:
-        nltk.data.find('corpora/stopwords')
-    except LookupError:
-        print("Stopwords corpus not found. Downloading now...")
-        nltk.download('stopwords')
-
-    try: 
-        tt = TextTilingTokenizer()
-        chunks = tt.tokenize(text)
-        return chunks if chunks else [text]
-    except Exception as e:
-        print(f"Error during NLTK TextTiling: {e}", file=sys.stderr)
-        raise
+    # Pass our own stopwords to avoid touching nltk.corpus.stopwords
+    ttt = TextTilingTokenizer(stopwords=_SIMPLE_EN_STOPWORDS)
+    chunks = ttt.tokenize(text)
+    return chunks if chunks else [text]
 
 """
    Chonkie Methods
@@ -491,30 +480,4 @@ def chonkie_late(text: str, **kwargs: Any) -> List[str]:
 
     chunks = chunker.chunk(text)
     return [chunk.text for chunk in chunks] if chunks else [text]
-
-@ChunkingMethodRegistry.register("chonkie_neural")
-def chonkie_neural(text: str, **kwargs: Any) -> List[str]:
-    from chainforge.rag.custom_chunkers.neural_chunker_with_local_files import NeuralChunker
-
-    # Basic parameters
-    model = kwargs.get("model", "mirth/chonky_modernbert_base_1")
-    model_path = kwargs.get("model_local_path", '')
-    if model_path != '':
-        model = model_path
-    device = kwargs.get("device", None)  # None will auto-detect the best available device
-    min_characters_per_chunk = int(kwargs.get("min_characters_per_chunk", 10))
-    
-    # Note: NeuralChunker returns chunks as "chunks" by default, but we need "texts"
-    # to be consistent with other handlers in our registry
-    
-    try:
-        chunker = NeuralChunker(
-            model=model,
-            device_map=device,
-            min_characters_per_chunk=min_characters_per_chunk,
-        )
-        latechunk_objs = chunker.chunk(text)
-        return [chunk.text for chunk in latechunk_objs] if latechunk_objs else [text]
-    except Exception as e:
-        raise Exception(f"Error during neural chunking: {e}. Make sure you've installed with 'pip install \"chonkie[neural]\"'.")
     
