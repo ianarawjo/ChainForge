@@ -43,6 +43,7 @@ import {
   IconHeart,
   IconCheckbox,
   IconTransform,
+  IconSortAscending,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -250,7 +251,7 @@ const nodeEmojis = {
   upload: "📂",
   chunk: "🧩",
   retrieval: "🎯",
-  rerank: "🔄",
+  rerank: <IconSortAscending size={16} />,
   media: "📺",
 };
 
@@ -604,7 +605,7 @@ const App = () => {
       {
         key: "rerank",
         title: "Rerank Node",
-        icon: nodeEmojis.retrieval,
+        icon: nodeEmojis.rerank,
         tooltip: "Reranks retrieval outputs.",
         onClick: () => addNode("rerank"),
       },

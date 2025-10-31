@@ -15,6 +15,7 @@ import { RerankMethodSchemas, rerankMethodGroups } from "./RerankMethodSchemas";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 import LLMItemButtonGroup from "./LLMItemButtonGroup";
 import useStore from "./store";
+import { DatalistWidget } from "./ModelSettingsModal";
 
 export interface RerankMethodSpec {
   key: string;
@@ -102,6 +103,7 @@ const RerankMethodListItem: React.FC<{
               close();
             }}
             validator={validator as any}
+            widgets={{ datalist: DatalistWidget } as any}
             liveValidate
             noHtml5Validate
           >
@@ -168,7 +170,13 @@ const RerankMethodListContainer = forwardRef<
 
   // Add method
   const handleAddMethod = useCallback(
-    (baseMethod: string, methodType: string, emoji: string, name: string) => {
+    (
+      baseMethod: string,
+      methodType: string,
+      emoji: string,
+      name: string,
+      customDefaults?: Record<string, any>,
+    ) => {
       const key = uuid();
       const schemaEntry = RerankMethodSchemas[baseMethod];
 
@@ -189,6 +197,11 @@ const RerankMethodListContainer = forwardRef<
           },
           {} as Record<string, any>,
         );
+      }
+
+      // Override with custom defaults if provided
+      if (customDefaults) {
+        defaultSettings = { ...defaultSettings, ...customDefaults };
       }
 
       const newMethod: RerankMethodSpec = {
@@ -213,7 +226,7 @@ const RerankMethodListContainer = forwardRef<
       key: `group-${group.label}`,
       title: group.label,
       items: group.items.map((item) => ({
-        key: `method-${item.baseMethod}`,
+        key: `method-${item.baseMethod}-${item.methodName}`,
         title: `${item.emoji} ${item.methodName}`,
         onClick: () =>
           handleAddMethod(
@@ -221,6 +234,7 @@ const RerankMethodListContainer = forwardRef<
             item.methodName,
             item.emoji,
             item.library,
+            (item as any).defaultSettings,
           ),
       })),
     }));

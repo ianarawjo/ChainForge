@@ -16,7 +16,7 @@ import LLMResponseInspectorModal, {
   LLMResponseInspectorModalRef,
 } from "./LLMResponseInspectorModal";
 import InspectFooter from "./InspectFooter";
-import { IconSearch } from "@tabler/icons-react";
+import { IconSearch, IconSortAscending } from "@tabler/icons-react";
 
 import RerankMethodListContainer, {
   RerankMethodSpec,
@@ -38,7 +38,7 @@ interface RerankNodeProps {
 
 const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
   const nodeDefaultTitle = "Rerank Node";
-  const nodeIcon = "🔄";
+  const nodeIcon = <IconSortAscending size={16} />;
 
   const pullInputData = useStore((s) => s.pullInputData);
   const setDataPropsForNode = useStore((s) => s.setDataPropsForNode);
