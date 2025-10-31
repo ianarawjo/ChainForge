@@ -267,7 +267,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
   }, [id, methodItems, results, setDataPropsForNode]);
 
   return (
-    <BaseNode nodeId={id} classNames="chunk-node">
+    <BaseNode nodeId={id} classNames="retrieval-node">
       <NodeLabel
         title={data.title || nodeDefaultTitle}
         nodeId={id}

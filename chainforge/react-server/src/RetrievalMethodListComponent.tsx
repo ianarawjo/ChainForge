@@ -370,7 +370,6 @@ const RetrievalMethodListItem: React.FC<
       <div
         className="llm-list-item"
         style={{
-          // keep your linked-group visuals + spacing (xs ≈ 8px)
           marginBottom: isLinked && !isLastInGroup ? 2 : 8,
           borderLeft: isLinked ? "4px solid #228be6" : undefined,
           borderRadius: isLinked
@@ -453,7 +452,7 @@ const RetrievalMethodListItem: React.FC<
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              open(); // from useDisclosure in this component
+              open();
             }}
             title="Settings"
           >
@@ -597,8 +596,6 @@ export const RetrievalMethodListContainer = forwardRef<
     [methodItems, notifyItemsChanged],
   );
 
-  const [menuOpened, setMenuOpened] = useState(false);
-
   // Thanks to the unified store normalizer, these are already consistent.
   const customRetrievers = useStore((s) => s.customRetrievers || []);
 
@@ -609,7 +606,7 @@ export const RetrievalMethodListContainer = forwardRef<
         return;
 
       const nextMethod = methodItems[currentIndex + 1];
-      if (nextMethod.groupId) return; // Already linked
+      if (nextMethod.groupId) return;
 
       const newGroupId = uuid();
       const newGroup: LinkedMethodGroup = {
@@ -683,7 +680,7 @@ export const RetrievalMethodListContainer = forwardRef<
   );
 
   const addMenuItems: NestedMenuItemProps[] = useMemo(() => {
-    // Built-in retrieval groups (your existing retrievalMethodGroups)
+    // Built-in retrieval groups
     const builtInGroups: NestedMenuItemProps[] = retrievalMethodGroups.map(
       (group) => ({
         key: `group-${group.label}`,
@@ -699,7 +696,7 @@ export const RetrievalMethodListContainer = forwardRef<
                 items: embeddingProviders.map((prov) => ({
                   key: `method-${m.baseMethod}-${prov.value}`,
                   title: prov.label,
-                  onClick: () => addMethod(m, prov.value), // same helper you already have
+                  onClick: () => addMethod(m, prov.value),
                 })),
               },
             ] as NestedMenuItemProps[];
