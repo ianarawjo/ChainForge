@@ -18,6 +18,7 @@ import {
   Box,
   Badge,
   Stack,
+  ScrollArea,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -40,6 +41,8 @@ import {
   rankFusionMethods,
 } from "./RetrievalMethodSchemas";
 import useStore from "./store";
+import { DatalistWidget } from "./ModelSettingsModal";
+import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 
 /** Linked group of methods with fusion settings */
 export interface LinkedMethodGroup {
@@ -98,7 +101,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   let finalSchema = (customSchema?.schema ?? builtin?.schema) as
     | RJSFSchema
     | undefined;
-  const finalUiSchema = (customSchema?.uiSchema ?? builtin?.uiSchema) as
+  let finalUiSchema = (customSchema?.uiSchema ?? builtin?.uiSchema) as
     | UiSchema
     | undefined;
 
@@ -152,6 +155,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             },
           },
         } as RJSFSchema;
+        finalUiSchema = {
+          ...(finalUiSchema || {}),
+          embeddingModel: {
+            "ui:widget": "datalist",
+          },
+        } as UiSchema;
       } else {
         finalSchema = {
           ...(finalSchema as any),
@@ -200,6 +209,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         validator={validator}
         formData={methodItem.settings}
         onChange={(e) => onSettingsUpdate(e.formData)}
+        widgets={{ datalist: DatalistWidget }}
       >
         {/* live update via onChange */}
         <Button type="submit" style={{ display: "none" }} />
@@ -356,36 +366,44 @@ const RetrievalMethodListItem: React.FC<
   const [opened, { open, close }] = useDisclosure(false);
 
   return (
-    <Card
-      withBorder
-      mb={isLinked && !isLastInGroup ? 2 : "xs"}
-      padding="xs"
-      style={{
-        borderLeft: isLinked ? "4px solid #228be6" : undefined,
-        borderRadius: isLinked
-          ? isFirstInGroup
-            ? "6px 6px 0 0"
-            : isLastInGroup
-              ? "0 0 6px 6px"
-              : "0"
-          : 6,
-      }}
-    >
-      <Group position="apart" noWrap>
-        <Box style={{ flex: 1 }}>
-          <Group spacing="xs" noWrap>
-            <Text size="sm">
-              {methodItem.emoji && `${methodItem.emoji} `}
-              {methodItem.settings?.shortName?.trim() || methodItem.methodName}
-            </Text>
-            {isLinked && (
-              <Badge size="xs" color="blue">
-                Linked
-              </Badge>
-            )}
-          </Group>
-        </Box>
-        <Group spacing={4} noWrap>
+    <>
+      <div
+        className="llm-list-item"
+        style={{
+          // keep your linked-group visuals + spacing (xs ≈ 8px)
+          marginBottom: isLinked && !isLastInGroup ? 2 : 8,
+          borderLeft: isLinked ? "4px solid #228be6" : undefined,
+          borderRadius: isLinked
+            ? isFirstInGroup
+              ? "6px 6px 0 0"
+              : isLastInGroup
+                ? "0 0 6px 6px"
+                : "0"
+            : 6,
+
+          // row look & single-line layout
+          background: "white",
+          boxShadow: "0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.24)",
+          padding: "6px 8px",
+          display: "grid",
+          gridTemplateColumns: "1fr auto",
+          alignItems: "center",
+          columnGap: 12,
+        }}
+      >
+        {/* Title (left) */}
+        <div className="llm-card-header">
+          {methodItem.emoji && `${methodItem.emoji} `}
+          {methodItem.settings?.shortName?.trim() || methodItem.methodName}
+          {isLinked && (
+            <Badge size="xs" color="blue" style={{ marginLeft: 6 }}>
+              Linked
+            </Badge>
+          )}
+        </div>
+
+        {/* Actions (right) */}
+        <div className="llm-row-actions">
           {isFirstInGroup && (
             <ActionIcon
               size="sm"
@@ -424,6 +442,7 @@ const RetrievalMethodListItem: React.FC<
             variant="subtle"
             color="red"
             onClick={() => onRemove(methodItem.key)}
+            title="Remove"
           >
             <IconTrash size={14} />
           </ActionIcon>
@@ -434,14 +453,16 @@ const RetrievalMethodListItem: React.FC<
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              open();
+              open(); // from useDisclosure in this component
             }}
+            title="Settings"
           >
             <IconSettings size={14} />
           </ActionIcon>
-        </Group>
-      </Group>
+        </div>
+      </div>
 
+      {/* Keep modal mounted alongside the row so open()/close() works */}
       <SettingsModal
         opened={opened}
         onClose={close}
@@ -450,7 +471,7 @@ const RetrievalMethodListItem: React.FC<
           onSettingsUpdate(methodItem.key, settings)
         }
       />
-    </Card>
+    </>
   );
 };
 
@@ -661,154 +682,123 @@ export const RetrievalMethodListContainer = forwardRef<
     [methodItems],
   );
 
+  const addMenuItems: NestedMenuItemProps[] = useMemo(() => {
+    // Built-in retrieval groups (your existing retrievalMethodGroups)
+    const builtInGroups: NestedMenuItemProps[] = retrievalMethodGroups.map(
+      (group) => ({
+        key: `group-${group.label}`,
+        title: group.label,
+        items: group.items.flatMap((m) => {
+          // If a method needs an embedding provider, make it a nested submenu
+          if (m.needsEmbeddingModel) {
+            return [
+              {
+                key: `method-${m.baseMethod}`,
+                title: m.methodName,
+                icon: m.emoji ? <Text>{m.emoji}</Text> : undefined,
+                items: embeddingProviders.map((prov) => ({
+                  key: `method-${m.baseMethod}-${prov.value}`,
+                  title: prov.label,
+                  onClick: () => addMethod(m, prov.value), // same helper you already have
+                })),
+              },
+            ] as NestedMenuItemProps[];
+          }
+          // Otherwise, a simple leaf item
+          return [
+            {
+              key: `method-${m.baseMethod}`,
+              title: m.methodName,
+              icon: m.emoji ? <Text>{m.emoji}</Text> : undefined,
+              onClick: () => addMethod(m),
+            },
+          ] as NestedMenuItemProps[];
+        }),
+      }),
+    );
+
+    // Custom retrievers group (if any)
+    const customGroup: NestedMenuItemProps[] =
+      customRetrievers.length > 0
+        ? [
+            {
+              key: "group-custom",
+              title: "Custom Providers",
+              items: customRetrievers.map((prov) => ({
+                key: `custom-${prov.key}`,
+                title: prov.methodName,
+                icon: prov.emoji ? <Text>{prov.emoji}</Text> : undefined,
+                onClick: () =>
+                  addMethod({
+                    baseMethod: prov.baseMethod,
+                    methodName: prov.methodName,
+                    library: prov.library,
+                    emoji: prov.emoji,
+                    needsEmbeddingModel: prov.needsEmbeddingModel,
+                    source: "custom",
+                    settingsSchema:
+                      prov.settingsSchema ?? (prov as any).settings_schema,
+                  } as any),
+              })),
+            },
+          ]
+        : [];
+
+    return [...builtInGroups, ...customGroup];
+  }, [retrievalMethodGroups, customRetrievers, embeddingProviders, addMethod]);
+
   return (
-    <div style={{ border: "1px dashed #ccc", borderRadius: 6, padding: 8 }}>
-      <Group position="apart" mb="xs">
-        <Text weight={500} size="sm">
-          Retrieval Methods / Vector Stores
-        </Text>
+    <div className="llm-list-container nowheel">
+      <div className="llm-list-backdrop nodrag">
+        <span className="llm-card-header">Retrieval Methods</span>
+        <div className="add-llm-model-btn nodrag">
+          <NestedMenu
+            items={addMenuItems}
+            button={(toggle) => <button onClick={toggle}>Add +</button>}
+          />
+        </div>
+      </div>
 
-        <Menu
-          opened={menuOpened}
-          onChange={setMenuOpened}
-          position="bottom-end"
-          withinPortal
-        >
-          <Menu.Target>
-            <Button
-              size="xs"
-              variant="light"
-              rightIcon={<IconPlus size={14} />}
-              onClick={() => setMenuOpened((o) => !o)}
-            >
-              Add
-            </Button>
-          </Menu.Target>
-          <Menu.Dropdown>
-            {retrievalMethodGroups.map((group, groupIdx) => (
-              <React.Fragment key={group.label}>
-                <Menu.Label>{group.label}</Menu.Label>
-                {group.items.map((item) => {
-                  // Embedding-required methods: nested submenu to pick provider
-                  if (item.needsEmbeddingModel) {
-                    return (
-                      <Menu
-                        key={item.baseMethod}
-                        trigger="hover"
-                        position="right-start"
-                      >
-                        <Menu.Target>
-                          <Menu.Item
-                            icon={
-                              item.emoji ? <Text>{item.emoji}</Text> : undefined
-                            }
-                            rightSection={<IconChevronRight size={14} />}
-                          >
-                            {item.methodName}
-                          </Menu.Item>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          {embeddingProviders.map((provider) => (
-                            <Menu.Item
-                              key={provider.value}
-                              onClick={() => {
-                                addMethod(item, provider.value);
-                                setMenuOpened(false);
-                              }}
-                            >
-                              {provider.label}
-                            </Menu.Item>
-                          ))}
-                        </Menu.Dropdown>
-                      </Menu>
-                    );
+      <div className="list nowheel nodrag">
+        <ScrollArea.Autosize mah={500} type="never">
+          {methodItems.length === 0 ? (
+            <Text size="xs" color="dimmed" className="nodrag">
+              No retrieval methods selected.
+            </Text>
+          ) : (
+            methodItems.map((item) => {
+              const group = linkedGroups.find((g) => g.id === item.groupId);
+              const isLinked = !!group;
+              const isFirstInGroup =
+                isLinked && group.methodKeys[0] === item.key;
+              const isLastInGroup =
+                isLinked &&
+                group.methodKeys[group.methodKeys.length - 1] === item.key;
+
+              return (
+                <RetrievalMethodListItem
+                  key={item.key}
+                  methodItem={item}
+                  onRemove={handleRemoveMethod}
+                  onSettingsUpdate={handleSettingsUpdate}
+                  isLinked={isLinked}
+                  isFirstInGroup={isFirstInGroup}
+                  isLastInGroup={isLastInGroup}
+                  onLink={() => handleLinkMethods(item.key)}
+                  onUnlink={
+                    group ? () => handleUnlinkMethods(group.id) : undefined
                   }
-
-                  // Methods that don't need embeddings
-                  return (
-                    <Menu.Item
-                      key={item.baseMethod}
-                      icon={item.emoji ? <Text>{item.emoji}</Text> : undefined}
-                      onClick={() => {
-                        addMethod(item);
-                        setMenuOpened(false);
-                      }}
-                    >
-                      {item.library}
-                    </Menu.Item>
-                  );
-                })}
-                {groupIdx < retrievalMethodGroups.length - 1 && (
-                  <Divider my="xs" />
-                )}
-              </React.Fragment>
-            ))}
-
-            {customRetrievers.length > 0 && (
-              <>
-                <Divider my="xs" />
-                <Menu.Label>Custom Providers</Menu.Label>
-                {customRetrievers.map((prov) => (
-                  <Menu.Item
-                    key={prov.key}
-                    icon={prov.emoji ? <Text>{prov.emoji}</Text> : undefined}
-                    onClick={() => {
-                      // The store already guarantees a full, normalized spec-like shape.
-                      addMethod({
-                        baseMethod: prov.baseMethod,
-                        methodName: prov.methodName,
-                        library: prov.library,
-                        emoji: prov.emoji,
-                        needsEmbeddingModel: prov.needsEmbeddingModel,
-                        source: "custom",
-                        settingsSchema:
-                          prov.settingsSchema ?? (prov as any).settings_schema, // tolerate legacy flows just in case
-                      } as any);
-                      setMenuOpened(false);
-                    }}
-                  >
-                    {prov.methodName}
-                  </Menu.Item>
-                ))}
-              </>
-            )}
-          </Menu.Dropdown>
-        </Menu>
-      </Group>
-
-      {methodItems.length === 0 ? (
-        <Text size="xs" color="dimmed">
-          No retrieval methods selected.
-        </Text>
-      ) : (
-        methodItems.map((item, index) => {
-          const group = linkedGroups.find((g) => g.id === item.groupId);
-          const isLinked = !!group;
-          const isFirstInGroup = isLinked && group.methodKeys[0] === item.key;
-          const isLastInGroup =
-            isLinked &&
-            group.methodKeys[group.methodKeys.length - 1] === item.key;
-
-          return (
-            <RetrievalMethodListItem
-              key={item.key}
-              methodItem={item}
-              onRemove={handleRemoveMethod}
-              onSettingsUpdate={handleSettingsUpdate}
-              isLinked={isLinked}
-              isFirstInGroup={isFirstInGroup}
-              isLastInGroup={isLastInGroup}
-              onLink={() => handleLinkMethods(item.key)}
-              onUnlink={group ? () => handleUnlinkMethods(group.id) : undefined}
-              onFusionSettings={
-                isFirstInGroup && group
-                  ? () => setFusionModalGroup(group)
-                  : undefined
-              }
-            />
-          );
-        })
-      )}
+                  onFusionSettings={
+                    isFirstInGroup && group
+                      ? () => setFusionModalGroup(group)
+                      : undefined
+                  }
+                />
+              );
+            })
+          )}
+        </ScrollArea.Autosize>
+      </div>
 
       {fusionModalGroup && (
         <FusionSettingsModal

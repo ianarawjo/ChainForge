@@ -21,7 +21,7 @@ import RetrievalMethodListContainer, {
   RetrievalMethodSpec,
 } from "./RetrievalMethodListComponent";
 import { LLMResponse, TemplateVarInfo } from "./backend/typing";
-import { FLASK_BASE_URL, dict_excluding_key } from "./backend/utils";
+import { FLASK_BASE_URL } from "./backend/utils";
 
 interface RetrievalNodeProps {
   id: string;
@@ -137,9 +137,9 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       }));
 
       // Updated error checks for clarity
-      //       if (!inputData.chunks || inputData.chunks.length === 0) {
-      //         throw new Error("Input 'chunks' is missing or empty.");
-      //       }
+      if (!inputData.chunks || inputData.chunks.length === 0) {
+        throw new Error("Input 'chunks' is missing or empty.");
+      }
       if (!inputData.queries || inputData.queries.length === 0) {
         throw new Error("Input 'queries' is missing or empty.");
       }
@@ -169,24 +169,16 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
 
       // Convert to proper LLMResponse objects
       const llmResponses: LLMResponse[] = retrievalResults.map(
-        (result: any) => {
-          const vars = {
-            ...(result.vars || {}),
-            chunkMethod:
-              result.chunkMethod ??
-              result.vars?.chunkMethod ??
-              result.metavars?.chunkMethod,
-          };
-          return {
-            uid: result.uid || `retrieval-${Date.now()}-${Math.random()}`,
-            prompt: result.prompt,
-            vars,
-            metavars: result.metavars || {},
-            responses: [result.text],
-            eval_res: result.eval_res || [],
-            llm: vars.retrievalMethod || "Unknown",
-          };
-        },
+        (result: any) => ({
+          uid: result.uid || `retrieval-${Date.now()}-${Math.random()}`,
+          prompt: result.prompt,
+          vars: result.vars || {},
+          metavars: result.metavars || {},
+          responses: [result.text],
+          eval_res: result.eval_res || [],
+          llm: result.vars.retrievalMethod || "Unknown", // We are abusing 'llm' to store the retrieval method
+          // llm: result.llm || "Unknown Method",
+        }),
       );
 
       // Set the responses for the inspector
@@ -234,21 +226,9 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         (result: any) => ({
           text: result.text,
           prompt: result.prompt,
-          fill_history: dict_excluding_key(
-            result.fill_history
-              ? result.fill_history
-              : {
-                  ...(result.vars || {}),
-                  ...(result.metavars || {}),
-                  chunkMethod:
-                    result.chunkMethod ??
-                    result.vars?.chunkMethod ??
-                    result.metavars?.chunkMethod,
-                },
-            "__input",
-          ),
+          fill_history: result.vars || {},
           metavars: result.metavars || {},
-          llm: result.llm,
+          llm: result.llm, // Should we call this 'method' instead?
           uid: result.uid || `chunk-${Date.now()}-${Math.random()}`,
         }),
       );
@@ -287,7 +267,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
   }, [id, methodItems, results, setDataPropsForNode]);
 
   return (
-    <BaseNode nodeId={id} classNames="retrieval-node">
+    <BaseNode nodeId={id} classNames="chunk-node">
       <NodeLabel
         title={data.title || nodeDefaultTitle}
         nodeId={id}

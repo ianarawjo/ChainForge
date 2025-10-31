@@ -576,20 +576,20 @@ const ExampleFlowsModal = forwardRef<
             <ExampleFlowCard
               title="📑 Evaluate RAG Pipeline"
               description="Build a RAG pipeline using a variety of chunking and retrieval methods. Evaluate the pipeline using RAGAS and reference-based metrics."
-              filename="evaluate-rag-pipeline"
+              filename="evaluate-rag-pipeline.cfzip"
               onSelect={onSelect}
             />
             <ExampleFlowCard
               title="📖 ChainForge Docs Q&A"
               description="Upload the ChainForge Markdown docs and ask any question—gets you the exact section of the docs."
               filename="chainforge-docs.cfzip"
-              onSelect={(n) => onSelect?.(n, "bundle")}
+              onSelect={onSelect}
             />
             <ExampleFlowCard
               title="Travel Guide"
               description="Ask questions about travel guides using RAG."
               filename="travel-guide-example.cfzip"
-              onSelect={(n) => onSelect?.(n, "bundle")}
+              onSelect={onSelect}
             />
           </SimpleGrid>
         </Tabs.Panel>

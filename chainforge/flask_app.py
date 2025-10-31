@@ -5,7 +5,7 @@ from typing import List, Literal
 from statistics import mean, median, stdev
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, after_this_request
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from chainforge.providers import ProviderRegistry
 from chainforge.security.password_utils import ensure_password
 from chainforge.security.secure_save import load_json_file, save_json_file
@@ -402,6 +402,11 @@ def fetchExampleFlow():
     ret = jsonify({'data': filedata})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
+
+@app.get("/examples/<path:filename>")
+@cross_origin()
+def serve_cfzip(filename: str):
+    return send_from_directory(EXAMPLES_DIR, filename, mimetype="application/zip")
 
 
 @app.route('/app/fetchOpenAIEval', methods=['POST'])

@@ -6,51 +6,15 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import {
-  Menu,
-  Button,
-  Card,
-  Group,
-  Text,
-  ActionIcon,
-  Modal,
-  Divider,
-  Flex,
-  ScrollArea,
-} from "@mantine/core";
+import { Button, Text, Modal, ScrollArea } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconPlus, IconTrash, IconSettings } from "@tabler/icons-react";
 import Form from "@rjsf/core";
 import validator from "@rjsf/validator-ajv8";
 import { v4 as uuid } from "uuid";
 import { ChunkMethodSchemas, ChunkMethodGroups } from "./ChunkMethodSchemas";
-import { transformDict, truncStr } from "./backend/utils";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
-import styled from "styled-components";
 import LLMItemButtonGroup from "./LLMItemButtonGroup";
 import useStore from "./store";
-
-const CardHeader = styled.div`
-  font-weight: 500;
-  font-size: 10pt;
-  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
-  text-align: start;
-  float: left;
-  margin-top: 1px;
-`;
-
-const DragItem = styled.div`
-  padding: 6px;
-  border-radius: 6px;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.12),
-    0 1px 2px rgba(0, 0, 0, 0.24);
-  margin: 0 0 8px 0;
-  display: grid;
-  grid-gap: 20px;
-  flex-direction: column;
-`;
 
 export interface ChunkMethodSpec {
   key: string;
@@ -107,12 +71,12 @@ const ChunkMethodListItem: React.FC<{
   const [settingsModalOpen, { open, close }] = useDisclosure(false);
 
   return (
-    <DragItem className="llm-list-item">
+    <div className="llm-list-item">
       <div>
-        <CardHeader>
+        <div className="llm-card-header">
           {methodItem.emoji ? methodItem.emoji + " " : ""}
           {methodItem.name}
-        </CardHeader>
+        </div>
 
         <LLMItemButtonGroup
           onClickTrash={() => onRemove(methodItem.key)}
@@ -156,7 +120,7 @@ const ChunkMethodListItem: React.FC<{
           </Text>
         )}
       </Modal>
-    </DragItem>
+    </div>
   );
 };
 

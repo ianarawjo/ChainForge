@@ -130,6 +130,7 @@ hr {
   padding: 2px 8px;
   overflow-y: auto;
   max-height: 205px;
+  width: 100%;
 }
 .llm-list-backdrop {
   margin: 6px 0px 6px 6px;
@@ -137,6 +138,9 @@ hr {
   text-align: left;
   font-size: 10pt;
   color: #777;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .llm-scorer-container {
   width: 290px;
@@ -154,7 +158,44 @@ html[data-mantine-color-scheme="dark"] .llm-list-backdrop {
 
 .llm-list-item {
   background: white;
+  padding: 6px 8px;
+  border-radius: 6px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.24);
+  margin: 0 0 8px 0;
+  display: grid;
+  grid-gap: 20px;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 12px;
 }
+
+.llm-list-item > * {
+  min-width: 0;
+}
+
+.llm-card-header {
+  font-weight: 500;
+  font-size: 10pt;
+  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  text-align: start;
+  float: left; 
+  margin: 0;
+  white-space: nowrap; /* keep on one line */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.llm-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap; 
+}
+
 html[data-mantine-color-scheme="dark"] .llm-list-item {
   background: #222;
   color: #ccc;
@@ -1665,7 +1706,7 @@ html[data-mantine-color-scheme="dark"] .upload-node-list {
 }
 
 .chunk-node {
-  width: 290px;
+  width: 320px;
 }
 
 /* Classes relative to the Media Node */

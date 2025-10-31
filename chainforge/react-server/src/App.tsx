@@ -1172,75 +1172,51 @@ const App = () => {
     ],
   );
 
-  // Fetch a .cfzip/.zip from a URL and import it (bypass cache + sanity check)
+  // cfzip importer
   const importFlowZipFromURL = useCallback(
     async (url: string) => {
-      // avoid 304/empty-body caching issues
-      let res = await fetch(url, { cache: "no-store" });
-      if (res.status === 304) {
-        const bust = url.includes("?") ? "&" : "?";
-        res = await fetch(url + bust + "t=" + Date.now(), {
-          cache: "no-store",
-        });
-      }
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
-
       const blob = await res.blob();
 
-      const head = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
-      const looksZip =
-        head[0] === 80 && head[1] === 75 && head[2] === 3 && head[3] === 4;
-      if (!looksZip) {
-        const txt = await blob.text();
-        console.error("Expected .zip bytes, got:", txt.slice(0, 200));
-        throw new Error(
-          "Fetched content is not a zip (likely HTML from routing/caching).",
-        );
-      }
-
+      // ensure filename ends with .cfzip
       const urlName =
         new URL(url, window.location.origin).pathname.split("/").pop() ||
         "example.cfzip";
-      const fileName = /\.(cf)?zip$/i.test(urlName)
-        ? urlName
-        : `${urlName}.cfzip`;
+      const fileName = /\.cfzip$/i.test(urlName) ? urlName : `${urlName}.cfzip`;
+
       const file = new File([blob], fileName, { type: "application/zip" });
 
       const { flow, flowName } = await importFlowBundle(file);
       importFlowFromJSON(flow);
       await safeSetFlowFileName(flowName);
     },
-    [importFlowFromJSON, safeSetFlowFileName],
+    [importFlowFromJSON, safeSetFlowFileName]
   );
 
-  // Load flow from examples modal
-  const onSelectExampleFlow = (name: string, example_category?: string) => {
-    // Trigger the 'loading' modal
+  // loader for example flows
+  const onSelectExampleFlow = async (name: string) => {
     setIsLoading(true);
-
-    // Detect a special category of the example flow, and use the right loader for it:
-    if (example_category === "openai-eval") {
-      importFlowFromOpenAIEval(name);
-      setFlowFileNameAndCache(`flow-${Date.now()}`);
-      return;
-    }
-    if (example_category === "bundle" || /\.(cf)?zip$/i.test(name)) {
+    try {
       const base = FLASK_BASE_URL.replace(/\/$/, "");
-      const url = name.startsWith("http")
-        ? name
-        : `${base}/example_flows/${name}`;
-      importFlowZipFromURL(url).catch(handleError);
-      return;
-    }
 
-    // Fetch the example flow data from the backend
-    fetchExampleFlow(name)
-      .then(function (flowJSON) {
-        // We have the data, import it:
-        importFlowFromJSON(flowJSON);
-        setFlowFileNameAndCache(`flow-${Date.now()}`);
-      })
-      .catch(handleError);
+      if (/\.cfzip$/i.test(name)) {
+        const file = name.endsWith(".cfzip") ? name : `${name}.cfzip`;
+        const url  = name.startsWith("http") ? name : `${base}/examples/${file}`;
+        await importFlowZipFromURL(url);
+        return;
+      }
+
+      // treat everything else as .cforge JSON
+      const baseName = name.replace(/\.cforge$/i, "");
+      const flowJSON = await fetchExampleFlow(baseName);
+      importFlowFromJSON(flowJSON);
+      setFlowFileNameAndCache(`flow-${Date.now()}`);
+    } catch (err) {
+      handleError(err as Error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // When the user clicks the 'New Flow' button
