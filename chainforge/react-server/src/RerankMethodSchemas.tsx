@@ -171,7 +171,7 @@ export const rerankMethodGroups = [
     items: [
       {
         baseMethod: "cross_encoder",
-        methodName: "MiniLM-L-6-v2",
+        name: "MiniLM-L-6-v2",
         library: "CrossEncoder",
         emoji: "🧠",
         group: "Cross Encoder",
@@ -183,7 +183,7 @@ export const rerankMethodGroups = [
       },
       {
         baseMethod: "cross_encoder",
-        methodName: "MiniLM-L-12-v2", 
+        name: "MiniLM-L-12-v2",
         library: "CrossEncoder",
         emoji: "🧠",
         group: "Cross Encoder",
@@ -195,8 +195,8 @@ export const rerankMethodGroups = [
       },
       {
         baseMethod: "cross_encoder",
-        methodName: "TinyBERT-L-2-v2",
-        library: "CrossEncoder", 
+        name: "TinyBERT-L-2-v2",
+        library: "CrossEncoder",
         emoji: "🧠",
         group: "Cross Encoder",
         needsEmbeddingModel: false,
@@ -207,9 +207,9 @@ export const rerankMethodGroups = [
       },
       {
         baseMethod: "cross_encoder",
-        methodName: "Electra-Base",
+        name: "Electra-Base",
         library: "CrossEncoder",
-        emoji: "🧠", 
+        emoji: "🧠",
         group: "Cross Encoder",
         needsEmbeddingModel: false,
         defaultSettings: {
@@ -219,7 +219,7 @@ export const rerankMethodGroups = [
       },
       {
         baseMethod: "cross_encoder",
-        methodName: "BGE Reranker Base",
+        name: "BGE Reranker Base",
         library: "CrossEncoder",
         emoji: "🧠",
         group: "Cross Encoder",
@@ -231,7 +231,7 @@ export const rerankMethodGroups = [
       },
       {
         baseMethod: "cross_encoder",
-        methodName: "BGE Reranker Large",
+        name: "BGE Reranker Large",
         library: "CrossEncoder",
         emoji: "🧠",
         group: "Cross Encoder",
@@ -248,7 +248,7 @@ export const rerankMethodGroups = [
     items: [
       {
         baseMethod: "cohere_rerank",
-        methodName: "Rerank v3.5 (Latest)",
+        name: "Rerank v3.5 (Latest)",
         library: "Cohere",
         emoji: "💬",
         group: "Cohere API",
@@ -260,7 +260,7 @@ export const rerankMethodGroups = [
       },
       {
         baseMethod: "cohere_rerank",
-        methodName: "Rerank English v3.0",
+        name: "Rerank English v3.0",
         library: "Cohere",
         emoji: "💬",
         group: "Cohere API",
@@ -272,7 +272,7 @@ export const rerankMethodGroups = [
       },
       {
         baseMethod: "cohere_rerank",
-        methodName: "Rerank Multilingual v3.0",
+        name: "Rerank Multilingual v3.0",
         library: "Cohere",
         emoji: "💬",
         group: "Cohere API",

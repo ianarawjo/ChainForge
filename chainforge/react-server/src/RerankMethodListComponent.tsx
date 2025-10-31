@@ -52,20 +52,7 @@ const RerankMethodListItem: React.FC<{
     [methodItem],
   );
   const schema = useMemo(() => {
-    const s = schemaEntry?.schema;
-    const schemaWithShortname = {
-      ...s,
-      properties: {
-        shortname: {
-          type: "string",
-          title: "Short Name",
-          description: "A nickname for this method.",
-          default: methodItem.name,
-        },
-        ...s.properties,
-      },
-    } as typeof s;
-    return schemaWithShortname;
+    return schemaEntry?.schema;
   }, [schemaEntry]);
   const uiSchema = useMemo(() => schemaEntry?.uiSchema, [schemaEntry]);
 
@@ -172,9 +159,9 @@ const RerankMethodListContainer = forwardRef<
   const handleAddMethod = useCallback(
     (
       baseMethod: string,
-      methodType: string,
-      emoji: string,
       name: string,
+      emoji: string,
+      methodType: string,
       customDefaults?: Record<string, any>,
     ) => {
       const key = uuid();
@@ -226,12 +213,12 @@ const RerankMethodListContainer = forwardRef<
       key: `group-${group.label}`,
       title: group.label,
       items: group.items.map((item) => ({
-        key: `method-${item.baseMethod}-${item.methodName}`,
-        title: `${item.emoji} ${item.methodName}`,
+        key: `method-${item.baseMethod}-${item.name}`,
+        title: `${item.emoji} ${item.name}`,
         onClick: () =>
           handleAddMethod(
             item.baseMethod,
-            item.methodName,
+            item.name,
             item.emoji,
             item.library,
             (item as any).defaultSettings,
