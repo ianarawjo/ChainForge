@@ -124,6 +124,7 @@ import RequestClarificationModal, {
   RequestClarificationModalProps,
 } from "./RequestClarificationModal";
 import { xorBy } from "lodash";
+import RerankNode from "./RerankNode";
 
 const IS_ACCEPTED_BROWSER =
   (isChrome ||
@@ -226,6 +227,7 @@ const nodeTypes = {
   upload: UploadNode,
   chunk: ChunkNode,
   retrieval: RetrievalNode,
+  rerank: RerankNode,
   media: MediaNode,
 };
 
@@ -248,6 +250,7 @@ const nodeEmojis = {
   upload: "📂",
   chunk: "🧩",
   retrieval: "🎯",
+  rerank: "🔄",
   media: "📺",
 };
 
@@ -597,6 +600,13 @@ const App = () => {
         tooltip:
           "Given chunks and queries, retrieve relevant chunks for the given query. Compare retrieval methods across queries. Retrieval methods include both classical methods like BM25, and vector stores.",
         onClick: () => addNode("retrieval"),
+      },
+      {
+        key: "rerank",
+        title: "Rerank Node",
+        icon: nodeEmojis.retrieval,
+        tooltip: "Reranks retrieval outputs.",
+        onClick: () => addNode("rerank"),
       },
       {
         key: "divider",

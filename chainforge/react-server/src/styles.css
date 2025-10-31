@@ -1813,3 +1813,7 @@ html[data-mantine-color-scheme="dark"] .carousel-nav-button:hover {
     0.2
   ); /* Brighter hover background for dark mode */
 }
+
+.rerank-node {
+  width: 320px;
+}
