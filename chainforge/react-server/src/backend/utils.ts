@@ -63,12 +63,17 @@ const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
 
 /** Where the ChainForge Flask server is being hosted, if any. */
-
 export const FLASK_BASE_URL =
   // @ts-expect-error undefined
   window.__CF_HOSTNAME !== undefined && window.__CF_PORT !== undefined
     ? "/"
     : "http://localhost:8000/";
+
+export const RAG_AVAILABLE =
+  // @ts-expect-error undefined
+  window.__RAG_AVAILABLE !== undefined
+    ? (window as any).__RAG_AVAILABLE
+    : false;
 
 export async function call_flask_backend(
   route: string,

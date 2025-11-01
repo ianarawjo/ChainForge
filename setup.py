@@ -1,5 +1,30 @@
 from setuptools import setup, find_packages
 
+# Dependency groups
+rag_deps = [
+    # RAGForge dependencies
+    "grpcio==1.44.0",  # later versions of grpcio hang indefinitely on some Mac systems, upon building the wheel
+    "numpy<2.0",  # numpy>=2.0 is not compatible with libraries like torch
+    "pymupdf",
+    "python-docx",
+    "tiktoken",
+    "langchain",
+    "langchain-core",
+    "langchain-community",
+    "nltk",
+    "transformers",
+    "spacy",
+    "scikit-learn>=1.4.0",
+    "sentence-transformers",
+    "rank-bm25",
+    "whoosh",
+    "cohere",
+    "chonkie>=1.0",
+    "model2vec>=0.5.0",  # required by chonkie
+    "pyarrow>=14.0,<=16.0.0",  # newer versions of pyarrow require CMake 3.25 or higher, which is not compatible with all systems
+    "lancedb<0.18.0"  # pylance requires pyarrow 14 or higher. Later versions of LanceDB give strange errors with pyarrow<=16.0.0.
+]
+
 def readme():
     with open('README.md', encoding='utf-8') as f:
         return f.read()
@@ -16,38 +41,24 @@ setup(
     license="MIT",
     url="https://github.com/ianarawjo/ChainForge/",
     install_requires=[
-        # Package dependencies
+        # Core package dependencies (pre-RAGForge)
         "flask>=2.2.3",
         "flask[async]",
         "flask_cors",
-        "grpcio==1.44.0",  # later versions of grpcio hang indefinitely on some Mac systems, upon building the wheel
-        "numpy<2.0",  # numpy>=2.0 is not compatible with libraries like torch
         "requests",
         "platformdirs",
         "urllib3==1.26.6",
         "openai",
         "cryptography",
         "mistune>=2.0",  # for LLM response markdown parsing
-        "pymupdf",
-        "python-docx",
-        "tiktoken",
-        "langchain",
-        "langchain-core",
-        "langchain-community",
-        "nltk",
-        "transformers",
-        "spacy",
-        "scikit-learn>=1.4.0",
-        "sentence-transformers",
-        "rank-bm25",
-        "whoosh",
-        "cohere",
         "markitdown[pdf, docx, xlsx, xls, pptx]",
-        "chonkie>=1.0",
-        "model2vec>=0.5.0",  # required by chonkie
-        "pyarrow>=14.0,<=16.0.0",  # newer versions of pyarrow require CMake 3.25 or higher, which is not compatible with all systems
-        "lancedb<0.18.0"  # pylance requires pyarrow 14 or higher. Later versions of LanceDB give strange errors with pyarrow<=16.0.0. 
     ],
+    extra_requires={
+        # Extra dependencies for functionality like RAGForge,
+        # which may not be needed by all users
+        "rag": rag_deps,
+        "all": rag_deps,
+    },
     entry_points={
         "console_scripts": [
             "chainforge = chainforge.app:main",

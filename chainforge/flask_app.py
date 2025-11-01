@@ -12,12 +12,32 @@ from chainforge.security.secure_save import load_json_file, save_json_file
 import requests as py_requests
 from platformdirs import user_data_dir
 
+""" ========================================================
+    DETECT RAGFORGE AVAILABILITY AND IMPORT RAGFORGE MODULES
+    ========================================================
+"""
+def IS_RAG_AVAILABLE():
+    from importlib.util import find_spec
+    try:
+        packages = ["langchain", "pyarrow", "lancedb", "sentence_transformers", "chonkie", "rank_bm25", "spacy", "numpy", "nltk"]
+        for package in packages:
+            if find_spec(package) is None:
+                return False
+        print("RAGForge dependencies detected. Enabling RAGForge features...")
+        return True
+    except ImportError:
+        print("You are running ChainForge core. RAGForge dependencies were not detected; hence, RAG features will be disabled.")
+        return False
+RAG_AVAILABLE = IS_RAG_AVAILABLE()
+
 # RAG-specific imports
-from chainforge.rag.chunkers import ChunkingMethodRegistry
-from chainforge.rag.retrievers import RetrievalMethodRegistry
-from chainforge.rag.rerankers import RerankingMethodRegistry
-from chainforge.rag.embeddings import EmbeddingMethodRegistry
-from markitdown import MarkItDown
+if RAG_AVAILABLE:
+    from chainforge.rag.chunkers import ChunkingMethodRegistry
+    from chainforge.rag.retrievers import RetrievalMethodRegistry
+    from chainforge.rag.rerankers import RerankingMethodRegistry
+    from chainforge.rag.embeddings import EmbeddingMethodRegistry
+    from markitdown import MarkItDown
+
 
 """ =================
     SETUP AND GLOBALS
@@ -275,9 +295,8 @@ def index():
     # Get the index.html HTML code
     html_str = render_template("index.html")
     
-    # Inject global JS variables __CF_HOSTNAME and __CF_PORT at the top so that the application knows 
-    # that it's running from a Flask server, and what the hostname and port of that server is:
-    html_str = html_str[:60] + f'<script>window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT};</script>' + html_str[60:]
+    # Inject global JS variables like __CF_HOSTNAME and __CF_PORT at the top so that the application knows that it's running from a Flask server, and what the hostname and port of that server is:
+    html_str = html_str[:60] + f'<script>window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT}; window.__RAG_AVAILABLE={RAG_AVAILABLE};</script>' + html_str[60:]
 
     return html_str
 
