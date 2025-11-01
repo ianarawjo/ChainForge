@@ -15,6 +15,7 @@ from platformdirs import user_data_dir
 # RAG-specific imports
 from chainforge.rag.chunkers import ChunkingMethodRegistry
 from chainforge.rag.retrievers import RetrievalMethodRegistry
+from chainforge.rag.rerankers import RerankingMethodRegistry
 from chainforge.rag.embeddings import EmbeddingMethodRegistry
 from markitdown import MarkItDown
 
@@ -1691,6 +1692,93 @@ def retrieve():
                     continue
     
     return jsonify(flat_results), 200
+
+
+# === Reranking Endpoint ===
+@app.route("/rerank", methods=["POST"])
+def rerank():
+    """
+    Rerank documents using the specified reranking method.
+    
+    Expected form data:
+    - baseMethod: The reranking method identifier (e.g., "cross_encoder", "cohere_rerank")
+    - documents: JSON array of document texts to rerank
+    - query: Query text for relevance scoring (optional)
+    - Additional method-specific settings as form fields
+    
+    Returns:
+    - JSON response with reranked documents containing:
+      - reranked_documents: List of documents with scores and indices
+    """
+    if not request.form:
+        return jsonify({"error": "Request must be form data"}), 400
+    
+    base_method = request.form.get("baseMethod")
+    documents_json = request.form.get("documents")
+    query = request.form.get("query", "")
+    
+    if not base_method:
+        return jsonify({"error": "Missing 'baseMethod' in form data"}), 400
+    if not documents_json:
+        return jsonify({"error": "Missing 'documents' in form data"}), 400
+    
+    try:
+        # Parse documents JSON
+        import json
+        documents = json.loads(documents_json)
+        if not isinstance(documents, list):
+            return jsonify({"error": "Documents must be a JSON array"}), 400
+    except (json.JSONDecodeError, ValueError) as e:
+        return jsonify({"error": f"Invalid JSON in documents: {e}"}), 400
+    
+    # Get the reranking handler
+    handler = RerankingMethodRegistry.get_handler(base_method)
+    
+    # Check for custom provider if not found in built-in methods
+    if not handler and base_method.startswith("__custom/"):
+        provider_name = base_method[len("__custom/"):]
+        entry = ProviderRegistry.get(provider_name)
+        if entry and entry.get("func"):
+            handler = entry["func"]
+    
+    if not handler:
+        return jsonify({"error": f"Unsupported reranking method: {base_method}"}), 400
+    
+    # Extract additional settings from form data
+    settings = {}
+    known_int_params = {"top_k", "batch_size", "max_chunks_per_doc", "preserve_top_k", "k_param"}
+    known_float_params = {"lambda_param", "diversity_threshold"}
+    known_bool_params = {"normalize_scores"}
+    
+    for key, value in request.form.items():
+        if key not in ["baseMethod", "documents", "query"]:
+            try:
+                if key in known_int_params:
+                    settings[key] = int(value)
+                elif key in known_float_params:
+                    settings[key] = float(value)
+                elif key in known_bool_params:
+                    settings[key] = value.lower() in ['true', '1', 't', 'y', 'yes']
+                else:
+                    settings[key] = value  # Keep as string if type unknown
+            except (ValueError, TypeError):
+                print(f"Warning: Could not convert setting '{key}' with value '{value}' to expected type. Using raw value.", file=sys.stderr)
+                settings[key] = value  # Fallback to string if conversion fails
+    
+    try:
+        # Call the reranking handler
+        reranked_results = handler(documents, query, **settings)
+        return jsonify({"reranked_documents": reranked_results}), 200
+        
+    except ValueError as ve:
+        print(f"Configuration or setup error during reranking ({base_method}): {ve}", file=sys.stderr)
+        return jsonify({"error": f"Setup error: {ve}"}), 400
+    except ImportError as ie:
+        print(f"Import error during reranking ({base_method}): {ie}", file=sys.stderr)
+        return jsonify({"error": f"Missing library dependency: {ie.name}"}), 500
+    except Exception as e:
+        print(f"Unexpected error during reranking ({base_method}): {e}", file=sys.stderr)
+        return jsonify({"error": "An internal error occurred during reranking."}), 500
 
 
 @app.route('/api/proxyImage', methods=['GET'])

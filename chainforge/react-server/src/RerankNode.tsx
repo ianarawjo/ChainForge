@@ -168,6 +168,10 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
             // Add query if available
             if (query) {
               formData.append("query", query);
+            } else {
+              console.warn(
+                `Warning: No query found when preparing payload for reranking with method ${method.name}. Proceeding without 'query' component. Results will be suboptimal.`,
+              );
             }
 
             // Add the user settings
