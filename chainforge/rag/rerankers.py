@@ -144,7 +144,7 @@ def cohere_rerank(documents: List[str], query: str = "", **kwargs: Any) -> List[
     
     try:
         # Initialize Cohere client
-        co = cohere.Client(api_key)
+        co = cohere.ClientV2(api_key)
         
         # Limit documents if too many
         docs_to_rerank = documents[:max_chunks_per_doc * top_k] if len(documents) > max_chunks_per_doc * top_k else documents
@@ -154,7 +154,7 @@ def cohere_rerank(documents: List[str], query: str = "", **kwargs: Any) -> List[
             model=model_name,
             query=query,
             documents=docs_to_rerank,
-            top_k=top_k
+            top_n=top_k
         )
         
         # Format results
