@@ -113,7 +113,7 @@ export const CohereRerankSchema: ModelSettingsDict = {
         default: 5,
         title: "Top K Results",
         minimum: 1,
-        maximum: 1000,
+        maximum: 100,
         description: "Number of top documents to return after reranking",
       },
       max_chunks_per_doc: {

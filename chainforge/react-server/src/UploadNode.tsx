@@ -45,7 +45,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
   const [fields, setFields] = useState<TemplateVarInfo[]>(data.fields || []);
   const [status, setStatus] = useState<Status>(Status.READY);
 
-  const [fileListCollapsed, setFileListCollapsed] = useState(true);
+  const [fileListCollapsed, setFileListCollapsed] = useState(data.fields && data.fields.length > 0 ? false : true);
   const toggleFileList = () => setFileListCollapsed((prev) => !prev);
 
   const showAlert = useContext(AlertModalContext);

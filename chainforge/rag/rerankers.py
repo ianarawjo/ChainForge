@@ -1,6 +1,5 @@
 import sys
 from typing import List, Dict, Any, Callable, Union
-import numpy as np
 
 # === Reranking Registry ===
 class RerankingMethodRegistry:

@@ -6,6 +6,7 @@ import React, {
   useContext,
 } from "react";
 import { Handle, Position } from "reactflow";
+import { Badge } from "@mantine/core";
 import { Status } from "./StatusIndicatorComponent";
 import { AlertModalContext } from "./AlertModal";
 import BaseNode from "./BaseNode";
@@ -26,6 +27,30 @@ import { TemplateVarInfo, LLMResponse } from "./backend/typing";
 import { StringLookup } from "./backend/cache";
 import { FLASK_BASE_URL } from "./backend/utils";
 import { v4 as uuid } from "uuid";
+
+// Constants for handle positioning and styling
+const HANDLE_Y_START = 60; // Adjust this value to move the first handle up/down
+const HANDLE_Y_GAP = 30; // Adjust this value for spacing between handles
+const HANDLE_X_OFFSET = "-14px"; // Nudge handle horizontally if needed (ReactFlow default is centered)
+
+const handleStyle: React.CSSProperties = {
+  background: "#555",
+  position: "absolute", // Necessary for precise positioning relative to wrapper
+  left: HANDLE_X_OFFSET,
+};
+const badgeStyle: React.CSSProperties = { textTransform: "none" };
+const handleWrapperBaseStyle: React.CSSProperties = {
+  // Common style for the div wrapping Badge + Handle
+  position: "absolute",
+  left: "10px", // Padding from the node's left edge
+  display: "flex",
+  alignItems: "center", // Vertically align Badge and Handle dot
+  height: "20px", // Define height for alignment reference
+};
+const badgeWrapperStyle: React.CSSProperties = {
+  // Style for the div specifically containing the Badge
+  marginRight: "8px", // Space between Badge and Handle dot
+};
 
 interface RerankNodeProps {
   data: {
@@ -73,13 +98,6 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
     [id, status, setDataPropsForNode],
   );
 
-  // Truncate string helper
-  const truncateString = (str: string, maxLen = 25): string => {
-    if (!str) return "";
-    if (str.length <= maxLen) return str;
-    return `${str.slice(0, 12)}...${str.slice(-10)}`;
-  };
-
   // The main reranking function
   const runReranking = useCallback(async () => {
     const handleError = (msg: string, err?: any) => {
@@ -125,6 +143,18 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
       return;
     }
 
+    // Validate that documents have valid text
+    const validDocuments = documentsArr.filter(
+      (doc) => doc && doc.text && StringLookup.get(doc.text),
+    );
+
+    if (validDocuments.length === 0) {
+      handleError(
+        "No valid documents with text found. Please check your input data.",
+      );
+      return;
+    }
+
     setStatus(Status.LOADING);
     setJSONResponses([]);
 
@@ -152,7 +182,10 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
       const queriesToProcess = queryArr.length > 0 ? queryArr : [null];
 
       for (const queryInfo of queriesToProcess) {
-        const query = queryInfo ? StringLookup.get(queryInfo.text) || "" : "";
+        const query =
+          queryInfo && queryInfo.text
+            ? StringLookup.get(queryInfo.text) || ""
+            : "";
 
         for (const method of methods) {
           try {
@@ -160,7 +193,7 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
             formData.append("baseMethod", method.baseMethod);
 
             // Add documents as a JSON array
-            const documents = documentsArr.map(
+            const documents = validDocuments.map(
               (doc) => StringLookup.get(doc.text) || "",
             );
             formData.append("documents", JSON.stringify(documents));
@@ -223,14 +256,14 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
               // Create the reranked document object
               const rerankVar: TemplateVarInfo = {
                 text: resultText,
-                prompt: "",
+                prompt: query || "N/A",
                 fill_history: {
                   rerankMethod: `${method.methodType} (${method.name})`,
                   query: query || "N/A",
-                  originalRank: String(index),
+                  originalRank: index,
                   score: String(score),
                 },
-                llm: undefined,
+                llm: method.name,
                 metavars: {
                   query: query || "N/A",
                   rerankMethod: method.methodType,
@@ -251,7 +284,7 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
                   score: String(score.toFixed(3)),
                 },
                 responses: [resultText],
-                llm: name,
+                llm: method.name,
                 metavars: rerankVar.metavars || {},
               };
 
@@ -313,18 +346,40 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
 
   return (
     <BaseNode nodeId={id} classNames="rerank-node">
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="chunks"
-        style={{ top: "40%" }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="query"
-        style={{ top: "60%" }}
-      />
+      {/* Labeled Handle for 'chunks' */}
+      <div style={{ ...handleWrapperBaseStyle, top: `${HANDLE_Y_START}px` }}>
+        <div style={badgeWrapperStyle}>
+          <Badge color="green" size="md" radius="sm" style={badgeStyle}>
+            chunks
+          </Badge>
+        </div>
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="chunks"
+          style={handleStyle}
+        />
+      </div>
+
+      {/* Labeled Handle for 'query' */}
+      <div
+        style={{
+          ...handleWrapperBaseStyle,
+          top: `${HANDLE_Y_START + HANDLE_Y_GAP}px`,
+        }}
+      >
+        <div style={badgeWrapperStyle}>
+          <Badge color="indigo" size="md" radius="sm" style={badgeStyle}>
+            query
+          </Badge>
+        </div>
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="query"
+          style={handleStyle}
+        />
+      </div>
 
       <NodeLabel
         title={data.title || nodeDefaultTitle}
