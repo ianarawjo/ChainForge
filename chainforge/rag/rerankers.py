@@ -109,6 +109,7 @@ def cohere_rerank(documents: List[str], query: str = "", **kwargs: Any) -> List[
             - model: Cohere model name (e.g., 'rerank-v3.5')
             - top_k: Number of top documents to return
             - max_chunks_per_doc: Maximum chunks per document
+            - api_keys: Dictionary containing API keys (optional)
     
     Returns:
         List of dictionaries with 'document', 'score', and 'index' keys
@@ -135,12 +136,13 @@ def cohere_rerank(documents: List[str], query: str = "", **kwargs: Any) -> List[
     model_name = kwargs.get("model", "rerank-v3.5")
     top_k = int(kwargs.get("top_k", min(5, len(documents))))
     max_chunks_per_doc = int(kwargs.get("max_chunks_per_doc", 10))
+    api_keys = kwargs.get("api_keys")
     
-    # Get API key from environment
+    # Get API key from api_keys parameter or environment
     import os
-    api_key = os.getenv("COHERE_API_KEY")
+    api_key = api_keys and api_keys.get("Cohere") or os.getenv("COHERE_API_KEY")
     if not api_key:
-        raise ValueError("COHERE_API_KEY environment variable is required for Cohere reranking")
+        raise ValueError("Cohere API key not found in api_keys parameter or COHERE_API_KEY environment variable")
     
     try:
         # Initialize Cohere client

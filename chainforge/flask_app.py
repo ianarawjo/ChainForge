@@ -521,6 +521,29 @@ def fetchEnvironAPIKeys():
     return ret
 
 
+@app.route('/app/checkRagAvailable', methods=['POST'])
+def checkRagAvailable():
+    """
+    Check if RAG dependencies are available.
+    Returns True if all required RAG packages are installed, False otherwise.
+    """
+    try:
+        # Try importing key RAG dependencies
+        import sentence_transformers  # noqa: F401
+        import chromadb  # noqa: F401
+        from chainforge.rag import retrievers, rerankers, embeddings  # noqa: F401
+        
+        # If we get here, all imports succeeded
+        rag_available = True
+    except ImportError:
+        # One or more RAG dependencies are missing
+        rag_available = False
+    
+    ret = jsonify({"rag_available": rag_available})
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
+
+
 @app.route('/app/makeFetchCall', methods=['POST'])
 def makeFetchCall():
     """
@@ -1723,6 +1746,7 @@ def rerank():
     - baseMethod: The reranking method identifier (e.g., "cross_encoder", "cohere_rerank")
     - documents: JSON array of document texts to rerank
     - query: Query text for relevance scoring (optional)
+    - api_keys: JSON object containing API keys (optional)
     - Additional method-specific settings as form fields
     
     Returns:
@@ -1735,6 +1759,7 @@ def rerank():
     base_method = request.form.get("baseMethod")
     documents_json = request.form.get("documents")
     query = request.form.get("query", "")
+    api_keys_json = request.form.get("api_keys", "{}")
     
     if not base_method:
         return jsonify({"error": "Missing 'baseMethod' in form data"}), 400
@@ -1749,6 +1774,14 @@ def rerank():
             return jsonify({"error": "Documents must be a JSON array"}), 400
     except (json.JSONDecodeError, ValueError) as e:
         return jsonify({"error": f"Invalid JSON in documents: {e}"}), 400
+    
+    # Parse api_keys JSON
+    try:
+        api_keys = json.loads(api_keys_json) if api_keys_json else {}
+        if not isinstance(api_keys, dict):
+            return jsonify({"error": "api_keys must be a JSON object"}), 400
+    except (json.JSONDecodeError, ValueError) as e:
+        return jsonify({"error": f"Invalid JSON in api_keys: {e}"}), 400
     
     # Get the reranking handler
     handler = RerankingMethodRegistry.get_handler(base_method)
@@ -1770,7 +1803,7 @@ def rerank():
     known_bool_params = {"normalize_scores"}
     
     for key, value in request.form.items():
-        if key not in ["baseMethod", "documents", "query"]:
+        if key not in ["baseMethod", "documents", "query", "api_keys"]:
             try:
                 if key in known_int_params:
                     settings[key] = int(value)
@@ -1783,6 +1816,10 @@ def rerank():
             except (ValueError, TypeError):
                 print(f"Warning: Could not convert setting '{key}' with value '{value}' to expected type. Using raw value.", file=sys.stderr)
                 settings[key] = value  # Fallback to string if conversion fails
+    
+    # Add api_keys to settings
+    if api_keys:
+        settings['api_keys'] = api_keys
     
     try:
         # Call the reranking handler

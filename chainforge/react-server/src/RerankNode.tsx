@@ -68,6 +68,7 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
   const pullInputData = useStore((s) => s.pullInputData);
   const setDataPropsForNode = useStore((s) => s.setDataPropsForNode);
   const pingOutputNodes = useStore((s) => s.pingOutputNodes);
+  const apiKeys = useStore((s) => s.apiKeys);
 
   const showAlert = useContext(AlertModalContext);
 
@@ -211,6 +212,11 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
             Object.entries(method.settings ?? {}).forEach(([k, v]) => {
               formData.append(k, String(v));
             });
+
+            // Add API keys
+            if (apiKeys) {
+              formData.append("api_keys", JSON.stringify(apiKeys));
+            }
 
             const res = await fetch(`${FLASK_BASE_URL}/rerank`, {
               method: "POST",

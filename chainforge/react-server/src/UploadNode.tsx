@@ -7,7 +7,6 @@ import React, {
   useContext,
 } from "react";
 import { Handle, Position } from "reactflow";
-import { v4 as uuid } from "uuid";
 import {
   Button,
   Group,
@@ -25,7 +24,6 @@ import NodeLabel from "./NodeLabelComponent";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import { TemplateVarInfo } from "./backend/typing";
-import { FLASK_BASE_URL } from "./backend/utils";
 import { MediaLookup } from "./backend/cache";
 
 interface UploadNodeProps {
@@ -45,7 +43,9 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
   const [fields, setFields] = useState<TemplateVarInfo[]>(data.fields || []);
   const [status, setStatus] = useState<Status>(Status.READY);
 
-  const [fileListCollapsed, setFileListCollapsed] = useState(data.fields && data.fields.length > 0 ? false : true);
+  const [fileListCollapsed, setFileListCollapsed] = useState(
+    !(data.fields && data.fields.length > 0),
+  );
   const toggleFileList = () => setFileListCollapsed((prev) => !prev);
 
   const showAlert = useContext(AlertModalContext);
