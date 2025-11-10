@@ -581,8 +581,14 @@ const ExampleFlowsModal = forwardRef<
             />
             <ExampleFlowCard
               title="📖 ChainForge Docs Q&A"
-              description="Upload the ChainForge Markdown docs and ask any question—gets you the exact section of the docs."
+              description="Upload the ChainForge Markdown docs and ask questions about their content."
               filename="chainforge-docs.cfzip"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="Book Q&A over RAG"
+              description="Upload a book and ask questions to retrieve relevant sections using RAG."
+              filename="rag-example-flow3.cfzip"
               onSelect={onSelect}
             />
           </SimpleGrid>

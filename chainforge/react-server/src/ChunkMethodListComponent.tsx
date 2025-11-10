@@ -15,6 +15,7 @@ import { ChunkMethodSchemas, ChunkMethodGroups } from "./ChunkMethodSchemas";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 import LLMItemButtonGroup from "./LLMItemButtonGroup";
 import useStore from "./store";
+import { ensureUniqueName } from "./backend/utils";
 
 export interface ChunkMethodSpec {
   key: string;
@@ -174,11 +175,15 @@ const ChunkMethodListContainer = forwardRef<
 
   const addMethod = useCallback(
     (m: Omit<ChunkMethodSpec, "key" | "settings">) => {
+      const uniqueName = ensureUniqueName(m.name, methodItems.map(
+              (i) => i.settings?.shortname || i.name
+            ));
+            
       const newItem: ChunkMethodSpec = {
         key: uuid(),
         baseMethod: m.baseMethod,
         methodType: m.methodType,
-        name: m.name,
+        name: uniqueName,
         emoji: m.emoji,
         settings: {},
       };

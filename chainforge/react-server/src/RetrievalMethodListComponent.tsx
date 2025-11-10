@@ -5,6 +5,7 @@ import React, {
   useImperativeHandle,
   useCallback,
   useMemo,
+  useEffect,
 } from "react";
 import {
   Menu,
@@ -43,6 +44,7 @@ import {
 import useStore from "./store";
 import { DatalistWidget } from "./ModelSettingsModal";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
+import { ensureUniqueName } from "./backend/utils";
 
 /** Linked group of methods with fusion settings */
 export interface LinkedMethodGroup {
@@ -269,6 +271,48 @@ const FusionSettingsModal: React.FC<FusionSettingsModalProps> = ({
     onFusionMethodChange(group.id, newMethod, defaultSettings);
   };
 
+// labels
+const methodLabels = groupMethods.map(m => m.settings?.shortName || m.methodName);
+
+// build strings so text inputs can go empty
+const weightsFormData = React.useMemo(() => {
+  const src = Array.isArray(group.fusionSettings?.weights) ? group.fusionSettings!.weights : [];
+  return Object.fromEntries(methodLabels.map((label, i) => {
+    const x = src[i];
+    const v = typeof x === "number" && Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 1;
+    return [label, String(v)];
+  }));
+}, [methodLabels, group.fusionSettings?.weights]);
+
+const [weightsDraftObj, setWeightsDraftObj] = React.useState<Record<string, string>>(() => weightsFormData as any);
+
+React.useEffect(() => { setWeightsDraftObj(weightsFormData as any); }, [
+  opened, group.id, methodLabels.length, group.fusionSettings?.weights
+]);
+
+function commitWeightsFromDraftObj(fd: Record<string, any>) {
+  const arr = methodLabels.map(label => {
+    const raw = fd?.[label];
+    const v = typeof raw === "number" ? raw : (typeof raw === "string" && raw.trim() !== "" ? Number(raw) : 1);
+    return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1;
+  });
+  onSettingsUpdate({ ...group.fusionSettings, weights: arr });
+}
+
+const [kDraft, setKDraft] = React.useState<string>(String(group.fusionSettings?.k ?? 60));
+React.useEffect(() => { setKDraft(String(group.fusionSettings?.k ?? 60)); }, [group.fusionSettings?.k]);
+
+function commitKFromDraft(draft: string) {
+  const n = Number(draft);
+  const clamped = Number.isFinite(n) ? Math.min(10000, Math.max(1, n)) : 60;
+  onSettingsUpdate({ ...group.fusionSettings, k: clamped });
+  setKDraft(String(clamped));
+}
+
+const VALID_0_TO_1_DRAFT = /^$|^0(\.\d*)?$|^1(\.0*)?$/;
+const isValid01Draft = (s: string) => VALID_0_TO_1_DRAFT.test(s.trim());
+
+
   return (
     <Modal
       opened={opened}
@@ -321,14 +365,81 @@ const FusionSettingsModal: React.FC<FusionSettingsModalProps> = ({
             <Text size="sm" weight={500} mb="xs">
               Settings:
             </Text>
-            <Form<any, RJSFSchema, any>
-              schema={fusionMethod.schema as any}
-              validator={validator}
-              formData={group.fusionSettings}
-              onChange={(e) => onSettingsUpdate(e.formData)}
-            >
-              <Button type="submit" style={{ display: "none" }} />
-            </Form>
+
+            {/* K Parameter */}
+            {group.fusionMethod === "reciprocal_rank_fusion" && (
+              <Box mt="md">
+                <Text size="sm" weight={600} mb={4}>
+                  K Parameter
+                </Text>
+                <Text size="xs" color="dimmed" mb="sm">
+                  Parameter for RRF formula (higher = more democratic)
+                </Text>
+
+                <input
+                  className="form-control"
+                  type="text"
+                  inputMode="decimal"
+                  value={kDraft}
+                  onChange={(e) => setKDraft(e.target.value)}   // allow empty while typing
+                  onBlur={(e) => commitKFromDraft(e.target.value)}
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "8px",
+                    borderRadius: 4,
+                    border: "1px solid #ccc",
+                    fontSize: 14,
+                  }}
+                />
+              </Box>
+            )}
+            {group.fusionMethod !== "reciprocal_rank_fusion" && <Divider my="md" color="gray.3" />}
+
+            <Box mt="md">
+              <Text size="sm" weight={600} mb={4}>
+                Method Weights
+              </Text>
+              <Text size="xs" color="dimmed" mb="sm">
+                Set a weight per method (0–1). <b>1 = equal weight</b>, 0 effectively mutes the method.
+              </Text>
+
+              {methodLabels.map((label, i) => (
+                <Box key={label} mt="sm">
+                  {/* match RJSF’s field label look */}
+                  <Text size="sm" weight={600} mb={4}>
+                    {label}
+                  </Text>
+
+                  <input
+                    className="form-control"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0–1"
+                    value={weightsDraftObj[label] ?? ""}        // can be "" while typing
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      if (!isValid01Draft(next)) return;           // reject invalid keystrokes
+                      setWeightsDraftObj((prev) => ({ ...prev, [label]: next }));
+                    }}
+                    onBlur={(e) => {
+                      // clamp & commit whole object; will snap invalid/empty to 1
+                      commitWeightsFromDraftObj({ ...weightsDraftObj, [label]: e.target.value });
+                    }}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "8px",
+                      borderRadius: 4,
+                      border: "1px solid #ccc",
+                      fontSize: 14,
+                    }}
+                  />
+
+                  {i < methodLabels.length - 1 && <Divider mt="sm" color="gray.2" />}
+                </Box>
+              ))}
+            </Box>
           </Box>
         )}
       </Stack>
@@ -393,7 +504,7 @@ const RetrievalMethodListItem: React.FC<
         {/* Title (left) */}
         <div className="llm-card-header">
           {methodItem.emoji && `${methodItem.emoji} `}
-          {methodItem.settings?.shortName?.trim() || methodItem.methodName}
+          {methodItem.settings?.shortName || methodItem.methodName}
         </div>
 
         {/* Actions (right) */}
@@ -414,7 +525,7 @@ const RetrievalMethodListItem: React.FC<
               size="sm"
               variant="subtle"
               color="green"
-              onClick={onLink}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLink(); }}
               title="Link with next method"
             >
               <IconLink size={14} />
@@ -472,6 +583,7 @@ const RetrievalMethodListItem: React.FC<
 /** Main container */
 export interface RetrievalMethodListContainerProps {
   initMethodItems?: RetrievalMethodSpec[];
+  onGroupsChange?: (groups: LinkedMethodGroup[]) => void;
   onItemsChange?: (
     newItems: RetrievalMethodSpec[],
     oldItems: RetrievalMethodSpec[],
@@ -486,6 +598,10 @@ export const RetrievalMethodListContainer = forwardRef<
     props.initMethodItems || [],
   );
   const [linkedGroups, setLinkedGroups] = useState<LinkedMethodGroup[]>([]);
+  useEffect(() => {
+    props.onGroupsChange?.(linkedGroups);
+  }, [linkedGroups]);
+
   const [fusionModalGroup, setFusionModalGroup] =
     useState<LinkedMethodGroup | null>(null);
   const oldItemsRef = useRef<RetrievalMethodSpec[]>(methodItems);
@@ -547,11 +663,13 @@ export const RetrievalMethodListContainer = forwardRef<
 
       let defaultSettings: Record<string, any> = {};
 
+      const uniqueName = ensureUniqueName(m.methodName, methodItems.map(
+        (i) => i.settings?.shortName || i.methodName
+      ));
+
       if (isCustom) {
         // Pull defaults from normalized custom schema
         defaultSettings = defaultsFromCustomSchema(m.settingsSchema);
-        if (!("shortName" in defaultSettings))
-          defaultSettings.shortName = m.methodName;
       } else {
         const methodSchema = RetrievalMethodSchemas[m.baseMethod];
         if (methodSchema?.schema?.properties) {
@@ -568,11 +686,12 @@ export const RetrievalMethodListContainer = forwardRef<
           defaultSettings.embeddingModel = provider.models[0];
         }
       }
+      defaultSettings.shortName = uniqueName;
 
       const newItem: RetrievalMethodSpec = {
         key: uuid(),
         baseMethod: m.baseMethod,
-        methodName: m.methodName,
+        methodName: uniqueName,
         library: m.library,
         emoji: m.emoji,
         needsEmbeddingModel: m.needsEmbeddingModel,

@@ -22,6 +22,7 @@ import RetrievalMethodListContainer, {
 } from "./RetrievalMethodListComponent";
 import { LLMResponse, TemplateVarInfo } from "./backend/typing";
 import { FLASK_BASE_URL } from "./backend/utils";
+import type { LinkedMethodGroup } from "./RetrievalMethodListComponent";
 
 interface RetrievalNodeProps {
   id: string;
@@ -79,6 +80,10 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
     data.results || {},
   );
   const [jsonResponses, setJsonResponses] = useState<LLMResponse[]>([]);
+
+  // Fusion            // wire to the Fusion button
+  const [linkedGroups, setLinkedGroups] = useState<LinkedMethodGroup[]>([]);
+  const fusionOn = (linkedGroups?.length ?? 0) > 0;
 
   // Refs
   const inspectorModalRef = useRef<LLMResponseInspectorModalRef>(null);
@@ -155,6 +160,8 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
           chunks: inputData.chunks,
           queries: inputData.queries,
           api_keys: apiKeys,
+          fusion_enabled: fusionOn,
+          linked_groups: fusionOn ? linkedGroups : [],
         }),
       });
 
@@ -165,10 +172,24 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       // The response is now a flat array of objects
       const retrievalResults = await response.json();
 
-      console.warn("Retrieval results:", retrievalResults);
+      // --- Hide individual members of fused groups; keep only the fused column ---
+      const fusedMemberIds = new Set(
+        (linkedGroups || []).flatMap(g => g.methodKeys || [])
+      );
+
+      const filteredResults = (linkedGroups.length > 0)
+        ? retrievalResults.filter((r: any) => {
+            const mid = r?.metavars?.methodId;
+            if (!mid) return true;
+            if (typeof mid === "string" && mid.startsWith("group:")) return true; // fused rows
+            return !fusedMemberIds.has(mid); // drop members of fused groups
+          })
+        : retrievalResults;
+
+      console.warn("Retrieval results:", filteredResults);
 
       // Convert to proper LLMResponse objects
-      const llmResponses: LLMResponse[] = retrievalResults.map(
+      const llmResponses: LLMResponse[] = filteredResults.map(
         (result: any) => ({
           uid: result.uid || `retrieval-${Date.now()}-${Math.random()}`,
           prompt: result.prompt,
@@ -188,7 +209,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       const resultsByMethod: Record<string, any> = {};
 
       // Process each result to organize by method
-      retrievalResults.forEach((result: any) => {
+      filteredResults.forEach((result: any) => {
         // Extract method info using nullish coalescing for safety
         const methodId = result.metavars?.methodId ?? "unknown_method";
 
@@ -222,7 +243,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       // Update results state
       setResults(resultsByMethod);
 
-      const outputForDownstream: TemplateVarInfo[] = retrievalResults.map(
+      const outputForDownstream: TemplateVarInfo[] = filteredResults.map(
         (result: any) => ({
           text: result.text,
           prompt: result.prompt,
@@ -256,6 +277,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
     pingOutputNodes,
     showAlert,
     apiKeys,
+    linkedGroups,
   ]);
 
   // Update stored data when methods change
@@ -320,6 +342,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
           <RetrievalMethodListContainer
             initMethodItems={methodItems}
             onItemsChange={handleMethodsChange}
+            onGroupsChange={setLinkedGroups}
           />
         </div>
       </div>
