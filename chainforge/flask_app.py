@@ -36,7 +36,7 @@ RAG_AVAILABLE = IS_RAG_AVAILABLE()
 if RAG_AVAILABLE:
     from chainforge.rag.chunkers import ChunkingMethodRegistry
     from chainforge.rag.retrievers import RetrievalMethodRegistry
-    from chainforge.rag.rerankers import RerankingMethodRegistry
+    from chainforge.rag.rerankers import RerankingMethodRegistry, rrf_fuse, weighted_avg_fuse
     from chainforge.rag.embeddings import EmbeddingMethodRegistry
     from markitdown import MarkItDown
 
@@ -1091,7 +1091,7 @@ def media_to_text(uid):
     try:
         ext = os.path.splitext(file_path)[1].lower()
 
-        allowed_extensions = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".pptx"}
+        allowed_extensions = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".pptx", ".md"}
         if ext == '.txt':
             # Read text files directly
             with open(file_path, 'rb') as f:
@@ -1667,7 +1667,7 @@ def retrieve():
                         }
 
                         if fusion_enabled:
-                            doc_id = chunk.get("chunkId") or f"id:{hash(chunk['text'])}"
+                            doc_id = chunk.get("chunkId");
                             score = float(chunk.get("similarity", 0.0))
                             rank = i + 1
                             query_txt = query_object['text']
@@ -1757,7 +1757,7 @@ def retrieve():
                             }
 
                             if fusion_enabled:
-                                doc_id = chunk.get("chunkId") or f"id:{hash(chunk['text'])}"
+                                doc_id = chunk.get("chunkId");
                                 score = float(chunk.get("similarity", 0.0))
                                 rank = i + 1
                                 query_txt = query_object['text']
@@ -1768,70 +1768,7 @@ def retrieve():
                 except Exception as e:
                     print(f"Error with {method_name} on {chunk_method}: {str(e)}")
                     continue
-
-    def _normalize_rank(items, c=60):
-        out = {}
-        for it in items:
-            r = int(it["rank"])
-            out[it["doc_id"]] = 1.0 / (r + c)
-        return out
-
-    def _normalize_minmax(items, eps=1e-9):
-        if not items: return {}
-        vals = [float(it["score"]) for it in items]
-        lo, hi = min(vals), max(vals)
-        denom = (hi - lo) + eps
-        return {it["doc_id"]: (float(it["score"]) - lo) / denom for it in items}
-
-    def _best_obj_for_doc(method_lists, doc_id):
-        best_mid, best_rank = None, 10**9
-        for mid, items in method_lists.items():
-            for it in items:
-                if it["doc_id"] == doc_id and it["rank"] < best_rank:
-                    best_rank, best_mid = it["rank"], mid
-        for it in method_lists[best_mid]:
-            if it["doc_id"] == doc_id:
-                return it["obj"]
-        return None
-
-    def weighted_avg_fuse(method_lists, weights_by_method=None, norm="rank", rank_c=60):
-        weights_by_method = weights_by_method or {}
-        per_method_norm = {mid: (_normalize_minmax(items) if norm == "minmax" else _normalize_rank(items, c=rank_c))
-                        for mid, items in method_lists.items()}
-        all_doc_ids = set().union(*[d.keys() for d in per_method_norm.values()]) if per_method_norm else set()
-        fused_scores = {}
-        for d in all_doc_ids:
-            s = 0.0
-            for mid, nm in per_method_norm.items():
-                w = float(weights_by_method.get(mid, 1.0))
-                s += w * nm.get(d, 0.0)
-            fused_scores[d] = s
-        fused = []
-        for d, s in fused_scores.items():
-            base_obj = _best_obj_for_doc(method_lists, d)
-            fused.append((d, s, base_obj))
-        fused.sort(key=lambda x: (-x[1], x[0]))
-        return fused
-
-    def rrf_fuse(method_lists, k=60, weights_by_method=None):
-        weights_by_method = weights_by_method or {}
-        rank_maps = {mid: {it["doc_id"]: it["rank"] for it in items} for mid, items in method_lists.items()}
-        all_docs = set().union(*[set(map(lambda it: it["doc_id"], items)) for items in method_lists.values()]) if method_lists else set()
-        fused = []
-        for d in all_docs:
-            score, contributors = 0.0, []
-            for mid, rmap in rank_maps.items():
-                r = rmap.get(d)
-                if r is not None:
-                    w = float(weights_by_method.get(mid, 1.0))
-                    score += w * (1.0 / (k + r))
-                    contributors.append(mid)
-            best_mid = min(contributors, key=lambda m: rank_maps[m][d])
-            best_obj = next(it["obj"] for it in method_lists[best_mid] if it["doc_id"] == d)
-            fused.append((d, score, best_obj))
-        fused.sort(key=lambda x: (-x[1], x[0]))
-        return fused
-
+    # === Retrieval Fusion (imported helpers) ===
     if fusion_enabled and linked_groups:
         for (query_txt, chunk_method), per_method in staging.items():
             groups = defaultdict(dict)
@@ -1840,9 +1777,9 @@ def retrieve():
                 if gid: groups[gid][mid] = items
             for gid, method_lists in groups.items():
                 cfg = group_cfg.get(gid, {})
-                fmethod = (cfg.get("fusionMethod") or "reciprocal_rank_fusion").lower()
+                fmethod = cfg.get("fusionMethod")
                 settings = cfg.get("fusionSettings") or {}
-                if fmethod in ("reciprocal_rank_fusion", "rrf"):
+                if fmethod in ("reciprocal_rank_fusion"): 
                     method_keys = (cfg.get("methodKeys") or [])
                     weights_arr = settings.get("weights") or []
                     weights_map = {mid: float(w) for i, mid in enumerate(method_keys)
@@ -1850,17 +1787,20 @@ def retrieve():
                     k_val = int(settings.get("k", settings.get("K", 60)))
                     fused = rrf_fuse(method_lists, k=k_val, weights_by_method=weights_map)
                     fusion_sig, fusion_name = "fusion:rrf", "rrf"
-                elif fmethod in ("weighted_average", "weighted", "wa"):
+                else: # Weighted Average
                     method_keys = (cfg.get("methodKeys") or [])
                     weights_arr = settings.get("weights") or []
-                    weights_map = {mid: float(w) for i, mid in enumerate(method_keys)
-                                for w in [weights_arr[i] if i < len(weights_arr) else None] if isinstance(w, (int, float))}
-                    norm = (settings.get("norm") or "rank").lower()
-                    k_like = int(settings.get("k", settings.get("K", 60)))
-                    fused = weighted_avg_fuse(method_lists, weights_by_method=weights_map, norm=norm, rank_c=k_like)
+                    weights_map = {
+                        mid: float(w)
+                        for i, mid in enumerate(method_keys)
+                        for w in [weights_arr[i] if i < len(weights_arr) else None]
+                        if isinstance(w, (int, float))
+                    }
+                    fused = weighted_avg_fuse(
+                        method_lists,
+                        weights_by_method=weights_map,
+                    )
                     fusion_sig, fusion_name = "fusion:weighted_average", "weighted_average"
-                else:
-                    continue
                 group_method_ids = [mid for mid in (cfg.get("methodKeys") or []) if mid in method_lists]
                 pretty_names = [method_name_by_id[mid] for mid in group_method_ids]
                 fused_label = f"Fused ({' + '.join(pretty_names)})"
@@ -1872,12 +1812,8 @@ def retrieve():
                         "methodId": f"group:{gid}",
                         "retrievalMethodSignature": fusion_sig,
                         "signature": f"{chunk_method}-FUSED-{gid}",
-                        "fusionGroupId": gid,
-                        "fusionScore": fused_score,
-                        "fusionMethod": fusion_name,
                     })
                     flat_results.append(obj)
-
     
     return jsonify(flat_results), 200
 

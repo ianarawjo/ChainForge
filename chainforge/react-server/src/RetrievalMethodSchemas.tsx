@@ -914,12 +914,6 @@ export const rankFusionMethods = [
         },
       },
     },
-    uiSchema: {
-      weights: {
-        "ui:options": { orderable: false },   // keep order fixed
-        items: { "ui:widget": "updown" },     // numeric stepper per item
-      },
-    },
   },
   {
     value: "weighted_average",

@@ -31,6 +31,7 @@ interface RetrievalNodeProps {
     methods?: RetrievalMethodSpec[];
     results?: Record<string, any>;
     refresh?: boolean;
+    linked_groups?: LinkedMethodGroup[];
   };
 }
 
@@ -174,17 +175,19 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
 
       // --- Hide individual members of fused groups; keep only the fused column ---
       const fusedMemberIds = new Set(
-        (linkedGroups || []).flatMap(g => g.methodKeys || [])
+        (linkedGroups || []).flatMap((g) => g.methodKeys || []),
       );
 
-      const filteredResults = (linkedGroups.length > 0)
-        ? retrievalResults.filter((r: any) => {
-            const mid = r?.metavars?.methodId;
-            if (!mid) return true;
-            if (typeof mid === "string" && mid.startsWith("group:")) return true; // fused rows
-            return !fusedMemberIds.has(mid); // drop members of fused groups
-          })
-        : retrievalResults;
+      const filteredResults =
+        linkedGroups.length > 0
+          ? retrievalResults.filter((r: any) => {
+              const mid = r?.metavars?.methodId;
+              if (!mid) return true;
+              if (typeof mid === "string" && mid.startsWith("group:"))
+                return true; // fused rows
+              return !fusedMemberIds.has(mid); // drop members of fused groups
+            })
+          : retrievalResults;
 
       console.warn("Retrieval results:", filteredResults);
 
@@ -340,9 +343,13 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         {/* Add margin top to push list below handles */}
         <div style={{ marginTop: `${HANDLE_Y_START + 1 * HANDLE_Y_GAP}px` }}>
           <RetrievalMethodListContainer
+            initLinkedGroups={data.linked_groups ?? []}
             initMethodItems={methodItems}
             onItemsChange={handleMethodsChange}
-            onGroupsChange={setLinkedGroups}
+            onGroupsChange={(groups) => {
+              setLinkedGroups(groups);
+              setDataPropsForNode(id, { linked_groups: groups });
+            }}
           />
         </div>
       </div>

@@ -1,5 +1,7 @@
 import sys
 from typing import List, Dict, Any, Callable, Union
+from collections import defaultdict
+import copy
 
 # === Reranking Registry ===
 class RerankingMethodRegistry:
@@ -174,3 +176,75 @@ def cohere_rerank(documents: List[str], query: str = "", **kwargs: Any) -> List[
     except Exception as e:
         print(f"Error in Cohere reranking: {e}", file=sys.stderr)
         raise
+
+# === Retrieval Fusion Methods ===
+
+def _best_obj_for_doc(method_lists, doc_id):
+    best_mid, best_rank = None, 10**9
+    for mid, items in method_lists.items():
+        for it in items:
+            if it["doc_id"] == doc_id and it["rank"] < best_rank:
+                best_rank, best_mid = it["rank"], mid
+    for it in method_lists[best_mid]:
+        if it["doc_id"] == doc_id:
+            return it["obj"]
+    return None
+
+def weighted_avg_fuse(method_lists, weights_by_method=None):
+    """Simple weighted average of raw sccores"""
+    weights_by_method = weights_by_method or {}
+
+    # gather all doc ids present in any method list
+    all_doc_ids = set()
+    for items in method_lists.values():
+        for it in items:
+            all_doc_ids.add(it["doc_id"])
+
+    # index raw scores by method -> doc_id -> score
+    raw_score = {
+        mid: {it["doc_id"]: float(it["score"]) for it in items}
+        for mid, items in method_lists.items()
+    }
+
+    fused_scores = {}
+    for d in all_doc_ids:
+        s = 0.0
+        for mid, scores in raw_score.items():
+            w = float(weights_by_method.get(mid, 1.0))
+            s += w * scores.get(d, 0.0)
+        fused_scores[d] = s
+
+    fused = []
+    for d, s in fused_scores.items():
+        base_obj = _best_obj_for_doc(method_lists, d)
+        fused.append((d, s, base_obj))
+    fused.sort(key=lambda x: (-x[1], x[0]))
+    return fused
+
+def rrf_fuse(method_lists, k=60, weights_by_method=None):
+    """RRF uses ranks with the 1/(k + rank) formula; weights apply per method."""
+    weights_by_method = weights_by_method or {}
+    rank_maps = {
+        mid: {it["doc_id"]: int(it["rank"]) for it in items}
+        for mid, items in method_lists.items()
+    }
+    all_docs = set()
+    for items in method_lists.values():
+        for it in items:
+            all_docs.add(it["doc_id"])
+
+    fused = []
+    for d in all_docs:
+        score, contributors = 0.0, []
+        for mid, rmap in rank_maps.items():
+            r = rmap.get(d)
+            if r is not None:
+                w = float(weights_by_method.get(mid, 1.0))
+                score += w * (1.0 / (k + r))
+                contributors.append(mid)
+        best_mid = min(contributors, key=lambda m: rank_maps[m][d])
+        best_obj = next(it["obj"] for it in method_lists[best_mid] if it["doc_id"] == d)
+        fused.append((d, score, best_obj))
+    fused.sort(key=lambda x: (-x[1], x[0]))
+    return fused
+

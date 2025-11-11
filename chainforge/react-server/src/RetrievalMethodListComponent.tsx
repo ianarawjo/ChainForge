@@ -271,46 +271,85 @@ const FusionSettingsModal: React.FC<FusionSettingsModalProps> = ({
     onFusionMethodChange(group.id, newMethod, defaultSettings);
   };
 
-// labels
-const methodLabels = groupMethods.map(m => m.settings?.shortName || m.methodName);
 
-// build strings so text inputs can go empty
-const weightsFormData = React.useMemo(() => {
-  const src = Array.isArray(group.fusionSettings?.weights) ? group.fusionSettings!.weights : [];
-  return Object.fromEntries(methodLabels.map((label, i) => {
-    const x = src[i];
-    const v = typeof x === "number" && Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 1;
-    return [label, String(v)];
-  }));
-}, [methodLabels, group.fusionSettings?.weights]);
+  const methodLabels = useMemo(
+    () => groupMethods.map(m => m.settings?.shortName || m.methodName),
+    [groupMethods]
+  );
+  const weightKeys = useMemo(
+    () => methodLabels.map((_, i) => `w_${i}`),
+    [methodLabels]
+  );
+  
+  // flags
+  const isRRF = fusionMethod?.value === "reciprocal_rank_fusion";
 
-const [weightsDraftObj, setWeightsDraftObj] = React.useState<Record<string, string>>(() => weightsFormData as any);
 
-React.useEffect(() => { setWeightsDraftObj(weightsFormData as any); }, [
-  opened, group.id, methodLabels.length, group.fusionSettings?.weights
-]);
+  // dynamic schema: k + one number field per method (titles = labels)
+  const dynamicSchema: RJSFSchema = useMemo(() => {
+    const props: Record<string, any> = {};
 
-function commitWeightsFromDraftObj(fd: Record<string, any>) {
-  const arr = methodLabels.map(label => {
-    const raw = fd?.[label];
-    const v = typeof raw === "number" ? raw : (typeof raw === "string" && raw.trim() !== "" ? Number(raw) : 1);
-    return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1;
+    if (isRRF) {
+      props.k = {
+        type: "number",
+        title: "K Parameter",
+        default: 60,
+        description: "Parameter for RRF formula (higher = more democratic)",
+      };
+    }
+
+    methodLabels.forEach((label, i) => {
+      props[`w_${i}`] = {
+        type: "number",
+        title: label,
+        description: "Set a weight per method (0–1). 1 = equal weight; 0 effectively mutes the method.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+      };
+    });
+
+    const order: string[] = [];
+    if (props.k) order.push("k");
+    order.push(...methodLabels.map((_, i) => `w_${i}`));
+
+    return { type: "object", properties: props, "ui:order": order } as any;
+  }, [isRRF, methodLabels])
+
+  const [formData, setFormData] = useState<any>(() => {
+    const fd: any = { k: group.fusionSettings?.k ?? 60 };
+    weightKeys.forEach((key, i) => {
+      const v = group.fusionSettings?.weights?.[i];
+      fd[key] = Number.isFinite(v) ? Math.min(1, Math.max(0, v as number)) : 1;
+    });
+    return fd;
   });
-  onSettingsUpdate({ ...group.fusionSettings, weights: arr });
-}
 
-const [kDraft, setKDraft] = React.useState<string>(String(group.fusionSettings?.k ?? 60));
-React.useEffect(() => { setKDraft(String(group.fusionSettings?.k ?? 60)); }, [group.fusionSettings?.k]);
+  useEffect(() => {
+    // refresh when opening different group / labels
+    const next: any = { k: group.fusionSettings?.k ?? 60 };
+    weightKeys.forEach((key, i) => {
+      const v = group.fusionSettings?.weights?.[i];
+      next[key] = Number.isFinite(v) ? Math.min(1, Math.max(0, v as number)) : 1;
+    });
+    setFormData(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened, group.id, weightKeys.join("|")]);
 
-function commitKFromDraft(draft: string) {
-  const n = Number(draft);
-  const clamped = Number.isFinite(n) ? Math.min(10000, Math.max(1, n)) : 60;
-  onSettingsUpdate({ ...group.fusionSettings, k: clamped });
-  setKDraft(String(clamped));
-}
+  const handleSubmit = (e: any) => {
+    const data = e.formData || {};
+    const weights = methodLabels.map((_, i) => {
+      const n = Number(data[`w_${i}`]);
+      return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 1;
+    });
 
-const VALID_0_TO_1_DRAFT = /^$|^0(\.\d*)?$|^1(\.0*)?$/;
-const isValid01Draft = (s: string) => VALID_0_TO_1_DRAFT.test(s.trim());
+    if (isRRF) { // k + weights
+      onSettingsUpdate({ k: Number(data.k ?? 60), weights });
+    } else {// weights only
+      onSettingsUpdate({ weights });
+    }
+    onClose();
+  };
 
 
   return (
@@ -366,80 +405,20 @@ const isValid01Draft = (s: string) => VALID_0_TO_1_DRAFT.test(s.trim());
               Settings:
             </Text>
 
-            {/* K Parameter */}
-            {group.fusionMethod === "reciprocal_rank_fusion" && (
-              <Box mt="md">
-                <Text size="sm" weight={600} mb={4}>
-                  K Parameter
-                </Text>
-                <Text size="xs" color="dimmed" mb="sm">
-                  Parameter for RRF formula (higher = more democratic)
-                </Text>
-
-                <input
-                  className="form-control"
-                  type="text"
-                  inputMode="decimal"
-                  value={kDraft}
-                  onChange={(e) => setKDraft(e.target.value)}   // allow empty while typing
-                  onBlur={(e) => commitKFromDraft(e.target.value)}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "8px",
-                    borderRadius: 4,
-                    border: "1px solid #ccc",
-                    fontSize: 14,
-                  }}
-                />
-              </Box>
-            )}
-            {group.fusionMethod !== "reciprocal_rank_fusion" && <Divider my="md" color="gray.3" />}
-
-            <Box mt="md">
-              <Text size="sm" weight={600} mb={4}>
-                Method Weights
-              </Text>
-              <Text size="xs" color="dimmed" mb="sm">
-                Set a weight per method (0–1). <b>1 = equal weight</b>, 0 effectively mutes the method.
-              </Text>
-
-              {methodLabels.map((label, i) => (
-                <Box key={label} mt="sm">
-                  {/* match RJSF’s field label look */}
-                  <Text size="sm" weight={600} mb={4}>
-                    {label}
-                  </Text>
-
-                  <input
-                    className="form-control"
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0–1"
-                    value={weightsDraftObj[label] ?? ""}        // can be "" while typing
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      if (!isValid01Draft(next)) return;           // reject invalid keystrokes
-                      setWeightsDraftObj((prev) => ({ ...prev, [label]: next }));
-                    }}
-                    onBlur={(e) => {
-                      // clamp & commit whole object; will snap invalid/empty to 1
-                      commitWeightsFromDraftObj({ ...weightsDraftObj, [label]: e.target.value });
-                    }}
-                    style={{
-                      width: "100%",
-                      boxSizing: "border-box",
-                      padding: "8px",
-                      borderRadius: 4,
-                      border: "1px solid #ccc",
-                      fontSize: 14,
-                    }}
-                  />
-
-                  {i < methodLabels.length - 1 && <Divider mt="sm" color="gray.2" />}
-                </Box>
-              ))}
-            </Box>
+            <Form<any, RJSFSchema, any>
+              schema={dynamicSchema}
+              validator={validator}
+              formData={formData}
+              noHtml5Validate
+              liveValidate
+              onChange={(e) => setFormData(e.formData)}  // local only while typing
+              onSubmit={handleSubmit}                    // commit once
+            >
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <Button variant="default" onClick={onClose} type="button">Cancel</Button>
+                <Button type="submit">Save</Button>
+              </div>
+            </Form>
           </Box>
         )}
       </Stack>
@@ -525,7 +504,7 @@ const RetrievalMethodListItem: React.FC<
               size="sm"
               variant="subtle"
               color="green"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLink(); }}
+              onClick={onLink}
               title="Link with next method"
             >
               <IconLink size={14} />
@@ -583,6 +562,7 @@ const RetrievalMethodListItem: React.FC<
 /** Main container */
 export interface RetrievalMethodListContainerProps {
   initMethodItems?: RetrievalMethodSpec[];
+  initLinkedGroups?: LinkedMethodGroup[];
   onGroupsChange?: (groups: LinkedMethodGroup[]) => void;
   onItemsChange?: (
     newItems: RetrievalMethodSpec[],
@@ -597,10 +577,7 @@ export const RetrievalMethodListContainer = forwardRef<
   const [methodItems, setMethodItems] = useState<RetrievalMethodSpec[]>(
     props.initMethodItems || [],
   );
-  const [linkedGroups, setLinkedGroups] = useState<LinkedMethodGroup[]>([]);
-  useEffect(() => {
-    props.onGroupsChange?.(linkedGroups);
-  }, [linkedGroups]);
+  const linkedGroups: LinkedMethodGroup[] = props.initLinkedGroups ?? [];
 
   const [fusionModalGroup, setFusionModalGroup] =
     useState<LinkedMethodGroup | null>(null);
@@ -730,7 +707,7 @@ export const RetrievalMethodListContainer = forwardRef<
         fusionSettings: { k: 60 },
       };
 
-      setLinkedGroups((prev) => [...prev, newGroup]);
+      props.onGroupsChange?.([...(linkedGroups || []), newGroup]);
 
       const newItems = methodItems.map((m) =>
         m.key === methodKey || m.key === nextMethod.key
@@ -745,7 +722,7 @@ export const RetrievalMethodListContainer = forwardRef<
 
   const handleUnlinkMethods = useCallback(
     (groupId: string) => {
-      setLinkedGroups((prev) => prev.filter((g) => g.id !== groupId));
+      props.onGroupsChange?.((linkedGroups || []).filter((g) => g.id !== groupId));
 
       const newItems = methodItems.map((m) =>
         m.groupId === groupId ? { ...m, groupId: undefined } : m,
@@ -758,27 +735,29 @@ export const RetrievalMethodListContainer = forwardRef<
 
   const handleFusionSettingsUpdate = useCallback(
     (groupId: string, settings: any) => {
-      setLinkedGroups((prev) =>
-        prev.map((g) =>
-          g.id === groupId ? { ...g, fusionSettings: settings } : g,
-        ),
+      // Update the source of truth
+      props.onGroupsChange?.(
+        (linkedGroups || []).map((g) =>
+          g.id === groupId ? { ...g, fusionSettings: settings } : g
+        )
+      );
+
+      //  Keep the modal's local state in lockstep so RJSF stays editable
+      setFusionModalGroup((prev) =>
+        prev && prev.id === groupId ? { ...prev, fusionSettings: settings } : prev
       );
     },
-    [],
+    [linkedGroups, props.onGroupsChange]
   );
 
   const handleFusionMethodChange = useCallback(
     (groupId: string, fusionMethod: string, defaultSettings: any) => {
-      setLinkedGroups((prev) =>
-        prev.map((g) =>
+      props.onGroupsChange?.(
+        (linkedGroups || []).map((g) =>
           g.id === groupId
-            ? {
-                ...g,
-                fusionMethod,
-                fusionSettings: defaultSettings,
-              }
-            : g,
-        ),
+            ? { ...g, fusionMethod, fusionSettings: defaultSettings }
+            : g
+        )
       );
       setFusionModalGroup((prev) =>
         prev
@@ -790,7 +769,7 @@ export const RetrievalMethodListContainer = forwardRef<
           : null,
       );
     },
-    [methodItems],
+    [linkedGroups, props.onGroupsChange]
   );
 
   const addMenuItems: NestedMenuItemProps[] = useMemo(() => {
@@ -879,12 +858,10 @@ export const RetrievalMethodListContainer = forwardRef<
           ) : (
             methodItems.map((item) => {
               const group = linkedGroups.find((g) => g.id === item.groupId);
+              const members = methodItems.filter((m) => m.groupId === group?.id);
               const isLinked = !!group;
-              const isFirstInGroup =
-                isLinked && group.methodKeys[0] === item.key;
-              const isLastInGroup =
-                isLinked &&
-                group.methodKeys[group.methodKeys.length - 1] === item.key;
+              const isFirstInGroup = isLinked && members[0]?.key === item.key;
+              const isLastInGroup  = isLinked && members[members.length - 1]?.key === item.key;
 
               return (
                 <RetrievalMethodListItem
