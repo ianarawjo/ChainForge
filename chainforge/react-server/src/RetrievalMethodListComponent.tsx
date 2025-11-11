@@ -271,19 +271,17 @@ const FusionSettingsModal: React.FC<FusionSettingsModalProps> = ({
     onFusionMethodChange(group.id, newMethod, defaultSettings);
   };
 
-
   const methodLabels = useMemo(
-    () => groupMethods.map(m => m.settings?.shortName || m.methodName),
-    [groupMethods]
+    () => groupMethods.map((m) => m.settings?.shortName || m.methodName),
+    [groupMethods],
   );
   const weightKeys = useMemo(
     () => methodLabels.map((_, i) => `w_${i}`),
-    [methodLabels]
+    [methodLabels],
   );
-  
+
   // flags
   const isRRF = fusionMethod?.value === "reciprocal_rank_fusion";
-
 
   // dynamic schema: k + one number field per method (titles = labels)
   const dynamicSchema: RJSFSchema = useMemo(() => {
@@ -302,7 +300,8 @@ const FusionSettingsModal: React.FC<FusionSettingsModalProps> = ({
       props[`w_${i}`] = {
         type: "number",
         title: label,
-        description: "Set a weight per method (0–1). 1 = equal weight; 0 effectively mutes the method.",
+        description:
+          "Set a weight per method (0–1). 1 = equal weight; 0 effectively mutes the method.",
         default: 1,
         minimum: 0,
         maximum: 1,
@@ -314,7 +313,7 @@ const FusionSettingsModal: React.FC<FusionSettingsModalProps> = ({
     order.push(...methodLabels.map((_, i) => `w_${i}`));
 
     return { type: "object", properties: props, "ui:order": order } as any;
-  }, [isRRF, methodLabels])
+  }, [isRRF, methodLabels]);
 
   const [formData, setFormData] = useState<any>(() => {
     const fd: any = { k: group.fusionSettings?.k ?? 60 };
@@ -326,14 +325,14 @@ const FusionSettingsModal: React.FC<FusionSettingsModalProps> = ({
   });
 
   useEffect(() => {
-    // refresh when opening different group / labels
     const next: any = { k: group.fusionSettings?.k ?? 60 };
     weightKeys.forEach((key, i) => {
       const v = group.fusionSettings?.weights?.[i];
-      next[key] = Number.isFinite(v) ? Math.min(1, Math.max(0, v as number)) : 1;
+      next[key] = Number.isFinite(v)
+        ? Math.min(1, Math.max(0, v as number))
+        : 1;
     });
     setFormData(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, group.id, weightKeys.join("|")]);
 
   const handleSubmit = (e: any) => {
@@ -343,14 +342,15 @@ const FusionSettingsModal: React.FC<FusionSettingsModalProps> = ({
       return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 1;
     });
 
-    if (isRRF) { // k + weights
+    if (isRRF) {
+      // k + weights
       onSettingsUpdate({ k: Number(data.k ?? 60), weights });
-    } else {// weights only
+    } else {
+      // weights only
       onSettingsUpdate({ weights });
     }
     onClose();
   };
-
 
   return (
     <Modal
@@ -411,11 +411,15 @@ const FusionSettingsModal: React.FC<FusionSettingsModalProps> = ({
               formData={formData}
               noHtml5Validate
               liveValidate
-              onChange={(e) => setFormData(e.formData)}  // local only while typing
-              onSubmit={handleSubmit}                    // commit once
+              onChange={(e) => setFormData(e.formData)} // local only while typing
+              onSubmit={handleSubmit} // commit once
             >
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <Button variant="default" onClick={onClose} type="button">Cancel</Button>
+              <div
+                style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}
+              >
+                <Button variant="default" onClick={onClose} type="button">
+                  Cancel
+                </Button>
                 <Button type="submit">Save</Button>
               </div>
             </Form>
@@ -738,16 +742,18 @@ export const RetrievalMethodListContainer = forwardRef<
       // Update the source of truth
       props.onGroupsChange?.(
         (linkedGroups || []).map((g) =>
-          g.id === groupId ? { ...g, fusionSettings: settings } : g
-        )
+          g.id === groupId ? { ...g, fusionSettings: settings } : g,
+        ),
       );
 
       //  Keep the modal's local state in lockstep so RJSF stays editable
       setFusionModalGroup((prev) =>
-        prev && prev.id === groupId ? { ...prev, fusionSettings: settings } : prev
+        prev && prev.id === groupId
+          ? { ...prev, fusionSettings: settings }
+          : prev,
       );
     },
-    [linkedGroups, props.onGroupsChange]
+    [linkedGroups, props.onGroupsChange],
   );
 
   const handleFusionMethodChange = useCallback(
@@ -756,8 +762,8 @@ export const RetrievalMethodListContainer = forwardRef<
         (linkedGroups || []).map((g) =>
           g.id === groupId
             ? { ...g, fusionMethod, fusionSettings: defaultSettings }
-            : g
-        )
+            : g,
+        ),
       );
       setFusionModalGroup((prev) =>
         prev
@@ -769,7 +775,7 @@ export const RetrievalMethodListContainer = forwardRef<
           : null,
       );
     },
-    [linkedGroups, props.onGroupsChange]
+    [linkedGroups, props.onGroupsChange],
   );
 
   const addMenuItems: NestedMenuItemProps[] = useMemo(() => {
@@ -858,10 +864,13 @@ export const RetrievalMethodListContainer = forwardRef<
           ) : (
             methodItems.map((item) => {
               const group = linkedGroups.find((g) => g.id === item.groupId);
-              const members = methodItems.filter((m) => m.groupId === group?.id);
+              const members = methodItems.filter(
+                (m) => m.groupId === group?.id,
+              );
               const isLinked = !!group;
               const isFirstInGroup = isLinked && members[0]?.key === item.key;
-              const isLastInGroup  = isLinked && members[members.length - 1]?.key === item.key;
+              const isLastInGroup =
+                isLinked && members[members.length - 1]?.key === item.key;
 
               return (
                 <RetrievalMethodListItem

@@ -84,7 +84,6 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
 
   // Fusion            // wire to the Fusion button
   const [linkedGroups, setLinkedGroups] = useState<LinkedMethodGroup[]>([]);
-  const fusionOn = (linkedGroups?.length ?? 0) > 0;
 
   // Refs
   const inspectorModalRef = useRef<LLMResponseInspectorModalRef>(null);
@@ -161,8 +160,8 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
           chunks: inputData.chunks,
           queries: inputData.queries,
           api_keys: apiKeys,
-          fusion_enabled: fusionOn,
-          linked_groups: fusionOn ? linkedGroups : [],
+          fusion_enabled: linkedGroups.length > 0,
+          linked_groups: linkedGroups.length > 0 ? linkedGroups : [],
         }),
       });
 
