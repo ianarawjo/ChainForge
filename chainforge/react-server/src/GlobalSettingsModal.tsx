@@ -240,6 +240,8 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         AWS_Region: "us-east-1",
         AmazonBedrock: JSON.stringify({ credentials: {}, region: "us-east-1" }),
         Together: "",
+        DeepSeek: "",
+        Cohere: "",
       },
 
       validate: {
@@ -603,6 +605,13 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   label="DeepSeek API Key"
                   placeholder="Paste your DeepSeek API key here"
                   {...form.getInputProps("DeepSeek")}
+                />
+                <br />
+
+                <TextInput
+                  label="Cohere API Key"
+                  placeholder="Paste your Cohere API key here"
+                  {...form.getInputProps("Cohere")}
                 />
                 <br />
 
