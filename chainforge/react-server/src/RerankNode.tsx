@@ -352,41 +352,6 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
 
   return (
     <BaseNode nodeId={id} classNames="rerank-node">
-      {/* Labeled Handle for 'chunks' */}
-      <div style={{ ...handleWrapperBaseStyle, top: `${HANDLE_Y_START}px` }}>
-        <div style={badgeWrapperStyle}>
-          <Badge color="green" size="md" radius="sm" style={badgeStyle}>
-            chunks
-          </Badge>
-        </div>
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="chunks"
-          style={handleStyle}
-        />
-      </div>
-
-      {/* Labeled Handle for 'query' */}
-      <div
-        style={{
-          ...handleWrapperBaseStyle,
-          top: `${HANDLE_Y_START + HANDLE_Y_GAP}px`,
-        }}
-      >
-        <div style={badgeWrapperStyle}>
-          <Badge color="indigo" size="md" radius="sm" style={badgeStyle}>
-            query
-          </Badge>
-        </div>
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="query"
-          style={handleStyle}
-        />
-      </div>
-
       <NodeLabel
         title={data.title || nodeDefaultTitle}
         nodeId={id}
@@ -396,10 +361,50 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
         runButtonTooltip="Perform reranking on input documents"
       />
 
-      <RerankMethodListContainer
-        initMethodItems={data.methods || []}
-        onItemsChange={handleMethodItemsChange}
-      />
+      <div>
+        {/* Labeled Handle for 'chunks' */}
+        <div style={{ ...handleWrapperBaseStyle, top: `${HANDLE_Y_START}px` }}>
+          <div style={badgeWrapperStyle}>
+            <Badge color="green" size="md" radius="sm" style={badgeStyle}>
+              chunks
+            </Badge>
+          </div>
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="chunks"
+            style={handleStyle}
+          />
+        </div>
+
+        {/* Labeled Handle for 'query' */}
+        <div
+          style={{
+            ...handleWrapperBaseStyle,
+            top: `${HANDLE_Y_START + HANDLE_Y_GAP}px`,
+          }}
+        >
+          <div style={badgeWrapperStyle}>
+            <Badge color="indigo" size="md" radius="sm" style={badgeStyle}>
+              query
+            </Badge>
+          </div>
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="query"
+            style={handleStyle}
+          />
+        </div>
+
+        {/* Add margin top to push list below handles */}
+        <div style={{ marginTop: `${HANDLE_Y_START + 1 * HANDLE_Y_GAP}px` }}>
+          <RerankMethodListContainer
+            initMethodItems={data.methods || []}
+            onItemsChange={handleMethodItemsChange}
+          />
+        </div>
+      </div>
 
       {jsonResponses && jsonResponses.length > 0 && (
         <InspectFooter
