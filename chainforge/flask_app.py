@@ -528,13 +528,7 @@ def checkRagAvailable():
     Returns True if all required RAG packages are installed, False otherwise.
     """
     try:
-        # Try importing key RAG dependencies
-        import sentence_transformers  # noqa: F401
-        import chromadb  # noqa: F401
-        from chainforge.rag import retrievers, rerankers, embeddings  # noqa: F401
-        
-        # If we get here, all imports succeeded
-        rag_available = True
+        rag_available = IS_RAG_AVAILABLE()
     except ImportError:
         # One or more RAG dependencies are missing
         rag_available = False
