@@ -1,4 +1,4 @@
-FROM python:3.12-alpine
+FROM python:3.12-slim
 
 RUN apk update && apk add --virtual build-dependencies build-base gcc wget git
 
