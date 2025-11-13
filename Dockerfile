@@ -1,6 +1,6 @@
 FROM python:3.12-alpine
 
-RUN apk add --no-cache build-base git
+RUN apk update && apk add --virtual build-dependencies build-base gcc wget git
 
 WORKDIR /chainforge
 
