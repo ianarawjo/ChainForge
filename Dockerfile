@@ -1,6 +1,9 @@
 FROM python:3.12-slim
 
-RUN apk update && apk add --virtual build-dependencies build-base gcc wget git
+RUN apt-get --allow-releaseinfo-change update && apt-get install -y \
+    build-essential \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /chainforge
 
