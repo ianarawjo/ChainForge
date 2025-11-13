@@ -1,0 +1,8 @@
+services:
+  chainforge:
+    image: :gauransh/chainforge:rag
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:~/.local/share/chainforge
+    command: ["chainforge", "serve", "--host", "0.0.0.0"]
