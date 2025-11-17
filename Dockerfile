@@ -52,12 +52,8 @@ WORKDIR /chainforge
 # Copy Python packages from builder
 COPY --from=python-builder /install /usr/local
 
-# Copy only necessary application files
-COPY setup.py README.md ./
-COPY chainforge/ ./chainforge/
-
-# Copy the built React app from the frontend-builder stage
-COPY --from=frontend-builder /app/build ./chainforge/react-server/build
+# Copy the built React app from the frontend-builder stage to the installed package location
+COPY --from=frontend-builder /app/build /usr/local/lib/python3.12/site-packages/chainforge/react-server/build
 
 # Clean up any unnecessary files to reduce image size
 RUN find /usr/local -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true && \
