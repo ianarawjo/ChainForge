@@ -6,13 +6,32 @@ on:
       - main
       - master
       - ragforge
+    paths:
+      - 'Dockerfile'
+      - 'Dockerfile.gpu'
+      - 'chainforge/**'
+      - 'setup.py'
+      - 'requirements.txt'
+      - '.github/workflows/docker-build.yml'
   push:
     branches:
       - main
       - master
       - ragforge
+    paths:
+      - 'Dockerfile'
+      - 'Dockerfile.gpu'
+      - 'chainforge/**'
+      - 'setup.py'
+      - 'requirements.txt'
+      - '.github/workflows/docker-build.yml'
     tags:
       - 'v*'
+
+# Concurrency: cancel in-progress runs when new one starts
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: docker.io
@@ -22,6 +41,8 @@ jobs:
   build-cpu:
     name: Build CPU Image
     runs-on: ubuntu-latest
+    # Skip if commit message contains [skip ci] or [ci skip]
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[ci skip]') }}
     permissions:
       contents: read
       packages: write
@@ -68,6 +89,8 @@ jobs:
   build-gpu:
     name: Build GPU Image
     runs-on: ubuntu-latest
+    # Skip if commit message contains [skip ci] or [ci skip]
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[ci skip]') }}
     permissions:
       contents: read
       packages: write
