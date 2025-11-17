@@ -34,7 +34,7 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt -c constrai
 # Copy project files and build the package
 COPY setup.py README.md ./
 COPY chainforge/ ./chainforge/
-RUN pip install --no-cache-dir --prefix=/install -e .
+RUN pip install --no-cache-dir --prefix=/install .
 
 # Stage 3 - Final minimal runtime image
 FROM python:3.12-slim
