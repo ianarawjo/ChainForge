@@ -190,6 +190,19 @@ To enable automated image publishing, configure these secrets in your GitHub rep
 
 Navigate to: `Settings > Secrets and variables > Actions > New repository secret`
 
+### Workflow Optimizations
+
+The workflow includes several optimizations to prevent unnecessary builds:
+
+1. **Path Filters**: Only triggers when Docker-related files change (Dockerfiles, chainforge/, setup.py, etc.)
+2. **Concurrency Control**: Automatically cancels in-progress builds when a new one starts
+3. **Skip CI**: Add `[skip ci]` or `[ci skip]` to your commit message to skip the build
+
+Example:
+```bash
+git commit -m "Update README [skip ci]"
+```
+
 ## Troubleshooting
 
 ### ESLint Config Error
