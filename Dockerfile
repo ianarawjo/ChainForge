@@ -26,12 +26,10 @@ WORKDIR /build
 # Install Python dependencies with no cache
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install CPU only torch
-RUN pip install --no-cache-dir --prefix=/install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-
 # Copy requirements and install to a specific directory
 COPY chainforge/requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+COPY chainforge/constraints.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt -c constraints.txt
 
 # Copy project files and build the package
 COPY setup.py README.md ./
