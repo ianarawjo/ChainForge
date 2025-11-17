@@ -1,0 +1,106 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+.github
+
+# Documentation (we only need README.md)
+docs/
+INSTALL_GUIDE.md
+CONTRIBUTING.md
+LICENSE
+*.md
+!README.md
+
+# Development files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.editorconfig
+
+# Python cache and build artifacts
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist
+build
+.pytest_cache
+.coverage
+htmlcov
+*.egg
+MANIFEST
+.mypy_cache
+.ruff_cache
+.tox
+.nox
+*.cover
+.hypothesis
+
+# Node (we'll install and build in Docker)
+chainforge/react-server/node_modules
+chainforge/react-server/.pnp
+chainforge/react-server/.pnp.js
+chainforge/react-server/coverage
+chainforge/react-server/build
+
+# Testing and development
+tests/
+test/
+*.test.js
+*.test.ts
+*.test.tsx
+*.spec.js
+*.spec.ts
+*.spec.tsx
+coverage/
+.coverage
+*.log
+*.logs
+
+# Environment files
+.env
+.env.*
+!.env.example
+*.local
+
+# ChainForge specific
+chainforge/cache
+chainforge/examples/oaievals/
+chainforge_assets/
+packages/
+jobs/
+data/
+
+# Docker files (avoid recursive copying)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.circleci
+.travis.yml
+.gitlab-ci.yml
+azure-pipelines.yml
+
+# IDE and editor files
+*.sublime-*
+.vscode
+.idea
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
