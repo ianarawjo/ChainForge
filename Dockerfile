@@ -3,9 +3,9 @@ FROM node:20-slim AS frontend-builder
 
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package files and install dependencies (including dev for build)
 COPY chainforge/react-server/package*.json ./
-RUN npm ci --legacy-peer-deps --omit=dev
+RUN npm ci --legacy-peer-deps
 
 # Copy source files and build
 COPY chainforge/react-server/ ./
