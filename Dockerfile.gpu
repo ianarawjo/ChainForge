@@ -11,7 +11,7 @@ RUN npm ci --legacy-peer-deps
 COPY chainforge/react-server/ ./
 RUN npm run build
 
-# Stage 2 - Build Python dependencies (CPU version with constraints)
+# Stage 2 - Build Python dependencies (GPU version - no constraints)
 FROM python:3.12-slim AS python-builder
 
 # Install only the build dependencies we need
@@ -26,10 +26,9 @@ WORKDIR /build
 # Install Python dependencies with no cache
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copy requirements and install with constraints for CPU-only compatibility
+# Copy requirements and install without constraints for GPU support
 COPY chainforge/requirements.txt .
-COPY chainforge/constraints.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt -c constraints.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Copy project files and build the package
 COPY setup.py README.md ./

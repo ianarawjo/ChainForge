@@ -2,9 +2,9 @@ services:
   chainforge:
     build:
       context: .
-      dockerfile: Dockerfile
-    image: gauransh/chainforge:cpu
-    container_name: chainforge-cpu
+      dockerfile: Dockerfile.gpu
+    image: gauransh/chainforge:gpu
+    container_name: chainforge-gpu
     ports:
       - "8000:8000"
     volumes:
@@ -27,6 +27,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
 # Named volume for persistent data
 volumes:

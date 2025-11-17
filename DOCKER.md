@@ -1,67 +1,129 @@
 # ChainForge Docker Setup
 
-This document describes how to run ChainForge using Docker.
+This document describes how to run ChainForge using Docker. ChainForge provides two Docker image variants:
+
+- **CPU (latest)**: Optimized for CPU-only environments with dependency constraints
+- **GPU**: Supports GPU acceleration without dependency constraints
 
 ## Prerequisites
 
 - Docker (version 20.10 or later)
 - Docker Compose (version 2.0 or later)
+- For GPU: NVIDIA Docker runtime (nvidia-docker2)
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+### CPU Version (Default)
 
-Build and run ChainForge:
+Using Docker Compose (Recommended):
 
 ```bash
 docker-compose up -d
 ```
 
-This will:
-- Build the optimized multi-stage Docker image
-- Start the ChainForge server on port 8000
-- Create a persistent volume for user data
-- Restart automatically if the container crashes
-
-Access ChainForge at: http://localhost:8000
-
-### Using Docker CLI
-
-Build the image:
+Or using Docker CLI:
 
 ```bash
-docker build -t chainforge:latest .
-```
+# Pull pre-built image
+docker pull gauransh/chainforge:latest
 
-Run the container:
+# Or build locally
+docker build -t chainforge:cpu .
 
-```bash
+# Run
 docker run -d \
   -p 8000:8000 \
   -v chainforge-data:/home/chainforge/.local/share/chainforge \
   --name chainforge \
   --restart unless-stopped \
-  chainforge:latest
+  gauransh/chainforge:latest
 ```
+
+### GPU Version
+
+Using Docker Compose (Recommended):
+
+```bash
+docker-compose -f docker-compose.gpu.yml up -d
+```
+
+Or using Docker CLI:
+
+```bash
+# Pull pre-built image
+docker pull gauransh/chainforge:gpu
+
+# Or build locally
+docker build -f Dockerfile.gpu -t chainforge:gpu .
+
+# Run with GPU support
+docker run -d \
+  -p 8000:8000 \
+  -v chainforge-data:/home/chainforge/.local/share/chainforge \
+  --name chainforge-gpu \
+  --gpus all \
+  --restart unless-stopped \
+  gauransh/chainforge:gpu
+```
+
+Access ChainForge at: http://localhost:8000
+
+## Image Variants
+
+### CPU (latest)
+- Uses `constraints.txt` for dependency version pinning
+- Optimized for CPU-only environments
+- Smaller image size
+- Compatible with all platforms (amd64, arm64)
+- Tagged as: `latest`, `cpu`
+
+### GPU
+- Does NOT use `constraints.txt` for maximum GPU compatibility
+- Supports NVIDIA GPU acceleration
+- Larger image size due to GPU-enabled dependencies
+- Requires NVIDIA Docker runtime
+- Tagged as: `gpu`
+
+**When to use GPU variant:**
+- You have NVIDIA GPUs available
+- You need GPU acceleration for ML/AI workloads
+- You want the latest versions of GPU-enabled packages
+
+**When to use CPU variant:**
+- Running on CPU-only machines
+- Deploying to cloud platforms without GPU
+- Want stable, version-pinned dependencies
 
 ## Managing Containers
 
 ### View logs
 
 ```bash
+# CPU version
 docker-compose logs -f
+
+# GPU version
+docker-compose -f docker-compose.gpu.yml logs -f
 ```
 
 ### Stop containers
 
 ```bash
+# CPU version
 docker-compose down
+
+# GPU version
+docker-compose -f docker-compose.gpu.yml down
 ```
 
 ### Rebuild images
 
 ```bash
+# CPU version
 docker-compose build --no-cache
+
+# GPU version
+docker-compose -f docker-compose.gpu.yml build --no-cache
 ```
 
 ### Remove volumes (delete all data)
@@ -93,8 +155,40 @@ HUGGINGFACE_API_KEY=your_key_here
 Multi-stage build optimized for size:
 
 1. **Stage 1**: Build React frontend with all dependencies
-2. **Stage 2**: Build Python dependencies
+2. **Stage 2**: Build Python dependencies (with/without constraints)
 3. **Stage 3**: Create minimal runtime image with only necessary files
+
+## Automated Builds (CI/CD)
+
+Docker images are automatically built and pushed to Docker Hub via GitHub Actions when:
+
+- A pull request is created (images are built but not pushed)
+- Code is pushed to main/master branch
+- A version tag is created (e.g., `v1.0.0`)
+
+### GitHub Actions Workflow
+
+The workflow builds both CPU and GPU variants:
+
+**CPU Image Tags:**
+- `latest` - Always points to the latest CPU build
+- `cpu` - Explicit CPU tag
+- `main` / `master` - Branch-specific tags
+- `v1.0.0`, `v1.0` - Version tags (on release)
+
+**GPU Image Tags:**
+- `gpu` - Latest GPU build
+- `main-gpu` / `master-gpu` - Branch-specific GPU tags
+- `v1.0.0-gpu`, `v1.0-gpu` - Version GPU tags (on release)
+
+### Required GitHub Secrets
+
+To enable automated image publishing, configure these secrets in your GitHub repository:
+
+- `DOCKER_USERNAME` - Your Docker Hub username
+- `DOCKER_PASSWORD` - Your Docker Hub password or access token
+
+Navigate to: `Settings > Secrets and variables > Actions > New repository secret`
 
 ## Troubleshooting
 
