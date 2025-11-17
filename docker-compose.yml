@@ -1,8 +1,27 @@
 services:
   chainforge:
-    image: :gauransh/chainforge:rag
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gauransh/chainforge:rag
+    container_name: chainforge
     ports:
       - "8000:8000"
     volumes:
-      - ./data:~/.local/share/chainforge
-    command: ["chainforge", "serve", "--host", "0.0.0.0"]
+      # Mount data directory for persistent storage
+      - chainforge-data:/home/chainforge/.local/share/chainforge
+    environment:
+      - FLASK_ENV=production
+      # Add API keys as environment variables if needed
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - COHERE_API_KEY=${COHERE_API_KEY}
+      # - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      # - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      # - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
+    restart: unless-stopped
+
+# Named volume for persistent data
+volumes:
+  chainforge-data:
+    driver: local
