@@ -5,46 +5,67 @@ WORKDIR /app
 
 # Copy package files and install dependencies (including dev for build)
 COPY chainforge/react-server/package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm ci --legacy-peer-deps --prefer-offline
 
 # Copy source files and build
 COPY chainforge/react-server/ ./
 RUN npm run build
 
-# Stage 2 - Build Python dependencies (GPU version - no constraints)
-FROM python:3.12-slim AS python-builder
+# Stage 2 - Build Python dependencies (GPU version with CUDA support)
+# Using NVIDIA's official CUDA base image with Python 3.12
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04 AS python-builder
 
-# Install only the build dependencies we need
-RUN apt-get --allow-releaseinfo-change update && \
+# Install Python 3.12 and build dependencies
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3.12-dev \
+    python3-pip \
     build-essential \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+# Set Python 3.12 as default
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+
 WORKDIR /build
 
-# Install Python dependencies with no cache
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# Upgrade pip tools first (this layer is highly cacheable)
+RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copy requirements and install without constraints for GPU support
-COPY chainforge/requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+# Copy requirements first for better layer caching
+COPY chainforge/requirements.txt ./
 
-# Copy project files and build the package
+# Install PyTorch with CUDA support FIRST as it's the largest dependency
+# Using CUDA 12.1 compatible PyTorch
+RUN pip3 install --no-cache-dir --prefix=/install \
+    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Install remaining requirements (without constraints for full GPU support)
+RUN pip3 install --no-cache-dir --prefix=/install -r requirements.txt
+
+# Copy project files and build the package (smallest layer last)
 COPY setup.py README.md ./
 COPY chainforge/ ./chainforge/
-RUN pip install --no-cache-dir --prefix=/install .
+RUN pip3 install --no-cache-dir --prefix=/install .
 
-# Stage 3 - Final minimal runtime image
-FROM python:3.12-slim
+# Stage 3 - Final NVIDIA CUDA runtime image
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
-# Install only runtime dependencies (no build tools)
-RUN apt-get --allow-releaseinfo-change update && \
+# Install Python 3.12 and runtime dependencies (no build tools)
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3-pip \
     git \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
+
+# Set Python 3.12 as default
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
 
 WORKDIR /chainforge
 
