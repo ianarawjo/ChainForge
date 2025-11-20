@@ -15,11 +15,16 @@ RUN npm run build
 # Using NVIDIA's official CUDA base image with Python 3.12
 FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04 AS python-builder
 
-# Install Python 3.12 and build dependencies
+# Install Python 3.12 using deadsnakes PPA for multi-arch support
 RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && \
     apt-get install -y --no-install-recommends \
     python3.12 \
     python3.12-dev \
+    python3.12-distutils \
     python3-pip \
     build-essential \
     git \
@@ -53,13 +58,20 @@ RUN pip3 install --no-cache-dir --prefix=/install .
 # Stage 3 - Final NVIDIA CUDA runtime image
 FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
-# Install Python 3.12 and runtime dependencies (no build tools)
+# Install Python 3.12 using deadsnakes PPA and runtime dependencies (no build tools)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && \
+    apt-get install -y --no-install-recommends \
     python3.12 \
+    python3.12-distutils \
     python3-pip \
     git \
     libgomp1 \
+    && apt-get remove -y software-properties-common \
+    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
