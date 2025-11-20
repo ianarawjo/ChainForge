@@ -12,12 +12,10 @@ COPY chainforge/react-server/ ./
 RUN npm run build
 
 # Stage 2 - Build Python dependencies (GPU version with CUDA support)
-# Using NVIDIA's official CUDA base image with Python 3.12
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04 AS python-builder
+FROM python:3.12-slim AS python-builder
 
-# Install Python 3.12 using deadsnakes PPA for multi-arch support
-RUN apt-get update && \
-    && apt-get update && \
+# Install only the build dependencies we need
+RUN apt-get --allow-releaseinfo-change update && \
     apt-get install -y --no-install-recommends \
     build-essential \
     git \
@@ -26,33 +24,36 @@ RUN apt-get update && \
 WORKDIR /build
 
 # Upgrade pip tools first (this layer is highly cacheable)
-RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Copy requirements first for better layer caching
-COPY chainforge/requirements.txt ./
+COPY chainforge/requirements.txt chainforge/constraints.txt ./
 
-# Install PyTorch with CUDA support FIRST as it's the largest dependency
-# Using CUDA 12.1 compatible PyTorch
-RUN pip3 install --no-cache-dir --prefix=/install \
-    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# Install PyTorch CPU-only FIRST as it's the largest dependency
+# This separates the longest-running install into its own layer
+RUN pip install --no-cache-dir --prefix=/install \
+    --extra-index-url https://download.pytorch.org/whl/cu121 \
+    torch torchvision torchaudio
 
-# Install remaining requirements (without constraints for full GPU support)
-RUN pip3 install --no-cache-dir --prefix=/install -r requirements.txt
+# Install remaining requirements with constraints
+# Using --find-links to help pip resolve faster
+RUN pip install --no-cache-dir --prefix=/install \
+    -r requirements.txt \
+    -c constraints.txt
 
 # Copy project files and build the package (smallest layer last)
 COPY setup.py README.md ./
 COPY chainforge/ ./chainforge/
-RUN pip3 install --no-cache-dir --prefix=/install .
+RUN pip install --no-cache-dir --prefix=/install .
 
-# Stage 3 - Final NVIDIA CUDA runtime image
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+# Stage 3 - Final minimal runtime image
+FROM python:3.12-slim
 
-# Install Python 3.11 using deadsnakes PPA and runtime dependencies (no build tools)
-RUN apt-get update && \
+# Install only runtime dependencies (no build tools)
+RUN apt-get --allow-releaseinfo-change update && \
     apt-get install -y --no-install-recommends \
     git \
     libgomp1 \
-    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -62,7 +63,7 @@ WORKDIR /chainforge
 COPY --from=python-builder /install /usr/local
 
 # Copy the built React app from the frontend-builder stage to the installed package location
-COPY --from=frontend-builder /app/build /usr/local/lib/python3.11/site-packages/chainforge/react_server/build
+COPY --from=frontend-builder /app/build /usr/local/lib/python3.12/site-packages/chainforge/react-server/build
 
 # Clean up any unnecessary files to reduce image size
 RUN find /usr/local -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true && \
@@ -81,3 +82,4 @@ USER chainforge
 EXPOSE 8000
 
 ENTRYPOINT [ "chainforge", "serve", "--host", "0.0.0.0" ]
+
