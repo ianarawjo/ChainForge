@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Copy package files and install dependencies (including dev for build)
 COPY chainforge/react-server/package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm ci --legacy-peer-deps --prefer-offline
 
 # Copy source files and build
 COPY chainforge/react-server/ ./
@@ -23,15 +23,25 @@ RUN apt-get --allow-releaseinfo-change update && \
 
 WORKDIR /build
 
-# Install Python dependencies with no cache
+# Upgrade pip tools first (this layer is highly cacheable)
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copy requirements and install with constraints for CPU-only compatibility
-COPY chainforge/requirements.txt .
-COPY chainforge/constraints.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt -c constraints.txt
+# Copy requirements first for better layer caching
+COPY chainforge/requirements.txt chainforge/constraints.txt ./
 
-# Copy project files and build the package
+# Install PyTorch CPU-only FIRST as it's the largest dependency
+# This separates the longest-running install into its own layer
+RUN pip install --no-cache-dir --prefix=/install \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    torch torchvision torchaudio
+
+# Install remaining requirements with constraints
+# Using --find-links to help pip resolve faster
+RUN pip install --no-cache-dir --prefix=/install \
+    -r requirements.txt \
+    -c constraints.txt
+
+# Copy project files and build the package (smallest layer last)
 COPY setup.py README.md ./
 COPY chainforge/ ./chainforge/
 RUN pip install --no-cache-dir --prefix=/install .
