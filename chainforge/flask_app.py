@@ -1419,7 +1419,7 @@ def chunk():
                 settings[key] = float(value)
             elif key in known_bool_params:
                 # Handle boolean conversion robustly
-                settings[key] = value.lower() in ['true', '1', 't', 'y', 'yes']
+                settings[key] = value.lower() in ['true', 'yes']
             else:
                 settings[key] = value # Keep as string if type unknown
         except (ValueError, TypeError):
@@ -1902,7 +1902,7 @@ def rerank():
                 elif key in known_float_params:
                     settings[key] = float(value)
                 elif key in known_bool_params:
-                    settings[key] = value.lower() in ['true', '1', 't', 'y', 'yes']
+                    settings[key] = value.lower() in ['true', 'yes']
                 else:
                     settings[key] = value  # Keep as string if type unknown
             except (ValueError, TypeError):

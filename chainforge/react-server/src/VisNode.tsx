@@ -224,17 +224,6 @@ function addLineBreaks(str: string, max_line_len: number) {
   return result;
 }
 
-const wrapYAxisLabel = (
-  label: string,
-  maxCharsPerLine = 32,
-  maxLines = 4,
-) => {
-  if (!label || label.includes("<br>")) return label ?? "";
-  const maxChars = maxCharsPerLine * maxLines - 3;
-  const truncated = truncStr(label, maxChars) ?? "";
-  return addLineBreaks(truncated, maxCharsPerLine);
-};
-
 const genUniqueShortnames = (
   names: Iterable<string>,
   max_chars_per_line = 32,
@@ -242,7 +231,7 @@ const genUniqueShortnames = (
   // Generate unique 'shortnames' to refer to each name:
   const past_shortnames_counts: Dict<number> = {};
   const shortnames: Dict<string> = {};
-  const max_lines = 4;
+  const max_lines = 8;
   for (const name of names) {
     // Truncate string up to maximum num of chars
     let sn = truncStr(name, max_chars_per_line * max_lines - 3) ?? "";
@@ -773,7 +762,6 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           let names = new Set<string>();
           const plotting_categorical_vars =
             group_type === "var" && sel_typeof_eval_res === "Categorical";
-          const yTickLabels = new Set<string>();
 
           // When we're plotting vars, we want the stacked bar colors to be the *categories*,
           // and the x_items to be the names of vars, so that the left axis is a vertical list of varnames.
@@ -788,12 +776,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           }
 
           const shortnames = genUniqueShortnames(names);
-
-          const yLabelNames = new Set(responses.map(resp_to_x));
-          const yLabelShortnames = genUniqueShortnames(yLabelNames);
-
+          const yLabelShortnames = genUniqueShortnames(
+            new Set(responses.map(resp_to_x)),
+          );
           for (const name of names) {
-            const shortname = wrapYAxisLabel(shortnames[name]);
             let x_items: EvaluationScore[] = [];
             let text_items: string[] = [];
 
@@ -804,11 +790,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   (i) => i === name,
                 );
                 const rawLabel = resp_to_x(r);
-                const yLabel =
-                  yLabelShortnames[rawLabel] ?? rawLabel;
-
-                // Use shortened query labels on the y-axis
-                x_items = x_items.concat(new Array(eval_res.length).fill(yLabel));
+                const yLabel = yLabelShortnames[rawLabel] ?? rawLabel;
+                x_items = x_items.concat(
+                  new Array(eval_res.length).fill(yLabel),
+                );
               });
             } else {
               responses.forEach((r) => {
@@ -836,13 +821,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               spec.push({
                 type: "histogram",
                 histfunc: "sum",
-                name: shortname,
+                name: shortnames[name],
                 marker: { color },
                 y: x_items,
                 orientation: "h",
-              });
-              x_items.forEach((v) => {
-                if (typeof v === "string") yTickLabels.add(v);
               });
               layout.barmode = "stack";
               layout.yaxis = {
@@ -858,7 +840,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             } else {
               // Plot bar or boxplots for all other cases.
               const d: Dict = {
-                name: shortname,
+                name: shortnames[name],
                 x: x_items,
                 text: text_items,
                 hovertemplate: "%{text}",
@@ -870,7 +852,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               if (x_items.length === 1) {
                 d.type = "bar";
                 d.textposition = "none"; // hide the text which appears within each bar
-                d.y = new Array(x_items.length).fill(shortname);
+                d.y = new Array(x_items.length).fill(shortnames[name]);
                 setForcedGraphType("bar");
               } else {
                 // If multiple eval results per response object (num generations per prompt n > 1),
@@ -878,7 +860,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 if (graphType.key === "bar") {
                   d.type = "histogram";
                   d.histfunc = "sum";
-                  d.y = new Array(x_items.length).fill(shortname);
+                  d.y = new Array(x_items.length).fill(shortnames[name]);
                   d.textposition = "none"; // hide the text which appears within each bar
                   const xaxis_title =
                     metric_axes_labels.length > 0
@@ -909,25 +891,15 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               }
 
               spec.push(d);
-              yTickLabels.add(shortname);
             }
           }
           layout.hovermode = "closest";
           layout.showlegend = false;
 
-          const marginLabels =
-            yTickLabels.size > 0 ? Array.from(yTickLabels) : Object.values(shortnames);
-          const wrappedMarginLabels = marginLabels.map((label) =>
-            wrapYAxisLabel(label),
+          // Set the left margin to fit the yticks labels
+          layout.margin.l = calcLeftPaddingForYLabels(
+            Object.values(shortnames),
           );
-
-          layout.yaxis = {
-            ...(layout.yaxis ?? {}),
-            tickmode: "array",
-            tickvals: marginLabels,
-            ticktext: wrappedMarginLabels,
-          };
-          layout.margin.l = calcLeftPaddingForYLabels(wrappedMarginLabels);
 
           if (metric_axes_labels.length > 0)
             layout.xaxis = {
