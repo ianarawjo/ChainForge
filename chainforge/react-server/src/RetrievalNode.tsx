@@ -166,7 +166,13 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       });
 
       if (!response.ok) {
-        throw new Error(`Retrieval failed: ${response.statusText}`);
+        const body = await response.json();
+        const message =
+          body && typeof body.error === "string"
+            ? body.error
+            : `Retrieval failed: ${response.statusText}`;
+
+        throw new Error(message);
       }
 
       // The response is now a flat array of objects

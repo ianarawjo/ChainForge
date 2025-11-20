@@ -1363,26 +1363,33 @@ def verify_media_file_integrity(uid):
 """
     RAGForge Endpoints and Functions
 """
-# Chunking Endpoint
 @app.route("/chunk", methods=["POST"])
 def chunk():
     """
     Handles text processing requests, specifically chunking.
     Uses a registry to dispatch to the correct chunking function.
-    Expects form data with 'methodName', 'library', 'text', and optional settings.
+    Expects multipart/form-data with:
+      - 'baseMethod' in request.form
+      - 'document' in request.files (UTF-8 text as a file/blob)
+      - optional additional settings as small form fields
     """
-    if not request.form:
+    if not request.form and not request.files:
         return jsonify({"error": "Request must be form data"}), 400
 
     base_method = request.form.get("baseMethod")
-    text = request.form.get("text")
-
     if not base_method:
         return jsonify({"error": "Missing 'baseMethod' in form data"}), 400
-    if text is None: # Allow empty string but not missing key
-        return jsonify({"error": "Missing 'text' in form data"}), 400
 
-    # Construct the identifier used in the registry
+    # We now require the text as an uploaded file named "document"
+    file = request.files.get("document")
+    if file is None:
+        return jsonify({"error": "Missing 'document' in form data"}), 400
+
+    # Read and decode the uploaded text file
+    raw_bytes = file.read() # type: bytes
+    text = raw_bytes.decode("utf-8", errors="ignore") # bytes -> str
+
+    # Look up the chunking handler
     handler = ChunkingMethodRegistry.get_handler(base_method)
 
     # if it wasn't a built‑in chunker, see if it's a custom provider
@@ -1402,20 +1409,21 @@ def chunk():
     known_bool_params = {"keep_separator"}
 
     for key, value in request.form.items():
-        if key not in ["baseMethod", "text"]:
-            try:
-                if key in known_int_params:
-                    settings[key] = int(value)
-                elif key in known_float_params:
-                    settings[key] = float(value)
-                elif key in known_bool_params:
-                    # Handle boolean conversion robustly
-                    settings[key] = value.lower() in ['true', '1', 't', 'y', 'yes']
-                else:
-                    settings[key] = value # Keep as string if type unknown
-            except (ValueError, TypeError):
-                print(f"Warning: Could not convert setting '{key}' with value '{value}' to expected type. Using raw value.", file=sys.stderr)
-                settings[key] = value # Fallback to string if conversion fails
+        if key == "baseMethod":
+            continue 
+        try:
+            if key in known_int_params:
+                settings[key] = int(value)
+            elif key in known_float_params:
+                settings[key] = float(value)
+            elif key in known_bool_params:
+                # Handle boolean conversion robustly
+                settings[key] = value.lower() in ['true', '1', 't', 'y', 'yes']
+            else:
+                settings[key] = value # Keep as string if type unknown
+        except (ValueError, TypeError):
+            print(f"Warning: Could not convert setting '{key}' with value '{value}' to expected type. Using raw value.", file=sys.stderr)
+            settings[key] = value # Fallback to string if conversion fails
 
     try:
         # Call the registered handler function
@@ -1519,195 +1527,109 @@ def retrieve():
     queries = [{'text': q} if isinstance(q, str) else q for q in queries]
 
     print("[DEBUG] ", methods)
-    
-    # Validate inputs
-    if not methods:
-        return jsonify({"error": "No retrieval methods provided"}), 400
-    if not chunks:
-        return jsonify({"error": "No chunks provided"}), 400
-    if not queries:
-        return jsonify({"error": "No queries provided"}), 400
-    
-    method_id_to_group = {}
-    group_cfg = {}
-    if fusion_enabled:
-        for g in linked_groups:
-            gid = g.get("id")
-            if not gid:
-                continue
-            group_cfg[gid] = g
-            for mid in g.get("methodKeys", []):
-                method_id_to_group[mid] = gid
 
-    # (query_text, chunkMethod) -> { methodId -> [ {doc_id, rank, score, obj} ] }
-    staging = defaultdict(lambda: defaultdict(list))
-
+    try:
     
-    resolved_handlers = {}
-    for method in methods:
-        base_method = method.get("baseMethod")
+        # Validate inputs
+        if not methods:
+            return jsonify({"error": "No retrieval methods provided"}), 400
+        if not chunks:
+            return jsonify({"error": "No chunks provided"}), 400
+        if not queries:
+            return jsonify({"error": "No queries provided"}), 400
         
-        # 1) Try built‑in lookup
-        handler = RetrievalMethodRegistry.get_handler(base_method)
+        method_id_to_group = {}
+        group_cfg = {}
+        if fusion_enabled:
+            for g in linked_groups:
+                gid = g.get("id")
+                if not gid:
+                    continue
+                group_cfg[gid] = g
+                for mid in g.get("methodKeys", []):
+                    method_id_to_group[mid] = gid
 
-        # 2) Fallback to any custom provider
-        if not handler and base_method.startswith("__custom/"):
-            provider_name = base_method[len("__custom/"):]
-            entry = ProviderRegistry.get(provider_name)
-            if entry and entry.get("func"):
-                handler = entry["func"]
+        # (query_text, chunkMethod) -> { methodId -> [ {doc_id, rank, score, obj} ] }
+        staging = defaultdict(lambda: defaultdict(list))
 
-        if not handler:
-            return jsonify({"error": f"Unknown retrieval method: {base_method}"}), 400
-
-        # cache it for later use
-        resolved_handlers[base_method] = handler
-    def find_query_metadata(query_text, queries):
-        for q in queries:
-            if isinstance(q, dict) and q.get("text") == query_text:
-                return q
-        return {}
-    
-    # Group chunks by chunking method
-    chunks_by_method = {}
-    for chunk in chunks:
-        # Extract chunking method from the chunk
-        chunk_method = chunk.get("fill_history", {}).get("chunkMethod", "unknown")
         
-        if chunk_method not in chunks_by_method:
-            chunks_by_method[chunk_method] = []
-        
-        # Store the full chunk with all its metadata
-        chunks_by_method[chunk_method].append({
-            "text": chunk.get("text", ""),
-            "docTitle": chunk.get("metavars", {}).get("docTitle", ""),
-            "chunkId": chunk.get("metavars", {}).get("chunkId", ""),
-            "chunkMethod": chunk_method,
-            "chunkLibrary": chunk.get("metavars", {}).get("chunkLibrary", "")
-        })
-
-    print(len(chunks_by_method))
-    
-    # Group retrieval methods by embedding model to avoid redundant computation
-    embedding_methods = {}  # model -> list of methods requiring this model
-    keyword_methods = []    # methods not requiring embeddings
-
-    for method in methods:
-        embedding_provider = method.get("embeddingProvider", None)
-        if embedding_provider:
-            # This is an embedding-based method
-            embedding_model = method.get("settings", {}).get("embeddingModel", "default")
-            full_embedder = f"{embedding_provider}#{embedding_model}"    
-            if full_embedder not in embedding_methods:
-                embedding_methods[full_embedder] = []
-            embedding_methods[full_embedder].append(method)
-        else:
-            # Non-embedding method
-            keyword_methods.append(method)
-
-    print("[DEBUG] ", embedding_methods)
-    # Prepare the final flat results array
-    flat_results = []
-    
-    # Process each chunking method separately
-    for chunk_method, chunk_group in chunks_by_method.items():
-        # Skip empty chunk groups
-        if not chunk_group:
-            continue
-            
-        # Process keyword methods for this chunk group
-        for method in keyword_methods:
-            method_id = method.get("id")
+        resolved_handlers = {}
+        for method in methods:
             base_method = method.get("baseMethod")
-            method_name = method.get("methodName")
             
-            try:
-                handler = resolved_handlers.get(base_method)
-                if not handler:
-                    raise ValueError(f"Unknown method: {base_method}")
-                
-                # Get retrieved chunks for this method and chunk group
-                retrieved = handler(chunk_group, queries, method.get("settings", {}))
-                # Process retrieved chunks for each query
-                for resp in retrieved:
-                    query_object = resp.get("query_object", "")
-                    retrieved_chunks = resp.get("retrieved_chunks", [])
-                    for i, chunk in enumerate(retrieved_chunks):
-                        # Create response object
-                        response_obj = {
-                            "text": chunk["text"],
-                            "prompt": query_object['text'],
-                            "eval_res": {
-                                "items": [{
-                                    "similarity": chunk["similarity"],
-                                    "rank": i + 1,
-                                }],
-                                "dtype": "KeyValue_Mixed",
-                            },
-                            "vars": {
-                                **query_object.get("vars", {}),  # Include original query vars
-                                **query_object.get("fill_history", {}),  # Include original query fill_history, if any
-                                "query": query_object['text'],
-                                "retrievalMethod": method_name,
-                                "chunkMethod": chunk_method,  # Include chunking method in vars
-                            },
-                            "metavars": {
-                                **query_object.get("metavars", {}),  # Include original query metavars
-                                "methodId": method_id,
-                                "retrievalMethodSignature": base_method,
-                                "signature": chunk_method + "-" + method_name,
-                                "docTitle": chunk.get("docTitle", ""),
-                                "chunkId": chunk.get("chunkId", ""),
-                                "chunkLibrary": chunk.get("chunkLibrary", ""),
-                            },
-                            "llm": chunk.get("llm", "(none)"),  # Use chunk's LLM if available
-                        }
+            # 1) Try built‑in lookup
+            handler = RetrievalMethodRegistry.get_handler(base_method)
 
-                        if fusion_enabled:
-                            doc_id = chunk.get("chunkId");
-                            score = float(chunk.get("similarity", 0.0))
-                            rank = i + 1
-                            query_txt = query_object['text']
-                            staging[(query_txt, chunk_method)][method_id].append({
-                                "doc_id": doc_id, "rank": rank, "score": score, "obj": response_obj
-                            })
-                        
-                        flat_results.append(response_obj)
-            except Exception as e:
-                # Skip errors - we'll just not include results from this method
-                print(f"Error with {method_name} on {chunk_method}: {str(e)}")
-                continue
+            # 2) Fallback to any custom provider
+            if not handler and base_method.startswith("__custom/"):
+                provider_name = base_method[len("__custom/"):]
+                entry = ProviderRegistry.get(provider_name)
+                if entry and entry.get("func"):
+                    handler = entry["func"]
 
-        # Process embedding-based methods for this chunk group
-        for embedder, methods in embedding_methods.items():
-            try:
-                provider, model_name = embedder.split("#", 1)
-                embedder_func = EmbeddingMethodRegistry.get_embedder(provider)
-                model_path = next((m['settings'].get('embeddingLocalPath') for m in methods if
-                                   m['settings'].get('embeddingLocalPath')), None)
+            if not handler:
+                return jsonify({"error": f"Unknown retrieval method: {base_method}"}), 400
 
-                if not embedder_func:
-                    raise ValueError(f"Unknown embedding model: {model_name}")
-                
-                # Compute embeddings once for all methods using this model
-                chunk_texts = [c["text"] for c in chunk_group]
-                chunk_embeddings = embedder_func(chunk_texts, model_name, model_path, api_keys)
-                query_embeddings = embedder_func([query.get("text", "") for query in queries], model_name, model_path, api_keys)
-                
-            except Exception as e:
-                # Skip this embedder if there's an error
-                print(f"Embedding error with {embedder} on {chunk_method}: {str(e)}")
-                continue
+            # cache it for later use
+            resolved_handlers[base_method] = handler
+        def find_query_metadata(query_text, queries):
+            for q in queries:
+                if isinstance(q, dict) and q.get("text") == query_text:
+                    return q
+            return {}
+        
+        # Group chunks by chunking method
+        chunks_by_method = {}
+        for chunk in chunks:
+            # Extract chunking method from the chunk
+            chunk_method = chunk.get("fill_history", {}).get("chunkMethod", "unknown")
             
-            # Process each method with the same embeddings
-            for method in methods:
+            if chunk_method not in chunks_by_method:
+                chunks_by_method[chunk_method] = []
+            
+            # Store the full chunk with all its metadata
+            chunks_by_method[chunk_method].append({
+                "text": chunk.get("text", ""),
+                "docTitle": chunk.get("metavars", {}).get("docTitle", ""),
+                "chunkId": chunk.get("metavars", {}).get("chunkId", ""),
+                "chunkMethod": chunk_method,
+                "chunkLibrary": chunk.get("metavars", {}).get("chunkLibrary", "")
+            })
+
+        print(len(chunks_by_method))
+        
+        # Group retrieval methods by embedding model to avoid redundant computation
+        embedding_methods = {}  # model -> list of methods requiring this model
+        keyword_methods = []    # methods not requiring embeddings
+
+        for method in methods:
+            embedding_provider = method.get("embeddingProvider", None)
+            if embedding_provider:
+                # This is an embedding-based method
+                embedding_model = method.get("settings", {}).get("embeddingModel", "default")
+                full_embedder = f"{embedding_provider}#{embedding_model}"    
+                if full_embedder not in embedding_methods:
+                    embedding_methods[full_embedder] = []
+                embedding_methods[full_embedder].append(method)
+            else:
+                # Non-embedding method
+                keyword_methods.append(method)
+
+        print("[DEBUG] ", embedding_methods)
+        # Prepare the final flat results array
+        flat_results = []
+        
+        # Process each chunking method separately
+        for chunk_method, chunk_group in chunks_by_method.items():
+            # Skip empty chunk groups
+            if not chunk_group:
+                continue
+                
+            # Process keyword methods for this chunk group
+            for method in keyword_methods:
                 method_id = method.get("id")
                 base_method = method.get("baseMethod")
                 method_name = method.get("methodName")
-
-                # A safe database path to use to store on local disk, if necessary
-                # :: For instance, vector databases like LanceDB, FAISS or Chroma. 
-                db_path = os.path.join(MEDIA_DIR, method_id + ".db")
                 
                 try:
                     handler = resolved_handlers.get(base_method)
@@ -1715,8 +1637,7 @@ def retrieve():
                         raise ValueError(f"Unknown method: {base_method}")
                     
                     # Get retrieved chunks for this method and chunk group
-                    retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method.get("settings", {}), db_path)
-                    
+                    retrieved = handler(chunk_group, queries, method.get("settings", {}))
                     # Process retrieved chunks for each query
                     for resp in retrieved:
                         query_object = resp.get("query_object", "")
@@ -1738,6 +1659,7 @@ def retrieve():
                                     **query_object.get("fill_history", {}),  # Include original query fill_history, if any
                                     "query": query_object['text'],
                                     "retrievalMethod": method_name,
+                                    "chunkMethod": chunk_method,  # Include chunking method in vars
                                 },
                                 "metavars": {
                                     **query_object.get("metavars", {}),  # Include original query metavars
@@ -1747,8 +1669,6 @@ def retrieve():
                                     "docTitle": chunk.get("docTitle", ""),
                                     "chunkId": chunk.get("chunkId", ""),
                                     "chunkLibrary": chunk.get("chunkLibrary", ""),
-                                    "chunkMethod": chunk_method,  # Include chunking method in metavars
-                                    "embeddingModel": model_name,
                                 },
                                 "llm": chunk.get("llm", "(none)"),  # Use chunk's LLM if available
                             }
@@ -1761,58 +1681,150 @@ def retrieve():
                                 staging[(query_txt, chunk_method)][method_id].append({
                                     "doc_id": doc_id, "rank": rank, "score": score, "obj": response_obj
                                 })
+                            
                             flat_results.append(response_obj)
                 except Exception as e:
+                    # Skip errors - we'll just not include results from this method
                     print(f"Error with {method_name} on {chunk_method}: {str(e)}")
                     continue
-    # === Retrieval Fusion (imported helpers) ===
-    if fusion_enabled and linked_groups:
-        for (query_txt, chunk_method), per_method in staging.items():
-            groups = defaultdict(dict)
-            for mid, items in per_method.items():
-                gid = method_id_to_group.get(mid)
-                if gid: groups[gid][mid] = items
-            for gid, method_lists in groups.items():
-                cfg = group_cfg.get(gid, {})
-                fmethod = cfg.get("fusionMethod")
-                settings = cfg.get("fusionSettings") or {}
-                if fmethod in ("reciprocal_rank_fusion"): 
-                    method_keys = (cfg.get("methodKeys") or [])
-                    weights_arr = settings.get("weights") or []
-                    weights_map = {mid: float(w) for i, mid in enumerate(method_keys)
-                                for w in [weights_arr[i] if i < len(weights_arr) else None] if isinstance(w, (int, float))}
-                    k_val = int(settings.get("k", settings.get("K", 60)))
-                    fused = rrf_fuse(method_lists, k=k_val, weights_by_method=weights_map)
-                    fusion_sig, fusion_name = "fusion:rrf", "rrf"
-                else: # Weighted Average
-                    method_keys = (cfg.get("methodKeys") or [])
-                    weights_arr = settings.get("weights") or []
-                    weights_map = {
-                        mid: float(w)
-                        for i, mid in enumerate(method_keys)
-                        for w in [weights_arr[i] if i < len(weights_arr) else None]
-                        if isinstance(w, (int, float))
-                    }
-                    fused = weighted_avg_fuse(
-                        method_lists,
-                        weights_by_method=weights_map,
+
+            # Process embedding-based methods for this chunk group
+            for embedder, methods in embedding_methods.items():
+                try:
+                    provider, model_name = embedder.split("#", 1)
+                    embedder_func = EmbeddingMethodRegistry.get_embedder(provider)
+                    model_path = next((m['settings'].get('embeddingLocalPath') for m in methods if
+                                    m['settings'].get('embeddingLocalPath')), None)
+
+                    if not embedder_func:
+                        raise ValueError(f"Unknown embedding model: {model_name}")
+                    
+                    # Compute embeddings once for all methods using this model
+                    chunk_texts = [c["text"] for c in chunk_group]
+                    chunk_embeddings = embedder_func(chunk_texts, model_name, model_path, api_keys)
+                    query_embeddings = embedder_func([query.get("text", "") for query in queries], model_name, model_path, api_keys)
+                    
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Embedding error with {embedder} on {chunk_method}: {e}"
                     )
-                    fusion_sig, fusion_name = "fusion:weighted_average", "weighted_average"
-                group_method_ids = [mid for mid in (cfg.get("methodKeys") or []) if mid in method_lists]
-                pretty_names = [method_name_by_id[mid] for mid in group_method_ids]
-                fused_label = f"Fused ({' + '.join(pretty_names)})"
-                for rank_idx, (doc_id, fused_score, base_obj) in enumerate(fused, start=1):
-                    obj = copy.deepcopy(base_obj)
-                    obj["eval_res"]["items"] = [{"similarity": fused_score, "rank": rank_idx}]
-                    obj["vars"]["retrievalMethod"] = fused_label
-                    obj["metavars"].update({
-                        "methodId": f"group:{gid}",
-                        "retrievalMethodSignature": fusion_sig,
-                        "signature": f"{chunk_method}-FUSED-{gid}",
-                    })
-                    flat_results.append(obj)
-    
-    return jsonify(flat_results), 200
+                
+                # Process each method with the same embeddings
+                for method in methods:
+                    method_id = method.get("id")
+                    base_method = method.get("baseMethod")
+                    method_name = method.get("methodName")
+
+                    # A safe database path to use to store on local disk, if necessary
+                    # :: For instance, vector databases like LanceDB, FAISS or Chroma. 
+                    db_path = os.path.join(MEDIA_DIR, method_id + ".db")
+                    
+                    try:
+                        handler = resolved_handlers.get(base_method)
+                        if not handler:
+                            raise ValueError(f"Unknown method: {base_method}")
+                        
+                        # Get retrieved chunks for this method and chunk group
+                        retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method.get("settings", {}), db_path)
+                        
+                        # Process retrieved chunks for each query
+                        for resp in retrieved:
+                            query_object = resp.get("query_object", "")
+                            retrieved_chunks = resp.get("retrieved_chunks", [])
+                            for i, chunk in enumerate(retrieved_chunks):
+                                # Create response object
+                                response_obj = {
+                                    "text": chunk["text"],
+                                    "prompt": query_object['text'],
+                                    "eval_res": {
+                                        "items": [{
+                                            "similarity": chunk["similarity"],
+                                            "rank": i + 1,
+                                        }],
+                                        "dtype": "KeyValue_Mixed",
+                                    },
+                                    "vars": {
+                                        **query_object.get("vars", {}),  # Include original query vars
+                                        **query_object.get("fill_history", {}),  # Include original query fill_history, if any
+                                        "query": query_object['text'],
+                                        "retrievalMethod": method_name,
+                                        "chunkMethod": chunk_method,  # Include chunking method in vars
+                                    },
+                                    "metavars": {
+                                        **query_object.get("metavars", {}),  # Include original query metavars
+                                        "methodId": method_id,
+                                        "retrievalMethodSignature": base_method,
+                                        "signature": chunk_method + "-" + method_name,
+                                        "docTitle": chunk.get("docTitle", ""),
+                                        "chunkId": chunk.get("chunkId", ""),
+                                        "chunkLibrary": chunk.get("chunkLibrary", ""),
+                                        "embeddingModel": model_name,
+                                    },
+                                    "llm": chunk.get("llm", "(none)"),  # Use chunk's LLM if available
+                                }
+
+                                if fusion_enabled:
+                                    doc_id = chunk.get("chunkId");
+                                    score = float(chunk.get("similarity", 0.0))
+                                    rank = i + 1
+                                    query_txt = query_object['text']
+                                    staging[(query_txt, chunk_method)][method_id].append({
+                                        "doc_id": doc_id, "rank": rank, "score": score, "obj": response_obj
+                                    })
+                                flat_results.append(response_obj)
+                    except Exception as e:
+                        print(f"Error with {method_name} on {chunk_method}: {str(e)}")
+                        continue
+        # === Retrieval Fusion (imported helpers) ===
+        if fusion_enabled and linked_groups:
+            for (query_txt, chunk_method), per_method in staging.items():
+                groups = defaultdict(dict)
+                for mid, items in per_method.items():
+                    gid = method_id_to_group.get(mid)
+                    if gid: groups[gid][mid] = items
+                for gid, method_lists in groups.items():
+                    cfg = group_cfg.get(gid, {})
+                    fmethod = cfg.get("fusionMethod")
+                    settings = cfg.get("fusionSettings") or {}
+                    if fmethod in ("reciprocal_rank_fusion"): 
+                        method_keys = (cfg.get("methodKeys") or [])
+                        weights_arr = settings.get("weights") or []
+                        weights_map = {mid: float(w) for i, mid in enumerate(method_keys)
+                                    for w in [weights_arr[i] if i < len(weights_arr) else None] if isinstance(w, (int, float))}
+                        k_val = int(settings.get("k", settings.get("K", 60)))
+                        fused = rrf_fuse(method_lists, k=k_val, weights_by_method=weights_map)
+                        fusion_sig, fusion_name = "fusion:rrf", "rrf"
+                    else: # Weighted Average
+                        method_keys = (cfg.get("methodKeys") or [])
+                        weights_arr = settings.get("weights") or []
+                        weights_map = {
+                            mid: float(w)
+                            for i, mid in enumerate(method_keys)
+                            for w in [weights_arr[i] if i < len(weights_arr) else None]
+                            if isinstance(w, (int, float))
+                        }
+                        fused = weighted_avg_fuse(
+                            method_lists,
+                            weights_by_method=weights_map,
+                        )
+                        fusion_sig, fusion_name = "fusion:weighted_average", "weighted_average"
+                    group_method_ids = [mid for mid in (cfg.get("methodKeys") or []) if mid in method_lists]
+                    pretty_names = [method_name_by_id[mid] for mid in group_method_ids]
+                    fused_label = f"Fused ({' + '.join(pretty_names)})"
+                    for rank_idx, (doc_id, fused_score, base_obj) in enumerate(fused, start=1):
+                        obj = copy.deepcopy(base_obj)
+                        obj["eval_res"]["items"] = [{"similarity": fused_score, "rank": rank_idx}]
+                        obj["vars"]["retrievalMethod"] = fused_label
+                        obj["metavars"].update({
+                            "methodId": f"group:{gid}",
+                            "retrievalMethodSignature": fusion_sig,
+                            "signature": f"{chunk_method}-FUSED-{gid}",
+                        })
+                        flat_results.append(obj)
+        
+        return jsonify(flat_results), 200
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 400
 
 
 # === Reranking Endpoint ===

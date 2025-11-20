@@ -124,6 +124,24 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
 
   // Remove a file
   const handleRemoveFile = (index: number) => {
+    const fieldToRemove = fields[index];
+
+    // UID is stored in metavars.id, set when uploading
+    const uid =
+      typeof fieldToRemove?.metavars?.id === "string"
+        ? fieldToRemove.metavars.id
+        : undefined;
+
+    // Remove from MediaLookup (same idea as MediaNode.handleRemoveMedia)
+    if (uid) {
+      try {
+        MediaLookup.remove(uid);
+      } catch (error) {
+        console.error("Error removing file from MediaLookup:", error);
+      }
+    }
+
+    // 2) Update local fields + node output
     const updatedFields = fields.filter((_, i) => i !== index);
     setFields(updatedFields);
     setDataPropsForNode(id, { fields: updatedFields, output: updatedFields });
@@ -131,10 +149,26 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
 
   // Clear all
   const handleClearUploads = useCallback(() => {
+    // Collect all UIDs before clearing
+    const uidsToRemove = fields
+      .map((field) =>
+        typeof field.metavars?.id === "string" ? field.metavars.id : undefined,
+      )
+      .filter((x): x is string => !!x);
+
+    // Remove each file from MediaLookup
+    for (const uid of uidsToRemove) {
+      try {
+        MediaLookup.remove(uid);
+      } catch (error) {
+        console.error("Error removing file from MediaLookup:", error);
+      }
+    }
+
     setFields([]);
     setDataPropsForNode(id, { fields: [], output: [] });
     setStatus(Status.READY);
-  }, [id, setDataPropsForNode]);
+  }, [fields, id, setDataPropsForNode]);
 
   // Refresh logic
   useEffect(() => {
@@ -161,7 +195,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
       >
         <IconUpload size={40} color="#888" />
         <Text size="sm" color="dimmed">
-          Drag & drop files here or click to upload
+          Drag & drop files here or click to upload (.pdf, .docx, .txt, .md)
         </Text>
         <input
           type="file"

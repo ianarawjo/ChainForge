@@ -8,7 +8,7 @@ export const OverlappingOpenAITiktokenSchema: ModelSettingsDict = {
   description: "Chunk text using the OpenAI tiktoken library with overlap.",
   schema: {
     type: "object",
-    required: ["max_tokens", "overlap_tokens"],
+    required: ["model", "chunk_size", "chunk_overlap"],
     properties: {
       model: {
         type: "string",

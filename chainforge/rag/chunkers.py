@@ -294,7 +294,7 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
     if embedding_path != '':
         embedding_model = embedding_path
     chunk_size = int(kwargs.get("chunk_size", 512))
-    threshold = kwargs.get("threshold", "auto")
+    threshold = kwargs.get("threshold", 0.8)
     mode = kwargs.get("mode", "window")
     
     # Advanced parameters
@@ -319,8 +319,8 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
         try:
             threshold = float(threshold)
         except ValueError:
-            print(f"Invalid threshold value: {threshold}. Using 'auto' instead.", file=sys.stderr)
-            threshold = "auto"
+            print(f"Invalid threshold value: {threshold}. Using default value instead.", file=sys.stderr)
+            threshold = 0.8
 
     # Handle min_chunk_size - convert to int if provided
     if min_chunk_size is not None:
@@ -408,8 +408,24 @@ def chonkie_sdpm(text: str, **kwargs: Any) -> List[str]:
 
 @ChunkingMethodRegistry.register("chonkie_late")
 def chonkie_late(text: str, **kwargs: Any) -> List[str]:
+    from sentence_transformers import SentenceTransformer
     from chonkie import LateChunker, RecursiveRules
     import json
+
+    # Ensure sentence-transformers doesn't choke on Chonkie's extra kwarg.
+    original_encode = SentenceTransformer.encode
+    # Only wrap once per process to avoid stacking wrappers.
+    if not getattr(original_encode, "_chainforge_patch", False):
+        def encode_without_add_special_tokens(self, sentences, **encode_kwargs):
+            # SentenceTransformer >=3 raises if this kwarg is unsupported,
+            # but Chonkie always sets it, so just remove it and forward.
+            if "add_special_tokens" in encode_kwargs:
+                encode_kwargs = dict(encode_kwargs)
+                encode_kwargs.pop("add_special_tokens", None)
+            return original_encode(self, sentences, **encode_kwargs)
+
+        encode_without_add_special_tokens._chainforge_patch = True
+        SentenceTransformer.encode = encode_without_add_special_tokens
 
     # Basic parameters
     embedding_model = kwargs.get("embedding_model", "sentence-transformers/all-MiniLM-L6-v2")

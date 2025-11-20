@@ -138,7 +138,12 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
           try {
             const formData = new FormData();
             formData.append("baseMethod", method.baseMethod);
-            formData.append("text", StringLookup.get(fileInfo.text) ?? "");
+
+            // Get the full text and pack it as a "file" part instead of a plain field
+            const fullText = StringLookup.get(fileInfo.text) ?? "";
+            const textBlob = new Blob([fullText], { type: "text/plain" });
+
+            formData.append("document", textBlob);
 
             // Add the user settings
             Object.entries(method.settings ?? {}).forEach(([k, v]) => {
