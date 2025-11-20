@@ -14,10 +14,10 @@ on:
     tags:
       - 'v*'
 
-# Concurrency: cancel in-progress runs when new one starts
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+# # Concurrency: cancel in-progress runs when new one starts
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.ref }}
+#   cancel-in-progress: true
 
 env:
   REGISTRY: docker.io
@@ -68,14 +68,14 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: |
-            type=gha,scope=cpu-build
-            type=registry,ref=${{ env.IMAGE_NAME }}:cpu
-          cache-to: type=gha,mode=max,scope=cpu-build
+          # cache-from: |
+          #   type=gha,scope=cpu-build
+          #   type=registry,ref=${{ env.IMAGE_NAME }}:cpu
+          # cache-to: type=gha,mode=max,scope=cpu-build
           platforms: linux/amd64,linux/arm64
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-            BUILDKIT_CONTEXT_KEEP_GIT_DIR=1
+          # build-args: |
+          #   BUILDKIT_INLINE_CACHE=1
+          #   BUILDKIT_CONTEXT_KEEP_GIT_DIR=1
 
   build-gpu:
     name: Build GPU Image
@@ -120,11 +120,11 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: |
-            type=gha,scope=gpu-build
-            type=registry,ref=${{ env.IMAGE_NAME }}:gpu
-          cache-to: type=gha,mode=max,scope=gpu-build
+          # cache-from: |
+          #   type=gha,scope=gpu-build
+          #   type=registry,ref=${{ env.IMAGE_NAME }}:gpu
+          # cache-to: type=gha,mode=max,scope=gpu-build
           platforms: linux/amd64,linux/arm64
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-            BUILDKIT_CONTEXT_KEEP_GIT_DIR=1
+          # build-args: |
+          #   BUILDKIT_INLINE_CACHE=1
+          #   BUILDKIT_CONTEXT_KEEP_GIT_DIR=1
