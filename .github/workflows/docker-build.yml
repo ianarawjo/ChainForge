@@ -6,25 +6,11 @@ on:
       - main
       - master
       - ragforge
-    paths:
-      - 'Dockerfile'
-      - 'Dockerfile.gpu'
-      - 'chainforge/**'
-      - 'setup.py'
-      - 'requirements.txt'
-      - '.github/workflows/docker-build.yml'
   push:
     branches:
       - main
       - master
       - ragforge
-    paths:
-      - 'Dockerfile'
-      - 'Dockerfile.gpu'
-      - 'chainforge/**'
-      - 'setup.py'
-      - 'requirements.txt'
-      - '.github/workflows/docker-build.yml'
     tags:
       - 'v*'
 
