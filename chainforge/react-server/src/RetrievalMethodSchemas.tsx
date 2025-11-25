@@ -961,6 +961,8 @@ export const retrievalMethodGroups = [
         emoji: "📊",
         group: "Keyword-based Retrieval",
         needsEmbeddingModel: false,
+        description:
+          "Classic keyword ranking using term frequency and document length normalization. Great default for keyword-heavy queries.",
       },
       {
         baseMethod: "tfidf",
@@ -969,6 +971,8 @@ export const retrievalMethodGroups = [
         emoji: "📈",
         group: "Keyword-based Retrieval",
         needsEmbeddingModel: false,
+        description:
+          "Vector-space retrieval based on term frequency–inverse document frequency. Good for exact words and rare terms.",
       },
       {
         baseMethod: "boolean",
@@ -977,6 +981,8 @@ export const retrievalMethodGroups = [
         emoji: "🔍",
         group: "Keyword-based Retrieval",
         needsEmbeddingModel: false,
+        description:
+          "Keyword retrieval based on minimum token overlap with the query, ranked by how many words they share.",
       },
       {
         baseMethod: "overlap",
@@ -985,6 +991,8 @@ export const retrievalMethodGroups = [
         emoji: "🎯",
         group: "Keyword-based Retrieval",
         needsEmbeddingModel: false,
+        description:
+          "Score documents by how many query keywords they share. Simple and fast when term overlap is what matters.",
       },
     ],
   },
@@ -998,6 +1006,8 @@ export const retrievalMethodGroups = [
         emoji: "📐",
         group: "Embedding-based Retrieval",
         needsEmbeddingModel: true,
+        description:
+          "Standard RAG-style retrieval: rank documents by cosine similarity between query and document embeddings.",
       },
       {
         baseMethod: "manhattan",
@@ -1006,6 +1016,8 @@ export const retrievalMethodGroups = [
         emoji: "🔤",
         group: "Embedding-based Retrieval",
         needsEmbeddingModel: true,
+        description:
+          "Use L1 (Manhattan) distance between embeddings. Sometimes more robust to outliers than Euclidean.",
       },
       {
         baseMethod: "euclidean",
@@ -1014,6 +1026,8 @@ export const retrievalMethodGroups = [
         emoji: "🎯",
         group: "Embedding-based Retrieval",
         needsEmbeddingModel: true,
+        description:
+          "Retrieve by L2 (Euclidean) distance in embedding space. Useful when absolute distances matter.",
       },
       {
         baseMethod: "clustered",
@@ -1022,6 +1036,8 @@ export const retrievalMethodGroups = [
         emoji: "🎲",
         group: "Embedding-based Retrieval",
         needsEmbeddingModel: true,
+        description:
+          "Cluster documents in embedding space, then retrieve from the most relevant clusters. Good for large, heterogeneous corpora.",
       },
     ],
   },
@@ -1035,6 +1051,8 @@ export const retrievalMethodGroups = [
         emoji: "🗄️",
         group: "Vector Stores",
         needsEmbeddingModel: true,
+        description:
+          "Use LanceDB as a persistent vector store for embeddings with fast similarity search.",
       },
       // Requires FAISS to be installed, which is not always available by default,
       // since it requires 'swig' to be installed which can only be done outside pip.
@@ -1045,6 +1063,8 @@ export const retrievalMethodGroups = [
         emoji: "💾",
         group: "Vector Stores",
         needsEmbeddingModel: true,
+        description:
+          "Backed by FAISS, Facebook’s high-performance similarity search library, for large-scale embedding retrieval.",
       },
     ],
   },

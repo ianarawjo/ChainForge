@@ -29,6 +29,7 @@ export interface LLMResponseInspectorModalProps {
   treatLLMFieldAsUnique?: boolean;
   ignoreAndHideLLMField?: boolean; // If true, LLM field will not be shown in the table view
   ignoreAndHideEvalResField?: boolean; // If true, "Eval Res" column option will not be shown in the table view
+  defaultTableColVar?: string; 
 }
 
 const LLMResponseInspectorModal = forwardRef<
@@ -109,6 +110,7 @@ const LLMResponseInspectorModal = forwardRef<
             treatLLMFieldAsUnique={props.treatLLMFieldAsUnique}
             ignoreAndHideLLMField={props.ignoreAndHideLLMField}
             ignoreAndHideEvalResField={props.ignoreAndHideEvalResField}
+            defaultTableColVar={props.defaultTableColVar} 
           />
         </Suspense>
       </div>

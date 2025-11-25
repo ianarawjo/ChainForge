@@ -15,7 +15,7 @@ export const OverlappingOpenAITiktokenSchema: ModelSettingsDict = {
         default: "gpt-3.5-turbo",
         title: "Model",
         description:
-          "Model to use for tokenizing. See tiktoken API docs for options.",
+          "OpenAI model (e.g. gpt-4o) or direct tiktoken tokenizer name (e.g. cl100k_base); OpenAI models auto-map to the correct tokenizer.",
       },
       chunk_size: {
         type: "number",
@@ -190,8 +190,10 @@ export const ChonkieSentenceSchema: ModelSettingsDict = {
       },
       chunk_size: {
         type: "number",
-        default: 512,
+        default: 1,
         title: "Max tokens per chunk",
+        description:
+          "Default 1 keeps each chunk to a single sentence. Increase to group multiple sentences up to the given token count.",
       },
       chunk_overlap: {
         type: "number",
@@ -607,83 +609,105 @@ export const ChunkMethodSchemas: { [baseMethod: string]: ModelSettingsDict } = {
 
 export const ChunkMethodGroups = [
   {
-    label: "Chonkie 🐿️",
+    label: "Length-Based",
     items: [
       {
         baseMethod: "chonkie_token",
         methodType: "Chonkie",
         name: "Token Chunker",
         emoji: "🐿️",
-      },
-      {
-        baseMethod: "chonkie_sentence",
-        methodType: "Chonkie",
-        name: "Sentence Chunker",
-        emoji: "✂️",
+        description:
+          "Split text into fixed-size token chunks with optional overlap. Fastest and cheapest option.",
       },
       {
         baseMethod: "chonkie_recursive",
         methodType: "Chonkie",
         name: "Recursive Chunker",
         emoji: "🔄",
-      },
-      {
-        baseMethod: "chonkie_semantic",
-        methodType: "Chonkie",
-        name: "Semantic Chunker",
-        emoji: "🤖",
-      },
-      {
-        baseMethod: "chonkie_sdpm",
-        methodType: "Chonkie",
-        name: "SDPM Chunker",
-        emoji: "🧬",
+        description:
+          "Try large chunks first and recursively split until under a token limit. Good when you want big chunks but must respect model limits.",
       },
       {
         baseMethod: "chonkie_late",
         methodType: "Chonkie",
         name: "Late Chunker",
         emoji: "⏳",
+        description:
+          "Apply length-based chunking at run time instead of precomputing chunks.",
       },
-    ],
-  },
-  {
-    label: "Overlapping Chunking",
-    items: [
       {
         baseMethod: "overlapping_openai_tiktoken",
         methodType: "Overlapping Chunking",
         name: "OpenAI tiktoken",
         emoji: "🤖",
+        description:
+          "Use OpenAI’s tiktoken to count tokens for chunk sizes and overlaps.",
       },
       {
         baseMethod: "overlapping_huggingface_tokenizers",
         methodType: "Overlapping Chunking",
         name: "HuggingFace Tokenizers",
         emoji: "🤗",
+        description:
+          "Use a HuggingFace tokenizer to count tokens for chunk sizes and overlaps.",
       },
     ],
   },
   {
-    label: "Syntax-Based Chunking",
+    label: "Structure-Based",
     items: [
+      {
+        baseMethod: "chonkie_sentence",
+        methodType: "Chonkie",
+        name: "Sentence Chunker",
+        emoji: "✂️",
+        description:
+          "Split on sentence boundaries. Nice for QA / summarization where you want readable chunks.",
+      },
       {
         baseMethod: "markdown_header",
         methodType: "Markdown",
         name: "Markdown Chunker",
         emoji: "📝",
+        description:
+          "Respect markdown headings when splitting (e.g. #, ##). Great for docs and notebooks.",
       },
       {
         baseMethod: "syntax_nltk",
         methodType: "Syntax-Based Chunking",
         name: "NLTK Sentence Splitter",
         emoji: "🐍",
+        description:
+          "Sentence splitting powered by NLTK. More robust for messy text.",
       },
       {
         baseMethod: "syntax_texttiling",
         methodType: "Syntax-Based Chunking",
         name: "Stopword Chunker",
         emoji: "📑",
+        description:
+          "Topic-based segmentation using TextTiling. Helps break long text into sections based on lexical shifts.",
+      },
+    ],
+  },
+  {
+    label: "Semantic / Embedding-Based",
+    items: [
+      {
+        baseMethod: "chonkie_semantic",
+        methodType: "Chonkie",
+        name: "Semantic Chunker",
+        emoji: "🤖",
+        description:
+          "Use embeddings to cut at semantically meaningful boundaries (topic changes, sections). More accurate but more expensive.",
+      },
+      {
+        baseMethod: "chonkie_sdpm",
+        methodType: "Chonkie",
+        name: "SDPM Chunker",
+        emoji: "🧬",
+        description:
+          "Embedding-based SDPM segmentation. Best for long, dense documents; highest compute cost.",
       },
     ],
   },

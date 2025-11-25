@@ -385,6 +385,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
           customLLMFieldName="Retrieval Method"
           ignoreAndHideLLMField={true}
           ignoreAndHideEvalResField={true}
+          defaultTableColVar="retrievalMethod"
         />
       </React.Suspense>
       <AreYouSureModal

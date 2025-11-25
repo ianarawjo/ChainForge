@@ -207,6 +207,7 @@ const ChunkMethodListContainer = forwardRef<
         items: group.items.map((m) => ({
           key: `method-${m.baseMethod}`,
           title: m.name,
+          tooltip: m.description,
           icon: m.emoji ? <Text>{m.emoji}</Text> : undefined,
           onClick: () => addMethod(m),
         })),

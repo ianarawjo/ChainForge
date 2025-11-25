@@ -39,11 +39,17 @@ def overlapping_openai_tiktoken(text: str, **kwargs: Any) -> List[str]:
     chunk_overlap = int(kwargs.get("chunk_overlap", 50))
 
     # Consider making model name configurable if needed
+    enc = None
+    model_error = None
     try:
         enc = tiktoken.encoding_for_model(model)
     except Exception as e:
-         print(f"Warning: Could not get tiktoken encoding for model {model}, falling back to cl100k_base. Error: {e}", file=sys.stderr)
-         enc = tiktoken.get_encoding("cl100k_base")
+         model_error = e
+         try:
+             enc = tiktoken.get_encoding(model)
+         except Exception as e2:
+             print(f"Warning: Could not resolve tokenizer/model '{model}' via encoding_for_model ({model_error}) or get_encoding ({e2}); falling back to cl100k_base.", file=sys.stderr)
+             enc = tiktoken.get_encoding("cl100k_base")
 
     tokens = enc.encode(text)
     result = []
@@ -201,7 +207,7 @@ def chonkie_sentence(text: str, **kwargs: Any) -> List[str]:
     import json
 
     tokenizer_or_token_counter = kwargs.get("tokenizer_or_token_counter", "gpt2")
-    chunk_size = int(kwargs.get("chunk_size", 512))
+    chunk_size = int(kwargs.get("chunk_size", 1))
     chunk_overlap = int(kwargs.get("chunk_overlap", 0))
     min_sentences_per_chunk = int(kwargs.get("min_sentences_per_chunk", 1))
     min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 12))

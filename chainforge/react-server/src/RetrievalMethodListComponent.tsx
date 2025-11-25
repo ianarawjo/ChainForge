@@ -797,6 +797,7 @@ export const RetrievalMethodListContainer = forwardRef<
                 items: embeddingProviders.map((prov) => ({
                   key: `method-${m.baseMethod}-${prov.value}`,
                   title: prov.label,
+                  tooltip: m.description,
                   onClick: () => addMethod(m, prov.value),
                 })),
               },
@@ -807,6 +808,7 @@ export const RetrievalMethodListContainer = forwardRef<
             {
               key: `method-${m.baseMethod}`,
               title: m.methodName,
+              tooltip: m.description,
               icon: m.emoji ? <Text>{m.emoji}</Text> : undefined,
               onClick: () => addMethod(m),
             },
