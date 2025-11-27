@@ -5,8 +5,7 @@ WORKDIR /app
 
 # Copy package files and install dependencies (including dev for build)
 COPY chainforge/react-server/package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --legacy-peer-deps --prefer-offline
+RUN npm ci --legacy-peer-deps --prefer-offline
 
 # Copy source files and build
 COPY chainforge/react-server/ ./
@@ -25,31 +24,27 @@ RUN apt-get --allow-releaseinfo-change update && \
 WORKDIR /build
 
 # Upgrade pip tools first (this layer is highly cacheable)
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Copy requirements first for better layer caching
 COPY chainforge/requirements.txt chainforge/constraints.txt ./
 
 # Install PyTorch CPU-only FIRST as it's the largest dependency
 # This separates the longest-running install into its own layer
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --prefix=/install \
+RUN pip install --no-cache-dir --prefix=/install \
     --extra-index-url https://download.pytorch.org/whl/cpu \
     torch torchvision torchaudio
 
 # Install remaining requirements with constraints
 # Using --find-links to help pip resolve faster
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --prefix=/install \
+RUN pip install --no-cache-dir --prefix=/install \
     -r requirements.txt \
     -c constraints.txt
 
 # Copy project files and build the package (smallest layer last)
 COPY setup.py README.md ./
 COPY chainforge/ ./chainforge/
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --prefix=/install .
+RUN pip install --no-cache-dir --prefix=/install .
 
 # Stage 3 - Final minimal runtime image
 FROM python:3.12-slim
