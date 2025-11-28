@@ -14,10 +14,10 @@ on:
     tags:
       - 'v*'
 
-# # Concurrency: cancel in-progress runs when new one starts
-# concurrency:
-#   group: ${{ github.workflow }}-${{ github.ref }}
-#   cancel-in-progress: true
+# Concurrency: cancel in-progress runs when new one starts
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: docker.io
@@ -47,29 +47,33 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch,suffix=-amd64
-            type=ref,event=pr,suffix=-amd64
-            type=semver,pattern={{version}},suffix=-amd64
-            type=semver,pattern={{major}}.{{minor}},suffix=-amd64
-            type=raw,value=cpu-amd64
-
-      - name: Build and push CPU AMD64 image
+      - name: Build CPU AMD64 image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: false
           platforms: linux/amd64
           provenance: false
           sbom: false
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+        id: build-amd64
+
+      - name: Export digest
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build-amd64.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-cpu-amd64
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
 
   build-cpu-arm64:
     name: Build CPU ARM64 Image
@@ -94,29 +98,33 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch,suffix=-arm64
-            type=ref,event=pr,suffix=-arm64
-            type=semver,pattern={{version}},suffix=-arm64
-            type=semver,pattern={{major}}.{{minor}},suffix=-arm64
-            type=raw,value=cpu-arm64
-
-      - name: Build and push CPU ARM64 image
+      - name: Build CPU ARM64 image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: false
           platforms: linux/arm64
           provenance: false
           sbom: false
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+        id: build-arm64
+
+      - name: Export digest
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build-arm64.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-cpu-arm64
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
 
   build-gpu-amd64:
     name: Build GPU AMD64 Image
@@ -174,29 +182,33 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch,suffix=-gpu-amd64
-            type=ref,event=pr,suffix=-gpu-amd64
-            type=semver,pattern={{version}},suffix=-gpu-amd64
-            type=semver,pattern={{major}}.{{minor}},suffix=-gpu-amd64
-            type=raw,value=gpu-amd64
-
-      - name: Build and push GPU AMD64 image
+      - name: Build GPU AMD64 image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile.gpu
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: false
           platforms: linux/amd64
           provenance: false
           sbom: false
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+        id: build-gpu
+
+      - name: Export digest
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build-gpu.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-gpu-amd64
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
 
 
   create-cpu-manifest:
@@ -209,32 +221,41 @@ jobs:
       packages: write
 
     steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-cpu-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Create and push CPU manifest
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=cpu
+            type=raw,value=latest
+
+      - name: Create and push multi-arch manifest
+        working-directory: /tmp/digests
         run: |
-          # Determine tags based on ref
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-            MAJOR_MINOR=$(echo $VERSION | cut -d. -f1,2)
-            docker buildx imagetools create -t ${{ env.IMAGE_NAME }}:${VERSION} \
-              -t ${{ env.IMAGE_NAME }}:${MAJOR_MINOR} \
-              -t ${{ env.IMAGE_NAME }}:cpu \
-              -t ${{ env.IMAGE_NAME }}:latest \
-              ${{ env.IMAGE_NAME }}:cpu-amd64 \
-              ${{ env.IMAGE_NAME }}:cpu-arm64
-          else
-            BRANCH=${GITHUB_REF#refs/heads/}
-            docker buildx imagetools create -t ${{ env.IMAGE_NAME }}:${BRANCH} \
-              -t ${{ env.IMAGE_NAME }}:cpu \
-              -t ${{ env.IMAGE_NAME }}:latest \
-              ${{ env.IMAGE_NAME }}:cpu-amd64 \
-              ${{ env.IMAGE_NAME }}:cpu-arm64
-          fi
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.IMAGE_NAME }}@sha256:%s ' *)
+        env:
+          DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
 
   create-gpu-manifest:
     name: Create GPU Manifest
@@ -246,26 +267,37 @@ jobs:
       packages: write
 
     steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-gpu-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Create and push GPU manifest (AMD64 only)
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-gpu
+            type=semver,pattern={{version}},suffix=-gpu
+            type=semver,pattern={{major}}.{{minor}},suffix=-gpu
+            type=raw,value=gpu
+
+      - name: Create and push GPU manifest
+        working-directory: /tmp/digests
         run: |
-          # Determine tags based on ref
-          # GPU images are AMD64 only due to storage constraints and limited ARM64 CUDA support
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-            MAJOR_MINOR=$(echo $VERSION | cut -d. -f1,2)
-            docker buildx imagetools create -t ${{ env.IMAGE_NAME }}:${VERSION}-gpu \
-              -t ${{ env.IMAGE_NAME }}:${MAJOR_MINOR}-gpu \
-              -t ${{ env.IMAGE_NAME }}:gpu \
-              ${{ env.IMAGE_NAME }}:gpu-amd64
-          else
-            BRANCH=${GITHUB_REF#refs/heads/}
-            docker buildx imagetools create -t ${{ env.IMAGE_NAME }}:${BRANCH}-gpu \
-              -t ${{ env.IMAGE_NAME }}:gpu \
-              ${{ env.IMAGE_NAME }}:gpu-amd64
-          fi
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.IMAGE_NAME }}@sha256:%s ' *)
+        env:
+          DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
