@@ -1,5 +1,5 @@
 services:
-  chainforge:
+  chainforge-gpu:
     build:
       context: .
       dockerfile: Dockerfile.gpu
