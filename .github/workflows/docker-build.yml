@@ -128,6 +128,39 @@ jobs:
       packages: write
 
     steps:
+      - name: Free up disk space
+        run: |
+          echo "Before cleanup:"
+          df -h
+
+          # Remove unnecessary software to free up space
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+          # Remove large packages
+          sudo apt-get remove -y '^aspnetcore-.*' || true
+          sudo apt-get remove -y '^dotnet-.*' --fix-missing || true
+          sudo apt-get remove -y '^llvm-.*' --fix-missing || true
+          sudo apt-get remove -y 'php.*' --fix-missing || true
+          sudo apt-get remove -y '^mongodb-.*' --fix-missing || true
+          sudo apt-get remove -y '^mysql-.*' --fix-missing || true
+          sudo apt-get remove -y azure-cli google-chrome-stable firefox powershell mono-devel libgl1-mesa-dri --fix-missing || true
+          sudo apt-get remove -y google-cloud-sdk --fix-missing || true
+          sudo apt-get remove -y google-cloud-cli --fix-missing || true
+
+          # Clean up
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          sudo docker image prune --all --force
+          sudo rm -rf /var/lib/apt/lists/*
+
+          echo "After cleanup:"
+          df -h
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
