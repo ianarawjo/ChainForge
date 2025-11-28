@@ -50,19 +50,43 @@ You can set your API keys by clicking the Settings icon in the top-right corner.
 
 ## Run using Docker
 
-You can use our [Dockerfile](/Dockerfile) to run `ChainForge` locally using `Docker Desktop`:
+ChainForge provides pre-built Docker images for both CPU and GPU environments:
 
-- Build the `Dockerfile`:
-  ```shell
-  docker build -t chainforge .
-  ```
+**Quick start with Docker Compose (recommended):**
 
-- Run the image:
-  ```shell
-  docker run -p 8000:8000 chainforge
-  ```
+```bash
+# CPU version (works on AMD64 and ARM64)
+docker-compose up -d
 
-Now you can open the browser of your choice and open `http://127.0.0.1:8000`.
+# GPU version (AMD64 only, requires NVIDIA Docker runtime)
+docker-compose -f docker-compose.gpu.yml up -d
+```
+
+**Or use Docker CLI:**
+
+```bash
+# Pull and run CPU version
+docker pull gauransh/chainforge:latest
+docker run -d -p 8000:8000 --name chainforge gauransh/chainforge:latest
+
+# Pull and run GPU version
+docker pull gauransh/chainforge:gpu
+docker run -d -p 8000:8000 --gpus all --name chainforge-gpu gauransh/chainforge:gpu
+```
+
+**Or build locally:**
+
+```bash
+# Build CPU version
+docker build -t chainforge .
+
+# Build GPU version
+docker build -f Dockerfile.gpu -t chainforge:gpu .
+```
+
+Access ChainForge at http://localhost:8000
+
+For detailed Docker documentation including architecture support, environment variables, and CI/CD setup, see [DOCKER.md](DOCKER.md).
 
 # Supported providers
 
