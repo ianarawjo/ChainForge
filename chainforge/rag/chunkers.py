@@ -293,122 +293,49 @@ def chonkie_recursive(text: str, **kwargs: Any) -> List[str]:
 def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
     from chonkie import SemanticChunker
     import json
+    import sys
 
-    # Basic parameters
+    # --- CONFIGURATION ---
+    # 1. Setup Model
     embedding_model = kwargs.get("embedding_model", "minishlab/potion-base-8M")
-    embedding_path = kwargs.get("embedding_local_path", '')
-    if embedding_path != '':
-        embedding_model = embedding_path
+    local_path = kwargs.get("embedding_local_path", '')
+    if local_path:
+        embedding_model = local_path
+        
     chunk_size = int(kwargs.get("chunk_size", 512))
     threshold = kwargs.get("threshold", 0.8)
-    mode = kwargs.get("mode", "window")
-    
-    # Advanced parameters
+
+    # 2. Setup Advanced Params (Supported in 1.3.1)
     similarity_window = int(kwargs.get("similarity_window", 1))
     min_sentences = int(kwargs.get("min_sentences", 1))
-    min_chunk_size = kwargs.get("min_chunk_size", 0)
     min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 12))
-    threshold_step = float(kwargs.get("threshold_step", 0.01))
     
-    # Handle delimiters - convert from JSON string if needed
-    delim = kwargs.get("delim", '[".", "!", "?", "\\n\\n"]')
-    try: 
-        delim = json.loads(delim)  # Parse JSON format
-        if not isinstance(delim, list) or not all(isinstance(d, str) for d in delim):
-            raise ValueError("Delim must be a JSON parseable string representing an array of characters.")
-    except Exception as e:
-        print(f"Invalid JSON format for delim: {delim}. Using default delimiters. Error: {e}", file=sys.stderr)
-        delim = ['.', '!', '?', '\n\n']
+    # 3. THE MAGIC SWITCH (SDPM Support)
+    # If the user sets skip_window > 0, this acts exactly like the old SDPMChunker.
+    # If skip_window is 0 (default), it acts like standard SemanticChunker.
+    skip_window = int(kwargs.get("skip_window", 0)) 
 
-    # Convert threshold to appropriate type if it's a string and not "auto"
-    if isinstance(threshold, str) and threshold != "auto":
+    # 4. Clean Threshold
+    if isinstance(threshold, str) and threshold != 0.8:
         try:
             threshold = float(threshold)
         except ValueError:
-            print(f"Invalid threshold value: {threshold}. Using default value instead.", file=sys.stderr)
             threshold = 0.8
 
-    # Handle min_chunk_size - convert to int if provided
-    if min_chunk_size is not None:
-        try:
-            min_chunk_size = int(min_chunk_size)
-        except ValueError:
-            print(f"Invalid min_chunk_size value: {min_chunk_size}. Using None instead.", file=sys.stderr)
-            min_chunk_size = None
-
+    # --- INITIALIZATION ---
+    # Note: We removed 'mode', 'threshold_step', 'delim', and 'min_chunk_size' 
+    # because Chonkie 1.3.1 no longer supports them.
     chunker = SemanticChunker(
         embedding_model=embedding_model,
         threshold=threshold,
-        mode=mode,
         chunk_size=chunk_size,
         similarity_window=similarity_window,
         min_sentences=min_sentences,
         min_characters_per_sentence=min_characters_per_sentence,
-        threshold_step=threshold_step,
-        delim=delim,
-        **({} if min_chunk_size == 0 else {'min_chunk_size': min_chunk_size})
+        skip_window=skip_window 
     )
 
-    texts = [t.text for t in chunker.chunk(text)]
-    return texts if texts else [text]
-
-@ChunkingMethodRegistry.register("chonkie_sdpm")
-def chonkie_sdpm(text: str, **kwargs: Any) -> List[str]:
-    from chonkie import SDPMChunker
-    import json
-
-    # Basic parameters
-    embedding_model = kwargs.get("embedding_model", "minishlab/potion-base-8M")
-    embedding_path = kwargs.get("embedding_local_path", '')
-    if embedding_path != '':
-        embedding_model = embedding_path
-    chunk_size = int(kwargs.get("chunk_size", 512))
-    threshold = kwargs.get("threshold", "auto")
-    mode = kwargs.get("mode", "window")
-    
-    # Advanced parameters
-    similarity_window = int(kwargs.get("similarity_window", 1))
-    min_sentences = int(kwargs.get("min_sentences", 1))
-    min_chunk_size = int(kwargs.get("min_chunk_size", 2))  # Default is 2 for SDPM
-    min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 12))
-    threshold_step = float(kwargs.get("threshold_step", 0.01))
-    
-    # SDPM-specific parameter
-    skip_window = int(kwargs.get("skip_window", 1))
-    
-    # Handle delimiters - convert from JSON string if needed
-    delim = kwargs.get("delim", '[".", "!", "?", "\\n\\n"]')
-    
-    try: 
-        delim = json.loads(delim)  # Parse JSON format
-        if not isinstance(delim, list) or not all(isinstance(d, str) for d in delim):
-            raise ValueError("Delim must be a JSON parseable string representing an array of characters.")
-    except Exception as e:
-        print(f"Invalid JSON format for delim: {delim}. Using default delimiters. Error: {e}", file=sys.stderr)
-        delim = ['.', '!', '?', '\n\n']
-
-    # Convert threshold to appropriate type if it's a string and not "auto"
-    if isinstance(threshold, str) and threshold != "auto":
-        try:
-            threshold = float(threshold)
-        except ValueError:
-            print(f"Invalid threshold value: {threshold}. Using 'auto' instead.", file=sys.stderr)
-            threshold = "auto"
-
-    chunker = SDPMChunker(
-        embedding_model=embedding_model,
-        threshold=threshold,
-        mode=mode,
-        chunk_size=chunk_size,
-        similarity_window=similarity_window,
-        min_sentences=min_sentences,
-        min_chunk_size=min_chunk_size,
-        min_characters_per_sentence=min_characters_per_sentence,
-        threshold_step=threshold_step,
-        delim=delim,
-        skip_window=skip_window,
-    )
-
+    # --- EXECUTION ---
     texts = [t.text for t in chunker.chunk(text)]
     return texts if texts else [text]
 
