@@ -435,6 +435,7 @@ interface RetrievalMethodListItemProps {
   methodItem: RetrievalMethodSpec;
   onRemove: (key: string) => void;
   onSettingsUpdate: (key: string, settings: any) => void;
+  latency?: string;
 }
 
 const RetrievalMethodListItem: React.FC<
@@ -450,6 +451,7 @@ const RetrievalMethodListItem: React.FC<
   methodItem,
   onRemove,
   onSettingsUpdate,
+  latency,
   isLinked = false,
   isFirstInGroup = false,
   isLastInGroup = false,
@@ -487,6 +489,16 @@ const RetrievalMethodListItem: React.FC<
         <div className="llm-card-header">
           {methodItem.emoji && `${methodItem.emoji} `}
           {methodItem.settings?.shortName || methodItem.methodName}
+          {latency && (
+            <Badge 
+              size="xs" 
+              color="gray" 
+              variant="outline" 
+              style={{ marginLeft: 8, textTransform: 'none', fontWeight: 400 }}
+            >
+              {latency}
+            </Badge>
+          )}
         </div>
 
         {/* Actions (right) */}
@@ -571,6 +583,7 @@ export interface RetrievalMethodListContainerProps {
     newItems: RetrievalMethodSpec[],
     oldItems: RetrievalMethodSpec[],
   ) => void;
+  methodResults?: Record<string, any>;
 }
 
 export const RetrievalMethodListContainer = forwardRef<
@@ -875,6 +888,7 @@ export const RetrievalMethodListContainer = forwardRef<
               const isFirstInGroup = isLinked && members[0]?.key === item.key;
               const isLastInGroup =
                 isLinked && members[members.length - 1]?.key === item.key;
+              const latency = props.methodResults?.[item.key]?.metavars?.latency;
 
               return (
                 <RetrievalMethodListItem
@@ -882,6 +896,7 @@ export const RetrievalMethodListContainer = forwardRef<
                   methodItem={item}
                   onRemove={handleRemoveMethod}
                   onSettingsUpdate={handleSettingsUpdate}
+                  latency={latency}
                   isLinked={isLinked}
                   isFirstInGroup={isFirstInGroup}
                   isLastInGroup={isLastInGroup}

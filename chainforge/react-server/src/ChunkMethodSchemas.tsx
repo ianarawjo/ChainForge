@@ -335,7 +335,7 @@ export const ChonkieSemanticSchema: ModelSettingsDict = {
           "Value between 0-1. Higher values require sentences to be more similar to stay in the same chunk.",
         minimum: 0,
         maximum: 1,
-        step: 0.01
+        step: 0.01,
       },
       similarity_window: {
         type: "number",
@@ -369,7 +369,7 @@ export const ChonkieSemanticSchema: ModelSettingsDict = {
     },
     skip_window: {
       "ui:widget": "updown",
-    }
+    },
   },
   postprocessors: {
     threshold: (value: string | number | boolean): number => {

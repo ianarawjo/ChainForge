@@ -32,6 +32,8 @@ import {
   IconBrandPython,
   IconX,
   IconSparkles,
+  IconBrandGithub,
+  IconBook,
 } from "@tabler/icons-react";
 import { Dropzone, FileWithPath } from "@mantine/dropzone";
 import useStore, { initLLMProviderMenu, initLLMProviders } from "./store";
@@ -874,6 +876,30 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                     );
                   }}
                 />
+
+                <Divider my="xl" label="Resources" labelPosition="center" />
+
+                <Group position="center">
+                  <Button
+                    component="a"
+                    href="https://github.com/ianarawjo/ChainForge"
+                    target="_blank"
+                    variant="light"
+                    leftIcon={<IconBrandGithub size="1.2rem" />}
+                  >
+                    GitHub Project
+                  </Button>
+
+                  <Button
+                    component="a"
+                    href="https://chainforge.ai/docs/"
+                    target="_blank"
+                    variant="light"
+                    leftIcon={<IconBook size="1.2rem" />}
+                  >
+                    Documentation
+                  </Button>
+                </Group>
               </Box>
             </Tabs.Panel>
           </Tabs>

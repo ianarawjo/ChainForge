@@ -231,7 +231,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
             mah={200}
             className="upload-node-list nopan nowheel"
           >
-            <List spacing="xs" size="sm">
+            <List spacing="xs" size="sm" pr="sm">
               {fields.map((field, index) => (
                 <List.Item
                   key={

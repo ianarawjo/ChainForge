@@ -6,7 +6,7 @@ import React, {
   useContext,
 } from "react";
 import { Handle, Position } from "reactflow";
-import { LoadingOverlay, Badge } from "@mantine/core";
+import { Badge, Progress } from "@mantine/core";
 import { IconSearch } from "@tabler/icons-react";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
@@ -23,6 +23,7 @@ import RetrievalMethodListContainer, {
 import { LLMResponse, TemplateVarInfo } from "./backend/typing";
 import { FLASK_BASE_URL } from "./backend/utils";
 import type { LinkedMethodGroup } from "./RetrievalMethodListComponent";
+import { Status } from "./StatusIndicatorComponent";
 
 interface RetrievalNodeProps {
   id: string;
@@ -76,11 +77,16 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
   const [methodItems, setMethodItems] = useState<RetrievalMethodSpec[]>(
     data.methods || [],
   );
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<Status>(Status.NONE);
+  const [runTooltip, setRunTooltip] = useState<string>("Run Retrieval");
+  const [confirmMessage, setConfirmMessage] = useState<string>("");
   const [results, setResults] = useState<Record<string, any>>(
     data.results || {},
   );
   const [jsonResponses, setJsonResponses] = useState<LLMResponse[]>([]);
+  const [progress, setProgress] = useState<number | undefined>(undefined);
+  const [progressAnimated, setProgressAnimated] = useState(true);
+  const pollIntervalRef = useRef<number | null>(null);
 
   // Fusion            // wire to the Fusion button
   const [linkedGroups, setLinkedGroups] = useState<LinkedMethodGroup[]>([]);
@@ -88,6 +94,26 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
   // Refs
   const inspectorModalRef = useRef<LLMResponseInspectorModalRef>(null);
   const retrievalConfirmModalRef = useRef<AreYouSureModalRef>(null);
+
+  // Every time we click run, this increments. If we click stop, we increment it 
+  // (invalidating the previous run) and reset the UI.
+  const runIdRef = useRef(0);
+
+  const handleStopClick = useCallback(() => {
+      // Invalidate the current run by incrementing the ID
+      runIdRef.current += 1;
+
+      // Stop the progress polling immediately
+      if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+      }
+
+      // Reset UI State immediately
+      setStatus(Status.NONE);
+      setProgress(undefined);
+      setProgressAnimated(false);
+  }, []);
 
   // Reset on refresh
   useEffect(() => {
@@ -107,12 +133,39 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
     (newItems: RetrievalMethodSpec[]) => {
       setMethodItems(newItems);
       setDataPropsForNode(id, { methods: newItems });
+      if (status === Status.READY) {
+          setStatus(Status.WARNING);
+      }
     },
-    [id, setDataPropsForNode],
+    [id, setDataPropsForNode, status],
   );
 
   // Confirmation modal for running retrieval
   const confirmAndRunRetrieval = () => {
+    // Pull current input data to check counts
+    const inputData = pullInputData(["chunks"], id) as { chunks?: any[] };
+    const numChunks = inputData.chunks?.length || 0;
+
+    // Check if an intensive method (Vector/Embedding) is active
+    // We check if the baseMethod is 'vector' or if an embedding provider is set
+    const hasIntensiveMethod = methodItems.some(
+      (m) => m.baseMethod === "vector" || !!m.embeddingProvider
+    );
+
+    // Construct the message
+    let msg = "⚠️ You're about to run all configured retrieval methods.\n\n";
+
+    // ADDED SPECIFIC WARNING
+    if (hasIntensiveMethod && numChunks > 100) {
+      msg += `🛑 **High Volume Warning**: You are running an intensive retrieval method (Vector/Embedding) on ${numChunks} chunks.\n
+      This will generate embeddings for ALL chunks, which may be slow and incur costs depending on your provider.\n\n`;
+    }
+
+    msg += `Some methods may create, load, or modify vector stores, which could:\n 
+          Overwrite existing data\n or append new data.
+          Make sure your settings and input data are correct before proceeding.`;
+
+    setConfirmMessage(msg);
     retrievalConfirmModalRef.current?.trigger();
   };
 
@@ -122,7 +175,36 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       showAlert?.("Please add at least one retrieval method");
       return;
     }
-    setLoading(true);
+    const currentRunId = runIdRef.current;
+    
+    // Setup UI for loading
+    setStatus(Status.LOADING);
+    setProgress(5); // Start at 5%
+    setProgressAnimated(true);
+
+    // Start Polling the "Faked" Endpoint
+    pollIntervalRef.current = window.setInterval(async () => {
+      try {
+        const resp = await fetch(`${FLASK_BASE_URL}getRetrieveProgress`);
+        if (currentRunId !== runIdRef.current) return;
+        const data = await resp.json();
+
+        
+        let currentProgress = 0;
+        if (typeof data === 'number') {
+            currentProgress = data;
+        } else if (data && typeof data === 'object') {
+            // Sum all values in the object (assuming they are numbers representing % completion)
+            const values = Object.values(data) as number[];
+            currentProgress = values.reduce((acc, val) => acc + (typeof val === 'number' ? val : 0), 0);
+        }
+        
+        // Clamp between 5 and 95 so it doesn't look finished until it actually is
+        setProgress(Math.min(95, Math.max(5, currentProgress)));
+      } catch (e) {
+        console.warn("Could not fetch progress", e);
+      }
+    }, 500);
 
     try {
       // Get input data from connected nodes
@@ -165,6 +247,11 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         }),
       });
 
+      if (currentRunId !== runIdRef.current) {
+          console.log("Retrieval result ignored (stopped by user).");
+          return; 
+      }
+
       if (!response.ok) {
         const body = await response.json();
         const message =
@@ -177,6 +264,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
 
       // The response is now a flat array of objects
       const retrievalResults = await response.json();
+      if (currentRunId !== runIdRef.current) return;
 
       // --- Hide individual members of fused groups; keep only the fused column ---
       const fusedMemberIds = new Set(
@@ -229,6 +317,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
               retrievalMethodSignature:
                 result.metavars?.retrievalMethodSignature,
               embeddingModel: result.metavars?.embeddingModel,
+              latency: result.metavars?.latency_ms,
             },
           };
         }
@@ -271,11 +360,29 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
 
       // Notify downstream nodes
       pingOutputNodes(id);
+      setStatus(Status.READY);
+
     } catch (error) {
-      console.error("Detailed error:", error);
-      showAlert?.(error instanceof Error ? error.message : "Retrieval failed");
+      // Only show error if we weren't stopped
+      if (currentRunId === runIdRef.current) {
+          console.error("Detailed error:", error);
+          showAlert?.(error instanceof Error ? error.message : "Retrieval failed");
+          setStatus(Status.ERROR);
+      }
     } finally {
-      setLoading(false);
+        // Only run cleanup if this is still the active run
+        // (If we stopped, handleStopClick already cleaned up)
+        if (currentRunId === runIdRef.current) {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            setProgress(100);
+            setProgressAnimated(false);
+            setTimeout(() => {
+                // Check one last time before clearing UI
+                if (currentRunId === runIdRef.current) {
+                    setProgress(undefined);
+                }
+            }, 2000);
+        }
     }
   }, [
     methodItems,
@@ -296,19 +403,50 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
     });
   }, [id, methodItems, results, setDataPropsForNode]);
 
+  const handleRunHover = useCallback(() => {
+    if (status === Status.LOADING) return;
+
+    try {
+      // Pull data from inputs without processing (just to count)
+      const inputData = pullInputData(["chunks", "queries"], id) as {
+        chunks?: any[];
+        queries?: any[];
+      };
+
+      const numChunks = inputData.chunks?.length || 0;
+      const numQueries = inputData.queries?.length || 0;
+      const numMethods = methodItems.length;
+
+      if (numMethods === 0) {
+        setRunTooltip("Please add a retrieval method first.");
+      } else if (numChunks === 0 || numQueries === 0) {
+        setRunTooltip("Connect 'chunks' and 'queries' inputs.");
+      } else {
+        setRunTooltip(
+          `Will run ${numMethods} method(s) for ${numQueries} queries against ${numChunks} chunks.`
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      setRunTooltip("Error checking inputs.");
+    }
+  }, [pullInputData, id, status, methodItems]);
+
   return (
     <BaseNode nodeId={id} classNames="retrieval-node">
       <NodeLabel
         title={data.title || nodeDefaultTitle}
         nodeId={id}
         icon={nodeIcon}
-        status={undefined}
+        status={status}
+        isRunning={status === Status.LOADING} // Tells NodeLabel to show the Stop button
         handleRunClick={confirmAndRunRetrieval}
-        runButtonTooltip="Run Retrieval"
+        handleStopClick={handleStopClick}
+        handleRunHover={handleRunHover}
+        runButtonTooltip={runTooltip}
       />
 
       <div>
-        <LoadingOverlay visible={loading} />
 
         {/* Labeled Handle for 'queries' */}
         <div style={{ ...handleWrapperBaseStyle, top: `${HANDLE_Y_START}px` }}>
@@ -355,9 +493,32 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
               setLinkedGroups(groups);
               setDataPropsForNode(id, { linked_groups: groups });
             }}
+            methodResults={results}
           />
         </div>
       </div>
+
+      {progress !== undefined && (
+        <div style={{ paddingBottom: "12px" }}>
+            <Progress
+                size="md"       // Define the height of the progress bar
+                radius="xl"     // Gives it fully rounded "pill" edges
+                striped         // Adds the diagonal stripes texture
+                animate={progressAnimated} // Makes the stripes move
+                sections={[
+                  {
+                      value: progress,
+                      color: "blue",
+                      tooltip: "Retrieving documents...",
+                  },
+                ]}
+            />
+            {/* Add a small text label below */}
+            <div style={{ textAlign: "center", fontSize: "10px", color: "#666", marginTop: "4px" }}>
+                {Math.round(progress)}%
+            </div>
+        </div>
+      )}
 
       <InspectFooter
         onClick={() => inspectorModalRef.current?.trigger()}
@@ -391,10 +552,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       <AreYouSureModal
         ref={retrievalConfirmModalRef}
         title="Confirm Retrieval"
-        message={`⚠️ You're about to run all configured retrieval methods.\n\n
-          Some methods may create, load, or modify vector stores, which could:\n 
-          Overwrite existing data\n or append new data.
-          Make sure your settings and input data are correct before proceeding.`}
+        message={confirmMessage} 
         onConfirm={runRetrieval}
       />
     </BaseNode>

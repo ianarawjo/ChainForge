@@ -68,6 +68,9 @@ MEDIA_DIR = os.path.join(FLOWS_DIR, 'media')
 SECURE_MODE: Literal['off', 'settings', 'all'] = 'off'  # The mode of encryption to use for files
 FLOWS_DIR_PWD = None  # The password to use for encryption/decryption
 
+# GLOBAL STATE: Stores progress for the current retrieval operation
+RETRIEVAL_PROGRESS = {}
+
 class MetricType(Enum):
     KeyValue = 0
     KeyValue_Numeric = 1
@@ -1515,6 +1518,7 @@ def retrieve():
         ...
     ]
     """
+    global RETRIEVAL_PROGRESS
     data = request.json
     methods = data.get("methods", [])
     chunks = data.get("chunks", [])
@@ -1538,6 +1542,8 @@ def retrieve():
             return jsonify({"error": "No chunks provided"}), 400
         if not queries:
             return jsonify({"error": "No queries provided"}), 400
+        
+        RETRIEVAL_PROGRESS = {m["methodName"]: 0 for m in methods}
         
         method_id_to_group = {}
         group_cfg = {}
@@ -1636,9 +1642,14 @@ def retrieve():
                     handler = resolved_handlers.get(base_method)
                     if not handler:
                         raise ValueError(f"Unknown method: {base_method}")
+                    RETRIEVAL_PROGRESS[method_name] = 10
+                    start_time = time.perf_counter()
                     
                     # Get retrieved chunks for this method and chunk group
                     retrieved = handler(chunk_group, queries, method.get("settings", {}))
+                    RETRIEVAL_PROGRESS[method_name] = 70
+                    end_time = time.perf_counter()
+                    latency_ms = (end_time - start_time) * 1000
                     # Process retrieved chunks for each query
                     for resp in retrieved:
                         query_object = resp.get("query_object", "")
@@ -1670,6 +1681,7 @@ def retrieve():
                                     "docTitle": chunk.get("docTitle", ""),
                                     "chunkId": chunk.get("chunkId", ""),
                                     "chunkLibrary": chunk.get("chunkLibrary", ""),
+                                    "latency_ms": f"{latency_ms:.2f}ms"
                                 },
                                 "llm": chunk.get("llm", "(none)"),  # Use chunk's LLM if available
                             }
@@ -1684,6 +1696,7 @@ def retrieve():
                                 })
                             
                             flat_results.append(response_obj)
+                    RETRIEVAL_PROGRESS[method_name] = 100
                 except Exception as e:
                     # Skip errors - we'll just not include results from this method
                     print(f"Error with {method_name} on {chunk_method}: {str(e)}")
@@ -1699,6 +1712,8 @@ def retrieve():
 
                     if not embedder_func:
                         raise ValueError(f"Unknown embedding model: {model_name}")
+                    for m in methods:
+                         RETRIEVAL_PROGRESS[m["methodName"]] = 30
                     
                     # Compute embeddings once for all methods using this model
                     chunk_texts = [c["text"] for c in chunk_group]
@@ -1724,10 +1739,13 @@ def retrieve():
                         handler = resolved_handlers.get(base_method)
                         if not handler:
                             raise ValueError(f"Unknown method: {base_method}")
-                        
+                        RETRIEVAL_PROGRESS[method_name] = 50
+                        start_time = time.perf_counter()
                         # Get retrieved chunks for this method and chunk group
                         retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method.get("settings", {}), db_path)
-                        
+                        RETRIEVAL_PROGRESS[method_name] = 80
+                        end_time = time.perf_counter()
+                        latency_ms = (end_time - start_time) * 1000
                         # Process retrieved chunks for each query
                         for resp in retrieved:
                             query_object = resp.get("query_object", "")
@@ -1760,6 +1778,7 @@ def retrieve():
                                         "chunkId": chunk.get("chunkId", ""),
                                         "chunkLibrary": chunk.get("chunkLibrary", ""),
                                         "embeddingModel": model_name,
+                                        "latency_ms": f"{latency_ms:.2f}ms"
                                     },
                                     "llm": chunk.get("llm", "(none)"),  # Use chunk's LLM if available
                                 }
@@ -1773,6 +1792,7 @@ def retrieve():
                                         "doc_id": doc_id, "rank": rank, "score": score, "obj": response_obj
                                     })
                                 flat_results.append(response_obj)
+                        RETRIEVAL_PROGRESS[method_name] = 100
                     except Exception as e:
                         print(f"Error with {method_name} on {chunk_method}: {str(e)}")
                         continue
@@ -1826,6 +1846,15 @@ def retrieve():
         return jsonify(flat_results), 200
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 400
+
+@app.route('/getRetrieveProgress', methods=['GET'])
+def get_retrieve_progress():
+    """
+    Returns the current progress of all active retrieval methods.
+    Used by the frontend polling loop.
+    """
+    global RETRIEVAL_PROGRESS
+    return jsonify(RETRIEVAL_PROGRESS)
 
 
 # === Reranking Endpoint ===

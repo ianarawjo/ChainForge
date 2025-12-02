@@ -1,7 +1,7 @@
 import pytest
 from chainforge.rag.chunkers import (
     chonkie_token, chonkie_sentence, chonkie_recursive, chonkie_semantic, 
-    chonkie_sdpm, chonkie_late, chonkie_neural,
+    chonkie_late, chonkie_neural,
     overlapping_openai_tiktoken, overlapping_huggingface_tokenizers,
     syntax_nltk, syntax_texttiling
 )
@@ -82,20 +82,6 @@ class TestChonkieChunking:
     assert isinstance(chunks, list)
     assert len(chunks) > 0
   
-  def test_chonkie_sdpm(self):
-    chunker = chonkie_sdpm
-    chunks = chunker(self.dummy_document)
-    assert isinstance(chunks, list)
-    assert len(chunks) > 0
-    for chunk in chunks:
-      assert isinstance(chunk, str)
-  
-  def test_chonkie_sdpm_with_parameters(self):
-    chunker = chonkie_sdpm 
-    chunks = chunker(self.dummy_document, chunk_size=24, threshold=0.01,
-              skip_window=1, min_sentences=1)
-    assert isinstance(chunks, list)
-    assert len(chunks) > 0
 
   # Late chunker may pose problems because 
   # its dependencies require numpy>=2.0 yet other libraries 
