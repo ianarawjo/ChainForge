@@ -15,6 +15,7 @@ import { IconFilter } from "@tabler/icons-react";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
+import DocumentationButton from "./DocumentationButton";
 
 import { generatePrompts } from "./backend/backend";
 import {
@@ -240,6 +241,9 @@ const SelectVarsNode: React.FC<SelectVarsNodeProps> = ({ data, id }) => {
         title={data.title || "Filter variables"}
         nodeId={id}
         icon={<IconFilter size="12pt" />}
+        customButtons={[
+          <DocumentationButton key="docs" nodeType="selectvars" />,
+        ]}
       />
 
       <Handle

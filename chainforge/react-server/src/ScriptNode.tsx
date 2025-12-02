@@ -4,6 +4,7 @@ import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import { IconSettingsAutomation } from "@tabler/icons-react";
 import { Dict } from "./backend/typing";
+import DocumentationButton from "./DocumentationButton";
 
 export interface ScriptNodeProps {
   data: {
@@ -102,6 +103,7 @@ const ScriptNode: React.FC<ScriptNodeProps> = ({ data, id }) => {
         nodeId={id}
         editable={false}
         icon={<IconSettingsAutomation size="16px" />}
+        customButtons={[<DocumentationButton key="docs" nodeType="script" />]}
       />
       <label htmlFor="num-generations" style={{ fontSize: "10pt" }}>
         Enter folder paths for external modules you wish to import.

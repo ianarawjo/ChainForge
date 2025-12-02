@@ -23,6 +23,7 @@ import {
   Flex,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import DocumentationButton from "./DocumentationButton";
 import {
   IconAbacus,
   IconBox,
@@ -766,6 +767,9 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         status={status}
         handleRunClick={handleRunClick}
         runButtonTooltip="Run all evaluators over inputs"
+        customButtons={[
+          <DocumentationButton key="docs" nodeType="multieval" />,
+        ]}
       />
 
       <LLMResponseInspectorModal

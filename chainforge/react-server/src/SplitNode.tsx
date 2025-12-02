@@ -5,6 +5,7 @@ import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import { IconArrowsSplit, IconList } from "@tabler/icons-react";
+import DocumentationButton from "./DocumentationButton";
 import {
   NativeSelect,
   Text,
@@ -356,6 +357,7 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
         nodeId={id}
         icon={<IconArrowsSplit size="12pt" />}
         customButtons={[
+          <DocumentationButton key="docs" nodeType="split" />,
           <SplitTextsPopover
             key="split-text-previews"
             textInfos={splitTexts}

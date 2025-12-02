@@ -17,6 +17,7 @@ import LLMResponseInspectorModal, {
 } from "./LLMResponseInspectorModal";
 import InspectFooter from "./InspectFooter";
 import { IconSearch } from "@tabler/icons-react";
+import DocumentationButton from "./DocumentationButton";
 
 import ChunkMethodListContainer, {
   ChunkMethodSpec,
@@ -271,6 +272,7 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
         status={status}
         handleRunClick={runChunking}
         runButtonTooltip="Perform chunking on input text"
+        customButtons={[<DocumentationButton key="docs" nodeType="chunk" />]}
       />
 
       <ChunkMethodListContainer

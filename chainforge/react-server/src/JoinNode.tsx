@@ -5,6 +5,7 @@ import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import { IconArrowMerge, IconList } from "@tabler/icons-react";
+import DocumentationButton from "./DocumentationButton";
 import {
   Divider,
   NativeSelect,
@@ -498,6 +499,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
         nodeId={id}
         icon={<IconArrowMerge size="12pt" />}
         customButtons={[
+          <DocumentationButton key="docs" nodeType="join" />,
           <JoinedTextsPopover
             key="joined-text-previews"
             textInfos={joinedTexts}

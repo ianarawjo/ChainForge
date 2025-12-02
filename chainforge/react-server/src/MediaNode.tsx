@@ -58,6 +58,7 @@ import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorModal, {
   LLMResponseInspectorModalRef,
 } from "./LLMResponseInspectorModal";
+import DocumentationButton from "./DocumentationButton";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { MediaLookup } from "./backend/cache";
 import { dataURLToBlob, DebounceRef, genDebounceFunc } from "./backend/utils";
@@ -767,6 +768,7 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
         status={status}
         statusMessage={statusMessage}
         customButtons={[
+          <DocumentationButton key="docs" nodeType="media" />,
           <Tooltip
             label="More info on .tsv dataset loading"
             key="eval-info"

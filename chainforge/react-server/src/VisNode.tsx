@@ -18,6 +18,7 @@ import useStore, { colorPalettes } from "./store";
 import Plot from "react-plotly.js";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
+import DocumentationButton from "./DocumentationButton";
 import PlotLegend from "./PlotLegend";
 import {
   cleanMetavarsFilterFunc,
@@ -1489,6 +1490,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         nodeId={id}
         status={status}
         icon={"📊"}
+        customButtons={[<DocumentationButton key="docs" nodeType="vis" />]}
       />
       <VisView
         ref={visViewRef}

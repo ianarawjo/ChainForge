@@ -11,6 +11,7 @@ import { IconSearch } from "@tabler/icons-react";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import useStore from "./store";
+import DocumentationButton from "./DocumentationButton";
 import InspectFooter from "./InspectFooter";
 import { AlertModalContext } from "./AlertModal";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
@@ -299,6 +300,9 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         status={undefined}
         handleRunClick={confirmAndRunRetrieval}
         runButtonTooltip="Run Retrieval"
+        customButtons={[
+          <DocumentationButton key="docs" nodeType="retrieval" />,
+        ]}
       />
 
       <div>

@@ -52,6 +52,7 @@ import LLMResponseInspectorModal, {
 import { PromptTemplate, escapeBraces } from "./backend/template";
 import ChatHistoryView from "./ChatHistoryView";
 import InspectFooter from "./InspectFooter";
+import DocumentationButton from "./DocumentationButton";
 import {
   countNumLLMs,
   setsAreEqual,
@@ -1613,6 +1614,10 @@ Soft failing by replacing undefined with empty strings.`,
         handleRunHover={handleRunHover}
         runButtonTooltip={runTooltip}
         customButtons={[
+          <DocumentationButton
+            key="docs"
+            nodeType={node_type === "chat" ? "chat" : "prompt"}
+          />,
           <PromptListPopover
             key="prompt-previews"
             promptInfos={promptPreviews}

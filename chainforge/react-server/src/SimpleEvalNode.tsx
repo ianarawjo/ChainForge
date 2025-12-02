@@ -26,6 +26,7 @@ import {
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import InspectFooter from "./InspectFooter";
+import DocumentationButton from "./DocumentationButton";
 import LLMResponseInspectorModal, {
   LLMResponseInspectorModalRef,
 } from "./LLMResponseInspectorModal";
@@ -308,6 +309,9 @@ const SimpleEvalNode: React.FC<SimpleEvalNodeProps> = ({ data, id }) => {
         status={status}
         handleRunClick={handleRunClick}
         runButtonTooltip="Run evaluator over inputs"
+        customButtons={[
+          <DocumentationButton key="docs" nodeType="simpleval" />,
+        ]}
       />
 
       <LLMResponseInspectorModal

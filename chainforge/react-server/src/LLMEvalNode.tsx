@@ -46,6 +46,7 @@ import { evalWithLLM, generatePrompts, grabResponses } from "./backend/backend";
 import { UserForcedPrematureExit } from "./backend/errors";
 import CancelTracker from "./backend/canceler";
 import { PromptInfo, PromptListModal, PromptListPopover } from "./PromptNode";
+import DocumentationButton from "./DocumentationButton";
 import { useDisclosure } from "@mantine/hooks";
 import { PromptTemplate } from "./backend/template";
 import { StringLookup } from "./backend/cache";
@@ -556,6 +557,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
         handleStopClick={handleStopClick}
         runButtonTooltip="Run scorer over inputs"
         customButtons={[
+          <DocumentationButton key="docs" nodeType="llmeval" />,
           <PromptListPopover
             key="prompt-previews"
             promptInfos={promptPreviews}

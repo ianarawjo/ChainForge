@@ -22,6 +22,7 @@ import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import { AlertModalContext } from "./AlertModal";
+import DocumentationButton from "./DocumentationButton";
 import { Status } from "./StatusIndicatorComponent";
 import { TemplateVarInfo } from "./backend/typing";
 import { MediaLookup } from "./backend/cache";
@@ -151,6 +152,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
         nodeId={id}
         icon={nodeIcon}
         status={status}
+        customButtons={[<DocumentationButton key="docs" nodeType="upload" />]}
       />
 
       <div

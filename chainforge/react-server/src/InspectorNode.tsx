@@ -7,6 +7,7 @@ import LLMResponseInspector, { exportToExcel } from "./LLMResponseInspector";
 import { grabResponses } from "./backend/backend";
 import { LLMResponse } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
+import DocumentationButton from "./DocumentationButton";
 
 export interface InspectorNodeProps {
   data: {
@@ -73,6 +74,7 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
         nodeId={id}
         icon={"🔍"}
         customButtons={[
+          <DocumentationButton key="docs" nodeType="inspect" />,
           <button
             className="custom-button"
             key="export-data"

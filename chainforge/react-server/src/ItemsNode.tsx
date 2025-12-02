@@ -10,6 +10,7 @@ import { Skeleton, Text } from "@mantine/core";
 import useStore from "./store";
 import NodeLabel from "./NodeLabelComponent";
 import { IconForms, IconTransform } from "@tabler/icons-react";
+import DocumentationButton from "./DocumentationButton";
 import { Handle, Node, Position } from "reactflow";
 import BaseNode from "./BaseNode";
 import {
@@ -227,8 +228,9 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
         title={data.title || "Items Node"}
         nodeId={id}
         icon={<IconForms size="16px" />}
-        customButtons={
-          flags.aiSupport
+        customButtons={[
+          <DocumentationButton key="docs" nodeType="csv" />,
+          ...(flags.aiSupport
             ? [
                 <AIGenReplaceItemsPopover
                   key="ai-popover"
@@ -251,8 +253,8 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
                   setValuesLoading={setIsLoading}
                 />,
               ]
-            : []
-        }
+            : []),
+        ]}
       />
       <Skeleton visible={isLoading}>
         {csvInput}

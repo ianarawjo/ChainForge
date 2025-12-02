@@ -18,6 +18,7 @@ import LLMResponseInspectorModal, {
 } from "./LLMResponseInspectorModal";
 import InspectFooter from "./InspectFooter";
 import { IconSearch, IconSortAscending } from "@tabler/icons-react";
+import DocumentationButton from "./DocumentationButton";
 
 import RerankMethodListContainer, {
   RerankMethodSpec,
@@ -359,6 +360,7 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
         status={status}
         handleRunClick={runReranking}
         runButtonTooltip="Perform reranking on input documents"
+        customButtons={[<DocumentationButton key="docs" nodeType="rerank" />]}
       />
 
       <div>

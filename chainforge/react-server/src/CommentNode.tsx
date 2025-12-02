@@ -3,6 +3,7 @@ import useStore from "./store";
 import NodeLabel from "./NodeLabelComponent";
 import BaseNode from "./BaseNode";
 import { Textarea } from "@mantine/core";
+import DocumentationButton from "./DocumentationButton";
 
 export interface CommentNodeProps {
   data: {
@@ -28,7 +29,12 @@ const CommentNode: React.FC<CommentNodeProps> = ({ data, id }) => {
 
   return (
     <BaseNode classNames="comment-node" nodeId={id}>
-      <NodeLabel title={data.title || "Comment"} nodeId={id} icon={"✏️"} />
+      <NodeLabel
+        title={data.title || "Comment"}
+        nodeId={id}
+        icon={"✏️"}
+        customButtons={[<DocumentationButton key="docs" nodeType="comment" />]}
+      />
       <Textarea
         value={value}
         onChange={handleChangeComment}

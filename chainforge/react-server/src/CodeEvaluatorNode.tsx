@@ -51,6 +51,7 @@ import InspectFooter from "./InspectFooter";
 import { escapeBraces } from "./backend/template";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { AIGenCodeEvaluatorPopover } from "./AiPopover";
+import DocumentationButton from "./DocumentationButton";
 import {
   Dict,
   EvaluatedResponsesResults,
@@ -757,6 +758,14 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
   // Custom buttons for the node label
   const customButtons = useMemo(() => {
     const btns: React.ReactNode[] = [];
+
+    // Documentation button
+    btns.push(
+      <DocumentationButton
+        key="docs"
+        nodeType={node_type === "processor" ? "processor" : "evaluator"}
+      />,
+    );
 
     // If this is Python and we are running locally, the user has
     // two options ---whether to run code in sandbox with pyodide, or from Flask (unsafe):

@@ -24,6 +24,7 @@ import { DebounceRef, genDebounceFunc, setsAreEqual } from "./backend/utils";
 import { Func, Dict } from "./backend/typing";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import AISuggestionsManager from "./backend/aiSuggestionsManager";
+import DocumentationButton from "./DocumentationButton";
 import {
   ItemsNodeProps,
   makeSafeForCSLFormat,
@@ -490,8 +491,9 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
         title={data.title ?? "TextFields Node"}
         nodeId={id}
         icon={<IconTextPlus size="16px" />}
-        customButtons={
-          flags.aiSupport
+        customButtons={[
+          <DocumentationButton key="docs" nodeType="textfields" />,
+          ...(flags.aiSupport
             ? [
                 <AIGenReplaceItemsPopover
                   key="ai-popover"
@@ -502,8 +504,8 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
                   setValuesLoading={setIsLoading}
                 />,
               ]
-            : []
-        }
+            : []),
+        ]}
       />
       <Skeleton visible={isLoading}>
         <div ref={setRef} className="nodrag nowheel">

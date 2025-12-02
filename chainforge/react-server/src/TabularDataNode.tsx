@@ -43,6 +43,7 @@ import {
 } from "./backend/typing";
 import { Handle, Position } from "reactflow";
 import { AIGenReplaceTablePopover } from "./AiPopover";
+import DocumentationButton from "./DocumentationButton";
 import { parseTableData } from "./backend/tableUtils";
 import { StringLookup } from "./backend/cache";
 import { pulledInputsToTable, responsesToTable } from "./LLMResponseInspector";
@@ -739,6 +740,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
         nodeId={id}
         icon={"🗂️"}
         customButtons={[
+          <DocumentationButton key="docs" nodeType="table" />,
           <AIGenReplaceTablePopover
             key="ai-popover"
             values={tableData}
@@ -750,7 +752,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
             setValuesLoading={setIsLoading}
           />,
           <Tooltip
-            key={0}
+            key={1}
             label="Accepts xlsx, jsonl, and csv files with a header row"
           >
             <button
