@@ -79,6 +79,7 @@ import axios from "axios";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
 import MediaNode from "./MediaNode";
+import { NODE_TOOLTIPS } from "./nodeConstants";
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
@@ -392,30 +393,28 @@ const App = () => {
         key: "upload",
         title: "Upload Docs Node",
         icon: nodeEmojis.upload,
-        tooltip: "Upload documents to the flow, such as text files or PDFs.",
+        tooltip: NODE_TOOLTIPS.upload,
         onClick: () => addNode("upload"),
       },
       {
         key: "chunk",
         title: "Chunking Node",
         icon: nodeEmojis.chunk,
-        tooltip:
-          "Chunk texts into smaller pieces. Compare different chunking methods. Typically used after the Upload Node.",
+        tooltip: NODE_TOOLTIPS.chunk,
         onClick: () => addNode("chunk"),
       },
       {
         key: "retrieval",
         title: "Retrieval Node",
         icon: nodeEmojis.retrieval,
-        tooltip:
-          "Given chunks and queries, retrieve relevant chunks for the given query. Compare retrieval methods across queries. Retrieval methods include both classical methods like BM25, and vector stores.",
+        tooltip: NODE_TOOLTIPS.retrieval,
         onClick: () => addNode("retrieval"),
       },
       {
         key: "rerank",
         title: "Rerank Node",
         icon: nodeEmojis.rerank,
-        tooltip: "Reranks retrieval outputs.",
+        tooltip: NODE_TOOLTIPS.rerank,
         onClick: () => addNode("rerank"),
       },
       {
@@ -433,23 +432,21 @@ const App = () => {
         key: "comment",
         title: "Comment Node",
         icon: nodeEmojis.comment,
-        tooltip: "Make a comment about your flow.",
+        tooltip: NODE_TOOLTIPS.comment,
         onClick: () => addNode("comment"),
       },
       {
         key: "script",
         title: "Global Python Scripts",
         icon: nodeEmojis.script,
-        tooltip:
-          "Specify directories to load as local packages, so they can be imported in your Python evaluator nodes (add to sys path).",
+        tooltip: NODE_TOOLTIPS.script,
         onClick: () => addNode("scriptNode", "script"),
       },
       {
         key: "selectvars",
         title: "Filter Variables Node",
         icon: <IconCheckbox size={16} />,
-        tooltip:
-          "Filter which variables and metavariables to keep for the next steps.",
+        tooltip: NODE_TOOLTIPS.selectvars,
         onClick: () => addNode("selectVarsNode", "selectvars"),
       },
     ];
@@ -464,31 +461,28 @@ const App = () => {
         key: "textfields",
         title: "Text Fields Node",
         icon: nodeEmojis.textfields,
-        tooltip:
-          "Specify input text to prompt or chat nodes. You can also declare variables in brackets {} to chain TextFields together.",
+        tooltip: NODE_TOOLTIPS.textfields,
         onClick: () => addNode("textFieldsNode", "textfields"),
       },
       {
         key: "table",
         title: "Tabular Data Node",
         icon: nodeEmojis.table,
-        tooltip:
-          "Import or create a spreadhseet of data to use as input to prompt or chat nodes. Import accepts xlsx, csv, and jsonl.",
+        tooltip: NODE_TOOLTIPS.table,
         onClick: () => addNode("table"),
       },
       {
         key: "csv",
         title: "Items Node",
         icon: nodeEmojis.csv,
-        tooltip:
-          "Specify inputs as a comma-separated list of items. Good for specifying lots of short text values. An alternative to TextFields node.",
+        tooltip: NODE_TOOLTIPS.csv,
         onClick: () => addNode("csvNode", "csv"),
       },
       {
         key: "media",
         title: "Media Node",
         icon: nodeEmojis.media,
-        tooltip: "Add image data with corresponding metadata.",
+        tooltip: NODE_TOOLTIPS.media,
         onClick: () => addNode("media", "media"),
       },
       {
@@ -502,16 +496,14 @@ const App = () => {
         key: "prompt",
         title: "Prompt Node",
         icon: nodeEmojis.prompt,
-        tooltip:
-          "Prompt one or multiple LLMs. Specify prompt variables in brackets {}.",
+        tooltip: NODE_TOOLTIPS.prompt,
         onClick: () => addNode("promptNode", "prompt", { prompt: "" }),
       },
       {
         key: "chat",
         title: "Chat Turn Node",
         icon: nodeEmojis.chat,
-        tooltip:
-          "Start or continue a conversation with chat models. Attach Prompt Node output as past context to continue chatting past the first turn.",
+        tooltip: NODE_TOOLTIPS.chat,
         onClick: () => addNode("chatTurn", "chat", { prompt: "" }),
       },
       {
@@ -530,15 +522,14 @@ const App = () => {
             key: "simpleval",
             title: "Simple Evaluator",
             icon: nodeEmojis.simpleval,
-            tooltip:
-              "Evaluate responses with a simple check (no coding required).",
+            tooltip: NODE_TOOLTIPS.simpleval,
             onClick: () => addNode("simpleEval", "simpleval"),
           },
           {
             key: "evaluator-javascript",
             title: "JavaScript Evaluator",
             icon: nodeEmojis.evaluator,
-            tooltip: "Evaluate responses by writing JavaScript code.",
+            tooltip: NODE_TOOLTIPS["evaluator-javascript"],
             onClick: () =>
               addNode("evalNode", "evaluator", {
                 language: "javascript",
@@ -549,7 +540,7 @@ const App = () => {
             key: "evaluator-python",
             title: "Python Evaluator",
             icon: nodeEmojis.evaluator,
-            tooltip: "Evaluate responses by writing Python code.",
+            tooltip: NODE_TOOLTIPS["evaluator-python"],
             onClick: () =>
               addNode("evalNode", "evaluator", {
                 language: "python",
@@ -560,16 +551,14 @@ const App = () => {
             key: "llmeval",
             title: "LLM Evaluation",
             icon: nodeEmojis.llmeval,
-            tooltip:
-              "Evaluate responses with an LLM. (Note that LLM evaluators should be used with caution and always double-checked.)",
+            tooltip: NODE_TOOLTIPS.llmeval,
             onClick: () => addNode("llmeval"),
           },
           {
             key: "multieval",
             title: "Multi-Evaluator",
             icon: nodeEmojis.multieval,
-            tooltip:
-              "Evaluate responses across multiple criteria (multiple code and/or LLM evaluators).",
+            tooltip: NODE_TOOLTIPS.multieval,
             onClick: () => addNode("multieval"),
           },
         ],
@@ -583,24 +572,21 @@ const App = () => {
             key: "join",
             title: "Join Node",
             icon: nodeEmojis.join,
-            tooltip:
-              "Concatenate responses or input data together before passing into later nodes, within or across variables and LLMs.",
+            tooltip: NODE_TOOLTIPS.join,
             onClick: () => addNode("join"),
           },
           {
             key: "split",
             title: "Split Node",
             icon: nodeEmojis.split,
-            tooltip:
-              "Split responses or input data by some format. For instance, you can split a markdown list into separate items.",
+            tooltip: NODE_TOOLTIPS.split,
             onClick: () => addNode("split"),
           },
           {
             key: "processor-javascript",
             title: "JavaScript Processor",
             icon: nodeEmojis.evaluator,
-            tooltip:
-              "Transform responses by mapping a JavaScript function over them.",
+            tooltip: NODE_TOOLTIPS["processor-javascript"],
             onClick: () =>
               addNode("process", "processor", {
                 language: "javascript",
@@ -611,8 +597,7 @@ const App = () => {
             key: "processor-python",
             title: "Python Processor",
             icon: nodeEmojis.evaluator,
-            tooltip:
-              "Transform responses by mapping a Python function over them.",
+            tooltip: NODE_TOOLTIPS["processor-python"],
             onClick: () =>
               addNode("process", "processor", {
                 language: "python",
@@ -632,16 +617,14 @@ const App = () => {
         key: "vis",
         title: "Vis Node",
         icon: nodeEmojis.vis,
-        tooltip:
-          "Plot evaluation results. (Attach an evaluator or scorer node as input.)",
+        tooltip: NODE_TOOLTIPS.vis,
         onClick: () => addNode("visNode", "vis", {}),
       },
       {
         key: "inspect",
         title: "Inspect Node",
         icon: nodeEmojis.inspect,
-        tooltip:
-          "Used to inspect responses from prompter or evaluation nodes, without opening up the pop-up view.",
+        tooltip: NODE_TOOLTIPS.inspect,
         onClick: () => addNode("inspectNode", "inspect"),
       },
       {
