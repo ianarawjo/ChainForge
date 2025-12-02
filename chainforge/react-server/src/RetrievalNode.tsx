@@ -153,13 +153,12 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
     );
 
     // Construct the base message
-    let msg = "⚠️ You're about to run all configured retrieval methods. This may Create, load, or modify vector stores;"
-    + " Overwrite existing data; or Append new data. Please review your settings and input data before proceeding to ensure "
-    + "they are correct.";
+    let msg = "⚠️ You're about to run all configured retrieval methods. This may create, load, or modify vector stores."
 
     if (hasIntensiveMethod && numChunks > 100) {
         msg += ` (🛑 High Volume Warning: You are running an intensive retrieval method (Vector/Embedding) on ${numChunks} `
-        + "chunks. This will generate embeddings for ALL chunks, which may be slow and incur costs.)";
+        + "chunks. This will generate embeddings for all chunks that haven't already been embedded in previous runs of the "
+        + "retriever, which may be slow and incur costs.)";
     }
 
     setConfirmMessage(msg);
