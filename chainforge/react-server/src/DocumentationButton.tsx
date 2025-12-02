@@ -9,28 +9,28 @@ interface DocumentationButtonProps {
 
 // Mapping from node types to documentation URL paths
 const nodeTypeToDocPath: Record<string, string> = {
-  prompt: "prompt",
-  chat: "prompt",
-  textfields: "text-fields",
-  csv: "csv",
-  table: "table",
-  chunk: "chunk",
-  retrieval: "retrieval",
-  rerank: "rerank",
-  upload: "upload",
-  simpleval: "simple-eval",
-  evaluator: "code-evaluator",
-  processor: "code-evaluator",
-  llmeval: "llm-eval",
-  multieval: "multi-eval",
-  vis: "visualization",
-  inspect: "inspect",
-  script: "script",
-  join: "join",
-  split: "split",
-  comment: "comment",
-  media: "media",
-  selectvars: "select-vars",
+  prompt: "prompt-node",
+  chat: "chat-turn-node",
+  textfields: "textfields-node",
+  csv: "random-sampling-from-a-spreadsheet",
+  table: "tabular-data-node",
+  chunk: "chunker-node",
+  retrieval: "retrieval-node",
+  rerank: "rerank-node",
+  upload: "upload-node",
+  simpleval: "simple-evaluator-node",
+  evaluator: "code-evaluator-node",
+  processor: "code-processor-nodes",
+  llmeval: "llm-scorer-node",
+  multieval: "multi-evaluator-node",
+  vis: "vis-node",
+  inspect: "inspect-node",
+  script: "global-python-scripts",
+  join: "join-node",
+  split: "split-node",
+  comment: "comment-node",
+  media: "",
+  selectvars: "",
 };
 
 const DocumentationButton: React.FC<DocumentationButtonProps> = ({
@@ -38,7 +38,7 @@ const DocumentationButton: React.FC<DocumentationButtonProps> = ({
   customUrl,
 }) => {
   const docPath = customUrl || nodeTypeToDocPath[nodeType] || nodeType;
-  const fullUrl = `https://chainforge.ai/docs/nodes/${docPath}`;
+  const fullUrl = `https://chainforge.ai/docs/nodes/#${docPath}`;
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
