@@ -490,11 +490,11 @@ const RetrievalMethodListItem: React.FC<
           {methodItem.emoji && `${methodItem.emoji} `}
           {methodItem.settings?.shortName || methodItem.methodName}
           {latency && (
-            <Badge 
-              size="xs" 
-              color="gray" 
-              variant="outline" 
-              style={{ marginLeft: 8, textTransform: 'none', fontWeight: 400 }}
+            <Badge
+              size="xs"
+              color="gray"
+              variant="outline"
+              style={{ marginLeft: 8, textTransform: "none", fontWeight: 400 }}
             >
               {latency}
             </Badge>
@@ -888,7 +888,8 @@ export const RetrievalMethodListContainer = forwardRef<
               const isFirstInGroup = isLinked && members[0]?.key === item.key;
               const isLastInGroup =
                 isLinked && members[members.length - 1]?.key === item.key;
-              const latency = props.methodResults?.[item.key]?.metavars?.latency;
+              const latency =
+                props.methodResults?.[item.key]?.metavars?.latency;
 
               return (
                 <RetrievalMethodListItem

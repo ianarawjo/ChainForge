@@ -355,7 +355,7 @@ export interface LLMResponseInspectorProps {
   treatLLMFieldAsUnique?: boolean;
   ignoreAndHideLLMField?: boolean; // If true, LLM field will not be shown in the table view
   ignoreAndHideEvalResField?: boolean; // If true, "Eval Res" column option will not be shown in the table view
-  defaultTableColVar?: string; 
+  defaultTableColVar?: string;
 }
 
 const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
@@ -367,7 +367,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   treatLLMFieldAsUnique,
   ignoreAndHideLLMField,
   ignoreAndHideEvalResField,
-  defaultTableColVar, 
+  defaultTableColVar,
 }) => {
   // Responses
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
@@ -750,7 +750,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           var_cols = found_vars
             .filter((v) => v !== effectiveTableColVar)
             .concat(found_llms.length > 1 ? ["LLM"] : []); // only add LLM column if num LLMs > 1
-          getColVal = (r) => llmResponseDataToString(r.vars[effectiveTableColVar]);
+          getColVal = (r) =>
+            llmResponseDataToString(r.vars[effectiveTableColVar]);
           colnames = metavar_cols.concat(var_cols);
           found_sel_var_vals = [];
         }

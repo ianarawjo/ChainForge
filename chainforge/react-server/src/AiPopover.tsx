@@ -222,10 +222,13 @@ export function AIPopover({
       keepMounted
       opened={opened}
       onChange={setOpened}
-      clickOutsideEvents={['click']}
+      clickOutsideEvents={["click"]}
     >
       <Popover.Target>
-        <button className="ai-button nodrag" onClick={() => setOpened((o) => !o)}>
+        <button
+          className="ai-button nodrag"
+          onClick={() => setOpened((o) => !o)}
+        >
           <IconSparkles size={10} fill="violet" />
         </button>
       </Popover.Target>
