@@ -1,5 +1,6 @@
 # --- Chunk Endpoint ---
 import sys
+from contextlib import contextmanager
 from typing import List, Dict, Any, Callable, Union
 
 # === Define the Chunking Registry (Place after imports) ===
@@ -184,6 +185,25 @@ def syntax_texttiling(text: str) -> List[str]:
 """
    Chonkie Methods
 """
+@contextmanager
+def _chonkie_sentence_transformer_encode_patch():
+    """Temporarily ignore Chonkie's add_special_tokens kwarg on SentenceTransformer.encode."""
+    from sentence_transformers import SentenceTransformer
+
+    original_encode = SentenceTransformer.encode
+
+    def encode_without_add_special_tokens(self, sentences, **encode_kwargs):
+        if "add_special_tokens" in encode_kwargs:
+            encode_kwargs = dict(encode_kwargs)
+            encode_kwargs.pop("add_special_tokens", None)
+        return original_encode(self, sentences, **encode_kwargs)
+
+    SentenceTransformer.encode = encode_without_add_special_tokens
+    try:
+        yield
+    finally:
+        SentenceTransformer.encode = original_encode
+
 @ChunkingMethodRegistry.register("chonkie_token")
 def chonkie_token(text: str, **kwargs: Any) -> List[str]:
     from chonkie import TokenChunker
@@ -341,24 +361,8 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
 
 @ChunkingMethodRegistry.register("chonkie_late")
 def chonkie_late(text: str, **kwargs: Any) -> List[str]:
-    from sentence_transformers import SentenceTransformer
     from chonkie import LateChunker, RecursiveRules
     import json
-
-    # Ensure sentence-transformers doesn't choke on Chonkie's extra kwarg.
-    original_encode = SentenceTransformer.encode
-    # Only wrap once per process to avoid stacking wrappers.
-    if not getattr(original_encode, "_chainforge_patch", False):
-        def encode_without_add_special_tokens(self, sentences, **encode_kwargs):
-            # SentenceTransformer >=3 raises if this kwarg is unsupported,
-            # but Chonkie always sets it, so just remove it and forward.
-            if "add_special_tokens" in encode_kwargs:
-                encode_kwargs = dict(encode_kwargs)
-                encode_kwargs.pop("add_special_tokens", None)
-            return original_encode(self, sentences, **encode_kwargs)
-
-        encode_without_add_special_tokens._chainforge_patch = True
-        SentenceTransformer.encode = encode_without_add_special_tokens
 
     # Basic parameters
     embedding_model = kwargs.get("embedding_model", "sentence-transformers/all-MiniLM-L6-v2")
@@ -400,13 +404,14 @@ def chonkie_late(text: str, **kwargs: Any) -> List[str]:
             use_premade_recipe = None
 
     # Initialize standard chunker with provided parameters
-    chunker = LateChunker(
-        embedding_model=embedding_model,
-        chunk_size=chunk_size,
-        rules=rules,
-        min_characters_per_chunk=min_characters_per_chunk,
-    )
+    with _chonkie_sentence_transformer_encode_patch():
+        chunker = LateChunker(
+            embedding_model=embedding_model,
+            chunk_size=chunk_size,
+            rules=rules,
+            min_characters_per_chunk=min_characters_per_chunk,
+        )
 
-    chunks = chunker.chunk(text)
+        chunks = chunker.chunk(text)
     return [chunk.text for chunk in chunks] if chunks else [text]
     

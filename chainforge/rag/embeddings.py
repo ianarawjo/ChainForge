@@ -107,7 +107,6 @@ def openai_embedder(texts, model_name="text-embedding-ada-002", path=None, api_k
     """
     try:
         from openai import OpenAI
-        import os
 
         # Get the OpenAI API key from environment or settings
         openai_api_key = api_keys and api_keys.get("OpenAI") or os.environ.get("OPENAI_API_KEY")

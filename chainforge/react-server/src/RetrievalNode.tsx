@@ -204,7 +204,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       } catch (e) {
         console.warn("Could not fetch progress", e);
       }
-    }, 500);
+    }, 1500);
 
     try {
       // Get input data from connected nodes
@@ -431,7 +431,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       console.error(err);
       setRunTooltip("Error checking inputs.");
     }
-  }, [pullInputData, id, status, methodItems]);
+  }, [pullInputData, id, status, methodItems, methodItems.length]);
 
   return (
     <BaseNode nodeId={id} classNames="retrieval-node">

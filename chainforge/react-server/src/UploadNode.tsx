@@ -41,6 +41,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
   const [fields, setFields] = useState<TemplateVarInfo[]>(data.fields || []);
+  const fieldsRef = useRef<TemplateVarInfo[]>(data.fields || []);
   const [status, setStatus] = useState<Status>(Status.READY);
 
   const [fileListCollapsed, setFileListCollapsed] = useState(
@@ -50,6 +51,10 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
 
   const showAlert = useContext(AlertModalContext);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    fieldsRef.current = fields;
+  }, [fields]);
 
   // Handle file uploads
   const handleFilesUpload = useCallback(
@@ -149,8 +154,10 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
 
   // Clear all
   const handleClearUploads = useCallback(() => {
+    const currentFields = fieldsRef.current;
+
     // Collect all UIDs before clearing
-    const uidsToRemove = fields
+    const uidsToRemove = currentFields
       .map((field) =>
         typeof field.metavars?.id === "string" ? field.metavars.id : undefined,
       )
@@ -168,7 +175,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
     setFields([]);
     setDataPropsForNode(id, { fields: [], output: [] });
     setStatus(Status.READY);
-  }, [fields, id, setDataPropsForNode]);
+  }, [id, setDataPropsForNode]);
 
   // Refresh logic
   useEffect(() => {
