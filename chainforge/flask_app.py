@@ -1579,6 +1579,11 @@ def retrieve():
 
             # cache it for later use
             resolved_handlers[base_method] = handler
+        def find_query_metadata(query_text, queries):
+            for q in queries:
+                if isinstance(q, dict) and q.get("text") == query_text:
+                    return q
+            return {}
         
         # Group chunks by chunking method
         chunks_by_method = {}

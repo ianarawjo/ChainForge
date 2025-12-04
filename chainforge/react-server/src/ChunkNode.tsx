@@ -141,16 +141,7 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
 
             // Get the full text and pack it as a "file" part instead of a plain field
             const fullText = StringLookup.get(fileInfo.text) ?? "";
-            let textBlob: Blob;
-            try {
-              const encoder = new TextEncoder();
-              const encoded = encoder.encode(fullText);
-              textBlob = new Blob([encoded], { type: "text/plain" });
-            } catch (encodeErr) {
-              console.warn("Failed to encode document text as UTF-8. Data may be lost.", encodeErr);
-              // Fallback: use original string 
-              textBlob = new Blob([fullText], { type: "text/plain" });
-            }
+            const textBlob = new Blob([fullText], { type: "text/plain" });
 
             formData.append("document", textBlob);
 

@@ -15,7 +15,7 @@ export const OverlappingOpenAITiktokenSchema: ModelSettingsDict = {
         default: "gpt-3.5-turbo",
         title: "Model",
         description:
-          "Enter an OpenAI model name (e.g. gpt-4o) or a tiktoken tokenizer name (e.g. cl100k_base). If the model name is recognized, it will be mapped to the correct tokenizer; otherwise, the value will be used as a tokenizer name directly.",
+          "OpenAI model (e.g. gpt-4o) or direct tiktoken tokenizer name (e.g. cl100k_base); OpenAI models auto-map to the correct tokenizer.",
       },
       chunk_size: {
         type: "number",
@@ -193,7 +193,7 @@ export const ChonkieSentenceSchema: ModelSettingsDict = {
         default: 1,
         title: "Max tokens per chunk",
         description:
-          "Default 1 splits text into single-token chunks. Increase to group more tokens (and potentially multiple sentences) per chunk.",
+          "Default 1 keeps each chunk to a single sentence. Increase to group multiple sentences up to the given token count.",
       },
       chunk_overlap: {
         type: "number",
@@ -492,7 +492,7 @@ export const ChunkMethodGroups = [
         name: "Sentence Chunker",
         emoji: "✂️",
         description:
-          "Split on sentence boundaries. Nice for Q&A / summarization where you want readable chunks.",
+          "Split on sentence boundaries. Nice for QA / summarization where you want readable chunks.",
       },
       {
         baseMethod: "markdown_header",
@@ -545,7 +545,7 @@ export const ChunkMethodGroups = [
         name: "Late Chunker",
         emoji: "⏳",
         description:
-          "Dynamically splits text into chunks during processing, rather than in advance. Useful for streaming or real-time scenarios where chunk boundaries depend on context available only at run time.",
+          "Apply length-based chunking at run time instead of precomputing chunks.",
       },
     ],
   },
