@@ -146,19 +146,21 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
     const inputData = pullInputData(["chunks"], id) as { chunks?: any[] };
     const numChunks = inputData.chunks?.length || 0;
 
-    // Check if an intensive method (Vector/Embedding) is active
+    // Check if an embedding model is active
     // We check if the baseMethod is 'vector' or if an embedding provider is set
-    const hasIntensiveMethod = methodItems.some(
+    const hasEmbeddingModel = methodItems.some(
       (m) => m.baseMethod === "vector" || !!m.embeddingProvider,
     );
 
     // Construct the base message
-    let msg = "⚠️ You're about to run all configured retrieval methods. This may create, load, or modify vector stores."
+    let msg =
+      "⚠️ You're about to run all configured retrieval methods. This may create, load, or modify vector stores.";
 
-    if (hasIntensiveMethod && numChunks > 100) {
-        msg += ` (🛑 High Volume Warning: You are running an intensive retrieval method (Vector/Embedding) on ${numChunks} `
-        + "chunks. This will generate embeddings for all chunks that haven't already been embedded in previous runs of the "
-        + "retriever, which may be slow and incur costs.)";
+    if (hasEmbeddingModel && numChunks > 100) {
+      msg +=
+        ` (🛑 High Volume Warning: You are running an embedding model on ${numChunks} ` +
+        "chunks. This will generate embeddings for all chunks that haven't already been embedded in previous runs of the " +
+        "retriever, which may be slow and incur costs.)";
     }
 
     setConfirmMessage(msg);
