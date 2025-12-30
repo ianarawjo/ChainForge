@@ -52,7 +52,7 @@ You can set your API keys by clicking the Settings icon in the top-right corner.
 **Quick start with Docker Compose (recommended):**
 
 ```bash
-docker run -d -p 8000:8000 --name chainforge chainforge/chainforge:latest
+docker compose up -d
 ```
 Access ChainForge at http://localhost:8000
 
