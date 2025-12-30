@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: gauransh/chainforge:latest
+    image: chainforge/chainforge:latest
     container_name: chainforge
     ports:
       - "8000:8000"

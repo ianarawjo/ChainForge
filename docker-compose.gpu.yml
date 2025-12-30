@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.gpu
-    image: gauransh/chainforge:gpu
+    image: chainforge/chainforge:gpu
     container_name: chainforge-gpu
     ports:
       - "8000:8000"
