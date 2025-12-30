@@ -49,41 +49,11 @@ Open [localhost:8000](http://localhost:8000/) in a Google Chrome, Firefox, Micro
 You can set your API keys by clicking the Settings icon in the top-right corner. If you prefer to not worry about this everytime you open ChainForge, we **highly recommend** that save your OpenAI, Anthropic, Google, etc API keys and/or Amazon AWS credentials to your local environment. For more details, see the [How to Install](https://chainforge.ai/docs/getting_started/).
 
 ## Run using Docker
-
-ChainForge provides pre-built Docker images for both CPU and GPU environments:
-
 **Quick start with Docker Compose (recommended):**
 
 ```bash
-# CPU version (works on AMD64 and ARM64)
-docker-compose up -d
-
-# GPU version (AMD64 only, requires NVIDIA Docker runtime)
-docker-compose -f docker-compose.gpu.yml up -d
+docker run -d -p 8000:8000 --name chainforge chainforge/chainforge:latest
 ```
-
-**Or use Docker CLI:**
-
-```bash
-# Pull and run CPU version
-docker pull gauransh/chainforge:latest
-docker run -d -p 8000:8000 --name chainforge gauransh/chainforge:latest
-
-# Pull and run GPU version
-docker pull gauransh/chainforge:gpu
-docker run -d -p 8000:8000 --gpus all --name chainforge-gpu gauransh/chainforge:gpu
-```
-
-**Or build locally:**
-
-```bash
-# Build CPU version
-docker build -t chainforge .
-
-# Build GPU version
-docker build -f Dockerfile.gpu -t chainforge:gpu .
-```
-
 Access ChainForge at http://localhost:8000
 
 For detailed Docker documentation including architecture support, environment variables, and CI/CD setup, see [DOCKER.md](DOCKER.md).
