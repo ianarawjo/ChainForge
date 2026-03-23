@@ -555,11 +555,13 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
 
       // Set the variables accessible in the MultiSelect for 'group by'
       let msvars = found_vars
-        .map((name: string) =>
+        .map((name: string) => {
+          let label = name;
+          if (name === "retrievalMethod") label = "Retrieval method";
           // We add a $ prefix to mark this as a prompt parameter, and so
           // in the future we can add special types of variables without name collisions
-          ({ value: name, label: name }),
-        )
+          return { value: name, label };
+        })
         .concat({ value: "$LLM", label: customLLMFieldName || "LLM" });
 
       if (ignoreAndHideLLMField) {
