@@ -487,6 +487,7 @@ def fetchEnvironAPIKeys():
         'AWS_SESSION_TOKEN': 'AWS_Session_Token',
         'TOGETHER_API_KEY': 'Together',
         'DEEPSEEK_API_KEY': 'DeepSeek',
+        'MINIMAX_API_KEY': 'MiniMax',
     }
     d = { alias: os.environ.get(key) for key, alias in keymap.items() }
     ret = jsonify(d)

@@ -276,6 +276,26 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     ],
   },
   {
+    group: "MiniMax",
+    emoji: "🔮",
+    items: [
+      {
+        name: "MiniMax M2.7",
+        emoji: "🔮",
+        model: "MiniMax-M2.7",
+        base_model: "minimax",
+        temp: 0.7,
+      },
+      {
+        name: "MiniMax M2.7 Highspeed",
+        emoji: "⚡",
+        model: "MiniMax-M2.7-highspeed",
+        base_model: "minimax",
+        temp: 0.7,
+      },
+    ],
+  },
+  {
     group: "HuggingFace",
     emoji: "🤗",
     items: [
