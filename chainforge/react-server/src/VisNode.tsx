@@ -324,7 +324,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     ];
     const [graphType, setGraphType] = useState(graphOptions[0]);
     const setForcedGraphType = (key: string) => {
-      return graphOptions.find((o) => o.key === key) ?? graphOptions[0];
+      const nextGraphType =
+        graphOptions.find((o) => o.key === key) ?? graphOptions[0];
+      setGraphType(nextGraphType);
+      return nextGraphType;
     };
     const [disableGraphTypeOption, setDisableGraphTypeOption] = useState(false);
 
@@ -438,17 +441,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         .concat(varnames.map((name) => ({ value: name, label: name })))
         .concat(
           metavars.filter(cleanMetavarsFilterFunc).map((name) => {
-            let label = `${name} (meta)`;
-            if (name.startsWith("llm_")) {
-              label = `LLMs #${parseInt(name.slice(4)) + 1}`;
-            } else if (name === "retriever" || name === "retrieval_method") {
-              label = "Retrieval methods";
-            } else if (name === "chunk") {
-              label = "Chunks";
-            }
+            
             return {
               value: `__meta_${name}`,
-              label,
+              label: `${name} (meta)`,
             };
           }),
         );
@@ -524,17 +520,25 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       }
 
       startTransition(() => {
+        const normalizeGroupBucket = (value: unknown): string => {
+          if (value === undefined || value === null) return "(missing)";
+          return llmResponseDataToString(value as LLMResponseData).trim();
+        };
+
         const get_llm = (resp_obj: LLMResponse) => {
-          if (selectedLLMGroup === "LLM")
-            return typeof resp_obj.llm === "string" ||
+          if (selectedLLMGroup === "LLM") {
+            if (
+              typeof resp_obj.llm === "string" ||
               typeof resp_obj.llm === "number"
-              ? StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)"
-              : resp_obj.llm?.name;
-          else if (selectedLLMGroup?.startsWith("__meta_")) {
+            ) {
+              return StringLookup.get(resp_obj.llm) ?? String(resp_obj.llm);
+            }
+            return normalizeGroupBucket(resp_obj.llm?.name);
+          } else if (selectedLLMGroup?.startsWith("__meta_")) {
             const meta_key = selectedLLMGroup.slice("__meta_".length);
-            return resp_obj.metavars[meta_key] as string;
+            return normalizeGroupBucket(resp_obj.metavars?.[meta_key]);
           } else {
-            return resp_obj.vars[selectedLLMGroup as string] as string;
+            return normalizeGroupBucket(resp_obj.vars[selectedLLMGroup]);
           }
         };
         const getLLMsInResponses = (responses: LLMResponse[]) =>
@@ -1033,7 +1037,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               spec.push(d);
               layout.xaxis = {
                 title: { font: { size: 12 }, text: xaxis_title },
-                ...layout.axis,
+                ...layout.xaxis,
               };
             }
           });
