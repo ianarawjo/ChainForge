@@ -441,7 +441,6 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         .concat(varnames.map((name) => ({ value: name, label: name })))
         .concat(
           metavars.filter(cleanMetavarsFilterFunc).map((name) => {
-            
             return {
               value: `__meta_${name}`,
               label: `${name} (meta)`,
