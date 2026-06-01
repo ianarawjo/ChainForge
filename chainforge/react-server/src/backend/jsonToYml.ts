@@ -1,6 +1,7 @@
 import * as yaml from "js-yaml";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { createJSEvalCodeFor } from "../SimpleEvalNode";
 
 function cleanText(text: string): string {
   return '"' + text.replace(/\s*\n\s*/g, " ").trim() + '"';
@@ -91,7 +92,7 @@ export async function jsontoYml(
           const js_code = node.data.code;
           zip.file(`${node.id}.js`, js_code);
           yml_nodes.push(yml_node);
-        } else if (node.type === "python") {
+        } else if (node.data.language === "python") {
           const yml_node = {
             evaluator: {
               type: "python",
@@ -118,7 +119,7 @@ export async function jsontoYml(
           const js_code = node.data.code;
           zip.file(`${node.id}.js`, js_code);
           yml_nodes.push(yml_node);
-        } else if (node.type === "python") {
+        } else if (node.data.language === "python") {
           const yml_node = {
             processor: {
               type: "python",
@@ -167,8 +168,24 @@ export async function jsontoYml(
         // Save the csv file
         zip.file(`${node.id}.csv`, csv);
         yml_nodes.push(yml_node);
+      } else if (node.type === "simpleval") {
+        const yml_node = {
+          evaluator: {
+            type: "simple",
+            name: node.id,
+            return_type: "string",
+            file: `../files/${node.id}.js`,
+          },
+        };
+        const js_code = createJSEvalCodeFor(
+          node.data.responseFormat ?? "response",
+          node.data.operation ?? "contains",
+          node.data.textValue ?? "",
+          node.data.varValueType ?? "var",
+        );
+        zip.file(`${node.id}.js`, js_code);
+        yml_nodes.push(yml_node);
       }
-      // else if(node.type === 'simpleval'){}
       // else if(node.type === 'join'){}
       // else if(node.type === 'split'){}
       else {
