@@ -119,13 +119,7 @@ import RequestClarificationModal, {
 } from "./RequestClarificationModal";
 import { jsontoYml } from "./backend/jsonToYml";
 
-const IS_ACCEPTED_BROWSER =
-  (isChrome ||
-    isChromium ||
-    isEdgeChromium ||
-    isFirefox ||
-    (navigator as any)?.brave !== undefined) &&
-  !isMobile;
+const IS_ACCEPTED_BROWSER = true;
 
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
