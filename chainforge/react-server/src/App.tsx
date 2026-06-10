@@ -112,6 +112,7 @@ import {
   isEdgeChromium,
   isChromium,
   isMobileSafari,
+  isSafari,
 } from "react-device-detect";
 import MultiEvalNode from "./MultiEvalNode";
 import FlowSidebar from "./FlowSidebar";
@@ -125,6 +126,7 @@ const IS_ACCEPTED_BROWSER =
     isChromium ||
     isEdgeChromium ||
     isFirefox ||
+    isSafari ||
     (navigator as any)?.brave !== undefined) &&
   (!isMobile || (isTablet && !isMobileSafari));
 
@@ -1497,6 +1499,7 @@ const App = () => {
           <List.Item>Mozilla Firefox</List.Item>
           <List.Item>Microsoft Edge (Chromium)</List.Item>
           <List.Item>Brave</List.Item>
+          <List.Item>Safari</List.Item>
         </List>
 
         <Text m="xl" size={"11pt"}>
@@ -1677,8 +1680,9 @@ const App = () => {
             variant={colorScheme === "light" ? "gradient" : "filled"}
             color={colorScheme === "light" ? "blue" : "gray"}
             compact
+            style={{ width: "32px", minWidth: "32px", padding: 0 }}
           >
-            <IconSettings size={"90%"} />
+            <IconSettings size={18} />
           </Button>
         </div>
         <div

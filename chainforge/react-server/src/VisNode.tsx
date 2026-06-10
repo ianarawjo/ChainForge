@@ -18,6 +18,7 @@ import useStore, { colorPalettes } from "./store";
 import Plot from "react-plotly.js";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
+import ResizeHandle from "./ResizeHandle";
 import PlotLegend from "./PlotLegend";
 import {
   cleanMetavarsFilterFunc,
@@ -1400,7 +1401,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         <div
           className="nodrag"
           ref={setPlotDivRef}
-          style={{ minWidth: "150px", minHeight: "100px" }}
+          style={{
+            minWidth: "150px",
+            minHeight: "100px",
+            position: "relative",
+          }}
         >
           {plotlySpec && plotlySpec.length > 0 ? <></> : placeholderText}
           <Plot
@@ -1416,6 +1421,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             }}
           />
           {plotLegend ?? <></>}
+          <ResizeHandle targetRef={plotDivRef} minWidth={150} minHeight={100} />
         </div>
       </>
     );

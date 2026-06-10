@@ -47,37 +47,40 @@ export default function LLMItemButtonGroup({
   hideTrashIcon,
 }: LLMItemButtonGroupProps) {
   return (
-    <div>
-      <Group
-        position="right"
-        spacing="xs"
-        style={{ float: "right", height: "20px" }}
-      >
-        <GatheringResponsesRingProgress progress={ringProgress} />
-        {hideTrashIcon ? (
-          <></>
-        ) : (
-          <Button
-            onClick={onClickTrash}
-            size="xs"
-            variant="light"
-            compact
-            color="red"
-            style={{ padding: "0px" }}
-          >
-            <IconTrash size={"95%"} />
-          </Button>
-        )}
+    <Group
+      spacing="xs"
+      style={{ flexShrink: 0, width: "fit-content", alignItems: "center" }}
+    >
+      <GatheringResponsesRingProgress progress={ringProgress} />
+      {hideTrashIcon ? (
+        <></>
+      ) : (
         <Button
-          onClick={onClickSettings}
+          onClick={onClickTrash}
           size="xs"
           variant="light"
-          color="blue"
           compact
+          color="red"
+          style={{
+            padding: "0px",
+            width: "28px",
+            minWidth: "28px",
+            height: "28px",
+          }}
         >
-          <IconSettings size={"110%"} />
+          <IconTrash size={16} />
         </Button>
-      </Group>
-    </div>
+      )}
+      <Button
+        onClick={onClickSettings}
+        size="xs"
+        variant="light"
+        color="blue"
+        compact
+        style={{ width: "28px", minWidth: "28px", height: "28px" }}
+      >
+        <IconSettings size={16} />
+      </Button>
+    </Group>
   );
 }
