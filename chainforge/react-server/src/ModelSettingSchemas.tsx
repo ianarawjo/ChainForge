@@ -472,6 +472,108 @@ const DeepSeekSettings: ModelSettingsDict = {
   postprocessors: ChatGPTSettings.postprocessors,
 };
 
+const MiniMaxSettings: ModelSettingsDict = {
+  fullName: "MiniMax",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "MiniMax",
+      },
+      model: {
+        type: "string",
+        title: "Model Version",
+        description:
+          "Select a MiniMax model to query. For more details, see the MiniMax API documentation at https://platform.minimaxi.com.",
+        enum: ["MiniMax-M2.7", "MiniMax-M2.7-highspeed"],
+        default: "MiniMax-M2.7",
+        shortname_map: {
+          "MiniMax-M2.7": "M2.7",
+          "MiniMax-M2.7-highspeed": "M2.7-hs",
+        },
+      },
+      system_msg: {
+        type: "string",
+        title: "system_msg",
+        description:
+          "Many conversations begin with a system message to gently instruct the assistant.",
+        default: "You are a helpful assistant.",
+        allow_empty_str: true,
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "What sampling temperature to use, between 0.01 and 1. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. Note: MiniMax requires temperature > 0.",
+        default: 0.7,
+        minimum: 0.01,
+        maximum: 1,
+        multipleOf: 0.01,
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description:
+          "An alternative to sampling with temperature, called nucleus sampling.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.005,
+      },
+      stop: {
+        type: "string",
+        title: "stop sequences",
+        description:
+          'Sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: "",
+      },
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The maximum number of tokens to generate in the chat completion.",
+      },
+      presence_penalty: {
+        type: "number",
+        title: "presence_penalty",
+        description:
+          "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
+        multipleOf: 0.005,
+      },
+      frequency_penalty: {
+        type: "number",
+        title: "frequency_penalty",
+        description:
+          "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
+        multipleOf: 0.005,
+      },
+    },
+  },
+  uiSchema: {
+    ...ChatGPTSettings.uiSchema,
+    model: {
+      "ui:help": "Defaults to MiniMax-M2.7.",
+      "ui:widget": "datalist",
+    },
+    temperature: {
+      "ui:help": "Defaults to 0.7. MiniMax requires temperature > 0.",
+      "ui:widget": "range",
+    },
+  },
+  postprocessors: ChatGPTSettings.postprocessors,
+};
+
 const DalleSettings: ModelSettingsDict = {
   fullName: "Dall-E Image Models (OpenAI)",
   schema: {
@@ -2516,6 +2618,7 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "br.meta.llama3": BedrockLlama3Settings,
   together: TogetherChatSettings,
   deepseek: DeepSeekSettings,
+  minimax: MiniMaxSettings,
 };
 
 // A lookup that converts the base_model names into LLMProviders.
@@ -2543,6 +2646,7 @@ export function baseModelToProvider(base_model: string): LLMProvider {
     "br.meta.llama3": LLMProvider.Bedrock,
     together: LLMProvider.Together,
     deepseek: LLMProvider.DeepSeek,
+    minimax: LLMProvider.MiniMax,
   };
   return lookup[base_model] ?? LLMProvider.Custom;
 }
@@ -2564,6 +2668,7 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.Ollama]: OllamaSettings,
     [LLMProvider.Together]: TogetherChatSettings,
     [LLMProvider.DeepSeek]: DeepSeekSettings,
+    [LLMProvider.MiniMax]: MiniMaxSettings,
   };
 
   if (llm_provider === LLMProvider.Custom) return ModelSettings[llm_name];

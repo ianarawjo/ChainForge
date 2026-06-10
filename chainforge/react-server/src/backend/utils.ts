@@ -166,6 +166,7 @@ let AWS_SESSION_TOKEN = get_environ("AWS_SESSION_TOKEN");
 let AWS_REGION = get_environ("AWS_REGION");
 let TOGETHER_API_KEY = get_environ("TOGETHER_API_KEY");
 let DEEPSEEK_API_KEY = get_environ("DEEPSEEK_API_KEY");
+let MINIMAX_API_KEY = get_environ("MINIMAX_API_KEY");
 
 /**
  * Sets the local API keys for the revelant LLM API(s).
@@ -201,6 +202,7 @@ export function set_api_keys(api_keys: Dict<string>): void {
   if (key_is_present("AWS_Region")) AWS_REGION = api_keys.AWS_Region;
   if (key_is_present("Together")) TOGETHER_API_KEY = api_keys.Together;
   if (key_is_present("DeepSeek")) DEEPSEEK_API_KEY = api_keys.DeepSeek;
+  if (key_is_present("MiniMax")) MINIMAX_API_KEY = api_keys.MiniMax;
 }
 
 export function get_azure_openai_api_keys(): [
@@ -383,13 +385,14 @@ export async function call_chatgpt(
   BASE_URL?: string,
   API_KEY?: string,
 ): Promise<[Dict, Dict]> {
-  if (!OPENAI_API_KEY)
+  const effectiveKey = API_KEY ?? OPENAI_API_KEY;
+  if (!effectiveKey)
     throw new Error(
       "Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.",
     );
 
   const configuration = new OpenAIConfig({
-    apiKey: API_KEY ?? OPENAI_API_KEY,
+    apiKey: effectiveKey,
     basePath: BASE_URL ?? OPENAI_BASE_URL ?? undefined,
   });
 
@@ -539,6 +542,41 @@ export async function call_deepseek(
     images,
     "https://api.deepseek.com",
     DEEPSEEK_API_KEY,
+  );
+}
+
+/**
+ * Calls MiniMax models via MiniMax's OpenAI-compatible API.
+ */
+export async function call_minimax(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  if (!MINIMAX_API_KEY)
+    throw new Error(
+      "Could not find a MiniMax API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  console.log(`Querying MiniMax model '${model}' with prompt '${prompt}'...`);
+
+  // MiniMax requires temperature to be strictly greater than 0
+  const clampedTemp = Math.max(temperature, 0.01);
+
+  return await call_chatgpt(
+    prompt,
+    model,
+    n,
+    clampedTemp,
+    params,
+    should_cancel,
+    images,
+    "https://api.minimax.io/v1",
+    MINIMAX_API_KEY,
   );
 }
 
@@ -1714,6 +1752,7 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.Bedrock) call_api = call_bedrock;
   else if (llm_provider === LLMProvider.Together) call_api = call_together;
   else if (llm_provider === LLMProvider.DeepSeek) call_api = call_deepseek;
+  else if (llm_provider === LLMProvider.MiniMax) call_api = call_minimax;
   if (call_api === undefined)
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
@@ -1918,6 +1957,8 @@ export function extract_responses(
     case LLMProvider.Together:
       return _extract_openai_responses(response as Dict[]);
     case LLMProvider.DeepSeek:
+      return _extract_openai_responses(response as Dict[]);
+    case LLMProvider.MiniMax:
       return _extract_openai_responses(response as Dict[]);
     default:
       if (
