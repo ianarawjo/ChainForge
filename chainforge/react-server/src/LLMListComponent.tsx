@@ -24,6 +24,7 @@ import ModelSettingsModal, {
   ModelSettingsModalRef,
 } from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
+import { NativeLLM } from "./backend/models";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
 import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
@@ -31,9 +32,9 @@ import { deepcopy, ensureUniqueName } from "./backend/utils";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
-// Defaults to a cheap non-reasoning OpenAI model.
+// Defaults to an in-browser Qwen 2.5 model.
 const DEFAULT_INIT_LLMS = [
-  initLLMProviders.find((m) => m.model === "gpt-4o-mini")!,
+  initLLMProviders.find((m) => m.model === NativeLLM.WebLLM_Qwen2_5_0_5B)!,
 ];
 
 // Helper funcs
@@ -499,7 +500,6 @@ export const LLMListContainer = forwardRef<
             items={menuItems}
             button={(closeMenu) => (
               <button
-                style={_bgStyle}
                 onClick={() => {
                   closeMenu();
                 }}

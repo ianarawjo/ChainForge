@@ -1030,6 +1030,10 @@ html[data-mantine-color-scheme="dark"] .add-text-field-btn button:active {
   height: 20px;
 }
 .add-llm-model-btn button {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: none;
+  background-color: transparent;
   border-style: solid;
   border-color: #777;
   border-width: 1pt;

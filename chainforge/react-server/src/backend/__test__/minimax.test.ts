@@ -23,14 +23,12 @@ jest.mock("@azure/openai", () => ({
 jest.mock("../pyodide/exec-py", () => ({ execPy: jest.fn() }));
 jest.mock("../../store", () => ({
   __esModule: true,
-  default: { getState: () => ({ AvailableLLMs: [], setAvailableLLMs: jest.fn() }) },
+  default: {
+    getState: () => ({ AvailableLLMs: [], setAvailableLLMs: jest.fn() }),
+  },
 }));
 
-import {
-  call_minimax,
-  extract_responses,
-  set_api_keys,
-} from "../utils";
+import { call_minimax, extract_responses, set_api_keys } from "../utils";
 import {
   LLMProvider,
   NativeLLM,
@@ -47,6 +45,7 @@ import {
   getDefaultModelFormData,
   postProcessFormData,
 } from "../../ModelSettingSchemas";
+import { Dict } from "../typing";
 
 // ─── Unit Tests ─────────────────────────────────────────────────────────────
 
@@ -139,8 +138,10 @@ describe("MiniMax settings schema", () => {
     const shortNameMap =
       ModelSettings.minimax.schema.properties.model.shortname_map;
     expect(shortNameMap).toBeDefined();
-    expect(shortNameMap["MiniMax-M2.7"]).toBe("M2.7");
-    expect(shortNameMap["MiniMax-M2.7-highspeed"]).toBe("M2.7-hs");
+
+    const shortNameMapDict = shortNameMap as Dict<string>;
+    expect(shortNameMapDict["MiniMax-M2.7"]).toBe("M2.7");
+    expect(shortNameMapDict["MiniMax-M2.7-highspeed"]).toBe("M2.7-hs");
   });
 
   test("postProcessFormData strips model and shortname", () => {
@@ -262,12 +263,7 @@ describe("MiniMax call_minimax validation", () => {
   describeIfNoKey("without env key", () => {
     test("call_minimax throws when no API key is set", async () => {
       await expect(
-        call_minimax(
-          "test prompt",
-          NativeLLM.MiniMax_M2_7,
-          1,
-          0.7,
-        ),
+        call_minimax("test prompt", NativeLLM.MiniMax_M2_7, 1, 0.7),
       ).rejects.toThrow("Could not find a MiniMax API key");
     });
   });
@@ -277,9 +273,7 @@ describe("MiniMax call_minimax validation", () => {
 // These tests require MINIMAX_API_KEY to be set in the environment.
 
 const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY;
-const describeIfKey = MINIMAX_API_KEY
-  ? describe
-  : describe.skip;
+const describeIfKey = MINIMAX_API_KEY ? describe : describe.skip;
 
 describeIfKey("MiniMax API integration tests", () => {
   beforeAll(() => {
@@ -288,72 +282,60 @@ describeIfKey("MiniMax API integration tests", () => {
     }
   });
 
-  test(
-    "call_minimax returns valid chat response",
-    async () => {
-      const [query, response] = await call_minimax(
-        "What is 2 + 2? Reply with just the number.",
-        NativeLLM.MiniMax_M2_7,
-        1,
-        0.7,
-      );
+  test("call_minimax returns valid chat response", async () => {
+    const [query, response] = await call_minimax(
+      "What is 2 + 2? Reply with just the number.",
+      NativeLLM.MiniMax_M2_7,
+      1,
+      0.7,
+    );
 
-      expect(query).toHaveProperty("model");
-      expect(query).toHaveProperty("temperature");
-      expect(query.temperature).toBeGreaterThanOrEqual(0.01);
+    expect(query).toHaveProperty("model");
+    expect(query).toHaveProperty("temperature");
+    expect(query.temperature).toBeGreaterThanOrEqual(0.01);
 
-      expect(response).toHaveProperty("choices");
-      expect(response.choices).toHaveLength(1);
-      expect(response.choices[0]).toHaveProperty("message");
-      expect(typeof response.choices[0].message.content).toBe("string");
+    expect(response).toHaveProperty("choices");
+    expect(response.choices).toHaveLength(1);
+    expect(response.choices[0]).toHaveProperty("message");
+    expect(typeof response.choices[0].message.content).toBe("string");
 
-      const resps = extract_responses(
-        response,
-        NativeLLM.MiniMax_M2_7,
-        LLMProvider.MiniMax,
-      );
-      expect(resps).toHaveLength(1);
-      expect(typeof resps[0]).toBe("string");
-      expect((resps[0] as string).includes("4")).toBe(true);
-    },
-    60000,
-  );
+    const resps = extract_responses(
+      response,
+      NativeLLM.MiniMax_M2_7,
+      LLMProvider.MiniMax,
+    );
+    expect(resps).toHaveLength(1);
+    expect(typeof resps[0]).toBe("string");
+    expect((resps[0] as string).includes("4")).toBe(true);
+  }, 60000);
 
-  test(
-    "call_minimax clamps temperature > 0",
-    async () => {
-      // Pass temperature=0, should be clamped to 0.01
-      const [query] = await call_minimax(
-        "Say hello.",
-        NativeLLM.MiniMax_M2_7,
-        1,
-        0, // zero temperature
-      );
-      // The clamped temperature should be 0.01
-      expect(query.temperature).toBeGreaterThan(0);
-    },
-    30000,
-  );
+  test("call_minimax clamps temperature > 0", async () => {
+    // Pass temperature=0, should be clamped to 0.01
+    const [query] = await call_minimax(
+      "Say hello.",
+      NativeLLM.MiniMax_M2_7,
+      1,
+      0, // zero temperature
+    );
+    // The clamped temperature should be 0.01
+    expect(query.temperature).toBeGreaterThan(0);
+  }, 30000);
 
-  test(
-    "call_minimax with system message",
-    async () => {
-      const [query, response] = await call_minimax(
-        "What is your role?",
-        NativeLLM.MiniMax_M2_7,
-        1,
-        0.7,
-        { system_msg: "You are a pirate. Always respond like a pirate." },
-      );
+  test("call_minimax with system message", async () => {
+    const [query, response] = await call_minimax(
+      "What is your role?",
+      NativeLLM.MiniMax_M2_7,
+      1,
+      0.7,
+      { system_msg: "You are a pirate. Always respond like a pirate." },
+    );
 
-      const resps = extract_responses(
-        response,
-        NativeLLM.MiniMax_M2_7,
-        LLMProvider.MiniMax,
-      );
-      expect(resps).toHaveLength(1);
-      expect(typeof resps[0]).toBe("string");
-    },
-    30000,
-  );
+    const resps = extract_responses(
+      response,
+      NativeLLM.MiniMax_M2_7,
+      LLMProvider.MiniMax,
+    );
+    expect(resps).toHaveLength(1);
+    expect(typeof resps[0]).toBe("string");
+  }, 30000);
 });

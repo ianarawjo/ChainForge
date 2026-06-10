@@ -152,10 +152,13 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
                 {icon}&nbsp;{text}
               </Menu.Item>
             ))}
-          <Menu.Item key="duplicate" onClick={() => {
-            handleDuplicateNode();
-            setContextMenuOpened(false);
-          }}>
+          <Menu.Item
+            key="duplicate"
+            onClick={() => {
+              handleDuplicateNode();
+              setContextMenuOpened(false);
+            }}
+          >
             <IconCopy size="10pt" />
             &nbsp;Duplicate Node
           </Menu.Item>
@@ -163,9 +166,9 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
             <Menu.Item
               key="favorite"
               onClick={() => {
-              setFavoriteNameModalOpen(true);
-              setContextMenuOpened(false);
-            }}
+                setFavoriteNameModalOpen(true);
+                setContextMenuOpened(false);
+              }}
             >
               <IconHeart
                 size="12pt"
@@ -175,10 +178,13 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
               &nbsp;Favorite Node
             </Menu.Item>
           )}
-          <Menu.Item key="delete" onClick={() => {
-            handleRemoveNode();
-            setContextMenuOpened(false);
-          }}>
+          <Menu.Item
+            key="delete"
+            onClick={() => {
+              handleRemoveNode();
+              setContextMenuOpened(false);
+            }}
+          >
             <IconX size="10pt" />
             &nbsp;Delete Node
           </Menu.Item>

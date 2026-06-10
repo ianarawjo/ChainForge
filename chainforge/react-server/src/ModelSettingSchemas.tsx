@@ -2596,6 +2596,82 @@ BedrockLlama3Settings.uiSchema.model = {
   "ui:help": "Defaults to Llama3Instruct8b",
 };
 
+const WebLLMSettings: ModelSettingsDict = {
+  fullName: "WebLLM (In-browser)",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "Qwen2.5 0.5B",
+      },
+      model: {
+        type: "string",
+        title: "Model Version",
+        description: "Select a WebLLM model to run fully in-browser (WebGPU).",
+        enum: [NativeLLM.WebLLM_Qwen2_5_0_5B, NativeLLM.WebLLM_SmolLM2_1_7B],
+        default: NativeLLM.WebLLM_Qwen2_5_0_5B,
+      },
+      system_msg: {
+        type: "string",
+        title: "system_msg",
+        description: "Optional system prompt prepended to the conversation.",
+        default: "You are a helpful assistant.",
+        allow_empty_str: true,
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description: "Sampling temperature for generation.",
+        default: 0.7,
+        minimum: 0,
+        maximum: 2,
+        multipleOf: 0.01,
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description: "Nucleus sampling parameter.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.01,
+      },
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description: "Maximum output tokens per generation.",
+        default: 512,
+        minimum: 1,
+      },
+    },
+  },
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:widget": "datalist",
+      "ui:help": "Defaults to Qwen2.5-0.5B.",
+    },
+    system_msg: {
+      "ui:widget": "textarea",
+    },
+    temperature: {
+      "ui:widget": "range",
+    },
+    top_p: {
+      "ui:widget": "range",
+    },
+  },
+  postprocessors: {},
+};
+
 // A lookup table indexed by base_model.
 export const ModelSettings: Dict<ModelSettingsDict> = {
   "gpt-3.5-turbo": ChatGPTSettings,
@@ -2619,6 +2695,7 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   together: TogetherChatSettings,
   deepseek: DeepSeekSettings,
   minimax: MiniMaxSettings,
+  webllm: WebLLMSettings,
 };
 
 // A lookup that converts the base_model names into LLMProviders.
@@ -2647,6 +2724,7 @@ export function baseModelToProvider(base_model: string): LLMProvider {
     together: LLMProvider.Together,
     deepseek: LLMProvider.DeepSeek,
     minimax: LLMProvider.MiniMax,
+    webllm: LLMProvider.WebLLM,
   };
   return lookup[base_model] ?? LLMProvider.Custom;
 }
@@ -2669,6 +2747,7 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.Together]: TogetherChatSettings,
     [LLMProvider.DeepSeek]: DeepSeekSettings,
     [LLMProvider.MiniMax]: MiniMaxSettings,
+    [LLMProvider.WebLLM]: WebLLMSettings,
   };
 
   if (llm_provider === LLMProvider.Custom) return ModelSettings[llm_name];

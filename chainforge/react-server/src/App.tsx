@@ -67,6 +67,7 @@ import {
   getDefaultModelFormData,
   getDefaultModelSettings,
 } from "./ModelSettingSchemas";
+import { NativeLLM } from "./backend/models";
 import { v4 as uuid } from "uuid";
 import axios from "axios";
 import LZString from "lz-string";
@@ -169,37 +170,19 @@ const selector = (state: StoreHandles) => ({
 
 // The initial LLM to use when new flows are created, or upon first load
 const INITIAL_LLM = () => {
-  if (!IS_RUNNING_LOCALLY) {
-    // Prefer HF if running on server, as it's free.
-    const falcon7b = {
-      key: uuid(),
-      name: "Mistral-7B",
-      emoji: "🤗",
-      model: "mistralai/Mistral-7B-Instruct-v0.1",
-      base_model: "hf",
-      temp: 1.0,
-      settings: getDefaultModelSettings("hf"),
-      formData: getDefaultModelFormData("hf"),
-    } satisfies LLMSpec;
-    falcon7b.formData.shortname = falcon7b.name;
-    falcon7b.formData.model = falcon7b.model;
-    return falcon7b;
-  } else {
-    // Prefer OpenAI for majority of local users.
-    const chatgpt = {
-      key: uuid(),
-      name: "GPT-4o-mini",
-      emoji: "🤖",
-      model: "gpt-4o-mini",
-      base_model: "gpt-4",
-      temp: 1.0,
-      settings: getDefaultModelSettings("gpt-4"),
-      formData: getDefaultModelFormData("gpt-4"),
-    } satisfies LLMSpec;
-    chatgpt.formData.shortname = chatgpt.name;
-    chatgpt.formData.model = chatgpt.model;
-    return chatgpt;
-  }
+  const qwenWebLLM = {
+    key: uuid(),
+    name: "Qwen2.5 0.5B",
+    emoji: "🌐",
+    model: NativeLLM.WebLLM_Qwen2_5_0_5B,
+    base_model: "webllm",
+    temp: 0.7,
+    settings: getDefaultModelSettings("webllm"),
+    formData: getDefaultModelFormData("webllm"),
+  } satisfies LLMSpec;
+  qwenWebLLM.formData.shortname = qwenWebLLM.name;
+  qwenWebLLM.formData.model = qwenWebLLM.model;
+  return qwenWebLLM;
 };
 
 const nodeTypes = {
