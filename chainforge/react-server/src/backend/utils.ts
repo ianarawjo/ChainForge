@@ -1149,7 +1149,7 @@ export async function call_huggingface(
   const url =
     using_custom_model_endpoint && params?.custom_model.startsWith("https:")
       ? params.custom_model
-      : `https://api-inference.huggingface.co/models/${
+      : `https://api-inference.huggingface.co/inference-endpoint/${
           using_custom_model_endpoint ? params?.custom_model.trim() : model
         }`;
 
