@@ -662,7 +662,7 @@ const App = () => {
       // We first get the data of the flow, if we haven't already
       const flow = flowData ?? rfInstance?.toObject();
       if (!flow) return;
-      await jsontoYml(JSON.stringify(flow), flowFileName);
+      await jsontoYml(JSON.stringify(flow), flowFileName, 0, 1, handleError);
     },
     [rfInstance, flowFileName],
   );

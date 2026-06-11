@@ -39,7 +39,7 @@ import {
 } from "./backend/typing";
 import { generatePrompts } from "./backend/backend";
 
-enum JoinFormat {
+export enum JoinFormat {
   DubNewLine = "\n\n",
   NewLine = "\n",
   DashedList = "-",

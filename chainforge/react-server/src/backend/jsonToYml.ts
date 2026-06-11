@@ -12,6 +12,7 @@ export async function jsontoYml(
   title: string,
   max_retry = 0,
   threads = 1,
+  onError?: (err: Error | string) => void,
 ) {
   try {
     const non_used_nodes = new Set<string>();
@@ -185,10 +186,21 @@ export async function jsontoYml(
         );
         zip.file(`${node.id}.js`, js_code);
         yml_nodes.push(yml_node);
-      }
-      // else if(node.type === 'join'){}
-      // else if(node.type === 'split'){}
-      else {
+      } else if (node.type === "join") {
+        const msg = `Join Processors are not supported in YAML export.`;
+        if (onError) onError(msg);
+        else console.error(msg);
+        return;
+      } else if (node.type === "split") {
+        const yml_node = {
+          processor: {
+            type: "split",
+            name: node.id,
+            format: node.data.splitFormat ?? "list",
+          },
+        };
+        yml_nodes.push(yml_node);
+      } else {
         non_used_nodes.add(node.id);
       }
     }
@@ -221,6 +233,7 @@ export async function jsontoYml(
     const blob = await zip.generateAsync({ type: "blob" });
     saveAs(blob, `${title}.zip`);
   } catch (error) {
-    console.error("Error parsing JSON data:", error);
+    if (onError) onError(error as Error);
+    else console.error("Error parsing JSON data:", error);
   }
 }
