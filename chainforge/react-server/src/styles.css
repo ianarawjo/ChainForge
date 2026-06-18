@@ -260,6 +260,20 @@ html[data-mantine-color-scheme="dark"] .remove-text-field-btn:hover {
   border-bottom-color: #888;
 }
 
+/* Icon + title: same vertical center and spacing as inline flow on other nodes */
+.node-header-icon-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 6px;
+  vertical-align: middle;
+  line-height: 1;
+}
+.node-header-icon-slot svg {
+  display: block;
+}
+
 html[data-mantine-color-scheme="dark"] .node-header {
   color: #ccc;
   border-bottom-color: #222;
@@ -824,6 +838,174 @@ html[data-mantine-color-scheme="dark"] .comment-node {
 html[data-mantine-color-scheme="dark"] .comment-node textarea {
   background-color: #222 !important;
   border: none;
+}
+
+/* White card like other nodes, but no inner padding — iframe is edge-to-edge.
+   Outer is block (not flex) so the node-header float/× alignment matches other nodes. */
+.iframe-node {
+  background-color: #fff !important;
+  padding: 0 !important;
+  overflow: visible;
+  display: block;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+html[data-mantine-color-scheme="dark"] .iframe-node {
+  background-color: var(--dark) !important;
+}
+
+/* Flex header: icon slot + title + toolbar share one vertical center. Spacing after icon uses .node-header-icon-slot margin (not gap), same as other nodes. */
+.iframe-node .node-header {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 0;
+  padding: 8px 8px 4px 8px;
+}
+
+.iframe-node .node-header-btns-container {
+  float: none;
+  margin-top: 0;
+  margin-left: auto;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Undo global negative margins inside iframe header — flex centering replaces them */
+.iframe-node .node-header .close-button,
+.iframe-node .node-header .custom-button {
+  margin-top: 0;
+}
+.iframe-node .node-header .AmitSahoo45-button-3 {
+  margin-top: 0;
+}
+
+.iframe-node .node-header .nodrag {
+  min-width: 0;
+}
+
+/* Outline like ×. Spacing from .custom-button (margin-right: 3px) — use gap on toolbar. No red ×-style hover/glow. */
+.iframe-node .iframe-node-eye-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0;
+  min-width: 26px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.iframe-node .iframe-node-eye-toggle:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #333;
+  box-shadow: none;
+}
+.iframe-node .iframe-node-eye-toggle:hover::before {
+  animation: none;
+}
+.iframe-node .iframe-node-eye-toggle:active {
+  background: rgba(0, 0, 0, 0.1);
+  color: #333;
+}
+html[data-mantine-color-scheme="dark"]
+  .iframe-node
+  .iframe-node-eye-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #eee;
+  box-shadow: none;
+}
+html[data-mantine-color-scheme="dark"]
+  .iframe-node
+  .iframe-node-eye-toggle:active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+html[data-mantine-color-scheme="dark"]
+  .iframe-node
+  .iframe-node-eye-toggle:hover::before {
+  animation: none;
+}
+
+.iframe-node-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.iframe-node-url-chrome {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 8px;
+  margin: 0;
+  border: none;
+  border-bottom: 1px solid #ddd;
+  border-radius: 0;
+  background-color: #fff;
+  position: relative;
+}
+html[data-mantine-color-scheme="dark"] .iframe-node-url-chrome {
+  border-bottom-color: #555;
+  background-color: var(--dark);
+}
+
+.iframe-node-url-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  opacity: 0.75;
+}
+
+/* URL input handle: always visible on node edge, aligned with URL bar */
+.iframe-node .grouped-handle-url {
+  opacity: 1 !important;
+  visibility: visible !important;
+  width: 10px !important;
+  height: 10px !important;
+  min-width: 10px !important;
+  min-height: 10px !important;
+  border: 1px solid #888;
+  background: #fff !important;
+  top: 46px;
+  z-index: 2;
+}
+html[data-mantine-color-scheme="dark"] .iframe-node .grouped-handle-url {
+  background: var(--dark) !important;
+  border-color: #aaa;
+}
+
+.iframe-node-url-field input {
+  background: transparent !important;
+}
+
+.iframe-node-frame-host {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  background: #fff;
+}
+html[data-mantine-color-scheme="dark"] .iframe-node-frame-host {
+  background: var(--dark);
+}
+
+.iframe-node-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
 }
 
 .join-node {

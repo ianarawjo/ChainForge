@@ -94,6 +94,7 @@ const refreshableOutputNodeTypes = new Set([
   "simpleval",
   "join",
   "split",
+  "iframe",
 ]);
 
 export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
@@ -1157,7 +1158,8 @@ const useStore = create<StoreHandles>((set, get) => ({
     if (
       target.type === "vis" ||
       target.type === "inspect" ||
-      target.type === "simpleval"
+      target.type === "simpleval" ||
+      target.type === "iframe"
     ) {
       get().setDataPropsForNode(target.id, { input: connection.source });
     }

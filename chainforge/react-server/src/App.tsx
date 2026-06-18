@@ -43,6 +43,7 @@ import {
   IconHeart,
   IconCheckbox,
   IconTransform,
+  IconWorldWww,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -73,6 +74,7 @@ import axios from "axios";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
 import MediaNode from "./MediaNode";
+import IframeNode from "./IframeNode";
 
 // Styling
 import "reactflow/dist/style.css"; // reactflow
@@ -203,6 +205,7 @@ const nodeTypes = {
   split: SplitNode,
   processor: CodeEvaluatorNode,
   media: MediaNode,
+  iframe: IframeNode,
 };
 
 const nodeEmojis = {
@@ -222,6 +225,7 @@ const nodeEmojis = {
   join: <IconArrowMerge size={16} />,
   split: <IconArrowsSplit size={16} />,
   media: "📺",
+  iframe: <IconWorldWww size="16px" />,
 };
 
 const edgeTypes = {
@@ -344,6 +348,9 @@ const App = () => {
           x: x - 200 + (offsetX || 0),
           y: y - 100 + (offsetY || 0),
         },
+        ...(type === "iframe"
+          ? { style: { width: 520, height: 400 } as React.CSSProperties }
+          : {}),
       });
     },
     [addNodeToStore, rfInstance],
@@ -554,6 +561,18 @@ const App = () => {
         icon: nodeEmojis.comment,
         tooltip: "Make a comment about your flow.",
         onClick: () => addNode("comment"),
+      },
+      {
+        key: "iframe",
+        title: "iFrame Node",
+        icon: nodeEmojis.iframe,
+        tooltip:
+          "Embed a web page in an iframe on the canvas (for reference; not connected to the flow).",
+        onClick: () =>
+          addNode("iframeNode", "iframe", {
+            url: "",
+            title: "iFrame Node",
+          }),
       },
       {
         key: "script",
