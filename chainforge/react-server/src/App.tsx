@@ -667,6 +667,17 @@ const App = () => {
     [rfInstance, flowFileName],
   );
 
+  const exportYml = useCallback(
+    async (flowData?: unknown) => {
+      if (!rfInstance && !flowData) return;
+      // We first get the data of the flow, if we haven't already
+      const flow = flowData ?? rfInstance?.toObject();
+      if (!flow) return;
+      await jsontoYml(JSON.stringify(flow), flowFileName, 0, 1, handleError);
+    },
+    [rfInstance, flowFileName],
+  );
+
   // Export flow to JSON
   const exportFlow = useCallback(
     (
