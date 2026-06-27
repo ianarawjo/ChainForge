@@ -78,6 +78,26 @@ Now you can open the browser of your choice and open `http://127.0.0.1:8000`.
 - Amazon Bedrock-hosted on-demand inference, including Anthropic Claude 3
 - ...and any other provider through [custom provider scripts](https://chainforge.ai/docs/custom_providers/)!
 
+## OpenAI-compatible gateways and control planes
+
+ChainForge can also target OpenAI-compatible gateways and control planes instead
+of calling the upstream provider directly. The local settings flow already
+supports `OPENAI_BASE_URL`, so you can keep using the OpenAI provider in
+ChainForge while pointing traffic at a different compatible endpoint.
+
+For example, to route OpenAI-format traffic through Tuning Engines:
+
+```bash
+export OPENAI_BASE_URL=https://api.tuningengines.com/v1
+export OPENAI_API_KEY=sk-te-your-inference-key
+chainforge serve
+```
+
+Then select the normal OpenAI provider in ChainForge. This is useful when you
+want prompt and model comparisons to run through a governed endpoint that adds
+policy checks, usage tracking, model routing, or cost controls without changing
+the rest of your evaluation flow.
+
 # Example experiments
 
 We've prepared many example flows to give you a sense of what's possible with Chainforge.
