@@ -66,7 +66,7 @@ const OUTPUT_FORMATS = [
   { value: OutputFormat.Num, label: "numeric" },
   { value: OutputFormat.Any, label: "open-ended" },
 ];
-const OUTPUT_FORMAT_PROMPTS = {
+export const OUTPUT_FORMAT_PROMPTS = {
   [OutputFormat.Bin]:
     "Only reply with boolean values true or false, nothing else.",
   [OutputFormat.Cat]: "Only reply with your categorization, nothing else.",
@@ -75,7 +75,7 @@ const OUTPUT_FORMAT_PROMPTS = {
   [OutputFormat.Any]: "",
 };
 
-const OUTPUT_FORMAT_PROMPTS_REASONING = {
+export const OUTPUT_FORMAT_PROMPTS_REASONING = {
   [OutputFormat.Bin]:
     "First, explain your reasoning for the classification. Then, output your final answer in the following format on a new line: SCORE: true or SCORE: false",
   [OutputFormat.Cat]:
