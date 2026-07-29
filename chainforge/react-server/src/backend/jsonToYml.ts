@@ -116,9 +116,37 @@ type BuildYmlNodeResult = {
   ymlNode?: any;
   files: Array<{ name: string; content: string }>;
   skipped: boolean;
+  error: boolean;
+  error_message?: string;
 };
 
-function buildYmlNode(node: any): BuildYmlNodeResult {
+type BuildYmlNodeContext = {
+  nodeById: Map<string, any>;
+  incomingSourceIdsByTarget: Map<string, string[]>;
+};
+
+function isDataNodeType(type: string): boolean {
+  return type === "textfields" || type === "table";
+}
+
+function shouldExportJoinNode(
+  node: any,
+  context: BuildYmlNodeContext,
+): boolean {
+  const incomingSourceIds =
+    context.incomingSourceIdsByTarget.get(node.id) ?? [];
+  if (incomingSourceIds.length === 0) return true;
+
+  return incomingSourceIds.every((sourceId) => {
+    const sourceNode = context.nodeById.get(sourceId);
+    return sourceNode && isDataNodeType(sourceNode.type);
+  });
+}
+
+function buildYmlNode(
+  node: any,
+  context?: BuildYmlNodeContext,
+): BuildYmlNodeResult {
   const files: Array<{ name: string; content: string }> = [];
 
   if (node.type === "prompt") {
@@ -141,7 +169,7 @@ function buildYmlNode(node: any): BuildYmlNodeResult {
         llms,
       },
     };
-    return { ymlNode: yml_node, files, skipped: false };
+    return { ymlNode: yml_node, files, skipped: false, error: false };
   }
   // We need to create a csv file for each dataset node
   else if (node.type === "textfields") {
@@ -158,20 +186,20 @@ function buildYmlNode(node: any): BuildYmlNodeResult {
       csv += `${value}\n`;
     }
     files.push({ name: `${node.id}.csv`, content: csv });
-    return { ymlNode: yml_node, files, skipped: false };
+    return { ymlNode: yml_node, files, skipped: false, error: false };
   } else if (node.type === "evaluator") {
     if (node.data.language === "javascript") {
       const yml_node = buildJavascriptNode(node);
       // Create the javascript file
       const js_code = node.data.code;
       files.push({ name: `${node.id}.js`, content: js_code });
-      return { ymlNode: yml_node, files, skipped: false };
+      return { ymlNode: yml_node, files, skipped: false, error: false };
     } else if (node.data.language === "python") {
       const yml_node = buildPythonNode(node);
       // Create the python file
       const py_code = node.data.code;
       files.push({ name: `${node.id}.py`, content: py_code });
-      return { ymlNode: yml_node, files, skipped: false };
+      return { ymlNode: yml_node, files, skipped: false, error: false };
     }
   } else if (node.type === "processor") {
     if (node.data.language === "javascript") {
@@ -185,7 +213,7 @@ function buildYmlNode(node: any): BuildYmlNodeResult {
       // Create the javascript file
       const js_code = node.data.code;
       files.push({ name: `${node.id}.js`, content: js_code });
-      return { ymlNode: yml_node, files, skipped: false };
+      return { ymlNode: yml_node, files, skipped: false, error: false };
     } else if (node.data.language === "python") {
       const yml_node = {
         processor: {
@@ -197,7 +225,7 @@ function buildYmlNode(node: any): BuildYmlNodeResult {
       // Create the python file
       const py_code = node.data.code;
       files.push({ name: `${node.id}.py`, content: py_code });
-      return { ymlNode: yml_node, files, skipped: false };
+      return { ymlNode: yml_node, files, skipped: false, error: false };
     }
   } else if (node.type === "table") {
     const yml_node = {
@@ -207,17 +235,24 @@ function buildYmlNode(node: any): BuildYmlNodeResult {
       },
     };
     // Create the csv file with the table data
-    const row = node.data.rows[0];
-    let headers = Object.keys(row);
-    // remove the key '__uid' from headers
-    headers = headers.filter((header) => header !== "__uid");
-    let csv = headers.join(",") + "\n";
+    const columns = node.data.columns;
+
+    const csvHeaders = columns.map((col: { header: string }) =>
+      cleanText(col.header),
+    );
+    const csvKeys = columns.map((col: { key: any }) => col.key);
+
+    let csv = csvHeaders.join(",") + "\n";
+
     for (const row of node.data.rows) {
-      const values = headers.map((header) => cleanText(row[header]));
+      const values = csvKeys.map((key: string | number) =>
+        cleanText(row[key] ?? ""),
+      );
       csv += values.join(",") + "\n";
     }
+
     files.push({ name: `${node.id}.csv`, content: csv });
-    return { ymlNode: yml_node, files, skipped: false };
+    return { ymlNode: yml_node, files, skipped: false, error: false };
   } else if (node.type === "csv") {
     const yml_node = {
       dataset: {
@@ -232,45 +267,55 @@ function buildYmlNode(node: any): BuildYmlNodeResult {
       csv += `${cleanText(value)}\n`;
     }
     files.push({ name: `${node.id}.csv`, content: csv });
-    return { ymlNode: yml_node, files, skipped: false };
+    return { ymlNode: yml_node, files, skipped: false, error: false };
   } else if (node.type === "simpleval") {
     const yml_node = {
       evaluator: {
         type: "simple",
         name: node.id,
         return_type: "string",
+        text_value: node.data.textValue ?? "",
+        var_value: node.data.varValue ?? "",
+        var_type: node.data.varValueType ?? "var",
+        var_selected: node.data.varSelected ?? false,
         file: `../files/${node.id}.js`,
       },
     };
     const js_code = createJSEvalCodeFor(
       node.data.responseFormat ?? "response",
       node.data.operation ?? "contains",
-      node.data.textValue ?? "",
+      node.data.varSelected ? node.data.varValue : node.data.textValue,
       node.data.varValueType ?? "var",
     );
     files.push({ name: `${node.id}.js`, content: js_code });
-    return { ymlNode: yml_node, files, skipped: false };
+    return { ymlNode: yml_node, files, skipped: false, error: false };
   } else if (node.type === "join") {
+    if (!context || !shouldExportJoinNode(node, context)) {
+      return {
+        files,
+        skipped: true,
+        error: true,
+        error_message: `Cannot export join node because it does not have any data node inputs/it is preceded by a non-data node.`,
+      };
+    }
     const yml_node = {
       processor: {
         type: "join",
         name: node.id,
-        format: node.data.joinFormat ?? "list",
-        group_by_vars: node.data.groupByVars ?? [],
-        group_by_llm: node.data.groupByLLM ?? "",
+        format: (node.data.formatting ?? "\n\n").replace(/\n/g, "\\n"),
         selected_group_vars: node.data.selectedGroupVars ?? [],
       },
     };
-    return { ymlNode: yml_node, files, skipped: false };
+    return { ymlNode: yml_node, files, skipped: false, error: false };
   } else if (node.type === "split") {
     const yml_node = {
       processor: {
         type: "split",
         name: node.id,
-        format: node.data.splitFormat ?? "list",
+        format: (node.data.splitFormat ?? "list").replace(/\n/g, "\\n"),
       },
     };
-    return { ymlNode: yml_node, files, skipped: false };
+    return { ymlNode: yml_node, files, skipped: false, error: false };
   } else if (node.type === "multieval") {
     // Build a single multieval evaluator with nested evaluators inside
     const yml_node: any = {
@@ -282,13 +327,16 @@ function buildYmlNode(node: any): BuildYmlNodeResult {
       },
     };
     for (const childEval of node.data.evaluators) {
-      const evalNode = buildYmlNode(multievalChildToNodeFormat(childEval));
+      const evalNode = buildYmlNode(
+        multievalChildToNodeFormat(childEval),
+        context,
+      );
       if (evalNode.ymlNode) {
         yml_node.evaluator.evaluators.push(evalNode.ymlNode);
         files.push(...evalNode.files);
       }
     }
-    return { ymlNode: yml_node, files, skipped: false };
+    return { ymlNode: yml_node, files, skipped: false, error: false };
   } else if (node.type === "llmeval") {
     const graderSpec = node.data.grader;
     const graderObj = buildLLMNode(graderSpec);
@@ -305,10 +353,14 @@ function buildYmlNode(node: any): BuildYmlNodeResult {
       },
     };
     if (graderObj) yml_node.evaluator.grader = graderObj;
-    return { ymlNode: yml_node, files, skipped: false };
+    return { ymlNode: yml_node, files, skipped: false, error: false };
   }
 
-  return { files, skipped: true };
+  return {
+    files,
+    skipped: true,
+    error: false,
+  };
 }
 
 export async function jsontoYml(
@@ -316,17 +368,36 @@ export async function jsontoYml(
   title: string,
   max_retry = 0,
   threads = 1,
-  onError?: (err: Error | string) => void,
+  onError: (err: Error | string) => void,
 ) {
   try {
     const non_used_nodes = new Set<string>();
     const json = JSON.parse(json_data);
     const nodes = json.nodes;
     const links = json.edges;
+    const nodeById = new Map<string, any>();
+    const incomingSourceIdsByTarget = new Map<string, string[]>();
+    for (const node of nodes) {
+      nodeById.set(node.id, node);
+    }
+    for (const link of links) {
+      const incomingSourceIds =
+        incomingSourceIdsByTarget.get(link.target) ?? [];
+      incomingSourceIds.push(link.source);
+      incomingSourceIdsByTarget.set(link.target, incomingSourceIds);
+    }
+    const context: BuildYmlNodeContext = {
+      nodeById,
+      incomingSourceIdsByTarget,
+    };
     const yml_nodes: any[] = [];
     const zip = new JSZip();
     for (const node of nodes) {
-      const result = buildYmlNode(node);
+      const result = buildYmlNode(node, context);
+      if (result.error) {
+        onError(`Error exporting node: ${result.error_message ?? ""}`);
+        return;
+      }
       for (const file of result.files) {
         zip.file(file.name, file.content);
       }
