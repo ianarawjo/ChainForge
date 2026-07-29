@@ -354,6 +354,13 @@ function buildYmlNode(
     };
     if (graderObj) yml_node.evaluator.grader = graderObj;
     return { ymlNode: yml_node, files, skipped: false, error: false };
+  } else if (node.type === "chat") {
+    return {
+      files,
+      skipped: true,
+      error: true,
+      error_message: `Chat nodes are not supported in the YAML export.`,
+    };
   }
 
   return {
