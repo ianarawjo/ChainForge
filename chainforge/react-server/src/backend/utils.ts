@@ -34,12 +34,11 @@ import {
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
 
-import {
-  Configuration as OpenAIConfig,
-  OpenAIApi,
-  CreateImageRequest,
-  ImagesResponseDataInner,
-} from "openai";
+import OpenAI from "openai";
+
+// Minimal shape of an OpenAI-generated image result (b64_json/url), replacing
+// the old `ImagesResponseDataInner` type that `openai` v3 used to export.
+type OpenAIImageResult = { b64_json?: string; url?: string };
 import {
   OpenAIClient as AzureOpenAIClient,
   AzureKeyCredential,
@@ -439,15 +438,11 @@ export async function call_chatgpt(
       "Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.",
     );
 
-  const configuration = new OpenAIConfig({
+    const openai = new OpenAI({
     apiKey: effectiveKey,
-    basePath: BASE_URL ?? OPENAI_BASE_URL ?? undefined,
+    baseURL: BASE_URL ?? OPENAI_BASE_URL ?? undefined,
+    dangerouslyAllowBrowser: true,
   });
-
-  // Since we are running client-side, we need to remove the user-agent header:
-  delete configuration.baseOptions.headers["User-Agent"];
-
-  const openai = new OpenAIApi(configuration);
 
   const modelname: string = model.toString();
 
@@ -523,11 +518,11 @@ export async function call_chatgpt(
   if (modelname.includes("davinci") || modelname.includes("instruct")) {
     if ("response_format" in query) delete query.response_format;
     // Create call to text completions model
-    openai_call = openai.createCompletion.bind(openai);
+       openai_call = openai.completions.create.bind(openai.completions);
     query.prompt = prompt;
   } else {
     // Create call to chat model
-    openai_call = openai.createChatCompletion.bind(openai);
+    openai_call = openai.chat.completions.create.bind(openai.chat.completions);
 
     // Carry over chat history, if present:
     query.messages = construct_chat_history(
@@ -544,18 +539,15 @@ export async function call_chatgpt(
   );
 
   // Try to call OpenAI
+   // Try to call OpenAI
   let response: Dict = {};
   try {
     const completion = await openai_call(query);
-    response = completion.data;
+    response = completion;
   } catch (error: any) {
-    if (error?.response) {
-      throw new Error(error.response.data?.error?.message);
-      // throw new Error(error.response.status);
-    } else {
-      console.log(error?.message || error);
-      throw new Error(error?.message || error);
-    }
+    const message = error?.error?.message ?? error?.message ?? String(error);
+    console.log(message);
+    throw new Error(message);
   }
 
   return [query, response];
@@ -645,12 +637,10 @@ export async function call_openai_image_gen(
       "Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.",
     );
 
-  const configuration = new OpenAIConfig({
+    const openai = new OpenAI({
     apiKey: OPENAI_API_KEY,
+    dangerouslyAllowBrowser: true,
   });
-  // Since we are running client-side, we need to remove the user-agent header:
-  delete configuration.baseOptions.headers["User-Agent"];
-  const openai = new OpenAIApi(configuration);
 
   const modelname = model.toString();
   console.log(
@@ -685,19 +675,15 @@ export async function call_openai_image_gen(
     // Abort if canceled
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
-    let response: Dict = {};
+        let response: Dict = {};
     try {
-      const completion = await openai.createImage(query as CreateImageRequest);
-      response = completion.data.data[0];
+      const completion = await openai.images.generate(query as any);
+      response = completion.data?.[0] ?? {};
       responses.push(response);
     } catch (error: any) {
-      if (error?.response) {
-        throw new Error(error.response.data?.error?.message);
-        // throw new Error(error.response.status);
-      } else {
-        console.log(error?.message || error);
-        throw new Error(error?.message || error);
-      }
+      const message = error?.error?.message ?? error?.message ?? String(error);
+      console.log(message);
+      throw new Error(message);
     }
   }
 
@@ -1628,15 +1614,11 @@ export async function call_together(
   const togetherBaseUrl = "https://api.together.xyz/v1";
 
   // Together.ai uses OpenAI's API, so we can use the OpenAI API client to make the call:
-  const configuration = new OpenAIConfig({
+ const together = new OpenAI({
     apiKey: TOGETHER_API_KEY,
-    basePath: togetherBaseUrl,
+    baseURL: togetherBaseUrl,
+    dangerouslyAllowBrowser: true,
   });
-
-  // Since we are running client-side, we need to remove the user-agent header:
-  delete configuration.baseOptions.headers["User-Agent"];
-
-  const together = new OpenAIApi(configuration);
 
   // Strip the "together/" prefix:
   const modelname: string = model.toString().substring(9);
@@ -1679,7 +1661,9 @@ export async function call_together(
   };
 
   // Create call to chat model
-  const together_call: any = together.createChatCompletion.bind(together);
+    const together_call: any = together.chat.completions.create.bind(
+    together.chat.completions,
+  );
 
   // Carry over chat history, if present:
   query.messages = construct_chat_history(
@@ -1693,15 +1677,11 @@ export async function call_together(
   let response: Dict = {};
   try {
     const completion = await together_call(query);
-    response = completion.data;
+    response = completion;
   } catch (error: any) {
-    if (error?.response) {
-      throw new Error(error.response.data?.error?.message);
-      // throw new Error(error.response.status);
-    } else {
-      console.log(error?.message || error);
-      throw new Error(error?.message || error);
-    }
+    const message = error?.error?.message ?? error?.message ?? String(error);
+    console.log(message);
+    throw new Error(message);
   }
 
   return [query, response];
@@ -1935,7 +1915,7 @@ function _extract_openai_completion_responses(response: Dict): Array<string> {
  * this produces a list of all returned responses.
  */
 function _extract_openai_image_responses(
-  response: Array<ImagesResponseDataInner>,
+  response: Array<OpenAIImageResult>,
 ): LLMResponseData[] {
   return response.map((v) => ({
     t: "img",
@@ -2047,7 +2027,7 @@ export function extract_responses(
     case LLMProvider.OpenAI:
       if (llm_name.startsWith("dall-e") || llm_name.startsWith("gpt-image"))
         return _extract_openai_image_responses(
-          response as Array<ImagesResponseDataInner>,
+          response as Array<OpenAIImageResult>,
         );
       else if (llm_name.includes("davinci") || llm_name.includes("instruct"))
         return _extract_openai_completion_responses(response);
