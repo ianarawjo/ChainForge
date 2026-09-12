@@ -51,7 +51,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./docker/Dockerfile
           push: false
           platforms: linux/amd64
           provenance: false
@@ -102,7 +102,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./docker/Dockerfile
           push: false
           platforms: linux/arm64
           provenance: false
@@ -186,7 +186,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.gpu
+          file: ./docker/Dockerfile.gpu
           push: false
           platforms: linux/amd64
           provenance: false

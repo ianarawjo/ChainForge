@@ -56,7 +56,7 @@ docker compose up -d
 ```
 Access ChainForge at http://localhost:8000
 
-For detailed Docker documentation including architecture support, environment variables, and CI/CD setup, see [DOCKER.md](DOCKER.md).
+For detailed Docker documentation including architecture support, environment variables, and CI/CD setup, see [docker/README.md](docker/README.md).
 
 # Supported providers
 

@@ -80,6 +80,7 @@ data/
 Dockerfile*
 docker-compose*.yml
 .dockerignore
+docker/
 
 # CI/CD
 .circleci

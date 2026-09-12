@@ -50,7 +50,7 @@ docker run -d \
 Using Docker Compose (Recommended):
 
 ```bash
-docker-compose -f docker-compose.gpu.yml up -d
+docker-compose -f docker/docker-compose.gpu.yml up -d
 ```
 
 Or using Docker CLI:
@@ -60,7 +60,7 @@ Or using Docker CLI:
 docker pull gauransh/chainforge:gpu
 
 # Or build locally
-docker build -f Dockerfile.gpu -t chainforge:gpu .
+docker build -f docker/Dockerfile.gpu -t chainforge:gpu .
 
 # Run with GPU support
 docker run -d \
@@ -111,7 +111,7 @@ Access ChainForge at: http://localhost:8000
 docker-compose logs -f
 
 # GPU version
-docker-compose -f docker-compose.gpu.yml logs -f
+docker-compose -f docker/docker-compose.gpu.yml logs -f
 ```
 
 ### Stop containers
@@ -121,7 +121,7 @@ docker-compose -f docker-compose.gpu.yml logs -f
 docker-compose down
 
 # GPU version
-docker-compose -f docker-compose.gpu.yml down
+docker-compose -f docker/docker-compose.gpu.yml down
 ```
 
 ### Rebuild images
@@ -131,7 +131,7 @@ docker-compose -f docker-compose.gpu.yml down
 docker-compose build --no-cache
 
 # GPU version
-docker-compose -f docker-compose.gpu.yml build --no-cache
+docker-compose -f docker/docker-compose.gpu.yml build --no-cache
 ```
 
 ### Remove volumes (delete all data)
@@ -328,7 +328,7 @@ To enable automated image publishing, configure these secrets:
 ### ESLint Config Error
 
 If you see "ESLint couldn't find the config 'semistandard'":
-- This is fixed in the current Dockerfile by installing devDependencies
+- This is fixed in the current docker/Dockerfile by installing devDependencies
 - Rebuild the image: `docker-compose build --no-cache`
 
 ### Port Already in Use
@@ -342,7 +342,7 @@ If port 8000 is already in use:
 If you encounter permission errors:
 - The image runs as a non-root user (uid 1000)
 - Ensure your volume permissions match this user
-- You can adjust the UID in the Dockerfile if needed
+- You can adjust the UID in docker/Dockerfile if needed
 
 ## Performance Tips
 

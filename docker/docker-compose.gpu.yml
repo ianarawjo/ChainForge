@@ -1,8 +1,8 @@
 services:
   chainforge-gpu:
     build:
-      context: .
-      dockerfile: Dockerfile.gpu
+      context: ..
+      dockerfile: docker/Dockerfile.gpu
     image: chainforge/chainforge:gpu
     container_name: chainforge-gpu
     ports:

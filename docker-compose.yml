@@ -2,7 +2,7 @@ services:
   chainforge:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
     image: chainforge/chainforge:latest
     container_name: chainforge
     ports:
