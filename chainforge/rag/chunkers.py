@@ -213,7 +213,9 @@ def _chonkie_kwargs(chunker_cls: Any, **kwargs: Any) -> Dict[str, Any]:
                 adapted[alt] = value
                 break
         else:
-            print(f"Warning: {chunker_cls.__name__} in the installed version of Chonkie "
+            # Not necessarily a class: fall back to the type's name.
+            name = getattr(chunker_cls, "__name__", type(chunker_cls).__name__)
+            print(f"Warning: {name} in the installed version of Chonkie "
                   f"does not accept '{key}'; ignoring it.", file=sys.stderr)
     return adapted
 

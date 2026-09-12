@@ -38,6 +38,25 @@ def normalize_query(raw_q: Any) -> Tuple[Dict[str, Any], str]:
     )
     return q_obj, text
 
+def _attach_chunk_identity(hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Lift docTitle/chunkId out of stored metadata onto each hit.
+
+    Vector stores return {id, text, similarity, metadata}, but /retrieve reads
+    `docTitle`/`chunkId` off the hit itself -- and rank fusion keys documents
+    by `chunkId`. Without this, embedding-based retrieval loses document
+    attribution, and every chunk fuses under the same empty doc_id so a fused
+    group collapses to a single row.
+
+    Stores written before this existed have no docTitle/chunkId in their
+    metadata; those fall back to "" exactly as they did before.
+    """
+    for hit in hits:
+        meta = hit.get("metadata") or {}
+        hit.setdefault("docTitle", meta.get("docTitle", "") if isinstance(meta, dict) else "")
+        hit.setdefault("chunkId", meta.get("chunkId", "") if isinstance(meta, dict) else "")
+    return hits
+
+
 @RetrievalMethodRegistry.register("embedding")
 def handle_embedding(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path):
     """
@@ -77,6 +96,12 @@ def handle_embedding(chunk_objs, chunk_embeddings, query_objs, query_embeddings,
 def handle_bm25(chunk_objs: List[Dict], query_objs: List[Any], settings: Dict[str, Any]) -> List[Dict]:
     from rank_bm25 import BM25Okapi
     """Retrieve top-k chunks for each query using BM25."""
+    # An empty corpus has nothing to index; match the boolean/overlap methods
+    # and return no hits rather than letting BM25Okapi divide by zero.
+    if not chunk_objs:
+        return [{"query_object": normalize_query(q)[0], "retrieved_chunks": []}
+                for q in query_objs]
+
     # Build BM25 index
     docs = [str(c.get("text", "")) for c in chunk_objs]
     tokenized_corpus = [simple_preprocess(doc) for doc in docs]
@@ -138,9 +163,18 @@ def handle_tfidf(chunk_objs: List[Dict], query_objs: List[Any], settings: Dict[s
     # Prepare the corpus texts
     docs = [str(c.get("text", "")) for c in chunk_objs]
 
-    # Fit the TF-IDF vectorizer
+    empty_results = [{"query_object": normalize_query(q)[0], "retrieved_chunks": []}
+                     for q in query_objs]
+    if not docs:
+        return empty_results
+
+    # Fit the TF-IDF vectorizer. A corpus of only stop words (or only empty
+    # strings) yields an empty vocabulary, which sklearn raises on.
     vectorizer = TfidfVectorizer(stop_words="english", max_features=max_features)
-    tfidf_matrix = vectorizer.fit_transform(docs)
+    try:
+        tfidf_matrix = vectorizer.fit_transform(docs)
+    except ValueError:
+        return empty_results
 
     results: List[Dict] = []
     for raw_q in query_objs:
@@ -378,7 +412,9 @@ def handle_lancedb_vector_store(chunk_objs, chunk_embeddings, query_objs, query_
         embeddings=chunk_embeddings,
         metadata=[{
             "fill_history": chunk.get("fill_history", {}),
-            "metadata": chunk.get("metadata", {}), 
+            "metadata": chunk.get("metadata", {}),
+            "docTitle": chunk.get("docTitle", ""),
+            "chunkId": chunk.get("chunkId", ""),
         } for chunk in chunk_objs],
     )
 
@@ -391,7 +427,8 @@ def handle_lancedb_vector_store(chunk_objs, chunk_embeddings, query_objs, query_
             k=top_k,
             metric=user_requested_metric,
         )
-        results.append({'query_object': query_obj, 'retrieved_chunks': res})
+        results.append({'query_object': query_obj,
+                        'retrieved_chunks': _attach_chunk_identity(res)})
 
     return results
 
@@ -413,6 +450,8 @@ def handle_faiss_vector_store(chunk_objs, chunk_embeddings, query_objs, query_em
         metadata=[{
             "fill_history": chunk.get("fill_history", {}),
             "metadata": chunk.get("metadata", {}),
+            "docTitle": chunk.get("docTitle", ""),
+            "chunkId": chunk.get("chunkId", ""),
         } for chunk in chunk_objs],
     )
     # Recherche pour chaque requête
@@ -422,5 +461,6 @@ def handle_faiss_vector_store(chunk_objs, chunk_embeddings, query_objs, query_em
             query=query_emb if query_emb is not None else query_obj.get("text", ""),
             k=top_k,
         )
-        results.append({'query_object': query_obj, 'retrieved_chunks': res})
+        results.append({'query_object': query_obj,
+                        'retrieved_chunks': _attach_chunk_identity(res)})
     return results

@@ -223,6 +223,7 @@ class TestRetrieveEndpoint:
 # EMBEDDING RETRIEVAL TESTS - COMPREHENSIVE COVERAGE
 # ============================================================================
 
+@pytest.mark.slow
 class TestEmbeddingRetrievalWithLanceDB:
   """Test embedding-based retrieval with LanceDB backend across all providers."""
   
@@ -414,6 +415,7 @@ class TestEmbeddingRetrievalWithLanceDB:
     assert similarities == sorted(similarities, reverse=True)
 
 
+@pytest.mark.slow
 class TestEmbeddingRetrievalWithFAISS:
   """Test embedding-based retrieval with FAISS backend across all providers."""
   
@@ -616,6 +618,7 @@ class TestEmbeddingRetrievalWithFAISS:
     assert similarities == sorted(similarities, reverse=True)
 
 
+@pytest.mark.slow
 class TestEmbeddingRetrievalCrossBackend:
   """Test consistency across LanceDB and FAISS backends."""
   
@@ -715,6 +718,7 @@ class TestEmbeddingRetrievalCrossBackend:
     assert len(faiss_results[0]["retrieved_chunks"]) <= 3
 
 
+@pytest.mark.slow
 class TestEmbeddingRetrievalEdgeCases:
   """Test edge cases and error handling for embedding retrieval."""
   
@@ -829,6 +833,7 @@ class TestEmbeddingRetrievalEdgeCases:
       pass
 
 
+@pytest.mark.slow
 class TestEmbeddingRetrievalMetadata:
   """Test that metadata is properly preserved through retrieval."""
   

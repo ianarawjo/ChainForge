@@ -20,6 +20,7 @@ def _has_sentence_transformers():
 
 class TestRerankers:
     
+    @pytest.mark.slow
     @pytest.mark.skipif(
         not _has_sentence_transformers(),
         reason="sentence-transformers library not available"

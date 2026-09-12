@@ -63,9 +63,25 @@ jobs:
 
     # TODO: Check that the server runs
 
+    # NOTE: faiss-cpu is deliberately NOT installed here. It bundles its own
+    # OpenMP runtime, and a second libomp in the same interpreter as torch's
+    # segfaults (verified on macOS: merely having faiss-cpu installed, without
+    # importing it, turns the embedding tests into SIGSEGV). The FaissVectorStore
+    # tests therefore run in the separate step below.
     - name: Run tests
       env:
         HF_HUB_DISABLE_TELEMETRY: "1"
         # Tests needing a provider API key skip themselves when it is unset,
         # so this job stays green (and free) without secrets.
-      run: pytest -v
+      run: pytest -v -m "not needs_faiss"
+
+    # A second, isolated invocation for the optional FAISS backend. Installing
+    # faiss-cpu only now means it cannot destabilise the run above, and
+    # excluding `slow` keeps this process from loading a real ML model, which
+    # is the combination that crashes.
+    - name: Install faiss and run the FAISS backend tests
+      env:
+        HF_HUB_DISABLE_TELEMETRY: "1"
+      run: |
+        pip install -e .[faiss]
+        pytest -v -m "needs_faiss and not slow"

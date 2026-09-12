@@ -67,6 +67,7 @@ class TestChonkieChunking:
     assert isinstance(chunks, list)
     assert len(chunks) > 0
   
+  @pytest.mark.slow
   def test_chonkie_semantic(self):
     chunker = chonkie_semantic
     chunks = chunker(self.dummy_document)
@@ -75,6 +76,7 @@ class TestChonkieChunking:
     for chunk in chunks:
       assert isinstance(chunk, str)
   
+  @pytest.mark.slow
   def test_chonkie_semantic_with_parameters(self):
     chunker = chonkie_semantic
     chunks = chunker(self.dummy_document, chunk_size=100, threshold=0.5,
@@ -86,6 +88,7 @@ class TestChonkieChunking:
   # Late chunker may pose problems because 
   # its dependencies require numpy>=2.0 yet other libraries 
   # require numpy<2.0.
+  @pytest.mark.slow
   def test_chonkie_late(self):
     chunker = chonkie_late
     if chunker is None or not callable(chunker):
@@ -108,6 +111,7 @@ class TestChonkieChunking:
     assert isinstance(chunks, list)
     assert len(chunks) > 0
   
+  @pytest.mark.slow
   def test_overlapping_huggingface(self):
     chunker = overlapping_huggingface_tokenizers
     chunks = chunker(self.dummy_document)
@@ -134,3 +138,48 @@ class TestChonkieChunking:
     for chunk in chunks:
       assert isinstance(chunk, str)
 
+
+
+class TestMarkdownHeaderChunking:
+  """The markdown_header chunker had no coverage."""
+
+  def _chunk(self, text, **kwargs):
+    from chainforge.rag.chunkers import ChunkingMethodRegistry
+    return ChunkingMethodRegistry.get_handler("markdown_header")(text, **kwargs)
+
+  def test_splits_at_atx_headings_and_keeps_them(self):
+    chunks = self._chunk("# One\nalpha\n\n# Two\nbeta")
+    assert len(chunks) == 2
+    assert chunks[0].startswith("# One")
+    assert "alpha" in chunks[0]
+    assert chunks[1].startswith("# Two")
+
+  def test_all_heading_levels(self):
+    text = "\n".join(f"{'#' * lvl} H{lvl}\nbody{lvl}" for lvl in range(1, 7))
+    chunks = self._chunk(text)
+    assert len(chunks) == 6
+    for lvl, chunk in enumerate(chunks, start=1):
+      assert chunk.startswith(f"{'#' * lvl} H{lvl}")
+
+  def test_leading_preamble_becomes_its_own_chunk(self):
+    chunks = self._chunk("intro text\n\n# Section\nbody")
+    assert len(chunks) == 2
+    assert chunks[0] == "intro text"
+
+  def test_text_without_headings_is_one_chunk(self):
+    assert self._chunk("just a paragraph") == ["just a paragraph"]
+
+  def test_hash_without_a_following_space_is_not_a_heading(self):
+    # "#hashtag" is not an ATX heading.
+    assert len(self._chunk("#hashtag body text")) == 1
+
+  def test_crlf_line_endings(self):
+    chunks = self._chunk("# One\r\nalpha\r\n# Two\r\nbeta")
+    assert len(chunks) == 2
+
+  def test_none_input(self):
+    assert self._chunk(None) == [""]
+
+  def test_empty_and_whitespace_input(self):
+    assert self._chunk("") == [""]
+    assert self._chunk("   \n  ") == ["   \n  "]
