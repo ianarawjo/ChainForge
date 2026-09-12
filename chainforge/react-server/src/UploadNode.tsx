@@ -25,6 +25,7 @@ import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import { MediaLookup } from "./backend/cache";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
+import { browserTextExtensions } from "./backend/extractText";
 import { TemplateVarInfo } from "./backend/typing";
 
 /** Renders a byte count as MB, for the browser storage budget readout. */
@@ -59,7 +60,23 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
   // budget, so show what's being used. Meaningless when running locally
   // (files go to disk), hence the flag.
   const [storageUsage, setStorageUsage] = useState(MediaLookup.storageUsage());
-  const showStorageUsage = !APP_IS_RUNNING_LOCALLY();
+  const runningLocally = APP_IS_RUNNING_LOCALLY();
+  const showStorageUsage = !runningLocally;
+
+  // PDF and DOCX are converted by the backend (markitdown). Without one, only
+  // already-textual formats can be read, so don't offer the rest -- picking a
+  // PDF would just fail after upload.
+  const acceptedExtensions = useMemo(
+    () =>
+      runningLocally
+        ? [".pdf", ".docx", ".txt", ".md"]
+        : browserTextExtensions(),
+    [runningLocally],
+  );
+  const acceptAttr = useMemo(
+    () => acceptedExtensions.join(","),
+    [acceptedExtensions],
+  );
 
   // Handle file uploads
   const handleFilesUpload = useCallback(
@@ -207,12 +224,18 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
       >
         <IconUpload size={40} color="#888" />
         <Text size="sm" color="dimmed">
-          Drag & drop files here or click to upload (.pdf, .docx, .txt, .md)
+          Drag &amp; drop files here or click to upload (
+          {acceptedExtensions.join(", ")})
         </Text>
+        {!runningLocally && (
+          <Text size="xs" color="dimmed" mt={2} ta="center">
+            Run ChainForge locally to also use .pdf and .docx
+          </Text>
+        )}
         <input
           type="file"
           multiple
-          accept=".pdf,.docx,.txt,.md"
+          accept={acceptAttr}
           ref={fileInputRef}
           style={{ display: "none" }}
           onChange={handleFileInputChange}

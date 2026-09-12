@@ -266,15 +266,19 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
                 fill_history: {
                   rerankMethod: `${method.methodType} (${method.name})`,
                   query: query || "N/A",
-                  originalRank: index,
+                  originalRank: String(index),
                   score: String(score),
                 },
                 llm: method.name,
+                // NOTE: keep these as strings. Numbers in fill_history/metavars
+                // are ambiguous with StringLookup intern indices, so a raw
+                // number risks being resolved against the intern table instead
+                // of being carried through as data.
                 metavars: {
                   query: query || "N/A",
                   rerankMethod: method.methodType,
-                  originalRank: index,
-                  score: score,
+                  originalRank: String(index),
+                  score: String(score),
                 },
               };
 

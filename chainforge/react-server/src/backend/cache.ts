@@ -9,6 +9,7 @@ import {
 } from "./utils";
 import { v4 as uuid } from "uuid";
 import Bottleneck from "bottleneck";
+import { extractTextInBrowser } from "./extractText";
 
 // NOTE: call APP_IS_RUNNING_LOCALLY() where it is needed rather than caching it
 // at module scope. cache.ts and utils.ts import each other, so evaluating it
@@ -768,10 +769,18 @@ export class MediaLookup {
 
       return json.text;
     } else {
-      // TODO: Implement this for the local cache
-      throw new Error(
-        `Text content not available for UID ${uid} in local cache.`,
-      );
+      // No backend to convert the file, so do it client-side. Formats needing
+      // a real parser (PDF, DOCX) throw with an explanation.
+      const blob = await MediaLookup.get(uid);
+      if (!blob)
+        throw new Error(
+          `No file contents are available for UID ${uid}. It may have been ` +
+            `uploaded in a previous session -- file contents are held in ` +
+            `memory only when running without a local server.`,
+        );
+
+      if (!isInLookup) mediaLookup.add(uid);
+      return await extractTextInBrowser(blob, uid);
     }
   }
 

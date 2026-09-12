@@ -235,3 +235,39 @@ describe("export serialization", () => {
     expect(MediaLookup.storageUsage().bytes).toBe(32);
   });
 });
+
+describe("browser-mode text extraction", () => {
+  // What UploadNode actually calls: upload a file, then read its text back.
+  // Before this worked, getAsText() threw unconditionally without a backend.
+  test("a .txt upload round-trips to text", async () => {
+    const uid = await MediaLookup.upload(
+      new File(["hello from a text file"], "notes.txt", { type: "text/plain" }),
+    );
+    expect(await MediaLookup.getAsText(uid)).toBe("hello from a text file");
+  });
+
+  test("a .md upload keeps its markup", async () => {
+    const md = "# Heading\n\nSome *body* text.\n";
+    const uid = await MediaLookup.upload(
+      new File([md], "doc.md", { type: "text/markdown" }),
+    );
+    expect(await MediaLookup.getAsText(uid)).toBe(md);
+  });
+
+  test("a .pdf upload reports that it needs a local server", async () => {
+    const uid = await MediaLookup.upload(
+      new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], "paper.pdf", {
+        type: "application/pdf",
+      }),
+    );
+    await expect(MediaLookup.getAsText(uid)).rejects.toThrow(
+      /requires the local ChainForge server/,
+    );
+  });
+
+  test("an unknown uid reports missing contents rather than hanging", async () => {
+    await expect(
+      MediaLookup.getAsText("cache__nope__cache__ghost.txt"),
+    ).rejects.toThrow(/No file contents are available/);
+  });
+});
