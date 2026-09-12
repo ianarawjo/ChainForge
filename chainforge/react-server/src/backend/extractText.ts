@@ -10,6 +10,8 @@
  * update when those are added, and everything else keys off it.
  */
 
+import { readBlobAsText } from "./blobRead";
+
 /**
  * Formats that are plain text once decoded, so they need no parser.
  *
@@ -25,31 +27,13 @@ const PLAIN_TEXT_EXTENSIONS = new Set([".txt", ".md"]);
  * the backend: /mediaToText uses markitdown (PyMuPDF), a different engine. The
  * backend is preferred whenever one exists; this is the fallback.
  */
-const BROWSER_PARSED_EXTENSIONS = new Set([".pdf"]);
+const BROWSER_PARSED_EXTENSIONS = new Set([".pdf", ".docx"]);
 
 /** Formats the backend can read but the browser still cannot. */
-const BACKEND_ONLY_EXTENSIONS = new Set([".docx", ".xlsx", ".xls", ".pptx"]);
+const BACKEND_ONLY_EXTENSIONS = new Set([".xlsx", ".xls", ".pptx"]);
 
 /** The prefix MediaLookup gives uids it mints in the browser. */
 const BROWSER_UID_MARKER = "__cache__";
-
-/**
- * Decodes a Blob as UTF-8 text.
- *
- * Uses FileReader rather than Blob.text(): it is supported everywhere
- * ChainForge runs (including older Safari, and jsdom under test), and decodes
- * invalid byte sequences to replacement characters instead of throwing --
- * matching the backend's errors="ignore" decode.
- */
-function readBlobAsText(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () =>
-      reject(reader.error ?? new Error("Could not read the file."));
-    reader.readAsText(blob);
-  });
-}
 
 /**
  * Recovers the original filename from a browser-minted media uid.
@@ -111,9 +95,13 @@ export async function extractTextInBrowser(
   if (PLAIN_TEXT_EXTENSIONS.has(ext)) return await readBlobAsText(blob);
 
   // Formats needing a parser. pdf.js is pulled in only at this point.
-  if (BROWSER_PARSED_EXTENSIONS.has(ext)) {
+  if (ext === ".pdf") {
     const { extractPdfText } = await import("./pdfExtract");
     return await extractPdfText(blob);
+  }
+  if (ext === ".docx") {
+    const { extractDocxText } = await import("./docxExtract");
+    return await extractDocxText(blob);
   }
 
   // No usable extension: fall back to the MIME type the browser reported.

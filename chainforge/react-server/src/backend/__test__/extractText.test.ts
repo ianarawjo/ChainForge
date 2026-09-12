@@ -7,6 +7,10 @@ jest.mock("../pdfExtract", () => ({
   extractPdfText: (blob: Blob) =>
     Promise.resolve(`[pdf text from ${blob.size} bytes]`),
 }));
+jest.mock("../docxExtract", () => ({
+  extractDocxText: (blob: Blob) =>
+    Promise.resolve(`[docx text from ${blob.size} bytes]`),
+}));
 
 // eslint-disable-next-line import/first
 import {
@@ -83,16 +87,21 @@ describe("canExtractTextInBrowser", () => {
     expect(canExtractTextInBrowser("PAPER.PDF")).toBe(true);
   });
 
+  test("accepts Word files, which ship a browser parser", () => {
+    expect(canExtractTextInBrowser("memo.docx")).toBe(true);
+  });
+
   test("rejects formats with no browser parser", () => {
-    expect(canExtractTextInBrowser("memo.docx")).toBe(false);
     expect(canExtractTextInBrowser("sheet.xlsx")).toBe(false);
     expect(canExtractTextInBrowser("deck.pptx")).toBe(false);
+    expect(canExtractTextInBrowser("old.xls")).toBe(false);
   });
 
   test("accepts a browser uid for a readable file", () => {
     expect(canExtractTextInBrowser("cache__x__cache__notes.md")).toBe(true);
     expect(canExtractTextInBrowser("cache__x__cache__paper.pdf")).toBe(true);
-    expect(canExtractTextInBrowser("cache__x__cache__memo.docx")).toBe(false);
+    expect(canExtractTextInBrowser("cache__x__cache__memo.docx")).toBe(true);
+    expect(canExtractTextInBrowser("cache__x__cache__sheet.xlsx")).toBe(false);
   });
 
   test("the advertised extensions are all actually accepted", () => {
@@ -164,7 +173,7 @@ describe("extractTextInBrowser", () => {
   });
 
   describe("formats needing the backend", () => {
-    test.each([".docx", ".xlsx", ".xls", ".pptx"])(
+    test.each([".xlsx", ".xls", ".pptx"])(
       "%s explains that a local server is required",
       async (ext) => {
         const blob = new Blob([new Uint8Array([1, 2, 3])]);
@@ -176,8 +185,8 @@ describe("extractTextInBrowser", () => {
 
     test("the message names the readable alternatives", async () => {
       const blob = new Blob([new Uint8Array([1, 2, 3])]);
-      await expect(extractTextInBrowser(blob, "doc.docx")).rejects.toThrow(
-        /\.md, \.pdf, \.txt/,
+      await expect(extractTextInBrowser(blob, "sheet.xlsx")).rejects.toThrow(
+        /\.docx, \.md, \.pdf, \.txt/,
       );
     });
   });
@@ -193,6 +202,13 @@ describe("extractTextInBrowser", () => {
     const blob = new Blob([new Uint8Array(8)], { type: "application/pdf" });
     expect(await extractTextInBrowser(blob, "noextension")).toBe(
       "[pdf text from 8 bytes]",
+    );
+  });
+
+  test("a .docx is handed to the Word parser", async () => {
+    const blob = new Blob([new Uint8Array(256)]);
+    expect(await extractTextInBrowser(blob, "memo.docx")).toBe(
+      "[docx text from 256 bytes]",
     );
   });
 

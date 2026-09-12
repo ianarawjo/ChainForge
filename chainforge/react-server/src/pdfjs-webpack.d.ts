@@ -8,3 +8,14 @@ declare module "pdfjs-dist/legacy/webpack.mjs" {
   export const GlobalWorkerOptions: { workerSrc: string; workerPort?: unknown };
   export function getDocument(src: unknown): { promise: Promise<any> };
 }
+
+/**
+ * mammoth ships types for its package root but not for the prebuilt browser
+ * bundle, which is the entry we load (see docxExtract). Only convertToHtml is
+ * used.
+ */
+declare module "mammoth/mammoth.browser.min.js" {
+  export function convertToHtml(input: {
+    arrayBuffer: ArrayBuffer;
+  }): Promise<{ value: string; messages: unknown[] }>;
+}

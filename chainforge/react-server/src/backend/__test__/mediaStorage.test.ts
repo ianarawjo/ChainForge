@@ -267,9 +267,9 @@ describe("browser-mode text extraction", () => {
     expect(await MediaLookup.getAsText(uid)).toBe("text lifted out of the PDF");
   });
 
-  test("a .docx upload still reports that it needs a local server", async () => {
+  test("an .xlsx upload still reports that it needs a local server", async () => {
     const uid = await MediaLookup.upload(
-      new File([new Uint8Array([0x50, 0x4b])], "memo.docx", {}),
+      new File([new Uint8Array([0x50, 0x4b])], "sheet.xlsx", {}),
     );
     await expect(MediaLookup.getAsText(uid)).rejects.toThrow(
       /requires the local ChainForge server/,

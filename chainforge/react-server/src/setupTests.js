@@ -27,3 +27,14 @@ if (typeof globalThis.structuredClone !== "function") {
   };
   globalThis.structuredClone = cloneValue;
 }
+
+// Same story as structuredClone: this jsdom does not expose TextDecoder /
+// TextEncoder as globals, which mammoth's browser bundle needs to read the XML
+// inside a .docx. Every browser ChainForge supports has them natively.
+if (typeof globalThis.TextDecoder !== "function") {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { TextDecoder, TextEncoder } = require("util");
+  globalThis.TextDecoder = TextDecoder;
+  if (typeof globalThis.TextEncoder !== "function")
+    globalThis.TextEncoder = TextEncoder;
+}

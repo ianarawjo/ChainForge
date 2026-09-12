@@ -13,6 +13,8 @@
  * differ slightly between the two, mostly in blank-line placement.
  */
 
+import { readBlobAsArrayBuffer } from "./blobRead";
+
 /** One text run as pdf.js reports it. */
 interface PdfTextItem {
   str?: string;
@@ -83,7 +85,7 @@ export function tidyPdfText(pages: string[]): string {
  */
 export async function extractPdfText(blob: Blob): Promise<string> {
   const pdfjs = await loadPdfJs();
-  const data = new Uint8Array(await blob.arrayBuffer());
+  const data = new Uint8Array(await readBlobAsArrayBuffer(blob));
 
   let doc: any;
   try {
