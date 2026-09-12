@@ -103,14 +103,20 @@ describe("ragNodeAvailable", () => {
     expect(ragNodeAvailable("retrieval")).toBe(true);
   });
 
-  test("rerank still needs a backend", () => {
-    // Cross-encoders need a model; Cohere rerank needs its API.
-    expect(ragNodeAvailable("rerank")).toBe(false);
+  test("rerank works without a backend, via the browser cross-encoder", () => {
+    expect(ragNodeAvailable("rerank")).toBe(true);
   });
 
-  test("nothing is available-by-accident before the probe resolves", () => {
-    beforeProbeResolves();
-    expect(ragNodeAvailable("rerank")).toBe(false);
+  test("every RAG node is usable without a backend", () => {
+    // The browser-only path is now complete end to end; if a future node
+    // arrives without a client-side implementation, this should fail and be
+    // narrowed deliberately rather than left to surprise a workshop.
+    for (const node of ["upload", "chunk", "retrieval", "rerank"] as const)
+      expect(ragNodeAvailable(node)).toBe(true);
+  });
+
+  test("an unknown node type is not available by accident", () => {
+    expect(ragNodeAvailable("nonexistent" as any)).toBe(false);
   });
 });
 

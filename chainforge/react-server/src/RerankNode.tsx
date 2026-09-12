@@ -25,6 +25,10 @@ import RerankMethodListContainer, {
 
 import { TemplateVarInfo, LLMResponse } from "./backend/typing";
 import { StringLookup } from "./backend/cache";
+import {
+  canRerankInBrowser,
+  rerankInBrowser,
+} from "./backend/browserRerankers";
 import { FLASK_BASE_URL } from "./backend/utils";
 import { v4 as uuid } from "uuid";
 
@@ -190,47 +194,55 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
 
         for (const method of methods) {
           try {
-            const formData = new FormData();
-            formData.append("baseMethod", method.baseMethod);
-
-            // Add documents as a JSON array
             const documents = validDocuments.map(
               (doc) => StringLookup.get(doc.text) || "",
             );
-            formData.append("documents", JSON.stringify(documents));
 
-            // Add query if available
-            if (query) {
-              formData.append("query", query);
-            } else {
+            if (!query) {
               console.warn(
                 `Warning: No query found when preparing payload for reranking with method ${method.name}. Proceeding without 'query' component. Results will be suboptimal.`,
               );
             }
 
-            // Add the user settings
-            Object.entries(method.settings ?? {}).forEach(([k, v]) => {
-              formData.append(k, String(v));
-            });
+            let rerankedResults: any[];
 
-            // Add API keys
-            if (apiKeys) {
-              formData.append("api_keys", JSON.stringify(apiKeys));
+            if (canRerankInBrowser(method.baseMethod)) {
+              // A client-side cross-encoder: no server, no round trip. The
+              // model is fetched on first use, so drive the progress bar.
+              rerankedResults = await rerankInBrowser(
+                documents,
+                query,
+                method.settings ?? {},
+              );
+            } else {
+              const formData = new FormData();
+              formData.append("baseMethod", method.baseMethod);
+              formData.append("documents", JSON.stringify(documents));
+              if (query) formData.append("query", query);
+
+              // Add the user settings
+              Object.entries(method.settings ?? {}).forEach(([k, v]) => {
+                formData.append(k, String(v));
+              });
+
+              // Add API keys
+              if (apiKeys) {
+                formData.append("api_keys", JSON.stringify(apiKeys));
+              }
+
+              const res = await fetch(`${FLASK_BASE_URL}rerank`, {
+                method: "POST",
+                body: formData,
+              });
+
+              if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || "Reranking request failed");
+              }
+
+              const json = await res.json();
+              rerankedResults = json.reranked_documents || json.results || [];
             }
-
-            const res = await fetch(`${FLASK_BASE_URL}rerank`, {
-              method: "POST",
-              body: formData,
-            });
-
-            if (!res.ok) {
-              const err = await res.json();
-              throw new Error(err.error || "Reranking request failed");
-            }
-
-            const json = await res.json();
-            const rerankedResults =
-              json.reranked_documents || json.results || [];
 
             // Process reranked results
             const methodSafe = method.methodType.replace(/\W+/g, "_");

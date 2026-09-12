@@ -20,6 +20,7 @@ import { RAG_AVAILABLE } from "./utils";
 import { canChunkInBrowser } from "./browserChunkers";
 import { canRetrieveInBrowser } from "./browserRetrievers";
 import { canExtractTextInBrowser } from "./extractText";
+import { BROWSER_RERANK_MODELS } from "./browserRerankers";
 
 /** Where a capability can execute. */
 export type RunsIn =
@@ -63,7 +64,7 @@ export function willRunInBrowser(runsIn: RunsIn): boolean {
  *
  * Without a backend only the nodes with client-side implementations are
  * offered, rather than showing every node and failing once someone runs it.
- * Reranking is the one still missing.
+ * All four now have one.
  */
 export function ragNodeAvailable(nodeType: RagNodeType): boolean {
   if (ragBackendAvailable()) return true;
@@ -77,9 +78,7 @@ export function ragNodeAvailable(nodeType: RagNodeType): boolean {
     case "retrieval":
       return anyBrowserRetriever();
     case "rerank":
-      // Reranking needs a cross-encoder model or the Cohere API; nothing to
-      // run client-side yet.
-      return false;
+      return anyBrowserReranker();
     default:
       return false;
   }
@@ -110,6 +109,11 @@ function anyBrowserRetriever(): boolean {
   );
 }
 
+/** Whether at least one reranking method can run client-side. */
+function anyBrowserReranker(): boolean {
+  return Object.keys(BROWSER_RERANK_MODELS).length > 0;
+}
+
 /** Whether any RAG feature at all is usable, for showing the node group. */
 export function anyRagFeatureAvailable(): boolean {
   return (["upload", "chunk", "retrieval", "rerank"] as RagNodeType[]).some(
@@ -124,10 +128,10 @@ export function anyRagFeatureAvailable(): boolean {
 export function ragLimitationNotice(): string | undefined {
   if (ragBackendAvailable()) return undefined;
   return (
-    "Running without a local ChainForge server: documents, chunking, keyword " +
-    "retrieval and in-browser semantic search all run client-side. Run " +
-    "ChainForge locally for hosted embedding providers, persistent vector " +
-    "stores, TF-IDF and reranking."
+    "Running without a local ChainForge server: documents, chunking, " +
+    "retrieval and reranking all run client-side, on small models fetched " +
+    "when first used. Run ChainForge locally for hosted embedding providers, " +
+    "persistent vector stores, TF-IDF and the larger rerankers."
   );
 }
 

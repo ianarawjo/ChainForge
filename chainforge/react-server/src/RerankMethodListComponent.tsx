@@ -13,6 +13,7 @@ import Form from "@rjsf/core";
 import validator from "@rjsf/validator-ajv8";
 import { v4 as uuid } from "uuid";
 import { RerankMethodSchemas, rerankMethodGroups } from "./RerankMethodSchemas";
+import { canRunNow } from "./backend/ragCapabilities";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 import useStore from "./store";
 import { DatalistWidget } from "./ModelSettingsModal";
@@ -225,22 +226,28 @@ const RerankMethodListContainer = forwardRef<
 
   // Build nested menu items
   const menuItems = useMemo((): NestedMenuItemProps[] => {
-    return rerankMethodGroups.map((group) => ({
-      key: `group-${group.label}`,
-      title: group.label,
-      items: group.items.map((item) => ({
-        key: `method-${item.baseMethod}-${item.name}`,
-        title: `${item.emoji} ${item.name}`,
-        onClick: () =>
-          handleAddMethod(
-            item.baseMethod,
-            item.name,
-            item.emoji,
-            item.library,
-            (item as any).defaultSettings,
-          ),
-      })),
-    }));
+    // Offer only what can run right now, and drop a group left empty by
+    // that -- the same filtering the chunk and retrieval menus do.
+    return rerankMethodGroups
+      .map((group) => ({
+        key: `group-${group.label}`,
+        title: group.label,
+        items: group.items
+          .filter((item) => canRunNow((item as any).runsIn ?? "backend"))
+          .map((item) => ({
+            key: `method-${item.baseMethod}-${item.name}`,
+            title: `${item.emoji} ${item.name}`,
+            onClick: () =>
+              handleAddMethod(
+                item.baseMethod,
+                item.name,
+                item.emoji,
+                item.library,
+                (item as any).defaultSettings,
+              ),
+          })),
+      }))
+      .filter((group) => group.items.length > 0);
   }, [handleAddMethod]);
 
   return (
