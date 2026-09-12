@@ -22,6 +22,7 @@ import {
   normalizeQuery,
 } from "./browserRetrievers";
 import {
+  EMBEDDING_REVISION,
   ProgressFn,
   browserEmbeddingModel,
   cosineSimilarity,
@@ -51,7 +52,12 @@ const KEY_SEP = "\u0000";
 const vectorCache = new Map<string, Float32Array>();
 
 function cacheKey(modelId: string, text: string, isQuery: boolean): string {
-  return `${modelId}${KEY_SEP}${isQuery ? "q" : "d"}${KEY_SEP}${text}`;
+  // The revision is part of the key so vectors computed a different way are
+  // misses rather than wrong answers. It sits after the model id, which the
+  // store's prefix range depends on.
+  return `${modelId}${KEY_SEP}${EMBEDDING_REVISION}${KEY_SEP}${
+    isQuery ? "q" : "d"
+  }${KEY_SEP}${text}`;
 }
 
 /** How many vectors are cached, for the storage readout. */

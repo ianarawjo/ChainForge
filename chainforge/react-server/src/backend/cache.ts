@@ -644,50 +644,96 @@ export class MediaLookup {
   }
 
   /**
-   * Uploads a file to the backend and returns its UID.
+   * Whether a failed request means "no server there" rather than "the server
+   * said no".
+   *
+   * fetch rejects only on a network-level failure; an HTTP error still
+   * resolves. The distinction matters: an unreachable backend should fall back
+   * to browser storage, while a backend that actively refused a file (too
+   * large, wrong type) must surface that refusal rather than quietly storing
+   * something the server rejected.
+   */
+  private static isBackendUnreachable(err: unknown): boolean {
+    return err instanceof TypeError;
+  }
+
+  /** Logged at most once, so a backend-less session is not spammed. */
+  private static warnedNoBackend = false;
+
+  /** Uploads via the Flask backend. Rejects if it is unreachable. */
+  private static uploadToBackend(file: File | Blob): Promise<string> {
+    return MediaLookup.uploadLimiter.schedule(async () => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${FLASK_BASE_URL}upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
+
+      const json = await res.json();
+      const uid = json.uid;
+
+      if (!uid) throw new Error("Upload failed: No UID returned");
+
+      // Store the UID in the media UIDs set
+      MediaLookup.getInstance().add(uid);
+
+      return uid;
+    });
+  }
+
+  /** Keeps the file in the browser, under the client-side storage budget. */
+  private static uploadToBrowser(file: File | Blob): string {
+    // The browser holds the file itself, so enforce a budget before taking it
+    // (throws with a message the caller can surface).
+    const mediaLookup = MediaLookup.getInstance();
+    mediaLookup.assertBrowserCacheHasRoom(
+      file,
+      "name" in file ? file.name : undefined,
+    );
+
+    // Make a uid for the file, and use it to cache the file:
+    // NOTE: We keep the file name around, if there is one, just in case we need to recover it later.
+    const uid =
+      `cache__${uuid()}__cache` + ("name" in file ? `__${file.name}` : "");
+    mediaLookup.add(uid, file);
+    return uid;
+  }
+
+  /**
+   * Stores a file and returns its UID, using the backend when one is there.
+   *
+   * APP_IS_RUNNING_LOCALLY only reports whether the page is served from
+   * localhost, which is not the same question as whether a Flask server is
+   * answering. Serving the static build locally -- an ordinary way to run the
+   * browser-only feature set -- put us on the backend path with no backend,
+   * and the upload failed outright instead of falling back. So the hostname
+   * is treated as a hint about where to try first, and an unreachable server
+   * simply means the browser keeps the file.
+   *
    * @param file A Blob or File object to upload
-   * @returns The UID assigned by the backend
+   * @returns The UID assigned by the backend, or a client-side UID
    */
   public static async upload(file: File | Blob): Promise<string> {
     if (APP_IS_RUNNING_LOCALLY()) {
-      // Use the limiter to throttle uploads
-      return MediaLookup.uploadLimiter.schedule(async () => {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const res = await fetch(`${FLASK_BASE_URL}upload`, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
-
-        const json = await res.json();
-        const uid = json.uid;
-
-        if (!uid) throw new Error("Upload failed: No UID returned");
-
-        // Store the UID in the media UIDs set
-        MediaLookup.getInstance().add(uid);
-
-        return uid;
-      });
-    } else {
-      // No backend: the browser holds the file itself, so enforce a budget
-      // before taking it (throws with a message the caller can surface).
-      const mediaLookup = MediaLookup.getInstance();
-      mediaLookup.assertBrowserCacheHasRoom(
-        file,
-        "name" in file ? file.name : undefined,
-      );
-
-      // Make a uid for the file, and use it to cache the file:
-      // NOTE: We keep the file name around, if there is one, just in case we need to recover it later.
-      const uid =
-        `cache__${uuid()}__cache` + ("name" in file ? `__${file.name}` : "");
-      mediaLookup.add(uid, file);
-      return uid;
+      try {
+        return await MediaLookup.uploadToBackend(file);
+      } catch (err) {
+        // A server that answered and refused is a real error; report it.
+        if (!MediaLookup.isBackendUnreachable(err)) throw err;
+        if (!MediaLookup.warnedNoBackend) {
+          MediaLookup.warnedNoBackend = true;
+          console.warn(
+            "No ChainForge server is answering, so uploaded files will be " +
+              "kept in this browser instead.",
+          );
+        }
+      }
     }
+    return MediaLookup.uploadToBrowser(file);
   }
 
   public static async uploadDataURL(dataURL: string): Promise<string> {
@@ -775,37 +821,48 @@ export class MediaLookup {
 
           return blob;
         } catch (error) {
+          if (MediaLookup.isBackendUnreachable(error))
+            // Nothing is listening; the file may still be held locally.
+            return await MediaLookup.getFromBrowser(uid, isInLookup);
           console.error(
             `Error fetching file with UID ${uid}: ${(error as Error).message}`,
           );
           return undefined;
         }
       });
-    } else {
-      // Check if the file is in the cache
-      let blob = mediaLookup.cache[uid];
+    }
+    return MediaLookup.getFromBrowser(uid, isInLookup);
+  }
 
-      // Not in memory: it may have been persisted in an earlier session.
-      // Loading on demand keeps memory proportional to what's actually used.
-      if (!blob) {
-        const persisted = await getMedia(uid);
-        if (persisted) {
-          blob = persisted;
-          mediaLookup.cache[uid] = persisted;
-          mediaLookup.sizes.set(uid, persisted.size);
-        }
-      }
+  /** Looks a file up in browser storage, in memory then IndexedDB. */
+  private static async getFromBrowser(
+    uid: string,
+    isInLookup: boolean,
+  ): Promise<Blob | undefined> {
+    const mediaLookup = MediaLookup.getInstance();
 
-      if (blob) {
-        // If the file was for some reason not listed in the media UIDs, add it now:
-        if (!isInLookup) mediaLookup.add(uid);
+    // Check if the file is in the cache
+    let blob = mediaLookup.cache[uid];
 
-        return blob;
-      } else {
-        console.error(`File with UID ${uid} not found in cache.`);
-        return undefined;
+    // Not in memory: it may have been persisted in an earlier session.
+    // Loading on demand keeps memory proportional to what's actually used.
+    if (!blob) {
+      const persisted = await getMedia(uid);
+      if (persisted) {
+        blob = persisted;
+        mediaLookup.cache[uid] = persisted;
+        mediaLookup.sizes.set(uid, persisted.size);
       }
     }
+
+    if (blob) {
+      // If the file was for some reason not listed in the media UIDs, add it now:
+      if (!isInLookup) mediaLookup.add(uid);
+
+      return blob;
+    }
+    console.error(`File with UID ${uid} not found in cache.`);
+    return undefined;
   }
 
   /**
@@ -823,36 +880,43 @@ export class MediaLookup {
       );
     }
 
-    if (APP_IS_RUNNING_LOCALLY()) {
-      // Fetch the file from the backend
-      const res = await fetch(`${FLASK_BASE_URL}mediaToText/${uid}`);
-      if (!res.ok) {
-        throw new Error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+    // As in upload(): being served from localhost is not proof that a server
+    // is answering, so an unreachable one falls through to doing the
+    // extraction here rather than failing the upload.
+    if (APP_IS_RUNNING_LOCALLY() && !uid.startsWith("cache__")) {
+      try {
+        const res = await fetch(`${FLASK_BASE_URL}mediaToText/${uid}`);
+        if (!res.ok) {
+          throw new Error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+        }
+        const json = await res.json();
+        const text = json.text;
+
+        if (text === undefined)
+          throw new Error(`Fetch failed for UID ${uid}: No text returned`);
+
+        // If the file was for some reason not listed in the media UIDs, add it now:
+        if (!isInLookup) mediaLookup.add(uid);
+
+        return json.text;
+      } catch (err) {
+        // A server that answered and refused is a real error.
+        if (!MediaLookup.isBackendUnreachable(err)) throw err;
       }
-      const json = await res.json();
-      const text = json.text;
-
-      if (text === undefined)
-        throw new Error(`Fetch failed for UID ${uid}: No text returned`);
-
-      // If the file was for some reason not listed in the media UIDs, add it now:
-      if (!isInLookup) mediaLookup.add(uid);
-
-      return json.text;
-    } else {
-      // No backend to convert the file, so do it client-side. Formats needing
-      // a real parser (PDF, DOCX) throw with an explanation.
-      const blob = await MediaLookup.get(uid);
-      if (!blob)
-        throw new Error(
-          `No file contents are available for UID ${uid}. It may have been ` +
-            `uploaded in a previous session -- file contents are held in ` +
-            `memory only when running without a local server.`,
-        );
-
-      if (!isInLookup) mediaLookup.add(uid);
-      return await extractTextInBrowser(blob, uid);
     }
+
+    // No backend to convert the file, so do it client-side. Formats needing
+    // a real parser (PDF, DOCX) throw with an explanation.
+    const blob = await MediaLookup.get(uid);
+    if (!blob)
+      throw new Error(
+        `No file contents are available for UID ${uid}. It may have been ` +
+          `uploaded in a previous session -- file contents are held in ` +
+          `memory only when running without a local server.`,
+      );
+
+    if (!isInLookup) mediaLookup.add(uid);
+    return await extractTextInBrowser(blob, uid);
   }
 
   /**

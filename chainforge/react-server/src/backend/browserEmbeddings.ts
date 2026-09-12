@@ -35,15 +35,6 @@ export interface BrowserEmbeddingModel {
   dim: number;
   /** Approximate download on the CPU (wasm) path, in MB. */
   sizeMB: number;
-  /**
-   * Weight format to use on WebGPU, and what it costs.
-   *
-   * Never q8: int8 has no native WebGPU path, and measured ~232ms/chunk
-   * against 36ms on wasm -- the slowest of every combination tried. Float
-   * formats all land near 5ms/chunk, so the smallest available float wins.
-   */
-  webgpuDtype: "q4f16" | "fp16";
-  webgpuSizeMB: number;
   /** Sentence-embedding pooling this model was trained with. */
   pooling: "cls" | "mean";
   /**
@@ -69,8 +60,6 @@ export const BROWSER_EMBEDDING_MODELS: Record<string, BrowserEmbeddingModel> = {
     label: "BGE small en v1.5",
     dim: 384,
     sizeMB: 34,
-    webgpuDtype: "q4f16",
-    webgpuSizeMB: 36,
     pooling: "cls",
     queryPrefix: "Represent this sentence for searching relevant passages: ",
     note: "Strong retrieval quality for its size. The default.",
@@ -80,8 +69,6 @@ export const BROWSER_EMBEDDING_MODELS: Record<string, BrowserEmbeddingModel> = {
     label: "mxbai-embed-xsmall v1",
     dim: 384,
     sizeMB: 24,
-    webgpuDtype: "q4f16",
-    webgpuSizeMB: 33,
     pooling: "cls",
     queryPrefix: "Represent this sentence for searching relevant passages: ",
     note: "Smallest good option, at a little quality cost.",
@@ -91,8 +78,6 @@ export const BROWSER_EMBEDDING_MODELS: Record<string, BrowserEmbeddingModel> = {
     label: "Arctic Embed XS",
     dim: 384,
     sizeMB: 23,
-    webgpuDtype: "fp16",
-    webgpuSizeMB: 45,
     pooling: "cls",
     queryPrefix: "Represent this sentence for searching relevant passages: ",
     note: "Tuned for retrieval specifically.",
@@ -102,8 +87,6 @@ export const BROWSER_EMBEDDING_MODELS: Record<string, BrowserEmbeddingModel> = {
     label: "all-MiniLM-L6-v2 (older baseline)",
     dim: 384,
     sizeMB: 23,
-    webgpuDtype: "q4f16",
-    webgpuSizeMB: 30,
     pooling: "mean",
     queryPrefix: "",
     note: "The classic tutorial model. Useful for comparison.",
@@ -111,6 +94,20 @@ export const BROWSER_EMBEDDING_MODELS: Record<string, BrowserEmbeddingModel> = {
 };
 
 export const DEFAULT_BROWSER_EMBEDDING_MODEL = "Xenova/bge-small-en-v1.5";
+
+/**
+ * Identifies how vectors are computed, for cache invalidation.
+ *
+ * A cached vector is only reusable if it would be produced identically today.
+ * The model id alone does not establish that: the weight format, the pooling,
+ * and the query prefix all change the numbers while leaving the id untouched.
+ * That is not hypothetical -- switching the GPU path from q4f16 to q8 handed
+ * back vectors from the old format, and retrieval silently kept returning the
+ * worse rankings until the store was wiped by hand.
+ *
+ * Bump this whenever anything affecting the output changes.
+ */
+export const EMBEDDING_REVISION = "wasm-q8-v1";
 
 /** The model config for an id, falling back to the default. */
 export function browserEmbeddingModel(id?: string): BrowserEmbeddingModel {
@@ -120,57 +117,9 @@ export function browserEmbeddingModel(id?: string): BrowserEmbeddingModel {
   );
 }
 
-/**
- * Whether WebGPU can actually be used, not merely whether the API exists.
- *
- * `navigator.gpu` being present is not enough -- requesting an adapter fails
- * on machines with no suitable GPU, and in browsers where the feature is
- * present but disabled. Resolved once and reused.
- */
-let webgpuProbe: Promise<boolean> | undefined;
-
-export function webgpuAvailable(): Promise<boolean> {
-  if (webgpuProbe) return webgpuProbe;
-  webgpuProbe = (async () => {
-    try {
-      const gpu = (navigator as any)?.gpu;
-      if (!gpu?.requestAdapter) return false;
-      return Boolean(await gpu.requestAdapter());
-    } catch {
-      return false;
-    }
-  })();
-  return webgpuProbe;
-}
-
-/** Resets the cached probe. Tests only. */
-export function resetWebGPUProbe(): void {
-  webgpuProbe = undefined;
-}
-
-/** The device and weight format to load a model with, given the hardware. */
-export async function executionPlan(model: BrowserEmbeddingModel): Promise<{
-  device: "webgpu" | "wasm";
-  dtype: "q4f16" | "fp16" | "q8";
-  sizeMB: number;
-}> {
-  if (await webgpuAvailable())
-    return {
-      device: "webgpu",
-      dtype: model.webgpuDtype,
-      sizeMB: model.webgpuSizeMB,
-    };
-  return { device: "wasm", dtype: "q8", sizeMB: model.sizeMB };
-}
-
-/**
- * How big this model's download is, spanning both paths when they differ
- * enough to matter to someone on a slow connection.
- */
+/** How big this model's download is. */
 export function modelDownloadLabel(model: BrowserEmbeddingModel): string {
-  const low = Math.min(model.sizeMB, model.webgpuSizeMB);
-  const high = Math.max(model.sizeMB, model.webgpuSizeMB);
-  return high - low > 5 ? `~${low}-${high}MB` : `~${high}MB`;
+  return `~${model.sizeMB}MB`;
 }
 
 /** Progress while fetching weights, for the node's progress ring. */
@@ -209,7 +158,8 @@ export function loadEmbedder(
   modelId: string,
   onProgress?: ProgressFn,
 ): Promise<Extractor> {
-  const existing = extractors.get(modelId);
+  const key = modelId;
+  const existing = extractors.get(key);
   if (existing) return existing;
 
   const loading = (async () => {
@@ -221,13 +171,16 @@ export function loadEmbedder(
     // origin, which 404s noisily before it falls back to the Hub.
     env.allowLocalModels = false;
 
-    const plan = await executionPlan(browserEmbeddingModel(modelId));
-
     const extractor = await pipeline("feature-extraction", modelId, {
-      // WebGPU with a float format is ~7.6x faster than wasm q8 on the same
-      // machine; wasm falls back to q8, its best option.
-      device: plan.device,
-      dtype: plan.dtype,
+      // WASM at q8 only. WebGPU is ~5x faster per chunk, but only fp32
+      // reproduces these rankings, and fp32 is a 133MB download against 34MB.
+      // The smaller GPU formats are measurably worse at the actual job: on a
+      // five-passage corpus q4f16 ranked the wrong passage first, its score
+      // spread collapsing from 0.341 to 0.058, and fp16 held the right answer
+      // at less than half the separation. A workshop corpus embeds in seconds
+      // on the CPU, so there is nothing here worth trading accuracy for.
+      device: "wasm",
+      dtype: "q8",
       progress_callback: (report: {
         status?: string;
         progress?: number;
@@ -245,9 +198,9 @@ export function loadEmbedder(
     return extractor as unknown as Extractor;
   })();
 
-  extractors.set(modelId, loading);
+  extractors.set(key, loading);
   // A failed load must not be cached, or the node can never retry.
-  loading.catch(() => extractors.delete(modelId));
+  loading.catch(() => extractors.delete(key));
   return loading;
 }
 

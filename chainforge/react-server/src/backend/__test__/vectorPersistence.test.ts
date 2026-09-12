@@ -208,4 +208,15 @@ describe("surviving a reload", () => {
     const stored = await loadVectorsForModel(BGE);
     expect(stored.size).toBe(2);
   });
+
+  test("vectors are filed under the embedding revision, not just the model", async () => {
+    // Guards the stale-cache bug: changing how vectors are computed (weight
+    // format, pooling, prefix) must make old entries misses, not wrong
+    // answers. Keys carry the revision, so a bump cannot collide.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { EMBEDDING_REVISION } = require("../browserEmbeddings");
+    await semanticRetriever(CHUNKS, [{ text: "alpha" }], {});
+    const stored = await loadVectorsForModel(BGE);
+    for (const key of stored.keys()) expect(key).toContain(EMBEDDING_REVISION);
+  });
 });
